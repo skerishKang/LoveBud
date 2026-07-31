@@ -535,31 +535,43 @@ function captureConsoleErrors(page) {
   return errors;
 }
 
-/* #3771 media-regression: capture same-origin request failures. */
-function captureRequestFailures(page) {
-  const failures = [];
+/* #3771 media-regression: capture full browser health state for one context.
+ * Collects: pageerror, console error, same-origin requestfailed, and
+ * same-origin HTTP responses with status >= 400. `fixtureOrigin` is the
+ * explicit same-origin base (e.g. http://127.0.0.1:port) so health is
+ * equivalent and independent of page.url() (which may be about:blank). */
+function captureBrowserHealth(page, fixtureOrigin) {
+  const result = {
+    pageerrors: [],
+    consoleErrors: [],
+    requestFailures: [],
+    responseErrors: [],
+  };
+  page.on('pageerror', error => {
+    result.pageerrors.push(String(error));
+  });
+  page.on('console', msg => {
+    if (msg.type() === 'error') result.consoleErrors.push(msg.text());
+  });
   page.on('requestfailed', req => {
     const url = req.url();
     try {
-      const origin = new URL(page.url()).origin;
-      if (new URL(url).origin === origin) failures.push(url);
-    } catch (e) { /* non-URL-safe request */ }
+      if (new URL(url).origin === fixtureOrigin) {
+        result.requestFailures.push(url);
+      }
+    } catch (e) { /* non-HTTP request, skip */ }
   });
-  return failures;
+  page.on('response', res => {
+    const url = res.url();
+    try {
+      if (new URL(url).origin === fixtureOrigin && res.status() >= 400) {
+        result.responseErrors.push({ url, status: res.status() });
+      }
+    } catch (e) { /* non-HTTP response, skip */ }
+  });
+  return result;
 }
 
-/* #3771 media-regression: query one card's media wrapper for element
- * children, image presence, and fallback presence. The media wrapper's
- * canonical content is produced by search-card-fallback.js:
- *   Tier 1: real thumbnail → <img data-search-card-image> backed by a
- *            hidden [data-fallback-container] (.tree-card-media-fallback)
- *            until bindCardImageHandlers' load handler settles the image;
- *            on error the img is hidden and the SVG fallback revealed.
- *   Tier 2: text-led cover → .tree-card-text-visual
- *   Tier 3: premium SVG   → .tree-card-media-fallback
- * The #3771 regression silently dropped this Element child because the
- * renderer's firstChild boundary returned a whitespace Text node.
- * Returns null if the card is missing or has no media wrapper. */
 async function cardMediaState(page, treeId) {
   return page.evaluate((id) => {
     const card = document.querySelector(`#resultsList .tree-card[data-tree-id="${id}"]`);
@@ -632,42 +644,6 @@ function assertMediaState(state, expected, label) {
   }
 }
 
-/* #3771 media-regression: assert one card's media wrapper state.
- * expected:
- *   hasImage: true + imgSrc substring  → Tier 1 thumbnail card
- *   hasTextVisual / hasFallback        → Tier 2/3 no-thumbnail card
- *   noImage / noFallback               → negative assertions */
-function assertMediaState(state, expected, label) {
-  assert.ok(state, `${label}: card must exist`);
-  assert.equal(state.mediaPresent, true, `${label}: media wrapper must exist`);
-  /* Core #3771 regression assertion: the media wrapper's Element child
-   * must survive — before the fixed boundary (firstElementChild), the
-   * leading whitespace of the trusted HTML string made the renderer
-   * append a stray Text node instead. */
-  assert.ok(state.elementChildCount >= 1, `${label}: media wrapper must have >=1 Element child (got ${state.elementChildCount}, empty media wrapper = #3771 regression)`);
-  if (expected.hasImage) {
-    assert.equal(state.imgCount, 1, `${label}: exactly one img[data-search-card-image]`);
-    assert.ok(state.imgSrc && state.imgSrc.includes(expected.imgSrc), `${label}: img src must contain "${expected.imgSrc}" (got "${state.imgSrc}")`);
-    assert.equal(state.imgHidden, false, `${label}: image must not be display:none/hidden`);
-  }
-  if (expected.hasFallback) {
-    assert.equal(state.fallbackCount, 1, `${label}: exactly one .tree-card-media-fallback`);
-    assert.equal(state.fallbackHidden, false, `${label}: fallback must not be hidden`);
-  }
-  if (expected.hasTextVisual) {
-    assert.equal(state.textVisualCount, 1, `${label}: exactly one .tree-card-text-visual (canonical Tier-2 fallback)`);
-  }
-  if (expected.noTextVisual) {
-    assert.equal(state.textVisualCount, 0, `${label}: no text-visual expected`);
-  }
-  if (expected.noImage) {
-    assert.equal(state.imgCount, 0, `${label}: no image expected`);
-  }
-  if (expected.noFallback) {
-    assert.equal(state.fallbackCount, 0, `${label}: no fallback expected`);
-  }
-}
-
 /* #3771 media-regression: assert all visible cards have media materials. */
 async function assertVisibleCardMedia(page, expectedCards, label) {
   const visibleIds = await page.evaluate(() =>
@@ -681,6 +657,74 @@ async function assertVisibleCardMedia(page, expectedCards, label) {
     const state = await cardMediaState(page, id);
     assertMediaState(state, expected, `${label} card[${id}]`);
   }
+}
+
+/* #3771 media-regression: deterministic readiness predicates (no
+ * waitForTimeout / networkidle). Each polls real DOM/transition state. */
+
+/* Fixture renderer-completion readiness: #resultsList present, exactly the
+ * fixture card set rendered in expectedIds order, each card carrying a media
+ * wrapper with >=1 Element child. Deliberately does NOT require any
+ * img[data-search-card-image] to be complete/decoded: hidden or offscreen
+ * Story-group thumbnails may lazy-load. Strict image readiness is asserted
+ * per visible Story group via waitForVisibleImagesLoaded/assertMediaState. */
+async function waitForFixtureReady(page, expectedIds) {
+  await page.waitForFunction((ids) => {
+    const results = document.getElementById('resultsList');
+    if (!results) return false;
+    const cards = results.querySelectorAll('.tree-card[data-tree-id]');
+    if (cards.length !== ids.length) return false;
+    const cardIds = [...cards].map(c => c.getAttribute('data-tree-id'));
+    if (cardIds.join(',') !== ids.join(',')) return false;
+    for (const card of cards) {
+      const media = card.querySelector('.tree-card-media');
+      if (!media) return false;
+      const elementChildren = [...media.children].filter(c => c.nodeType === Node.ELEMENT_NODE);
+      if (elementChildren.length < 1) return false;
+    }
+    return true;
+  }, expectedIds, { timeout: 10000 });
+}
+
+/* Story-group readiness: mode set, indicator/nav present, expected
+ * number of visible cards, expected hidden count, group index text,
+ * and (for the loaded thumbnail images) element children intact. */
+async function waitForStoryGroupReady(page, opts) {
+  await page.waitForFunction((o) => {
+    const results = document.getElementById('resultsList');
+    if (!results) return false;
+    if (results.getAttribute('data-tree-view-mode') !== o.mode) return false;
+    if (o.expectNoTransition && document.querySelector('.browse-story-transition-stage')) return false;
+    if (o.expectTransition && !document.querySelector('.browse-story-transition-stage')) return false;
+    const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+      .filter(c => !c.hidden).map(c => c.getAttribute('data-tree-id'));
+    if (o.visibleCount != null && visible.length !== o.visibleCount) return false;
+    if (o.visibleOrder && visible.join(',') !== o.visibleOrder.join(',')) return false;
+    const hidden = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+      .filter(c => c.hidden).map(c => c.getAttribute('data-tree-id'));
+    if (o.hiddenCount != null && hidden.length !== o.hiddenCount) return false;
+    const nav = document.querySelector('.browse-story-navigation');
+    if (!nav || nav.hidden) return false;
+    const current = document.querySelector('.browse-story-indicator-current');
+    if (o.indicator && current && current.textContent !== o.indicator) return false;
+    if (o.nextDisabled != null) {
+      const next = document.querySelector('[data-story-next]');
+      if (!next || next.disabled !== o.nextDisabled) return false;
+    }
+    if (o.prevDisabled != null) {
+      const prev = document.querySelector('[data-story-prev]');
+      if (!prev || prev.disabled !== o.prevDisabled) return false;
+    }
+    return true;
+  }, opts, { timeout: 10000 });
+}
+
+/* Image readiness across all thumbnail cards in the visible set. */
+async function waitForVisibleImagesLoaded(page) {
+  await page.waitForFunction(() => {
+    const imgs = [...document.querySelectorAll('img[data-search-card-image]')];
+    return imgs.length > 0 && imgs.every(i => i.complete && i.naturalWidth > 0);
+  }, { timeout: 10000 });
 }
 
 async function directCardIds(page) {
@@ -2274,15 +2318,15 @@ const MEDIA_CARD_EXPECTATIONS = [
 test('#3771 browser: Story media elements preserved across mode entry and navigation (desktop)', { timeout: 150000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  let context;
   try {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const pageErrors = capturePageErrors(page);
-    const consoleErrors = captureConsoleErrors(page);
-    const requestFailures = captureRequestFailures(page);
+    const health = captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
-    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(150);
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'domcontentloaded' });
+    await waitForFixtureReady(page, MEDIA_FIXTURE_IDS);
 
     /* (1) compact mode: all 6 cards present, media intact */
     const compactIds = await directCardIds(page);
@@ -2291,39 +2335,61 @@ test('#3771 browser: Story media elements preserved across mode entry and naviga
       const st = await cardMediaState(page, exp.id);
       assertMediaState(st, exp, `compact[${exp.id}]`);
     }
+    await waitForVisibleImagesLoaded(page);
 
-    /* (1) enter Story mode with deterministic loaded cards */
+    /* (1) enter Story mode */
     await clickModeButton(page, 'story');
-    let st = await storyState(page);
-    assert.equal(st.mode, 'story');
-    assert.equal(st.visible.length, 3, 'wide desktop shows 3 cards');
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 3, hiddenCount: 3, indicator: '01 / 02',
+      nextDisabled: false,
+    });
     await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'story-entry');
 
-    /* (5) Next/Previous navigation preserves actual media elements */
-    await page.click('[data-story-next]');
-    await page.waitForTimeout(50); /* mid-transition */
+    /* (5) Next: transition start → transition-end media integrity */
+    const nextPromise = page.click('[data-story-next]');
+    await page.waitForFunction(() => document.querySelector('.browse-story-transition-stage'), { timeout: 5000 });
     await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'mid-transition-next');
-    await page.waitForTimeout(420);
-    st = await storyState(page);
-    assert.equal(st.indicator, '02 / 02', 'group 2 of 2 on wide desktop');
-    assert.equal(st.nextDisabled, true, 'last group → next disabled');
+    await nextPromise;
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 3, hiddenCount: 3, indicator: '02 / 02',
+      nextDisabled: true,
+    });
     await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'post-transition-next');
 
-    /* (6) leaving and re-entering Story mode preserves media elements */
+    /* (5b) Previous: back to group 1 */
+    const prevPromise = page.click('[data-story-prev]');
+    await page.waitForFunction(() => document.querySelector('.browse-story-transition-stage'), { timeout: 5000 });
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 3, hiddenCount: 3, indicator: '01 / 02',
+      nextDisabled: false,
+    });
+    await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'post-transition-prev');
+    await prevPromise;
+
+    /* (6) leave Story mode, restore compact, re-enter */
     await clickModeButton(page, 'compact');
-    await page.waitForTimeout(100);
+    await page.waitForFunction(() =>
+      document.getElementById('resultsList').getAttribute('data-tree-view-mode') === 'compact',
+      { timeout: 10000 });
+    const restoreIds = await directCardIds(page);
+    assert.deepEqual(restoreIds, MEDIA_FIXTURE_IDS, 'compact mode restored after leaving story');
     for (const exp of MEDIA_CARD_EXPECTATIONS) {
       const state = await cardMediaState(page, exp.id);
       assertMediaState(state, exp, `compact-restore[${exp.id}]`);
     }
     await clickModeButton(page, 'story');
-    await page.waitForTimeout(150);
-    st = await storyState(page);
-    assert.equal(st.mode, 'story');
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 3, hiddenCount: 3, indicator: '01 / 02',
+      nextDisabled: false,
+    });
     await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'story-re-entry');
 
-    /* (8) hidden cards remain outside the visible/tab sequence */
-    const visibilityCounts = await page.evaluate(() => {
+    /* (8) hidden/visible semantics: exactly 3 visible / 3 hidden */
+    const counts = await page.evaluate(() => {
       const cards = [...document.querySelectorAll('#resultsList .tree-card[data-tree-id]')];
       return {
         visible: cards.filter(c => !c.hidden).length,
@@ -2331,112 +2397,123 @@ test('#3771 browser: Story media elements preserved across mode entry and naviga
         total: cards.length,
       };
     });
-    assert.equal(visibilityCounts.visible, 3, '3 cards visible in current story group on wide desktop');
-    assert.equal(visibilityCounts.hidden, 3, '3 cards hidden in off-screen story group');
+    assert.equal(counts.visible, 3, '3 cards visible in current story group (desktop)');
+    assert.equal(counts.hidden, 3, '3 cards hidden in off-screen story group');
+    assert.equal(counts.total, 6, 'all 6 cards present in DOM');
 
-    /* (9) zero page errors, console errors, request failures, overflow */
-    assert.deepEqual(pageErrors, [], 'no page errors during media runtime');
-    assert.deepEqual(consoleErrors, [], 'no console errors during media runtime');
-    assert.deepEqual(requestFailures, [], 'no same-origin request failures');
+    /* (9) browser health: zero errors / failures */
+    assert.deepEqual(health.pageerrors, [], 'no page errors during desktop media runtime');
+    assert.deepEqual(health.consoleErrors, [], 'no console errors during desktop media runtime');
+    assert.deepEqual(health.requestFailures, [], 'no same-origin request failures (desktop)');
+    assert.deepEqual(health.responseErrors, [], 'no same-origin HTTP >=400 (desktop)');
+
+    /* horizontal overflow */
     const overflow = await page.evaluate(() => ({
       scrollWidth: document.documentElement.scrollWidth,
       clientWidth: document.documentElement.clientWidth,
     }));
     assert.ok(overflow.scrollWidth <= overflow.clientWidth + 1,
-      `no horizontal overflow: scrollWidth ${overflow.scrollWidth} vs clientWidth ${overflow.clientWidth}`);
+      `no horizontal overflow (scroll ${overflow.scrollWidth} vs client ${overflow.clientWidth})`);
 
     await context.close();
-  } finally {
+  } catch (err) {
+    if (context) await context.close();
     await browser.close();
     await closeServer(server);
+    throw err;
   }
 });
 
 test('#3771 browser: Story media elements preserved (mobile + reduced motion)', { timeout: 150000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  let mContext, rmContext;
   try {
     /* ── mobile 390×844 — group size 1 ── */
-    const mContext = await browser.newContext({
+    mContext = await browser.newContext({
       viewport: { width: 390, height: 844 },
       isMobile: true,
       hasTouch: true,
     });
     const mPage = await mContext.newPage();
-    const mPageErrors = capturePageErrors(mPage);
-    const mConsoleErrors = captureConsoleErrors(mPage);
-    const mRequestFailures = captureRequestFailures(mPage);
+    const mHealth = captureBrowserHealth(mPage, fixtureOrigin);
     await mPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
-    await mPage.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'networkidle' });
-    await mPage.waitForTimeout(150);
-
-    let st = await storyState(mPage);
-    assert.equal(st.mode, 'story');
-    assert.equal(st.visible.length, 1, 'mobile shows 1 card');
-    assert.equal(st.visible[0], 'media-thumb-1');
+    await mPage.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'domcontentloaded' });
+    await waitForFixtureReady(mPage, MEDIA_FIXTURE_IDS);
+    await waitForStoryGroupReady(mPage, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 1, hiddenCount: 5, indicator: '01 / 06',
+      prevDisabled: true, nextDisabled: false,
+    });
     await assertVisibleCardMedia(mPage, MEDIA_CARD_EXPECTATIONS, 'mobile-entry');
 
-    /* next navigation on mobile: 1→1 transitions */
+    /* Next: 01 → 02 (media-thumb-1 → media-no-thumb) */
     await mPage.click('[data-story-next]');
-    await mPage.waitForTimeout(420);
-    st = await storyState(mPage);
-    assert.equal(st.indicator, '02 / 06');
-    assert.deepEqual(st.visible, ['media-no-thumb']);
+    await waitForStoryGroupReady(mPage, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 1, hiddenCount: 5, indicator: '02 / 06',
+    });
     const noThumbMobile = await cardMediaState(mPage, 'media-no-thumb');
     assertMediaState(noThumbMobile, { hasTextVisual: true, noImage: true }, 'mobile-no-thumb-after-next');
 
+    /* Next: 02 → 03 (media-no-thumb → media-thumb-2) */
     await mPage.click('[data-story-next]');
-    await mPage.waitForTimeout(420);
-    st = await storyState(mPage);
-    assert.deepEqual(st.visible, ['media-thumb-2']);
+    await waitForStoryGroupReady(mPage, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 1, hiddenCount: 5, indicator: '03 / 06',
+    });
     const thumb2Mobile = await cardMediaState(mPage, 'media-thumb-2');
     assertMediaState(thumb2Mobile, { hasImage: true, imgSrc: '/fixture-media/thumb-2.gif' }, 'mobile-thumb-2-after-next');
 
-    /* overflow check */
-    const mOverflow = await mPage.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    assert.ok(mOverflow.scrollWidth <= mOverflow.clientWidth + 1,
-      `mobile: no horizontal overflow (${mOverflow.scrollWidth} vs ${mOverflow.clientWidth})`);
-
-    assert.deepEqual(mPageErrors, [], 'mobile: no page errors');
-    assert.deepEqual(mConsoleErrors, [], 'mobile: no console errors');
-    assert.deepEqual(mRequestFailures, [], 'mobile: no same-origin request failures');
+    /* (9) browser health on mobile */
+    assert.deepEqual(mHealth.pageerrors, [], 'mobile: no page errors');
+    assert.deepEqual(mHealth.consoleErrors, [], 'mobile: no console errors');
+    assert.deepEqual(mHealth.requestFailures, [], 'mobile: no same-origin request failures');
+    assert.deepEqual(mHealth.responseErrors, [], 'mobile: no same-origin HTTP >=400');
     await mContext.close();
+    mContext = null;
 
     /* ── reduced-motion — immediate swap preserves media ── */
-    const rmContext = await browser.newContext({
+    rmContext = await browser.newContext({
       viewport: { width: 1440, height: 900 },
       reducedMotion: 'reduce',
     });
     const rmPage = await rmContext.newPage();
-    const rmPageErrors = capturePageErrors(rmPage);
-    const rmConsoleErrors = captureConsoleErrors(rmPage);
+    const rmHealth = captureBrowserHealth(rmPage, fixtureOrigin);
     await rmPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
-    await rmPage.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'networkidle' });
-    await rmPage.waitForTimeout(150);
-
-    /* (7) reduced-motion: immediate navigation to group 2 preserves media */
-    await rmPage.click('[data-story-next]');
-    await rmPage.waitForTimeout(50); /* reduced motion = immediate swap */
-    const rmState = await rmPage.evaluate(() => {
-      const results = document.getElementById('resultsList');
-      const wrappers = results.querySelectorAll('.browse-story-transition-stage');
-      const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
-        .filter(c => !c.hidden).map(c => c.getAttribute('data-tree-id'));
-      return { wrapperCount: wrappers.length, visible };
+    await rmPage.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'domcontentloaded' });
+    await waitForFixtureReady(rmPage, MEDIA_FIXTURE_IDS);
+    await waitForStoryGroupReady(rmPage, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 3, hiddenCount: 3, indicator: '01 / 02',
+      nextDisabled: false,
     });
-    assert.equal(rmState.wrapperCount, 0, 'reduced-motion: no transition wrappers');
-    assert.deepEqual(rmState.visible, ['media-no-thumb-2', 'media-thumb-3', 'media-no-thumb-3'],
-      'reduced-motion: immediate swap lands on group 2');
+
+    /* (7) reduced-motion: immediate navigation to group 2 — no transition wrappers */
+    await rmPage.click('[data-story-next]');
+    await waitForStoryGroupReady(rmPage, {
+      mode: 'story', expectNoTransition: true,
+      visibleCount: 3, hiddenCount: 3, indicator: '02 / 02',
+      nextDisabled: true,
+    });
     await assertVisibleCardMedia(rmPage, MEDIA_CARD_EXPECTATIONS, 'rm-after-next');
 
-    assert.deepEqual(rmPageErrors, [], 'reduced-motion: no page errors');
-    assert.deepEqual(rmConsoleErrors, [], 'reduced-motion: no console errors');
+    /* (9) browser health under reduced motion */
+    assert.deepEqual(rmHealth.pageerrors, [], 'reduced-motion: no page errors');
+    assert.deepEqual(rmHealth.consoleErrors, [], 'reduced-motion: no console errors');
+    assert.deepEqual(rmHealth.requestFailures, [], 'reduced-motion: no same-origin request failures');
+    assert.deepEqual(rmHealth.responseErrors, [], 'reduced-motion: no same-origin HTTP >=400');
     await rmContext.close();
-  } finally {
+    rmContext = null;
+
     await browser.close();
     await closeServer(server);
+  } catch (err) {
+    if (mContext) await mContext.close();
+    if (rmContext) await rmContext.close();
+    await browser.close();
+    await closeServer(server);
+    throw err;
   }
 });
