@@ -491,6 +491,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/cloudflare-supplied-url-smoke-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the cloudflare-supplied-url-smoke.cjs source and asserts on strings, regex, file existence, operation codes, exit codes, schema, and boundary markers without executing network requests, launching Playwright, or contacting any external system.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/cloudflare-write-auth-guard-dedicated.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
