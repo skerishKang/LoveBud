@@ -214,7 +214,7 @@ test('19. authorized file set is represented and forbidden project authorities r
 
   // Registry aggregate contract count literals must be present in the registry contract test.
   const registryContract = fs.readFileSync(REGISTRY_CONTRACT_PATH, 'utf-8');
-  assert.match(registryContract, /default_total,\s*778/);
+  assert.match(registryContract, /default_total,\s*779/);
   assert.match(registryContract, /SOURCE_STATIC,\s*573/);
 
   // package.json smoke script must keep its existing value (no modification required).
