@@ -1,5 +1,21 @@
 const { chromium } = require('playwright');
 const crypto = require('node:crypto');
+const {
+  CONTRACT_VERSION,
+  STATUS_CLASSES,
+  EXPECTATION_CLASSES,
+  SEVERITY_CLASSES,
+  CONTENT_TYPE_CLASSES,
+  RELEASE_MATCH_STATES,
+  LATENCY_BUCKETS,
+  HTTP_STATUS_CLASSES,
+  SANITIZED_ERROR_CODES,
+  classifyLatency,
+  classifyHttpStatus,
+  classifyContentType,
+  classifyReleaseMatch,
+  normalizeSanitizedErrorCode,
+} = require('./release-health-taxonomy.cjs');
 
 const ROUTE_OPERATIONS = {
   '/': 'ROUTE_HOME',
@@ -34,34 +50,16 @@ const FORBIDDEN_MANIFEST_KEYS = [
   'provider_url', 'secret', 'token',
 ];
 
-function bucketLatency(ms) {
-  if (ms < 250) return 'LT_250_MS';
-  if (ms < 1000) return '250_TO_999_MS';
-  if (ms < 3000) return '1_TO_2_999_S';
-  if (ms < 10000) return '3_TO_9_999_S';
-  return 'GE_10_S';
-}
-
-function classifyContentType(contentType) {
-  if (!contentType) return 'NOT_MEASURED';
-  const lc = contentType.toLowerCase();
-  if (lc.includes('application/json')) return 'JSON';
-  if (lc.includes('text/css')) return 'CSS';
-  if (lc.includes('javascript')) return 'JAVASCRIPT';
-  if (lc.includes('text/html')) return 'HTML';
-  return 'OTHER';
-}
-
 function makeOperation(operationCode, fields) {
   return {
     operation_code: operationCode,
-    expectation_class: fields.expectationClass || 'EXPECTED_SUCCESS',
-    status_class: fields.statusClass || 'UNKNOWN',
-    sanitized_error_code: fields.errorCode || 'NONE',
-    severity: fields.severity || 'INFO',
-    latency_bucket: fields.latencyBucket || 'NOT_MEASURED',
+    expectation_class: fields.expectationClass || EXPECTATION_CLASSES.EXPECTED_SUCCESS,
+    status_class: fields.statusClass || STATUS_CLASSES.FAILED,
+    sanitized_error_code: normalizeSanitizedErrorCode(fields.errorCode || SANITIZED_ERROR_CODES.NONE),
+    severity: fields.severity || SEVERITY_CLASSES.INFO,
+    latency_bucket: fields.latencyBucket || LATENCY_BUCKETS.TIMEOUT_OR_UNKNOWN,
     http_status: fields.httpStatus != null ? fields.httpStatus : null,
-    content_type_class: fields.contentTypeClass || 'NOT_MEASURED',
+    content_type_class: fields.contentTypeClass || CONTENT_TYPE_CLASSES.NOT_MEASURED,
     viewport: fields.viewport || 'NOT_APPLICABLE',
     body_present: fields.bodyPresent != null ? fields.bodyPresent : null,
     horizontal_overflow_px: fields.horizontalOverflow != null ? fields.horizontalOverflow : null,
@@ -139,17 +137,21 @@ function parseInputs() {
 
 async function fetchWithTiming(url, timeoutMs) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   const start = Date.now();
   try {
     const response = await fetch(url, { signal: controller.signal, redirect: 'manual' });
     const elapsed = Date.now() - start;
     clearTimeout(timer);
     return { response, latencyMs: elapsed };
-  } catch (err) {
+  } catch {
     const elapsed = Date.now() - start;
     clearTimeout(timer);
-    return { error: err, latencyMs: elapsed };
+    return { failure: timedOut ? 'TIMEOUT' : 'NETWORK', latencyMs: elapsed };
   }
 }
 
@@ -167,66 +169,65 @@ async function checkManifest(baseUrl, expectedSha, timeoutMs) {
   ]);
 
   async function extractResult(fetchResult) {
-    if (fetchResult.error) {
-      const errMsg = fetchResult.error.message || '';
-      if (errMsg.includes('abort') || errMsg.includes('timeout')) {
-        return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_TIMEOUT', severity: 'ERROR', httpStatus: null, contentTypeClass: 'NOT_MEASURED', bodyPresent: false, latencyBucket: 'TIMEOUT_OR_UNKNOWN' };
+    if (fetchResult.failure) {
+      if (fetchResult.failure === 'TIMEOUT') {
+        return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_TIMEOUT, severity: SEVERITY_CLASSES.ERROR, httpStatus: null, contentTypeClass: CONTENT_TYPE_CLASSES.NOT_MEASURED, bodyPresent: false, latencyBucket: LATENCY_BUCKETS.TIMEOUT_OR_UNKNOWN };
       }
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_NETWORK_ERROR', severity: 'ERROR', httpStatus: null, contentTypeClass: 'NOT_MEASURED', bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_NETWORK_ERROR, severity: SEVERITY_CLASSES.ERROR, httpStatus: null, contentTypeClass: CONTENT_TYPE_CLASSES.NOT_MEASURED, bodyPresent: false, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
     const res = fetchResult.response;
     if (res.status !== 200) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_HTTP_STATUS', severity: 'ERROR', httpStatus: res.status, contentTypeClass: classifyContentType(res.headers.get('content-type')), bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_HTTP_STATUS, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: classifyContentType(res.headers.get('content-type')), bodyPresent: false, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
     const ct = res.headers.get('content-type') || '';
     if (!ct.includes('application/json')) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CONTENT_TYPE', severity: 'ERROR', httpStatus: res.status, contentTypeClass: classifyContentType(ct), bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_CONTENT_TYPE, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: classifyContentType(ct), bodyPresent: false, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
     const cc = res.headers.get('cache-control') || '';
     if (!cc.includes('no-store')) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CACHE_POLICY', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_CACHE_POLICY, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: CONTENT_TYPE_CLASSES.JSON, bodyPresent: false, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
 
     let body;
     try {
       body = await res.text();
     } catch {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_BODY_READ_ERROR', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_BODY_READ_ERROR, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: CONTENT_TYPE_CLASSES.JSON, bodyPresent: false, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
 
     let parsed;
     try {
       parsed = JSON.parse(body);
     } catch {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_PARSE_ERROR', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_PARSE_ERROR, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: CONTENT_TYPE_CLASSES.JSON, bodyPresent: true, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
 
     const keys = Object.keys(parsed).sort();
     if (keys.length !== 2 || keys[0] !== 'contract_version' || keys[1] !== 'release_sha') {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_SCHEMA_KEYS', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_SCHEMA_KEYS, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: CONTENT_TYPE_CLASSES.JSON, bodyPresent: true, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
 
-    if (typeof parsed.contract_version !== 'string' || parsed.contract_version !== '1') {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CONTRACT_VERSION', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+    if (typeof parsed.contract_version !== 'string' || parsed.contract_version !== CONTRACT_VERSION) {
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_CONTRACT_VERSION, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: CONTENT_TYPE_CLASSES.JSON, bodyPresent: true, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
 
     if (typeof parsed.release_sha !== 'string' || !/^[0-9a-f]{40}$/.test(parsed.release_sha)) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_SHA_FORMAT', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_SHA_FORMAT, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: CONTENT_TYPE_CLASSES.JSON, bodyPresent: true, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
 
     const forbiddenKey = keys.find((k) => FORBIDDEN_MANIFEST_KEYS.includes(k));
     if (forbiddenKey) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_FORBIDDEN_KEY', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_FORBIDDEN_KEY, severity: SEVERITY_CLASSES.ERROR, httpStatus: res.status, contentTypeClass: CONTENT_TYPE_CLASSES.JSON, bodyPresent: true, latencyBucket: classifyLatency(fetchResult.latencyMs) };
     }
 
     return {
-      statusClass: 'HEALTHY',
-      errorCode: 'NONE',
-      severity: 'INFO',
+      statusClass: STATUS_CLASSES.HEALTHY,
+      errorCode: SANITIZED_ERROR_CODES.NONE,
+      severity: SEVERITY_CLASSES.INFO,
       httpStatus: res.status,
-      contentTypeClass: 'JSON',
+      contentTypeClass: CONTENT_TYPE_CLASSES.JSON,
       bodyPresent: true,
-      latencyBucket: bucketLatency(fetchResult.latencyMs),
+      latencyBucket: classifyLatency(fetchResult.latencyMs),
       parsed,
     };
   }
@@ -236,74 +237,78 @@ async function checkManifest(baseUrl, expectedSha, timeoutMs) {
 
   const worstLatencyMs = Math.max(r1.latencyMs, r2.latencyMs);
 
-  if (result1.statusClass === 'FAILED' || result2.statusClass === 'FAILED') {
-    const selected = result1.statusClass === 'FAILED' ? result1 : result2;
+  if (result1.statusClass === STATUS_CLASSES.FAILED || result2.statusClass === STATUS_CLASSES.FAILED) {
+    const selected = result1.statusClass === STATUS_CLASSES.FAILED ? result1 : result2;
     return {
-      releaseMatchState: 'UNKNOWN',
-      statusClass: 'FAILED',
+      releaseMatchState: RELEASE_MATCH_STATES.UNKNOWN,
+      statusClass: STATUS_CLASSES.FAILED,
       sanitizedErrorCode: selected.errorCode,
-      severity: 'ERROR',
-      latencyBucket: bucketLatency(worstLatencyMs),
+      severity: SEVERITY_CLASSES.ERROR,
+      latencyBucket: classifyLatency(worstLatencyMs),
       observedSha: null,
       isHealthy: false,
       httpStatus: selected.httpStatus != null ? selected.httpStatus : null,
-      contentTypeClass: selected.contentTypeClass || 'NOT_MEASURED',
+      contentTypeClass: selected.contentTypeClass || CONTENT_TYPE_CLASSES.NOT_MEASURED,
       bodyPresent: selected.bodyPresent === true,
     };
   }
 
-  if (JSON.stringify(result1.parsed) !== JSON.stringify(result2.parsed)) {
+  const nonceMatchState = classifyReleaseMatch(result1.parsed.release_sha, result2.parsed.release_sha);
+  const parsedPayloadEqual = JSON.stringify(result1.parsed) === JSON.stringify(result2.parsed);
+  if (!parsedPayloadEqual || nonceMatchState === RELEASE_MATCH_STATES.MISMATCH) {
     return {
-      releaseMatchState: 'MISMATCH',
-      statusClass: 'FAILED',
-      sanitizedErrorCode: 'LB_MANIFEST_NONCE_INCONSISTENCY',
-      severity: 'ERROR',
-      latencyBucket: bucketLatency(worstLatencyMs),
+      releaseMatchState: RELEASE_MATCH_STATES.MISMATCH,
+      statusClass: STATUS_CLASSES.FAILED,
+      sanitizedErrorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_NONCE_INCONSISTENCY,
+      severity: SEVERITY_CLASSES.ERROR,
+      latencyBucket: classifyLatency(worstLatencyMs),
       observedSha: result1.parsed.release_sha,
       isHealthy: false,
       httpStatus: result1.httpStatus != null ? result1.httpStatus : null,
-      contentTypeClass: result1.contentTypeClass || 'NOT_MEASURED',
+      contentTypeClass: result1.contentTypeClass || CONTENT_TYPE_CLASSES.NOT_MEASURED,
       bodyPresent: result1.bodyPresent === true,
     };
   }
 
   const observedSha = result1.parsed.release_sha;
-  if (observedSha !== expectedSha) {
+  const releaseMatchState = classifyReleaseMatch(expectedSha, observedSha);
+  if (releaseMatchState !== RELEASE_MATCH_STATES.MATCH) {
     return {
-      releaseMatchState: 'MISMATCH',
-      statusClass: 'FAILED',
-      sanitizedErrorCode: 'LB_MANIFEST_SHA_MISMATCH',
-      severity: 'ERROR',
-      latencyBucket: bucketLatency(worstLatencyMs),
+      releaseMatchState: releaseMatchState,
+      statusClass: STATUS_CLASSES.FAILED,
+      sanitizedErrorCode: SANITIZED_ERROR_CODES.LB_MANIFEST_SHA_MISMATCH,
+      severity: SEVERITY_CLASSES.ERROR,
+      latencyBucket: classifyLatency(worstLatencyMs),
       observedSha,
       isHealthy: false,
       httpStatus: result1.httpStatus != null ? result1.httpStatus : null,
-      contentTypeClass: result1.contentTypeClass || 'NOT_MEASURED',
+      contentTypeClass: result1.contentTypeClass || CONTENT_TYPE_CLASSES.NOT_MEASURED,
       bodyPresent: result1.bodyPresent === true,
     };
   }
 
   return {
-    releaseMatchState: 'MATCH',
-    statusClass: 'HEALTHY',
-    sanitizedErrorCode: 'NONE',
-    severity: 'INFO',
-    latencyBucket: bucketLatency(worstLatencyMs),
+    releaseMatchState: RELEASE_MATCH_STATES.MATCH,
+    statusClass: STATUS_CLASSES.HEALTHY,
+    sanitizedErrorCode: SANITIZED_ERROR_CODES.NONE,
+    severity: SEVERITY_CLASSES.INFO,
+    latencyBucket: classifyLatency(worstLatencyMs),
     observedSha,
     isHealthy: true,
     httpStatus: result1.httpStatus != null ? result1.httpStatus : null,
-    contentTypeClass: result1.contentTypeClass || 'NOT_MEASURED',
+    contentTypeClass: result1.contentTypeClass || CONTENT_TYPE_CLASSES.NOT_MEASURED,
     bodyPresent: result1.bodyPresent === true,
   };
 }
 
 async function checkRoute(url, path, timeoutMs) {
   const fetchResult = await fetchWithTiming(url + path, timeoutMs);
-  if (fetchResult.error) {
-    const errMsg = fetchResult.error.message || '';
-    const errorCode = errMsg.includes('abort') || errMsg.includes('timeout') ? 'LB_ROUTE_RESPONSE_TIMEOUT' : 'LB_ROUTE_RESPONSE_NETWORK';
+  if (fetchResult.failure) {
+    const errorCode = fetchResult.failure === 'TIMEOUT'
+      ? SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_TIMEOUT
+      : SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_NETWORK;
     return makeOperation(ROUTE_OPERATIONS[path], {
-      statusClass: 'FAILED', errorCode, severity: 'ERROR', latencyBucket: 'TIMEOUT_OR_UNKNOWN',
+      statusClass: STATUS_CLASSES.FAILED, errorCode, severity: SEVERITY_CLASSES.ERROR, latencyBucket: LATENCY_BUCKETS.TIMEOUT_OR_UNKNOWN,
       bodyPresent: false, httpStatus: null,
     });
   }
@@ -311,26 +316,29 @@ async function checkRoute(url, path, timeoutMs) {
   const res = fetchResult.response;
   const status = res.status;
   const ct = res.headers.get('content-type') || '';
-  const latencyBucket = bucketLatency(fetchResult.latencyMs);
+  const latencyBucket = classifyLatency(fetchResult.latencyMs);
 
   let bodyText;
   try {
     bodyText = await res.text();
   } catch {
     return makeOperation(ROUTE_OPERATIONS[path], {
-      statusClass: 'FAILED', errorCode: 'LB_ROUTE_RESPONSE_NETWORK', severity: 'ERROR',
+      statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_NETWORK, severity: SEVERITY_CLASSES.ERROR,
       latencyBucket, httpStatus: status, contentTypeClass: classifyContentType(ct),
       bodyPresent: false,
     });
   }
 
   const hasBodyElement = /<body(?:\s|>)/i.test(bodyText);
-  const is2xx = status >= 200 && status < 300;
+  const httpStatusClass = classifyHttpStatus(status);
+  const is2xx = httpStatusClass === HTTP_STATUS_CLASSES.HTTP_2XX;
 
   if (!is2xx) {
-    const errorCode = status >= 500 ? 'LB_ROUTE_RESPONSE_HTTP_5XX' : 'LB_ROUTE_RESPONSE_HTTP_4XX';
+    const errorCode = httpStatusClass === HTTP_STATUS_CLASSES.HTTP_5XX
+      ? SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_HTTP_5XX
+      : SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_HTTP_4XX;
     return makeOperation(ROUTE_OPERATIONS[path], {
-      statusClass: 'FAILED', errorCode, severity: 'ERROR',
+      statusClass: STATUS_CLASSES.FAILED, errorCode, severity: SEVERITY_CLASSES.ERROR,
       latencyBucket, httpStatus: status, contentTypeClass: classifyContentType(ct),
       bodyPresent: hasBodyElement,
     });
@@ -338,14 +346,14 @@ async function checkRoute(url, path, timeoutMs) {
 
   if (!hasBodyElement) {
     return makeOperation(ROUTE_OPERATIONS[path], {
-      statusClass: 'FAILED', errorCode: 'LB_ROUTE_BODY_MISSING', severity: 'ERROR',
+      statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_ROUTE_BODY_MISSING, severity: SEVERITY_CLASSES.ERROR,
       latencyBucket, httpStatus: status, contentTypeClass: classifyContentType(ct),
       bodyPresent: false,
     });
   }
 
   return makeOperation(ROUTE_OPERATIONS[path], {
-    statusClass: 'HEALTHY', errorCode: 'NONE', severity: 'INFO',
+    statusClass: STATUS_CLASSES.HEALTHY, errorCode: SANITIZED_ERROR_CODES.NONE, severity: SEVERITY_CLASSES.INFO,
     latencyBucket, httpStatus: status, contentTypeClass: classifyContentType(ct),
     bodyPresent: true,
   });
@@ -353,11 +361,12 @@ async function checkRoute(url, path, timeoutMs) {
 
 async function checkStaticAsset(url, path, assetConfig, timeoutMs) {
   const fetchResult = await fetchWithTiming(url + path, timeoutMs);
-  if (fetchResult.error) {
-    const errMsg = fetchResult.error.message || '';
-    const errorCode = errMsg.includes('abort') || errMsg.includes('timeout') ? 'LB_STATIC_ASSET_TIMEOUT' : 'LB_STATIC_ASSET_NETWORK';
+  if (fetchResult.failure) {
+    const errorCode = fetchResult.failure === 'TIMEOUT'
+      ? SANITIZED_ERROR_CODES.LB_STATIC_ASSET_TIMEOUT
+      : SANITIZED_ERROR_CODES.LB_STATIC_ASSET_NETWORK;
     return makeOperation(assetConfig.code, {
-      statusClass: 'FAILED', errorCode, severity: 'ERROR', latencyBucket: 'TIMEOUT_OR_UNKNOWN',
+      statusClass: STATUS_CLASSES.FAILED, errorCode, severity: SEVERITY_CLASSES.ERROR, latencyBucket: LATENCY_BUCKETS.TIMEOUT_OR_UNKNOWN,
       bodyPresent: false, httpStatus: null,
     });
   }
@@ -365,14 +374,14 @@ async function checkStaticAsset(url, path, assetConfig, timeoutMs) {
   const res = fetchResult.response;
   const status = res.status;
   const ct = res.headers.get('content-type') || '';
-  const latencyBucket = bucketLatency(fetchResult.latencyMs);
+  const latencyBucket = classifyLatency(fetchResult.latencyMs);
   const ctClass = classifyContentType(ct);
 
-  const is2xx = status >= 200 && status < 300;
+  const is2xx = classifyHttpStatus(status) === HTTP_STATUS_CLASSES.HTTP_2XX;
 
   if (!is2xx) {
     return makeOperation(assetConfig.code, {
-      statusClass: 'FAILED', errorCode: 'LB_STATIC_ASSET_MISSING_ASSET', severity: 'ERROR',
+      statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_STATIC_ASSET_MISSING_ASSET, severity: SEVERITY_CLASSES.ERROR,
       latencyBucket, httpStatus: status, contentTypeClass: ctClass,
       bodyPresent: false,
     });
@@ -385,14 +394,14 @@ async function checkStaticAsset(url, path, assetConfig, timeoutMs) {
   const ctMatch = expectedCts.some((ect) => ct.includes(ect));
   if (!ctMatch) {
     return makeOperation(assetConfig.code, {
-      statusClass: 'FAILED', errorCode: 'LB_STATIC_ASSET_CONTENT_TYPE', severity: 'ERROR',
+      statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.LB_STATIC_ASSET_CONTENT_TYPE, severity: SEVERITY_CLASSES.ERROR,
       latencyBucket, httpStatus: status, contentTypeClass: ctClass,
       bodyPresent: true,
     });
   }
 
   return makeOperation(assetConfig.code, {
-    statusClass: 'HEALTHY', errorCode: 'NONE', severity: 'INFO',
+    statusClass: STATUS_CLASSES.HEALTHY, errorCode: SANITIZED_ERROR_CODES.NONE, severity: SEVERITY_CLASSES.INFO,
     latencyBucket, httpStatus: status, contentTypeClass: ctClass,
     bodyPresent: true,
   });
@@ -404,11 +413,11 @@ async function checkBrowserRuntime(baseUrl, paths, timeoutMs) {
   let browser;
   try {
     browser = await chromium.launch({ headless: true });
-  } catch (err) {
+  } catch {
     for (const path of paths) {
       for (const vp of VIEWPORTS) {
         ops.push(makeOperation(ROUTE_OPERATIONS[path], {
-          statusClass: 'FAILED', errorCode: 'BROWSER_FATAL_ERROR', severity: 'ERROR',
+          statusClass: STATUS_CLASSES.FAILED, errorCode: SANITIZED_ERROR_CODES.BROWSER_FATAL_ERROR, severity: SEVERITY_CLASSES.ERROR,
           viewport: vp.name, bodyPresent: false, httpStatus: null, errorCount: 1,
         }));
       }
@@ -420,10 +429,10 @@ async function checkBrowserRuntime(baseUrl, paths, timeoutMs) {
     for (const path of paths) {
       for (const vp of VIEWPORTS) {
         const page = await browser.newPage();
-        const fatalErrors = [];
-        const consoleErrors = [];
-        const networkFailures = [];
-        const networkBlockers = [];
+        let fatalErrorCount = 0;
+        let consoleErrorCount = 0;
+        let networkFailureCount = 0;
+        let networkBlockerCount = 0;
         let ignoredMedia404Count = 0;
 
         page.removeAllListeners('pageerror');
@@ -432,7 +441,7 @@ async function checkBrowserRuntime(baseUrl, paths, timeoutMs) {
         page.removeAllListeners('response');
 
         page.on('pageerror', () => {
-          fatalErrors.push('pageerror');
+          fatalErrorCount++;
         });
 
         page.on('console', (message) => {
@@ -443,14 +452,14 @@ async function checkBrowserRuntime(baseUrl, paths, timeoutMs) {
             return;
           }
           if (!isIgnoredExternalError(text)) {
-            consoleErrors.push(text);
+            consoleErrorCount++;
           }
         });
 
         page.on('requestfailed', (request) => {
           const rurl = request.url();
           if (/ytimg\.com|img\.youtube\.com/.test(rurl)) return;
-          networkFailures.push(rurl);
+          networkFailureCount++;
         });
 
         page.on('response', (response) => {
@@ -458,7 +467,7 @@ async function checkBrowserRuntime(baseUrl, paths, timeoutMs) {
             ignoredMedia404Count++;
           }
           if (isNetworkBlocker(response.url(), response.status())) {
-            networkBlockers.push(response.url());
+            networkBlockerCount++;
           }
         });
 
@@ -498,36 +507,36 @@ async function checkBrowserRuntime(baseUrl, paths, timeoutMs) {
           }
         }
 
-        const totalErrorCount = fatalErrors.length + consoleErrors.length + networkFailures.length + networkBlockers.length + (overflow > 0 ? 1 : 0);
+        const totalErrorCount = fatalErrorCount + consoleErrorCount + networkFailureCount + networkBlockerCount + (overflow > 0 ? 1 : 0);
 
-        let statusClass = 'HEALTHY';
-        let mainErrorCode = 'NONE';
-        let severity = 'INFO';
+        let statusClass = STATUS_CLASSES.HEALTHY;
+        let mainErrorCode = SANITIZED_ERROR_CODES.NONE;
+        let severity = SEVERITY_CLASSES.INFO;
 
-        if (fatalErrors.length > 0) {
-          statusClass = 'FAILED';
-          mainErrorCode = 'BROWSER_FATAL_ERROR';
-          severity = 'ERROR';
-        } else if (consoleErrors.length > 0) {
-          statusClass = 'FAILED';
-          mainErrorCode = 'BROWSER_CONSOLE_ERROR';
-          severity = 'ERROR';
-        } else if (networkBlockers.length > 0) {
-          statusClass = 'FAILED';
-          mainErrorCode = 'BROWSER_HTTP_BLOCKER';
-          severity = 'ERROR';
-        } else if (networkFailures.length > 0) {
-          statusClass = 'FAILED';
-          mainErrorCode = 'BROWSER_NETWORK_FAILURE';
-          severity = 'ERROR';
+        if (fatalErrorCount > 0) {
+          statusClass = STATUS_CLASSES.FAILED;
+          mainErrorCode = SANITIZED_ERROR_CODES.BROWSER_FATAL_ERROR;
+          severity = SEVERITY_CLASSES.ERROR;
+        } else if (consoleErrorCount > 0) {
+          statusClass = STATUS_CLASSES.FAILED;
+          mainErrorCode = SANITIZED_ERROR_CODES.BROWSER_CONSOLE_ERROR;
+          severity = SEVERITY_CLASSES.ERROR;
+        } else if (networkBlockerCount > 0) {
+          statusClass = STATUS_CLASSES.FAILED;
+          mainErrorCode = SANITIZED_ERROR_CODES.BROWSER_HTTP_BLOCKER;
+          severity = SEVERITY_CLASSES.ERROR;
+        } else if (networkFailureCount > 0) {
+          statusClass = STATUS_CLASSES.FAILED;
+          mainErrorCode = SANITIZED_ERROR_CODES.BROWSER_NETWORK_FAILURE;
+          severity = SEVERITY_CLASSES.ERROR;
         } else if (overflow > 0) {
-          statusClass = 'FAILED';
-          mainErrorCode = 'BROWSER_HORIZONTAL_OVERFLOW';
-          severity = 'ERROR';
+          statusClass = STATUS_CLASSES.FAILED;
+          mainErrorCode = SANITIZED_ERROR_CODES.BROWSER_HORIZONTAL_OVERFLOW;
+          severity = SEVERITY_CLASSES.ERROR;
         } else if (loadError) {
-          statusClass = 'FAILED';
-          mainErrorCode = 'BROWSER_FATAL_ERROR';
-          severity = 'ERROR';
+          statusClass = STATUS_CLASSES.FAILED;
+          mainErrorCode = SANITIZED_ERROR_CODES.BROWSER_FATAL_ERROR;
+          severity = SEVERITY_CLASSES.ERROR;
         }
 
         ops.push(makeOperation(ROUTE_OPERATIONS[path], {
@@ -562,8 +571,8 @@ async function main() {
   const operations = [];
   let overallHealthy = true;
   let observedReleaseSha = null;
-  let releaseMatchState = 'UNKNOWN';
-  let overallStatusClass = 'HEALTHY';
+  let releaseMatchState = RELEASE_MATCH_STATES.UNKNOWN;
+  let overallStatusClass = STATUS_CLASSES.HEALTHY;
 
   const manifestResult = await checkManifest(baseUrl, expectedSha, timeoutMs);
   operations.push(makeOperation('MANIFEST_PARITY', {
@@ -581,7 +590,7 @@ async function main() {
 
   if (!manifestResult.isHealthy) {
     overallHealthy = false;
-    overallStatusClass = 'FAILED';
+    overallStatusClass = STATUS_CLASSES.FAILED;
     emitOutput(expectedSha, observedReleaseSha, releaseMatchState, overallStatusClass, operations);
     process.exit(1);
   }
@@ -590,9 +599,9 @@ async function main() {
   const routeResults = await Promise.all(routePaths.map((path) => checkRoute(baseUrl, path, timeoutMs)));
   for (const r of routeResults) {
     operations.push(r);
-    if (r.status_class === 'FAILED') {
+    if (r.status_class === STATUS_CLASSES.FAILED) {
       overallHealthy = false;
-      overallStatusClass = 'FAILED';
+      overallStatusClass = STATUS_CLASSES.FAILED;
     }
   }
 
@@ -600,18 +609,18 @@ async function main() {
   const staticResults = await Promise.all(staticPaths.map((path) => checkStaticAsset(baseUrl, path, STATIC_OPERATIONS[path], timeoutMs)));
   for (const s of staticResults) {
     operations.push(s);
-    if (s.status_class === 'FAILED') {
+    if (s.status_class === STATUS_CLASSES.FAILED) {
       overallHealthy = false;
-      overallStatusClass = 'FAILED';
+      overallStatusClass = STATUS_CLASSES.FAILED;
     }
   }
 
   const browserOps = await checkBrowserRuntime(baseUrl, BROWSER_ROUTES, timeoutMs);
   for (const b of browserOps) {
     operations.push(b);
-    if (b.status_class === 'FAILED') {
+    if (b.status_class === STATUS_CLASSES.FAILED) {
       overallHealthy = false;
-      overallStatusClass = 'FAILED';
+      overallStatusClass = STATUS_CLASSES.FAILED;
     }
   }
 
@@ -628,8 +637,8 @@ let outputEmitted = false;
 
 function buildOutput(expectedSha, observedSha, releaseMatchState, statusClass, operations) {
   return {
-    contract_version: '1',
-    ok: statusClass === 'HEALTHY',
+    contract_version: CONTRACT_VERSION,
+    ok: statusClass === STATUS_CLASSES.HEALTHY,
     expected_release_sha: expectedSha || 'UNKNOWN',
     observed_release_sha: observedSha || 'UNKNOWN',
     release_match_state: releaseMatchState,
@@ -644,40 +653,40 @@ function emitOutput(expectedSha, observedSha, releaseMatchState, statusClass, op
   console.log(JSON.stringify(buildOutput(expectedSha, observedSha, releaseMatchState, statusClass, operations)));
 }
 
-const INPUT_ERROR_CODES = {
-  SMOKE_BASE_URL_REQUIRED: 'LB_INPUT_URL_MISSING',
-  SMOKE_BASE_URL_INVALID: 'LB_INPUT_URL_INVALID',
-  SMOKE_BASE_URL_DISALLOWED: 'LB_INPUT_URL_DISALLOWED',
-  SMOKE_EXPECTED_SHA_REQUIRED: 'LB_INPUT_SHA_MISSING',
-  SMOKE_EXPECTED_SHA_INVALID: 'LB_INPUT_SHA_INVALID',
-  SMOKE_TIMEOUT_MS_INVALID: 'LB_INPUT_TIMEOUT_INVALID',
-};
+const INPUT_ERROR_CODES = Object.freeze({
+  SMOKE_BASE_URL_REQUIRED: SANITIZED_ERROR_CODES.LB_INPUT_URL_MISSING,
+  SMOKE_BASE_URL_INVALID: SANITIZED_ERROR_CODES.LB_INPUT_URL_INVALID,
+  SMOKE_BASE_URL_DISALLOWED: SANITIZED_ERROR_CODES.LB_INPUT_URL_DISALLOWED,
+  SMOKE_EXPECTED_SHA_REQUIRED: SANITIZED_ERROR_CODES.LB_INPUT_SHA_MISSING,
+  SMOKE_EXPECTED_SHA_INVALID: SANITIZED_ERROR_CODES.LB_INPUT_SHA_INVALID,
+  SMOKE_TIMEOUT_MS_INVALID: SANITIZED_ERROR_CODES.LB_INPUT_TIMEOUT_INVALID,
+});
 
 function emitInputFailure(inputError) {
   if (outputEmitted) return;
   outputEmitted = true;
-  const errorCode = INPUT_ERROR_CODES[inputError] || 'LB_INPUT_INVALID';
+  const errorCode = INPUT_ERROR_CODES[inputError] || SANITIZED_ERROR_CODES.LB_INPUT_INVALID;
   const op = makeOperation('INPUT_VALIDATION', {
-    expectationClass: 'EXPECTED_SUCCESS',
-    statusClass: 'FAILED',
+    expectationClass: EXPECTATION_CLASSES.EXPECTED_SUCCESS,
+    statusClass: STATUS_CLASSES.FAILED,
     errorCode,
-    severity: 'ERROR',
+    severity: SEVERITY_CLASSES.ERROR,
     errorCount: 1,
   });
-  console.log(JSON.stringify(buildOutput('UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'FAILED', [op])));
+  console.log(JSON.stringify(buildOutput('UNKNOWN', 'UNKNOWN', RELEASE_MATCH_STATES.UNKNOWN, STATUS_CLASSES.FAILED, [op])));
 }
 
 function emitUnexpectedFailure() {
   if (outputEmitted) return;
   outputEmitted = true;
   const op = makeOperation('UNEXPECTED_FAILURE', {
-    expectationClass: 'UNEXPECTED_FAILURE',
-    statusClass: 'FAILED',
-    errorCode: 'LB_UNEXPECTED_FAILURE',
-    severity: 'ERROR',
+    expectationClass: EXPECTATION_CLASSES.UNEXPECTED_FAILURE,
+    statusClass: STATUS_CLASSES.FAILED,
+    errorCode: SANITIZED_ERROR_CODES.LB_UNEXPECTED_FAILURE,
+    severity: SEVERITY_CLASSES.ERROR,
     errorCount: 1,
   });
-  console.log(JSON.stringify(buildOutput('UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'FAILED', [op])));
+  console.log(JSON.stringify(buildOutput('UNKNOWN', 'UNKNOWN', RELEASE_MATCH_STATES.UNKNOWN, STATUS_CLASSES.FAILED, [op])));
 }
 
 main().catch(() => {
