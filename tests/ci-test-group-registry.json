@@ -86,6 +86,7 @@
         "tests/contracts/home-thumbnail-loading-browser-contract.test.cjs",
         "tests/contracts/home-video-modal-loading-3707-browser-contract.test.cjs",
         "tests/contracts/legacy-tree-entity-repair-package-contract.test.cjs",
+        "tests/contracts/public-viewer-loading-3688-browser-contract.test.cjs",
         "tests/contracts/settings-display-name-edit-3617-browser-contract.test.cjs",
         "tests/contracts/settings-password-reset-3635-browser-contract.test.cjs",
         "tests/contracts/settings-readonly-account-3583-browser-contract.test.cjs",

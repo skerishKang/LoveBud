@@ -2587,6 +2587,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-viewer-loading-3688-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production CSS/JS chains (css/global.css, css/viewer/public-tree-viewer.css, css/visitor-viewer.css, js/api/base-api-fetch.js, js/postgres-client.js, js/viewer/*.js, js/visitor-viewer/*.js, js/i18n/i18n-*.js) in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Intercepts only the production public memories data path (/api/community/memories) with a deterministic deferred resolver and stubs fonts.googleapis.com with empty CSS. Asserts the staged loading contract per source: shell aria-busy lifecycle, role=status/aria-live=polite loading, role=status empty state (no treeId path), role=alert error state with a keyboard/focusable retry, deterministic fallback shell for bounded empty payloads, single visible state owner, hidden-attribute visibility authority, reduced-motion animation removal, no horizontal overflow, zero pageerror, zero unexpected console error, zero same-origin request failures, zero unexpected HTTP failures, zero external network attempts, and no browser/context/server leaks. No production write/auth/API/DB mutation; no production URL used.",
+      "capabilities": ["playwright", "chromium"]
+    },
+    {
       "path": "tests/contracts/public-viewer-reaction-safe-fallback-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
