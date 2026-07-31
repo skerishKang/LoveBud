@@ -53,6 +53,20 @@ function startServer() {
           res.end(buildMyTreesFixture());
           return;
         }
+        /* #3771 media-regression: renderer-driven fixture that exercises the
+         * firstElementChild boundary fix. All media is same-origin so the
+         * harness can prove the real Tier-1 thumbnail path (loaded img)
+         * deterministically, without external-network flakiness. */
+        if (urlPath === '/fixture-browse-story-media.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(buildMediaRuntimeFixture());
+          return;
+        }
+        if (urlPath.startsWith('/fixture-media/')) {
+          res.writeHead(200, { 'Content-Type': 'image/gif', 'Cache-Control': 'no-store' });
+          res.end(FIXTURE_GIF);
+          return;
+        }
         const abs = path.normalize(path.join(ROOT, urlPath.replace(/^\//, '')));
         if (!abs.startsWith(ROOT) || !fs.existsSync(abs) || fs.statSync(abs).isDirectory()) {
           res.writeHead(404);
@@ -73,6 +87,14 @@ function startServer() {
     });
   });
 }
+
+/* #3771 media-regression: fixture card IDs used by the media-runtime tests. */
+const MEDIA_FIXTURE_IDS = ['media-thumb-1', 'media-no-thumb', 'media-thumb-2', 'media-no-thumb-2', 'media-thumb-3', 'media-no-thumb-3'];
+
+/* 1x1 transparent GIF served same-origin so the Tier-1 thumbnail img path
+ * (bindCardImageHandlers load/error/SVG-swap) is deterministic — loading an
+ * external image in the harness would leave the img in its pre-load state. */
+const FIXTURE_GIF = Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64');
 
 async function closeServer(server) {
   await new Promise((resolve, reject) => {
@@ -261,6 +283,201 @@ function buildMyTreesFixture() {
 </body></html>`;
 }
 
+/* ── #3771 media-runtime fixture ─────────────────────────────────────── */
+
+/* #3771 media-regression: renderer-driven fixture that exercises the
+ * firstElementChild boundary fix. Tier-1 thumbnail cards carry relative
+ * paths in the fixture seed; the inline script stamps them with
+ * location.origin at page load (sanitizeUrl requires absolute http(s)). */
+function buildMediaRuntimeFixture() {
+  /* Build three cards through the real renderer chain:
+   *   renderRepresentativeMedia → composition buildTreeCard → htmlToNode
+   * This exercises the firstElementChild boundary fixed in #3771.
+   * Thumbnail URLs are stamped as absolute same-origin URLs at serve time
+   * inside the inline script (location.origin + '/fixture-media/...'),
+   * because sanitizeUrl rejects relative paths. */
+  const trees = [
+    {
+      id: 'media-thumb-1',
+      title: 'Story Media Thumb One',
+      representativeThumbnail: '__MEDIA_THUMB_1__',
+      memories: [{ id: 'm-1-1', title: 'First Moment', thumbnail: '__MEDIA_THUMB_1__' }],
+      memoryCount: 3,
+      theme: 'LoveTree',
+      viewCount: 12,
+      likeCount: 4,
+    },
+    {
+      id: 'media-no-thumb',
+      title: 'Story Media No Thumb',
+      memories: [{ id: 'm-2-1', title: 'Text-only moment' }],
+      memoryCount: 0,
+      theme: 'LoveTree',
+      viewCount: 0,
+      likeCount: 0,
+    },
+    {
+      id: 'media-thumb-2',
+      title: 'Story Media Thumb Two',
+      representativeThumbnail: '__MEDIA_THUMB_2__',
+      memories: [{ id: 'm-3-1', title: 'Second Moment', thumbnail: '__MEDIA_THUMB_2__' }],
+      memoryCount: 1,
+      theme: 'LoveTree',
+      viewCount: 8,
+      likeCount: 2,
+    },
+    {
+      id: 'media-no-thumb-2',
+      title: 'Story Media No Thumb Two',
+      memories: [{ id: 'm-4-1', title: 'Quiet Moment' }],
+      memoryCount: 0,
+      theme: 'LoveTree',
+      viewCount: 0,
+      likeCount: 0,
+    },
+    {
+      id: 'media-thumb-3',
+      title: 'Story Media Thumb Three',
+      representativeThumbnail: '__MEDIA_THUMB_1__',
+      memories: [{ id: 'm-5-1', title: 'Third Moment', thumbnail: '__MEDIA_THUMB_1__' }],
+      memoryCount: 2,
+      theme: 'LoveTree',
+      viewCount: 5,
+      likeCount: 1,
+    },
+    {
+      id: 'media-no-thumb-3',
+      title: 'Story Media No Thumb Three',
+      memories: [{ id: 'm-6-1', title: 'Silent Moment' }],
+      memoryCount: 0,
+      theme: 'LoveTree',
+      viewCount: 0,
+      likeCount: 0,
+    },
+  ];
+  const treesJson = JSON.stringify(trees);
+
+  /* Render browser-side via the loaded renderer modules. */
+  const cardsHtml = trees.map((tree, i) => {
+    return `<script>document.write(0)</script>`; /* placeholder, replaced below */
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="/css/global.css"/>
+<link rel="stylesheet" href="/css/shared/love-tree-card-composition.css"/>
+<link rel="stylesheet" href="/css/search.css"/>
+<link rel="stylesheet" href="/css/tree-view-mode.css?v=20260725-3655-1"/>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #f6f1ec; }
+  .material-symbols-outlined { font-family: system-ui; font-size: 14px; }
+</style>
+</head>
+<body>
+<main class="search-container lovetree-calm-two-column-shell">
+  <section class="lovetree-calm-main-column">
+    <div class="browse-utility-row lovetree-calm-utility-row">
+      <div class="search-input-wrapper">
+        <input type="text" id="searchInput" class="search-input" placeholder="search" />
+      </div>
+    </div>
+    <div class="browse-results-head lovetree-calm-results-head">
+      <div id="browseViewModeMount"></div>
+    </div>
+    <div id="resultsList"></div>
+    <div id="browseStoryNavMount"></div>
+  </section>
+  <aside class="preview-sidebar preview-hub lovetree-calm-right-rail" id="previewSidebar">
+    <header class="preview-panel-header"><h3>감상 허브</h3></header>
+  </aside>
+</main>
+<script>
+  window.LoveBudSearchUI = {
+    createSearchUI: function (config) { return { config: config }; }
+  };
+</script>
+<script src="/js/utils/security.js"></script>
+<script src="/js/shared/tree-card-metrics.js"></script>
+<script src="/js/shared/tree-card-composition.js"></script>
+<script src="/js/search/search-card-fallback.js"></script>
+<script src="/js/search/search-card-renderer.js"></script>
+<script src="/js/tree-view-mode-switcher.js"></script>
+<script src="/js/search/search-card-events.js"></script>
+<script src="/js/search/search-story-view.js"></script>
+<script>
+  (function () {
+    var resultsList = document.getElementById('resultsList');
+    window.__selects = 0;
+    window.__lastSelect = null;
+
+    var ui = window.LoveBudSearchUI.createSearchUI({
+      refs: {},
+      state: { selectedTreeId: null },
+      callbacks: {
+        selectTree: function (tree) {
+          window.__selects += 1;
+          window.__lastSelect = tree.id;
+        }
+      }
+    });
+
+    /* Render cards via the real production renderer chain.
+     * Thumbnail URLs in the seed trees are placeholder strings;
+     * they are substituted here with absolute same-origin URLs because
+     * sanitizeUrl requires absolute http(s) URLs. */
+    var trees = ${treesJson};
+    var MEDIA_THUMB_1_ABS = location.origin + '/fixture-media/thumb-1.gif';
+    var MEDIA_THUMB_2_ABS = location.origin + '/fixture-media/thumb-2.gif';
+    trees = trees.map(function (t) {
+      if (t.representativeThumbnail === '__MEDIA_THUMB_1__') t.representativeThumbnail = MEDIA_THUMB_1_ABS;
+      if (t.representativeThumbnail === '__MEDIA_THUMB_2__') t.representativeThumbnail = MEDIA_THUMB_2_ABS;
+      t.memories = (t.memories || []).map(function (m) {
+        if (m.thumbnail === '__MEDIA_THUMB_1__') m.thumbnail = MEDIA_THUMB_1_ABS;
+        if (m.thumbnail === '__MEDIA_THUMB_2__') m.thumbnail = MEDIA_THUMB_2_ABS;
+        return m;
+      });
+      return t;
+    });
+    var renderer = window.LoveBudSearchCardRenderer;
+    var htmlParts = trees.map(function (tree, i) {
+      return renderer.renderTreeCard(tree, i);
+    });
+    resultsList.innerHTML = htmlParts.join('');
+    renderer.bindCardImageHandlers(resultsList);
+
+    window.__renderCards = function (ids) {
+      var filtered = ids.map(function (id) {
+        return trees.find(function (t) { return t.id === id; });
+      }).filter(Boolean);
+      resultsList.innerHTML = filtered.map(function (tree, i) {
+        return renderer.renderTreeCard(tree, i);
+      }).join('');
+      renderer.bindCardImageHandlers(resultsList);
+    };
+
+    ui.attachCardEvents(resultsList, trees.map(function (t) { return { id: t.id }; }));
+
+    var storyController = window.LoveBudBrowseStoryView.init({
+      results: '#resultsList',
+      navMount: '#browseStoryNavMount'
+    });
+    var switcher = window.LoveBudTreeViewModeSwitcher.init({
+      storageKey: 'lovebud:browse:viewMode',
+      defaultMode: 'compact',
+      mount: '#browseViewModeMount',
+      target: '#resultsList',
+      modes: ['large', 'compact', 'list', 'story'],
+      onChange: function (mode) { storyController.setMode(mode); }
+    });
+    storyController.setMode(switcher.getCurrentMode());
+    window.__storyController = storyController;
+  })();
+</script>
+</body></html>`;
+}
+
 /* ── Shared helpers ───────────────────────────────────────────────── */
 
 async function interceptViewerNav(page) {
@@ -307,6 +524,163 @@ function capturePageErrors(page) {
   const errors = [];
   page.on('pageerror', error => { errors.push(String(error)); });
   return errors;
+}
+
+/* #3771 media-regression: capture real console errors (not warns/info). */
+function captureConsoleErrors(page) {
+  const errors = [];
+  page.on('console', msg => {
+    if (msg.type() === 'error') errors.push(msg.text());
+  });
+  return errors;
+}
+
+/* #3771 media-regression: capture same-origin request failures. */
+function captureRequestFailures(page) {
+  const failures = [];
+  page.on('requestfailed', req => {
+    const url = req.url();
+    try {
+      const origin = new URL(page.url()).origin;
+      if (new URL(url).origin === origin) failures.push(url);
+    } catch (e) { /* non-URL-safe request */ }
+  });
+  return failures;
+}
+
+/* #3771 media-regression: query one card's media wrapper for element
+ * children, image presence, and fallback presence. The media wrapper's
+ * canonical content is produced by search-card-fallback.js:
+ *   Tier 1: real thumbnail → <img data-search-card-image> backed by a
+ *            hidden [data-fallback-container] (.tree-card-media-fallback)
+ *            until bindCardImageHandlers' load handler settles the image;
+ *            on error the img is hidden and the SVG fallback revealed.
+ *   Tier 2: text-led cover → .tree-card-text-visual
+ *   Tier 3: premium SVG   → .tree-card-media-fallback
+ * The #3771 regression silently dropped this Element child because the
+ * renderer's firstChild boundary returned a whitespace Text node.
+ * Returns null if the card is missing or has no media wrapper. */
+async function cardMediaState(page, treeId) {
+  return page.evaluate((id) => {
+    const card = document.querySelector(`#resultsList .tree-card[data-tree-id="${id}"]`);
+    if (!card) return null;
+    const media = card.querySelector('.tree-card-media');
+    if (!media) return { cardPresent: true, mediaPresent: false };
+    const elements = [...media.children].filter(c => c.nodeType === Node.ELEMENT_NODE);
+    const img = media.querySelector('img[data-search-card-image]');
+    const fallback = media.querySelector('.tree-card-media-fallback');
+    const textVisual = media.querySelector('.tree-card-text-visual');
+    /* textContent of the non-img fallback branch (Tier 2 proves the media
+     * wrapper carries canonical human-readable fallback content). */
+    const mediaText = textVisual ? textVisual.textContent.trim() : '';
+    return {
+      cardPresent: true,
+      mediaPresent: true,
+      elementChildCount: elements.length,
+      imgCount: img ? 1 : 0,
+      imgSrc: img ? img.currentSrc || img.src || null : null,
+      imgComplete: img ? img.complete : null,
+      imgNaturalWidth: img ? img.naturalWidth : null,
+      imgHidden: img ? img.style.display === 'none' || img.hidden : null,
+      fallbackCount: fallback ? 1 : 0,
+      fallbackVisible: fallback ? !fallback.closest('[data-fallback-container]') || !fallback.closest('[data-fallback-container]').hidden : null,
+      textVisualCount: textVisual ? 1 : 0,
+      mediaTextLength: mediaText.length,
+    };
+  }, treeId);
+}
+
+/* #3771 media-regression: assert one card's media wrapper state.
+ * Tier 1 (hasThumbnail): exactly one img with a safe same-origin src that
+ *   is load-complete and not hidden (same-origin fixture GIFs settle
+ *   synchronously under networkidle), backed by a hidden SVG fallback
+ *   that is NOT revealed.
+ * Tier 2 (hasNoThumbnail): exactly one visible .tree-card-text-visual,
+ *   no img, no revealed SVG fallback. */
+function assertMediaState(state, expected, label) {
+  assert.ok(state, `${label}: card must exist`);
+  assert.equal(state.mediaPresent, true, `${label}: media wrapper must exist`);
+  /* Core #3771 regression assertion: the media wrapper's Element child
+   * must survive — before the fixed boundary (firstElementChild), the
+   * leading whitespace of the trusted HTML string made the renderer
+   * append a stray Text node instead, so the media wrapper ended with
+   * zero Element children. */
+  assert.ok(state.elementChildCount >= 1,
+    `${label}: media wrapper must have >=1 Element child (got ${state.elementChildCount}; zero = #3771 regression)`);
+  if (expected.hasImage) {
+    assert.equal(state.imgCount, 1, `${label}: exactly one img[data-search-card-image]`);
+    assert.ok(state.imgSrc && state.imgSrc.includes(expected.imgSrc),
+      `${label}: img src must contain "${expected.imgSrc}" (got "${state.imgSrc}")`);
+    assert.equal(state.imgHidden, false, `${label}: image must not be display:none/hidden`);
+    assert.equal(state.imgComplete, true, `${label}: image load must be complete`);
+    assert.ok(state.imgNaturalWidth > 0, `${label}: image must have decoded content (naturalWidth > 0)`);
+    assert.equal(state.fallbackVisible, false, `${label}: backed SVG fallback must stay hidden behind a loaded image`);
+  }
+  if (expected.hasTextVisual) {
+    assert.equal(state.textVisualCount, 1, `${label}: exactly one .tree-card-text-visual (canonical Tier-2 fallback)`);
+    assert.ok(state.mediaTextLength > 0, `${label}: Tier-2 fallback carries non-empty canonical content`);
+  }
+  if (expected.hasFallback) {
+    assert.equal(state.fallbackCount, 1, `${label}: exactly one .tree-card-media-fallback`);
+    assert.equal(state.fallbackVisible, true, `${label}: fallback must be visible`);
+  }
+  if (expected.noImage) {
+    assert.equal(state.imgCount, 0, `${label}: no image expected`);
+  }
+  if (expected.noTextVisual) {
+    assert.equal(state.textVisualCount, 0, `${label}: no text-visual expected`);
+  }
+}
+
+/* #3771 media-regression: assert one card's media wrapper state.
+ * expected:
+ *   hasImage: true + imgSrc substring  → Tier 1 thumbnail card
+ *   hasTextVisual / hasFallback        → Tier 2/3 no-thumbnail card
+ *   noImage / noFallback               → negative assertions */
+function assertMediaState(state, expected, label) {
+  assert.ok(state, `${label}: card must exist`);
+  assert.equal(state.mediaPresent, true, `${label}: media wrapper must exist`);
+  /* Core #3771 regression assertion: the media wrapper's Element child
+   * must survive — before the fixed boundary (firstElementChild), the
+   * leading whitespace of the trusted HTML string made the renderer
+   * append a stray Text node instead. */
+  assert.ok(state.elementChildCount >= 1, `${label}: media wrapper must have >=1 Element child (got ${state.elementChildCount}, empty media wrapper = #3771 regression)`);
+  if (expected.hasImage) {
+    assert.equal(state.imgCount, 1, `${label}: exactly one img[data-search-card-image]`);
+    assert.ok(state.imgSrc && state.imgSrc.includes(expected.imgSrc), `${label}: img src must contain "${expected.imgSrc}" (got "${state.imgSrc}")`);
+    assert.equal(state.imgHidden, false, `${label}: image must not be display:none/hidden`);
+  }
+  if (expected.hasFallback) {
+    assert.equal(state.fallbackCount, 1, `${label}: exactly one .tree-card-media-fallback`);
+    assert.equal(state.fallbackHidden, false, `${label}: fallback must not be hidden`);
+  }
+  if (expected.hasTextVisual) {
+    assert.equal(state.textVisualCount, 1, `${label}: exactly one .tree-card-text-visual (canonical Tier-2 fallback)`);
+  }
+  if (expected.noTextVisual) {
+    assert.equal(state.textVisualCount, 0, `${label}: no text-visual expected`);
+  }
+  if (expected.noImage) {
+    assert.equal(state.imgCount, 0, `${label}: no image expected`);
+  }
+  if (expected.noFallback) {
+    assert.equal(state.fallbackCount, 0, `${label}: no fallback expected`);
+  }
+}
+
+/* #3771 media-regression: assert all visible cards have media materials. */
+async function assertVisibleCardMedia(page, expectedCards, label) {
+  const visibleIds = await page.evaluate(() =>
+    [...document.querySelectorAll('#resultsList .tree-card[data-tree-id]')]
+      .filter(c => !c.hidden && !c.closest('.browse-story-transition-stage'))
+      .map(c => c.getAttribute('data-tree-id'))
+  );
+  for (const id of visibleIds) {
+    const expected = expectedCards.find(c => c.id === id);
+    if (!expected) continue;
+    const state = await cardMediaState(page, id);
+    assertMediaState(state, expected, `${label} card[${id}]`);
+  }
 }
 
 async function directCardIds(page) {
@@ -1880,6 +2254,187 @@ test('#3655 browser: refresh during transition cleans up completely', { timeout:
 
     assert.deepEqual(pageErrors, [], 'no page errors during refresh');
     await context.close();
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+});
+
+/* ── #3771 Story media runtime regression ──────────────────────────── */
+
+const MEDIA_CARD_EXPECTATIONS = [
+  { id: 'media-thumb-1', hasImage: true, imgSrc: '/fixture-media/thumb-1.gif', noTextVisual: true },
+  { id: 'media-no-thumb', hasTextVisual: true, noImage: true },
+  { id: 'media-thumb-2', hasImage: true, imgSrc: '/fixture-media/thumb-2.gif', noTextVisual: true },
+  { id: 'media-no-thumb-2', hasTextVisual: true, noImage: true },
+  { id: 'media-thumb-3', hasImage: true, imgSrc: '/fixture-media/thumb-1.gif', noTextVisual: true },
+  { id: 'media-no-thumb-3', hasTextVisual: true, noImage: true },
+];
+
+test('#3771 browser: Story media elements preserved across mode entry and navigation (desktop)', { timeout: 150000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const pageErrors = capturePageErrors(page);
+    const consoleErrors = captureConsoleErrors(page);
+    const requestFailures = captureRequestFailures(page);
+    await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    /* (1) compact mode: all 6 cards present, media intact */
+    const compactIds = await directCardIds(page);
+    assert.deepEqual(compactIds, MEDIA_FIXTURE_IDS, 'compact mode shows all 6 fixture cards');
+    for (const exp of MEDIA_CARD_EXPECTATIONS) {
+      const st = await cardMediaState(page, exp.id);
+      assertMediaState(st, exp, `compact[${exp.id}]`);
+    }
+
+    /* (1) enter Story mode with deterministic loaded cards */
+    await clickModeButton(page, 'story');
+    let st = await storyState(page);
+    assert.equal(st.mode, 'story');
+    assert.equal(st.visible.length, 3, 'wide desktop shows 3 cards');
+    await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'story-entry');
+
+    /* (5) Next/Previous navigation preserves actual media elements */
+    await page.click('[data-story-next]');
+    await page.waitForTimeout(50); /* mid-transition */
+    await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'mid-transition-next');
+    await page.waitForTimeout(420);
+    st = await storyState(page);
+    assert.equal(st.indicator, '02 / 02', 'group 2 of 2 on wide desktop');
+    assert.equal(st.nextDisabled, true, 'last group → next disabled');
+    await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'post-transition-next');
+
+    /* (6) leaving and re-entering Story mode preserves media elements */
+    await clickModeButton(page, 'compact');
+    await page.waitForTimeout(100);
+    for (const exp of MEDIA_CARD_EXPECTATIONS) {
+      const state = await cardMediaState(page, exp.id);
+      assertMediaState(state, exp, `compact-restore[${exp.id}]`);
+    }
+    await clickModeButton(page, 'story');
+    await page.waitForTimeout(150);
+    st = await storyState(page);
+    assert.equal(st.mode, 'story');
+    await assertVisibleCardMedia(page, MEDIA_CARD_EXPECTATIONS, 'story-re-entry');
+
+    /* (8) hidden cards remain outside the visible/tab sequence */
+    const visibilityCounts = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('#resultsList .tree-card[data-tree-id]')];
+      return {
+        visible: cards.filter(c => !c.hidden).length,
+        hidden: cards.filter(c => c.hidden).length,
+        total: cards.length,
+      };
+    });
+    assert.equal(visibilityCounts.visible, 3, '3 cards visible in current story group on wide desktop');
+    assert.equal(visibilityCounts.hidden, 3, '3 cards hidden in off-screen story group');
+
+    /* (9) zero page errors, console errors, request failures, overflow */
+    assert.deepEqual(pageErrors, [], 'no page errors during media runtime');
+    assert.deepEqual(consoleErrors, [], 'no console errors during media runtime');
+    assert.deepEqual(requestFailures, [], 'no same-origin request failures');
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    assert.ok(overflow.scrollWidth <= overflow.clientWidth + 1,
+      `no horizontal overflow: scrollWidth ${overflow.scrollWidth} vs clientWidth ${overflow.clientWidth}`);
+
+    await context.close();
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+});
+
+test('#3771 browser: Story media elements preserved (mobile + reduced motion)', { timeout: 150000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    /* ── mobile 390×844 — group size 1 ── */
+    const mContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    const mPage = await mContext.newPage();
+    const mPageErrors = capturePageErrors(mPage);
+    const mConsoleErrors = captureConsoleErrors(mPage);
+    const mRequestFailures = captureRequestFailures(mPage);
+    await mPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await mPage.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'networkidle' });
+    await mPage.waitForTimeout(150);
+
+    let st = await storyState(mPage);
+    assert.equal(st.mode, 'story');
+    assert.equal(st.visible.length, 1, 'mobile shows 1 card');
+    assert.equal(st.visible[0], 'media-thumb-1');
+    await assertVisibleCardMedia(mPage, MEDIA_CARD_EXPECTATIONS, 'mobile-entry');
+
+    /* next navigation on mobile: 1→1 transitions */
+    await mPage.click('[data-story-next]');
+    await mPage.waitForTimeout(420);
+    st = await storyState(mPage);
+    assert.equal(st.indicator, '02 / 06');
+    assert.deepEqual(st.visible, ['media-no-thumb']);
+    const noThumbMobile = await cardMediaState(mPage, 'media-no-thumb');
+    assertMediaState(noThumbMobile, { hasTextVisual: true, noImage: true }, 'mobile-no-thumb-after-next');
+
+    await mPage.click('[data-story-next]');
+    await mPage.waitForTimeout(420);
+    st = await storyState(mPage);
+    assert.deepEqual(st.visible, ['media-thumb-2']);
+    const thumb2Mobile = await cardMediaState(mPage, 'media-thumb-2');
+    assertMediaState(thumb2Mobile, { hasImage: true, imgSrc: '/fixture-media/thumb-2.gif' }, 'mobile-thumb-2-after-next');
+
+    /* overflow check */
+    const mOverflow = await mPage.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    assert.ok(mOverflow.scrollWidth <= mOverflow.clientWidth + 1,
+      `mobile: no horizontal overflow (${mOverflow.scrollWidth} vs ${mOverflow.clientWidth})`);
+
+    assert.deepEqual(mPageErrors, [], 'mobile: no page errors');
+    assert.deepEqual(mConsoleErrors, [], 'mobile: no console errors');
+    assert.deepEqual(mRequestFailures, [], 'mobile: no same-origin request failures');
+    await mContext.close();
+
+    /* ── reduced-motion — immediate swap preserves media ── */
+    const rmContext = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'reduce',
+    });
+    const rmPage = await rmContext.newPage();
+    const rmPageErrors = capturePageErrors(rmPage);
+    const rmConsoleErrors = captureConsoleErrors(rmPage);
+    await rmPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await rmPage.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'networkidle' });
+    await rmPage.waitForTimeout(150);
+
+    /* (7) reduced-motion: immediate navigation to group 2 preserves media */
+    await rmPage.click('[data-story-next]');
+    await rmPage.waitForTimeout(50); /* reduced motion = immediate swap */
+    const rmState = await rmPage.evaluate(() => {
+      const results = document.getElementById('resultsList');
+      const wrappers = results.querySelectorAll('.browse-story-transition-stage');
+      const visible = [...results.querySelectorAll('.tree-card[data-tree-id]')]
+        .filter(c => !c.hidden).map(c => c.getAttribute('data-tree-id'));
+      return { wrapperCount: wrappers.length, visible };
+    });
+    assert.equal(rmState.wrapperCount, 0, 'reduced-motion: no transition wrappers');
+    assert.deepEqual(rmState.visible, ['media-no-thumb-2', 'media-thumb-3', 'media-no-thumb-3'],
+      'reduced-motion: immediate swap lands on group 2');
+    await assertVisibleCardMedia(rmPage, MEDIA_CARD_EXPECTATIONS, 'rm-after-next');
+
+    assert.deepEqual(rmPageErrors, [], 'reduced-motion: no page errors');
+    assert.deepEqual(rmConsoleErrors, [], 'reduced-motion: no console errors');
+    await rmContext.close();
   } finally {
     await browser.close();
     await closeServer(server);
