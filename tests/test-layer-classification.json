@@ -497,6 +497,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/release-health-taxonomy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Requires the canonical release-health-taxonomy.cjs module and validates its frozen constants and deterministic pure classifiers against latency, HTTP, content-type, release-match, and fail-closed sanitized-error boundaries without network, browser, Production, provider, database, or secret access (#3673).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/cloudflare-write-auth-guard-dedicated.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

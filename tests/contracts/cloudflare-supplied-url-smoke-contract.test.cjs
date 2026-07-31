@@ -5,21 +5,26 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SMOKE_SCRIPT = path.join(ROOT, 'scripts', 'cloudflare-supplied-url-smoke.cjs');
+const TAXONOMY_SCRIPT = path.join(ROOT, 'scripts', 'release-health-taxonomy.cjs');
 const REGISTRY_PATH = path.join(ROOT, 'tests', 'ci-test-group-registry.json');
 const CLASSIFICATION_PATH = path.join(ROOT, 'tests', 'test-layer-classification.json');
 const REGISTRY_CONTRACT_PATH = path.join(ROOT, 'tests', 'contracts', 'ci-test-group-registry-contract.test.cjs');
 const PACKAGE_PATH = path.join(ROOT, 'package.json');
 
 const SOURCE = fs.readFileSync(SMOKE_SCRIPT, 'utf-8');
+const TAXONOMY_SOURCE = fs.readFileSync(TAXONOMY_SCRIPT, 'utf-8');
+const CANONICAL_SOURCE = `${SOURCE}\n${TAXONOMY_SOURCE}`;
 
-// The real cumulative diff for this slice is exactly these four files. This is a
+// The real cumulative diff for this slice is exactly these six files. This is a
 // source-static documentation constant only: a contract test cannot inspect git
-// history, so the exact four-file boundary itself is proven by local validation
+// history, so the exact six-file boundary itself is proven by local validation
 // (git diff --name-status origin/main...HEAD) and the PR body, not asserted here.
 // tests/ci-test-group-registry.json is a protected aggregate authority and is NOT
 // part of this cumulative diff.
 const CUMULATIVE_BOUNDARY_FILES = [
+  'scripts/release-health-taxonomy.cjs',
   'scripts/cloudflare-supplied-url-smoke.cjs',
+  'tests/contracts/release-health-taxonomy-contract.test.cjs',
   'tests/contracts/cloudflare-supplied-url-smoke-contract.test.cjs',
   'tests/contracts/ci-test-group-registry-contract.test.cjs',
   'tests/test-layer-classification.json',
@@ -50,7 +55,8 @@ test('4. exact two-key manifest validation (contract_version, release_sha)', () 
   assert.match(SOURCE, /keys\.length\s*!==\s*2/);
   assert.match(SOURCE, /keys\[0\]/);
   assert.match(SOURCE, /keys\[1\]/);
-  assert.match(SOURCE, /contract_version\s*!==\s*'1'/);
+  assert.match(SOURCE, /CONTRACT_VERSION/);
+  assert.match(TAXONOMY_SOURCE, /CONTRACT_VERSION\s*=\s*'1'/);
 });
 
 test('5. no-store cache policy validation', () => {
@@ -60,9 +66,10 @@ test('5. no-store cache policy validation', () => {
 
 test('6. two-request equality with different nonces', () => {
   assert.match(SOURCE, /nonce1|nonce2|crypto\.randomUUID/);
-  const noncePattern = /_\s*=\s*\$\{?\s*(nonce1|nonce2)\s*\}?/;
   assert.ok(SOURCE.split('\n').filter((l) => l.includes('nonce')).length >= 2);
-  assert.ok(SOURCE.includes('JSON.stringify(result1.parsed) !== JSON.stringify(result2.parsed)'));
+  assert.match(SOURCE, /classifyReleaseMatch/);
+  assert.match(SOURCE, /nonceMatchState/);
+  assert.match(SOURCE, /JSON\.stringify\(result1\.parsed\)/);
 });
 
 test('7. canonical extensionless route operation codes', () => {
@@ -140,10 +147,10 @@ test('12. sanitized operation schema with bounded fields', () => {
   assert.match(SOURCE, /error_count/);
   assert.match(SOURCE, /expectation_class/);
 
-  assert.match(SOURCE, /LT_250_MS/);
-  assert.match(SOURCE, /TIMEOUT_OR_UNKNOWN/);
+  assert.match(TAXONOMY_SOURCE, /LT_250_MS/);
+  assert.match(TAXONOMY_SOURCE, /TIMEOUT_OR_UNKNOWN/);
   assert.match(SOURCE, /NOT_APPLICABLE/);
-  assert.match(SOURCE, /NOT_MEASURED/);
+  assert.match(CANONICAL_SOURCE, /NOT_MEASURED/);
 });
 
 test('13. raw baseUrl is NOT included in output', () => {
@@ -190,9 +197,14 @@ test('18. package.json is not modified (smoke:cloudflare already exists)', () =>
 test('19. authorized file set is represented and forbidden project authorities remain untouched', () => {
   // Source-static existence of the runner and this contract test only. This does NOT
   // inspect git history and does NOT claim to prove an exact changed-file count; the
-  // cumulative four-file boundary is proven by local validation and the PR body.
+  // cumulative six-file boundary is proven by local validation and the PR body.
   assert.ok(fs.existsSync(SMOKE_SCRIPT), 'runner must exist');
+  assert.ok(fs.existsSync(TAXONOMY_SCRIPT), 'taxonomy module must exist');
   assert.ok(fs.existsSync(path.join(ROOT, 'tests/contracts/cloudflare-supplied-url-smoke-contract.test.cjs')), 'contract test must exist');
+  assert.match(SOURCE, /require\('\.\/release-health-taxonomy\.cjs'\)/);
+  assert.match(SOURCE, /classifyLatency/);
+  assert.match(SOURCE, /classifyHttpStatus/);
+  assert.match(SOURCE, /normalizeSanitizedErrorCode/);
 
   // Classification entry for this contract test must be registered SOURCE_STATIC.
   const classification = JSON.parse(fs.readFileSync(CLASSIFICATION_PATH, 'utf-8'));
@@ -202,8 +214,8 @@ test('19. authorized file set is represented and forbidden project authorities r
 
   // Registry aggregate contract count literals must be present in the registry contract test.
   const registryContract = fs.readFileSync(REGISTRY_CONTRACT_PATH, 'utf-8');
-  assert.match(registryContract, /default_total,\s*777/);
-  assert.match(registryContract, /SOURCE_STATIC,\s*572/);
+  assert.match(registryContract, /default_total,\s*778/);
+  assert.match(registryContract, /SOURCE_STATIC,\s*573/);
 
   // package.json smoke script must keep its existing value (no modification required).
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, 'utf-8'));
@@ -216,14 +228,14 @@ test('19. authorized file set is represented and forbidden project authorities r
   assert.ok(!/\bexecSync\b|\bspawnSync\b|\bexec\s*\(|\bspawn\s*\(/.test(thisTest), 'must not execute subprocesses');
 
   // Sanitized error-code vocabulary markers preserved.
-  assert.match(SOURCE, /LB_MANIFEST_/);
-  assert.match(SOURCE, /LB_ROUTE_RESPONSE_/);
-  assert.match(SOURCE, /LB_STATIC_ASSET_/);
-  assert.match(SOURCE, /BROWSER_FATAL_ERROR/);
-  assert.match(SOURCE, /BROWSER_CONSOLE_ERROR/);
-  assert.match(SOURCE, /BROWSER_NETWORK_FAILURE/);
-  assert.match(SOURCE, /BROWSER_HTTP_BLOCKER/);
-  assert.match(SOURCE, /BROWSER_HORIZONTAL_OVERFLOW/);
+  assert.match(CANONICAL_SOURCE, /LB_MANIFEST_/);
+  assert.match(CANONICAL_SOURCE, /LB_ROUTE_RESPONSE_/);
+  assert.match(CANONICAL_SOURCE, /LB_STATIC_ASSET_/);
+  assert.match(CANONICAL_SOURCE, /BROWSER_FATAL_ERROR/);
+  assert.match(CANONICAL_SOURCE, /BROWSER_CONSOLE_ERROR/);
+  assert.match(CANONICAL_SOURCE, /BROWSER_NETWORK_FAILURE/);
+  assert.match(CANONICAL_SOURCE, /BROWSER_HTTP_BLOCKER/);
+  assert.match(CANONICAL_SOURCE, /BROWSER_HORIZONTAL_OVERFLOW/);
 });
 
 test('20. no-store is the only accepted cache directive (no-cache-only fails closed)', () => {
@@ -285,15 +297,15 @@ test('29. http is allowed only for localhost and 127.0.0.1; https always allowed
   assert.match(SOURCE, /baseUrl\.protocol === 'http:'/);
 });
 
-test('30. contract documents the real four-file cumulative boundary', () => {
+test('30. contract documents the real six-file cumulative boundary', () => {
   const thisTest = fs.readFileSync(__filename, 'utf-8');
   for (const f of CUMULATIVE_BOUNDARY_FILES) {
     assert.ok(thisTest.includes(f), 'contract must reference cumulative-boundary file: ' + f);
   }
-  assert.equal(CUMULATIVE_BOUNDARY_FILES.length, 4, 'cumulative boundary is exactly four files');
+  assert.equal(CUMULATIVE_BOUNDARY_FILES.length, 6, 'cumulative boundary is exactly six files');
 });
 
-test('31. registry aggregate json is protected and excluded from the four-file cumulative diff', () => {
+test('31. registry aggregate json is protected and excluded from the six-file cumulative diff', () => {
   assert.ok(fs.existsSync(REGISTRY_PATH), 'registry aggregate json must remain present and untouched');
   assert.ok(!CUMULATIVE_BOUNDARY_FILES.includes('tests/ci-test-group-registry.json'), 'registry json must not be claimed as a changed file');
 });
