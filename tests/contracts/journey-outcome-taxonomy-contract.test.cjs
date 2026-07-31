@@ -120,6 +120,61 @@ test('canonical exports, nested constants, and set-like allowlists are immutable
   assert.equal(Object.isFrozen(taxonomy), true, 'canonical export must be frozen');
   assert.equal(Object.isFrozen(taxonomy.STATUS_CLASSES), true);
   assert.equal(Object.isFrozen(taxonomy.FAILURE_CODES), true);
+  assert.equal(Object.isFrozen(taxonomy.OUTCOME_EVENT_FIELDS), true);
+  assert.deepEqual([...taxonomy.OUTCOME_EVENT_FIELDS], [
+    'journey', 'stage', 'statusClass', 'expectationClass', 'severity',
+    'failureCode', 'httpStatus', 'latencyBucket', 'resultCountBucket',
+  ]);
+  assert.equal(Object.isFrozen(taxonomy.STATUS_CLASS_SET), true);
+  assert.throws(() => taxonomy.OUTCOME_EVENT_FIELDS.push('privateField'), TypeError);
+  assert.throws(() => taxonomy.FAILURE_CODE_SET.add('raw-message'), TypeError);
+  assert.equal(taxonomy.OUTCOME_EVENT_FIELDS.includes('privateField'), false);
+});
+
+test('bounded event builder is exact, canonical, immutable, and drops unknown input', () => {
+  const taxonomy = loadBrowserTaxonomy();
+  const raw = {
+    stage: taxonomy.STAGES.TERMINAL_SUCCESS,
+    statusClass: taxonomy.STATUS_CLASSES.FAILED,
+    expectationClass: taxonomy.EXPECTATION_CLASSES.UNEXPECTED_FAILURE,
+    severity: taxonomy.SEVERITY_CLASSES.ERROR,
+    failureCode: 'fetch https://example.test?token=secret failed',
+    httpStatus: 200,
+    latencyMs: 250,
+    resultCountBucket: 'positive',
+    rawException: 'Error: secret response body',
+    url: 'https://example.test/private?token=secret',
+  };
+  const before = { ...raw };
+  const success = taxonomy.buildBoundedEvent(raw);
+
+  assert.deepEqual(Object.keys(success), [...taxonomy.OUTCOME_EVENT_FIELDS]);
+  assert.equal(Object.isFrozen(success), true);
+  assert.equal(success.statusClass, taxonomy.STATUS_CLASSES.HEALTHY);
+  assert.equal(success.expectationClass, taxonomy.EXPECTATION_CLASSES.EXPECTED_SUCCESS);
+  assert.equal(success.severity, taxonomy.SEVERITY_CLASSES.INFO);
+  assert.equal(success.failureCode, taxonomy.FAILURE_CODES.NONE);
+  assert.equal(success.latencyBucket, taxonomy.LATENCY_BUCKETS.LT_500_MS);
+  assert.equal(success.rawException, undefined);
+  assert.equal(success.url, undefined);
+  assert.deepEqual(raw, before, 'builder must not mutate its input');
+
+  const failure = taxonomy.buildBoundedEvent({
+    stage: taxonomy.STAGES.TERMINAL_FAILURE,
+    statusClass: taxonomy.STATUS_CLASSES.HEALTHY,
+    expectationClass: taxonomy.EXPECTATION_CLASSES.EXPECTED_SUCCESS,
+    severity: taxonomy.SEVERITY_CLASSES.INFO,
+    failureCode: 'Bearer very-secret-token',
+    httpStatus: undefined,
+    latencyMs: 5000,
+    resultCountBucket: 'unknown',
+  });
+  assert.equal(failure.statusClass, taxonomy.STATUS_CLASSES.FAILED);
+  assert.equal(failure.expectationClass, taxonomy.EXPECTATION_CLASSES.UNEXPECTED_FAILURE);
+  assert.equal(failure.severity, taxonomy.SEVERITY_CLASSES.ERROR);
+  assert.equal(failure.failureCode, taxonomy.FAILURE_CODES.LB_UNEXPECTED_FAILURE);
+  assert.equal(failure.httpStatus, taxonomy.HTTP_STATUS_CLASSES.NOT_MEASURED);
+  assert.equal(failure.latencyBucket, taxonomy.LATENCY_BUCKETS.GTE_5_S);
 });
 
 test('fresh module import has no side effect beyond window.LoveBudJourneyOutcomeTaxonomy', () => {

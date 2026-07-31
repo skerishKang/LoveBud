@@ -23,50 +23,105 @@
   }
 
   var MyTreesJourneyTracker = (function() {
+    var activeContexts = Object.create(null);
+
+    function getTaxonomy() {
+      try {
+        var tax = window && window.LoveBudJourneyOutcomeTaxonomy;
+        if (!tax || typeof tax.buildBoundedEvent !== 'function') return null;
+        return tax;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function getEvidenceSink() {
+      try {
+        var sink = window && (window.__LOVE_BUD_JOURNEY_EVIDENCE_SINK__ || window.__LoveBudJourneyOutcomeSink);
+        if (!sink) return null;
+        if (typeof sink.push === 'function' || typeof sink.emit === 'function' || typeof sink.record === 'function') {
+          return sink;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function deliverEvent(sink, event) {
+      if (typeof sink.push === 'function') return sink.push(event);
+      if (typeof sink.emit === 'function') return sink.emit(event);
+      if (typeof sink.record === 'function') return sink.record(event);
+      return undefined;
+    }
+
+    function removeContext(generation, context) {
+      if (activeContexts[generation] === context) {
+        delete activeContexts[generation];
+      }
+    }
+
     function createGenerationContext(generation) {
-      return {
+      var context = {
         generation: generation,
         startedAt: Date.now(),
         terminalEmitted: false,
         cancelled: false,
-        resultCountBucket: 'unknown',
-        recordStage: function(stage, meta) {
-          var tax = window.LoveBudJourneyOutcomeTaxonomy;
-          if (!tax) return;
-          var sink = window.__LoveBudJourneyOutcomeSink;
-          if (!sink || typeof sink.push !== 'function') return;
+        resultCountBucket: 'unknown'
+      };
 
-          meta = meta || {};
-          if (stage === tax.STAGES.CANCELLED) {
-            if (this.cancelled) return;
-            this.cancelled = true;
-          }
-          if (stage === tax.STAGES.TERMINAL_SUCCESS || stage === tax.STAGES.TERMINAL_FAILURE) {
-            if (this.terminalEmitted) return;
-            this.terminalEmitted = true;
-          }
+      context.recordStage = function(stageName, meta) {
+        meta = meta && typeof meta === 'object' ? meta : {};
+        var isCancelled = stageName === 'CANCELLED';
+        var isTerminal = stageName === 'TERMINAL_SUCCESS' || stageName === 'TERMINAL_FAILURE';
+        if (isCancelled) {
+          if (this.cancelled) return;
+          this.cancelled = true;
+        }
+        if (isTerminal) {
+          if (this.terminalEmitted) return;
+          this.terminalEmitted = true;
+        }
 
-          if (meta.resultCountBucket === 'positive' || meta.resultCountBucket === 'zero') {
-            this.resultCountBucket = meta.resultCountBucket;
-          }
+        if (meta.resultCountBucket === 'positive' || meta.resultCountBucket === 'zero') {
+          this.resultCountBucket = meta.resultCountBucket;
+        }
 
-          var latencyMs = Date.now() - this.startedAt;
+        try {
+          var tax = getTaxonomy();
+          var sink = getEvidenceSink();
+          if (!tax || !sink || !tax.STAGES) return;
+          var canonicalStage = tax.STAGES[stageName];
+          if (typeof canonicalStage !== 'string') return;
           var event = tax.buildBoundedEvent({
-            stage: stage,
+            stage: canonicalStage,
             statusClass: meta.statusClass,
             expectationClass: meta.expectationClass,
             severity: meta.severity,
             failureCode: meta.failureCode,
             httpStatus: meta.httpStatus,
-            latencyMs: latencyMs,
+            latencyMs: Date.now() - this.startedAt,
             resultCountBucket: meta.resultCountBucket || this.resultCountBucket
           });
-          sink.push(event);
+          deliverEvent(sink, event);
+        } catch (e) {
+          // Observability is optional. A sink/taxonomy failure must not alter product flow.
+        } finally {
+          if (isCancelled || isTerminal) removeContext(this.generation, this);
         }
       };
+
+      return context;
     }
 
-    var activeContexts = {};
+    function canonicalFailureCode(name, fallback) {
+      try {
+        var tax = getTaxonomy();
+        return tax && tax.FAILURE_CODES && tax.FAILURE_CODES[name]
+          ? tax.FAILURE_CODES[name]
+          : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
 
     return {
       createContext: function(generation) {
@@ -77,18 +132,22 @@
       getContext: function(generation) {
         return activeContexts[generation] || null;
       },
-      mapLoadError: function(errorType) {
-        var tax = window.LoveBudJourneyOutcomeTaxonomy;
-        if (!tax) return 'LB_UNEXPECTED_FAILURE';
+      getActiveContextCount: function() {
+        return Object.keys(activeContexts).length;
+      },
+      mapLoadError: function(errorType, apiAvailable) {
+        if (errorType === 'generic' && apiAvailable === false) {
+          return canonicalFailureCode('LB_JOURNEY_API_UNAVAILABLE', 'LB_UNEXPECTED_FAILURE');
+        }
         switch (errorType) {
-          case 'auth_prepare_failed': return tax.FAILURE_CODES.LB_JOURNEY_AUTH_PREPARE_FAILED;
-          case 'fetch_rejected': return tax.FAILURE_CODES.LB_JOURNEY_NETWORK;
-          case 'parse': return tax.FAILURE_CODES.LB_JOURNEY_RESPONSE_PARSE;
-          case 'invalid_payload': return tax.FAILURE_CODES.LB_JOURNEY_INVALID_PAYLOAD;
-          case 'auth': return tax.FAILURE_CODES.LB_JOURNEY_AUTH_REQUIRED;
-          case 'server': return tax.FAILURE_CODES.LB_JOURNEY_HTTP_5XX;
-          case 'client': return tax.FAILURE_CODES.LB_JOURNEY_HTTP_4XX;
-          default: return tax.FAILURE_CODES.LB_UNEXPECTED_FAILURE;
+          case 'auth_prepare_failed': return canonicalFailureCode('LB_JOURNEY_AUTH_PREPARE_FAILED', 'LB_UNEXPECTED_FAILURE');
+          case 'fetch_rejected': return canonicalFailureCode('LB_JOURNEY_NETWORK', 'LB_UNEXPECTED_FAILURE');
+          case 'parse': return canonicalFailureCode('LB_JOURNEY_RESPONSE_PARSE', 'LB_UNEXPECTED_FAILURE');
+          case 'invalid_payload': return canonicalFailureCode('LB_JOURNEY_INVALID_PAYLOAD', 'LB_UNEXPECTED_FAILURE');
+          case 'auth': return canonicalFailureCode('LB_JOURNEY_AUTH_REQUIRED', 'LB_UNEXPECTED_FAILURE');
+          case 'server': return canonicalFailureCode('LB_JOURNEY_HTTP_5XX', 'LB_UNEXPECTED_FAILURE');
+          case 'client': return canonicalFailureCode('LB_JOURNEY_HTTP_4XX', 'LB_UNEXPECTED_FAILURE');
+          default: return canonicalFailureCode('LB_UNEXPECTED_FAILURE', 'LB_UNEXPECTED_FAILURE');
         }
       }
     };
@@ -239,7 +298,12 @@
    * request. Used on pagehide so pre-restore loads cannot write after restore.
    */
   function markOwnerListEpochStale() {
+    var staleGeneration = ownerListGeneration;
     ownerListGeneration += 1;
+    if (activeOwnerListLoad && activeOwnerListLoad.generation === staleGeneration) {
+      var staleContext = MyTreesJourneyTracker.getContext(staleGeneration);
+      if (staleContext) staleContext.recordStage('CANCELLED');
+    }
   }
 
   function hasVisibleLoadedCards() {
@@ -361,7 +425,7 @@
   /**
    * Extract a numeric HTTP status from an error object.
    * Supports: error.status, error.statusCode, error.response?.status.
-   * Returns 0 if no status is extractable.
+   * Returns undefined if no bounded status is extractable.
    */
   function extractHttpStatus(error) {
     if (!error) return undefined;
@@ -404,7 +468,6 @@
     options = options || {};
     var supersedeStaleLoad = options.supersedeStaleLoad === true;
     var reason = options.reason || null;
-    var tax = window.LoveBudJourneyOutcomeTaxonomy;
 
     // Coalesce concurrent loads.
     if (activeOwnerListLoad && activeOwnerListLoad.promise) {
@@ -434,7 +497,7 @@
             statusClass: 'none',
             resultCountBucket: 'unknown'
           });
-          if (activeCtx) activeCtx.recordStage(tax.STAGES.DUPLICATE_SUPPRESSED);
+          if (activeCtx) activeCtx.recordStage('DUPLICATE_SUPPRESSED');
           return activeOwnerListLoad.promise;
         }
         emitLifecycleDiagnostic({
@@ -447,10 +510,10 @@
           statusClass: 'none',
           resultCountBucket: 'unknown'
         });
-        if (activeCtx) activeCtx.recordStage(tax.STAGES.CANCELLED);
+        if (activeCtx) activeCtx.recordStage('CANCELLED');
         // Fall through: start a new generation without awaiting the stale load.
       } else {
-        if (activeCtx) activeCtx.recordStage(tax.STAGES.DUPLICATE_SUPPRESSED);
+        if (activeCtx) activeCtx.recordStage('DUPLICATE_SUPPRESSED');
         return activeOwnerListLoad.promise;
       }
     }
@@ -459,9 +522,7 @@
     var ctx = MyTreesJourneyTracker.createContext(generation);
 
     var runPromise = (async function runOwnerListLoad() {
-      if (tax && stillCurrent()) {
-        ctx.recordStage(tax.STAGES.ACTION_STARTED);
-      }
+      if (stillCurrent()) ctx.recordStage('ACTION_STARTED');
       var cache = window.LoveBudCache;
       var i18n = getI18n(options);
       var setState = options.setState;
@@ -507,7 +568,7 @@
       // instead of blanking the page into LOADING.
       if (!stillCurrent()) {
         ignoreIfStale('stale_result_ignored');
-        ctx.recordStage(tax.STAGES.CANCELLED);
+        ctx.recordStage('CANCELLED');
         return;
       }
       if (cachedTrees && Array.isArray(cachedTrees) && typeof renderTrees === 'function') {
@@ -524,8 +585,8 @@
 
         if (window.apiClient && window.apiClient.getTrees) {
           if (stillCurrent()) {
-            ctx.recordStage(tax.STAGES.CLIENT_VALIDATION_PASSED);
-            ctx.recordStage(tax.STAGES.REQUEST_DISPATCHED);
+            ctx.recordStage('CLIENT_VALIDATION_PASSED');
+            ctx.recordStage('REQUEST_DISPATCHED');
           }
           trees = await window.apiClient.getTrees({
             onLifecycle: function(meta) {
@@ -539,13 +600,13 @@
 
         // Await returned after possible supersede — refuse stale writes.
         if (ignoreIfStale('stale_result_ignored')) {
-          ctx.recordStage(tax.STAGES.CANCELLED);
+          ctx.recordStage('CANCELLED');
           return;
         }
 
         if (Array.isArray(trees)) {
           if (stillCurrent()) {
-            ctx.recordStage(tax.STAGES.RESPONSE_ACCEPTED, {
+            ctx.recordStage('RESPONSE_ACCEPTED', {
               resultCountBucket: trees.length > 0 ? 'positive' : 'zero'
             });
           }
@@ -561,18 +622,18 @@
           }
 
           if (stillCurrent()) {
-            ctx.recordStage(tax.STAGES.CLIENT_STATE_UPDATED);
-            ctx.recordStage(tax.STAGES.NOT_MEASURABLE);
+            ctx.recordStage('CLIENT_STATE_UPDATED');
+            ctx.recordStage('NOT_MEASURABLE');
             var expectedState = trees.length > 0 ? 'loaded' : 'empty';
             var acknowledged = typeof options.acknowledgeUi === 'function'
               ? options.acknowledgeUi(expectedState)
               : false;
             if (acknowledged && stillCurrent()) {
-              ctx.recordStage(tax.STAGES.UI_ACKNOWLEDGED);
-              ctx.recordStage(tax.STAGES.TERMINAL_SUCCESS);
+              ctx.recordStage('UI_ACKNOWLEDGED');
+              ctx.recordStage('TERMINAL_SUCCESS');
             } else if (stillCurrent()) {
-              ctx.recordStage(tax.STAGES.TERMINAL_FAILURE, {
-                failureCode: tax.FAILURE_CODES.LB_UNEXPECTED_FAILURE
+              ctx.recordStage('TERMINAL_FAILURE', {
+                failureCode: 'LB_UNEXPECTED_FAILURE'
               });
             }
           }
@@ -610,23 +671,18 @@
       } catch (e) {
         // Stale generation: never surface ERROR/EMPTY/toast from pre-restore loads.
         if (ignoreIfStale('stale_result_ignored')) {
-          ctx.recordStage(tax.STAGES.CANCELLED);
+          ctx.recordStage('CANCELLED');
           return;
         }
 
         var errorType = classifyLoadError(e);
         console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
 
-        if (tax) {
-          var failCode = MyTreesJourneyTracker.mapLoadError(errorType);
-          if (errorType === 'generic' && !window.apiClient) {
-            failCode = tax.FAILURE_CODES.LB_JOURNEY_API_UNAVAILABLE;
-          }
-          ctx.recordStage(tax.STAGES.TERMINAL_FAILURE, {
-            failureCode: failCode,
-            httpStatus: extractHttpStatus(e)
-          });
-        }
+        var failCode = MyTreesJourneyTracker.mapLoadError(errorType, !!(window.apiClient && window.apiClient.getTrees));
+        ctx.recordStage('TERMINAL_FAILURE', {
+          failureCode: failCode,
+          httpStatus: extractHttpStatus(e)
+        });
 
         var errorAttempt = Number(e._attempt) || requestLifecycle.attempt;
         var errorRetried = e._retried === true || requestLifecycle.retried;

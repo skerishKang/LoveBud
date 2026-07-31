@@ -83,6 +83,18 @@
     NOT_MEASURABLE: 'NOT_MEASURABLE'
   });
 
+  var OUTCOME_EVENT_FIELDS = Object.freeze([
+    'journey',
+    'stage',
+    'statusClass',
+    'expectationClass',
+    'severity',
+    'failureCode',
+    'httpStatus',
+    'latencyBucket',
+    'resultCountBucket'
+  ]);
+
   var FAILURE_CODES = Object.freeze({
     NONE: 'NONE',
     LB_JOURNEY_AUTH_REQUIRED: 'LB_JOURNEY_AUTH_REQUIRED',
@@ -138,6 +150,79 @@
     return typeof value === 'string' && FAILURE_CODE_SET.has(value);
   }
 
+  function buildBoundedEvent(opts) {
+    opts = opts || {};
+    var stage = STAGE_SET.has(opts.stage) ? opts.stage : STAGES.TERMINAL_FAILURE;
+    var isTerminalSuccess = stage === STAGES.TERMINAL_SUCCESS;
+    var isTerminalFailure = stage === STAGES.TERMINAL_FAILURE;
+
+    var statusClass;
+    if (isTerminalSuccess) {
+      statusClass = STATUS_CLASSES.HEALTHY;
+    } else if (isTerminalFailure) {
+      statusClass = STATUS_CLASSES.FAILED;
+    } else {
+      statusClass = STATUS_CLASS_SET.has(opts.statusClass)
+        ? opts.statusClass
+        : STATUS_CLASSES.HEALTHY;
+    }
+
+    var expectationClass;
+    if (isTerminalSuccess) {
+      expectationClass = EXPECTATION_CLASSES.EXPECTED_SUCCESS;
+    } else if (isTerminalFailure) {
+      expectationClass = EXPECTATION_CLASSES.UNEXPECTED_FAILURE;
+    } else {
+      expectationClass = EXPECTATION_CLASS_SET.has(opts.expectationClass)
+        ? opts.expectationClass
+        : EXPECTATION_CLASSES.EXPECTED_SUCCESS;
+    }
+
+    var severity;
+    if (isTerminalSuccess) {
+      severity = SEVERITY_CLASSES.INFO;
+    } else if (isTerminalFailure) {
+      severity = SEVERITY_CLASSES.ERROR;
+    } else {
+      severity = SEVERITY_CLASS_SET.has(opts.severity)
+        ? opts.severity
+        : SEVERITY_CLASSES.INFO;
+    }
+
+    var failureCode;
+    if (isTerminalSuccess) {
+      failureCode = FAILURE_CODES.NONE;
+    } else if (isTerminalFailure) {
+      failureCode = normalizeFailureCode(opts.failureCode);
+    } else {
+      failureCode = isAllowedFailureCode(opts.failureCode) ? opts.failureCode : FAILURE_CODES.NONE;
+    }
+
+    var httpStatus = HTTP_STATUS_CLASS_SET.has(opts.httpStatus)
+      ? opts.httpStatus
+      : classifyHttpStatus(opts.httpStatus);
+
+    var latencyBucket = LATENCY_BUCKET_SET.has(opts.latencyBucket)
+      ? opts.latencyBucket
+      : classifyLatency(opts.latencyMs);
+
+    var resultCountBucket = opts.resultCountBucket === 'positive' || opts.resultCountBucket === 'zero'
+      ? opts.resultCountBucket
+      : 'unknown';
+
+    return Object.freeze({
+      journey: JOURNEYS.JOURNEY_AUTHENTICATED_MY_TREES_LOAD,
+      stage: stage,
+      statusClass: statusClass,
+      expectationClass: expectationClass,
+      severity: severity,
+      failureCode: failureCode,
+      httpStatus: httpStatus,
+      latencyBucket: latencyBucket,
+      resultCountBucket: resultCountBucket
+    });
+  }
+
   window.LoveBudJourneyOutcomeTaxonomy = Object.freeze({
     CONTRACT_VERSION: CONTRACT_VERSION,
     STATUS_CLASSES: STATUS_CLASSES,
@@ -147,6 +232,7 @@
     HTTP_STATUS_CLASSES: HTTP_STATUS_CLASSES,
     JOURNEYS: JOURNEYS,
     STAGES: STAGES,
+    OUTCOME_EVENT_FIELDS: OUTCOME_EVENT_FIELDS,
     FAILURE_CODES: FAILURE_CODES,
     STATUS_CLASS_SET: STATUS_CLASS_SET,
     EXPECTATION_CLASS_SET: EXPECTATION_CLASS_SET,
@@ -160,65 +246,6 @@
     classifyHttpStatus: classifyHttpStatus,
     normalizeFailureCode: normalizeFailureCode,
     isAllowedFailureCode: isAllowedFailureCode,
-    buildBoundedEvent: function(opts) {
-      opts = opts || {};
-      var stage = STAGE_SET.has(opts.stage) ? opts.stage : STAGES.TERMINAL_FAILURE;
-      var isTerminalSuccess = stage === STAGES.TERMINAL_SUCCESS;
-      var isTerminalFailure = stage === STAGES.TERMINAL_FAILURE;
-
-      var statusClass;
-      if (STATUS_CLASS_SET.has(opts.statusClass)) {
-        statusClass = opts.statusClass;
-      } else {
-        statusClass = isTerminalFailure ? STATUS_CLASSES.FAILED : STATUS_CLASSES.HEALTHY;
-      }
-
-      var expectationClass;
-      if (EXPECTATION_CLASS_SET.has(opts.expectationClass)) {
-        expectationClass = opts.expectationClass;
-      } else {
-        expectationClass = isTerminalFailure ? EXPECTATION_CLASSES.UNEXPECTED_FAILURE : EXPECTATION_CLASSES.EXPECTED_SUCCESS;
-      }
-
-      var severity;
-      if (SEVERITY_CLASS_SET.has(opts.severity)) {
-        severity = opts.severity;
-      } else {
-        severity = isTerminalFailure ? SEVERITY_CLASSES.ERROR : SEVERITY_CLASSES.INFO;
-      }
-
-      var failureCode;
-      if (isTerminalSuccess) {
-        failureCode = FAILURE_CODES.NONE;
-      } else if (isTerminalFailure) {
-        failureCode = normalizeFailureCode(opts.failureCode);
-      } else {
-        failureCode = isAllowedFailureCode(opts.failureCode) ? opts.failureCode : FAILURE_CODES.NONE;
-      }
-
-      var httpStatus = HTTP_STATUS_CLASS_SET.has(opts.httpStatus)
-        ? opts.httpStatus
-        : classifyHttpStatus(opts.httpStatus);
-
-      var latencyBucket = LATENCY_BUCKET_SET.has(opts.latencyBucket)
-        ? opts.latencyBucket
-        : classifyLatency(opts.latencyMs);
-
-      var resultCountBucket = opts.resultCountBucket === 'positive' || opts.resultCountBucket === 'zero'
-        ? opts.resultCountBucket
-        : 'unknown';
-
-      return Object.freeze({
-        journey: JOURNEYS.JOURNEY_AUTHENTICATED_MY_TREES_LOAD,
-        stage: stage,
-        statusClass: statusClass,
-        expectationClass: expectationClass,
-        severity: severity,
-        failureCode: failureCode,
-        httpStatus: httpStatus,
-        latencyBucket: latencyBucket,
-        resultCountBucket: resultCountBucket
-      });
-    }
+    buildBoundedEvent: buildBoundedEvent
   });
 })();
