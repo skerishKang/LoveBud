@@ -1,0 +1,298 @@
+'use strict';
+
+// This module is deliberately a pure vocabulary boundary. It does not access
+// external state or emit output at import time. The smoke runner owns I/O; this
+// file owns only canonical classification.
+
+function makeFrozenSet(values) {
+  const target = new Set(values);
+  const rejectMutation = () => {
+    throw new TypeError('Canonical set is immutable');
+  };
+  const readonlySet = new Proxy(target, {
+    get(current, property) {
+      if (property === 'add' || property === 'delete' || property === 'clear') {
+        return rejectMutation;
+      }
+      const value = Reflect.get(current, property, current);
+      return typeof value === 'function' ? value.bind(current) : value;
+    },
+    set() {
+      return false;
+    },
+    defineProperty() {
+      return false;
+    },
+    deleteProperty() {
+      return false;
+    },
+  });
+  Object.freeze(target);
+  return Object.freeze(readonlySet);
+}
+
+const CONTRACT_VERSION = '1';
+
+const STATUS_CLASSES = Object.freeze({
+  HEALTHY: 'HEALTHY',
+  FAILED: 'FAILED',
+});
+
+const EXPECTATION_CLASSES = Object.freeze({
+  EXPECTED_SUCCESS: 'EXPECTED_SUCCESS',
+  UNEXPECTED_FAILURE: 'UNEXPECTED_FAILURE',
+});
+
+const SEVERITY_CLASSES = Object.freeze({
+  INFO: 'INFO',
+  ERROR: 'ERROR',
+});
+
+const CONTENT_TYPE_CLASSES = Object.freeze({
+  JSON: 'JSON',
+  CSS: 'CSS',
+  JAVASCRIPT: 'JAVASCRIPT',
+  HTML: 'HTML',
+  OTHER: 'OTHER',
+  NOT_MEASURED: 'NOT_MEASURED',
+});
+
+const RELEASE_MATCH_STATES = Object.freeze({
+  MATCH: 'MATCH',
+  MISMATCH: 'MISMATCH',
+  UNKNOWN: 'UNKNOWN',
+});
+
+const LATENCY_BUCKETS = Object.freeze({
+  LT_250_MS: 'LT_250_MS',
+  LT_500_MS: 'LT_500_MS',
+  LT_1_S: 'LT_1_S',
+  LT_2_S: 'LT_2_S',
+  LT_5_S: 'LT_5_S',
+  GTE_5_S: 'GTE_5_S',
+  TIMEOUT_OR_UNKNOWN: 'TIMEOUT_OR_UNKNOWN',
+});
+
+const HTTP_STATUS_CLASSES = Object.freeze({
+  HTTP_2XX: 'HTTP_2XX',
+  HTTP_3XX: 'HTTP_3XX',
+  HTTP_4XX: 'HTTP_4XX',
+  HTTP_5XX: 'HTTP_5XX',
+  HTTP_OTHER: 'HTTP_OTHER',
+  NOT_MEASURED: 'NOT_MEASURED',
+});
+
+const SANITIZED_ERROR_CODES = Object.freeze({
+  NONE: 'NONE',
+
+  LB_INPUT_URL_MISSING: 'LB_INPUT_URL_MISSING',
+  LB_INPUT_URL_INVALID: 'LB_INPUT_URL_INVALID',
+  LB_INPUT_URL_DISALLOWED: 'LB_INPUT_URL_DISALLOWED',
+  LB_INPUT_SHA_MISSING: 'LB_INPUT_SHA_MISSING',
+  LB_INPUT_SHA_INVALID: 'LB_INPUT_SHA_INVALID',
+  LB_INPUT_TIMEOUT_INVALID: 'LB_INPUT_TIMEOUT_INVALID',
+  LB_INPUT_INVALID: 'LB_INPUT_INVALID',
+
+  LB_MANIFEST_TIMEOUT: 'LB_MANIFEST_TIMEOUT',
+  LB_MANIFEST_NETWORK_ERROR: 'LB_MANIFEST_NETWORK_ERROR',
+  LB_MANIFEST_HTTP_STATUS: 'LB_MANIFEST_HTTP_STATUS',
+  LB_MANIFEST_CONTENT_TYPE: 'LB_MANIFEST_CONTENT_TYPE',
+  LB_MANIFEST_CACHE_POLICY: 'LB_MANIFEST_CACHE_POLICY',
+  LB_MANIFEST_BODY_READ_ERROR: 'LB_MANIFEST_BODY_READ_ERROR',
+  LB_MANIFEST_PARSE_ERROR: 'LB_MANIFEST_PARSE_ERROR',
+  LB_MANIFEST_SCHEMA_KEYS: 'LB_MANIFEST_SCHEMA_KEYS',
+  LB_MANIFEST_CONTRACT_VERSION: 'LB_MANIFEST_CONTRACT_VERSION',
+  LB_MANIFEST_SHA_FORMAT: 'LB_MANIFEST_SHA_FORMAT',
+  LB_MANIFEST_FORBIDDEN_KEY: 'LB_MANIFEST_FORBIDDEN_KEY',
+  LB_MANIFEST_NONCE_INCONSISTENCY: 'LB_MANIFEST_NONCE_INCONSISTENCY',
+  LB_MANIFEST_SHA_MISMATCH: 'LB_MANIFEST_SHA_MISMATCH',
+
+  LB_ROUTE_RESPONSE_TIMEOUT: 'LB_ROUTE_RESPONSE_TIMEOUT',
+  LB_ROUTE_RESPONSE_NETWORK: 'LB_ROUTE_RESPONSE_NETWORK',
+  LB_ROUTE_RESPONSE_HTTP_5XX: 'LB_ROUTE_RESPONSE_HTTP_5XX',
+  LB_ROUTE_RESPONSE_HTTP_4XX: 'LB_ROUTE_RESPONSE_HTTP_4XX',
+  LB_ROUTE_BODY_MISSING: 'LB_ROUTE_BODY_MISSING',
+
+  LB_STATIC_ASSET_TIMEOUT: 'LB_STATIC_ASSET_TIMEOUT',
+  LB_STATIC_ASSET_NETWORK: 'LB_STATIC_ASSET_NETWORK',
+  LB_STATIC_ASSET_MISSING_ASSET: 'LB_STATIC_ASSET_MISSING_ASSET',
+  LB_STATIC_ASSET_CONTENT_TYPE: 'LB_STATIC_ASSET_CONTENT_TYPE',
+
+  BROWSER_FATAL_ERROR: 'BROWSER_FATAL_ERROR',
+  BROWSER_CONSOLE_ERROR: 'BROWSER_CONSOLE_ERROR',
+  BROWSER_HTTP_BLOCKER: 'BROWSER_HTTP_BLOCKER',
+  BROWSER_NETWORK_FAILURE: 'BROWSER_NETWORK_FAILURE',
+  BROWSER_HORIZONTAL_OVERFLOW: 'BROWSER_HORIZONTAL_OVERFLOW',
+
+  LB_UNEXPECTED_FAILURE: 'LB_UNEXPECTED_FAILURE',
+});
+
+const SANITIZED_ERROR_CODE_FAMILIES = Object.freeze({
+  NONE: Object.freeze([SANITIZED_ERROR_CODES.NONE]),
+  INPUT: Object.freeze([
+    SANITIZED_ERROR_CODES.LB_INPUT_URL_MISSING,
+    SANITIZED_ERROR_CODES.LB_INPUT_URL_INVALID,
+    SANITIZED_ERROR_CODES.LB_INPUT_URL_DISALLOWED,
+    SANITIZED_ERROR_CODES.LB_INPUT_SHA_MISSING,
+    SANITIZED_ERROR_CODES.LB_INPUT_SHA_INVALID,
+    SANITIZED_ERROR_CODES.LB_INPUT_TIMEOUT_INVALID,
+    SANITIZED_ERROR_CODES.LB_INPUT_INVALID,
+  ]),
+  MANIFEST: Object.freeze([
+    SANITIZED_ERROR_CODES.LB_MANIFEST_TIMEOUT,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_NETWORK_ERROR,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_HTTP_STATUS,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_CONTENT_TYPE,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_CACHE_POLICY,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_BODY_READ_ERROR,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_PARSE_ERROR,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_SCHEMA_KEYS,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_CONTRACT_VERSION,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_SHA_FORMAT,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_FORBIDDEN_KEY,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_NONCE_INCONSISTENCY,
+    SANITIZED_ERROR_CODES.LB_MANIFEST_SHA_MISMATCH,
+  ]),
+  ROUTE: Object.freeze([
+    SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_TIMEOUT,
+    SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_NETWORK,
+    SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_HTTP_5XX,
+    SANITIZED_ERROR_CODES.LB_ROUTE_RESPONSE_HTTP_4XX,
+    SANITIZED_ERROR_CODES.LB_ROUTE_BODY_MISSING,
+  ]),
+  STATIC: Object.freeze([
+    SANITIZED_ERROR_CODES.LB_STATIC_ASSET_TIMEOUT,
+    SANITIZED_ERROR_CODES.LB_STATIC_ASSET_NETWORK,
+    SANITIZED_ERROR_CODES.LB_STATIC_ASSET_MISSING_ASSET,
+    SANITIZED_ERROR_CODES.LB_STATIC_ASSET_CONTENT_TYPE,
+  ]),
+  BROWSER: Object.freeze([
+    SANITIZED_ERROR_CODES.BROWSER_FATAL_ERROR,
+    SANITIZED_ERROR_CODES.BROWSER_CONSOLE_ERROR,
+    SANITIZED_ERROR_CODES.BROWSER_HTTP_BLOCKER,
+    SANITIZED_ERROR_CODES.BROWSER_NETWORK_FAILURE,
+    SANITIZED_ERROR_CODES.BROWSER_HORIZONTAL_OVERFLOW,
+  ]),
+  UNEXPECTED: Object.freeze([SANITIZED_ERROR_CODES.LB_UNEXPECTED_FAILURE]),
+});
+
+const SANITIZED_ERROR_CODE_ALLOWLIST = Object.freeze([
+  ...SANITIZED_ERROR_CODE_FAMILIES.NONE,
+  ...SANITIZED_ERROR_CODE_FAMILIES.INPUT,
+  ...SANITIZED_ERROR_CODE_FAMILIES.MANIFEST,
+  ...SANITIZED_ERROR_CODE_FAMILIES.ROUTE,
+  ...SANITIZED_ERROR_CODE_FAMILIES.STATIC,
+  ...SANITIZED_ERROR_CODE_FAMILIES.BROWSER,
+  ...SANITIZED_ERROR_CODE_FAMILIES.UNEXPECTED,
+]);
+
+const STATUS_CLASS_SET = makeFrozenSet(Object.values(STATUS_CLASSES));
+const EXPECTATION_CLASS_SET = makeFrozenSet(Object.values(EXPECTATION_CLASSES));
+const SEVERITY_CLASS_SET = makeFrozenSet(Object.values(SEVERITY_CLASSES));
+const CONTENT_TYPE_CLASS_SET = makeFrozenSet(Object.values(CONTENT_TYPE_CLASSES));
+const RELEASE_MATCH_STATE_SET = makeFrozenSet(Object.values(RELEASE_MATCH_STATES));
+const LATENCY_BUCKET_SET = makeFrozenSet(Object.values(LATENCY_BUCKETS));
+const HTTP_STATUS_CLASS_SET = makeFrozenSet(Object.values(HTTP_STATUS_CLASSES));
+const SANITIZED_ERROR_CODE_SET = makeFrozenSet(SANITIZED_ERROR_CODE_ALLOWLIST);
+
+function classifyLatency(ms) {
+  if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) {
+    return LATENCY_BUCKETS.TIMEOUT_OR_UNKNOWN;
+  }
+  if (ms < 250) return LATENCY_BUCKETS.LT_250_MS;
+  if (ms < 500) return LATENCY_BUCKETS.LT_500_MS;
+  if (ms < 1000) return LATENCY_BUCKETS.LT_1_S;
+  if (ms < 2000) return LATENCY_BUCKETS.LT_2_S;
+  if (ms < 5000) return LATENCY_BUCKETS.LT_5_S;
+  return LATENCY_BUCKETS.GTE_5_S;
+}
+
+function classifyHttpStatus(status) {
+  if (typeof status !== 'number' || !Number.isFinite(status) || !Number.isInteger(status)) {
+    return HTTP_STATUS_CLASSES.NOT_MEASURED;
+  }
+  if (status >= 200 && status <= 299) return HTTP_STATUS_CLASSES.HTTP_2XX;
+  if (status >= 300 && status <= 399) return HTTP_STATUS_CLASSES.HTTP_3XX;
+  if (status >= 400 && status <= 499) return HTTP_STATUS_CLASSES.HTTP_4XX;
+  if (status >= 500 && status <= 599) return HTTP_STATUS_CLASSES.HTTP_5XX;
+  return HTTP_STATUS_CLASSES.HTTP_OTHER;
+}
+
+function classifyContentType(contentType) {
+  if (typeof contentType !== 'string' || contentType.length === 0) {
+    return CONTENT_TYPE_CLASSES.NOT_MEASURED;
+  }
+  const lowerContentType = contentType.toLowerCase();
+  if (lowerContentType.includes('application/json')) return CONTENT_TYPE_CLASSES.JSON;
+  if (lowerContentType.includes('text/css')) return CONTENT_TYPE_CLASSES.CSS;
+  if (lowerContentType.includes('javascript')) return CONTENT_TYPE_CLASSES.JAVASCRIPT;
+  if (lowerContentType.includes('text/html')) return CONTENT_TYPE_CLASSES.HTML;
+  return CONTENT_TYPE_CLASSES.OTHER;
+}
+
+function classifyReleaseMatch(expectedReleaseSha, observedReleaseSha) {
+  if (typeof expectedReleaseSha !== 'string' || expectedReleaseSha.length === 0) {
+    return RELEASE_MATCH_STATES.UNKNOWN;
+  }
+  if (typeof observedReleaseSha !== 'string' || observedReleaseSha.length === 0) {
+    return RELEASE_MATCH_STATES.UNKNOWN;
+  }
+  return expectedReleaseSha === observedReleaseSha
+    ? RELEASE_MATCH_STATES.MATCH
+    : RELEASE_MATCH_STATES.MISMATCH;
+}
+
+function normalizeSanitizedErrorCode(value) {
+  return typeof value === 'string' && SANITIZED_ERROR_CODE_SET.has(value)
+    ? value
+    : SANITIZED_ERROR_CODES.LB_UNEXPECTED_FAILURE;
+}
+
+function isAllowedSanitizedErrorCode(value) {
+  return typeof value === 'string' && SANITIZED_ERROR_CODE_SET.has(value);
+}
+
+function statusClassFor(isHealthy) {
+  return isHealthy === true ? STATUS_CLASSES.HEALTHY : STATUS_CLASSES.FAILED;
+}
+
+function expectationClassFor(isUnexpectedFailure) {
+  return isUnexpectedFailure === true
+    ? EXPECTATION_CLASSES.UNEXPECTED_FAILURE
+    : EXPECTATION_CLASSES.EXPECTED_SUCCESS;
+}
+
+function severityFor(isError) {
+  return isError === true ? SEVERITY_CLASSES.ERROR : SEVERITY_CLASSES.INFO;
+}
+
+module.exports = Object.freeze({
+  CONTRACT_VERSION,
+  STATUS_CLASSES,
+  EXPECTATION_CLASSES,
+  SEVERITY_CLASSES,
+  CONTENT_TYPE_CLASSES,
+  RELEASE_MATCH_STATES,
+  LATENCY_BUCKETS,
+  HTTP_STATUS_CLASSES,
+  SANITIZED_ERROR_CODES,
+  SANITIZED_ERROR_CODE_FAMILIES,
+  SANITIZED_ERROR_CODE_ALLOWLIST,
+  STATUS_CLASS_SET,
+  EXPECTATION_CLASS_SET,
+  SEVERITY_CLASS_SET,
+  CONTENT_TYPE_CLASS_SET,
+  RELEASE_MATCH_STATE_SET,
+  LATENCY_BUCKET_SET,
+  HTTP_STATUS_CLASS_SET,
+  SANITIZED_ERROR_CODE_SET,
+  classifyLatency,
+  classifyHttpStatus,
+  classifyContentType,
+  classifyReleaseMatch,
+  normalizeSanitizedErrorCode,
+  isAllowedSanitizedErrorCode,
+  statusClassFor,
+  expectationClassFor,
+  severityFor,
+});
