@@ -134,10 +134,16 @@ async function newSettingsPage(options) {
   const viewport = opts.viewport || { width: 1440, height: 900 };
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
-  const errors = { page: [], console: [] };
+  const errors = { page: [], console: [], requestFailures: [], httpBlockers: [] };
   page.on('pageerror', function(error) { errors.page.push(error.message); });
   page.on('console', function(message) {
     if (message.type() === 'error') errors.console.push(message.text());
+  });
+  page.on('requestfailed', function(request) {
+    if (request.url().indexOf(baseUrl) === 0) errors.requestFailures.push(request.resourceType());
+  });
+  page.on('response', function(response) {
+    if (response.status() >= 400 && response.url().indexOf(baseUrl) === 0) errors.httpBlockers.push(response.status());
   });
   await page.route('https://www.gstatic.com/**', async function(route) {
     await route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* controlled Firebase fixture */' });
@@ -165,6 +171,88 @@ async function closeFixture(fixture) {
 function assertNoErrors(fixture, label) {
   assert.deepEqual(fixture.errors.page, [], label + ' pageerror must be 0');
   assert.deepEqual(fixture.errors.console, [], label + ' console error must be 0');
+}
+
+function assertBrowserHealth(fixture, label) {
+  assert.deepEqual(fixture.errors.page, [], label + ' pageerror must be 0');
+  assert.deepEqual(fixture.errors.console, [], label + ' console error must be 0');
+  assert.deepEqual(fixture.errors.requestFailures, [], label + ' same-origin request failure must be 0');
+  assert.deepEqual(fixture.errors.httpBlockers, [], label + ' same-origin HTTP status >=400 must be 0');
+}
+
+async function collectStructuralBaseline(page) {
+  return page.evaluate(function() {
+    function byId(id) { return document.getElementById(id); }
+    function rect(el) {
+      var r = el.getBoundingClientRect();
+      return { left: r.left, top: r.top, right: r.right, width: r.width, height: r.height };
+    }
+    function isVisible(el) {
+      if (!el) return false;
+      var style = window.getComputedStyle(el);
+      if (style.display === 'none') return false;
+      if (style.visibility === 'hidden' || style.visibility === 'collapse') return false;
+      if (parseFloat(style.opacity) === 0) return false;
+      if (el.getClientRects().length === 0) return false;
+      var r = el.getBoundingClientRect();
+      return r.width > 0 && r.height > 0;
+    }
+    function box(id) {
+      var el = byId(id);
+      if (!el) return { exists: false };
+      return { exists: true, visible: isVisible(el), rect: rect(el) };
+    }
+    function controlInfo(id) {
+      var el = byId(id);
+      if (!el) return { exists: false };
+      var visible = isVisible(el);
+      var disabled = !!el.disabled;
+      var focusable = null;
+      if (visible && !disabled) {
+        el.focus({ preventScroll: true });
+        focusable = (document.activeElement === el);
+      }
+      var accessibleName = (el.getAttribute('aria-label') || el.textContent || '').trim();
+      return {
+        exists: true,
+        visible: visible,
+        rect: rect(el),
+        disabled: disabled,
+        tabindex: el.getAttribute('tabindex'),
+        focusable: focusable,
+        accessibleNameLength: accessibleName.length
+      };
+    }
+    var profileSection = byId('settingsProfileSection');
+    var accountSection = byId('settingsAccountSection');
+    var profileBeforeAccount = !!(profileSection && accountSection &&
+      (profileSection.compareDocumentPosition(accountSection) & Node.DOCUMENT_POSITION_FOLLOWING));
+    return {
+      clientWidth: document.documentElement.clientWidth,
+      docScrollWidth: document.documentElement.scrollWidth,
+      mainSurface: box('settingsContent'),
+      profile: {
+        section: box('settingsProfileSection'),
+        heading: box('settingsProfileTitle'),
+        name: box('settingsProfileName'),
+        avatar: box('settingsProfileAvatar')
+      },
+      account: {
+        section: box('settingsAccountSection'),
+        heading: box('settingsAccountTitle'),
+        email: box('settingsAccountEmailValue'),
+        accountId: box('settingsAccountIdValue'),
+        signIn: box('settingsAccountSignInValue')
+      },
+      profileBeforeAccount: profileBeforeAccount,
+      controls: {
+        displayNameEdit: controlInfo('settingsProfileEditBtn'),
+        passwordReset: controlInfo('settingsPasswordResetBtn'),
+        signOut: controlInfo('logout-btn'),
+        close: controlInfo('settingsCloseBtn')
+      }
+    };
+  });
 }
 
 before(async function() {
@@ -392,6 +480,82 @@ test('desktop and mobile have no document or body horizontal overflow', async fu
       assert.ok(widths.docScroll <= widths.docClient, JSON.stringify({ viewport, widths }));
       assert.ok(widths.bodyScroll <= widths.bodyClient, JSON.stringify({ viewport, widths }));
       assertNoErrors(fixture, viewport.width + 'x' + viewport.height);
+    } finally { await closeFixture(fixture); }
+  }
+});
+
+test('desktop and mobile structural baseline: shell, Profile/Account geometry, order, controls, overflow', async function() {
+  const viewports = [
+    { label: 'desktop', width: 1440, height: 900 },
+    { label: 'mobile', width: 390, height: 844 }
+  ];
+  const EDGE_EPS = 1;
+  for (const vp of viewports) {
+    const fixture = await newSettingsPage({ user: ACCOUNTS.enLinked, lang: 'en', viewport: { width: vp.width, height: vp.height } });
+    try {
+      const b = await collectStructuralBaseline(fixture.page);
+
+      assert.ok(b.docScrollWidth <= b.clientWidth, vp.label + ' document horizontal overflow must be 0');
+
+      assert.equal(b.mainSurface.exists, true, vp.label + ' main surface exists');
+      assert.equal(b.mainSurface.visible, true, vp.label + ' main surface visible');
+      assert.ok(b.mainSurface.rect.width > 0, vp.label + ' main surface width > 0');
+      assert.ok(b.mainSurface.rect.height > 0, vp.label + ' main surface height > 0');
+      assert.ok(b.mainSurface.rect.left >= -EDGE_EPS, vp.label + ' main surface not pushed past left edge');
+      assert.ok(b.mainSurface.rect.top >= -EDGE_EPS, vp.label + ' main surface not pushed past top edge');
+      assert.ok(b.mainSurface.rect.right <= b.clientWidth + EDGE_EPS, vp.label + ' main surface not clipped past right edge');
+
+      assert.equal(b.profile.section.exists, true, vp.label + ' profile section exists');
+      assert.equal(b.profile.section.visible, true, vp.label + ' profile section visible');
+      assert.ok(b.profile.section.rect.width > 0, vp.label + ' profile section width > 0');
+      assert.ok(b.profile.section.rect.height > 0, vp.label + ' profile section height > 0');
+      assert.ok(b.profile.section.rect.left >= -EDGE_EPS, vp.label + ' profile section within left bound');
+      assert.ok(b.profile.section.rect.right <= b.clientWidth + EDGE_EPS, vp.label + ' profile section within right bound');
+      assert.equal(b.profile.heading.exists, true, vp.label + ' profile heading exists');
+      assert.equal(b.profile.heading.visible, true, vp.label + ' profile heading visible');
+      assert.equal(b.profile.name.exists, true, vp.label + ' profile name area exists');
+      assert.equal(b.profile.name.visible, true, vp.label + ' profile name area visible');
+      assert.equal(b.profile.avatar.exists, true, vp.label + ' profile avatar/initials area exists');
+      assert.equal(b.profile.avatar.visible, true, vp.label + ' profile avatar/initials area visible');
+      assert.ok(b.profile.avatar.rect.width > 0 && b.profile.avatar.rect.height > 0, vp.label + ' avatar non-zero geometry');
+
+      assert.equal(b.account.section.exists, true, vp.label + ' account section exists');
+      assert.equal(b.account.section.visible, true, vp.label + ' account section visible');
+      assert.ok(b.account.section.rect.width > 0, vp.label + ' account section width > 0');
+      assert.ok(b.account.section.rect.height > 0, vp.label + ' account section height > 0');
+      assert.ok(b.account.section.rect.left >= -EDGE_EPS, vp.label + ' account section within left bound');
+      assert.ok(b.account.section.rect.right <= b.clientWidth + EDGE_EPS, vp.label + ' account section within right bound');
+      assert.equal(b.account.heading.exists, true, vp.label + ' account heading exists');
+      assert.equal(b.account.heading.visible, true, vp.label + ' account heading visible');
+      assert.equal(b.account.email.exists, true, vp.label + ' account email area exists');
+      assert.equal(b.account.email.visible, true, vp.label + ' account email area visible');
+      assert.equal(b.account.accountId.exists, true, vp.label + ' read-only account id area exists');
+      assert.equal(b.account.accountId.visible, true, vp.label + ' read-only account id area visible');
+      assert.equal(b.account.signIn.exists, true, vp.label + ' sign-in method area exists');
+      assert.equal(b.account.signIn.visible, true, vp.label + ' sign-in method area visible');
+
+      assert.equal(b.profileBeforeAccount, true, vp.label + ' Profile section precedes Account section');
+
+      const expectedControls = ['displayNameEdit', 'passwordReset', 'signOut', 'close'];
+      for (const key of expectedControls) {
+        const c = b.controls[key];
+        assert.equal(c.exists, true, vp.label + ' control ' + key + ' exists');
+        assert.equal(c.visible, true, vp.label + ' control ' + key + ' visible');
+        assert.ok(c.rect.width > 0, vp.label + ' control ' + key + ' width > 0');
+        assert.ok(c.rect.height > 0, vp.label + ' control ' + key + ' height > 0');
+        assert.ok(c.rect.left >= -EDGE_EPS, vp.label + ' control ' + key + ' within left bound');
+        assert.ok(c.rect.right <= b.clientWidth + EDGE_EPS, vp.label + ' control ' + key + ' within right bound');
+        if (!c.disabled) {
+          assert.equal(c.focusable, true, vp.label + ' control ' + key + ' focusable when not disabled');
+        }
+      }
+
+      const close = b.controls.close;
+      assert.ok(close.accessibleNameLength > 0, vp.label + ' Close has an accessible name');
+      assert.notEqual(close.tabindex, '-1', vp.label + ' Close is not tabindex=-1');
+      assert.equal(close.focusable, true, vp.label + ' Close is keyboard focusable');
+
+      assertBrowserHealth(fixture, vp.label);
     } finally { await closeFixture(fixture); }
   }
 });
