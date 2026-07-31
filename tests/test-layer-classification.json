@@ -521,6 +521,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/database-snapshot-retention-restore-drill-policy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the fixed repository policy docs/ops/DATABASE_SNAPSHOT_RETENTION_RESTORE_DRILL_POLICY.md and asserts, section by section, the classification vocabulary, RPO/RTO bounds, fail-closed recovery-gate states, isolated-restore-first ordering, restore-drill cadence, privacy allowlist/denylist, recovery-type separation, least-privilege roles, and protected issue references; also confirms its own single SOURCE_STATIC registration. Does not execute SQL, open a database, use network/browser/Docker/PostgreSQL, access Production or a provider, or read secrets (#3777).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/deployment-target-page-ownership-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
