@@ -687,35 +687,63 @@ test('#3688 browser: canonical staged loading skeleton runtime', { timeout: 9000
           errors.push(`requestfailed: ${url} - ${request.failure().errorText}`);
         }
       });
+      page.on('response', response => {
+        const url = response.url();
+        if (url.startsWith(`http://127.0.0.1:${port}`) && response.status() >= 400) {
+          errors.push(`response status ${response.status()}: ${url}`);
+        }
+      });
 
       await page.route('**/*', (route) => {
         const url = route.request().url();
         const type = route.request().resourceType();
+        let pathname = '';
+        try { pathname = new URL(url).pathname; } catch(e) {}
 
-        if (url.includes('index.js') || url.includes('my-trees-page-bootstrap.js')) {
+        if (pathname === '/js/search/index.js' || pathname === '/js/my-trees/my-trees-page-bootstrap.js') {
+          route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* inert */' });
           return;
         }
 
         if (url.includes('/api/') || url.includes('googleapis') || url.includes('firebase') || url.includes('identitytoolkit') || url.includes('firestore')) {
           if (type === 'fetch' || type === 'xhr') {
+            route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
             return;
           }
         }
         route.continue();
       });
 
-      await page.goto(`http://127.0.0.1:${port}${ctx.path}`, { waitUntil: 'commit' });
+      await page.goto(`http://127.0.0.1:${port}${ctx.path}`, { waitUntil: 'domcontentloaded' });
 
-      const skeletonSel = ctx.isMyTrees ? '.trees-skeleton-grid .lt-skeleton' : '#resultsList .lt-skeleton';
-      await page.waitForSelector(skeletonSel, { state: 'attached', timeout: 5000 });
+      await page.waitForFunction(({ isMyTrees, reducedMotion }) => {
+        const gridSel = isMyTrees ? '.trees-skeleton-grid' : '#resultsList';
+        const grid = document.querySelector(gridSel);
+        if (!grid) return false;
 
-      await page.waitForFunction((isMyTrees) => {
         const cardSel = isMyTrees ? '.trees-skeleton-grid .search-skeleton-card' : '#resultsList .search-skeleton-card';
         const card = document.querySelector(cardSel);
-        return card && card.getBoundingClientRect().height > 0;
-      }, ctx.isMyTrees, { timeout: 5000 });
+        if (!card) return false;
 
-      await page.waitForTimeout(100);
+        const rect = card.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return false;
+
+        const skeletonBase = card.querySelector('.lt-skeleton');
+        const skeletonMedia = card.querySelector('.lt-skeleton-media');
+        const skeletonTitle = card.querySelector('.lt-skeleton-title');
+        const skeletonText = card.querySelector('.lt-skeleton-text');
+
+        if (!skeletonBase || !skeletonMedia || !skeletonTitle || !skeletonText) return false;
+
+        const mediaCs = getComputedStyle(skeletonMedia);
+        if (reducedMotion === 'reduce') {
+          if (mediaCs.animationName !== 'none') return false;
+        } else {
+          if (!mediaCs.animationName || !mediaCs.animationName.includes('lt-shimmer')) return false;
+        }
+
+        return true;
+      }, { isMyTrees: ctx.isMyTrees, reducedMotion: ctx.reducedMotion }, { timeout: 10000 });
 
       const result = await page.evaluate((isMyTrees) => {
         const gridSel = isMyTrees ? '.trees-skeleton-grid' : '#resultsList';
