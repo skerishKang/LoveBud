@@ -2416,6 +2416,8 @@ test('#3771 browser: Story media elements preserved across mode entry and naviga
       `no horizontal overflow (scroll ${overflow.scrollWidth} vs client ${overflow.clientWidth})`);
 
     await context.close();
+    await browser.close();
+    await closeServer(server);
   } catch (err) {
     if (context) await context.close();
     await browser.close();
@@ -2497,6 +2499,7 @@ test('#3771 browser: Story media elements preserved (mobile + reduced motion)', 
       visibleCount: 3, hiddenCount: 3, indicator: '02 / 02',
       nextDisabled: true,
     });
+    await waitForVisibleImagesLoaded(rmPage);
     await assertVisibleCardMedia(rmPage, MEDIA_CARD_EXPECTATIONS, 'rm-after-next');
 
     /* (9) browser health under reduced motion */
