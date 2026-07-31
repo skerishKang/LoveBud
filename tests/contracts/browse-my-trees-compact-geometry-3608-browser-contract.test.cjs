@@ -705,6 +705,11 @@ test('#3688 browser: canonical staged loading skeleton runtime', { timeout: 9000
           return;
         }
 
+        if (pathname === '/pages/login' || pathname === '/pages/login.html' || pathname === '/login' || pathname === '/login.html') {
+          route.fulfill({ status: 200, contentType: 'text/html', body: '<!DOCTYPE html><html><head></head><body></body></html>' });
+          return;
+        }
+
         if (url.includes('/api/') || url.includes('googleapis') || url.includes('firebase') || url.includes('identitytoolkit') || url.includes('firestore')) {
           if (type === 'fetch' || type === 'xhr') {
             route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
