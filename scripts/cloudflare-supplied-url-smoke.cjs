@@ -95,10 +95,21 @@ function parseInputs() {
   let baseUrl;
   try {
     baseUrl = new URL(rawUrl);
-    if (!['https:', 'http:'].includes(baseUrl.protocol)) throw new Error();
   } catch {
-    usage('SMOKE_BASE_URL must be a valid http or https URL');
+    usage('SMOKE_BASE_URL must be a valid URL');
     return { error: 'SMOKE_BASE_URL_INVALID' };
+  }
+
+  if (baseUrl.protocol === 'https:') {
+    // any https origin is allowed
+  } else if (baseUrl.protocol === 'http:') {
+    if (baseUrl.hostname !== 'localhost' && baseUrl.hostname !== '127.0.0.1') {
+      usage('SMOKE_BASE_URL http: is only allowed for localhost or 127.0.0.1');
+      return { error: 'SMOKE_BASE_URL_DISALLOWED' };
+    }
+  } else {
+    usage('SMOKE_BASE_URL must use https: or http:localhost/127.0.0.1');
+    return { error: 'SMOKE_BASE_URL_DISALLOWED' };
   }
 
   const expectedSha = process.env.SMOKE_EXPECTED_SHA || '';
@@ -159,53 +170,53 @@ async function checkManifest(baseUrl, expectedSha, timeoutMs) {
     if (fetchResult.error) {
       const errMsg = fetchResult.error.message || '';
       if (errMsg.includes('abort') || errMsg.includes('timeout')) {
-        return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_TIMEOUT', severity: 'ERROR', httpStatus: null, contentTypeClass: null, latencyBucket: 'TIMEOUT_OR_UNKNOWN' };
+        return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_TIMEOUT', severity: 'ERROR', httpStatus: null, contentTypeClass: 'NOT_MEASURED', bodyPresent: false, latencyBucket: 'TIMEOUT_OR_UNKNOWN' };
       }
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_NETWORK_ERROR', severity: 'ERROR', httpStatus: null, contentTypeClass: null, latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_NETWORK_ERROR', severity: 'ERROR', httpStatus: null, contentTypeClass: 'NOT_MEASURED', bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
     const res = fetchResult.response;
     if (res.status !== 200) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_HTTP_STATUS', severity: 'ERROR', httpStatus: res.status, contentTypeClass: classifyContentType(res.headers.get('content-type')), latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_HTTP_STATUS', severity: 'ERROR', httpStatus: res.status, contentTypeClass: classifyContentType(res.headers.get('content-type')), bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
     const ct = res.headers.get('content-type') || '';
     if (!ct.includes('application/json')) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CONTENT_TYPE', severity: 'ERROR', httpStatus: res.status, contentTypeClass: classifyContentType(ct), latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CONTENT_TYPE', severity: 'ERROR', httpStatus: res.status, contentTypeClass: classifyContentType(ct), bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
     const cc = res.headers.get('cache-control') || '';
-    if (!cc.includes('no-store') && !cc.includes('no-cache')) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CACHE_POLICY', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', latencyBucket: bucketLatency(fetchResult.latencyMs) };
+    if (!cc.includes('no-store')) {
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CACHE_POLICY', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
 
     let body;
     try {
       body = await res.text();
     } catch {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_BODY_READ_ERROR', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_BODY_READ_ERROR', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: false, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
 
     let parsed;
     try {
       parsed = JSON.parse(body);
     } catch {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_PARSE_ERROR', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_PARSE_ERROR', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
 
     const keys = Object.keys(parsed).sort();
     if (keys.length !== 2 || keys[0] !== 'contract_version' || keys[1] !== 'release_sha') {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_SCHEMA_KEYS', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_SCHEMA_KEYS', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
 
     if (typeof parsed.contract_version !== 'string' || parsed.contract_version !== '1') {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CONTRACT_VERSION', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_CONTRACT_VERSION', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
 
     if (typeof parsed.release_sha !== 'string' || !/^[0-9a-f]{40}$/.test(parsed.release_sha)) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_SHA_FORMAT', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_SHA_FORMAT', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
 
     const forbiddenKey = keys.find((k) => FORBIDDEN_MANIFEST_KEYS.includes(k));
     if (forbiddenKey) {
-      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_FORBIDDEN_KEY', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', latencyBucket: bucketLatency(fetchResult.latencyMs) };
+      return { statusClass: 'FAILED', errorCode: 'LB_MANIFEST_FORBIDDEN_KEY', severity: 'ERROR', httpStatus: res.status, contentTypeClass: 'JSON', bodyPresent: true, latencyBucket: bucketLatency(fetchResult.latencyMs) };
     }
 
     return {
@@ -214,6 +225,7 @@ async function checkManifest(baseUrl, expectedSha, timeoutMs) {
       severity: 'INFO',
       httpStatus: res.status,
       contentTypeClass: 'JSON',
+      bodyPresent: true,
       latencyBucket: bucketLatency(fetchResult.latencyMs),
       parsed,
     };
@@ -225,14 +237,18 @@ async function checkManifest(baseUrl, expectedSha, timeoutMs) {
   const worstLatencyMs = Math.max(r1.latencyMs, r2.latencyMs);
 
   if (result1.statusClass === 'FAILED' || result2.statusClass === 'FAILED') {
+    const selected = result1.statusClass === 'FAILED' ? result1 : result2;
     return {
       releaseMatchState: 'UNKNOWN',
       statusClass: 'FAILED',
-      sanitizedErrorCode: result1.statusClass === 'FAILED' ? result1.errorCode : result2.errorCode,
+      sanitizedErrorCode: selected.errorCode,
       severity: 'ERROR',
       latencyBucket: bucketLatency(worstLatencyMs),
       observedSha: null,
       isHealthy: false,
+      httpStatus: selected.httpStatus != null ? selected.httpStatus : null,
+      contentTypeClass: selected.contentTypeClass || 'NOT_MEASURED',
+      bodyPresent: selected.bodyPresent === true,
     };
   }
 
@@ -245,6 +261,9 @@ async function checkManifest(baseUrl, expectedSha, timeoutMs) {
       latencyBucket: bucketLatency(worstLatencyMs),
       observedSha: result1.parsed.release_sha,
       isHealthy: false,
+      httpStatus: result1.httpStatus != null ? result1.httpStatus : null,
+      contentTypeClass: result1.contentTypeClass || 'NOT_MEASURED',
+      bodyPresent: result1.bodyPresent === true,
     };
   }
 
@@ -258,6 +277,9 @@ async function checkManifest(baseUrl, expectedSha, timeoutMs) {
       latencyBucket: bucketLatency(worstLatencyMs),
       observedSha,
       isHealthy: false,
+      httpStatus: result1.httpStatus != null ? result1.httpStatus : null,
+      contentTypeClass: result1.contentTypeClass || 'NOT_MEASURED',
+      bodyPresent: result1.bodyPresent === true,
     };
   }
 
@@ -269,6 +291,9 @@ async function checkManifest(baseUrl, expectedSha, timeoutMs) {
     latencyBucket: bucketLatency(worstLatencyMs),
     observedSha,
     isHealthy: true,
+    httpStatus: result1.httpStatus != null ? result1.httpStatus : null,
+    contentTypeClass: result1.contentTypeClass || 'NOT_MEASURED',
+    bodyPresent: result1.bodyPresent === true,
   };
 }
 
@@ -299,8 +324,7 @@ async function checkRoute(url, path, timeoutMs) {
     });
   }
 
-  const bodyPresent = bodyText.length > 0;
-  const hasBodyElement = bodyPresent;
+  const hasBodyElement = /<body(?:\s|>)/i.test(bodyText);
   const is2xx = status >= 200 && status < 300;
 
   if (!is2xx) {
@@ -312,10 +336,18 @@ async function checkRoute(url, path, timeoutMs) {
     });
   }
 
+  if (!hasBodyElement) {
+    return makeOperation(ROUTE_OPERATIONS[path], {
+      statusClass: 'FAILED', errorCode: 'LB_ROUTE_BODY_MISSING', severity: 'ERROR',
+      latencyBucket, httpStatus: status, contentTypeClass: classifyContentType(ct),
+      bodyPresent: false,
+    });
+  }
+
   return makeOperation(ROUTE_OPERATIONS[path], {
     statusClass: 'HEALTHY', errorCode: 'NONE', severity: 'INFO',
     latencyBucket, httpStatus: status, contentTypeClass: classifyContentType(ct),
-    bodyPresent: hasBodyElement,
+    bodyPresent: true,
   });
 }
 
@@ -522,6 +554,7 @@ async function checkBrowserRuntime(baseUrl, paths, timeoutMs) {
 async function main() {
   const inputs = parseInputs();
   if (inputs.error) {
+    emitInputFailure(inputs.error);
     process.exit(2);
   }
 
@@ -538,8 +571,9 @@ async function main() {
     errorCode: manifestResult.sanitizedErrorCode,
     severity: manifestResult.severity,
     latencyBucket: manifestResult.latencyBucket,
-    httpStatus: 200,
-    contentTypeClass: 'JSON',
+    httpStatus: manifestResult.httpStatus,
+    contentTypeClass: manifestResult.contentTypeClass,
+    bodyPresent: manifestResult.bodyPresent,
   }));
 
   observedReleaseSha = manifestResult.observedSha;
@@ -548,7 +582,7 @@ async function main() {
   if (!manifestResult.isHealthy) {
     overallHealthy = false;
     overallStatusClass = 'FAILED';
-    emitOutput(baseUrl, expectedSha, observedReleaseSha, releaseMatchState, overallStatusClass, operations);
+    emitOutput(expectedSha, observedReleaseSha, releaseMatchState, overallStatusClass, operations);
     process.exit(1);
   }
 
@@ -581,7 +615,7 @@ async function main() {
     }
   }
 
-  emitOutput(baseUrl, expectedSha, observedReleaseSha, releaseMatchState, overallStatusClass, operations);
+  emitOutput(expectedSha, observedReleaseSha, releaseMatchState, overallStatusClass, operations);
 
   if (overallHealthy) {
     process.exit(0);
@@ -590,20 +624,63 @@ async function main() {
   }
 }
 
-function emitOutput(baseUrl, expectedSha, observedSha, releaseMatchState, statusClass, operations) {
-  const output = {
+let outputEmitted = false;
+
+function buildOutput(expectedSha, observedSha, releaseMatchState, statusClass, operations) {
+  return {
     contract_version: '1',
     ok: statusClass === 'HEALTHY',
-    expected_release_sha: expectedSha,
+    expected_release_sha: expectedSha || 'UNKNOWN',
     observed_release_sha: observedSha || 'UNKNOWN',
     release_match_state: releaseMatchState,
     status_class: statusClass,
     operations,
   };
-  console.log(JSON.stringify(output));
+}
+
+function emitOutput(expectedSha, observedSha, releaseMatchState, statusClass, operations) {
+  if (outputEmitted) return;
+  outputEmitted = true;
+  console.log(JSON.stringify(buildOutput(expectedSha, observedSha, releaseMatchState, statusClass, operations)));
+}
+
+const INPUT_ERROR_CODES = {
+  SMOKE_BASE_URL_REQUIRED: 'LB_INPUT_URL_MISSING',
+  SMOKE_BASE_URL_INVALID: 'LB_INPUT_URL_INVALID',
+  SMOKE_BASE_URL_DISALLOWED: 'LB_INPUT_URL_DISALLOWED',
+  SMOKE_EXPECTED_SHA_REQUIRED: 'LB_INPUT_SHA_MISSING',
+  SMOKE_EXPECTED_SHA_INVALID: 'LB_INPUT_SHA_INVALID',
+  SMOKE_TIMEOUT_MS_INVALID: 'LB_INPUT_TIMEOUT_INVALID',
+};
+
+function emitInputFailure(inputError) {
+  if (outputEmitted) return;
+  outputEmitted = true;
+  const errorCode = INPUT_ERROR_CODES[inputError] || 'LB_INPUT_INVALID';
+  const op = makeOperation('INPUT_VALIDATION', {
+    expectationClass: 'EXPECTED_SUCCESS',
+    statusClass: 'FAILED',
+    errorCode,
+    severity: 'ERROR',
+    errorCount: 1,
+  });
+  console.log(JSON.stringify(buildOutput('UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'FAILED', [op])));
+}
+
+function emitUnexpectedFailure() {
+  if (outputEmitted) return;
+  outputEmitted = true;
+  const op = makeOperation('UNEXPECTED_FAILURE', {
+    expectationClass: 'UNEXPECTED_FAILURE',
+    statusClass: 'FAILED',
+    errorCode: 'LB_UNEXPECTED_FAILURE',
+    severity: 'ERROR',
+    errorCount: 1,
+  });
+  console.log(JSON.stringify(buildOutput('UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'FAILED', [op])));
 }
 
 main().catch(() => {
-  console.error('Smoke runner terminated with unhandled error');
+  emitUnexpectedFailure();
   process.exit(1);
 });
