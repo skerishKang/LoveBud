@@ -700,15 +700,11 @@ test('#3688 browser: canonical staged loading skeleton runtime', { timeout: 9000
         let pathname = '';
         try { pathname = new URL(url).pathname; } catch(e) {}
 
-        if (pathname === '/js/search/index.js' || pathname === '/js/my-trees/my-trees-page-bootstrap.js') {
+        if (pathname === '/js/search/index.js' || pathname === '/js/my-trees/my-trees-page-bootstrap.js' || pathname === '/js/my-trees.js') {
           route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* inert */' });
           return;
         }
 
-        if (pathname === '/pages/login' || pathname === '/pages/login.html' || pathname === '/login' || pathname === '/login.html') {
-          route.fulfill({ status: 200, contentType: 'text/html', body: '<!DOCTYPE html><html><head></head><body></body></html>' });
-          return;
-        }
 
         if (url.includes('/api/') || url.includes('googleapis') || url.includes('firebase') || url.includes('identitytoolkit') || url.includes('firestore')) {
           if (type === 'fetch' || type === 'xhr') {
