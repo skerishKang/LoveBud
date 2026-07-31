@@ -650,3 +650,160 @@ test('#3608 source: My Trees default is compact; obsolete asymmetry gone', () =>
   assert.match(myHtml, /my-trees-page-bootstrap\.js\?v=20260721-3608-1/);
   assert.match(css, /#resultsList\[data-tree-view-mode="compact"\],\s*\.trees-grid\[data-tree-view-mode="compact"\]/);
 });
+
+test('#3688 browser: canonical staged loading skeleton runtime', { timeout: 90000 }, async () => {
+  let browser;
+  try {
+    browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+  } catch (err) {
+    throw new Error(`PLAYWRIGHT_BROWSER_BINARY_UNAVAILABLE: ${err && err.message ? err.message : err}`);
+  }
+  const { server, port } = await startServer();
+  try {
+    const contexts = [
+      { name: 'Browse desktop normal', path: '/pages/search.html', isMyTrees: false, viewport: { width: 1440, height: 900 }, reducedMotion: 'no-preference' },
+      { name: 'Browse mobile reduced-motion', path: '/pages/search.html', isMyTrees: false, viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' },
+      { name: 'My Trees desktop normal', path: '/pages/my-trees.html', isMyTrees: true, viewport: { width: 1440, height: 900 }, reducedMotion: 'no-preference' },
+      { name: 'My Trees mobile reduced-motion', path: '/pages/my-trees.html', isMyTrees: true, viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' },
+    ];
+
+    for (const ctx of contexts) {
+      const context = await browser.newContext({
+        viewport: ctx.viewport,
+        reducedMotion: ctx.reducedMotion,
+        isMobile: ctx.viewport.width < 768,
+        hasTouch: ctx.viewport.width < 768,
+      });
+
+      const page = await context.newPage();
+      const errors = [];
+      page.on('pageerror', err => errors.push(`pageerror: ${err.message}`));
+      page.on('console', msg => {
+        if (msg.type() === 'error') errors.push(`console: ${msg.text()}`);
+      });
+      page.on('requestfailed', request => {
+        const url = request.url();
+        if (url.startsWith(`http://127.0.0.1:${port}`) && request.failure()) {
+          errors.push(`requestfailed: ${url} - ${request.failure().errorText}`);
+        }
+      });
+      page.on('response', response => {
+        const url = response.url();
+        if (url.startsWith(`http://127.0.0.1:${port}`) && response.status() >= 400) {
+          errors.push(`response status ${response.status()}: ${url}`);
+        }
+      });
+
+      await page.route('**/*', (route) => {
+        const url = route.request().url();
+        const type = route.request().resourceType();
+        let pathname = '';
+        try { pathname = new URL(url).pathname; } catch(e) {}
+
+        if (pathname === '/js/search/index.js' || pathname === '/js/my-trees/my-trees-page-bootstrap.js' || pathname === '/js/my-trees.js') {
+          route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* inert */' });
+          return;
+        }
+
+
+        if (url.includes('/api/') || url.includes('googleapis') || url.includes('firebase') || url.includes('identitytoolkit') || url.includes('firestore')) {
+          if (type === 'fetch' || type === 'xhr') {
+            route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+            return;
+          }
+        }
+        route.continue();
+      });
+
+      await page.goto(`http://127.0.0.1:${port}${ctx.path}`, { waitUntil: 'domcontentloaded' });
+
+      await page.waitForFunction(({ isMyTrees, reducedMotion }) => {
+        const gridSel = isMyTrees ? '.trees-skeleton-grid' : '#resultsList';
+        const grid = document.querySelector(gridSel);
+        if (!grid) return false;
+
+        const cardSel = isMyTrees ? '.trees-skeleton-grid .search-skeleton-card' : '#resultsList .search-skeleton-card';
+        const card = document.querySelector(cardSel);
+        if (!card) return false;
+
+        const rect = card.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return false;
+
+        const skeletonBase = card.querySelector('.lt-skeleton');
+        const skeletonMedia = card.querySelector('.lt-skeleton-media');
+        const skeletonTitle = card.querySelector('.lt-skeleton-title');
+        const skeletonText = card.querySelector('.lt-skeleton-text');
+
+        if (!skeletonBase || !skeletonMedia || !skeletonTitle || !skeletonText) return false;
+
+        const mediaCs = getComputedStyle(skeletonMedia);
+        if (reducedMotion === 'reduce') {
+          if (mediaCs.animationName !== 'none') return false;
+        } else {
+          if (!mediaCs.animationName || !mediaCs.animationName.includes('lt-shimmer')) return false;
+        }
+
+        return true;
+      }, { isMyTrees: ctx.isMyTrees, reducedMotion: ctx.reducedMotion }, { timeout: 10000 });
+
+      const result = await page.evaluate((isMyTrees) => {
+        const gridSel = isMyTrees ? '.trees-skeleton-grid' : '#resultsList';
+        const grid = document.querySelector(gridSel);
+
+        const cardSel = isMyTrees ? '.trees-skeleton-grid .search-skeleton-card' : '#resultsList .search-skeleton-card';
+        const cards = document.querySelectorAll(cardSel);
+
+        if (!grid || cards.length === 0) {
+          return { error: 'Missing grid or cards' };
+        }
+
+        const card = cards[0];
+        const rect = card.getBoundingClientRect();
+        const skeletonBase = card.querySelector('.lt-skeleton');
+        const skeletonMedia = card.querySelector('.lt-skeleton-media');
+        const skeletonTitle = card.querySelector('.lt-skeleton-title');
+        const skeletonText = card.querySelector('.lt-skeleton-text');
+
+        const mediaCs = skeletonMedia ? getComputedStyle(skeletonMedia) : null;
+
+        return {
+          gridFound: !!grid,
+          cardCount: cards.length,
+          width: rect.width,
+          height: rect.height,
+          ariaHidden: card.getAttribute('aria-hidden'),
+          hasSkeletonBase: !!skeletonBase,
+          hasSkeletonMedia: !!skeletonMedia,
+          hasSkeletonTitle: !!skeletonTitle,
+          hasSkeletonText: !!skeletonText,
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          animName: mediaCs ? mediaCs.animationName : null
+        };
+      }, ctx.isMyTrees);
+
+      assert.ok(!result.error, `${ctx.name} setup failed: ${result.error}`);
+      assert.ok(result.cardCount >= 1, `${ctx.name} missing skeleton cards`);
+      assert.ok(result.width > 0 && result.height > 0, `${ctx.name} skeleton dimensions zero`);
+      assert.equal(result.ariaHidden, 'true', `${ctx.name} missing aria-hidden=true`);
+      assert.ok(result.hasSkeletonBase, `${ctx.name} missing .lt-skeleton`);
+      assert.ok(result.hasSkeletonMedia, `${ctx.name} missing .lt-skeleton-media`);
+      assert.ok(result.hasSkeletonTitle, `${ctx.name} missing .lt-skeleton-title`);
+      assert.ok(result.hasSkeletonText, `${ctx.name} missing .lt-skeleton-text`);
+      assert.equal(result.overflow, false, `${ctx.name} has horizontal overflow`);
+
+      if (ctx.reducedMotion === 'reduce') {
+        assert.ok(result.animName === 'none' || !result.animName, `${ctx.name} animation must be none, got ${result.animName}`);
+      } else {
+        assert.ok(result.animName && result.animName.includes('lt-shimmer'), `${ctx.name} must use canonical lt-shimmer, got ${result.animName}`);
+      }
+      assert.ok(!result.animName || !result.animName.includes('searchSkeletonPulse'), `${ctx.name} forbidden searchSkeletonPulse found`);
+
+      assert.equal(errors.length, 0, `${ctx.name} errors found: ${errors.join(', ')}`);
+
+      await context.close();
+    }
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+});
