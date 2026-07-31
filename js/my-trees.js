@@ -113,6 +113,11 @@
 
     document.body.classList.remove('my-trees-auth-pending');
 
+    var tax = window.LoveBudJourneyOutcomeTaxonomy;
+    if (tax && window.LoveBudMyTreesData && window.LoveBudMyTreesData.JourneyTracker) {
+      window.LoveBudMyTreesData.JourneyTracker.recordStage(tax.STAGES.ACTION_STARTED);
+    }
+
     // Auth confirmed: init loading manager first, then controls, then load
     if (myTreesPage && typeof myTreesPage.initLoadingManager === 'function') {
       myTreesPage.initLoadingManager();
@@ -391,6 +396,7 @@
         setState: myTreesPage.setState,
         stateEnum: myTreesPage.STATE,
         renderTrees: renderTrees,
+        acknowledgeUi: observeTerminalUiState,
         showToast: showToast,
         i18n: window.t || function(k) { return k; },
         preserveVisibleList: options.preserveVisibleList === true,
@@ -438,6 +444,24 @@
     if (isStateSectionVisible(document.getElementById('state-empty'))) return true;
     if (isStateSectionVisible(document.getElementById('state-loaded'))) return true;
     return false;
+  }
+
+  /**
+   * Bounded UI acknowledgement observer for fresh owner-list journeys.
+   * Returns true only when the live DOM actually reflects a terminal
+   * EMPTY or LOADED state: state-loading hidden, aria-busy cleared,
+   * expected state section displayed, state-error absent.
+   * Generation freshness is enforced by the caller in my-trees-data.js.
+   */
+  function observeTerminalUiState(expectedState) {
+    if (expectedState !== 'empty' && expectedState !== 'loaded') return false;
+    if (isLoadingVisible()) return false;
+    if (isStateSectionVisible(document.getElementById('state-error'))) return false;
+    var expected = document.getElementById(expectedState === 'empty' ? 'state-empty' : 'state-loaded');
+    if (!isStateSectionVisible(expected)) return false;
+    var container = document.getElementById('treesContainer');
+    if (container && typeof container.getAttribute === 'function' && container.getAttribute('aria-busy') === 'true') return false;
+    return true;
   }
 
   /**

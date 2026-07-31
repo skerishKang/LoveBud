@@ -17,6 +17,18 @@
   "classificationBasis": "Content-evidence based. Each file is read; its source-read/execution/fake-env markers determine the primary layer. Filename alone is never used.",
   "entries": [
     {
+      "path": "tests/contracts/journey-outcome-taxonomy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Requires the canonical journey-outcome-taxonomy.cjs module and validates its frozen constants and deterministic pure classifiers against latency, HTTP, and fail-closed sanitized-error boundaries without network, browser, Production, provider, database, or secret access (#3673).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/authenticated-my-trees-load-instrumentation-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes production My Trees modules under a deterministic fake DOM/auth/API/cache harness to prove the exact chronological stage logging for successful, auth failure, and network failure load journeys (#3673).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/ci-risk-gate-policy-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -247,7 +259,7 @@
     {
       "path": "tests/contracts/browse-my-trees-compact-geometry-3608-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes real production modules js/tree-view-mode-switcher.js and js/my-trees/my-trees-page-bootstrap.js in Playwright Chromium, loading production CSS chains css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, and css/tree-view-mode.css via a local HTTP server. Asserts #3608 Phase 1 compact defaults (empty/invalid storage → compact), independent storage keys, desktop/mobile computed compact geometry parity (card height, media, body grid, title/subtitle, CTA count), and obsolete My Trees compact asymmetry removal. No production write/auth/API/DB mutation.",
+      "rationale": "Executes real production modules js/tree-view-mode-switcher.js and js/my-trees/my-trees-page-bootstrap.js in Playwright Chromium, loading production CSS chains css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, and css/tree-view-mode.css via a local HTTP server. Asserts #3608 Phase 1 compact defaults (empty/invalid storage \u2192 compact), independent storage keys, desktop/mobile computed compact geometry parity (card height, media, body grid, title/subtitle, CTA count), and obsolete My Trees compact asymmetry removal. No production write/auth/API/DB mutation.",
       "capabilities": []
     },
     {
@@ -1695,7 +1707,7 @@
     {
       "path": "tests/contracts/generic-social-b-db-engine-harness-contract.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Reads package.json, CI workflow, Migration B rehearsal harness/fixture/helper sources and asserts separate package script, PostgreSQL 17.4 job pin, B_PRE→MIG_B→B_POST order, multi-row/empty/second-apply markers, exact B object fingerprints, and supplemental classification without executing PostgreSQL (#3540).",
+      "rationale": "Reads package.json, CI workflow, Migration B rehearsal harness/fixture/helper sources and asserts separate package script, PostgreSQL 17.4 job pin, B_PRE\u2192MIG_B\u2192B_POST order, multi-row/empty/second-apply markers, exact B object fingerprints, and supplemental classification without executing PostgreSQL (#3540).",
       "capabilities": []
     },
     {
@@ -2541,7 +2553,7 @@
     {
       "path": "tests/contracts/public-viewer-appreciation-composer-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the Public Viewer appreciation composer with adapter/presentation spies and the real adapter→canonical→presentation chain in node:vm, proving exact orchestration order, fail-closed dependency errors, private-sentinel exclusion, and unknown-vs-zero social preservation without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "rationale": "Executes the Public Viewer appreciation composer with adapter/presentation spies and the real adapter\u2192canonical\u2192presentation chain in node:vm, proving exact orchestration order, fail-closed dependency errors, private-sentinel exclusion, and unknown-vs-zero social preservation without a real browser, network, auth provider, database, deployment, or Production resource.",
       "capabilities": []
     },
     {
@@ -4521,7 +4533,7 @@
     {
       "path": "tests/contracts/tree-layout-mode-policy-3581-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes real production modules js/editor/editor-canvas-layout-policy.js, editor-canvas-layout-storage.js, editor-canvas-layout-transition.js, editor-canvas-geometry.js in Playwright Chromium via local HTTP fixture. Asserts #3581 appreciation vs owner-edit layout storage isolation using real localStorage (owner appreciation/public ignore free draft; owner edit restores free positions/viewport; view↔edit rebinding keeps keys; drag only free+owner-edit; structured-first labels; desktop 1440 and mobile 375 overflow). No production write/auth/API/DB mutation.",
+      "rationale": "Executes real production modules js/editor/editor-canvas-layout-policy.js, editor-canvas-layout-storage.js, editor-canvas-layout-transition.js, editor-canvas-geometry.js in Playwright Chromium via local HTTP fixture. Asserts #3581 appreciation vs owner-edit layout storage isolation using real localStorage (owner appreciation/public ignore free draft; owner edit restores free positions/viewport; view\u2194edit rebinding keeps keys; drag only free+owner-edit; structured-first labels; desktop 1440 and mobile 375 overflow). No production write/auth/API/DB mutation.",
       "capabilities": []
     },
     {
@@ -4545,7 +4557,7 @@
     {
       "path": "tests/contracts/tree-layout-persistence-3582-editor-route-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free→structured→free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
+      "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free\u2192structured\u2192free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
       "capabilities": []
     },
     {
@@ -4575,7 +4587,7 @@
     {
       "path": "tests/contracts/settings-password-reset-3635-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes js/settings.js resolvePasswordResetMode and passwordResetState in a Node VM sandbox and asserts provider matrix (password→reset, google+password→reset, password-no-email→missingEmail, google-only→googleManaged, unknown→unavailable, null→unavailable), state shape, DOM ID references, button type=button, ARIA attributes, firebase/auth/sendPasswordResetEmail guard patterns, Promise.resolve() async chain, double-click guard, i18n keys with ko/en, no inline bootstrap, no sendPasswordResetEmail in firebase-config/shared-header/settings-bootstrap, no initializeApp/apiKey in settings.js, exactly one onAuthStateChanged, and cache token chain 20260724-3635-1. No real browser/network/DB/Production mutation.",
+      "rationale": "Executes js/settings.js resolvePasswordResetMode and passwordResetState in a Node VM sandbox and asserts provider matrix (password\u2192reset, google+password\u2192reset, password-no-email\u2192missingEmail, google-only\u2192googleManaged, unknown\u2192unavailable, null\u2192unavailable), state shape, DOM ID references, button type=button, ARIA attributes, firebase/auth/sendPasswordResetEmail guard patterns, Promise.resolve() async chain, double-click guard, i18n keys with ko/en, no inline bootstrap, no sendPasswordResetEmail in firebase-config/shared-header/settings-bootstrap, no initializeApp/apiKey in settings.js, exactly one onAuthStateChanged, and cache token chain 20260724-3635-1. No real browser/network/DB/Production mutation.",
       "capabilities": []
     },
     {
@@ -4671,7 +4683,7 @@
     {
       "path": "tests/contracts/browse-my-trees-staged-loading-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject → showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
+      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject \u2192 showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
       "capabilities": []
     },
     {
@@ -4798,7 +4810,7 @@
       "path": "tests/db-engine/generic-social-b-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Independent supported-state Migration B rehearsal on disposable PostgreSQL 17.4: guarded A→STATE_A, non-empty/empty/STATE_B-rerun paths, approved catalog delta, both-table compatibility A–K, second-apply no-op; does not duplicate B guard adversarial matrix (#3540).",
+      "rationale": "Independent supported-state Migration B rehearsal on disposable PostgreSQL 17.4: guarded A\u2192STATE_A, non-empty/empty/STATE_B-rerun paths, approved catalog delta, both-table compatibility A\u2013K, second-apply no-op; does not duplicate B guard adversarial matrix (#3540).",
       "capabilities": [
         "postgresql",
         "child_process",

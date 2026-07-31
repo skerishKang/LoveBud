@@ -22,6 +22,63 @@
     return options?.i18n || window.t || function(k) { return k; };
   }
 
+  var MyTreesJourneyTracker = (function() {
+    var tracker = {
+      startTime: 0,
+      recordStage: function(stage, meta) {
+        var tax = window.LoveBudJourneyOutcomeTaxonomy;
+        if (!tax) return;
+        var sink = window.__LoveBudJourneyOutcomeSink;
+        if (!sink || typeof sink.push !== 'function') return;
+
+        meta = meta || {};
+        var failureCode = tax.normalizeFailureCode(meta.failureCode || tax.FAILURE_CODES.NONE);
+        var httpStatus = tax.classifyHttpStatus(meta.httpStatus);
+        var resultCountBucket = meta.resultCountBucket === 'positive' || meta.resultCountBucket === 'zero'
+          ? meta.resultCountBucket
+          : 'unknown';
+
+        var latencyMs = 0;
+        if (stage === tax.STAGES.ACTION_STARTED || stage === tax.STAGES.REQUEST_DISPATCHED) {
+          if (tracker.startTime === 0) tracker.startTime = Date.now();
+        }
+        if (tracker.startTime > 0) {
+          latencyMs = Date.now() - tracker.startTime;
+        }
+        var latencyBucket = tax.classifyLatency(latencyMs);
+
+        var event = {
+          journey: tax.JOURNEYS.JOURNEY_AUTHENTICATED_MY_TREES_LOAD,
+          stage: stage,
+          failureCode: failureCode,
+          httpStatus: httpStatus,
+          latencyBucket: latencyBucket,
+          resultCountBucket: resultCountBucket
+        };
+        sink.push(event);
+
+        if (stage === tax.STAGES.TERMINAL_SUCCESS || stage === tax.STAGES.TERMINAL_FAILURE || stage === tax.STAGES.CANCELLED) {
+          tracker.startTime = 0;
+        }
+      },
+      mapLoadError: function(errorType) {
+        var tax = window.LoveBudJourneyOutcomeTaxonomy;
+        if (!tax) return 'LB_UNEXPECTED_FAILURE';
+        switch (errorType) {
+          case 'auth_prepare_failed': return tax.FAILURE_CODES.LB_JOURNEY_AUTH_PREPARE_FAILED;
+          case 'fetch_rejected': return tax.FAILURE_CODES.LB_JOURNEY_NETWORK;
+          case 'parse': return tax.FAILURE_CODES.LB_JOURNEY_RESPONSE_PARSE;
+          case 'invalid_payload': return tax.FAILURE_CODES.LB_JOURNEY_INVALID_PAYLOAD;
+          case 'auth': return tax.FAILURE_CODES.LB_JOURNEY_AUTH_REQUIRED;
+          case 'server': return tax.FAILURE_CODES.LB_JOURNEY_HTTP_5XX;
+          case 'client': return tax.FAILURE_CODES.LB_JOURNEY_HTTP_4XX;
+          default: return tax.FAILURE_CODES.LB_UNEXPECTED_FAILURE;
+        }
+      }
+    };
+    return tracker;
+  })();
+
   var TREES_CACHE_KEY = 'my_trees_list';
   var TREE_DETAIL_CACHE_KEY = 'tree_detail_';
   var TREE_MEMORIES_CACHE_KEY = 'tree_memories_';
@@ -350,7 +407,6 @@
             statusClass: 'none',
             resultCountBucket: 'unknown'
           });
-          // restore_skipped_inflight reserved for same-generation recovery coalescing only
           emitLifecycleDiagnostic({
             phase: 'restore_skipped_inflight',
             attempt: 1,
@@ -361,6 +417,8 @@
             statusClass: 'none',
             resultCountBucket: 'unknown'
           });
+          var tax = window.LoveBudJourneyOutcomeTaxonomy;
+          if (tax) MyTreesJourneyTracker.recordStage(tax.STAGES.DUPLICATE_SUPPRESSED);
           return activeOwnerListLoad.promise;
         }
         emitLifecycleDiagnostic({
@@ -373,8 +431,12 @@
           statusClass: 'none',
           resultCountBucket: 'unknown'
         });
+        var tax2 = window.LoveBudJourneyOutcomeTaxonomy;
+        if (tax2) MyTreesJourneyTracker.recordStage(tax2.STAGES.CANCELLED);
         // Fall through: start a new generation without awaiting the stale load.
       } else {
+        var tax3 = window.LoveBudJourneyOutcomeTaxonomy;
+        if (tax3) MyTreesJourneyTracker.recordStage(tax3.STAGES.DUPLICATE_SUPPRESSED);
         return activeOwnerListLoad.promise;
       }
     }
@@ -441,7 +503,12 @@
       try {
         var trees;
 
+        var tax = window.LoveBudJourneyOutcomeTaxonomy;
         if (window.apiClient && window.apiClient.getTrees) {
+          if (tax && stillCurrent()) {
+            MyTreesJourneyTracker.recordStage(tax.STAGES.CLIENT_VALIDATION_PASSED);
+            MyTreesJourneyTracker.recordStage(tax.STAGES.REQUEST_DISPATCHED);
+          }
           trees = await window.apiClient.getTrees({
             onLifecycle: function(meta) {
               if (!stillCurrent()) return;
@@ -453,9 +520,17 @@
         }
 
         // Await returned after possible supersede — refuse stale writes.
-        if (ignoreIfStale('stale_result_ignored')) return;
+        if (ignoreIfStale('stale_result_ignored')) {
+          if (tax) MyTreesJourneyTracker.recordStage(tax.STAGES.CANCELLED);
+          return;
+        }
 
         if (Array.isArray(trees)) {
+          if (tax && stillCurrent()) {
+            MyTreesJourneyTracker.recordStage(tax.STAGES.RESPONSE_ACCEPTED, {
+              resultCountBucket: trees.length > 0 ? 'positive' : 'zero'
+            });
+          }
           trees = normalizeTreesForList(trees);
 
           if (cache) {
@@ -465,6 +540,18 @@
 
           if (typeof renderTrees === 'function') {
             renderTrees(trees);
+          }
+
+          if (tax && stillCurrent()) {
+            MyTreesJourneyTracker.recordStage(tax.STAGES.CLIENT_STATE_UPDATED);
+            var expectedState = trees.length > 0 ? 'loaded' : 'empty';
+            var acknowledged = typeof options.acknowledgeUi === 'function'
+              ? options.acknowledgeUi(expectedState)
+              : false;
+            if (acknowledged && stillCurrent()) {
+              MyTreesJourneyTracker.recordStage(tax.STAGES.UI_ACKNOWLEDGED);
+              MyTreesJourneyTracker.recordStage(tax.STAGES.TERMINAL_SUCCESS);
+            }
           }
 
           emitLifecycleDiagnostic({
@@ -499,10 +586,26 @@
         }
       } catch (e) {
         // Stale generation: never surface ERROR/EMPTY/toast from pre-restore loads.
-        if (ignoreIfStale('stale_result_ignored')) return;
+        if (ignoreIfStale('stale_result_ignored')) {
+          var taxFail = window.LoveBudJourneyOutcomeTaxonomy;
+          if (taxFail) MyTreesJourneyTracker.recordStage(taxFail.STAGES.CANCELLED);
+          return;
+        }
 
         var errorType = classifyLoadError(e);
         console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
+
+        var taxFail2 = window.LoveBudJourneyOutcomeTaxonomy;
+        if (taxFail2) {
+          var failCode = MyTreesJourneyTracker.mapLoadError(errorType);
+          if (errorType === 'generic' && !window.apiClient) {
+            failCode = taxFail2.FAILURE_CODES.LB_JOURNEY_API_UNAVAILABLE;
+          }
+          MyTreesJourneyTracker.recordStage(taxFail2.STAGES.TERMINAL_FAILURE, {
+            failureCode: failCode,
+            httpStatus: extractHttpStatus(e)
+          });
+        }
 
         var errorAttempt = Number(e._attempt) || requestLifecycle.attempt;
         var errorRetried = e._retried === true || requestLifecycle.retried;
@@ -635,6 +738,7 @@
     markOwnerListEpochStale: markOwnerListEpochStale,
     getOwnerListGeneration: function() { return ownerListGeneration; },
     emitLifecycleDiagnostic: emitLifecycleDiagnostic,
-    hasVisibleLoadedCards: hasVisibleLoadedCards
+    hasVisibleLoadedCards: hasVisibleLoadedCards,
+    JourneyTracker: MyTreesJourneyTracker
   };
 })();
