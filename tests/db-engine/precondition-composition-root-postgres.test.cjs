@@ -48,7 +48,10 @@ function createSessionOpener(cfg, dbName) {
       const session = {
         query: async function (queryObject) {
           queryNames.push(queryObject && queryObject.name);
-          return client.query(queryObject.text, queryObject.values || []);
+          // Return a plain record (own `rows`) rather than the pg Result, whose
+          // custom prototype fails the lock adapter's plain-record contract.
+          const result = await client.query(queryObject.text, queryObject.values || []);
+          return { rows: result.rows };
         },
         release: async function () {
           await client.end();
