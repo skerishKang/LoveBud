@@ -2059,6 +2059,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/modal-a11y-core-dialogs-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real LoveBud page HTML (index.html, pages/editor.html, pages/my-trees.html, pages/login.html) and the real six core modal controllers (js/index-inline-init.js, js/editor/editor-memory-form.js, js/editor/editor-rename-ui.js, js/editor/editor-shortcuts-help.js, js/my-trees/my-trees-actions.js, js/auth/auth-login-page.js) plus the shared js/shared/modal-a11y.js in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts plus a forced-colors/WHCM probe. Synthetic safe fixtures only (inert scripts, stubbed i18n/api/helper modules, fulfilled external hosts); no Production URL, real login, Auth provider, private IDs, API writes, DB, cache, storage, or external network. Asserts the shared modal accessibility lifecycle per source: initial focus after visibility, live Tab/Shift+Tab containment, focus containment, Escape close (exactly once, busy-gated), guarded invoker restoration, body scroll ownership, reopen-without-listener-duplication, close/dispose state release, page usability after close, and browser health (zero pageerror, console error, same-origin request/HTTP failure, external network, overflow, leak).",
+      "capabilities": ["playwright", "chromium"]
+    },
+    {
+      "path": "tests/contracts/modal-a11y-shared-lifecycle-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (a deterministic in-memory fake DOM for window.LoveBudModalA11y) plus source-bound delegation checks that the six core modal controllers adopt the shared lifecycle while page-owned media/inert/submit/Auth/backdrop logic remains and excluded surfaces are not migrated; no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/modal-create-owner-memory-import-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

@@ -38,10 +38,30 @@
     lastFocusedEl: null,
     resolve: null,
     isSubmitting: false,
-    escapeHandler: null,
     createFlowGuard: false,
     _checkMode: false
   };
+
+  // Shared accessibility lifecycle (js/shared/modal-a11y.js). Owns Tab
+  // containment, gated Escape, initial focus, guarded invoker restoration,
+  // and reference-counted body scroll lock. API calls, validation, Auth, and
+  // persistence stay page-owned.
+  var createTreeA11y = window.LoveBudModalA11y && window.LoveBudModalA11y.createLifecycle({
+    getModal: function() { return document.getElementById('createTreeModalBackdrop'); },
+    isOpen: function() {
+      return !!(createTreeModalState.backdrop && createTreeModalState.backdrop.classList.contains('show'));
+    },
+    onRequestClose: function() {
+      if (createTreeModalState && typeof createTreeModalState.closeModal === 'function') {
+        createTreeModalState.closeModal(null);
+      }
+    },
+    canClose: function() { return !createTreeModalState.isSubmitting; },
+    getInitialFocus: function() { return createTreeModalState.titleInput; },
+    getRestoreFocus: function() { return createTreeModalState.lastFocusedEl; },
+    scrollLock: true,
+    bindTarget: 'document'
+  });
 
   function getI18n(options) {
     return options?.i18n || window.t || function(k) { return k; };
@@ -202,7 +222,9 @@
       createTreeModalState.backdrop.classList.remove('show');
       setSubmitting(false, i18n);
       setError('');
-      if (createTreeModalState.escapeHandler) {
+      if (createTreeA11y) {
+        createTreeA11y.close();
+      } else if (createTreeModalState.escapeHandler) {
         document.removeEventListener('keydown', createTreeModalState.escapeHandler);
         createTreeModalState.escapeHandler = null;
       }
@@ -210,11 +232,15 @@
       // "Blocked aria-hidden on an element because its descendant retained focus"
       var restoreTarget = createTreeModalState.lastFocusedEl;
       createTreeModalState.lastFocusedEl = null;
-      if (restoreTarget && typeof restoreTarget.focus === 'function') {
+      if (createTreeA11y) {
+        createTreeA11y.restoreFocusElement(restoreTarget);
+      } else if (restoreTarget && typeof restoreTarget.focus === 'function') {
         restoreTarget.focus();
       }
       createTreeModalState.backdrop.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
+      if (!createTreeA11y) {
+        document.body.style.overflow = '';
+      }
       cleanupAndResolve(payload);
     }
 
@@ -290,23 +316,30 @@
       createTreeModalState._checkMode = false;
       modal.backdrop.classList.add('show');
       modal.backdrop.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
       modal.titleInput.value = safeText(i18n, 'default_tree_title', '나의 첫 러브트리');
       modal.setError('');
       modal.setSubmitting(false, i18n);
 
-      modal.escapeHandler = function(event) {
-        if (event.key === 'Escape' && !modal.isSubmitting) {
-          event.preventDefault();
-          modal.closeModal(null);
-        }
-      };
-      document.addEventListener('keydown', modal.escapeHandler);
-
-      setTimeout(function() {
-        modal.titleInput.focus();
+      if (createTreeA11y) {
+        createTreeA11y.open();
+      } else {
+        // Fallback for helper-absent environments.
+        document.body.style.overflow = 'hidden';
+        modal.escapeHandler = function(event) {
+          if (event.key === 'Escape' && !modal.isSubmitting) {
+            event.preventDefault();
+            modal.closeModal(null);
+          }
+        };
+        document.addEventListener('keydown', modal.escapeHandler);
+        setTimeout(function() {
+          modal.titleInput.focus();
+          modal.titleInput.select();
+        }, 0);
+      }
+      if (modal.titleInput && typeof modal.titleInput.select === 'function') {
         modal.titleInput.select();
-      }, 0);
+      }
     });
   }
 
