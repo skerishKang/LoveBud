@@ -572,6 +572,24 @@
       }
     }
 
+    // Shared accessibility lifecycle (js/shared/modal-a11y.js). Owns the modal
+    // focus containment (incl. focusin containment for the media boundary),
+    // Escape, initial focus, guarded invoker restoration, and listener cleanup.
+    // The surface keeps the visual shell, backdrop policy, media lifecycle,
+    // timers, and stale-attempt guard.
+    var modalA11y = window.LoveBudModalA11y && window.LoveBudModalA11y.createLifecycle({
+      getModal: function() { return modalEl; },
+      isOpen: function() { return !!modalEl; },
+      onRequestClose: function() { closeVideoModal(); },
+      canClose: function() { return true; },
+      getInitialFocus: function() {
+        return modalEl ? modalEl.querySelector('.hero-video-modal-close') : null;
+      },
+      getRestoreFocus: function() { return modalReturnFocus; },
+      focusinContain: true,
+      bindTarget: 'document'
+    });
+
     function handleModalIframeLoad() {
       if (!modalEl) return;
       modalAttemptId++;
@@ -767,14 +785,10 @@
       }, 30000);
     }
 
-    function onDocumentFocusIn(e) {
-      if (!modalEl) return;
-      if (modalEl.contains(e.target)) return;
-      var close = modalEl.querySelector('.hero-video-modal-close');
-      if (close) close.focus();
-    }
-
     function onModalKeydown(e) {
+      // Primary path is the shared lifecycle; this local handler is the
+      // fallback for helper-absent environments (e.g. isolated harnesses).
+      if (modalA11y) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         closeVideoModal();
@@ -797,6 +811,14 @@
       }
     }
 
+    function onDocumentFocusIn(e) {
+      if (modalA11y) return;
+      if (!modalEl) return;
+      if (modalEl.contains(e.target)) return;
+      var close = modalEl.querySelector('.hero-video-modal-close');
+      if (close) close.focus();
+    }
+
     function closeVideoModal() {
       if (!modalEl) return;
       modalAttemptId++;
@@ -805,11 +827,14 @@
       modalEl = null;
       modalCurrentVideo = null;
       modalCurrentCard = null;
-      document.removeEventListener('focusin', onDocumentFocusIn);
+      if (modalA11y) modalA11y.close();
       el.removeEventListener('keydown', onModalKeydown);
+      document.removeEventListener('focusin', onDocumentFocusIn);
       el.remove();
       resume('playing');
-      if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
+      if (modalA11y) {
+        modalA11y.restoreFocus();
+      } else if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
         modalReturnFocus.focus();
       }
       modalReturnFocus = null;
@@ -880,12 +905,16 @@
       modalEl.addEventListener('click', function(e) {
         if (e.target === modalEl) closeVideoModal();
       });
-      modalEl.addEventListener('keydown', onModalKeydown);
-      document.addEventListener('focusin', onDocumentFocusIn);
 
       document.body.appendChild(modalEl);
       pause('playing');
-      closeBtn.focus();
+      if (modalA11y) {
+        modalA11y.open();
+      } else {
+        modalEl.addEventListener('keydown', onModalKeydown);
+        document.addEventListener('focusin', onDocumentFocusIn);
+        closeBtn.focus();
+      }
 
       modalLoadTimerId = window.setTimeout(function() {
         if (thisAttempt !== modalAttemptId) return;

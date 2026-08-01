@@ -1221,10 +1221,50 @@ describe('Canonical skeleton primitive convergence (SOURCE_STATIC)', () => {
 
   it('69. JS/runtime skeleton and loading paths unchanged', () => {
     const renderer = read('js/search/search-card-renderer.js');
-    assert.ok(renderer.includes('renderSkeletonCard'), 'runtime skeleton generator intact');
+    assert.ok(!renderer.includes('renderSkeletonCard'), 'legacy renderSkeletonCard generator retired');
+    assert.ok(!renderer.includes('renderSkeletonGrid'), 'legacy renderSkeletonGrid generator retired');
+    assert.ok(!renderer.includes('renderLoading'), 'legacy renderLoading generator retired');
+    assert.ok(!renderer.includes('searchSkeletonPulse'), 'searchSkeletonPulse absent from renderer');
+    assert.ok(!renderer.includes('search-skeleton-block'), 'search-skeleton-block absent from renderer source');
+    assert.ok(!renderer.includes('search-skeleton-line'), 'search-skeleton-line absent from renderer source');
+    assert.ok(!renderer.includes('renderLoading:'), 'renderLoading public export retired');
+    assert.ok(!renderer.includes('renderSkeletonGrid:'), 'renderSkeletonGrid public export retired');
+    assert.ok(renderer.includes('renderTreeCard:'), 'renderTreeCard public API preserved');
+    assert.ok(renderer.includes('renderResults:'), 'renderResults public API preserved');
     const storyView = read('js/search/search-story-view.js');
     assert.ok(storyView.includes("contains('search-skeleton-card')"), 'Story skeleton-card exclusion intact');
     const myTreesPage = read('js/my-trees/my-trees-page.js');
     assert.ok(myTreesPage.includes('state-loading'), 'My Trees loading state path intact');
+  });
+
+  it('70. no active or dormant startup caller renders legacy loading grid', () => {
+    for (const file of ['js/search/index.js', 'js/search/search-index.js', 'js/search.js']) {
+      const src = read(file);
+      assert.ok(!src.includes('CardRenderer.renderLoading()'), file + ' no legacy renderLoading replacement');
+    }
+  });
+
+  it('71. canonical static skeleton grid and status owner remain authoritative', () => {
+    const html = read(SEARCH_HTML);
+    const statusMatch = html.match(/id="browseLoadingStatus"[^>]*>/);
+    assert.ok(statusMatch, 'browseLoadingStatus exists');
+    assert.ok(statusMatch[0].includes('role="status"'), 'browseLoadingStatus role=status');
+    assert.ok(statusMatch[0].includes('aria-live="polite"'), 'browseLoadingStatus aria-live=polite');
+    assert.ok(statusMatch[0].includes('lt-loading-inline'), 'browseLoadingStatus uses lt-loading-inline');
+    assert.ok(html.includes('lt-spinner'), 'browseLoadingStatus keeps shared spinner');
+    assert.ok(!html.includes('search-skeleton-block'), 'canonical Browse skeleton has no legacy block');
+    assert.ok(!html.includes('search-skeleton-line'), 'canonical Browse skeleton has no legacy line');
+    const canonical = read(CANONICAL_CSS);
+    assert.ok(canonical.includes('lt-shimmer'), 'canonical lt-shimmer authority preserved');
+    assert.ok(canonical.includes('prefers-reduced-motion'), 'canonical reduced-motion authority preserved');
+  });
+
+  it('72. My Trees static loading markup and classes remain unchanged', () => {
+    const html = read(MY_TREES_HTML);
+    assert.ok(html.includes('lt-skeleton'), 'My Trees keeps canonical lt-skeleton');
+    assert.ok(html.includes('lt-loading-compact'), 'My Trees keeps lt-loading-compact');
+    assert.ok(html.includes('trees-skeleton-grid'), 'My Trees keeps skeleton grid');
+    assert.ok(!html.includes('search-skeleton-block'), 'My Trees has no legacy search-skeleton-block');
+    assert.ok(!html.includes('search-skeleton-line'), 'My Trees has no legacy search-skeleton-line');
   });
 });
