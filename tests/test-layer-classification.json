@@ -1117,6 +1117,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-loading-3688-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real Editor markup/CSS (pages/editor.html, css/editor.css, css/editor/editor-base.css, css/global.css, css/global/lovetree-loading-states.css) and the real js/editor/editor-initial-load-flow.js in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Synthetic auth/data fixture only: loadInitialEditorTree and loadEditorMemories are deferred synthetic gates; syncCurrentTreeData, renderTreeLoadError, markEditorReady, showToast, and redirectToEditorLogin are bounded observable fixture callbacks. Asserts the staged loading contract per source: 500ms region indicator delay, 8000ms long-wait escalation, region-owned sidebar (lt-loading-inline) and canvas (lt-loading-compact) owners, role=status/aria-live=polite, spinner aria-hidden, success/stopped/rejection cleanup, auth-required vs tree-error distinction, no flash on fast completion, no stale timer mutation, reduced-motion animation removal, no horizontal overflow, zero pageerror, zero unexpected console error, zero same-origin request failure, zero unexpected HTTP failure, zero external network, zero browser/context/server leak. No production write/auth/API/DB mutation; no production URL, Firebase network, real account, or real private identifiers used.",
+      "capabilities": ["playwright", "chromium"]
+    },
+    {
       "path": "tests/contracts/editor-memory-actions-readiness-dependency-checker-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

@@ -377,12 +377,12 @@ test('6. exact default-glob parsing and deterministic enumeration', () => {
   assert.deepEqual(files, files2);
 });
 
-test('7. expected post-child counts 779 / 573 / 188 / 18', () => {
+test('7. expected post-child counts 780 / 573 / 188 / 19', () => {
   const data = buildReportData();
-  assert.equal(data.default_total, 779);
+  assert.equal(data.default_total, 780);
   assert.equal(data.layer_counts.SOURCE_STATIC, 573);
   assert.equal(data.layer_counts.EXECUTED_FAKE, 188);
-  assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, 18);
+  assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, 19);
 });
 
 test('8. supplemental reconciliation 10 Python + 7 DB = 17', () => {
@@ -416,10 +416,10 @@ test('11. browser/process exact membership from reporter output', () => {
   assert.ok(process, 'process group in output');
   assert.ok(browser.count > 0, 'browser count > 0, got ' + browser.count);
   assert.ok(process.count > 0, 'process count > 0, got ' + process.count);
-  assert.equal(browser.count + process.count, 18, 'browser + process = 18');
+  assert.equal(browser.count + process.count, 19, 'browser + process = 19');
   const inv = readJson(CLASSIFICATION_PATH);
   const realLocal = inv.entries.filter(e => e.layer === 'EXECUTED_REAL_LOCAL');
-  assert.equal(realLocal.length, 18);
+  assert.equal(realLocal.length, 19);
   // Verify each browser and process path is EXECUTED_REAL_LOCAL
   const reg = readJson(REGISTRY_PATH);
   const browserPaths = reg.groups.find(g => g.group === 'BROWSER_REAL_LOCAL').explicit_paths;
