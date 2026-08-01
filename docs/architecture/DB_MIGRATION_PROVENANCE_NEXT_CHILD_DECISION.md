@@ -4,19 +4,18 @@
 
 Current status: `SAFE_IMPLEMENTATION_CHILD_SELECTED`
 
-Issue #3678 completes Step 4 in the migration-precondition authority sequence. The current and only selected next child is:
+Issue #3802 completes Step 5 in the migration-precondition authority sequence. The current and only selected next child is:
 
 ```text
-Step 5 — evaluatePrecondition adapter
+Step 6 — composition root
 ```
 
 Current sequence posture:
 
 ```text
-Steps 1–4 complete
-Step 5 evaluatePrecondition adapter selected
-Step 5 not implemented by Issue #3678
-Steps 6–8 not authorized
+Steps 1–5 complete
+Step 6 composition root selected but not implemented
+Steps 7–8 not authorized
 ```
 
 Issue #3657 remains the open parent authority. This source-only decision grants no runtime, database, SQL, environment, provider, or Production authority.
@@ -25,15 +24,15 @@ The historical audit baseline for Issue #3644 remains recorded as `eb030c1d4751d
 
 ## Why the previous decision changed
 
-The previous decision was written before completion of the fixed read-only query-catalog contract and before implementation of the fixed registry/catalog loader-resolver. PR #3675 completed Step 3. Issue #3678 now completes Step 4 by adding a deterministic, fail-closed source loader/resolver for the two repository-owned authorities.
+The previous decision was written before completion of the fixed read-only query-catalog contract, before implementation of the fixed registry/catalog loader-resolver, and before implementation of the evaluatePrecondition adapter. PR #3675 completed Step 3, Issue #3678 completed Step 4, and Issue #3802 now completes Step 5 by adding the deterministic, fail-closed, dependency-injected `evaluatePrecondition` adapter.
 
-Because Step 4 is now complete, the prior statement that Step 4 was the selected child is superseded. The ordered sequence advances by exactly one step: Step 5 is selected for a separate future child, but it is not implemented here.
+Because Step 5 is now complete, the prior statement that Step 5 was the selected child is superseded. The ordered sequence advances by exactly one step: Step 6 (composition root) is selected for a separate future child, but it is not implemented here.
 
 ## Verified current incompatibility
 
-The repository now has a fixed authority contract, registry validation/source-validation integration, fixed read-only query-catalog contract, and fixed loader/resolver. It still has no authorized `evaluatePrecondition` adapter that consumes the resolver result and maps it into runtime migration-gate semantics.
+The repository now has a fixed authority contract, registry validation/source-validation integration, fixed read-only query-catalog contract, fixed loader/resolver, and the fail-closed `evaluatePrecondition` adapter. It still has no authorized composition root that wires the resolver, the evaluator, and the pinned-session lock adapter into a runtime migration gate.
 
-That missing adapter is the next incompatibility. It does not authorize skipping to composition, PostgreSQL rehearsal, or environment adoption.
+That missing composition root is the next incompatibility. It does not authorize skipping to PostgreSQL rehearsal or environment adoption.
 
 ## Selected next child
 
@@ -41,19 +40,19 @@ That missing adapter is the next incompatibility. It does not authorize skipping
 
 | Field | Current decision |
 |---|---|
-| Selected child | `evaluatePrecondition` adapter |
-| Sequence step | 5 |
-| Steps 1–4 | Complete |
-| Step 5 implementation in Issue #3678 | No |
-| Steps 6–8 | Not authorized |
-| Composition root selected | No |
+| Selected child | Composition root |
+| Sequence step | 6 |
+| Steps 1–5 | Complete |
+| Step 6 implementation in this child | No |
+| Steps 7–8 | Not authorized |
+| Composition root selected | Yes (selected, not implemented) |
 | Disposable PostgreSQL rehearsal selected | No |
 | Environment adoption selected | No |
 | Production access | None |
 | Database access | None |
 | SQL execution | None |
 
-The Step 5 child requires a separate exact Web CTO execution contract. This document selects Step 5 only; it does not implement it.
+The Step 6 child requires a separate exact Web CTO execution contract. This document selects Step 6 only; it does not implement it.
 
 ### Superseded historical selection retained for audit compatibility
 
@@ -84,6 +83,8 @@ The superseded Issue #3669 decision also stated:
 ```
 
 That prior decision does not select a runtime adapter. It stated that Step 4 must not skip directly to Steps 5–8 and that Steps 5–8 are not selected by this decision. Those sentences remain historical evidence of the Step 3 posture. Issue #3678 now completes Step 4, selects Step 5 only, and keeps Steps 6–8 unauthorized.
+
+Issue #3678 recorded the sequence posture as Steps 1–4 complete, Step 5 (evaluatePrecondition adapter) selected but not implemented, and Steps 6–8 not authorized. That posture is superseded by Issue #3802, which implements Step 5 and selects Step 6 (composition root) without implementing it. The historical Step-4-era wording is retained only as audit evidence.
 
 ## Exact allowed files
 
@@ -138,18 +139,18 @@ The committed catalog remains `ADOPTION_REQUIRED` with an empty `queries` plain 
 2. Registry validator and source-validation integration — completed by PR #3660 / Issue #3659.
 3. Fixed read-only query catalog contract — completed by PR #3675 / Issue #3669.
 4. Fixed precondition registry/catalog loader-resolver — completed by Issue #3678.
+5. Fail-closed `evaluatePrecondition` adapter — completed by Issue #3802 (this child).
 
 ### Selected but not implemented
 
-5. `evaluatePrecondition` adapter — selected as the only next child; not implemented by Issue #3678.
+6. Composition root — selected as the only next child; not implemented by Issue #3802.
 
 ### Not authorized
 
-6. Composition root — not authorized.
 7. Disposable PostgreSQL rehearsal — not authorized.
 8. Separately approved environment adoption — not authorized.
 
-Steps 1–4 complete. Step 5 evaluatePrecondition adapter selected. Steps 6–8 not authorized.
+Steps 1–5 complete. Step 6 composition root selected but not implemented. Steps 7–8 not authorized.
 
 ## Acceptance criteria
 
@@ -207,7 +208,7 @@ After a separately approved Step 5 child is complete, Steps 6–8 still require 
 
 ## Decision completion statement
 
-The migration-precondition authority sequence is now recorded as Steps 1–4 complete, Step 5 selected but not implemented, and Steps 6–8 not authorized. Historical Issue #3644 and Issue #3669 markers are retained only to preserve existing audit evidence.
+The migration-precondition authority sequence is now recorded as Steps 1–5 complete, Step 6 (composition root) selected but not implemented, and Steps 7–8 not authorized. Historical Issue #3644 and Issue #3669 markers are retained only to preserve existing audit evidence.
 
 ## Protected issue posture
 
@@ -222,13 +223,11 @@ Keep #1882 OPEN
 
 ## References
 
-- Refs #3678.
+- Refs #3802.
+- Refs #3678 — completed Step 4.
+- Refs #3669 — completed Step 3.
+- Refs #3659 — completed Step 2.
 - Refs #3657 — Keep OPEN.
-- Refs #3669 — completed.
-- Refs #3675 — merged.
-- Refs #3659 — completed.
-- Refs #3660 — merged.
-- Refs #3658 — completed.
 - Refs #3644.
 - Refs #3458 — Keep OPEN.
 - Refs #3425 — Keep OPEN.
