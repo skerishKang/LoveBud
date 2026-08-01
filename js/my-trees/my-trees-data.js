@@ -22,6 +22,137 @@
     return options?.i18n || window.t || function(k) { return k; };
   }
 
+  var MyTreesJourneyTracker = (function() {
+    var activeContexts = Object.create(null);
+
+    function getTaxonomy() {
+      try {
+        var tax = window && window.LoveBudJourneyOutcomeTaxonomy;
+        if (!tax || typeof tax.buildBoundedEvent !== 'function') return null;
+        return tax;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function getEvidenceSink() {
+      try {
+        var sink = window && (window.__LOVE_BUD_JOURNEY_EVIDENCE_SINK__ || window.__LoveBudJourneyOutcomeSink);
+        if (!sink) return null;
+        if (typeof sink.push === 'function' || typeof sink.emit === 'function' || typeof sink.record === 'function') {
+          return sink;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function deliverEvent(sink, event) {
+      if (typeof sink.push === 'function') return sink.push(event);
+      if (typeof sink.emit === 'function') return sink.emit(event);
+      if (typeof sink.record === 'function') return sink.record(event);
+      return undefined;
+    }
+
+    function removeContext(generation, context) {
+      if (activeContexts[generation] === context) {
+        delete activeContexts[generation];
+      }
+    }
+
+    function createGenerationContext(generation) {
+      var context = {
+        generation: generation,
+        startedAt: Date.now(),
+        terminalEmitted: false,
+        cancelled: false,
+        resultCountBucket: 'unknown'
+      };
+
+      context.recordStage = function(stageName, meta) {
+        meta = meta && typeof meta === 'object' ? meta : {};
+        var isCancelled = stageName === 'CANCELLED';
+        var isTerminal = stageName === 'TERMINAL_SUCCESS' || stageName === 'TERMINAL_FAILURE';
+        if (isCancelled) {
+          if (this.cancelled) return;
+          this.cancelled = true;
+        }
+        if (isTerminal) {
+          if (this.terminalEmitted) return;
+          this.terminalEmitted = true;
+        }
+
+        if (meta.resultCountBucket === 'positive' || meta.resultCountBucket === 'zero') {
+          this.resultCountBucket = meta.resultCountBucket;
+        }
+
+        try {
+          var tax = getTaxonomy();
+          var sink = getEvidenceSink();
+          if (!tax || !sink || !tax.STAGES) return;
+          var canonicalStage = tax.STAGES[stageName];
+          if (typeof canonicalStage !== 'string') return;
+          var event = tax.buildBoundedEvent({
+            stage: canonicalStage,
+            statusClass: meta.statusClass,
+            expectationClass: meta.expectationClass,
+            severity: meta.severity,
+            failureCode: meta.failureCode,
+            httpStatus: meta.httpStatus,
+            latencyMs: Date.now() - this.startedAt,
+            resultCountBucket: meta.resultCountBucket || this.resultCountBucket
+          });
+          deliverEvent(sink, event);
+        } catch (e) {
+          // Observability is optional. A sink/taxonomy failure must not alter product flow.
+        } finally {
+          if (isCancelled || isTerminal) removeContext(this.generation, this);
+        }
+      };
+
+      return context;
+    }
+
+    function canonicalFailureCode(name, fallback) {
+      try {
+        var tax = getTaxonomy();
+        return tax && tax.FAILURE_CODES && tax.FAILURE_CODES[name]
+          ? tax.FAILURE_CODES[name]
+          : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    return {
+      createContext: function(generation) {
+        var ctx = createGenerationContext(generation);
+        activeContexts[generation] = ctx;
+        return ctx;
+      },
+      getContext: function(generation) {
+        return activeContexts[generation] || null;
+      },
+      getActiveContextCount: function() {
+        return Object.keys(activeContexts).length;
+      },
+      mapLoadError: function(errorType, apiAvailable) {
+        if (errorType === 'generic' && apiAvailable === false) {
+          return canonicalFailureCode('LB_JOURNEY_API_UNAVAILABLE', 'LB_UNEXPECTED_FAILURE');
+        }
+        switch (errorType) {
+          case 'auth_prepare_failed': return canonicalFailureCode('LB_JOURNEY_AUTH_PREPARE_FAILED', 'LB_UNEXPECTED_FAILURE');
+          case 'fetch_rejected': return canonicalFailureCode('LB_JOURNEY_NETWORK', 'LB_UNEXPECTED_FAILURE');
+          case 'parse': return canonicalFailureCode('LB_JOURNEY_RESPONSE_PARSE', 'LB_UNEXPECTED_FAILURE');
+          case 'invalid_payload': return canonicalFailureCode('LB_JOURNEY_INVALID_PAYLOAD', 'LB_UNEXPECTED_FAILURE');
+          case 'auth': return canonicalFailureCode('LB_JOURNEY_AUTH_REQUIRED', 'LB_UNEXPECTED_FAILURE');
+          case 'server': return canonicalFailureCode('LB_JOURNEY_HTTP_5XX', 'LB_UNEXPECTED_FAILURE');
+          case 'client': return canonicalFailureCode('LB_JOURNEY_HTTP_4XX', 'LB_UNEXPECTED_FAILURE');
+          default: return canonicalFailureCode('LB_UNEXPECTED_FAILURE', 'LB_UNEXPECTED_FAILURE');
+        }
+      }
+    };
+  })();
+
   var TREES_CACHE_KEY = 'my_trees_list';
   var TREE_DETAIL_CACHE_KEY = 'tree_detail_';
   var TREE_MEMORIES_CACHE_KEY = 'tree_memories_';
@@ -167,7 +298,12 @@
    * request. Used on pagehide so pre-restore loads cannot write after restore.
    */
   function markOwnerListEpochStale() {
+    var staleGeneration = ownerListGeneration;
     ownerListGeneration += 1;
+    if (activeOwnerListLoad && activeOwnerListLoad.generation === staleGeneration) {
+      var staleContext = MyTreesJourneyTracker.getContext(staleGeneration);
+      if (staleContext) staleContext.recordStage('CANCELLED');
+    }
   }
 
   function hasVisibleLoadedCards() {
@@ -289,12 +425,15 @@
   /**
    * Extract a numeric HTTP status from an error object.
    * Supports: error.status, error.statusCode, error.response?.status.
-   * Returns 0 if no status is extractable.
+   * Returns undefined if no bounded status is extractable.
    */
   function extractHttpStatus(error) {
-    if (!error) return 0;
-    var status = error.status || error.statusCode || (error.response && error.response.status) || 0;
-    return Number(status) || 0;
+    if (!error) return undefined;
+    var raw = error.status || error.statusCode || (error.response && error.response.status);
+    if (typeof raw === 'number' && Number.isInteger(raw) && raw > 0) {
+      return raw;
+    }
+    return undefined;
   }
 
   /**
@@ -331,10 +470,8 @@
     var reason = options.reason || null;
 
     // Coalesce concurrent loads.
-    // - Normal: always share active promise.
-    // - History restore supersede: share only when the active load is already
-    //   the current history_recovery generation; otherwise start a new epoch.
     if (activeOwnerListLoad && activeOwnerListLoad.promise) {
+      var activeCtx = MyTreesJourneyTracker.getContext(activeOwnerListLoad.generation);
       if (supersedeStaleLoad) {
         if (
           activeOwnerListLoad.reason === 'history_recovery' &&
@@ -350,7 +487,6 @@
             statusClass: 'none',
             resultCountBucket: 'unknown'
           });
-          // restore_skipped_inflight reserved for same-generation recovery coalescing only
           emitLifecycleDiagnostic({
             phase: 'restore_skipped_inflight',
             attempt: 1,
@@ -361,6 +497,7 @@
             statusClass: 'none',
             resultCountBucket: 'unknown'
           });
+          if (activeCtx) activeCtx.recordStage('DUPLICATE_SUPPRESSED');
           return activeOwnerListLoad.promise;
         }
         emitLifecycleDiagnostic({
@@ -373,15 +510,19 @@
           statusClass: 'none',
           resultCountBucket: 'unknown'
         });
+        if (activeCtx) activeCtx.recordStage('CANCELLED');
         // Fall through: start a new generation without awaiting the stale load.
       } else {
+        if (activeCtx) activeCtx.recordStage('DUPLICATE_SUPPRESSED');
         return activeOwnerListLoad.promise;
       }
     }
 
     var generation = ++ownerListGeneration;
+    var ctx = MyTreesJourneyTracker.createContext(generation);
 
     var runPromise = (async function runOwnerListLoad() {
+      if (stillCurrent()) ctx.recordStage('ACTION_STARTED');
       var cache = window.LoveBudCache;
       var i18n = getI18n(options);
       var setState = options.setState;
@@ -415,6 +556,91 @@
         return true;
       }
 
+      var MAX_ACK_SETTLEMENT_ATTEMPTS = 5;
+
+      function scheduleSettlementBoundary(cb) {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(cb);
+          return;
+        }
+        if (typeof setImmediate === 'function') {
+          setImmediate(cb);
+          return;
+        }
+        if (typeof queueMicrotask === 'function') {
+          queueMicrotask(cb);
+          return;
+        }
+        cb();
+      }
+
+      /**
+       * Deterministic settled UI acknowledgement (issue #3796 correction).
+       *
+       * The page-owned terminal DOM transition (state-section swap, loading
+       * manager ready, aria-busy clear) can land one rendering boundary after
+       * renderTrees returns. A single synchronous snapshot misrecords a healthy
+       * load as UI_ACKNOWLEDGEMENT_FAILED, so we settle through a BOUNDED
+       * number of rendering cycles:
+       *   - immediate synchronous snapshot first (fast path),
+       *   - re-check across requestAnimationFrame boundaries in browsers and
+       *     setImmediate turns in Node/VM environments,
+       *   - re-validate generation currency on every re-check so pagehide /
+       *     supersede cancels pending settlement (no late terminal stages),
+       *   - fail closed with LB_UI_ACKNOWLEDGEMENT_FAILED if the terminal DOM
+       *     never settles within the window,
+       *   - the recordStage terminal guard enforces exactly-once, so the
+       *     bounded window may safely re-observe late DOM changes.
+       * The window runs to its cap even after a confirmed success; the terminal
+       * guard keeps emissions exactly-once while the window observes in-batch
+       * DOM changes (a bounded ~5 rendering cycles, well under a single frame
+       * budget on the load promise tail; the terminal UI itself is applied by
+       * renderTrees before settlement begins, so TTI is unaffected).
+       * No arbitrary wall-clock delay and no unbounded polling.
+       */
+      function settleThenAcknowledge(expectedState, ackFn) {
+        return new Promise(function(resolve) {
+          var attempts = 0;
+          var finished = false;
+
+          function finish() {
+            if (finished) return;
+            finished = true;
+            resolve();
+          }
+
+          function recheck() {
+            if (finished) return;
+            attempts += 1;
+            var acknowledged = ackFn ? ackFn(expectedState) : false;
+            // NOTE: there is deliberately NO early staleness abort here. Pagehide
+            // / supersede is enforced at every terminal decision below via
+            // stillCurrent(), so a stale settlement can never emit a terminal
+            // stage, and removing those currency checks is observable to the
+            // independent negative controls (NC3/NC10). Do not "optimize" this
+            // away without re-validating those controls.
+            if (acknowledged && stillCurrent()) {
+              if (!ctx.terminalEmitted) {
+                ctx.recordStage('UI_ACKNOWLEDGED');
+              }
+              ctx.recordStage('TERMINAL_SUCCESS');
+            }
+            if (attempts >= MAX_ACK_SETTLEMENT_ATTEMPTS) {
+              if (stillCurrent() && !ctx.terminalEmitted) {
+                ctx.recordStage('TERMINAL_FAILURE', {
+                  failureCode: 'LB_UI_ACKNOWLEDGEMENT_FAILED'
+                });
+              }
+              finish();
+              return;
+            }
+            scheduleSettlementBoundary(recheck);
+          }
+
+          recheck();
+        });
+      }
+
       var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
       if ((!cachedTrees || !Array.isArray(cachedTrees))) {
         cachedTrees = readPersistentTreesCache();
@@ -427,6 +653,7 @@
       // instead of blanking the page into LOADING.
       if (!stillCurrent()) {
         ignoreIfStale('stale_result_ignored');
+        ctx.recordStage('CANCELLED');
         return;
       }
       if (cachedTrees && Array.isArray(cachedTrees) && typeof renderTrees === 'function') {
@@ -442,6 +669,10 @@
         var trees;
 
         if (window.apiClient && window.apiClient.getTrees) {
+          if (stillCurrent()) {
+            ctx.recordStage('CLIENT_VALIDATION_PASSED');
+            ctx.recordStage('REQUEST_DISPATCHED');
+          }
           trees = await window.apiClient.getTrees({
             onLifecycle: function(meta) {
               if (!stillCurrent()) return;
@@ -453,9 +684,17 @@
         }
 
         // Await returned after possible supersede — refuse stale writes.
-        if (ignoreIfStale('stale_result_ignored')) return;
+        if (ignoreIfStale('stale_result_ignored')) {
+          ctx.recordStage('CANCELLED');
+          return;
+        }
 
         if (Array.isArray(trees)) {
+          if (stillCurrent()) {
+            ctx.recordStage('RESPONSE_ACCEPTED', {
+              resultCountBucket: trees.length > 0 ? 'positive' : 'zero'
+            });
+          }
           trees = normalizeTreesForList(trees);
 
           if (cache) {
@@ -465,6 +704,16 @@
 
           if (typeof renderTrees === 'function') {
             renderTrees(trees);
+          }
+
+          if (stillCurrent()) {
+            ctx.recordStage('CLIENT_STATE_UPDATED');
+            ctx.recordStage('NOT_MEASURABLE');
+            var expectedState = trees.length > 0 ? 'loaded' : 'empty';
+            var ackFn = typeof options.acknowledgeUi === 'function'
+              ? options.acknowledgeUi
+              : null;
+            await settleThenAcknowledge(expectedState, ackFn);
           }
 
           emitLifecycleDiagnostic({
@@ -499,10 +748,19 @@
         }
       } catch (e) {
         // Stale generation: never surface ERROR/EMPTY/toast from pre-restore loads.
-        if (ignoreIfStale('stale_result_ignored')) return;
+        if (ignoreIfStale('stale_result_ignored')) {
+          ctx.recordStage('CANCELLED');
+          return;
+        }
 
         var errorType = classifyLoadError(e);
         console.error('[my-trees-data] loadTrees error (type=' + errorType + ')');
+
+        var failCode = MyTreesJourneyTracker.mapLoadError(errorType, !!(window.apiClient && window.apiClient.getTrees));
+        ctx.recordStage('TERMINAL_FAILURE', {
+          failureCode: failCode,
+          httpStatus: extractHttpStatus(e)
+        });
 
         var errorAttempt = Number(e._attempt) || requestLifecycle.attempt;
         var errorRetried = e._retried === true || requestLifecycle.retried;
@@ -516,6 +774,7 @@
           cachePresent: !!cachedTrees,
           cacheUsed: !!(cachedTrees && Array.isArray(cachedTrees)),
           statusClass: (function() {
+            if (errorType === 'invalid_payload' || errorType === 'parse') return 'success';
             var s = extractHttpStatus(e);
             return s >= 500 ? 'server' : s >= 400 ? 'client' : s > 0 ? 'success' : requestLifecycle.statusClass;
           })(),
@@ -602,7 +861,7 @@
    * Targets h2[data-i18n] and p[data-i18n] inside the error container.
    */
   function _updateErrorStateMessage(errorEl, errorType) {
-    if (!errorEl) return;
+    if (!errorEl || typeof errorEl.querySelector !== 'function') return;
     var h2 = errorEl.querySelector('h2');
     var p = errorEl.querySelector('p');
     if (errorType === 'auth') {
@@ -635,6 +894,7 @@
     markOwnerListEpochStale: markOwnerListEpochStale,
     getOwnerListGeneration: function() { return ownerListGeneration; },
     emitLifecycleDiagnostic: emitLifecycleDiagnostic,
-    hasVisibleLoadedCards: hasVisibleLoadedCards
+    hasVisibleLoadedCards: hasVisibleLoadedCards,
+    JourneyTracker: MyTreesJourneyTracker
   };
 })();
