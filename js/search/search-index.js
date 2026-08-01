@@ -296,7 +296,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    refs.resultsList.innerHTML = CardRenderer.renderLoading();
     ui.clearSelectedPreview();
     await Promise.allSettled([
         loadPublicTrees({ resetSelection: true }),

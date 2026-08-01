@@ -418,7 +418,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    refs.resultsList.innerHTML = CardRenderer.renderLoading();
     ui.clearSelectedPreview();
 
     urlState.restoreStateFromUrl();
