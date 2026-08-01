@@ -1138,7 +1138,10 @@
       "path": "tests/contracts/editor-loading-3688-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes real Editor markup/CSS (pages/editor.html, css/editor.css, css/editor/editor-base.css, css/global.css, css/global/lovetree-loading-states.css) and the real js/editor/editor-initial-load-flow.js in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Synthetic auth/data fixture only: loadInitialEditorTree and loadEditorMemories are deferred synthetic gates; syncCurrentTreeData, renderTreeLoadError, markEditorReady, showToast, and redirectToEditorLogin are bounded observable fixture callbacks. Asserts the staged loading contract per source: 500ms region indicator delay, 8000ms long-wait escalation, region-owned sidebar (lt-loading-inline) and canvas (lt-loading-compact) owners, role=status/aria-live=polite, spinner aria-hidden, success/stopped/rejection cleanup, auth-required vs tree-error distinction, no flash on fast completion, no stale timer mutation, reduced-motion animation removal, no horizontal overflow, zero pageerror, zero unexpected console error, zero same-origin request failure, zero unexpected HTTP failure, zero external network, zero browser/context/server leak. No production write/auth/API/DB mutation; no production URL, Firebase network, real account, or real private identifiers used.",
-      "capabilities": ["playwright", "chromium"]
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
     },
     {
       "path": "tests/contracts/editor-memory-actions-readiness-dependency-checker-contract.test.cjs",
@@ -2086,7 +2089,10 @@
       "path": "tests/contracts/modal-a11y-core-dialogs-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes real LoveBud page HTML (index.html, pages/editor.html, pages/my-trees.html, pages/login.html) and the real six core modal controllers (js/index-inline-init.js, js/editor/editor-memory-form.js, js/editor/editor-rename-ui.js, js/editor/editor-shortcuts-help.js, js/my-trees/my-trees-actions.js, js/auth/auth-login-page.js) plus the shared js/shared/modal-a11y.js in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts plus a forced-colors/WHCM probe. Synthetic safe fixtures only (inert scripts, stubbed i18n/api/helper modules, fulfilled external hosts); no Production URL, real login, Auth provider, private IDs, API writes, DB, cache, storage, or external network. Asserts the shared modal accessibility lifecycle per source: initial focus after visibility, live Tab/Shift+Tab containment, focus containment, Escape close (exactly once, busy-gated), guarded invoker restoration, body scroll ownership, reopen-without-listener-duplication, close/dispose state release, page usability after close, and browser health (zero pageerror, console error, same-origin request/HTTP failure, external network, overflow, leak).",
-      "capabilities": ["playwright", "chromium"]
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
     },
     {
       "path": "tests/contracts/modal-a11y-shared-lifecycle-contract.test.cjs",
@@ -2632,7 +2638,10 @@
       "path": "tests/contracts/public-viewer-loading-3688-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes real production CSS/JS chains (css/global.css, css/viewer/public-tree-viewer.css, css/visitor-viewer.css, js/api/base-api-fetch.js, js/postgres-client.js, js/viewer/*.js, js/visitor-viewer/*.js, js/i18n/i18n-*.js) in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Intercepts only the production public memories data path (/api/community/memories) with a deterministic deferred resolver and stubs fonts.googleapis.com with empty CSS. Asserts the staged loading contract per source: shell aria-busy lifecycle, role=status/aria-live=polite loading, role=status empty state (no treeId path), role=alert error state with a keyboard/focusable retry, deterministic fallback shell for bounded empty payloads, single visible state owner, hidden-attribute visibility authority, reduced-motion animation removal, no horizontal overflow, zero pageerror, zero unexpected console error, zero same-origin request failures, zero unexpected HTTP failures, zero external network attempts, and no browser/context/server leaks. No production write/auth/API/DB mutation; no production URL used.",
-      "capabilities": ["playwright", "chromium"]
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
     },
     {
       "path": "tests/contracts/public-viewer-reaction-safe-fallback-contract.test.cjs",
@@ -4742,6 +4751,18 @@
         "child_process",
         "filesystem"
       ]
+    },
+    {
+      "path": "tests/contracts/database-external-logical-backup-source-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Statically analyzes modal_compute/recovery_backup_app.py and modal_compute/recovery_backup_policy.py to lock #3828 source-only external logical-backup boundaries: separate non-HTTP Modal app name lovebud-recovery-backup, exact three symbolic secret names (lovebud-db, lovebud-recovery-r2, lovebud-recovery-encryption), one-per-24h scheduled function, no @modal.asgi_app/@modal.web_endpoint/FastAPI/Flask, custom-format compressed pg_dump with no-owner/no-privileges, bounded single-attempt dump, streaming authenticated encryption with per-object nonce and stored tag, plaintext deletion before upload, staging upload then head verification then daily/weekly/monthly promotion then staging cleanup, finally cleanup, sanitized-only status via the pure policy module, no restore/reset/branch operation, no import or modification dependency on modal_compute/app.py, and policy-module purity (no modal/boto3/cryptography/psycopg/subprocess/env/network imports). No live provider, R2, Modal, DB, subprocess dump, network, or filesystem mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/database-external-logical-backup-behavior-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes only the pure deterministic policy module modal_compute/recovery_backup_policy.py through a local python3 subprocess (scenario script written to the OS temp directory, never the repository) to lock #3828 status semantics: daily-only/daily+weekly/daily+monthly/daily+weekly+monthly success, dump/encryption/plaintext-cleanup/upload/head-verification/daily-promotion failures, daily-valid-with-weekly/monthly-promotion-failure preservation, stale-daily and missing-weekly/monthly classification, and unknown/private/raw/impossible state rejection. No live provider, R2, Modal, DB, pg_dump, network, secret, or filesystem-backup operation.",
+      "capabilities": []
     }
   ],
   "supplemental": [
