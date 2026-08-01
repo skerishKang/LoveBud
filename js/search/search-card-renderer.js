@@ -290,40 +290,8 @@
         `;
     }
 
-    function renderSkeletonCard(index) {
-        return `
-            <div class="tree-card search-skeleton-card" aria-hidden="true" style="animation-delay:${index * 0.04}s;pointer-events:none;">
-                <div class="tree-card-media search-skeleton-block" style="min-height:${index === 0 ? 210 : 182}px;"></div>
-                <div class="tree-card-body">
-                    <div class="search-skeleton-line search-skeleton-title"></div>
-                    <div class="search-skeleton-line search-skeleton-copy"></div>
-                    <div class="tree-meta-row">
-                        <div class="tree-meta-left">
-                            <span class="tree-meta-chip search-skeleton-chip"></span>
-                        </div>
-                        <div class="tree-meta-right">
-                            <span class="search-skeleton-line search-skeleton-count"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    function renderSkeletonGrid(options = {}) {
-        _addAnimations();
-        const count = Math.max(1, Math.min(Number(options.count || 6), 8));
-        return Array.from({ length: count }, (_, index) => renderSkeletonCard(index)).join('');
-    }
-
-    function renderLoading(options = {}) {
-        return renderSkeletonGrid(options);
-    }
-
     function renderResults(trees, options = {}) {
         const { isDemo = false } = options;
-
-        _addAnimations();
 
         if (trees.length === 0) {
             return renderEmptySearchState();
@@ -340,41 +308,6 @@
         });
 
         return html;
-    }
-
-    function _addAnimations() {
-        if (document.getElementById('search-card-anim-style')) return;
-        
-        const style = document.createElement('style');
-        style.id = 'search-card-anim-style';
-        style.textContent = `
-            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-            @keyframes searchSkeletonPulse { 0%, 100% { opacity: 0.58; } 50% { opacity: 1; } }
-            .results-fade-in { animation: fadeIn 0.3s ease-out; }
-            .search-skeleton-card { cursor: default; box-shadow: 0 16px 32px rgba(75, 64, 57, 0.035); }
-            .search-skeleton-card::before { opacity: 0; }
-            .search-skeleton-block,
-            .search-skeleton-line,
-            .search-skeleton-chip {
-                display: block;
-                border-radius: 999px;
-                background: linear-gradient(90deg, rgba(144,73,81,0.07), rgba(255,255,255,0.72), rgba(122,139,110,0.07));
-                background-size: 220% 100%;
-                animation: searchSkeletonPulse 1.35s ease-in-out infinite;
-            }
-            .search-skeleton-block { border-radius: 1.35rem; width: 100%; }
-            .search-skeleton-title { width: 72%; height: 18px; }
-            .search-skeleton-copy { width: 92%; height: 13px; opacity: 0.75; }
-            .search-skeleton-chip { width: 96px; height: 28px; }
-            .search-skeleton-count { width: 82px; height: 13px; }
-            @media (prefers-reduced-motion: reduce) {
-                .search-skeleton-block,
-                .search-skeleton-line,
-                .search-skeleton-chip { animation: none; }
-            }
-        `;
-        document.head.appendChild(style);
     }
 
     function handleImageLoad(img) {
@@ -425,8 +358,6 @@
         init: init,
         renderTreeCard: renderTreeCard,
         renderResults: renderResults,
-        renderLoading: renderLoading,
-        renderSkeletonGrid: renderSkeletonGrid,
         renderNoTreesState: renderNoTreesState,
         renderEmptySearchState: renderEmptySearchState,
         renderDemoBadge: renderDemoBadge,
