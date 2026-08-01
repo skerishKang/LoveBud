@@ -4,18 +4,18 @@
 
 Current status: `SAFE_IMPLEMENTATION_CHILD_SELECTED`
 
-Issue #3802 completes Step 5 in the migration-precondition authority sequence. The current and only selected next child is:
+Issue #3809 completes Step 6 in the migration-precondition authority sequence. The current and only selected next child is:
 
 ```text
-Step 6 — composition root
+Step 7 — disposable PostgreSQL rehearsal
 ```
 
 Current sequence posture:
 
 ```text
-Steps 1–5 complete
-Step 6 composition root selected but not implemented
-Steps 7–8 not authorized
+Steps 1–6 complete
+Step 7 disposable PostgreSQL rehearsal selected but not implemented
+Step 8 environment adoption not authorized
 ```
 
 Issue #3657 remains the open parent authority. This source-only decision grants no runtime, database, SQL, environment, provider, or Production authority.
@@ -24,15 +24,15 @@ The historical audit baseline for Issue #3644 remains recorded as `eb030c1d4751d
 
 ## Why the previous decision changed
 
-The previous decision was written before completion of the fixed read-only query-catalog contract, before implementation of the fixed registry/catalog loader-resolver, and before implementation of the evaluatePrecondition adapter. PR #3675 completed Step 3, Issue #3678 completed Step 4, and Issue #3802 now completes Step 5 by adding the deterministic, fail-closed, dependency-injected `evaluatePrecondition` adapter.
+The previous decision was written before completion of the evaluatePrecondition adapter and before implementation of the composition root. Issue #3802 completed Step 5, and Issue #3809 now completes Step 6 by adding the fail-closed composition root that wires the fixed authority resolver, the pinned-session lock adapter, and the evaluator into the frozen orchestrator-facing dependency surface.
 
-Because Step 5 is now complete, the prior statement that Step 5 was the selected child is superseded. The ordered sequence advances by exactly one step: Step 6 (composition root) is selected for a separate future child, but it is not implemented here.
+Because Step 6 is now complete, the prior statement that Step 6 was the selected child is superseded. The ordered sequence advances by exactly one step: Step 7 (disposable PostgreSQL rehearsal) is selected for a separate future child, but it is not implemented here.
 
 ## Verified current incompatibility
 
-The repository now has a fixed authority contract, registry validation/source-validation integration, fixed read-only query-catalog contract, fixed loader/resolver, and the fail-closed `evaluatePrecondition` adapter. It still has no authorized composition root that wires the resolver, the evaluator, and the pinned-session lock adapter into a runtime migration gate.
+The repository now has a fixed authority contract, registry validation, readonly query catalog, loader-resolver, evaluatePrecondition adapter, and the composition root. It still has no authorized disposable PostgreSQL rehearsal that executes the composed dependency surface against an ephemeral engine.
 
-That missing composition root is the next incompatibility. It does not authorize skipping to PostgreSQL rehearsal or environment adoption.
+That missing rehearsal is the next incompatibility. It does not authorize skipping to environment adoption.
 
 ## Selected next child
 
@@ -40,19 +40,19 @@ That missing composition root is the next incompatibility. It does not authorize
 
 | Field | Current decision |
 |---|---|
-| Selected child | Composition root |
-| Sequence step | 6 |
-| Steps 1–5 | Complete |
-| Step 6 implementation in this child | No |
-| Steps 7–8 | Not authorized |
-| Composition root selected | Yes (selected, not implemented) |
-| Disposable PostgreSQL rehearsal selected | No |
+| Selected child | Disposable PostgreSQL rehearsal |
+| Sequence step | 7 |
+| Steps 1–6 | Complete |
+| Step 7 implementation in this child | No |
+| Step 8 | Not authorized |
+| Composition root selected | Yes (completed by Issue #3809) |
+| Disposable PostgreSQL rehearsal selected | Yes (selected, not implemented) |
 | Environment adoption selected | No |
 | Production access | None |
 | Database access | None |
 | SQL execution | None |
 
-The Step 6 child requires a separate exact Web CTO execution contract. This document selects Step 6 only; it does not implement it.
+The Step 7 child requires a separate exact Web CTO execution contract. This document selects Step 7 only; it does not implement it.
 
 ### Superseded historical selection retained for audit compatibility
 
@@ -85,6 +85,8 @@ The superseded Issue #3669 decision also stated:
 That prior decision does not select a runtime adapter. It stated that Step 4 must not skip directly to Steps 5–8 and that Steps 5–8 are not selected by this decision. Those sentences remain historical evidence of the Step 3 posture. Issue #3678 now completes Step 4, selects Step 5 only, and keeps Steps 6–8 unauthorized.
 
 Issue #3678 recorded the sequence posture as Steps 1–4 complete, Step 5 (evaluatePrecondition adapter) selected but not implemented, and Steps 6–8 not authorized. That posture is superseded by Issue #3802, which implements Step 5 and selects Step 6 (composition root) without implementing it. The historical Step-4-era wording is retained only as audit evidence.
+
+Issue #3802 recorded the sequence posture as Steps 1–5 complete, Step 6 (composition root) selected but not implemented, and Steps 7–8 not authorized. That posture is superseded by Issue #3809, which implements Step 6 and selects Step 7 (disposable PostgreSQL rehearsal) without implementing it. The historical Step-5-era wording is retained only as audit evidence.
 
 ## Exact allowed files
 
@@ -139,18 +141,18 @@ The committed catalog remains `ADOPTION_REQUIRED` with an empty `queries` plain 
 2. Registry validator and source-validation integration — completed by PR #3660 / Issue #3659.
 3. Fixed read-only query catalog contract — completed by PR #3675 / Issue #3669.
 4. Fixed precondition registry/catalog loader-resolver — completed by Issue #3678.
-5. Fail-closed `evaluatePrecondition` adapter — completed by Issue #3802 (this child).
+5. Fail-closed `evaluatePrecondition` adapter — completed by Issue #3802.
+6. Composition root (orchestrator-facing dependency surface) — completed by Issue #3809 (this child).
 
 ### Selected but not implemented
 
-6. Composition root — selected as the only next child; not implemented by Issue #3802.
+7. Disposable PostgreSQL rehearsal — selected as the only next child; not implemented by Issue #3809.
 
 ### Not authorized
 
-7. Disposable PostgreSQL rehearsal — not authorized.
 8. Separately approved environment adoption — not authorized.
 
-Steps 1–5 complete. Step 6 composition root selected but not implemented. Steps 7–8 not authorized.
+Steps 1–6 complete. Step 7 disposable PostgreSQL rehearsal selected but not implemented. Step 8 not authorized.
 
 ## Acceptance criteria
 
@@ -208,7 +210,7 @@ After a separately approved Step 5 child is complete, Steps 6–8 still require 
 
 ## Decision completion statement
 
-The migration-precondition authority sequence is now recorded as Steps 1–5 complete, Step 6 (composition root) selected but not implemented, and Steps 7–8 not authorized. Historical Issue #3644 and Issue #3669 markers are retained only to preserve existing audit evidence.
+The migration-precondition authority sequence is now recorded as Steps 1–6 complete, Step 7 (disposable PostgreSQL rehearsal) selected but not implemented, and Step 8 (environment adoption) not authorized. Historical Issue #3644, Issue #3669, Issue #3678-era, and Issue #3802-era markers are retained only to preserve existing audit evidence.
 
 ## Protected issue posture
 
@@ -223,7 +225,8 @@ Keep #1882 OPEN
 
 ## References
 
-- Refs #3802.
+- Refs #3809.
+- Refs #3802 — completed Step 5.
 - Refs #3678 — completed Step 4.
 - Refs #3669 — completed Step 3.
 - Refs #3659 — completed Step 2.
