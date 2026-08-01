@@ -142,23 +142,29 @@ Schema rules:
 
 ## 6. Required versus optional fields
 
-Required (a packet missing any of these is incomplete and fails closed):
+Required for every packet (a packet missing any of these is incomplete and fails closed):
 
 ```text
 schema_version, failure_id, sha, branch, command, command_id, runtime, platform, test_group,
-attempt, outcome, ci_state, environment, failing_files, failing_tests, aggregate_counts,
-machine_summary, artifacts[]
+attempt, outcome, ci_state, failure_class, environment, failing_files, failing_tests,
+aggregate_counts, machine_summary, artifacts[]
 ```
 
-Required only for a non-`UNCLASSIFIED` `failure_class`:
+Required only when `failure_class` is not `UNCLASSIFIED`:
 
 ```text
-failure_class (with the comparison/attempt/infra evidence of §7)
 comparison.branch_sha + comparison.main_sha + comparison.commands_equal
-comparison.branch_failures + comparison.main_failures (+ branch_only_failures for BRANCH_ONLY_FAILURE)
+comparison.branch_failures + comparison.main_failures
+comparison.branch_only_failures (for BRANCH_ONLY_FAILURE)
 comparison.platform_matrix (for PLATFORM_ONLY_FAILURE)
 comparison.attempt_history (for NON_DETERMINISTIC_FAILURE)
-infra evidence (for ci_state CI_UNAVAILABLE_INFRA: which step did not execute and why)
+```
+
+Required only when `ci_state` is `CI_UNAVAILABLE_INFRA`:
+
+```text
+which relevant step did not execute
+bounded reason why it did not execute
 ```
 
 Optional:
