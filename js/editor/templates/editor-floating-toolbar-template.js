@@ -13,7 +13,7 @@ export function buildFloatingToolbarTemplate() {
                 <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
                 <span class="editor-floating-toolbar-label">감상하기</span>
             </button>
-            <button type="button" class="editor-floating-toolbar-btn editor-ftb-more-btn" id="ftbMoreBtn" aria-label="더 보기" title="더 보기" aria-expanded="false" aria-haspopup="true">
+            <button type="button" class="editor-floating-toolbar-btn editor-ftb-more-btn" id="ftbMoreBtn" aria-label="더 보기" title="더 보기" aria-expanded="false" aria-haspopup="menu" aria-controls="ftbDropdown">
                 <span class="material-symbols-outlined" aria-hidden="true">more_horiz</span>
             </button>
             <div id="ftbDropdown" class="editor-ftb-dropdown is-hidden" role="menu" aria-label="추가 행동" style="display:none;">
