@@ -45,6 +45,8 @@ function createSessionOpener(cfg, dbName) {
   return {
     openSession() {
       const client = new Client(baseClientConfig(cfg, dbName));
+      // Bounded: ignore socket errors after the disposable DB is force-dropped.
+      client.on('error', function () { /* expected post-drop socket error */ });
       const session = {
         query: async function (queryObject) {
           queryNames.push(queryObject && queryObject.name);
@@ -113,6 +115,7 @@ const RESIDUAL_LOCK_SQL =
 
 async function assertNoResidualLock(cfg, dbName) {
   const client = new Client(baseClientConfig(cfg, dbName));
+  client.on('error', function () { /* expected post-drop socket error */ });
   try {
     await client.connect();
     const result = await client.query(RESIDUAL_LOCK_SQL, LOCK_KEYS);
@@ -128,6 +131,7 @@ async function assertNoResidualLock(cfg, dbName) {
 
 async function assertServerVersion(cfg, dbName) {
   const client = new Client(baseClientConfig(cfg, dbName));
+  client.on('error', function () { /* expected post-drop socket error */ });
   try {
     await client.connect();
     const result = await client.query('SHOW server_version_num');
@@ -258,7 +262,6 @@ test('R3 synthetic bounded negative check -> FAIL and orchestrator blocked', asy
     assert.equal(counts.executeMigration, 0, 'executeMigration never called');
     assert.equal(counts.appendLedgerRecord, 0, 'appendLedgerRecord never called');
     assert.equal(result.lockReleased, true, 'release completed');
-    process.stdout.write('DIAG_R3 outcome=' + result.outcome + ' stage=' + result.stage + ' blockers=' + JSON.stringify(result.blockers) + '\n');
     assert.ok(
       (result.blockers || []).some((b) => String(b).includes(RUNNER_BLOCKERS.RUNNER_PRECONDITION_FAILED)),
       'precondition blocker present',
@@ -280,7 +283,6 @@ test('R4 committed authority orchestrator fail-closed before execution', async (
     const counts = { executeMigration: 0, appendLedgerRecord: 0 };
     const result = await runCanonicalMigration(orchestratorInput(makeOrchestratorDeps(root, counts)));
     assert.equal(result.outcome, 'BLOCKED_BEFORE_EXECUTION', 'outcome BLOCKED_BEFORE_EXECUTION');
-    process.stdout.write('DIAG_R4 outcome=' + result.outcome + ' stage=' + result.stage + ' blockers=' + JSON.stringify(result.blockers) + '\n');
     assert.ok(
       (result.blockers || []).some((b) => String(b).includes('RUNNER_PRECONDITION_NOT_EVALUATED')),
       'blocker RUNNER_PRECONDITION_NOT_EVALUATED',
