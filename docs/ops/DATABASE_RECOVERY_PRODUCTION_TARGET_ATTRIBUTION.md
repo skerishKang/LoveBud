@@ -1,7 +1,7 @@
 # Database Recovery Production Target Attribution
 
 > **Parent:** Issue #3460 (Keep OPEN).
-> **This child:** Issue #3812 — attribute the active Modal Production database to one Neon project boundary without disclosure.
+> **This child:** Issue #3812 — perform sanitized Neon project-boundary attribution for the active Modal Production database without disclosure.
 > **Completed prerequisite:** Issue #3807 / PR #3808 — sanitized read-only Neon recovery capability audit (merged; verdict `PROVIDER_CAPABILITY_UNVERIFIED` because the Production target could not be attributed).
 > **Source policy:** `docs/ops/DATABASE_SNAPSHOT_RETENTION_RESTORE_DRILL_POLICY.md`.
 > **Provider capability audit:** `docs/ops/DATABASE_RECOVERY_PROVIDER_CAPABILITY_AUDIT.md`.
@@ -16,10 +16,8 @@ Refs #1882 — Keep OPEN.
 
 ## 1. Scope and explicit non-actions
 
-This child verifies only whether the active Modal `lovebud-db` `DATABASE_URL` endpoint
-identity maps to exactly one currently accessible Neon project boundary, using an
-in-memory, blinded comparison that never records or prints the value. It does **not**
-perform or authorize:
+This child performs a sanitized attribution comparison for the active Production target
+and records only the resulting fixed attribution enum. It does **not** perform or authorize:
 
 - any PostgreSQL connection, socket open, handshake, or SQL execution (including
   connectivity, introspection, or health queries);
@@ -66,7 +64,7 @@ remote state was verified at session start, and the latest `origin/main` was use
   only `DATABASE_URL` from the injected environment, parsed only the endpoint identity in
   process memory, and performed a constant-time equality comparison against the blinded
   candidate material.
-- **Output:** the run returned exactly one enum value. No secret value, endpoint identity,
+- **Output:** the run returned only the fixed attribution enum value. No secret value, endpoint identity,
   identifier, object count, or traceback containing private material was printed or
   recorded.
 - **Ephemerality:** the disposable script and all comparison material were deleted after
@@ -89,9 +87,9 @@ remote state was verified at session start, and the latest `origin/main` was use
 | DB connection count | `0` |
 | SQL execution count | `0` |
 
-The active Modal `lovebud-db` `DATABASE_URL` endpoint identity matched exactly one
-currently accessible Neon project boundary during this comparison session. Uniqueness is
-expressed by the enum alone; no identifier, value, or count is recorded here.
+The sanitized comparison produced `VERIFIED_UNIQUE` for the active Production target
+during this session. Uniqueness is expressed by the enum alone; no identifier, value, or
+count is recorded here.
 
 ## 5. Consequences for recovery verification
 
