@@ -233,6 +233,11 @@ test('R3 synthetic bounded negative check -> FAIL and orchestrator blocked', asy
     assert.equal(acquire.status, 'ACQUIRED');
     const precondition = await root.evaluatePrecondition({ targetMigrationId: TARGET, lockHandle: acquire.handle });
     assert.equal(precondition.status, 'FAIL', 'fixed false evidence -> FAIL');
+    const checkLock = await root.checkAdvisoryLock({ lockHandle: acquire.handle });
+    assert.equal(checkLock.status, 'ACQUIRED');
+    // Release the outer handle so the orchestrator below acquires a fresh session.
+    const releaseOuter = await root.releaseAdvisoryLock({ lockHandle: acquire.handle });
+    assert.equal(releaseOuter.status, 'RELEASED');
 
     const counts = { executeMigration: 0, appendLedgerRecord: 0 };
     const result = await runCanonicalMigration(orchestratorInput(makeOrchestratorDeps(root, counts)));
@@ -242,11 +247,11 @@ test('R3 synthetic bounded negative check -> FAIL and orchestrator blocked', asy
     assert.equal(counts.appendLedgerRecord, 0, 'appendLedgerRecord never called');
     assert.equal(result.lockReleased, true, 'release completed');
     assert.ok(
-      result.blockers.some((b) => String(b).startsWith('RUNNER_PRECONDITION')),
+      (result.blockers || []).some((b) => String(b).includes(RUNNER_BLOCKERS.RUNNER_PRECONDITION_FAILED)),
       'precondition blocker present',
     );
 
-    assert.equal(opener.released.length, 1, 'dedicated session released exactly once');
+    assert.equal(opener.released.length, 2, 'dedicated sessions released exactly twice');
     await assertNoResidualLock(ctx.cfg, ctx.dbName);
     pass('R3');
   });
@@ -263,7 +268,7 @@ test('R4 committed authority orchestrator fail-closed before execution', async (
     const result = await runCanonicalMigration(orchestratorInput(makeOrchestratorDeps(root, counts)));
     assert.equal(result.outcome, 'BLOCKED_BEFORE_EXECUTION', 'outcome BLOCKED_BEFORE_EXECUTION');
     assert.ok(
-      result.blockers.includes(RUNNER_BLOCKERS.RUNNER_PRECONDITION_NOT_EVALUATED),
+      (result.blockers || []).some((b) => String(b).includes('RUNNER_PRECONDITION_NOT_EVALUATED')),
       'blocker RUNNER_PRECONDITION_NOT_EVALUATED',
     );
     assert.equal(result.executionAttempted, false, 'executionAttempted false');
