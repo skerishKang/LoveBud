@@ -65,6 +65,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-precondition-evaluator-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the fail-closed evaluatePrecondition adapter (scripts/migration-precondition-evaluator-adapter-core.cjs) in a local process with synthetic resolver/broker fixtures: frozen factory and exact public surface, exact frozen status records, malformed factory bounded failure, hostile/accessor/Proxy/revoked-Proxy call envelopes with zero dependency calls, ADOPTION_REQUIRED/NOT_FOUND/empty-checks -> NOT_EVALUATED, UNAVAILABLE/throw/rejection/malformed -> UNAVAILABLE, BOOLEAN_SINGLE_ROW PASS/FAIL and every malformed row shape -> UNAVAILABLE, multi-check precedence with FAIL-then-UNAVAILABLE and no partial execution, broker query exact 3-key boundary with resultContract stripped and lockHandle identity preserved, detached/frozen query and values, exact dependency call counts, no raw error/evidence/console exposure, no retry/timeout/sleep/driver/network capability, and orchestrator CONDITION_STATUSES compatibility. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3802).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Validates the fixed inactive read-only precondition query catalog, normative authority separation, future ACTIVE entry shape, BOOLEAN_SINGLE_ROW result contract, implementation sequence, prohibited runtime and dynamic authority, exact changed-file boundary, and protected issue references without database, network, SQL execution, Docker, PostgreSQL, or Production access (#3669).",
