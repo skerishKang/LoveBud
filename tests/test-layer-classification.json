@@ -203,6 +203,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/authenticated-my-trees-load-instrumentation-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production My Trees data, page, and entry modules with deterministic fake DOM, fake clock, auth, API, cache, cancellation, and sink fixtures to verify bounded journey outcomes without real network, browser, provider, database, Production, or telemetry transport (#3673).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/authenticated-moment-comment-write-boundary-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -1864,6 +1870,12 @@
       "path": "tests/contracts/intro-how-to-css-contracts.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/journey-outcome-taxonomy-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the browser taxonomy source in a restricted fake window and verifies canonical boundary classifiers, immutable exports, exact bounded event projection, terminal mappings, and privacy fail-closed behavior without network or external-system access (#3673).",
       "capabilities": []
     },
     {

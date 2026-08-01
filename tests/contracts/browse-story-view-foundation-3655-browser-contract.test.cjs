@@ -53,6 +53,14 @@ function startServer() {
           res.end(buildMyTreesFixture());
           return;
         }
+        /* #3813 adapter-boundary fixture: identical production asset chain as
+         * the Browse fixture, plus the optional surface-adapter boundary
+         * (translate + onGroupChange) wired at init. */
+        if (urlPath === '/fixture-story-adapter.html') {
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(buildAdapterFixture());
+          return;
+        }
         /* #3771 media-regression: renderer-driven fixture that exercises the
          * firstElementChild boundary fix. All media is same-origin so the
          * harness can prove the real Tier-1 thumbnail path (loaded img)
@@ -238,6 +246,135 @@ ${cards}
     var storyController = window.LoveBudBrowseStoryView.init({
       results: '#resultsList',
       navMount: '#browseStoryNavMount'
+    });
+    var switcher = window.LoveBudTreeViewModeSwitcher.init({
+      storageKey: 'lovebud:browse:viewMode',
+      defaultMode: 'compact',
+      mount: '#browseViewModeMount',
+      target: '#resultsList',
+      modes: ['large', 'compact', 'list', 'story'],
+      onChange: function (mode) { storyController.setMode(mode); }
+    });
+    storyController.setMode(switcher.getCurrentMode());
+    window.__storyController = storyController;
+  })();
+</script>
+</body></html>`;
+}
+
+/* #3813 adapter-boundary fixture: the same production Browse asset chain,
+ * but the Story controller is initialized with the optional surface-adapter
+ * boundary (translate + onGroupChange). Exposes:
+ *   window.__storyController   — controller with the adapter boundary
+ *   window.__snapshots         — every settled onGroupChange snapshot
+ *   window.__translatedKeys    — every semantic key handed to translate
+ *   window.__throwOnGroupChange— when true, onGroupChange throws (contained)
+ *   window.__throwTranslate    — when true, translate throws (falls back)
+ *   window.__renderCards(ids)  — synchronous result replacement
+ * The fixture itself never pre-builds controller DOM state. */
+function buildAdapterFixture() {
+  const cards = BROWSE_IDS.map((id, i) => browseCardMarkup(id, `Story Tree ${i + 1}`)).join('\n');
+  return `<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="stylesheet" href="/css/global.css"/>
+<link rel="stylesheet" href="/css/shared/love-tree-card-composition.css"/>
+<link rel="stylesheet" href="/css/search.css"/>
+<link rel="stylesheet" href="/css/tree-view-mode.css?v=20260725-3655-1"/>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #f6f1ec; }
+  .material-symbols-outlined { font-family: system-ui; font-size: 14px; }
+</style>
+</head>
+<body>
+<main class="search-container lovetree-calm-two-column-shell">
+  <section class="lovetree-calm-main-column">
+    <div class="browse-utility-row lovetree-calm-utility-row">
+      <div class="search-input-wrapper">
+        <input type="text" id="searchInput" class="search-input" placeholder="search" />
+      </div>
+    </div>
+    <div class="browse-results-head lovetree-calm-results-head">
+      <div id="browseViewModeMount"></div>
+    </div>
+    <div id="resultsList">
+${cards}
+    </div>
+    <div id="browseStoryNavMount"></div>
+  </section>
+  <aside class="preview-sidebar preview-hub lovetree-calm-right-rail" id="previewSidebar">
+    <header class="preview-panel-header"><h3>감상 허브</h3></header>
+  </aside>
+</main>
+<script>
+  window.LoveBudSearchUI = {
+    createSearchUI: function (config) { return { config: config }; }
+  };
+</script>
+<script src="/js/tree-view-mode-switcher.js"></script>
+<script src="/js/search/search-card-renderer.js"></script>
+<script src="/js/search/search-card-events.js"></script>
+<script src="/js/search/search-story-view.js"></script>
+<script>
+  (function () {
+    var resultsList = document.getElementById('resultsList');
+    window.__selects = 0;
+    window.__lastSelect = null;
+    window.__snapshots = [];
+    window.__translatedKeys = [];
+    window.__throwOnGroupChange = false;
+    window.__throwTranslate = false;
+
+    var ui = window.LoveBudSearchUI.createSearchUI({
+      refs: {},
+      state: { selectedTreeId: null },
+      callbacks: {
+        selectTree: function (tree) {
+          window.__selects += 1;
+          window.__lastSelect = tree.id;
+        }
+      }
+    });
+
+    var CARD_HTML = ${JSON.stringify(browseCardMarkup('__ID__', '__TITLE__'))};
+    function cardHtml(id, title) {
+      return CARD_HTML.replace(/__ID__/g, id).replace(/__TITLE__/g, title);
+    }
+
+    window.__renderCards = function (ids) {
+      resultsList.innerHTML = ids
+        .map(function (id, i) { return cardHtml(id, 'Story Tree ' + (i + 1)); })
+        .join('');
+      ui.attachCardEvents(resultsList, ids.map(function (id) { return { id: id }; }));
+    };
+
+    ui.attachCardEvents(resultsList, ${JSON.stringify(BROWSE_IDS)}.map(function (id) { return { id: id }; }));
+
+    var storyController = window.LoveBudBrowseStoryView.init({
+      results: '#resultsList',
+      navMount: '#browseStoryNavMount',
+      translate: function (key, locale) {
+        if (window.__throwTranslate) throw new Error('translate boom');
+        window.__translatedKeys.push(key);
+        if (key === 'story.label') return '스토리';
+        if (key === 'story.regionLabel') return '나의 트리 스토리';
+        if (key === 'story.previous') return '이전 스토리';
+        if (key === 'story.next') return '다음 스토리';
+        if (key === 'story.position') return '현재 그룹 {current} / 전체 {total}';
+        return null;
+      },
+      onGroupChange: function (snapshot) {
+        window.__snapshots.push(snapshot);
+        window.__snapshotDom = {
+          wrapperCount: document.querySelectorAll('.browse-story-transition-stage').length,
+          ariaBusy: document.getElementById('resultsList').getAttribute('aria-busy'),
+          direction: document.getElementById('resultsList').getAttribute('data-story-direction'),
+          directOrder: Array.from(document.querySelectorAll('#resultsList > .tree-card[data-tree-id]'))
+            .map(function (c) { return c.getAttribute('data-tree-id'); })
+        };
+        if (window.__throwOnGroupChange) throw new Error('group change boom');
+      }
     });
     var switcher = window.LoveBudTreeViewModeSwitcher.init({
       storageKey: 'lovebud:browse:viewMode',
@@ -2515,6 +2652,606 @@ test('#3771 browser: Story media elements preserved (mobile + reduced motion)', 
   } catch (err) {
     if (mContext) await mContext.close();
     if (rmContext) await rmContext.close();
+    await browser.close();
+    await closeServer(server);
+    throw err;
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════
+ * #3813 — additive surface-adapter boundary (real Chromium)
+ * ══════════════════════════════════════════════════════════════════ */
+
+/* Shared entry helper: activate Story with an optional initialTreeId. The
+ * controller owns grouping/visibility while the page's view-mode switcher
+ * owns the `data-tree-view-mode` attribute (re-applied from localStorage on
+ * any document childList mutation), so the helper mirrors the switcher's
+ * persist + applyMode behaviour when driving the controller directly. */
+async function activateStory(page, initialTreeId) {
+  const arg = initialTreeId == null ? null : { initialTreeId: initialTreeId };
+  await page.evaluate((opts) => {
+    const c = window.__storyController;
+    const results = document.getElementById('resultsList');
+    localStorage.setItem('lovebud:browse:viewMode', 'story');
+    c.setMode('compact');
+    results.setAttribute('data-tree-view-mode', 'compact');
+    if (opts) c.setMode('story', opts);
+    else c.setMode('story');
+    results.setAttribute('data-tree-view-mode', 'story');
+  }, arg);
+}
+
+test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens its group directly (wide/tablet/mobile)', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  let context;
+  try {
+    context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const health = captureBrowserHealth(page, fixtureOrigin);
+    await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    /* (1) legacy plain init without options enters Story at group 0 */
+    await activateStory(page, null);
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01 / 03',
+    });
+    let st = await storyState(page);
+    assert.deepEqual(st.visible, ['browse-1', 'browse-2', 'browse-3'], 'legacy entry stays at group 0');
+
+    /* (2) valid initialTreeId opens the containing group immediately */
+    await activateStory(page, 'browse-6');
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3,
+      visibleOrder: ['browse-4', 'browse-5', 'browse-6'], indicator: '02 / 03',
+    });
+    st = await storyState(page);
+    assert.equal(st.groupSizeAttr, '3', 'wide group size 3');
+
+    /* (3) unknown initialTreeId falls back to group 0 */
+    await activateStory(page, 'does-not-exist');
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3,
+      visibleOrder: ['browse-1', 'browse-2', 'browse-3'], indicator: '01 / 03',
+    });
+
+    /* (7) public goTo moves via the existing transition authority */
+    await page.evaluate(() => window.__storyController.goTo(2));
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03 / 03',
+    });
+    st = await storyState(page);
+    assert.deepEqual(st.visible, ['browse-7'], 'goTo(2) reaches the last group');
+
+    /* (8) out-of-range goTo clamps (no wrap, no error) */
+    await page.evaluate(() => window.__storyController.goTo(99));
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03 / 03',
+    });
+    await page.evaluate(() => window.__storyController.goTo(-5));
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3,
+      visibleOrder: ['browse-1', 'browse-2', 'browse-3'], indicator: '01 / 03',
+    });
+
+    /* (23) no-option result replacement still resets to group 0 */
+    await page.evaluate(() => window.__storyController.goTo(1));
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '02 / 03',
+    });
+    await page.evaluate(() => window.__renderCards(['x1', 'x2', 'x3', 'x4', 'x5']));
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01 / 02',
+    });
+    st = await storyState(page);
+    assert.deepEqual(st.visible, ['x1', 'x2', 'x3'], 'plain result replacement resets to group 0');
+
+    /* (5) getVisibleTreeIds reflects the settled visible group; each call
+     * returns a new frozen detached array (frozen-ness is evaluated inside
+     * the page — Playwright serialization would copy the array). */
+    const idsInfo = await page.evaluate(() => {
+      const a = window.__storyController.getVisibleTreeIds();
+      const b = window.__storyController.getVisibleTreeIds();
+      return {
+        a: a.slice(),
+        b: b.slice(),
+        frozenA: Object.isFrozen(a),
+        frozenB: Object.isFrozen(b),
+        detached: a !== b,
+      };
+    });
+    assert.deepEqual(idsInfo.a, ['x1', 'x2', 'x3']);
+    assert.deepEqual(idsInfo.b, ['x1', 'x2', 'x3']);
+    assert.equal(idsInfo.frozenA, true, 'getVisibleTreeIds returns a frozen array');
+    assert.equal(idsInfo.frozenB, true, 'each call returns a frozen array');
+    assert.equal(idsInfo.detached, true, 'each call returns a new detached array');
+
+    /* tablet: 2 per group */
+    const tContext = await browser.newContext({ viewport: { width: 900, height: 900 } });
+    const tPage = await tContext.newPage();
+    await tPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await tPage.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await tPage.waitForTimeout(150);
+    await activateStory(tPage, 'browse-5');
+    await waitForStoryGroupReady(tPage, {
+      mode: 'story', expectNoTransition: true, visibleCount: 2,
+      visibleOrder: ['browse-5', 'browse-6'], indicator: '03 / 04',
+    });
+    await tContext.close();
+
+    /* mobile: 1 per group */
+    const mContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const mPage = await mContext.newPage();
+    await mPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await mPage.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await mPage.waitForTimeout(150);
+    await activateStory(mPage, 'browse-7');
+    await waitForStoryGroupReady(mPage, {
+      mode: 'story', expectNoTransition: true, visibleCount: 1,
+      visibleOrder: ['browse-7'], indicator: '07 / 07',
+    });
+    await mContext.close();
+
+    /* health + overflow */
+    assert.deepEqual(health.pageerrors, [], 'no page errors');
+    assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.requestFailures, [], 'no same-origin request failures');
+    assert.deepEqual(health.responseErrors, [], 'no same-origin HTTP >=400');
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    assert.ok(overflow.scrollWidth <= overflow.clientWidth + 1, 'no horizontal overflow');
+    await context.close();
+    await browser.close();
+    await closeServer(server);
+  } catch (err) {
+    if (context) await context.close();
+    await browser.close();
+    await closeServer(server);
+    throw err;
+  }
+});
+
+test('#3813 browser: surface-neutral translation override applies five keys and falls back on translator throw', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  let context;
+  try {
+    context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const health = captureBrowserHealth(page, fixtureOrigin);
+    await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    await activateStory(page, null);
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01 / 03',
+    });
+
+    /* (20) custom translation applied to all five semantic keys */
+    const labels = await page.evaluate(() => {
+      const nav = document.querySelector('.browse-story-navigation');
+      const prev = document.querySelector('[data-story-prev]');
+      const next = document.querySelector('[data-story-next]');
+      return {
+        region: nav.getAttribute('aria-label'),
+        prev: prev.getAttribute('aria-label'),
+        next: next.getAttribute('aria-label'),
+        label: document.querySelector('.browse-story-nav-label').textContent,
+        a11y: document.querySelector('.browse-story-indicator-a11y').textContent,
+      };
+    });
+    assert.equal(labels.region, '나의 트리 스토리');
+    assert.equal(labels.prev, '이전 스토리');
+    assert.equal(labels.next, '다음 스토리');
+    assert.equal(labels.label, '스토리');
+    assert.equal(labels.a11y, '현재 그룹 1 / 전체 3');
+
+    /* (21) translator receives only surface-neutral keys (no search. prefix) */
+    const keys = await page.evaluate(() => window.__translatedKeys.slice());
+    assert.ok(keys.length >= 5, 'translator was invoked for the five semantic keys');
+    for (const key of keys) {
+      assert.ok(/^story\./.test(key), `key ${key} must be surface-neutral`);
+      assert.ok(key.indexOf('search.') === -1, `key ${key} must not carry a search. prefix`);
+    }
+    const uniqueKeys = [...new Set(keys)].sort();
+    assert.deepEqual(uniqueKeys, ['story.label', 'story.next', 'story.position', 'story.previous', 'story.regionLabel']);
+
+    /* (22) translator throw falls back to existing Browse strings */
+    await page.evaluate(() => { window.__throwTranslate = true; });
+    await page.evaluate(() => window.__storyController.goTo(1));
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '02 / 03',
+    });
+    const fallbackLabels = await page.evaluate(() => ({
+      prev: document.querySelector('[data-story-prev]').getAttribute('aria-label'),
+      next: document.querySelector('[data-story-next]').getAttribute('aria-label'),
+      region: document.querySelector('.browse-story-navigation').getAttribute('aria-label'),
+      a11y: document.querySelector('.browse-story-indicator-a11y').textContent,
+    }));
+    assert.equal(fallbackLabels.prev, '이전 스토리 그룹', 'Browse fallback previous label');
+    assert.equal(fallbackLabels.next, '다음 스토리 그룹', 'Browse fallback next label');
+    assert.equal(fallbackLabels.region, '스토리 보기', 'Browse fallback region label');
+    assert.equal(fallbackLabels.a11y, '스토리 2 / 3', 'Browse fallback position string');
+
+    assert.deepEqual(health.pageerrors, [], 'no page errors');
+    assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    await context.close();
+    await browser.close();
+    await closeServer(server);
+  } catch (err) {
+    if (context) await context.close();
+    await browser.close();
+    await closeServer(server);
+    throw err;
+  }
+});
+
+test('#3813 browser: initialTreeId entry and preferredTreeId refresh fire exactly one settled callback each', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  let context;
+  try {
+    context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const health = captureBrowserHealth(page, fixtureOrigin);
+    await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    /* (4) valid initialTreeId entry: exactly one callback, for the final group */
+    await page.evaluate(() => window.__snapshots.length = 0);
+    await activateStory(page, 'browse-6');
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3,
+      visibleOrder: ['browse-4', 'browse-5', 'browse-6'], indicator: '02 / 03',
+    });
+    let snap = await page.evaluate(() => ({
+      count: window.__snapshots.length,
+      groupIndex: window.__snapshots[0] && window.__snapshots[0].groupIndex,
+      visible: window.__snapshots[0] && window.__snapshots[0].visibleTreeIds,
+    }));
+    assert.equal(snap.count, 1, 'initialTreeId entry fires one callback');
+    assert.equal(snap.groupIndex, 1, 'callback targets the final group (no transient group 0)');
+    assert.deepEqual(snap.visible, ['browse-4', 'browse-5', 'browse-6']);
+
+    /* (5)/(6) synchronous render + refresh({ preferredTreeId }): one callback,
+     * no intermediate group-0 notification. */
+    await page.evaluate(() => window.__snapshots.length = 0);
+    await page.evaluate(() => {
+      window.__renderCards(['r1', 'r2', 'r3', 'r4', 'r5']);
+      window.__storyController.refresh({ preferredTreeId: 'r5' });
+    });
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 2,
+      visibleOrder: ['r4', 'r5'], indicator: '02 / 02',
+    });
+    snap = await page.evaluate(() => ({
+      count: window.__snapshots.length,
+      groupIndexes: window.__snapshots.map((s) => s.groupIndex),
+      visible: window.__snapshots[0] && window.__snapshots[0].visibleTreeIds,
+    }));
+    assert.equal(snap.count, 1, 'refresh preferredTreeId fires one callback');
+    assert.deepEqual(snap.groupIndexes, [1], 'no intermediate group-0 callback');
+    assert.deepEqual(snap.visible, ['r4', 'r5']);
+
+    /* refresh without preferredTreeId keeps the group-0 reset behaviour */
+    await page.evaluate(() => window.__snapshots.length = 0);
+    await page.evaluate(() => {
+      window.__renderCards(['s1', 's2', 's3', 's4']);
+      window.__storyController.refresh();
+    });
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3,
+      visibleOrder: ['s1', 's2', 's3'], indicator: '01 / 02',
+    });
+    snap = await page.evaluate(() => ({
+      count: window.__snapshots.length,
+      groupIndexes: window.__snapshots.map((s) => s.groupIndex),
+    }));
+    assert.equal(snap.count, 1, 'plain refresh fires one callback');
+    assert.deepEqual(snap.groupIndexes, [0], 'plain refresh resets to group 0');
+
+    assert.deepEqual(health.pageerrors, [], 'no page errors');
+    assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    await context.close();
+    await browser.close();
+    await closeServer(server);
+  } catch (err) {
+    if (context) await context.close();
+    await browser.close();
+    await closeServer(server);
+    throw err;
+  }
+});
+
+test('#3813 browser: snapshots are frozen 4-key plain objects with frozen detached id arrays and no DOM nodes', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  let context;
+  try {
+    context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const health = captureBrowserHealth(page, fixtureOrigin);
+    await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+    await activateStory(page, null);
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01 / 03',
+    });
+
+    const shape = await page.evaluate(() => {
+      const snap = window.__snapshots[0];
+      return {
+        keys: Object.keys(snap).sort(),
+        frozen: Object.isFrozen(snap),
+        idsFrozen: Object.isFrozen(snap.visibleTreeIds),
+        groupIndex: snap.groupIndex,
+        groupCount: snap.groupCount,
+        first: snap.firstVisibleTreeId,
+        ids: snap.visibleTreeIds.slice(),
+        json: JSON.stringify(snap),
+        types: [typeof snap.groupIndex, typeof snap.groupCount, typeof snap.firstVisibleTreeId, Array.isArray(snap.visibleTreeIds) ? 'array' : typeof snap.visibleTreeIds],
+      };
+    });
+    assert.deepEqual(shape.keys, ['firstVisibleTreeId', 'groupCount', 'groupIndex', 'visibleTreeIds'],
+      'snapshot has exactly the four documented enumerable keys');
+    assert.equal(shape.frozen, true, 'snapshot is frozen');
+    assert.equal(shape.idsFrozen, true, 'visibleTreeIds is frozen');
+    assert.equal(shape.groupIndex, 0);
+    assert.equal(shape.groupCount, 3);
+    assert.equal(shape.first, 'browse-1');
+    assert.deepEqual(shape.ids, ['browse-1', 'browse-2', 'browse-3']);
+    assert.deepEqual(shape.types, ['number', 'number', 'string', 'array'], 'no DOM node or function exposed');
+    assert.ok(shape.json.indexOf('[object') === -1, 'serialization exposes no DOM nodes');
+
+    /* (16) detached: navigating produces a new frozen array; the old one is
+     * untouched (detachment is evaluated inside the page). */
+    await page.evaluate(() => window.__storyController.goTo(1));
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '02 / 03',
+    });
+    const detachInfo = await page.evaluate(() => {
+      const s0 = window.__snapshots[0].visibleTreeIds;
+      const s1 = window.__snapshots[1].visibleTreeIds;
+      return {
+        detached: s0 !== s1,
+        old: s0.slice(),
+        newIds: s1.slice(),
+        frozen: Object.isFrozen(s1),
+        groupIndex: window.__snapshots[1].groupIndex,
+      };
+    });
+    assert.equal(detachInfo.detached, true, 'visibleTreeIds is a detached array per snapshot');
+    assert.deepEqual(detachInfo.old, ['browse-1', 'browse-2', 'browse-3'], 'previous snapshot stays immutable');
+    assert.deepEqual(detachInfo.newIds, ['browse-4', 'browse-5', 'browse-6']);
+    assert.equal(detachInfo.frozen, true, 'new snapshot visibleTreeIds is frozen');
+    assert.equal(detachInfo.groupIndex, 1);
+
+    /* (19) getVisibleTreeIds: new frozen array each call, empty when inactive
+     * (frozen/detached checks run inside the page). */
+    const gvtInfo = await page.evaluate(() => {
+      const a = window.__storyController.getVisibleTreeIds();
+      const b = window.__storyController.getVisibleTreeIds();
+      return {
+        a: a.slice(),
+        b: b.slice(),
+        frozenA: Object.isFrozen(a),
+        frozenB: Object.isFrozen(b),
+        detached: a !== b,
+      };
+    });
+    assert.deepEqual(gvtInfo.a, ['browse-4', 'browse-5', 'browse-6']);
+    assert.deepEqual(gvtInfo.b, ['browse-4', 'browse-5', 'browse-6']);
+    assert.equal(gvtInfo.frozenA, true, 'getVisibleTreeIds arrays are frozen');
+    assert.equal(gvtInfo.frozenB, true, 'each getVisibleTreeIds array is frozen');
+    assert.equal(gvtInfo.detached, true, 'getVisibleTreeIds returns a new array each call');
+    const inactiveInfo = await page.evaluate(() => {
+      window.__storyController.setMode('compact');
+      const empty = window.__storyController.getVisibleTreeIds();
+      return { length: empty.length, frozen: Object.isFrozen(empty) };
+    });
+    assert.equal(inactiveInfo.length, 0, 'inactive returns empty array');
+    assert.equal(inactiveInfo.frozen, true, 'inactive empty array is frozen');
+
+    assert.deepEqual(health.pageerrors, [], 'no page errors');
+    assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    await context.close();
+    await browser.close();
+    await closeServer(server);
+  } catch (err) {
+    if (context) await context.close();
+    await browser.close();
+    await closeServer(server);
+    throw err;
+  }
+});
+
+test('#3813 browser: animated goTo notifies only after cleanup; blocked/same-group add no callbacks; throw is contained; reduced-motion is immediate', { timeout: 150000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  let context, rmContext;
+  try {
+    context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const health = captureBrowserHealth(page, fixtureOrigin);
+    await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+    await activateStory(page, null);
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01 / 03',
+    });
+
+    /* (11)/(12) normal-motion goTo: no callback at start; one after cleanup,
+     * with canonical direct-child order restored and wrappers/aria-busy gone. */
+    await page.evaluate(() => window.__snapshots.length = 0);
+    await page.evaluate(() => window.__storyController.goTo(1));
+    const immediateCount = await page.evaluate(() => window.__snapshots.length);
+    assert.equal(immediateCount, 0, 'no callback at animation start');
+    await page.waitForFunction(() => {
+      const results = document.getElementById('resultsList');
+      return !results.querySelector('.browse-story-transition-stage')
+        && results.getAttribute('aria-busy') === null
+        && document.querySelector('.browse-story-indicator-current').textContent === '02 / 03';
+    });
+    const settled = await page.evaluate(() => ({
+      count: window.__snapshots.length,
+      dom: window.__snapshotDom,
+      groupIndex: window.__snapshots[0].groupIndex,
+    }));
+    assert.equal(settled.count, 1, 'one settled callback after animated transition');
+    assert.equal(settled.groupIndex, 1);
+    assert.equal(settled.dom.wrapperCount, 0, 'callback fires after wrapper cleanup');
+    assert.ok(settled.dom.ariaBusy === null || settled.dom.ariaBusy === 'false', 'callback fires after aria-busy cleared');
+    assert.deepEqual(settled.dom.directOrder, CANONICAL_IDS, 'callback fires after canonical direct-child order restored');
+
+    /* (10) transition-lock: a goTo issued during an animated transition is blocked */
+    await page.evaluate(() => window.__snapshots.length = 0);
+    await page.evaluate(() => {
+      window.__storyController.goTo(2);
+      window.__storyController.goTo(0); // blocked: transitioning
+    });
+    await page.waitForFunction(() => {
+      const results = document.getElementById('resultsList');
+      return !results.querySelector('.browse-story-transition-stage')
+        && document.querySelector('.browse-story-indicator-current').textContent === '03 / 03';
+    });
+    const locked = await page.evaluate(() => ({
+      count: window.__snapshots.length,
+      indicator: document.querySelector('.browse-story-indicator-current').textContent,
+    }));
+    assert.equal(locked.indicator, '03 / 03', 'first goTo applied, second blocked during transition');
+    assert.equal(locked.count, 1, 'blocked goTo adds no extra callback');
+
+    /* (9) same-group goTo is a no-op: no duplicate callback */
+    await page.evaluate(() => window.__snapshots.length = 0);
+    await page.evaluate(() => window.__storyController.goTo(2));
+    await page.waitForTimeout(80);
+    const sameGroup = await page.evaluate(() => window.__snapshots.length);
+    assert.equal(sameGroup, 0, 'same-group goTo fires no callback');
+
+    /* (18) callback throw is contained and later navigation still works */
+    await page.evaluate(() => { window.__throwOnGroupChange = true; });
+    await page.evaluate(() => window.__storyController.goTo(1));
+    await page.waitForFunction(() => {
+      const results = document.getElementById('resultsList');
+      return !results.querySelector('.browse-story-transition-stage')
+        && document.querySelector('.browse-story-indicator-current').textContent === '02 / 03';
+    });
+    assert.deepEqual(health.pageerrors, [], 'callback throw must not escape to pageerror');
+    await page.evaluate(() => { window.__throwOnGroupChange = false; });
+    await page.evaluate(() => window.__snapshots.length = 0);
+    await page.evaluate(() => window.__storyController.goTo(0));
+    await page.waitForFunction(() => {
+      const results = document.getElementById('resultsList');
+      return !results.querySelector('.browse-story-transition-stage')
+        && document.querySelector('.browse-story-indicator-current').textContent === '01 / 03';
+    });
+    const afterThrow = await page.evaluate(() => window.__snapshots.length);
+    assert.equal(afterThrow, 1, 'navigation after contained callback throw still notifies once');
+
+    /* (13)/(26) reduced motion: immediate settle, no wrappers, no animated wait */
+    rmContext = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'reduce',
+    });
+    const rmPage = await rmContext.newPage();
+    const rmHealth = captureBrowserHealth(rmPage, fixtureOrigin);
+    await rmPage.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
+    await rmPage.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
+    await rmPage.waitForTimeout(150);
+    await activateStory(rmPage, null);
+    await waitForStoryGroupReady(rmPage, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01 / 03',
+    });
+    await rmPage.evaluate(() => window.__snapshots.length = 0);
+    await rmPage.evaluate(() => window.__storyController.goTo(2));
+    const rmImmediate = await rmPage.evaluate(() => ({
+      count: window.__snapshots.length,
+      dom: window.__snapshotDom,
+      indicator: document.querySelector('.browse-story-indicator-current').textContent,
+    }));
+    assert.equal(rmImmediate.indicator, '03 / 03', 'reduced-motion goTo settles immediately');
+    assert.equal(rmImmediate.count, 1, 'reduced-motion goTo fires one callback');
+    assert.equal(rmImmediate.dom.wrapperCount, 0, 'reduced-motion has zero transition wrappers');
+    assert.deepEqual(rmHealth.pageerrors, [], 'reduced-motion: no page errors');
+    assert.deepEqual(rmHealth.consoleErrors, [], 'reduced-motion: no console errors');
+
+    assert.deepEqual(health.pageerrors, [], 'no page errors');
+    assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    await context.close();
+    await rmContext.close();
+    await browser.close();
+    await closeServer(server);
+  } catch (err) {
+    if (context) await context.close();
+    if (rmContext) await rmContext.close();
+    await browser.close();
+    await closeServer(server);
+    throw err;
+  }
+});
+
+test('#3813 browser: card activation and media lifecycle stay intact with the adapter boundary; health zero', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  let context;
+  try {
+    context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const health = captureBrowserHealth(page, fixtureOrigin);
+    await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+    await activateStory(page, 'browse-3');
+    await waitForStoryGroupReady(page, {
+      mode: 'story', expectNoTransition: true, visibleCount: 3,
+      visibleOrder: ['browse-1', 'browse-2', 'browse-3'], indicator: '01 / 03',
+    });
+
+    /* (24) card activation preserved: clicking a visible card selects it */
+    await page.click('#resultsList .tree-card[data-tree-id="browse-2"]');
+    await page.waitForTimeout(80);
+    const select = await page.evaluate(() => ({ selects: window.__selects, last: window.__lastSelect }));
+    assert.ok(select.selects >= 1, 'card click still triggers canonical selection');
+    assert.equal(select.last, 'browse-2', 'selection target preserved');
+
+    /* media lifecycle: every card's media wrapper keeps an element child */
+    const mediaOk = await page.evaluate(() => {
+      const cards = document.querySelectorAll('#resultsList .tree-card[data-tree-id]');
+      return Array.from(cards).every((c) => c.querySelector('.tree-card-media')
+        && Array.from(c.querySelector('.tree-card-media').children).some((n) => n.nodeType === Node.ELEMENT_NODE));
+    });
+    assert.equal(mediaOk, true, 'media wrappers keep element children in story mode');
+
+    /* overflow */
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    assert.ok(overflow.scrollWidth <= overflow.clientWidth + 1, 'no horizontal overflow');
+
+    assert.deepEqual(health.pageerrors, [], 'no page errors');
+    assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.requestFailures, [], 'no same-origin request failures');
+    assert.deepEqual(health.responseErrors, [], 'no same-origin HTTP >=400');
+    await context.close();
+    await browser.close();
+    await closeServer(server);
+  } catch (err) {
+    if (context) await context.close();
     await browser.close();
     await closeServer(server);
     throw err;

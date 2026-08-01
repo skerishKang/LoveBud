@@ -459,3 +459,82 @@ test('30. Nav nav-btn provides accessible touch target (42px)', () => {
     // 18px icon inside 42px button keeps compact rail look
     assert.match(viewModeCss, /\.browse-story-nav-btn\s+\.material-symbols-outlined\s*\{[^}]*font-size:\s*18/);
 });
+
+/* ── 9) #3813 additive surface-adapter boundary ─────────────────────── */
+test('31. controller exposes public goTo and getVisibleTreeIds', () => {
+    assert.match(storyModule, /goTo:\s*goToPublic/);
+    assert.match(storyModule, /getVisibleTreeIds:\s*getVisibleTreeIds/);
+    assert.match(storyModule, /function goToPublic/);
+    assert.match(storyModule, /function getVisibleTreeIds/);
+    // goTo must delegate to the existing internal authority (no second path)
+    assert.match(storyModule, /function goToPublic\(index\)\s*\{[\s\S]*?goTo\(index\);/);
+});
+
+test('32. setMode accepts optional initialTreeId; refresh accepts preferredTreeId', () => {
+    assert.match(storyModule, /function setMode\(mode,\s*options\)/);
+    assert.match(storyModule, /initialTreeId/);
+    assert.match(storyModule, /function refresh\(options\)/);
+    assert.match(storyModule, /preferredTreeId/);
+});
+
+test('33. init accepts optional translate and onGroupChange boundaries', () => {
+    assert.match(storyModule, /typeof\s+opts\.translate\s*===\s*['"]function['"]/);
+    assert.match(storyModule, /typeof\s+opts\.onGroupChange\s*===\s*['"]function['"]/);
+});
+
+test('34. surface-neutral semantic keys are the only translator inputs', () => {
+    for (const key of ['story.regionLabel', 'story.previous', 'story.next', 'story.label', 'story.position']) {
+        assert.ok(storyModule.indexOf("'" + key + "'") !== -1, 'semantic key ' + key + ' must be declared');
+    }
+    assert.match(storyModule, /SEMANTIC_TO_BROWSE/);
+    assert.match(storyModule, /'story\.regionLabel':\s*'search\.story\.regionLabel'/);
+    assert.match(storyModule, /'story\.position':\s*'search\.story\.position'/);
+});
+
+test('35. snapshot is frozen with exactly the four documented keys', () => {
+    assert.match(storyModule, /return\s+Object\.freeze\(\{\s*groupIndex:/);
+    assert.match(storyModule, /groupCount:\s*groupCount\(\)/);
+    assert.match(storyModule, /firstVisibleTreeId:/);
+    assert.match(storyModule, /visibleTreeIds:\s*visibleIds/);
+    assert.match(storyModule, /Object\.freeze\(out\)/);
+});
+
+test('36. callback error containment and absence no-op', () => {
+    assert.match(storyModule, /if\s*\(!onGroupChange\)\s*return;/);
+    assert.match(storyModule, /onGroupChange\(snapshot\);/);
+    assert.match(storyModule, /\}\s*catch\s*\(e\)\s*\{\s*\/\*\s*contained\s*\*\//);
+});
+
+test('37. Browse default fallback chain retained (translator then i18nSearch then FALLBACK_STRINGS)', () => {
+    assert.match(storyModule, /function resolveSurfaceText\(semanticKey,\s*locale\)/);
+    assert.match(storyModule, /surfaceTranslate\(semanticKey,\s*locale\)/);
+    assert.match(storyModule, /SEMANTIC_TO_BROWSE\[semanticKey\]/);
+    assert.match(storyModule, /return\s+t\(browseKey\);/);
+    assert.match(storyModule, /var dict\s*=\s*window\.i18nSearch/);
+    assert.match(storyModule, /FALLBACK_STRINGS\[key\]/);
+});
+
+test('38. no My Trees namespace/source coupling in the controller runtime', () => {
+    const src = stripJsComments(storyModule);
+    assert.equal(/myTrees/i.test(src), false, 'no myTrees reference in executable code');
+    assert.equal(/lovebud:myTrees:viewMode/.test(src), false, 'no My Trees storage key');
+});
+
+test('39. adapter boundary adds no pagination/framework/autoplay/looping semantics', () => {
+    const src = stripJsComments(storyModule);
+    for (const banned of [
+        /[?&]page=/,
+        /\bpageSize\b/,
+        /\btotalPages\b/,
+        /\boffset\b|\blimit\b/,
+        /loadMore|nextPage|fetchPage/,
+        /\b(react|vue|svelte|angular)\b/i,
+        /\bimport\s+.*from\s+['"]/,
+        /require\s*\(/,
+        /setInterval/,
+        /autoplay/i,
+        /requestAnimationFrame/
+    ]) {
+        assert.equal(banned.test(src), false, 'adapter boundary must not introduce ' + banned);
+    }
+});
