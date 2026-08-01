@@ -65,6 +65,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-precondition-composition-root-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the fail-closed migration precondition composition root (scripts/migration-precondition-composition-root-core.cjs) in a local process with a synthetic pinned-session boundary and a bounded synthetic ACTIVE authority construction-time test seam: exact frozen orchestrator-facing surface (acquireAdvisoryLock/evaluatePrecondition/checkAdvisoryLock/releaseAdvisoryLock) with no queryLockedSession/raw resolver/session/handle/SQL exposure, descriptor-safe factory/config validation with zero getter invocation, one lock-adapter instance ownership with the same-instance broker wiring proven through the composed pinned session, cross-instance handle substitution detection, inactive ADOPTION_REQUIRED authority -> NOT_EVALUATED with zero precondition broker queries (never implicit PASS), opaque lock-handle identity preservation, malformed resolver/evaluator/lock surfaces failing closed before session/query use, no raw error/session/handle/query result in output or console, and no DB/network/driver/retry/environment capability in source. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3809).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-migration-precondition-evaluator-adapter-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Executes the fail-closed evaluatePrecondition adapter (scripts/migration-precondition-evaluator-adapter-core.cjs) in a local process with synthetic resolver/broker fixtures: frozen factory and exact public surface, exact frozen status records, malformed factory bounded failure, hostile/accessor/Proxy/revoked-Proxy call envelopes with zero dependency calls, ADOPTION_REQUIRED/NOT_FOUND/empty-checks -> NOT_EVALUATED, UNAVAILABLE/throw/rejection/malformed -> UNAVAILABLE, BOOLEAN_SINGLE_ROW PASS/FAIL and every malformed row shape -> UNAVAILABLE, multi-check precedence with FAIL-then-UNAVAILABLE and no partial execution, broker query exact 3-key boundary with resultContract stripped and lockHandle identity preserved, detached/frozen query and values, exact dependency call counts, no raw error/evidence/console exposure, no retry/timeout/sleep/driver/network capability, and orchestrator CONDITION_STATUSES compatibility. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3802).",
@@ -4657,6 +4663,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-precondition-composition-root-postgres-rehearsal-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for the CI-only disposable PostgreSQL rehearsal (Issue #3816): locks the exact nine-file boundary, the exact package script test:db-engine:precondition-composition-root, the exact CI job db-engine-precondition-composition-root with postgres:17.4-bookworm and server_version_num 170004 assertion, the loopback-only LB_TEST_PG* boundary with no DATABASE_URL/local-Docker/Production/Neon/Modal/provider reference, the plain own-callable dedicated pg.Client session wrapper, the construction-time authorityResolverFactory ACTIVE seam, the SQL boundary (canonical advisory-lock queries, fixed boolean SELECT, read-only residual-lock verification; no DDL/DML/migration/ledger SQL), the SOURCE_STATIC + supplemental DB_ENGINE_EXECUTION(defaultCi:false, capabilities postgresql+network) classification entries, and the parent completion posture (Steps 1-7 complete, Step 8 not authorized). Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3816).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-postgres-session-lock-adapter-core.cjs (createPostgresMigrationSessionLockAdapter and the returned acquireAdvisoryLock/checkAdvisoryLock/releaseAdvisoryLock) using only synthetic JavaScript session/query mocks (no pg, no PostgreSQL engine, no DB connection, no lock acquired, no actual SQL execution, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed two-int lock key pair, exact named/parameterized acquire/check/release queries, pinned-session lifecycle, non-blocking acquisition, current-session pg_locks verification, opaque frozen handle opacity, exactly-once pool release, malformed-evidence classification, orchestrator-compatible status mapping, and sanitized status-only results. Does not connect to any database or acquire any real lock; no Production mutation.",
@@ -4844,6 +4856,16 @@
         "postgresql",
         "child_process",
         "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/precondition-composition-root-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Rehearses the merged migration precondition composition root against a disposable PostgreSQL 17.4 engine (loopback LB_TEST_PG* only, no DATABASE_URL, no Production/Neon/Modal/provider): acquires/checks/releases the canonical advisory lock on the same pinned session, proves committed ADOPTION_REQUIRED authority -> NOT_EVALUATED (never implicit PASS) and orchestrator fail-closed before execution, proves a bounded construction-time ACTIVE seam yields PASS only through the same-session broker, proves bounded negative evidence -> FAIL, proves real advisory-lock contention between two composition roots, proves foreign/released handles fail closed with zero extra queries or session releases, and proves exact dedicated-session release with zero residual advisory locks. Permitted SQL is limited to the canonical advisory-lock acquire/check/release queries, fixed synthetic boolean SELECT evidence, and bounded read-only residual-lock verification; no DDL/DML/migration/ledger SQL. Runs only in GitHub Actions via npm run test:db-engine:precondition-composition-root; never executed locally (#3816).",
+      "capabilities": [
+        "postgresql",
+        "network"
       ]
     },
     {
