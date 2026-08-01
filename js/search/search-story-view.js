@@ -46,6 +46,19 @@
     var EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""]';
     var TRANSITION_DURATION = 340;
 
+    /* Surface-neutral semantic keys → Browse i18n key mapping (#3813).
+     * The optional surface-adapter translator receives ONLY the semantic
+     * keys below and is never handed `search.*` keys, `myTrees.*` keys, or
+     * the i18n dictionary object itself. */
+    var SEMANTIC_KEYS = ['story.regionLabel', 'story.previous', 'story.next', 'story.label', 'story.position'];
+    var SEMANTIC_TO_BROWSE = {
+        'story.regionLabel': 'search.story.regionLabel',
+        'story.previous': 'search.story.previous',
+        'story.next': 'search.story.next',
+        'story.label': 'search.viewMode.story',
+        'story.position': 'search.story.position'
+    };
+
     /* Minimal fallbacks mirror js/i18n/i18n-search.js (same repository
      * pattern as js/search/search-card-renderer.js empty-state copy). */
     var FALLBACK_STRINGS = {
@@ -118,6 +131,7 @@
         var groupIndex = 0;
         var groupSize = computeGroupSize();
         var nav = null;
+        var navLabel = null;
         var prevBtn = null;
         var nextBtn = null;
         var indicatorCurrent = null;
@@ -126,6 +140,34 @@
         var transitioning = false;
         var transitionTimer = null;
         var transitionToken = {};
+
+        /* Optional surface-adapter boundary (#3813): a translator that maps
+         * surface-neutral semantic keys to surface strings, and a settled
+         * group-change callback. Both are per-init injected boundaries; when
+         * absent the controller behaves exactly as Browse today. */
+        var surfaceTranslate = typeof opts.translate === 'function' ? opts.translate : null;
+        var onGroupChange = typeof opts.onGroupChange === 'function' ? opts.onGroupChange : null;
+
+        /* Surface-neutral text resolution (#3813). Priority:
+         *   1. optional surface translator returning a non-empty string;
+         *   2. existing Browse `window.i18nSearch` key;
+         *   3. existing module FALLBACK_STRINGS.
+         * A missing/throwing/non-string translator silently falls through to
+         * the existing Browse behaviour — never propagated, never logged. */
+        function resolveSurfaceText(semanticKey, locale) {
+            if (surfaceTranslate && SEMANTIC_KEYS.indexOf(semanticKey) !== -1) {
+                try {
+                    var value = surfaceTranslate(semanticKey, locale);
+                    if (typeof value === 'string' && value.trim().length > 0) {
+                        return value;
+                    }
+                } catch (e) {
+                    /* contained: translator failure never breaks the controller */
+                }
+            }
+            var browseKey = SEMANTIC_TO_BROWSE[semanticKey] || semanticKey;
+            return t(browseKey);
+        }
 
         var mediaWide = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 1200px)') : null;
         var mediaMid = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 768px)') : null;
@@ -207,11 +249,10 @@
                 step(1);
             });
 
-            var navLabel = document.createElement('span');
+            navLabel = document.createElement('span');
             navLabel.className = 'browse-story-nav-label';
             navLabel.setAttribute('aria-hidden', 'true');
             navLabel.textContent = t('search.viewMode.story');
-
             nav.appendChild(navLabel);
             nav.appendChild(prevBtn);
             nav.appendChild(indicator);
@@ -227,8 +268,15 @@
                 return;
             }
             nav.hidden = false;
+            var locale = getCurrentLocale();
+            /* Refresh surface-neutral labels on every update so the current
+             * locale and any surface translator stay authoritative. */
+            nav.setAttribute('aria-label', resolveSurfaceText('story.regionLabel', locale));
+            if (navLabel) navLabel.textContent = resolveSurfaceText('story.label', locale);
+            if (prevBtn) prevBtn.setAttribute('aria-label', resolveSurfaceText('story.previous', locale));
+            if (nextBtn) nextBtn.setAttribute('aria-label', resolveSurfaceText('story.next', locale));
             indicatorCurrent.textContent = pad2(groupIndex + 1) + ' / ' + pad2(count);
-            indicatorA11y.textContent = t('search.story.position')
+            indicatorA11y.textContent = resolveSurfaceText('story.position', locale)
                 .replace('{current}', String(groupIndex + 1))
                 .replace('{total}', String(count));
             prevBtn.disabled = groupIndex <= 0;
@@ -336,6 +384,7 @@
             }
 
             updateNav();
+            notifyGroupChange();
         }
 
         function applyGroup(direction) {
@@ -497,6 +546,7 @@
 
                 /* Update indicator/buttons AFTER transition completes */
                 updateNav();
+                notifyGroupChange();
             }, TRANSITION_DURATION + 20);
         }
 
@@ -540,6 +590,72 @@
             applyGroup(direction);
         }
 
+        /* ── #3813 surface-adapter helpers ───────────────────────────── */
+
+        /* Exact-string search over canonical cards for the group containing
+         * the tree with the given data-tree-id. Returns -1 when absent. */
+        function findTreeGroup(treeId) {
+            if (typeof treeId !== 'string' || treeId.length === 0) return -1;
+            for (var i = 0; i < cards.length; i++) {
+                if (cards[i].getAttribute('data-tree-id') === treeId) {
+                    return clampIndex(Math.floor(i / groupSize));
+                }
+            }
+            return -1;
+        }
+
+        /* Settled visible tree ids: direct children of `results` (never
+         * cards inside transition wrappers) that are not hidden. Always a
+         * brand-new frozen detached array. */
+        function collectVisibleTreeIds() {
+            var out = [];
+            for (var i = 0; i < cards.length; i++) {
+                var card = cards[i];
+                if (card.hidden) continue;
+                if (card.parentNode !== results) continue;
+                out.push(card.getAttribute('data-tree-id'));
+            }
+            return Object.freeze(out);
+        }
+
+        /* Frozen plain snapshot with exactly four enumerable own keys. */
+        function makeSnapshot() {
+            var visibleIds = collectVisibleTreeIds();
+            return Object.freeze({
+                groupIndex: groupIndex,
+                groupCount: groupCount(),
+                firstVisibleTreeId: visibleIds.length ? visibleIds[0] : null,
+                visibleTreeIds: visibleIds
+            });
+        }
+
+        /* Settled group-change notification: at most once per settled state.
+         * Callback absence is a no-op; callback throws are contained and
+         * never propagate, never log, and never corrupt controller state. */
+        function notifyGroupChange() {
+            if (!onGroupChange) return;
+            var snapshot = makeSnapshot();
+            try {
+                onGroupChange(snapshot);
+            } catch (e) {
+                /* contained */
+            }
+        }
+
+        /* Public navigation authority: delegates to the existing internal
+         * goTo (clamp, no-wrap, transition lock, reduced-motion immediate
+         * path, canonical order restoration). Never a second authority. */
+        function goToPublic(index) {
+            if (disposed) return;
+            goTo(index);
+        }
+
+        /* Public settled visible-tree accessor. Always returns a brand-new
+         * frozen detached array; never exposes internal `cards` or DOM nodes. */
+        function getVisibleTreeIds() {
+            return collectVisibleTreeIds();
+        }
+
         function restoreAllCards() {
             cancelTransition({ restoreExistingCards: true });
             performInternalMutation(function () {
@@ -566,7 +682,7 @@
             groupIndex = 0;
         }
 
-        function setMode(mode) {
+        function setMode(mode, options) {
             if (disposed) return;
             if (mode === STORY_MODE) {
                 if (active) return;
@@ -574,6 +690,17 @@
                 cards = collectCards();
                 groupIndex = 0;
                 groupSize = computeGroupSize();
+                /* #3813: optional initialTreeId opens the group containing
+                 * the exact data-tree-id directly (no transient group 0).
+                 * Absent/empty/unknown IDs keep the existing group-0 entry. */
+                var initialId = options && typeof options === 'object' ? options.initialTreeId : null;
+                if (typeof initialId === 'string' && initialId.length > 0) {
+                    var initialGroup = findTreeGroup(initialId);
+                    if (initialGroup !== -1) groupIndex = initialGroup;
+                }
+                /* Discard any mutation records queued by the caller's
+                 * synchronous result render so no stale group-0 sync fires. */
+                if (observer) observer.takeRecords();
                 ensureNav();
                 applyGroupImmediate();
                 return;
@@ -581,11 +708,22 @@
             deactivate();
         }
 
-        function refresh() {
+        function refresh(options) {
             if (disposed || !active) return;
+            /* cancelTransition discards queued MutationObserver records, so a
+             * synchronous caller render + refresh({ preferredTreeId }) never
+             * produces an intermediate group-0 notification. */
             cancelTransition({ restoreExistingCards: true });
             cards = collectCards();
-            groupIndex = 0;
+            /* #3813: optional preferredTreeId opens the group containing the
+             * exact data-tree-id in one immediate settled render. Omitted or
+             * not-found IDs keep the existing group-0 reset behaviour. */
+            var preferred = options && typeof options === 'object' ? options.preferredTreeId : null;
+            var preferredGroup = -1;
+            if (typeof preferred === 'string' && preferred.length > 0) {
+                preferredGroup = findTreeGroup(preferred);
+            }
+            groupIndex = preferredGroup === -1 ? 0 : preferredGroup;
             applyGroupImmediate();
         }
 
@@ -730,6 +868,8 @@
         return {
             setMode: setMode,
             refresh: refresh,
+            goTo: goToPublic,
+            getVisibleTreeIds: getVisibleTreeIds,
             getCurrentGroup: function () { return groupIndex; },
             getGroupCount: groupCount,
             destroy: destroy

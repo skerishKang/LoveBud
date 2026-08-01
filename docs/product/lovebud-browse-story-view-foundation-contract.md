@@ -139,3 +139,140 @@ no glass surfaces, no travel-template palette hardcoded.
   `https://lovebud.pages.dev/` before #3655 is closed.
 - The next refinement child (full travel-card treatment, pink pill rail,
   richer motion) depends on actual feedback from this foundation.
+
+---
+
+## Additive evolution — surface-adapter boundary (#3813)
+
+This section records the backward-compatible evolution of the shared Story
+controller. The #3655 Browse foundation behavior documented above is
+**unchanged** and remains the default when the new options are omitted.
+
+### Context
+
+The My Trees Story child (#3811) was blocked because the controller exposed no
+supported way for a thin surface adapter to enter at a selected tree's group,
+preserve selection across result replacement, receive settled group-change
+notification, or supply surface-localized text. The Web CTO accepted the
+blocker and authorized this four-file prerequisite (#3813): extend the shared
+controller only. **My Trees Story is not implemented here.**
+
+### New optional surface-adapter API
+
+Existing API (unchanged, still authoritative):
+
+```js
+init({ results, navMount })
+controller.setMode(mode)
+controller.refresh()
+controller.getCurrentGroup()
+controller.getGroupCount()
+controller.destroy()
+```
+
+Additive optional boundary:
+
+```js
+init({
+  results,
+  navMount,
+  translate,      // optional function(semanticKey, locale) -> string | null
+  onGroupChange   // optional function(snapshot)
+})
+
+controller.setMode('story', { initialTreeId })   // open the group containing this data-tree-id
+controller.refresh({ preferredTreeId })          // re-collect and open the preferred group
+controller.goTo(groupIndex)                      // public delegate to the existing internal goTo
+controller.getVisibleTreeIds()                   // new frozen detached array of settled visible ids
+```
+
+Behavior rules:
+
+- `initialTreeId`: exact string match only; the containing group is shown
+  directly (never a transient group-0 render or an animated detour). Absent,
+  empty, malformed, or not-found IDs keep the existing group-0 entry.
+- `preferredTreeId`: applied in one immediate settled render after a
+  synchronous result replacement; queued MutationObserver records are
+  discarded so no intermediate group-0 notification occurs. Omitted or
+  not-found IDs keep the existing group-0 reset behavior.
+- `goTo(index)`: exposes the existing navigation authority. Clamp, no-wrap,
+  transition lock, reduced-motion immediate path, `aria-busy`, wrapper
+  cleanup, and canonical card-order restoration are all preserved. No second
+  transition path is created.
+- `getVisibleTreeIds()`: returns a brand-new `Object.freeze`d detached array
+  of the settled visible `data-tree-id` values in canonical order; an empty
+  frozen array when inactive or empty. Never exposes internal `cards` or DOM
+  nodes.
+
+### Settled `onGroupChange` snapshot
+
+After each **settled** group state the optional callback is invoked at most
+once with a frozen plain object:
+
+```js
+{
+  groupIndex,          // number
+  groupCount,          // number
+  firstVisibleTreeId,  // string | null
+  visibleTreeIds       // frozen detached array of strings
+}
+```
+
+- Immediate paths (`setMode` activation, `refresh`, reduced-motion
+  navigation, breakpoint change, result-set reset) notify after the final
+  hidden/visible state is applied.
+- Normal animated navigation notifies **only after** transition wrappers are
+  removed, `aria-busy` is cleared, canonical direct-child order is restored,
+  and the final visibility is applied. Never at animation start.
+- No-op/clamped-same/transition-blocked navigation never duplicates a
+  notification. Callback absence is a complete no-op. Callback throws are
+  contained (never propagated, never logged) and cannot corrupt controller
+  state, navigation, cleanup, or later notifications.
+
+### Surface-neutral translation
+
+The optional `translate(semanticKey, locale)` receives only these five
+semantic keys:
+
+```text
+story.regionLabel
+story.previous
+story.next
+story.label
+story.position   // may contain {current} and {total} placeholders
+```
+
+It is never handed `search.*` keys, `myTrees.*` keys, or the i18n object.
+Resolution priority: (1) translator non-empty string, (2) existing Browse
+`window.i18nSearch` key (`search.story.*` / `search.viewMode.story`), (3)
+existing module `FALLBACK_STRINGS`. A missing, throwing, `null`, empty, or
+non-string translator result silently falls through to the existing Browse
+strings. Navigation labels and `aria-label`s are refreshed on every
+`updateNav()` so the current locale stays authoritative.
+
+### Browse backward compatibility
+
+With the existing `init({ results, navMount })` call, none of the above
+applies: Story activates at group 0, result replacement resets to group 0,
+Browse i18n strings remain authoritative, grouping 3/2/1, keyboard,
+transitions, reduced motion, card activation, media lifecycle, mutation
+handling, and navigation markup are byte-equivalent in behavior. No callback,
+no surface translator, and no My Trees script/key/selector/i18n namespace is
+introduced.
+
+### My Trees remains unimplemented
+
+My Trees keeps exactly `large / compact / list`, default `compact`, storage
+key `lovebud:myTrees:viewMode`, and rejects a stored `story` value (falls
+back to `compact`, unrewritten). No My Trees script, nav mount, i18n, CSS, or
+adapter is added by this prerequisite. Issue #3811 resumes from then-current
+main after #3813 is independently reviewed and merged.
+
+### Contract and scope notes
+
+- No backend pagination, no API/DB/auth change, no framework/autoplay/looping
+  addition, and no second transition authority.
+- Exact four-file scope: `js/search/search-story-view.js`,
+  `tests/contracts/browse-story-view-foundation-3655-contract.test.cjs`,
+  `tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs`,
+  and this document.
