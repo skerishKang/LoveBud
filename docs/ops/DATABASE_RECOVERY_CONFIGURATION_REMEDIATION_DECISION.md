@@ -73,28 +73,30 @@ Classification: **`CONFIGURATION_REQUIRED`** (+ **`OWNER_APPROVAL_REQUIRED`**).
 
 ### Q2 — Daily coverage from provider history alone
 
-Yes. With a verified history window ≥ 24h, the daily recovery-point tier
-(`≤24h` general RPO) is satisfied by provider point-in-time history alone.
-Classification: **`PROVIDER_CAPABILITY_SUFFICIENT`** for the daily tier — but the current
+The general ≤24h RPO is satisfied by a **verified provider history window ≥ 24h** alone;
+this is the general 24-hour RPO / short-term daily recovery boundary. A daily snapshot
+schedule is a **separate** scheduled recovery-point cadence and freshness requirement, not
+a condition for the general ≤24h RPO itself. Classification:
+**`PROVIDER_CAPABILITY_SUFFICIENT`** for the general 24h RPO boundary — but the current
 configuration is below it, so the current state is **`BLOCKED_PENDING_CONFIGURATION`**.
 
 ### Q3 — Weekly 4 weeks / monthly 3 months by provider-native features only
 
-No. The merged policy states longer-term retained checkpoints are **not** achievable
-through the history window alone beyond its configured length and require external
-retained logical backups. Whether the provider-native scheduled-snapshot retention
-capability can retain checkpoints for ≥ 4 weeks / ≥ 3 months is **not** established by the
-merged evidence. Classification: **`PROVIDER_CAPABILITY_INSUFFICIENT`** (policy-consistent)
-with the native-retention sub-question **`PROVIDER_CAPABILITY_UNVERIFIED`**. The decision
-therefore defaults to **`EXTERNAL_RETENTION_REQUIRED`** for the weekly and monthly tiers.
+Current merged evidence does **not** establish that provider-native scheduled retention
+can satisfy weekly ≥ 4 weeks and monthly ≥ 3 months. The merged policy states longer-term
+retained checkpoints are **not** achievable through the history window alone beyond its
+configured length. The attributed project/plan's native weekly/monthly retention
+sufficiency is therefore **`PROVIDER_CAPABILITY_UNVERIFIED`**, and the conservative
+planning outcome is **`EXTERNAL_RETENTION_REQUIRED`** unless a separately authorized
+bounded verification proves native retention sufficient.
 
 ### Q4 — Is an external retained logical backup required?
 
-- Daily tier: **No** — provider history ≥ 24h is sufficient.
-- Weekly / monthly tiers: **Yes** — **`EXTERNAL_RETENTION_REQUIRED`** unless a future,
-  separately authorized provider inspection verifies native schedule retention meeting
-  ≥ 4 weeks / ≥ 3 months. An external logical backup is a distinct mechanism, never
-  counted as a Neon history window or Neon snapshot.
+- Daily tier / general 24h RPO: **No** — provider history ≥ 24h is sufficient.
+- Weekly / monthly tiers: **conditional** — if native retention is separately verified
+  sufficient (weekly ≥ 4 weeks, monthly ≥ 3 months), use the separately authorized
+  provider-native path; otherwise **`EXTERNAL_RETENTION_REQUIRED`**. An external logical
+  backup is a distinct mechanism, never counted as a Neon history window or Neon snapshot.
 
 ### Q5 — Required pre-change recovery point for Tier 3 / destructive changes
 
@@ -112,8 +114,10 @@ creation itself is **`OWNER_APPROVAL_REQUIRED`** and the gate wiring is
 Provider configuration remediation **first**, repository implementation second:
 
 ```text
-1. provider history window + snapshot schedule (A)
-2. external retained logical backup (B) — weekly/monthly
+1. provider configuration remediation (A):
+   1a. history window raised to ≥ 24h — general 24h RPO boundary
+   1b. daily snapshot schedule configured — scheduled recovery-point cadence
+2. external retained logical backup (B) — weekly/monthly, if native retention unverified
 3. pre-change recovery gate + stale/missing alerting (C+D) — repository implementation
 4. isolated-copy synthetic restore drill (E)
 5. Production in-place restore (F) — last resort, NOT_AUTHORIZED
@@ -124,29 +128,31 @@ must be remediated and re-verified before the repository layer is meaningful.
 
 ### Q7 — Stale recovery point and schedule absence → alert/gate linkage
 
-The repository alert layer monitors schedule state and recovery-point age. When the
-schedule is `NONE` or the newest recovery point is stale (e.g. `GE_7D`), the pre-change
-gate must fail closed (`RECOVERY_POINT_MISSING` / `RECOVERY_POINT_STALE` /
-`BLOCKED_BY_RECOVERY_GATE`) and block Tier 3/destructive changes. A drill older than
-cadence maps to `RESTORE_DRILL_OVERDUE` and also blocks such changes.
+The repository alert layer monitors the scheduled recovery-point cadence (schedule state)
+and recovery-point age, which are operational signals distinct from the general 24h RPO
+boundary (history window). When the schedule is `NONE` or the newest recovery point is
+stale (e.g. `GE_7D`), the pre-change gate must fail closed (`RECOVERY_POINT_MISSING` /
+`RECOVERY_POINT_STALE` / `BLOCKED_BY_RECOVERY_GATE`) and block Tier 3/destructive changes.
+A drill older than cadence maps to `RESTORE_DRILL_OVERDUE` and also blocks such changes.
 Classification: **`REPOSITORY_IMPLEMENTATION_REQUIRED`** for both the alert and the gate.
 
 ### Q8 — When may the isolated-copy restore drill run?
 
-Only after the provider configuration layer is remediated and re-verified (window ≥ 24h,
-schedule present, current recovery point) — i.e. after layers A (+B as needed). The
-pre-drill gate state is **`BLOCKED_PENDING_DRILL`** today; it becomes
-**`READY_FOR_ISOLATED_DRILL`** once layers A–C are verified. The drill uses
-synthetic/non-sensitive data, performs zero mutation on Production, and must complete
-within the ≤4h RTO.
+Only after the provider configuration layer is remediated and re-verified — history window
+≥ 24h (general 24h RPO boundary) and a configured scheduled recovery-point cadence with a
+current point — i.e. after layers A (+B as needed). The pre-drill gate state is
+**`BLOCKED_PENDING_DRILL`** today; it becomes **`READY_FOR_ISOLATED_DRILL`** once layers
+A–C are verified. The drill uses synthetic/non-sensitive data, performs zero mutation on
+Production, and must complete within the ≤4h RTO.
 
 ### Q9 — When is #3460 closure-eligible?
 
 #3460 becomes closure-eligible only at a dedicated completion review after all of:
 
-- provider window remediated and re-verified (≥ 24h) and schedule present;
-- daily policy satisfied and weekly/monthly satisfied (externally retained, or verified
-  native retention);
+- provider history window remediated and re-verified (≥ 24h) — general 24h RPO satisfied;
+- a scheduled recovery-point cadence configured (daily snapshot schedule present) with a
+  current recovery point;
+- weekly/monthly retention satisfied (externally retained, or verified native retention);
 - pre-change gate and stale/missing alerting implemented and exercised;
 - at least one successful isolated-copy restore drill with sanitized evidence within
   cadence.
@@ -164,8 +170,8 @@ for the routine remediation sequence.
 
 | Layer | Scope | Classification |
 |---|---|---|
-| A | Provider configuration remediation: history window to ≥ 24h; snapshot schedule configured | **`CONFIGURATION_REQUIRED`** + **`OWNER_APPROVAL_REQUIRED`** |
-| B | External retained logical backup for weekly ≥ 4 weeks and monthly ≥ 3 months | **`EXTERNAL_RETENTION_REQUIRED`** + **`REPOSITORY_IMPLEMENTATION_REQUIRED`** + **`OWNER_APPROVAL_REQUIRED`** |
+| A | Provider configuration remediation: (1) history window raised to ≥ 24h — general 24h RPO boundary; (2) snapshot schedule configured — scheduled recovery-point cadence | **`CONFIGURATION_REQUIRED`** + **`OWNER_APPROVAL_REQUIRED`** |
+| B | External retained logical backup for weekly ≥ 4 weeks and monthly ≥ 3 months, unless native retention is separately verified sufficient | **`EXTERNAL_RETENTION_REQUIRED`** (conditional) + **`REPOSITORY_IMPLEMENTATION_REQUIRED`** + **`OWNER_APPROVAL_REQUIRED`** |
 | C | Repository pre-change recovery gate (Tier 3 / destructive) | **`REPOSITORY_IMPLEMENTATION_REQUIRED`** |
 | D | Stale / missing recovery-point alerting (schedule `NONE`, age stale) | **`REPOSITORY_IMPLEMENTATION_REQUIRED`** |
 | E | Isolated-copy synthetic restore drill | **`BLOCKED_PENDING_DRILL`** today → **`READY_FOR_ISOLATED_DRILL`** after A–C |
@@ -176,11 +182,10 @@ for the routine remediation sequence.
 | Gap | Current state | Required action | Classification |
 |---|---|---|---|
 | Restore window | `LT_24H` | raise to ≥ 24h | `CONFIGURATION_REQUIRED` |
-| General 24h RPO | `NOT_SATISFIED` | satisfied by window ≥ 24h | `PROVIDER_CAPABILITY_SUFFICIENT` (pending config) |
-| Schedule | `NONE` | daily schedule configured | `CONFIGURATION_REQUIRED` |
-| DAILY_POLICY | `NOT_SATISFIED` | history ≥ 24h + daily schedule | `PROVIDER_CAPABILITY_SUFFICIENT` (pending config) |
-| WEEKLY_POLICY | `NOT_SATISFIED` | ≥ 4 weeks retention | `EXTERNAL_RETENTION_REQUIRED` |
-| MONTHLY_POLICY | `NOT_SATISFIED` | ≥ 3 months retention | `EXTERNAL_RETENTION_REQUIRED` |
+| General 24h RPO / short-term recovery boundary | `NOT_SATISFIED` | verified history window ≥ 24h | `PROVIDER_CAPABILITY_SUFFICIENT` (pending config) |
+| Scheduled recovery-point cadence | `NONE` | daily snapshot schedule configured | `CONFIGURATION_REQUIRED` |
+| WEEKLY_POLICY | `NOT_SATISFIED` | ≥ 4 weeks retention | `EXTERNAL_RETENTION_REQUIRED` (unless native verified) |
+| MONTHLY_POLICY | `NOT_SATISFIED` | ≥ 3 months retention | `EXTERNAL_RETENTION_REQUIRED` (unless native verified) |
 | Newest recovery point | `GE_7D` (stale) | fresh current point + alert | `REPOSITORY_IMPLEMENTATION_REQUIRED` + remediation |
 | Drill | none | isolated-copy drill | `BLOCKED_PENDING_DRILL` |
 | Production in-place restore | — | last resort only | `NOT_AUTHORIZED` |
@@ -190,24 +195,32 @@ for the routine remediation sequence.
 **`RECOVERY_REMEDIATION_SEQUENCE_DEFINED`**
 
 The merged policy and inspection evidence are sufficient to define the exact remediation
-sequence and approval boundaries. The sequence is: provider window/schedule remediation →
-external logical backup for weekly/monthly → repository pre-change gate + stale/missing
-alert → isolated-copy drill → (never in this routine path) Production in-place restore.
-No evidence gap blocks the decision; the only unverified sub-question (provider-native
-long-term snapshot retention) defaults conservatively to external retention per policy.
+sequence and approval boundaries. The sequence is: provider configuration remediation
+(history window ≥ 24h for the general 24h RPO boundary, plus a scheduled recovery-point
+cadence) → external logical backup for weekly/monthly (unless native retention is
+separately verified) → repository pre-change gate + stale/missing alert → isolated-copy
+drill → (never in this routine path) Production in-place restore. No evidence gap blocks
+the decision; the only unverified sub-question (provider-native long-term retention
+sufficiency) is classified `PROVIDER_CAPABILITY_UNVERIFIED` and defaults conservatively to
+external retention per policy.
 
 ## 7. Future-child sequence (max 4, dependency-ordered)
 
 ### Child 1 — Owner-approved provider history/schedule remediation (Layer A)
 
-- **Goal:** raise the history window to at least the 24-hour tier and configure a daily
-  snapshot schedule on the attributed root branch.
+- **Goal:** (1) raise the history window to at least the 24-hour tier — the general 24h
+  RPO boundary; (2) configure a daily snapshot schedule on the attributed root branch — a
+  separate scheduled recovery-point cadence.
 - **Mutation class:** provider configuration (provider mutation, owner-authorized).
 - **Owner approval:** required before execution.
 - **Prerequisite:** explicit owner approval; re-run the private in-memory attribution gate
   during the session.
-- **Success marker:** sanitized re-inspection shows window `GE_24H_LT_7D` or longer,
-  schedule `PRESENT` with daily coverage, and `GENERAL_RPO_24H = SATISFIED`.
+- **Success marker:** sanitized re-inspection shows:
+  - history window: `GE_24H_LT_7D` or longer;
+  - `GENERAL_RPO_24H`: `SATISFIED`;
+  - snapshot schedule: `PRESENT`;
+  - scheduled daily coverage: `PRESENT`.
+  `GENERAL_RPO_24H = SATISFIED` is not made conditional on schedule presence.
 - **Stop condition:** any non-`VERIFIED_UNIQUE` attribution, failed re-inspection, or
   denied approval — fail closed, no further child.
 - **#3460 impact:** remains OPEN.
@@ -215,7 +228,9 @@ long-term snapshot retention) defaults conservatively to external retention per 
 ### Child 2 — External retained logical-backup decision/implementation (Layer B)
 
 - **Goal:** weekly ≥ 4 weeks and monthly ≥ 3 months retained checkpoints via an external
-  retained logical backup (only if native retention is not verified sufficient).
+  retained logical backup — used only if native weekly/monthly retention is not verified
+  sufficient. If native retention is separately verified sufficient, use the separately
+  authorized provider-native path instead.
 - **Mutation class:** external storage writes + repository tooling; provider read-only.
 - **Owner approval:** required.
 - **Prerequisite:** Child 1 completed and re-verified.
