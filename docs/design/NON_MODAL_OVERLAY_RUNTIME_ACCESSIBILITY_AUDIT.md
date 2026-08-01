@@ -54,6 +54,13 @@ REAL_LOCAL_CONFIRMED         observed in a real browser over a local ephemeral s
 ACCESSIBILITY_TREE_CONFIRMED CDP Accessibility.getPartialAXTree/getFullAXTree
 COMPUTED_STYLE_CONFIRMED     getComputedStyle / forced-colors emulation
 NEGATIVE_CONTROL_CONFIRMED   NC1-NC10 disposable-control runs
+INDEPENDENT_PRODUCTION_CONFIRMED
+                             = independently rechecked on https://lovebud.pages.dev/
+                               using the deployed Production runtime; protected surfaces
+                               used an actual authenticated QA Production session; no
+                               localhost, local server, mock auth, synthetic fixture,
+                               API-response substitution, private-data publication,
+                               product mutation, or Cloudflare mutation was used.
 INFERENCE_ONLY               not directly observed
 ```
 
@@ -66,6 +73,11 @@ INFERENCE_ONLY               not directly observed
 - No Production, no Preview-as-proof, no real login, no private IDs, no API write, no DB/cache/storage, no real external network (every external URL was intercepted and fulfilled locally).
 - Harness did not pre-create any state later attributed to a product controller; overlays were opened through real triggers or the product controller's own public API.
 - Evidence artifacts (DOM/AX/computed-style/activeElement/keyboard/health JSON, fixtures, controls) live only under the disposable directory `/tmp/kilo/nmo-3799/` and are not committed.
+- Original audit evidence was collected with the documented real-local method.
+- A later independent review rechecked the high-risk claims on Production.
+- Production review corrected the Scout outside-click result, Scout post-close
+  activeElement detail, and AI-panel body-scroll-lock result.
+- No email, user ID, tree ID, token, cookie, private URL, or credential is recorded.
 
 ## 3. Source inventory and active/dormant determination
 
@@ -105,8 +117,9 @@ A surface is classified by its **interaction contract**, never by appearance:
 ```text
 TRUE_MODAL_OUT_OF_SCOPE  = in the six canonical modals (#3788/#3795); full lifecycle (role=dialog,
                            aria-modal, name, initial focus, Tab wrap, Escape, restore) already bounded there.
-MODAL_SEMANTICS_OVER_APPLIED = declares role=dialog/aria-modal=true but has no trap, no scroll lock,
-                           or its close path is page navigation (Settings card, AI panel sheet).
+MODAL_SEMANTICS_OVER_APPLIED = declares role=dialog/aria-modal=true but lacks a focus trap or focus
+                           restoration, or its close path is page navigation (Settings card close is
+                           navigation; AI panel sheet has no trap/restoration).
 MODAL_SEMANTICS_MISSING  = visual overlay with no role, no aria-modal, no accessible name (Scout).
 NON_MODAL_PANEL_CORRECT  = no dialog role and behavior matches non-modal panel/drawer (desktop detail
                            panel, preview sheets' sheet role, connect-existing inline).
@@ -151,14 +164,14 @@ Surface: dynamically created overlay `#scoutDraftModal.scout-draft-modal-overlay
 | Initial focus | focus → `#scoutSourceUrlInput` (controller `setTimeout` 50ms) | REAL_LOCAL_CONFIRMED |
 | Tab / Shift+Tab | focus passes through the modal into background controls — **no trap** | REAL_LOCAL_CONFIRMED |
 | Escape | closes (controller `escHandler` with `stopPropagation`) | REAL_LOCAL_CONFIRMED |
-| Outside click | closes (`outsideClickHandler`, capture phase) | REAL_LOCAL_CONFIRMED |
-| Focus restoration | **none** — after close `document.activeElement` remains inside the (now `display:none`) form (`#scoutDraftSuggestBtn`) | REAL_LOCAL_CONFIRMED |
+| Outside click | does not close — `refs.modal` is the full-screen `#scoutDraftModal` overlay, so `refs.modal.contains(e.target)` is true for overlay-background clicks and the capture-phase handler returns before `closeModal()` | INDEPENDENT_PRODUCTION_CONFIRMED + SOURCE_CONFIRMED |
+| Focus restoration | **none** — after close Chromium resets `document.activeElement` to BODY; the invoking control is not refocused | INDEPENDENT_PRODUCTION_CONFIRMED |
 | Body scroll | editor body `overflow:hidden` is the page's persistent app-shell layout (also present with the modal closed); the Scout controller itself does not lock scroll | COMPUTED_STYLE_CONFIRMED + SOURCE_CONFIRMED |
 | Listener cleanup | CDP `DOMDebugger.getEventListeners`: document `keydown` 2 (baseline) → 3 (open, `escHandler`) → 2 (closed); `click` 8 → 9 → 8. Cleanup correct; reopen adds exactly one set | REAL_LOCAL_CONFIRMED (CDP) |
 | Reopen idempotence | open/close/open/close behaves identically; no accumulation | REAL_LOCAL_CONFIRMED |
 | Reduced motion | `.scout-draft-modal.is-open { animation: scout-fade-in 0.2s ease-out }` (`css/scout/scout-draft.css:28`) still animates under `prefers-reduced-motion: reduce` | COMPUTED_STYLE_CONFIRMED |
 
-Classification: **MODAL_SEMANTICS_MISSING** (visual overlay with no role, no accessible name, no focus trap, no focus restoration, no scroll lock). Its Escape/outside-click/cleanup behavior is `RUNTIME_CORRECT`; the semantics and focus lifecycle are absent.
+Classification: **MODAL_SEMANTICS_MISSING** (visual overlay with no role, no accessible name, no focus trap, no focus restoration, no scroll lock). Escape and listener cleanup are runtime-correct. Outside-click close is a confirmed defect: the registered handler cannot distinguish overlay background from modal content because `refs.modal` owns the full-screen overlay. The semantics and focus lifecycle are absent.
 
 ## 7. LoveBud AI panel runtime audit
 
@@ -177,10 +190,11 @@ Surface: `#lovebud-ai-side-panel.lovebud-ai-panel-container` → `.lovebud-ai-pa
 | Backdrop / close button | `.lovebud-ai-panel-backdrop` click and `data-lovebud-ai-close` click both close | REAL_LOCAL_CONFIRMED |
 | Trigger `aria-expanded` | toggled `true`/`false` in `updateState()` on every trigger | REAL_LOCAL_CONFIRMED |
 | Body class | `lovebud-ai-panel-open` toggled on open/close | REAL_LOCAL_CONFIRMED |
+| Body scroll | locked while open through `body.lovebud-ai-panel-open { overflow: hidden }`; wheel/PageDown do not move the document; lock is released on close | INDEPENDENT_PRODUCTION_CONFIRMED + SOURCE_CONFIRMED + COMPUTED_STYLE_CONFIRMED |
 | Mobile | at 390×844 the sheet keeps `role=dialog aria-modal=true`; layout becomes a bottom sheet via CSS — **role does not switch** at the breakpoint | REAL_LOCAL_CONFIRMED + COMPUTED_STYLE_CONFIRMED |
 | Reduced motion | `.lovebud-ai-panel-sheet { transition: transform 0.38s cubic-bezier(0.16,1,0.3,1) }` (`lovebud-ai-panel.css:144`) still transitions under `prefers-reduced-motion: reduce` | COMPUTED_STYLE_CONFIRMED |
 
-Classification: **MODAL_SEMANTICS_OVER_APPLIED** (declares `role=dialog aria-modal=true` yet is a non-modal sheet with no trap, no scroll lock, no focus restoration) and **SEMANTICALLY_INCOMPLETE**. The trigger/aria-expanded/backdrop/Escape behavior is `RUNTIME_CORRECT`; listener hygiene is verified clean.
+Classification: **MODAL_SEMANTICS_OVER_APPLIED** (declares `role=dialog aria-modal=true` yet is a non-modal sheet with no focus trap and no focus restoration; body scroll lock is present and correctly released on close) and **SEMANTICALLY_INCOMPLETE**. The over-application is grounded in `aria-modal=true` with background Tab reachability, no focus containment, and no focus restoration — not in scroll-lock absence. The trigger/aria-expanded/backdrop/Escape behavior is `RUNTIME_CORRECT`; listener hygiene is verified clean.
 
 ## 8. Editor desktop/mobile panel audit
 
@@ -261,10 +275,10 @@ Owner: `#ftbMoreBtn` + `#ftbDropdown[role=menu][aria-label="추가 행동"]` (`e
 |---|---|---|
 | Static semantics | `role=menu`, 6 `role=menuitem` items; trigger `aria-haspopup="true"` `aria-expanded="false"`; **no `aria-controls`** on the trigger | ACCESSIBILITY_TREE_CONFIRMED + SOURCE_CONFIRMED |
 | Open (edit-mode flow) | enter edit mode + select node → toolbar visible; `#ftbMoreBtn` click → dropdown visible, `aria-expanded="true"`; AX `role=menu`, name `추가 행동` | ACCESSIBILITY_TREE_CONFIRMED + REAL_LOCAL_CONFIRMED |
-| Escape | toolbar-level `keydown` closes the dropdown (also hides toolbar/deselects) | REAL_LOCAL_CONFIRMED |
+| Escape | closes the dropdown (also hides toolbar/deselects); note the toolbar `keydown` handler throws at `emptySpot.click()` before its own dropdown-hide statement — when the dropdown is observed closed, that closure comes from another handler, not from successful completion of this handler | REAL_LOCAL_CONFIRMED + INDEPENDENT_PRODUCTION_CONFIRMED |
 | Outside click | `document` click outside dropdown+trigger closes | REAL_LOCAL_CONFIRMED |
 | Focus management | **none** on open/close; focus stays on the trigger; menu-item arrow navigation is not implemented (arrows drive toolbar buttons only) | SOURCE_CONFIRMED |
-| Confirmed defect | Escape branch calls `emptySpot.click()` on `.canvas-svg`, which is an `SVGElement`; Chromium has no `SVGElement.prototype.click` — **unhandled `TypeError: emptySpot.click is not a function`** whenever the toolbar holds keyboard focus during Escape | REAL_LOCAL_CONFIRMED |
+| Confirmed defect | Escape branch calls `emptySpot.click()` on `.canvas-svg`, which is an `SVGElement`; Chromium has no `SVGElement.prototype.click` — **unhandled `TypeError: emptySpot.click is not a function`** whenever the toolbar holds keyboard focus during Escape. The toolbar keydown handler throws at `emptySpot.click()` before reaching its own later dropdown-hide statement; if the dropdown is observed closed, that closure comes from another handler, not from successful completion of this handler | REAL_LOCAL_CONFIRMED + INDEPENDENT_PRODUCTION_CONFIRMED |
 
 Classification: **DISCLOSURE_OR_POPOVER** with one **RUNTIME_DEFECT_CONFIRMED** (see §17 D1).
 
@@ -325,13 +339,13 @@ Runtime check: `window.confirm`/`window.prompt` are native functions on the edit
 | Surface | Initial focus | Tab/Shift+Tab | Escape | Backdrop/outside | Focus restoration | Body scroll lock |
 |---|---|---|---|---|---|---|
 | Settings card | body (none) | no trap (escapes) | navigates away | blocked (no close) | n/a (navigation) | none |
-| Scout overlay | `#scoutSourceUrlInput` | no trap | closes | closes | **none** | none (page-level) |
-| AI panel sheet | `#lovebudAIPanelInput` | no trap | closes | closes | **none** | none |
+| Scout overlay | `#scoutSourceUrlInput` | no trap | closes | does not close | none — activeElement becomes BODY, invoker not restored | none added by Scout; editor app-shell overflow remains page-owned |
+| AI panel sheet | `#lovebudAIPanelInput` | no trap | closes | closes | **none** | yes — `body.lovebud-ai-panel-open` applies `overflow:hidden` while open; released on close |
 | Editor desktop detail | n/a (persistent) | n/a | n/a | n/a | n/a | none |
 | Editor mobile drawer | `#mobileSidebarPanelCloseBtn` | **trapped (wrap)** | closes | closes | **restored to toggle** | none |
 | Browse preview sheet | none (stays on card) | n/a | **not handled** | closes | **none** | `body.preview-sheet-open` + `style.top` |
 | My Trees preview sheet | none | n/a | **handled** | closes | **none** | `body.preview-sheet-open` + `style.top` |
-| FTB dropdown | none (stays on trigger) | n/a (toolbar roving) | closes (toolbar-level) | closes | **none** | none |
+| FTB dropdown | none (stays on trigger) | n/a (toolbar roving) | closes (separate handler; the toolbar keydown throws before its own dropdown-hide) | closes | **none** | none |
 | View-options panel | none (stays on button) | n/a | closes | closes | **none** | none |
 | Entity-search | input | arrows/Enter (input) | hides dropdown | blur-based only | stays in input | none |
 | Connect-existing | none | n/a | n/a | n/a | n/a | none |
@@ -393,20 +407,21 @@ Reduced-motion (Chromium `prefers-reduced-motion: reduce`):
 - User impact: screen-reader users hear "dialog" and may expect a trapped overlay; there is none. This is the single clearest over-application in the surface set.
 - Minimum correction scope: remove `role=dialog`/`aria-modal` from `#settingsCard` (or convert to a genuine overlay with trap/restore); bounded to `pages/settings.html` + `js/settings.js` close contract.
 
-**D3 — AI panel sheet: `aria-modal=true` declared without trap, scroll lock, or focus restoration.**
+**D3 — AI panel sheet: `aria-modal=true` declared without focus containment or focus restoration.**
 - Source owner: `js/ai/lovebud-ai-panel.js:89-93` (sheet `role=dialog aria-modal=true`), `open/close/updateState`.
 - Browser scenario: open the AI panel from any hosting page; Tab/Shift+Tab; Escape; reopen.
 - Expected contract: a surface declared `aria-modal=true` should contain focus while open and restore it on close.
-- Observed: Tab leaves the sheet; Escape leaves focus on body; no restoration; body not scroll-locked.
+- Observed: Tab leaves the sheet; Escape closes but leaves focus on BODY; the invoker is not restored; body scrolling is locked while open and restored on close.
 - User impact: a "modal" that is actually a non-modal sheet; keyboard/screen-reader expectation mismatch.
-- Minimum correction scope: either add a real modal lifecycle (trap + restore + scroll lock) or drop `aria-modal`/`role=dialog` and expose it as a complementary sheet; bounded to `lovebud-ai-panel.js` + `css/components/lovebud-ai-panel.css`.
+- Minimum correction scope (two options): 1. retain modal semantics and add complete focus containment + guarded restoration; or 2. remove `aria-modal`/`role=dialog` semantics and expose a truthful complementary/non-modal sheet; bounded to `lovebud-ai-panel.js` + `css/components/lovebud-ai-panel.css`.
 
 **D4 — Scout overlay: `MODAL_SEMANTICS_MISSING`.**
 - Source owner: `js/scout/scout-draft-ui.js:116-272` (`createModalInDOM`, `openModal`, `closeModal`).
 - Browser scenario: open the Scout draft overlay (editor); inspect AX tree; Tab; Escape; close.
-- Expected contract: an interactive overlay that traps-style Escape and outside-click close should at minimum expose an accessible name/role and manage focus.
+- Expected contract: an interactive overlay should at minimum expose an accessible name/role and manage focus.
 - Observed: AX `role=generic` with empty name; no `aria-modal`; no trap; no restoration; no scroll lock.
 - User impact: screen-reader users get no dialog/region announcement and no focus contract.
+- Backdrop/outside-click (independent Production recheck): Expected — an overlay-background click should either close according to its registered policy, or the document should explicitly state that backdrop close is unsupported. Observed — the handler is registered but every overlay click returns at `refs.modal.contains(e.target)` (`refs.modal` is the full-screen `#scoutDraftModal`), so `closeModal()` is unreachable through a backdrop click. User impact — mouse/touch users cannot dismiss through the apparent backdrop despite the controller containing an outside-click close path. Minimum bounded correction — either compare against the inner `.scout-draft-modal` content element, or bind the overlay itself and close only when `e.target === overlay`; also add guarded focus restoration.
 - Minimum correction scope: add an accessible name and role (or a complementary/region semantics), initial-focus + guarded restore + optional scroll lock, all inside `scout-draft-ui.js`/`scout-draft.css`.
 
 **D5 — Browse preview sheet: no Escape handler and no focus management.**
