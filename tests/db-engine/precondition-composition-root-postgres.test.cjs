@@ -350,7 +350,7 @@ test('R6 foreign/released handles fail closed with no extra queries or releases'
     const foreign = await rootB.evaluatePrecondition({ targetMigrationId: TARGET, lockHandle: a.handle });
     assert.equal(foreign.status, 'UNAVAILABLE', 'cross-instance handle unavailable');
     const foreignCheck = await rootB.checkAdvisoryLock({ lockHandle: a.handle });
-    assert.equal(foreignCheck.status, 'UNKNOWN', 'cross-instance check unknown');
+    assert.equal(foreignCheck.status, 'FAILED', 'cross-instance check failed');
     assert.equal(openerB.queryNames.length, 0, 'root B never ran a query on rejected paths');
     assert.equal(openerB.released.length, 0, 'root B never released a session on rejected paths');
 
