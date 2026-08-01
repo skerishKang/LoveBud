@@ -521,6 +521,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/release-health-threshold-response-policy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Requires the canonical release health threshold/response policy document and deterministically locks the exact four health states, five response recommendations, precedence, hard-blocker set, no-success-default evidence completeness, latency diagnostic boundary, full rollback prerequisites, mandatory owner approval, automatic-rollback prohibition, technical/product acceptance separation, privacy exclusions, Step 6 operator-summary handoff, and policy authority without network, browser, Production, provider, database, or secret access (#3824, Step 5 of 6).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/cloudflare-write-auth-guard-dedicated.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
