@@ -98,6 +98,21 @@ function createEditorMemoryForm(deps) {
         ].filter(Boolean);
     }
 
+    // Shared accessibility lifecycle (js/shared/modal-a11y.js). Owns Tab
+    // containment, Escape, initial focus, and guarded invoker restoration.
+    // Page-owned behavior stays here: outside-click policy, inert/aria-hidden
+    // background isolation, form state, and empty-guide suppression.
+    var formA11y = window.LoveBudModalA11y && window.LoveBudModalA11y.createLifecycle({
+        getModal: function() { return refs.addMemoryForm; },
+        isOpen: function() { return isFormOpen; },
+        onRequestClose: function() { hideAddMemoryForm(); },
+        canClose: function() { return true; },
+        getInitialFocus: function() { return refs.urlInput; },
+        getRestoreFocus: function() { return _addMemoryInvoker; },
+        escapeStopPropagation: true,
+        bindTarget: 'document'
+    });
+
     function setText(el, text) {
         if (el) el.textContent = text;
     }
@@ -200,7 +215,14 @@ function createEditorMemoryForm(deps) {
         currentInputMode = mode === 'text' ? 'text' : 'link';
     }
 
+    // Tab containment: the shared lifecycle owns the wrap when present; the
+    // local fallback wraps within the live form inputs for helper-absent
+    // environments (kept as the FIRST keydown handler registered on open).
     const focusTrap = (e) => {
+        if (formA11y) {
+            formA11y.handleKeydown(e);
+            return;
+        }
         if (!isFormOpen) return;
         const formInputs = getFormInputs();
         if (e.key !== 'Tab' || formInputs.length === 0) return;
@@ -234,7 +256,11 @@ function createEditorMemoryForm(deps) {
         if (typeof invoker.focus !== 'function') return;
         requestAnimationFrame(function () {
             if (isFormOpen) return;
-            try { invoker.focus(); } catch (e) { /* no-op */ }
+            if (formA11y) {
+                formA11y.restoreFocusElement(invoker);
+            } else {
+                try { invoker.focus(); } catch (e) { /* no-op */ }
+            }
         });
     }
 
@@ -388,12 +414,19 @@ function createEditorMemoryForm(deps) {
         if (refs.modeTextBtn) refs.modeTextBtn.onclick = () => setInputMode('text', isFirstMoment);
 
         document.addEventListener('keydown', focusTrap);
-        if (refs.urlInput) refs.urlInput.focus();
 
+        if (formA11y) {
+            formA11y.focusInitial();
+        } else if (refs.urlInput) {
+            refs.urlInput.focus();
+        }
+
+        // Escape fallback only when the shared lifecycle is absent; otherwise
+        // the helper's handleKeydown (reached via focusTrap) owns Escape.
         escHandler = (e) => {
             if (e.key === 'Escape') {
                 e.stopPropagation();
-                hideAddMemoryForm();
+                if (!formA11y) hideAddMemoryForm();
             }
         };
         document.addEventListener('keydown', escHandler);

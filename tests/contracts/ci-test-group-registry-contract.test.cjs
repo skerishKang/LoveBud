@@ -377,19 +377,19 @@ test('6. exact default-glob parsing and deterministic enumeration', () => {
   assert.deepEqual(files, files2);
 });
 
-test('7. expected post-child counts 780 / 573 / 190 / 17', () => {
+test('7. expected post-child counts 787 / 576 / 191 / 20', () => {
   const data = buildReportData();
-  assert.equal(data.default_total, 780);
-  assert.equal(data.layer_counts.SOURCE_STATIC, 573);
-  assert.equal(data.layer_counts.EXECUTED_FAKE, 190);
-  assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, 17);
+  assert.equal(data.default_total, 787);
+  assert.equal(data.layer_counts.SOURCE_STATIC, 576);
+  assert.equal(data.layer_counts.EXECUTED_FAKE, 191);
+  assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, 20);
 });
 
-test('8. supplemental reconciliation 10 Python + 7 DB = 17', () => {
+test('8. supplemental reconciliation 10 Python + 8 DB = 18', () => {
   const data = buildReportData();
   assert.equal(data.supplemental_python, 10);
-  assert.equal(data.supplemental_db_engine, 7);
-  assert.equal(data.supplemental_total, 17);
+  assert.equal(data.supplemental_db_engine, 8);
+  assert.equal(data.supplemental_total, 18);
 });
 
 test('9. zero default/supplemental duplicates', () => {
@@ -416,10 +416,10 @@ test('11. browser/process exact membership from reporter output', () => {
   assert.ok(process, 'process group in output');
   assert.ok(browser.count > 0, 'browser count > 0, got ' + browser.count);
   assert.ok(process.count > 0, 'process count > 0, got ' + process.count);
-  assert.equal(browser.count + process.count, 17, 'browser + process = 17');
+  assert.equal(browser.count + process.count, 20, 'browser + process = 20');
   const inv = readJson(CLASSIFICATION_PATH);
   const realLocal = inv.entries.filter(e => e.layer === 'EXECUTED_REAL_LOCAL');
-  assert.equal(realLocal.length, 17);
+  assert.equal(realLocal.length, 20);
   // Verify each browser and process path is EXECUTED_REAL_LOCAL
   const reg = readJson(REGISTRY_PATH);
   const browserPaths = reg.groups.find(g => g.group === 'BROWSER_REAL_LOCAL').explicit_paths;
@@ -429,14 +429,14 @@ test('11. browser/process exact membership from reporter output', () => {
   for (const pp of processPaths) { assert.ok(realLocalSet.has(pp), pp + ' is EXECUTED_REAL_LOCAL'); }
 });
 
-test('12. seven DB-engine command references with one-to-one mapping', () => {
+test('12. eight DB-engine command references with one-to-one mapping', () => {
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, 'utf8'));
   const inv = readJson(CLASSIFICATION_PATH);
   const { refs, errors } = getDbEngineScriptRefs(pkg);
   assert.equal(errors.length, 0, 'DB script errors: ' + errors.join('; '));
-  assert.equal(refs.length, 7);
+  assert.equal(refs.length, 8);
   const suppDb = Array.isArray(inv.supplemental) ? inv.supplemental.filter(s => s.layer === 'DB_ENGINE_EXECUTION') : [];
-  assert.equal(suppDb.length, 7);
+  assert.equal(suppDb.length, 8);
   const scriptTargets = new Set(refs.map(r => r.target));
   const suppPaths = new Set(suppDb.map(s => s.path));
   // One-to-one mapping

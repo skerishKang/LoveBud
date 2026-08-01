@@ -222,7 +222,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    refs.resultsList.innerHTML = CardRenderer.renderLoading();
     ui.clearSelectedPreview();
     await Promise.allSettled([
         searchData.loadPublicTrees({ resetSelection: true }),

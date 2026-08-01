@@ -460,6 +460,36 @@
       "notes": "Source-only fixed precondition registry/catalog loader-resolver. Loads and validates only the fixed repository-owned authority paths, returns detached frozen projections, executes no SQL, opens no database connection, uses no network or shell, and has no Production mutation capability. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the fail-closed inventory guard."
     },
     {
+      "path": "scripts/migration-precondition-evaluator-adapter-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3802 #3657 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "Source-only fail-closed evaluatePrecondition adapter. Consumes only injected resolvePreconditionAuthority and queryLockedSession dependencies, validates and snapshots the resolved authority envelope before the first broker call, forwards the exact opaque lockHandle identity with a detached frozen { name, text, values } query, interprets BOOLEAN_SINGLE_ROW with strict row-shape validation, and returns frozen one-key { status } records. Imports no database driver, opens no database connection, executes no SQL, uses no network, child process, retry, timeout, or shell, and has no Production mutation capability. The committed authorities remain inactive (ADOPTION_REQUIRED), so no real query can execute. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the fail-closed inventory guard."
+    },
+    {
+      "path": "scripts/migration-precondition-composition-root-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3809 #3657 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "Source-only fail-closed composition root. Wires the fixed authority resolver, one pinned-session lock adapter (from an injected openSession boundary), and the evaluator (with the SAME lock adapter's queryLockedSession broker) into a frozen orchestrator-facing { acquireAdvisoryLock, evaluatePrecondition, checkAdvisoryLock, releaseAdvisoryLock } surface. Exposes no queryLockedSession, raw resolver, session, lock handle, SQL, provider state, authority contents, or internal configuration. Imports no database driver, opens no database connection, executes no SQL, uses no network, child process, retry, timeout, sleep, or shell, and has no Production mutation capability. The committed authorities remain inactive (ADOPTION_REQUIRED), so evaluation is NOT_EVALUATED and never implicit PASS. Detected by RULE_RUNNER_NAME because the basename contains 'migration'; registered here to satisfy the fail-closed inventory guard."
+    },
+    {
       "path": "scripts/migration-runner-protocol-core.cjs",
       "category": "provenance_tooling",
       "engine": "none",

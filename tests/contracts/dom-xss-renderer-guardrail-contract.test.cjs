@@ -186,15 +186,15 @@ const FILE_ALLOWLIST = {
     reason: 'renderCopyButton(treeId) — treeId is application-generated UUID, not user content'
   },
   'js/search/search-index.js': {
-    count: 6, classification: 'safe',
+    count: 5, classification: 'safe',
     reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; clear-container'
   },
   'js/search/index.js': {
-    count: 4, classification: 'safe',
+    count: 3, classification: 'safe',
     reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; renderGrowingError clear-container innerHTML'
   },
   'js/search.js': {
-    count: 6, classification: 'safe',
+    count: 5, classification: 'safe',
     reason: 'CardRenderer.* and state.growingTrees use approved template renderers with escapeHtml; clear-container'
   },
   'js/search/search-preview-renderer.js': {

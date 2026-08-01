@@ -65,6 +65,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-migration-precondition-composition-root-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the fail-closed migration precondition composition root (scripts/migration-precondition-composition-root-core.cjs) in a local process with a synthetic pinned-session boundary and a bounded synthetic ACTIVE authority construction-time test seam: exact frozen orchestrator-facing surface (acquireAdvisoryLock/evaluatePrecondition/checkAdvisoryLock/releaseAdvisoryLock) with no queryLockedSession/raw resolver/session/handle/SQL exposure, descriptor-safe factory/config validation with zero getter invocation, one lock-adapter instance ownership with the same-instance broker wiring proven through the composed pinned session, cross-instance handle substitution detection, inactive ADOPTION_REQUIRED authority -> NOT_EVALUATED with zero precondition broker queries (never implicit PASS), opaque lock-handle identity preservation, malformed resolver/evaluator/lock surfaces failing closed before session/query use, no raw error/session/handle/query result in output or console, and no DB/network/driver/retry/environment capability in source. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3809).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-evaluator-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the fail-closed evaluatePrecondition adapter (scripts/migration-precondition-evaluator-adapter-core.cjs) in a local process with synthetic resolver/broker fixtures: frozen factory and exact public surface, exact frozen status records, malformed factory bounded failure, hostile/accessor/Proxy/revoked-Proxy call envelopes with zero dependency calls, ADOPTION_REQUIRED/NOT_FOUND/empty-checks -> NOT_EVALUATED, UNAVAILABLE/throw/rejection/malformed -> UNAVAILABLE, BOOLEAN_SINGLE_ROW PASS/FAIL and every malformed row shape -> UNAVAILABLE, multi-check precedence with FAIL-then-UNAVAILABLE and no partial execution, broker query exact 3-key boundary with resultContract stripped and lockHandle identity preserved, detached/frozen query and values, exact dependency call counts, no raw error/evidence/console exposure, no retry/timeout/sleep/driver/network capability, and orchestrator CONDITION_STATUSES compatibility. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3802).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Validates the fixed inactive read-only precondition query catalog, normative authority separation, future ACTIVE entry shape, BOOLEAN_SINGLE_ROW result contract, implementation sequence, prohibited runtime and dynamic authority, exact changed-file boundary, and protected issue references without database, network, SQL execution, Docker, PostgreSQL, or Production access (#3669).",
@@ -1123,6 +1135,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-loading-3688-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real Editor markup/CSS (pages/editor.html, css/editor.css, css/editor/editor-base.css, css/global.css, css/global/lovetree-loading-states.css) and the real js/editor/editor-initial-load-flow.js in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Synthetic auth/data fixture only: loadInitialEditorTree and loadEditorMemories are deferred synthetic gates; syncCurrentTreeData, renderTreeLoadError, markEditorReady, showToast, and redirectToEditorLogin are bounded observable fixture callbacks. Asserts the staged loading contract per source: 500ms region indicator delay, 8000ms long-wait escalation, region-owned sidebar (lt-loading-inline) and canvas (lt-loading-compact) owners, role=status/aria-live=polite, spinner aria-hidden, success/stopped/rejection cleanup, auth-required vs tree-error distinction, no flash on fast completion, no stale timer mutation, reduced-motion animation removal, no horizontal overflow, zero pageerror, zero unexpected console error, zero same-origin request failure, zero unexpected HTTP failure, zero external network, zero browser/context/server leak. No production write/auth/API/DB mutation; no production URL, Firebase network, real account, or real private identifiers used.",
+      "capabilities": ["playwright", "chromium"]
+    },
+    {
       "path": "tests/contracts/editor-memory-actions-readiness-dependency-checker-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2065,6 +2083,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/modal-a11y-core-dialogs-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real LoveBud page HTML (index.html, pages/editor.html, pages/my-trees.html, pages/login.html) and the real six core modal controllers (js/index-inline-init.js, js/editor/editor-memory-form.js, js/editor/editor-rename-ui.js, js/editor/editor-shortcuts-help.js, js/my-trees/my-trees-actions.js, js/auth/auth-login-page.js) plus the shared js/shared/modal-a11y.js in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts plus a forced-colors/WHCM probe. Synthetic safe fixtures only (inert scripts, stubbed i18n/api/helper modules, fulfilled external hosts); no Production URL, real login, Auth provider, private IDs, API writes, DB, cache, storage, or external network. Asserts the shared modal accessibility lifecycle per source: initial focus after visibility, live Tab/Shift+Tab containment, focus containment, Escape close (exactly once, busy-gated), guarded invoker restoration, body scroll ownership, reopen-without-listener-duplication, close/dispose state release, page usability after close, and browser health (zero pageerror, console error, same-origin request/HTTP failure, external network, overflow, leak).",
+      "capabilities": ["playwright", "chromium"]
+    },
+    {
+      "path": "tests/contracts/modal-a11y-shared-lifecycle-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (a deterministic in-memory fake DOM for window.LoveBudModalA11y) plus source-bound delegation checks that the six core modal controllers adopt the shared lifecycle while page-owned media/inert/submit/Auth/backdrop logic remains and excluded surfaces are not migrated; no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/modal-create-owner-memory-import-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2597,6 +2627,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-viewer-loading-3688-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production CSS/JS chains (css/global.css, css/viewer/public-tree-viewer.css, css/visitor-viewer.css, js/api/base-api-fetch.js, js/postgres-client.js, js/viewer/*.js, js/visitor-viewer/*.js, js/i18n/i18n-*.js) in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Intercepts only the production public memories data path (/api/community/memories) with a deterministic deferred resolver and stubs fonts.googleapis.com with empty CSS. Asserts the staged loading contract per source: shell aria-busy lifecycle, role=status/aria-live=polite loading, role=status empty state (no treeId path), role=alert error state with a keyboard/focusable retry, deterministic fallback shell for bounded empty payloads, single visible state owner, hidden-attribute visibility authority, reduced-motion animation removal, no horizontal overflow, zero pageerror, zero unexpected console error, zero same-origin request failures, zero unexpected HTTP failures, zero external network attempts, and no browser/context/server leaks. No production write/auth/API/DB mutation; no production URL used.",
+      "capabilities": ["playwright", "chromium"]
     },
     {
       "path": "tests/contracts/public-viewer-reaction-safe-fallback-contract.test.cjs",
@@ -4639,6 +4675,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-precondition-composition-root-postgres-rehearsal-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for the CI-only disposable PostgreSQL rehearsal (Issue #3816): locks the exact nine-file boundary, the exact package script test:db-engine:precondition-composition-root, the exact CI job db-engine-precondition-composition-root with postgres:17.4-bookworm and server_version_num 170004 assertion, the loopback-only LB_TEST_PG* boundary with no DATABASE_URL/local-Docker/Production/Neon/Modal/provider reference, the plain own-callable dedicated pg.Client session wrapper, the construction-time authorityResolverFactory ACTIVE seam, the SQL boundary (canonical advisory-lock queries, fixed boolean SELECT, read-only residual-lock verification; no DDL/DML/migration/ledger SQL), the SOURCE_STATIC + supplemental DB_ENGINE_EXECUTION(defaultCi:false, capabilities postgresql+network) classification entries, and the parent completion posture (Steps 1-7 complete, Step 8 not authorized). Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3816).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Exercises scripts/migration-postgres-session-lock-adapter-core.cjs (createPostgresMigrationSessionLockAdapter and the returned acquireAdvisoryLock/checkAdvisoryLock/releaseAdvisoryLock) using only synthetic JavaScript session/query mocks (no pg, no PostgreSQL engine, no DB connection, no lock acquired, no actual SQL execution, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed two-int lock key pair, exact named/parameterized acquire/check/release queries, pinned-session lifecycle, non-blocking acquisition, current-session pg_locks verification, opaque frozen handle opacity, exactly-once pool release, malformed-evidence classification, orchestrator-compatible status mapping, and sanitized status-only results. Does not connect to any database or acquire any real lock; no Production mutation.",
@@ -4826,6 +4868,16 @@
         "postgresql",
         "child_process",
         "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/precondition-composition-root-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Rehearses the merged migration precondition composition root against a disposable PostgreSQL 17.4 engine (loopback LB_TEST_PG* only, no DATABASE_URL, no Production/Neon/Modal/provider): acquires/checks/releases the canonical advisory lock on the same pinned session, proves committed ADOPTION_REQUIRED authority -> NOT_EVALUATED (never implicit PASS) and orchestrator fail-closed before execution, proves a bounded construction-time ACTIVE seam yields PASS only through the same-session broker, proves bounded negative evidence -> FAIL, proves real advisory-lock contention between two composition roots, proves foreign/released handles fail closed with zero extra queries or session releases, and proves exact dedicated-session release with zero residual advisory locks. Permitted SQL is limited to the canonical advisory-lock acquire/check/release queries, fixed synthetic boolean SELECT evidence, and bounded read-only residual-lock verification; no DDL/DML/migration/ledger SQL. Runs only in GitHub Actions via npm run test:db-engine:precondition-composition-root; never executed locally (#3816).",
+      "capabilities": [
+        "postgresql",
+        "network"
       ]
     },
     {
