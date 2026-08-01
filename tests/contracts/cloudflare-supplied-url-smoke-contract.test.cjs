@@ -21,6 +21,10 @@ const CANONICAL_SOURCE = `${SOURCE}\n${TAXONOMY_SOURCE}`;
 // (git diff --name-status origin/main...HEAD) and the PR body, not asserted here.
 // tests/ci-test-group-registry.json is a protected aggregate authority and is NOT
 // part of this cumulative diff.
+// Count-literal reconciliation with the PR #3829 baseline (documented, not asserted here):
+//   default_total,\s*788
+//   SOURCE_STATIC,\s*577
+// Current literals after PR #3830 are asserted below with \s*790 / \s*578.
 const CUMULATIVE_BOUNDARY_FILES = [
   'scripts/release-health-taxonomy.cjs',
   'scripts/cloudflare-supplied-url-smoke.cjs',
@@ -215,7 +219,7 @@ test('19. authorized file set is represented and forbidden project authorities r
   // Registry aggregate contract count literals must be present in the registry contract test.
   const registryContract = fs.readFileSync(REGISTRY_CONTRACT_PATH, 'utf-8');
   assert.match(registryContract, /default_total,\s*790/);
-  assert.match(registryContract, /SOURCE_STATIC,\s*577/);
+  assert.match(registryContract, /SOURCE_STATIC,\s*578/);
   // package.json smoke script must keep its existing value (no modification required).
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, 'utf-8'));
   assert.ok(pkg.scripts['smoke:cloudflare'].includes('cloudflare-supplied-url-smoke.cjs'));

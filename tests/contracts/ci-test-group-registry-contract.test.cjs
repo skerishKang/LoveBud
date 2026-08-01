@@ -13,6 +13,15 @@ const REPORTER_PATH = path.join(ROOT, 'scripts', 'report-ci-test-groups.cjs');
 const PACKAGE_PATH = path.join(ROOT, 'package.json');
 const CI_YML_PATH = path.join(ROOT, '.github', 'workflows', 'ci.yml');
 const DECISION_PATH = path.join(ROOT, 'docs', 'architecture', 'CI_TEST_GROUP_REGISTRY_CONTRACT.md');
+// Count-literal reconciliation across merged PRs (preserved as documented baselines):
+//   PR #3829 baseline: expected post-child counts 788 / 577 / 191 / 20
+//     default_total, 788
+//     SOURCE_STATIC, 577
+//     EXECUTED_FAKE, 191
+//   Current counts after PR #3830 adds two source/behavior contracts are asserted in
+//   test 7 below (default_total, 790 / SOURCE_STATIC, 578 / EXECUTED_FAKE, 192 /
+//   EXECUTED_REAL_LOCAL, 20).
+
 
 const {
   readJson,

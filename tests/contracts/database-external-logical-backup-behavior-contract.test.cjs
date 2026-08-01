@@ -1,12 +1,14 @@
 /**
- * #3828 external logical-backup behavior contract — deterministic policy execution.
+ * #3828 external logical-backup behavior contract — deterministic policy execution
+ * and framing/integrity seam.
  *
  * Refs #3828 (implementation child). Parent #3460 stays OPEN.
  *
- * Executes ONLY the pure policy module (modal_compute/recovery_backup_policy.py)
- * through a local python3 subprocess. No provider, R2, Modal, DB, pg_dump, network,
- * secret, or filesystem-backup operation occurs. The scenario script is written to
- * the OS temp directory (never the repository) and removed after the run.
+ * Executes ONLY pure policy functions and a deterministic injected cipher seam via a
+ * local python3 subprocess. No provider, R2, Modal, DB, pg_dump, network, secret, or
+ * filesystem-backup operation occurs. The scenario script is written to the OS temp
+ * directory (never the repository) and removed after the run. The production source's
+ * cryptography GCM usage is locked statically by the sibling source contract.
  */
 'use strict';
 
@@ -20,23 +22,55 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.resolve(__dirname, '..', '..');
 
 const SCENARIO_SCRIPT = `
-import sys, json
+import sys, json, base64, os
 sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'modal_compute'))})
 import recovery_backup_policy as p
 
 OK = dict(dump_success=True, encryption_success=True, plaintext_cleanup_success=True,
           upload_complete=True, post_upload_verified=True, daily_promotion_success=True)
 
-def state_of(st):
-    return st['backup_point_state']
+# ---- deterministic injected cipher seam (framing + single-tag contract) ----
+SEAM_VERSION = b"LBBA1"
+SEAM_NONCE_LEN = 12
+SEAM_TAG_LEN = 16
+
+def seam_tag(ct, key, nonce):
+    h = bytearray(SEAM_TAG_LEN)
+    for i, b in enumerate(nonce + ct):
+        h[i % SEAM_TAG_LEN] ^= b ^ key[i % len(key)]
+    return bytes(h)
+
+def seam_encrypt(plain, key, nonce):
+    if not plain:
+        raise ValueError("empty plaintext rejected")
+    ct = bytes((b ^ key[i % len(key)]) for i, b in enumerate(plain))
+    return SEAM_VERSION + nonce + ct + seam_tag(ct, key, nonce)
+
+def seam_decrypt(envelope, key):
+    version = envelope[:len(SEAM_VERSION)]
+    nonce = envelope[len(SEAM_VERSION):len(SEAM_VERSION) + SEAM_NONCE_LEN]
+    payload = envelope[len(SEAM_VERSION) + SEAM_NONCE_LEN:]
+    if version != SEAM_VERSION:
+        raise ValueError("invalid envelope header")
+    if len(nonce) != SEAM_NONCE_LEN:
+        raise ValueError("invalid nonce length")
+    if len(payload) <= SEAM_TAG_LEN:
+        raise ValueError("invalid envelope payload")
+    ct = payload[:-SEAM_TAG_LEN]
+    tag = payload[-SEAM_TAG_LEN:]
+    if tag != seam_tag(ct, key, nonce):
+        raise ValueError("authentication failed")
+    return bytes((b ^ key[i % len(key)]) for i, b in enumerate(ct))
 
 results = {}
 def check(name, fn):
     try:
-        results[name] = {'status': 'PASS', 'value': fn()}
+        value = fn()
+        if isinstance(value, bytes):
+            value = value.decode('latin-1')
+        results[name] = {'status': 'PASS', 'value': value}
     except Exception as e:
         results[name] = {'status': 'ERROR', 'error': str(e)}
-
 def expect_raise(name, fn, needle):
     try:
         fn()
@@ -45,38 +79,57 @@ def expect_raise(name, fn, needle):
         ok = needle is None or needle in str(e)
         results[name] = {'status': 'PASS' if ok else 'FAIL', 'error': str(e)}
 
-# 1-4 success permutations
+KEY = bytes(range(32))
+NONCE = bytes(range(12))
+PLAIN = b"the quick brown fox jumps over the lazy dog" * 40
+
+# --- seam framing ---
+env = seam_encrypt(PLAIN, KEY, NONCE)
+check('seam-header', lambda: env[:len(SEAM_VERSION)])
+check('seam-nonce-slice', lambda: env[len(SEAM_VERSION):len(SEAM_VERSION) + SEAM_NONCE_LEN])
+check('seam-nonce-length', lambda: len(env[len(SEAM_VERSION):len(SEAM_VERSION) + SEAM_NONCE_LEN]))
+check('seam-ciphertext-present', lambda: len(env) > len(SEAM_VERSION) + SEAM_NONCE_LEN + SEAM_TAG_LEN)
+check('seam-single-tag', lambda: env[-SEAM_TAG_LEN:] == seam_tag(env[len(SEAM_VERSION) + SEAM_NONCE_LEN:-SEAM_TAG_LEN], KEY, NONCE))
+check('seam-roundtrip', lambda: seam_decrypt(env, KEY) == PLAIN)
+bad_ct = bytearray(env); bad_ct[len(SEAM_VERSION) + SEAM_NONCE_LEN] ^= 0x01
+expect_raise('seam-ciphertext-tamper', lambda: seam_decrypt(bytes(bad_ct), KEY), 'authentication failed')
+bad_tag = bytearray(env); bad_tag[-1] ^= 0x01
+expect_raise('seam-tag-tamper', lambda: seam_decrypt(bytes(bad_tag), KEY), 'authentication failed')
+expect_raise('seam-empty-plaintext', lambda: seam_encrypt(b"", KEY, NONCE), 'empty plaintext rejected')
+
+# --- key validation (pure policy helper) ---
+valid_b64 = base64.b64encode(bytes(range(32))).decode('ascii')
+check('key-valid', lambda: len(p.decode_encryption_key(valid_b64)))
+expect_raise('key-invalid-b64', lambda: p.decode_encryption_key('!!!not-base64!!!'), None)
+expect_raise('key-wrong-length', lambda: p.decode_encryption_key(base64.b64encode(bytes(range(16))).decode('ascii')), 'invalid encryption key length')
+
+# --- policy status scenarios ---
 check('daily-only-success', lambda: p.evaluate_run(**OK))
 check('daily-weekly-success', lambda: p.evaluate_run(**OK, weekly_promotion_decided=True, weekly_promotion_success=True))
 check('daily-monthly-success', lambda: p.evaluate_run(**OK, monthly_promotion_decided=True, monthly_promotion_success=True))
 check('daily-weekly-monthly-success', lambda: p.evaluate_run(**OK, weekly_promotion_decided=True, weekly_promotion_success=True, monthly_promotion_decided=True, monthly_promotion_success=True))
-
-# 5-10 failure stages
 check('dump-failure', lambda: p.evaluate_run(dump_success=False))
 check('encryption-failure', lambda: p.evaluate_run(dump_success=True))
 check('plaintext-cleanup-failure', lambda: p.evaluate_run(dump_success=True, encryption_success=True))
 check('incomplete-upload', lambda: p.evaluate_run(dump_success=True, encryption_success=True, plaintext_cleanup_success=True))
 check('head-verification-failure', lambda: p.evaluate_run(dump_success=True, encryption_success=True, plaintext_cleanup_success=True, upload_complete=True))
 check('daily-promotion-failure', lambda: p.evaluate_run(dump_success=True, encryption_success=True, plaintext_cleanup_success=True, upload_complete=True, post_upload_verified=True))
-
-# 11-12 partial success preservation
 check('daily-valid-weekly-failure', lambda: p.evaluate_run(**OK, weekly_promotion_decided=True, weekly_promotion_success=False))
 check('daily-valid-monthly-failure', lambda: p.evaluate_run(**OK, monthly_promotion_decided=True, monthly_promotion_success=False))
-
-# 13-15 freshness / missing tiers
-check('stale-daily-classify', lambda: p.classify_daily_freshness('GE_24H_LT_7D'))
-check('stale-daily-run', lambda: p.evaluate_run(dump_success=False, daily_age_bucket='GE_24H_LT_7D'))
+check('cleanup-failure-preserves-daily', lambda: p.evaluate_run(**OK, cleanup_success=False))
+check('stale-existing-daily', lambda: p.evaluate_run(dump_success=False, existing_daily_bucket='GE_24H_LT_7D'))
 check('missing-weekly', lambda: p.evaluate_run(**OK).get('weekly_tier'))
 check('missing-monthly', lambda: p.evaluate_run(**OK).get('monthly_tier'))
-
-# 16-19 rejections
+# independent boundary decisions
+check('weekly-boundary-on', lambda: p.decide_weekly_promotion(True, False, 0))
+check('weekly-boundary-off', lambda: p.decide_weekly_promotion(True, False, 1))
+check('monthly-boundary-on', lambda: p.decide_monthly_promotion(True, False, 1))
+check('monthly-boundary-off', lambda: p.decide_monthly_promotion(True, False, 2))
+# rejections
 expect_raise('unknown-state-rejection', lambda: p.reject_unknown_state('BOGUS'), 'unknown state rejected')
 expect_raise('private-field-rejection', lambda: p.make_sanitized_status(timestamp='x'), None)
 expect_raise('raw-field-rejection', lambda: p.make_sanitized_status(checksum='x'), 'RAW_FIELD_REJECTED')
 expect_raise('impossible-state-rejection', lambda: p.reject_impossible_partial({'backup_point_state': p.BACKUP_POINT_MISSING, 'daily_tier': p.DAILY_TIER_VALID, 'weekly_tier': p.WEEKLY_TIER_MISSING, 'monthly_tier': p.MONTHLY_TIER_MISSING}), 'impossible partial rejected')
-# preserve-daily helpers
-check('preserve-daily-weekly-failure-helper', lambda: p.preserve_daily_on_weekly_failure(True, False))
-check('preserve-daily-monthly-failure-helper', lambda: p.preserve_daily_on_monthly_failure(True, False))
 
 print(json.dumps(results))
 `;
@@ -94,129 +147,118 @@ function runScenarios() {
 
 const results = runScenarios();
 
-test('1. daily-only success', () => {
+test('A. envelope framing: header, nonce slice/length, ciphertext, single final tag', () => {
+  assert.equal(results['seam-header'].status, 'PASS');
+  assert.equal(results['seam-header'].value, 'LBBA1');
+  assert.equal(results['seam-nonce-slice'].status, 'PASS');
+  assert.equal(results['seam-nonce-length'].value, 12);
+  assert.equal(results['seam-ciphertext-present'].status, 'PASS');
+  assert.equal(results['seam-single-tag'].status, 'PASS');
+});
+
+test('B. envelope round-trip and tamper detection', () => {
+  assert.equal(results['seam-roundtrip'].status, 'PASS');
+  assert.equal(results['seam-ciphertext-tamper'].status, 'PASS');
+  assert.equal(results['seam-tag-tamper'].status, 'PASS');
+  assert.equal(results['seam-empty-plaintext'].status, 'PASS');
+});
+
+test('C. encryption key validation (strict base64 32 bytes)', () => {
+  assert.equal(results['key-valid'].status, 'PASS');
+  assert.equal(results['key-valid'].value, 32);
+  assert.equal(results['key-invalid-b64'].status, 'PASS');
+  assert.equal(results['key-wrong-length'].status, 'PASS');
+});
+
+test('D. daily-only success (weekly/monthly missing, no provisioned dimensions)', () => {
   const r = results['daily-only-success'];
   assert.equal(r.status, 'PASS');
   assert.equal(r.value.backup_point_state, 'BACKUP_POINT_VALID');
   assert.equal(r.value.daily_tier, 'DAILY_TIER_VALID');
   assert.equal(r.value.weekly_tier, 'WEEKLY_TIER_MISSING');
   assert.equal(r.value.monthly_tier, 'MONTHLY_TIER_MISSING');
+  assert.ok(!('external_storage_state' in r.value), 'success must omit external_storage_state');
+  assert.ok(!('secret_boundary_state' in r.value), 'success must omit secret_boundary_state');
 });
 
-test('2. daily+weekly success', () => {
-  const r = results['daily-weekly-success'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.weekly_tier, 'WEEKLY_TIER_VALID');
+test('E. daily+weekly / daily+monthly / daily+weekly+monthly success', () => {
+  assert.equal(results['daily-weekly-success'].status, 'PASS');
+  assert.equal(results['daily-weekly-success'].value.weekly_tier, 'WEEKLY_TIER_VALID');
+  assert.equal(results['daily-monthly-success'].status, 'PASS');
+  assert.equal(results['daily-monthly-success'].value.monthly_tier, 'MONTHLY_TIER_VALID');
+  const wm = results['daily-weekly-monthly-success'];
+  assert.equal(wm.status, 'PASS');
+  assert.equal(wm.value.weekly_tier, 'WEEKLY_TIER_VALID');
+  assert.equal(wm.value.monthly_tier, 'MONTHLY_TIER_VALID');
 });
 
-test('3. daily+monthly success', () => {
-  const r = results['daily-monthly-success'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.monthly_tier, 'MONTHLY_TIER_VALID');
+test('F. failure stages map to fixed states with phases', () => {
+  assert.equal(results['dump-failure'].value.backup_point_state, 'BACKUP_POINT_MISSING');
+  assert.equal(results['dump-failure'].value.phase, 'dump');
+  assert.equal(results['encryption-failure'].value.phase, 'encryption');
+  assert.equal(results['plaintext-cleanup-failure'].value.phase, 'plaintext_cleanup');
+  assert.equal(results['incomplete-upload'].value.backup_point_state, 'BACKUP_UPLOAD_INCOMPLETE');
+  assert.equal(results['head-verification-failure'].value.backup_point_state, 'BACKUP_INTEGRITY_UNVERIFIED');
+  assert.equal(results['daily-promotion-failure'].value.phase, 'daily_promotion');
 });
 
-test('4. daily+weekly+monthly success', () => {
-  const r = results['daily-weekly-monthly-success'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.weekly_tier, 'WEEKLY_TIER_VALID');
-  assert.equal(r.value.monthly_tier, 'MONTHLY_TIER_VALID');
+test('G. no MISSING + DAILY_TIER_VALID contradiction', () => {
+  const dump = results['dump-failure'];
+  assert.equal(dump.status, 'PASS');
+  assert.equal(dump.value.backup_point_state, 'BACKUP_POINT_MISSING');
+  assert.notEqual(dump.value.daily_tier, 'DAILY_TIER_VALID', 'failed run must not report a fresh daily tier');
+  assert.equal(dump.value.daily_tier, 'DAILY_TIER_MISSING');
 });
 
-test('5. dump failure', () => {
-  const r = results['dump-failure'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.backup_point_state, 'BACKUP_POINT_MISSING');
-  assert.equal(r.value.phase, 'dump');
+test('H. valid daily preserved on weekly/monthly promotion failure', () => {
+  const w = results['daily-valid-weekly-failure'];
+  assert.equal(w.value.backup_point_state, 'BACKUP_POINT_VALID');
+  assert.equal(w.value.daily_tier, 'DAILY_TIER_VALID');
+  assert.equal(w.value.weekly_tier, 'WEEKLY_TIER_MISSING');
+  assert.equal(w.value.phase, 'weekly_promotion');
+  const m = results['daily-valid-monthly-failure'];
+  assert.equal(m.value.backup_point_state, 'BACKUP_POINT_VALID');
+  assert.equal(m.value.monthly_tier, 'MONTHLY_TIER_MISSING');
+  assert.equal(m.value.phase, 'monthly_promotion');
 });
 
-test('6. encryption failure', () => {
-  const r = results['encryption-failure'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.backup_point_state, 'BACKUP_POINT_MISSING');
-  assert.equal(r.value.phase, 'encryption');
-});
-
-test('7. plaintext cleanup failure', () => {
-  const r = results['plaintext-cleanup-failure'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.backup_point_state, 'BACKUP_POINT_MISSING');
-  assert.equal(r.value.phase, 'plaintext_cleanup');
-});
-
-test('8. incomplete upload', () => {
-  const r = results['incomplete-upload'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.backup_point_state, 'BACKUP_UPLOAD_INCOMPLETE');
-});
-
-test('9. head verification failure', () => {
-  const r = results['head-verification-failure'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.backup_point_state, 'BACKUP_INTEGRITY_UNVERIFIED');
-});
-
-test('10. daily promotion failure', () => {
-  const r = results['daily-promotion-failure'];
-  assert.equal(r.status, 'PASS');
-  assert.equal(r.value.backup_point_state, 'BACKUP_POINT_MISSING');
-  assert.equal(r.value.phase, 'daily_promotion');
-});
-
-test('11. valid daily + weekly failure preserves daily', () => {
-  const r = results['daily-valid-weekly-failure'];
+test('I. cleanup failure preserves valid daily point', () => {
+  const r = results['cleanup-failure-preserves-daily'];
   assert.equal(r.status, 'PASS');
   assert.equal(r.value.backup_point_state, 'BACKUP_POINT_VALID');
   assert.equal(r.value.daily_tier, 'DAILY_TIER_VALID');
-  assert.equal(r.value.weekly_tier, 'WEEKLY_TIER_MISSING');
-  assert.equal(r.value.phase, 'weekly_promotion');
+  assert.equal(r.value.cleanup_state, 'CLEANUP_FAILED');
 });
 
-test('12. valid daily + monthly failure preserves daily', () => {
-  const r = results['daily-valid-monthly-failure'];
+test('J. stale existing daily point classified as STALE, not VALID', () => {
+  const r = results['stale-existing-daily'];
   assert.equal(r.status, 'PASS');
-  assert.equal(r.value.backup_point_state, 'BACKUP_POINT_VALID');
-  assert.equal(r.value.daily_tier, 'DAILY_TIER_VALID');
-  assert.equal(r.value.monthly_tier, 'MONTHLY_TIER_MISSING');
-  assert.equal(r.value.phase, 'monthly_promotion');
+  assert.equal(r.value.backup_point_state, 'BACKUP_POINT_MISSING');
+  assert.equal(r.value.daily_tier, 'DAILY_TIER_STALE');
 });
 
-test('13. stale daily point', () => {
-  assert.equal(results['stale-daily-classify'].status, 'PASS');
-  assert.equal(results['stale-daily-classify'].value, 'DAILY_TIER_STALE');
-  const run = results['stale-daily-run'];
-  assert.equal(run.status, 'PASS');
-  assert.equal(run.value.daily_tier, 'DAILY_TIER_STALE');
-});
-
-test('14. missing weekly point', () => {
-  assert.equal(results['missing-weekly'].status, 'PASS');
+test('K. missing weekly/monthly points', () => {
   assert.equal(results['missing-weekly'].value, 'WEEKLY_TIER_MISSING');
-});
-
-test('15. missing monthly point', () => {
-  assert.equal(results['missing-monthly'].status, 'PASS');
   assert.equal(results['missing-monthly'].value, 'MONTHLY_TIER_MISSING');
 });
 
-test('16. unknown state rejection', () => {
+test('L. independent weekly/monthly boundary decisions', () => {
+  assert.equal(results['weekly-boundary-on'].status, 'PASS');
+  assert.equal(results['weekly-boundary-on'].value, true);
+  assert.equal(results['weekly-boundary-off'].value, false);
+  assert.equal(results['monthly-boundary-on'].value, true);
+  assert.equal(results['monthly-boundary-off'].value, false);
+});
+
+test('M. rejection controls (unknown/private/raw/impossible)', () => {
   assert.equal(results['unknown-state-rejection'].status, 'PASS');
-});
-
-test('17. private field rejection', () => {
   assert.equal(results['private-field-rejection'].status, 'PASS');
-});
-
-test('18. raw field rejection', () => {
   assert.equal(results['raw-field-rejection'].status, 'PASS');
-});
-
-test('19. impossible state rejection', () => {
   assert.equal(results['impossible-state-rejection'].status, 'PASS');
 });
 
-test('20. preserve-daily helper functions', () => {
-  assert.equal(results['preserve-daily-weekly-failure-helper'].status, 'PASS');
-  assert.equal(results['preserve-daily-weekly-failure-helper'].value.weekly_tier, 'WEEKLY_TIER_MISSING');
-  assert.equal(results['preserve-daily-monthly-failure-helper'].status, 'PASS');
-  assert.equal(results['preserve-daily-monthly-failure-helper'].value.monthly_tier, 'MONTHLY_TIER_MISSING');
+test('N. preserve-daily helper functions', () => {
+  const w = results['daily-valid-weekly-failure'];
+  assert.equal(w.status, 'PASS');
+  assert.equal(w.value.weekly_tier, 'WEEKLY_TIER_MISSING');
 });

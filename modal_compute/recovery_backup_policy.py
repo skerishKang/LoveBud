@@ -12,6 +12,7 @@ private identifier ever appears in a returned status.
 
 from __future__ import annotations
 
+import base64
 from typing import Any, Mapping
 
 # --- fixed status states -------------------------------------------------
@@ -156,6 +157,22 @@ _STALE_FOR = {
     MONTHLY_TIER_VALID: MONTHLY_TIER_STALE,
 }
 
+# Deterministic UTC retention boundaries (no locale/timezone dependence).
+WEEKLY_PROMOTION_WEEKDAY = 0  # Monday, UTC
+MONTHLY_PROMOTION_DAY = 1  # first day of month, UTC
+
+
+def decode_encryption_key(value: str) -> bytes:
+    """Strict base64-encoded 32-byte key; fail closed on malformed input.
+
+    Pure stdlib helper so the behavior contract can exercise key validation
+    without importing cryptography or any provider library.
+    """
+    decoded = base64.b64decode(value, validate=True)
+    if len(decoded) != 32:
+        raise ValueError("invalid encryption key length")
+    return decoded
+
 
 def _require_bucket(age_bucket: str) -> None:
     if age_bucket not in ALLOWED_AGE_BUCKETS:
@@ -193,13 +210,32 @@ def classify_retained_tier(age_bucket: str, retained: bool, tier: str) -> str:
     return _MISSING_FOR[tier]
 
 
-def decide_promotion(daily_fresh: bool, tier_retained: bool) -> bool:
-    """Decide whether a fresh daily point is promoted to a retained tier.
+def decide_weekly_promotion(
+    daily_fresh: bool,
+    weekly_retained: bool,
+    utc_weekday: int,
+    weekly_boundary_weekday: int = WEEKLY_PROMOTION_WEEKDAY,
+) -> bool:
+    """Decide weekly promotion independently on a fixed UTC weekday boundary.
 
-    Promotion is needed when the daily point is fresh and the target tier is not
-    already retained.
+    Promotion happens only when the daily point is fresh, the weekly tier is not
+    already retained, and the UTC weekday equals the fixed weekly boundary.
     """
-    return bool(daily_fresh) and not bool(tier_retained)
+    return bool(daily_fresh) and not bool(weekly_retained) and int(utc_weekday) == int(weekly_boundary_weekday)
+
+
+def decide_monthly_promotion(
+    daily_fresh: bool,
+    monthly_retained: bool,
+    utc_day: int,
+    monthly_boundary_day: int = MONTHLY_PROMOTION_DAY,
+) -> bool:
+    """Decide monthly promotion independently on a fixed UTC day boundary.
+
+    Promotion happens only when the daily point is fresh, the monthly tier is not
+    already retained, and the UTC day equals the fixed monthly boundary.
+    """
+    return bool(daily_fresh) and not bool(monthly_retained) and int(utc_day) == int(monthly_boundary_day)
 
 
 def reject_unknown_state(value: Any) -> None:
@@ -286,6 +322,39 @@ def reject_impossible_partial(status: Mapping[str, Any]) -> None:
         raise ValueError("impossible partial rejected: monthly valid without daily valid")
 
 
+def _build_status(
+    *,
+    state: str,
+    daily_tier: str,
+    weekly_tier: str,
+    monthly_tier: str,
+    cleanup_state: str,
+    phase: str | None,
+    include_provisioned_dimensions: bool,
+) -> dict:
+    status = make_sanitized_status(
+        backup_point_state=state,
+        daily_tier=daily_tier,
+        weekly_tier=weekly_tier,
+        monthly_tier=monthly_tier,
+        cleanup_state=cleanup_state,
+        phase=phase,
+    )
+    if include_provisioned_dimensions:
+        status = make_sanitized_status(
+            backup_point_state=status["backup_point_state"],
+            daily_tier=status["daily_tier"],
+            weekly_tier=status["weekly_tier"],
+            monthly_tier=status["monthly_tier"],
+            cleanup_state=status["cleanup_state"],
+            external_storage_state=EXTERNAL_STORAGE_UNPROVISIONED,
+            secret_boundary_state=SECRET_BOUNDARY_UNPROVISIONED,
+            phase=status["phase"],
+        )
+    reject_impossible_partial(status)
+    return status
+
+
 def evaluate_run(
     *,
     dump_success: bool = False,
@@ -301,12 +370,17 @@ def evaluate_run(
     cleanup_success: bool = True,
     weekly_retained: bool = False,
     monthly_retained: bool = False,
+    existing_daily_bucket: str | None = None,
     daily_age_bucket: str = "GE_1H_LT_24H",
+    include_provisioned_dimensions: bool = False,
 ) -> dict:
     """Deterministically evaluate a single backup run into a sanitized status.
 
     A valid daily point is preserved when an optional weekly/monthly promotion
-    fails; only the affected retained tier is reported separately.
+    fails; only the affected retained tier is reported separately. The daily tier
+    is never assumed fresh when the current run failed: it is MISSING unless an
+    existing retained daily point is supplied through `existing_daily_bucket`.
+    Every emitted status is validated against impossible partial combinations.
     """
     stages = {
         "dump": dump_success,
@@ -335,8 +409,10 @@ def evaluate_run(
 
     if state == BACKUP_POINT_VALID:
         daily_tier = DAILY_TIER_VALID
+    elif existing_daily_bucket is not None:
+        daily_tier = classify_daily_freshness(existing_daily_bucket)
     else:
-        daily_tier = classify_daily_freshness(daily_age_bucket)
+        daily_tier = DAILY_TIER_MISSING
 
     weekly_tier = TIER_UNKNOWN
     monthly_tier = TIER_UNKNOWN
@@ -364,40 +440,42 @@ def evaluate_run(
         else:
             monthly_tier = MONTHLY_TIER_MISSING
 
-    status = make_sanitized_status(
-        backup_point_state=state,
+    return _build_status(
+        state=state,
         daily_tier=daily_tier,
         weekly_tier=weekly_tier,
         monthly_tier=monthly_tier,
         cleanup_state=CLEANUP_COMPLETE if cleanup_success else CLEANUP_FAILED,
-        external_storage_state=EXTERNAL_STORAGE_UNPROVISIONED,
-        secret_boundary_state=SECRET_BOUNDARY_UNPROVISIONED,
         phase=phase,
+        include_provisioned_dimensions=include_provisioned_dimensions,
     )
-    return status
 
 
 def preserve_daily_on_weekly_failure(daily_valid: bool, weekly_promotion_success: bool) -> dict:
     """Preserve a valid daily point when only the weekly promotion failed."""
     if not daily_valid:
         raise ValueError("impossible partial rejected: daily point not valid")
-    return make_sanitized_status(
+    status = make_sanitized_status(
         backup_point_state=BACKUP_POINT_VALID,
         daily_tier=DAILY_TIER_VALID,
         weekly_tier=WEEKLY_TIER_VALID if weekly_promotion_success else WEEKLY_TIER_MISSING,
         monthly_tier=TIER_UNKNOWN,
         phase=None if weekly_promotion_success else "weekly_promotion",
     )
+    reject_impossible_partial(status)
+    return status
 
 
 def preserve_daily_on_monthly_failure(daily_valid: bool, monthly_promotion_success: bool) -> dict:
     """Preserve a valid daily point when only the monthly promotion failed."""
     if not daily_valid:
         raise ValueError("impossible partial rejected: daily point not valid")
-    return make_sanitized_status(
+    status = make_sanitized_status(
         backup_point_state=BACKUP_POINT_VALID,
         daily_tier=DAILY_TIER_VALID,
         weekly_tier=TIER_UNKNOWN,
         monthly_tier=MONTHLY_TIER_VALID if monthly_promotion_success else MONTHLY_TIER_MISSING,
         phase=None if monthly_promotion_success else "monthly_promotion",
     )
+    reject_impossible_partial(status)
+    return status

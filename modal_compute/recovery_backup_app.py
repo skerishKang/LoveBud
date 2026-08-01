@@ -9,16 +9,17 @@ no network, secret, DB, subprocess, filesystem, or deployment side effect.
 Pipeline order (single run, one Production dump per execution):
   1. symbolic secret presence check
   2. private ephemeral working directory
-  3. compressed PostgreSQL custom-format logical dump
+  3. compressed PostgreSQL custom-format logical dump (DB URL via child-only env)
   4. non-empty dump verification
-  5. streaming authenticated encryption (per-object random nonce, tag stored)
+  5. single parseable streaming AEAD envelope (version + nonce + streamed
+     ciphertext + one final authentication tag) with a strict base64 32-byte key
   6. plaintext dump deletion before upload
-  7. incomplete/staging object upload
-  8. authenticated head/metadata verification
-  9. daily prefix promotion
-  10. conditional weekly/monthly promotion from the same encrypted object
-  11. staging object deletion
-  12. finally cleanup
+  7. incomplete/staging object upload (retry-safe fresh file cursor, streaming)
+  8. authenticated head/metadata verification (length + format metadata)
+  9. daily prefix promotion under a unique non-logged run key
+  10. independent weekly/monthly promotion from the same encrypted object
+  11. staging object deletion (staging-cleanup failure reflected as cleanup)
+  12. strict finally cleanup (failures reflected, never suppressed)
   13. sanitized status return (from modal_compute.recovery_backup_policy)
 """
 
@@ -28,24 +29,25 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
+import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 import modal
 
 from modal_compute.recovery_backup_policy import (
-    BACKUP_INTEGRITY_UNVERIFIED,
     BACKUP_POINT_MISSING,
-    BACKUP_POINT_VALID,
-    BACKUP_UPLOAD_INCOMPLETE,
     CLEANUP_COMPLETE,
     CLEANUP_FAILED,
-    DAILY_TIER_VALID,
+    DAILY_TIER_MISSING,
     EXTERNAL_STORAGE_UNPROVISIONED,
-    MONTHLY_TIER_VALID,
+    MONTHLY_TIER_MISSING,
     SECRET_BOUNDARY_UNPROVISIONED,
-    WEEKLY_TIER_VALID,
-    classify_daily_freshness,
-    decide_promotion,
+    WEEKLY_TIER_MISSING,
+    decide_monthly_promotion,
+    decide_weekly_promotion,
+    decode_encryption_key,
     evaluate_run,
     make_sanitized_status,
 )
@@ -63,7 +65,7 @@ R2_ACCESS_KEY_ENV = "R2_ACCESS_KEY_ID"
 R2_SECRET_KEY_ENV = "R2_SECRET_ACCESS_KEY"
 R2_BUCKET_ENV = "R2_BUCKET_NAME"
 R2_ENDPOINT_ENV = "R2_ENDPOINT_URL"
-ENCRYPTION_KEY_ENV = "RECOVERY_ENCRYPTION_KEY"
+ENCRYPTION_KEY_ENV = "RECOVERY_ENCRYPTION_KEY_B64"
 
 # Bounded execution budgets.
 DUMP_TIMEOUT_SECONDS = 600
@@ -71,12 +73,21 @@ OBJECT_RETRY_MAX = 3
 OBJECT_RETRY_BACKOFF_SECONDS = 2.0
 STREAM_CHUNK_BYTES = 1024 * 1024
 STREAM_AEAD_VERSION = b"LBBA1"
+STREAM_AEAD_NONCE_BYTES = 12
+STREAM_AEAD_TAG_BYTES = 16
+STREAM_AEAD_HEADER_BYTES = len(STREAM_AEAD_VERSION) + STREAM_AEAD_NONCE_BYTES
 
 # Object prefixes (symbolic structure only; exact keys are never recorded).
 DAILY_PREFIX = "daily"
 WEEKLY_PREFIX = "weekly"
 MONTHLY_PREFIX = "monthly"
 STAGING_PREFIX = "staging"
+
+# Fixed non-private object metadata written at upload time.
+R2_OBJECT_METADATA = {
+    "format-version": "LBBA1",
+    "content-kind": "encrypted-postgresql-custom-dump",
+}
 
 BACKUP_IMAGE = (
     modal.Image.debian_slim(python_version="3.11")
@@ -108,8 +119,14 @@ def _secrets_present() -> bool:
     return all(os.environ.get(name) for name in required)
 
 
-def _run_dump(db_url: str, dump_path: str) -> None:
-    # Bounded single-attempt dump: no unbounded retry of pg_dump.
+def _decode_encryption_key(value: str) -> bytes:
+    """Strict base64-decoded 32-byte key, fail closed on malformed input."""
+    return decode_encryption_key(value)
+
+
+def _run_dump(dump_path: str) -> None:
+    # Bounded single-attempt dump with a sanitized argv; the connection value is
+    # passed only through the child-only libpq environment (PGDATABASE).
     _log_phase("dump")
     cmd = [
         "pg_dump",
@@ -119,13 +136,18 @@ def _run_dump(db_url: str, dump_path: str) -> None:
         "--no-privileges",
         "--file",
         dump_path,
-        db_url,
     ]
+    child_env = {
+        "PATH": os.environ.get("PATH", ""),
+        "PGDATABASE": os.environ[DB_URL_ENV],
+        "PGCONNECT_TIMEOUT": "15",
+    }
     subprocess.run(
         cmd,
         check=True,
         capture_output=True,
         timeout=DUMP_TIMEOUT_SECONDS,
+        env=child_env,
     )
 
 
@@ -136,28 +158,53 @@ def _is_non_empty(path: str) -> bool:
         return False
 
 
-def _streaming_encrypt(plain_path: str, enc_path: str, key: bytes, base_nonce: bytes) -> None:
-    # Streaming authenticated encryption: each 1 MiB chunk is encrypted with an
-    # AES-GCM context using a unique derived nonce; the per-chunk authentication
-    # tag is stored adjacent to the ciphertext inside the object. The base nonce
-    # is written once at the start of the object.
-    _log_phase("encrypt")
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+def _streaming_encrypt(plain_path: str, enc_path: str, key: bytes, nonce: bytes) -> None:
+    """Stream one parseable AEAD envelope: version + nonce + ciphertext + one tag.
 
-    aesgcm = AESGCM(key)
-    counter = 0
+    Uses the streaming Cipher API (update/finalize/tag) so the whole dump is never
+    loaded into memory; chunk boundaries do not affect decryptability because the
+    envelope carries a single final authentication tag.
+    """
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    encryptor = Cipher(algorithms.AES(key), modes.GCM(nonce)).encryptor()
+    wrote_any = False
     with open(plain_path, "rb") as src, open(enc_path, "wb") as dst:
         dst.write(STREAM_AEAD_VERSION)
-        dst.write(base_nonce)
+        dst.write(nonce)
         while True:
             chunk = src.read(STREAM_CHUNK_BYTES)
             if not chunk:
                 break
-            nonce = base_nonce[:4] + counter.to_bytes(8, "big")
-            counter += 1
-            ciphertext = aesgcm.encrypt(nonce, chunk, None)
-            dst.write(ciphertext)
-            dst.write(ciphertext[-16:])  # authentication tag stored inside object
+            wrote_any = True
+            dst.write(encryptor.update(chunk))
+        if not wrote_any:
+            raise ValueError("empty plaintext rejected")
+        dst.write(encryptor.finalize())
+        dst.write(encryptor.tag)  # single 16-byte authentication tag
+    if not _is_non_empty(enc_path):
+        raise ValueError("encrypted output empty")
+
+
+def _streaming_decrypt(enc_path: str, out_path: str, key: bytes) -> None:
+    """Decrypt a single AEAD envelope; raises on framing or authentication errors."""
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+    with open(enc_path, "rb") as src:
+        header = src.read(STREAM_AEAD_HEADER_BYTES)
+        if len(header) != STREAM_AEAD_HEADER_BYTES or header[: len(STREAM_AEAD_VERSION)] != STREAM_AEAD_VERSION:
+            raise ValueError("invalid envelope header")
+        nonce = header[len(STREAM_AEAD_VERSION):]
+        payload = src.read()
+        if len(payload) <= STREAM_AEAD_TAG_BYTES:
+            raise ValueError("invalid envelope payload")
+        ciphertext = payload[:-STREAM_AEAD_TAG_BYTES]
+        tag = payload[-STREAM_AEAD_TAG_BYTES:]
+    decryptor = Cipher(algorithms.AES(key), modes.GCM(nonce, tag)).decryptor()
+    with open(out_path, "wb") as dst:
+        if ciphertext:
+            dst.write(decryptor.update(ciphertext))
+        decryptor.finalize()
 
 
 def _s3_client():
@@ -172,14 +219,17 @@ def _s3_client():
     )
 
 
-def _object_key(prefix: str, staging_name: str) -> str:
-    # Deterministic symbolic key structure; exact keys are never recorded.
-    return f"{prefix}/{staging_name}"
+def _unique_run_key() -> str:
+    """UTC-based, cryptographically random, non-logged run key."""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    return f"{stamp}-{uuid.uuid4().hex}"
+
+
+def _object_key(prefix: str, run_key: str) -> str:
+    return f"{prefix}/{run_key}"
 
 
 def _retry_object(fn):
-    import time
-
     last_error = None
     for attempt in range(OBJECT_RETRY_MAX):
         try:
@@ -191,38 +241,66 @@ def _retry_object(fn):
     raise last_error
 
 
-@app.function(
-    image=BACKUP_IMAGE,
-    secrets=[
-        modal.Secret.from_name(RECOVERY_DB_SECRET_NAME),
-        modal.Secret.from_name(RECOVERY_R2_SECRET_NAME),
-        modal.Secret.from_name(RECOVERY_ENCRYPTION_SECRET_NAME),
-    ],
-    schedule=DAILY_SCHEDULE,
-    timeout=900,
-)
+def _upload_attempt(s3, bucket: str, key: str, enc_path: str) -> Any:
+    # Retry-safe streaming upload: every attempt reopens the file with a fresh
+    # cursor, and boto3 streams the file object instead of a whole-file read.
+    with open(enc_path, "rb") as body:
+        return s3.put_object(Bucket=bucket, Key=key, Body=body, Metadata=R2_OBJECT_METADATA)
+
+
+def _verified_upload(s3, bucket: str, key: str, enc_path: str) -> bool:
+    expected_size = os.path.getsize(enc_path)
+    if expected_size <= STREAM_AEAD_HEADER_BYTES + STREAM_AEAD_TAG_BYTES:
+        _log_phase("upload_zero_or_truncated")
+        return False
+    _log_phase("staging_upload")
+    _retry_object(lambda: _upload_attempt(s3, bucket, key, enc_path))
+    _log_phase("head_verify")
+    head = _retry_object(lambda: s3.head_object(Bucket=bucket, Key=key))
+    meta = (head.get("Metadata") or {}) if head else {}
+    ok = bool(
+        head
+        and head.get("ContentLength") == expected_size
+        and expected_size > STREAM_AEAD_HEADER_BYTES + STREAM_AEAD_TAG_BYTES
+        and meta.get("format-version") == R2_OBJECT_METADATA["format-version"]
+        and meta.get("content-kind") == R2_OBJECT_METADATA["content-kind"]
+    )
+    if not ok:
+        _log_phase("head_verification_failed")
+    return ok
+
+
 def run_logical_backup() -> dict:
     """One compressed, encrypted, retained logical backup per 24-hour period."""
     if not _secrets_present():
         return make_sanitized_status(
             backup_point_state=BACKUP_POINT_MISSING,
-            daily_tier="DAILY_TIER_MISSING",
-            weekly_tier="WEEKLY_TIER_MISSING",
-            monthly_tier="MONTHLY_TIER_MISSING",
+            daily_tier=DAILY_TIER_MISSING,
+            weekly_tier=WEEKLY_TIER_MISSING,
+            monthly_tier=MONTHLY_TIER_MISSING,
             cleanup_state=CLEANUP_COMPLETE,
             external_storage_state=EXTERNAL_STORAGE_UNPROVISIONED,
             secret_boundary_state=SECRET_BOUNDARY_UNPROVISIONED,
             phase="secrets",
         )
 
-    db_url = os.environ[DB_URL_ENV]
-    encryption_key = os.environ[ENCRYPTION_KEY_ENV].encode("utf-8")
+    try:
+        encryption_key = _decode_encryption_key(os.environ[ENCRYPTION_KEY_ENV])
+    except Exception:
+        return make_sanitized_status(
+            backup_point_state=BACKUP_POINT_MISSING,
+            daily_tier=DAILY_TIER_MISSING,
+            weekly_tier=WEEKLY_TIER_MISSING,
+            monthly_tier=MONTHLY_TIER_MISSING,
+            cleanup_state=CLEANUP_COMPLETE,
+            external_storage_state=EXTERNAL_STORAGE_UNPROVISIONED,
+            secret_boundary_state=SECRET_BOUNDARY_UNPROVISIONED,
+            phase="encryption",
+        )
+
     workdir = tempfile.mkdtemp(prefix="lovebud-recovery-", dir="/tmp")
     dump_path = os.path.join(workdir, "backup.dump")
     enc_path = os.path.join(workdir, "backup.dump.enc")
-
-    result = None
-    cleanup_ok = True
 
     dump_ok = False
     encryption_ok = False
@@ -234,66 +312,67 @@ def run_logical_backup() -> dict:
     weekly_success = False
     monthly_decided = False
     monthly_success = False
+    staging_delete_failed = False
+    cleanup_ok = True
+
+    s3 = None
+    bucket = None
+    run_key = None
+    staging_key = None
 
     try:
         # 3-4. dump + non-empty verification (single attempt, no unbounded retry)
         try:
-            _run_dump(db_url, dump_path)
+            _run_dump(dump_path)
             dump_ok = _is_non_empty(dump_path)
         except Exception:
             dump_ok = False
         if not dump_ok:
             _log_phase("dump_failed")
         else:
-            # 5-6. streaming authenticated encryption + plaintext deletion
+            # 5-6. streaming AEAD envelope + plaintext deletion
             try:
-                base_nonce = os.urandom(12)
-                _streaming_encrypt(dump_path, enc_path, encryption_key, base_nonce)
+                nonce = os.urandom(STREAM_AEAD_NONCE_BYTES)
+                _streaming_encrypt(dump_path, enc_path, encryption_key, nonce)
                 encryption_ok = True
                 os.remove(dump_path)
                 plaintext_cleanup_ok = True
                 _log_phase("plaintext_removed")
             except Exception:
                 encryption_ok = False
+                _log_phase("encryption_failed")
 
         if dump_ok and encryption_ok and plaintext_cleanup_ok:
             s3 = _s3_client()
             bucket = os.environ[R2_BUCKET_ENV]
-            staging_name = "incomplete.object"
-            staging_key = _object_key(STAGING_PREFIX, staging_name)
-            # 7. staging upload
-            try:
-                with open(enc_path, "rb") as enc_file:
-                    _retry_object(lambda: s3.put_object(Bucket=bucket, Key=staging_key, Body=enc_file.read()))
-                upload_ok = True
-            except Exception:
-                _log_phase("upload_incomplete")
-            # 8. authenticated head verification
-            if upload_ok:
-                try:
-                    head = _retry_object(lambda: s3.head_object(Bucket=bucket, Key=staging_key))
-                    verify_ok = bool(head and "ETag" in head)
-                except Exception:
-                    verify_ok = False
-                if not verify_ok:
-                    _log_phase("head_verification_failed")
+            run_key = _unique_run_key()
+            staging_key = _object_key(STAGING_PREFIX, run_key)
+            upload_ok = _verified_upload(s3, bucket, staging_key, enc_path)
+            verify_ok = upload_ok
 
         if dump_ok and encryption_ok and plaintext_cleanup_ok and upload_ok and verify_ok:
-            # 9. daily promotion from the staging object
-            _log_phase("daily_promote")
-            daily_key = _object_key(DAILY_PREFIX, staging_name)
-            _retry_object(
-                lambda: s3.copy_object(
-                    Bucket=bucket, CopySource={"Bucket": bucket, "Key": staging_key}, Key=daily_key
+            # 9. daily promotion from the staging object under the unique run key
+            daily_key = _object_key(DAILY_PREFIX, run_key)
+            try:
+                _log_phase("daily_promote")
+                _retry_object(
+                    lambda: s3.copy_object(
+                        Bucket=bucket, CopySource={"Bucket": bucket, "Key": staging_key}, Key=daily_key
+                    )
                 )
-            )
-            daily_ok = True
-            # 10. conditional weekly/monthly promotion from the same encrypted object
-            weekly_decided = decide_promotion(True, False)
+                daily_ok = True
+            except Exception:
+                daily_ok = False
+                _log_phase("daily_promotion_failed")
+
+        if daily_ok:
+            # 10. independent weekly/monthly promotion from the same encrypted object
+            now = datetime.now(timezone.utc)
+            weekly_decided = decide_weekly_promotion(True, False, now.weekday())
             if weekly_decided:
-                _log_phase("weekly_promote")
-                weekly_key = _object_key(WEEKLY_PREFIX, staging_name)
+                weekly_key = _object_key(WEEKLY_PREFIX, run_key)
                 try:
+                    _log_phase("weekly_promote")
                     _retry_object(
                         lambda: s3.copy_object(
                             Bucket=bucket, CopySource={"Bucket": bucket, "Key": daily_key}, Key=weekly_key
@@ -303,11 +382,11 @@ def run_logical_backup() -> dict:
                 except Exception:
                     weekly_success = False
                     _log_phase("weekly_promotion_failed")
-            monthly_decided = decide_promotion(True, False)
+            monthly_decided = decide_monthly_promotion(True, False, now.day)
             if monthly_decided:
-                _log_phase("monthly_promote")
-                monthly_key = _object_key(MONTHLY_PREFIX, staging_name)
+                monthly_key = _object_key(MONTHLY_PREFIX, run_key)
                 try:
+                    _log_phase("monthly_promote")
                     _retry_object(
                         lambda: s3.copy_object(
                             Bucket=bucket, CopySource={"Bucket": bucket, "Key": daily_key}, Key=monthly_key
@@ -317,54 +396,33 @@ def run_logical_backup() -> dict:
                 except Exception:
                     monthly_success = False
                     _log_phase("monthly_promotion_failed")
-            # 11. staging deletion after successful promotion
+            # 11. staging deletion; a failure is reflected as cleanup failure but
+            # never deletes the valid daily object.
             try:
-                _retry_object(lambda: s3.delete_object(Bucket=bucket, Key=staging_key))
                 _log_phase("staging_delete")
+                _retry_object(lambda: s3.delete_object(Bucket=bucket, Key=staging_key))
             except Exception:
+                staging_delete_failed = True
                 _log_phase("staging_delete_failed")
-
-        result = evaluate_run(
-            dump_success=dump_ok,
-            encryption_success=encryption_ok,
-            plaintext_cleanup_success=plaintext_cleanup_ok,
-            upload_complete=upload_ok,
-            post_upload_verified=verify_ok,
-            daily_promotion_success=daily_ok,
-            weekly_promotion_decided=weekly_decided,
-            weekly_promotion_success=weekly_success,
-            monthly_promotion_decided=monthly_decided,
-            monthly_promotion_success=monthly_success,
-            cleanup_success=True,
-        )
     finally:
-        # 12. always clean the ephemeral working directory
+        # 12. strict cleanup: failures are surfaced, never suppressed.
         try:
-            shutil.rmtree(workdir, ignore_errors=True)
+            shutil.rmtree(workdir)
+            cleanup_ok = not staging_delete_failed
         except Exception:
             cleanup_ok = False
             _log_phase("cleanup_failed")
 
-    if result is None:
-        result = make_sanitized_status(
-            backup_point_state=BACKUP_POINT_MISSING,
-            daily_tier="DAILY_TIER_MISSING",
-            weekly_tier="WEEKLY_TIER_MISSING",
-            monthly_tier="MONTHLY_TIER_MISSING",
-            cleanup_state=CLEANUP_COMPLETE if cleanup_ok else CLEANUP_FAILED,
-            external_storage_state=EXTERNAL_STORAGE_UNPROVISIONED,
-            secret_boundary_state=SECRET_BOUNDARY_UNPROVISIONED,
-            phase="cleanup",
-        )
-    elif not cleanup_ok:
-        result = make_sanitized_status(
-            backup_point_state=result["backup_point_state"],
-            daily_tier=result["daily_tier"],
-            weekly_tier=result["weekly_tier"],
-            monthly_tier=result["monthly_tier"],
-            cleanup_state=CLEANUP_FAILED,
-            external_storage_state=result["external_storage_state"],
-            secret_boundary_state=result["secret_boundary_state"],
-            phase=result["phase"],
-        )
-    return result
+    return evaluate_run(
+        dump_success=dump_ok,
+        encryption_success=encryption_ok,
+        plaintext_cleanup_success=plaintext_cleanup_ok,
+        upload_complete=upload_ok,
+        post_upload_verified=verify_ok,
+        daily_promotion_success=daily_ok,
+        weekly_promotion_decided=weekly_decided,
+        weekly_promotion_success=weekly_success,
+        monthly_promotion_decided=monthly_decided,
+        monthly_promotion_success=monthly_success,
+        cleanup_success=cleanup_ok,
+    )
