@@ -173,6 +173,8 @@ The returned statuses (`PASS`, `FAIL`, `UNAVAILABLE`, `NOT_EVALUATED`) are exact
 
 ## 11. Files changed by this child
 
+The cumulative PR diff is exactly the authorized eight files:
+
 ```text
 scripts/migration-precondition-evaluator-adapter-core.cjs            (new adapter core)
 tests/contracts/db-migration-precondition-evaluator-adapter-contract.test.cjs (new source/fake contract)
@@ -180,6 +182,19 @@ docs/architecture/db-migration-precondition-evaluator-adapter-contract.md   (thi
 tests/test-layer-classification.json                                 (register new contract as SOURCE_STATIC)
 docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md     (Steps 1-5 complete, Step 6 selected not implemented, Steps 7-8 not authorized)
 docs/architecture/db-schema-change-inventory.json                    (one new source-only adapter entry)
+tests/contracts/ci-test-group-registry-contract.test.cjs             (deterministic test-layer count literal reconciliation only)
+tests/contracts/cloudflare-supplied-url-smoke-contract.test.cjs      (deterministic test-layer count literal reconciliation only)
+```
+
+The two guard files are a deterministic test-layer count literal reconciliation only:
+
+```text
+default_total     782 -> 783
+SOURCE_STATIC     573 -> 574
+EXECUTED_FAKE     189 unchanged
+EXECUTED_REAL_LOCAL 20 unchanged
+no counting logic change
+no Cloudflare smoke runtime/route/package/workflow behavior change
 ```
 
 ## 12. Explicit non-actions
@@ -196,7 +211,7 @@ no reset, clean, stash, rebase, amend, force push, or history rewrite
 
 ## 13. Rollback
 
-- This child is additive (one new adapter core, one new contract, one new doc, three bounded authority-file updates). Removing the six-file change restores the prior state; no runtime behavior changes because the authorities remain inactive.
+- This child is additive (one new adapter core, one new contract, one new doc, three bounded authority-file updates, and two deterministic count-literal guard reconciliations). Removing the eight-file cumulative change restores the prior state; no runtime behavior changes because the authorities remain inactive.
 
 Refs #3802.
 Refs #3657 — Keep OPEN.

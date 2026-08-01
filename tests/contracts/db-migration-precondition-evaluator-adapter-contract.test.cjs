@@ -62,6 +62,26 @@ function makeHarness(resolverImpl, brokerImpl) {
   return { adapter, resolverCalls, brokerCalls };
 }
 
+// Sync-return harness: dependencies return values directly so the adapter's
+// thenable/native-Promise handling is exercised without an async wrapper.
+function makeRawHarness(resolverImpl, brokerImpl) {
+  const resolverCalls = [];
+  const brokerCalls = [];
+  const resolver = (arg) => {
+    resolverCalls.push(arg);
+    return resolverImpl(arg);
+  };
+  const broker = (arg) => {
+    brokerCalls.push(arg);
+    return brokerImpl(arg);
+  };
+  const adapter = createMigrationPreconditionEvaluatorAdapter({
+    resolvePreconditionAuthority: resolver,
+    queryLockedSession: broker,
+  });
+  return { adapter, resolverCalls, brokerCalls };
+}
+
 async function evaluate(adapter, input = { targetMigrationId: TARGET, lockHandle: LOCK }) {
   return adapter.evaluatePrecondition(input);
 }
@@ -499,4 +519,316 @@ test('evaluator statuses are accepted by the orchestrator dependency contract', 
     /CONDITION_STATUSES\s*=\s*new Set\(\[[^\]]*'PASS'[^\]]*'FAIL'[^\]]*'UNAVAILABLE'[^\]]*'NOT_EVALUATED'[^\]]*\]\)/.test(orchestratorSource),
     'orchestrator CONDITION_STATUSES contains the evaluator status vocabulary',
   );
+});
+
+// ── Thenable-safe dependency handling ───────────────────────────────────────
+
+test('hostile then getter on resolver and broker results is never invoked and maps to UNAVAILABLE', async () => {
+  let resolverGetter = 0;
+  const hostileResolverResult = { status: 'NOT_FOUND' };
+  Object.defineProperty(hostileResolverResult, 'then', {
+    get() { resolverGetter += 1; return () => {}; },
+  });
+  const h1 = makeRawHarness(() => hostileResolverResult, () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h1.adapter), 'UNAVAILABLE');
+  assert.equal(resolverGetter, 0, 'resolver then getter never invoked');
+  assert.equal(h1.brokerCalls.length, 0, 'broker not called');
+
+  let brokerGetter = 0;
+  const hostileBrokerResult = { rows: [{ [FIELD]: true }] };
+  Object.defineProperty(hostileBrokerResult, 'then', {
+    get() { brokerGetter += 1; return () => {}; },
+  });
+  const h2 = makeRawHarness(
+    () => makeResolved([makeCheck('check-a', true)]),
+    () => hostileBrokerResult,
+  );
+  assertStatusRecord(await evaluate(h2.adapter), 'UNAVAILABLE');
+  assert.equal(brokerGetter, 0, 'broker then getter never invoked');
+});
+
+test('non-native thenable with callable then is never invoked and maps to UNAVAILABLE', async () => {
+  let thenCalled = 0;
+  const thenable = {
+    then() { thenCalled += 1; return Promise.resolve({ status: 'NOT_FOUND' }); },
+  };
+  const h1 = makeRawHarness(() => thenable, () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h1.adapter), 'UNAVAILABLE');
+  assert.equal(thenCalled, 0, 'then never invoked');
+  assert.equal(h1.brokerCalls.length, 0, 'broker not called');
+
+  const brokerThenable = {
+    rows: [{ [FIELD]: true }],
+    then() { thenCalled += 1; return Promise.resolve({ rows: [{ [FIELD]: true }] }); },
+  };
+  const h2 = makeRawHarness(
+    () => makeResolved([makeCheck('check-a', true)]),
+    () => brokerThenable,
+  );
+  assertStatusRecord(await evaluate(h2.adapter), 'UNAVAILABLE');
+  assert.equal(thenCalled, 0, 'broker then never invoked');
+});
+
+test('native Promise resolve/reject, sync plain results, Proxy and revoked Proxy thenables', async () => {
+  // Native Promise resolve -> normal processing.
+  const h1 = makeRawHarness(() => Promise.resolve({ status: 'NOT_FOUND' }), () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h1.adapter), 'NOT_EVALUATED');
+
+  // Native Promise reject -> UNAVAILABLE.
+  const h2 = makeRawHarness(() => Promise.reject(new Error('resolver boom')), () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h2.adapter), 'UNAVAILABLE');
+
+  // Sync plain result -> normal processing.
+  const h3 = makeRawHarness(() => ({ status: 'NOT_FOUND' }), () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h3.adapter), 'NOT_EVALUATED');
+
+  // Proxy thenable -> UNAVAILABLE.
+  const proxyThenable = new Proxy({ then() {} }, {});
+  const h4 = makeRawHarness(() => proxyThenable, () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h4.adapter), 'UNAVAILABLE');
+
+  // Revoked Proxy -> UNAVAILABLE.
+  const revoked = Proxy.revocable({ status: 'NOT_FOUND' }, {});
+  revoked.revoke();
+  const h5 = makeRawHarness(() => revoked.proxy, () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h5.adapter), 'UNAVAILABLE');
+
+  // Promise subclass -> UNAVAILABLE without awaiting.
+  class SubPromise extends Promise {}
+  const h6 = makeRawHarness(() => new SubPromise(() => {}), () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h6.adapter), 'UNAVAILABLE');
+});
+
+// ── Exact plain-record validation (factory config + method input) ──────────
+
+test('factory config rejects function, array, custom prototype, symbol, non-enumerable, accessor, Proxy', () => {
+  const fn = () => {};
+  fn.resolvePreconditionAuthority = fn;
+  fn.queryLockedSession = fn;
+  const arr = [];
+  arr.resolvePreconditionAuthority = fn;
+  arr.queryLockedSession = fn;
+  const customProto = Object.create({ resolvePreconditionAuthority: fn, queryLockedSession: fn });
+  const withSymbol = { resolvePreconditionAuthority: fn, queryLockedSession: fn };
+  withSymbol[Symbol('extra')] = 1;
+  const withNonEnumerable = { resolvePreconditionAuthority: fn, queryLockedSession: fn };
+  Object.defineProperty(withNonEnumerable, 'extra', { value: 1, enumerable: false });
+  const withAccessor = { queryLockedSession: fn };
+  Object.defineProperty(withAccessor, 'resolvePreconditionAuthority', { get() { return fn; } });
+  const proxyConfig = new Proxy({ resolvePreconditionAuthority: fn, queryLockedSession: fn }, {});
+  const revokedConfig = Proxy.revocable({ resolvePreconditionAuthority: fn, queryLockedSession: fn }, {});
+  revokedConfig.revoke();
+
+  for (const bad of [fn, arr, customProto, withSymbol, withNonEnumerable, withAccessor, proxyConfig, revokedConfig.proxy]) {
+    assert.throws(
+      () => createMigrationPreconditionEvaluatorAdapter(bad),
+      /MIGRATION_PRECONDITION_EVALUATOR_CONFIG_INVALID/,
+      'bounded factory error for hostile config',
+    );
+  }
+});
+
+test('evaluatePrecondition input rejects hostile shapes with zero dependency calls', async () => {
+  const { adapter, resolverCalls, brokerCalls } = makeRawHarness(
+    () => ({ status: 'ADOPTION_REQUIRED' }),
+    () => makeRow(FIELD, true),
+  );
+
+  const fnInput = () => {};
+  fnInput.targetMigrationId = TARGET;
+  fnInput.lockHandle = LOCK;
+  const arrInput = [];
+  arrInput.targetMigrationId = TARGET;
+  arrInput.lockHandle = LOCK;
+  const customProtoInput = Object.create({ targetMigrationId: TARGET });
+  customProtoInput.lockHandle = LOCK;
+  const symbolInput = { targetMigrationId: TARGET, lockHandle: LOCK };
+  symbolInput[Symbol('extra')] = 1;
+  const nonEnumerableInput = { targetMigrationId: TARGET, lockHandle: LOCK };
+  Object.defineProperty(nonEnumerableInput, 'extra', { value: 1, enumerable: false });
+  const accessorInput = { lockHandle: LOCK };
+  Object.defineProperty(accessorInput, 'targetMigrationId', { get() { return TARGET; } });
+  const proxyInput = new Proxy({ targetMigrationId: TARGET, lockHandle: LOCK }, {});
+  const revokedInput = Proxy.revocable({ targetMigrationId: TARGET, lockHandle: LOCK }, {});
+  revokedInput.revoke();
+
+  for (const bad of [
+    fnInput, arrInput, customProtoInput, symbolInput, nonEnumerableInput,
+    accessorInput, proxyInput, revokedInput.proxy,
+  ]) {
+    const result = await adapter.evaluatePrecondition(bad);
+    assertStatusRecord(result, 'UNAVAILABLE');
+  }
+  assert.equal(resolverCalls.length, 0, 'resolver never invoked for hostile input');
+  assert.equal(brokerCalls.length, 0, 'broker never invoked for hostile input');
+});
+
+test('resolver status result rejects symbol, non-enumerable, accessor, custom prototype, wrong keys', async () => {
+  const withSymbol = { status: 'NOT_FOUND' };
+  withSymbol[Symbol('extra')] = 1;
+  const withNonEnumerable = { status: 'NOT_FOUND' };
+  Object.defineProperty(withNonEnumerable, 'extra', { value: 1, enumerable: false });
+  const withAccessor = {};
+  Object.defineProperty(withAccessor, 'status', { get() { return 'NOT_FOUND'; } });
+  const customProto = Object.create({ status: 'NOT_FOUND' });
+  const wrongKeys = { status: 'NOT_FOUND', extra: 1 };
+
+  for (const hostile of [withSymbol, withNonEnumerable, withAccessor, customProto, wrongKeys]) {
+    const { adapter, brokerCalls } = makeRawHarness(() => hostile, () => makeRow(FIELD, true));
+    assertStatusRecord(await evaluate(adapter), 'UNAVAILABLE');
+    assert.equal(brokerCalls.length, 0, 'broker not called for malformed resolver result');
+  }
+});
+
+test('malformed check/query/resultContract shapes fail the whole envelope before any broker call', async () => {
+  const symCheck = makeCheck('check-b', true);
+  symCheck[Symbol('extra')] = 1;
+  const nonEnumCheck = makeCheck('check-b', true);
+  Object.defineProperty(nonEnumCheck, 'extra', { value: 1, enumerable: false });
+  const accessorCheck = makeCheck('check-b', true);
+  Object.defineProperty(accessorCheck, 'checkId', { get() { return 'check-b'; } });
+  const customProtoCheck = Object.create({ checkId: 'check-b', expected: true });
+  customProtoCheck.query = makeCheck('check-b', true).query;
+  const wrongCheckKeys = { checkId: 'check-b', expected: true, query: makeCheck('check-b', true).query, extra: 1 };
+
+  const malformedChecks = [symCheck, nonEnumCheck, accessorCheck, customProtoCheck, wrongCheckKeys];
+
+  for (const malformedCheck of malformedChecks) {
+    const { adapter, brokerCalls } = makeRawHarness(
+      () => makeResolved([makeCheck('check-a', true), malformedCheck]),
+      () => makeRow(FIELD, true),
+    );
+    assertStatusRecord(await evaluate(adapter), 'UNAVAILABLE');
+    assert.equal(brokerCalls.length, 0, 'no partial execution before full envelope validation');
+  }
+
+  // Malformed query shapes.
+  const queryMutations = [
+    (q) => { q.extra = 1; },                                   // extra key
+    (q) => { q.name = ''; },                                   // empty name
+    (q) => { q.text = ''; },                                   // empty text
+    (q) => { q.values = [NaN]; },                              // NaN value
+    (q) => { q.values = [Infinity]; },                         // Infinity value
+    (q) => { q.values = [-Infinity]; },                        // -Infinity value
+    (q) => { q.resultContract = { kind: 'SCALAR', field: FIELD }; }, // unknown kind
+    (q) => { q.resultContract = { kind: 'BOOLEAN_SINGLE_ROW', field: '' }; }, // empty field
+  ];
+  for (const mutate of queryMutations) {
+    const check = makeCheck('check-b', true);
+    mutate(check.query);
+    const { adapter, brokerCalls } = makeRawHarness(
+      () => makeResolved([check]),
+      () => makeRow(FIELD, true),
+    );
+    assertStatusRecord(await evaluate(adapter), 'UNAVAILABLE');
+    assert.equal(brokerCalls.length, 0, 'malformed query rejected before broker call');
+  }
+});
+
+// ── Descriptor-safe dense arrays (checks / values / rows) ───────────────────
+
+test('checks and values arrays reject accessor indexes, symbols, extra keys, custom prototypes, sparse, Proxy', async () => {
+  let accessorRead = 0;
+  const accessorChecks = [];
+  accessorChecks.length = 1;
+  Object.defineProperty(accessorChecks, '0', {
+    enumerable: true,
+    get() { accessorRead += 1; return makeCheck('check-a', true); },
+  });
+  const h1 = makeRawHarness(() => ({ status: 'RESOLVED', checks: accessorChecks }), () => makeRow(FIELD, true));
+  assertStatusRecord(await evaluate(h1.adapter), 'UNAVAILABLE');
+  assert.equal(accessorRead, 0, 'accessor index getter never invoked');
+  assert.equal(h1.brokerCalls.length, 0, 'broker not called');
+
+  const symbolChecks = [makeCheck('check-a', true)];
+  symbolChecks[Symbol('extra')] = 1;
+  const extraKeyChecks = [makeCheck('check-a', true)];
+  extraKeyChecks.extra = 1;
+  const customProtoChecks = [makeCheck('check-a', true)];
+  Object.setPrototypeOf(customProtoChecks, {});
+  const sparseChecks = [];
+  sparseChecks.length = 1;
+  const proxyChecks = new Proxy([makeCheck('check-a', true)], {});
+  const revokedChecks = Proxy.revocable([makeCheck('check-a', true)], {});
+  revokedChecks.revoke();
+
+  for (const badChecks of [symbolChecks, extraKeyChecks, customProtoChecks, sparseChecks, proxyChecks, revokedChecks.proxy]) {
+    const { adapter, brokerCalls } = makeRawHarness(
+      () => ({ status: 'RESOLVED', checks: badChecks }),
+      () => makeRow(FIELD, true),
+    );
+    assertStatusRecord(await evaluate(adapter), 'UNAVAILABLE');
+    assert.equal(brokerCalls.length, 0, 'malformed checks array rejected before broker call');
+  }
+
+  // Values arrays: accessor index getter 0, symbol, extra key, custom proto,
+  // sparse, Proxy, revoked Proxy.
+  let valuesAccessorRead = 0;
+  const accessorValues = [];
+  accessorValues.length = 1;
+  Object.defineProperty(accessorValues, '0', { enumerable: true, get() { valuesAccessorRead += 1; return 1; } });
+  const h2 = makeRawHarness(
+    () => makeResolved([makeCheck('check-a', true, FIELD, accessorValues)]),
+    () => makeRow(FIELD, true),
+  );
+  assertStatusRecord(await evaluate(h2.adapter), 'UNAVAILABLE');
+  assert.equal(valuesAccessorRead, 0, 'values accessor index getter never invoked');
+  assert.equal(h2.brokerCalls.length, 0, 'broker not called');
+
+  const symbolValues = [1];
+  symbolValues[Symbol('extra')] = 1;
+  const extraKeyValues = [1];
+  extraKeyValues.extra = 1;
+  const customProtoValues = [1];
+  Object.setPrototypeOf(customProtoValues, {});
+  const sparseValues = [];
+  sparseValues.length = 1;
+  const proxyValues = new Proxy([1], {});
+  const revokedValues = Proxy.revocable([1], {});
+  revokedValues.revoke();
+
+  for (const badValues of [symbolValues, extraKeyValues, customProtoValues, sparseValues, proxyValues, revokedValues.proxy]) {
+    const { adapter, brokerCalls } = makeRawHarness(
+      () => makeResolved([makeCheck('check-a', true, FIELD, badValues)]),
+      () => makeRow(FIELD, true),
+    );
+    assertStatusRecord(await evaluate(adapter), 'UNAVAILABLE');
+    assert.equal(brokerCalls.length, 0, 'malformed values array rejected before broker call');
+  }
+});
+
+test('broker rows array rejects accessor indexes, symbols, extra keys, custom prototypes, sparse, Proxy', async () => {
+  let rowsAccessorRead = 0;
+  const accessorRows = [];
+  accessorRows.length = 1;
+  Object.defineProperty(accessorRows, '0', {
+    enumerable: true,
+    get() { rowsAccessorRead += 1; return { [FIELD]: true }; },
+  });
+  const h1 = makeRawHarness(
+    () => makeResolved([makeCheck('check-a', true)]),
+    () => ({ rows: accessorRows }),
+  );
+  assertStatusRecord(await evaluate(h1.adapter), 'UNAVAILABLE');
+  assert.equal(rowsAccessorRead, 0, 'rows accessor index getter never invoked');
+
+  const symbolRows = [{ [FIELD]: true }];
+  symbolRows[Symbol('extra')] = 1;
+  const extraKeyRows = [{ [FIELD]: true }];
+  extraKeyRows.extra = 1;
+  const customProtoRows = [{ [FIELD]: true }];
+  Object.setPrototypeOf(customProtoRows, {});
+  const sparseRows = [];
+  sparseRows.length = 1;
+  const proxyRows = new Proxy([{ [FIELD]: true }], {});
+  const revokedRows = Proxy.revocable([{ [FIELD]: true }], {});
+  revokedRows.revoke();
+
+  for (const badRows of [symbolRows, extraKeyRows, customProtoRows, sparseRows, proxyRows, revokedRows.proxy]) {
+    const { adapter } = makeRawHarness(
+      () => makeResolved([makeCheck('check-a', true)]),
+      () => ({ rows: badRows }),
+    );
+    assertStatusRecord(await evaluate(adapter), 'UNAVAILABLE');
+  }
 });

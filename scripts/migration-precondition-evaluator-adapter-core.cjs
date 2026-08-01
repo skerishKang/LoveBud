@@ -15,8 +15,10 @@
  * Every public result is a frozen plain record with exactly one enumerable own
  * key: `status` (`PASS` | `FAIL` | `UNAVAILABLE` | `NOT_EVALUATED`). No raw
  * evidence, raw error, SQL row, lock handle, migration ID, or console output is
- * ever exposed. Refs #3802. Refs #3657. Refs #3458. Refs #3425. Refs #3435.
- * Refs #3437. Refs #1882.
+ * ever exposed. Hardening follows the fixed authority loader-resolver core:
+ * descriptor-safe plain-record snapshots, native-Promise-only awaiting with no
+ * direct `then` reads, and dense-array snapshots. Refs #3802. Refs #3657.
+ * Refs #3458. Refs #3425. Refs #3435. Refs #3437. Refs #1882.
  */
 
 const { types: utilTypes } = require('node:util');
@@ -24,6 +26,12 @@ const { types: utilTypes } = require('node:util');
 const MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const KEBAB_CASE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FACTORY_ERROR = 'MIGRATION_PRECONDITION_EVALUATOR_CONFIG_INVALID';
+const BOOLEAN_SINGLE_ROW = 'BOOLEAN_SINGLE_ROW';
+
+// Collision-proof internal failure sentinel (never exposed publicly).
+const INTERNAL_FAILURE = Object.freeze({
+  [Symbol('migration.precondition.evaluator.internal.failure')]: true,
+});
 
 function makeResult(status) {
   return Object.freeze({ status: status });
@@ -47,15 +55,26 @@ function isProxy(value) {
   }
 }
 
-function safeObjectKeys(value) {
+function isNativePromise(value) {
+  if (!isObjectLike(value) || isProxy(value)) return false;
+  let promise;
   try {
-    return Object.keys(value);
+    promise = utilTypes.isPromise(value);
   } catch (error) {
-    return undefined;
+    return false;
   }
+  if (!promise) return false;
+  let prototype;
+  try {
+    prototype = Object.getPrototypeOf(value);
+  } catch (error) {
+    return false;
+  }
+  return prototype === Promise.prototype;
 }
 
-function safeArrayIsArray(value) {
+function safeIsArray(value) {
+  if (!isObjectLike(value)) return false;
   try {
     return Array.isArray(value);
   } catch (error) {
@@ -63,236 +82,306 @@ function safeArrayIsArray(value) {
   }
 }
 
+function hasPlainPrototype(value) {
+  if (!isObjectLike(value) || safeIsArray(value) || isProxy(value)) return false;
+  let prototype;
+  try {
+    prototype = Object.getPrototypeOf(value);
+  } catch (error) {
+    return false;
+  }
+  return prototype === Object.prototype || prototype === null;
+}
+
+// Reflect.ownKeys + Object.getOwnPropertyDescriptor, Proxy-free, getter-free.
+function safeOwnDescriptors(value) {
+  if (!isObjectLike(value) || isProxy(value)) return undefined;
+  let keys;
+  try {
+    keys = Reflect.ownKeys(value);
+  } catch (error) {
+    return undefined;
+  }
+  const descriptors = [];
+  for (const key of keys) {
+    let descriptor;
+    try {
+      descriptor = Object.getOwnPropertyDescriptor(value, key);
+    } catch (error) {
+      return undefined;
+    }
+    if (!descriptor) return undefined;
+    descriptors.push({ key: key, descriptor: descriptor });
+  }
+  return descriptors;
+}
+
+// Exact own enumerable data key set on a plain prototype; rejects arrays,
+// functions, proxies, symbol keys, accessors, extra/non-enumerable keys.
+function snapshotExactPlainDataObject(value, expectedKeys) {
+  if (!hasPlainPrototype(value)) return undefined;
+  const descriptors = safeOwnDescriptors(value);
+  if (!descriptors || descriptors.length !== expectedKeys.length) return undefined;
+
+  const expected = new Set(expectedKeys);
+  const values = Object.create(null);
+  for (const { key, descriptor } of descriptors) {
+    if (typeof key !== 'string' || !expected.has(key)) return undefined;
+    if (!('value' in descriptor) || descriptor.enumerable !== true) return undefined;
+    values[key] = descriptor.value;
+  }
+  for (const key of expectedKeys) {
+    if (!Object.prototype.hasOwnProperty.call(values, key)) return undefined;
+  }
+  return values;
+}
+
+// Descriptor-safe dense array: prototype === Array.prototype, canonical
+// non-enumerable length, exactly length + 0..length-1 own keys, enumerable
+// data index properties, no sparse/accessor/symbol/extra keys.
+function snapshotDenseArray(value) {
+  if (!safeIsArray(value) || isProxy(value)) return undefined;
+  let prototype;
+  try {
+    prototype = Object.getPrototypeOf(value);
+  } catch (error) {
+    return undefined;
+  }
+  if (prototype !== Array.prototype) return undefined;
+
+  const descriptors = safeOwnDescriptors(value);
+  if (!descriptors) return undefined;
+  const lengthDescriptor = descriptors.find(({ key }) => key === 'length');
+  if (!lengthDescriptor || !('value' in lengthDescriptor.descriptor)) return undefined;
+  const length = lengthDescriptor.descriptor.value;
+  if (!Number.isSafeInteger(length) || length < 0) return undefined;
+  if (lengthDescriptor.descriptor.enumerable !== false) return undefined;
+
+  const expectedKeys = new Set(['length']);
+  for (let index = 0; index < length; index += 1) expectedKeys.add(String(index));
+  if (descriptors.length !== expectedKeys.size) return undefined;
+
+  const values = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = descriptors.find(({ key }) => key === String(index));
+    if (!descriptor || typeof descriptor.key !== 'string') return undefined;
+    if (!('value' in descriptor.descriptor) || descriptor.descriptor.enumerable !== true) {
+      return undefined;
+    }
+    values.push(descriptor.descriptor.value);
+  }
+  return values;
+}
+
+// Fixed JSON scalars only: null, string, boolean, finite number.
+function isFixedJsonScalar(value) {
+  if (value === null) return true;
+  if (typeof value === 'string' || typeof value === 'boolean') return true;
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
 }
 
-// Reads an own property WITHOUT invoking a getter or trap: returns the
-// descriptor, or undefined for accessor/inherited/missing properties.
-function safeOwnDataDescriptor(obj, key) {
-  try {
-    const descriptor = Object.getOwnPropertyDescriptor(obj, key);
-    if (!descriptor) return undefined;
-    if (typeof descriptor.get === 'function' || typeof descriptor.set === 'function') {
-      return undefined;
-    }
-    if (!('value' in descriptor)) return undefined;
-    return descriptor;
-  } catch (error) {
-    return undefined;
-  }
-}
-
-// Exact two-key call envelope: enumerable own data keys only, no Proxy,
-// accessor, inherited, symbol, or extra key. Getter traps are never invoked.
-function snapshotCallEnvelope(input) {
-  if (!isObjectLike(input) || isProxy(input)) return undefined;
-  const keys = safeObjectKeys(input);
-  if (!keys || keys.length !== 2) return undefined;
-  if (!keys.includes('targetMigrationId') || !keys.includes('lockHandle')) return undefined;
-  const targetMigrationIdDescriptor = safeOwnDataDescriptor(input, 'targetMigrationId');
-  const lockHandleDescriptor = safeOwnDataDescriptor(input, 'lockHandle');
-  if (!targetMigrationIdDescriptor || !lockHandleDescriptor) return undefined;
-  return {
-    targetMigrationId: targetMigrationIdDescriptor.value,
-    lockHandle: lockHandleDescriptor.value,
-  };
-}
-
-// Dense primitive-only array snapshot (fully detached + frozen).
-function snapshotValues(source) {
-  if (!safeArrayIsArray(source) || isProxy(source)) return undefined;
-  const output = [];
-  for (let index = 0; index < source.length; index++) {
-    if (!(index in source)) return undefined; // sparse
-    const value = source[index];
-    if (value !== null && typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
-      return undefined; // only primitives are detached safely
-    }
-    output.push(value);
-  }
-  return Object.freeze(output);
-}
-
-function snapshotResultContract(source) {
-  if (!isObjectLike(source) || isProxy(source)) return undefined;
-  const keys = safeObjectKeys(source);
-  if (!keys || keys.length !== 2) return undefined;
-  if (!keys.includes('kind') || !keys.includes('field')) return undefined;
-  const kindDescriptor = safeOwnDataDescriptor(source, 'kind');
-  const fieldDescriptor = safeOwnDataDescriptor(source, 'field');
-  if (!kindDescriptor || !fieldDescriptor) return undefined;
-  if (kindDescriptor.value !== 'BOOLEAN_SINGLE_ROW') return undefined; // unknown kind fails closed
-  if (!isNonEmptyString(fieldDescriptor.value)) return undefined;
-  return Object.freeze({ kind: kindDescriptor.value, field: fieldDescriptor.value });
-}
-
-function snapshotQuery(source) {
-  if (!isObjectLike(source) || isProxy(source)) return undefined;
-  const keys = safeObjectKeys(source);
-  if (!keys || keys.length !== 4) return undefined;
-  if (!keys.includes('name') || !keys.includes('text') || !keys.includes('values') || !keys.includes('resultContract')) {
-    return undefined;
-  }
-  const nameDescriptor = safeOwnDataDescriptor(source, 'name');
-  const textDescriptor = safeOwnDataDescriptor(source, 'text');
-  const valuesDescriptor = safeOwnDataDescriptor(source, 'values');
-  const resultContractDescriptor = safeOwnDataDescriptor(source, 'resultContract');
-  if (!nameDescriptor || !textDescriptor || !valuesDescriptor || !resultContractDescriptor) return undefined;
-  if (!isNonEmptyString(nameDescriptor.value) || !isNonEmptyString(textDescriptor.value)) return undefined;
-  const values = snapshotValues(valuesDescriptor.value);
+function snapshotQueryValues(value) {
+  const values = snapshotDenseArray(value);
   if (values === undefined) return undefined;
-  const resultContract = snapshotResultContract(resultContractDescriptor.value);
+  for (const item of values) {
+    if (!isFixedJsonScalar(item)) return undefined;
+  }
+  return Object.freeze(values);
+}
+
+function snapshotResultContract(value) {
+  const snapshot = snapshotExactPlainDataObject(value, ['kind', 'field']);
+  if (!snapshot) return undefined;
+  if (snapshot.kind !== BOOLEAN_SINGLE_ROW) return undefined;
+  if (!isNonEmptyString(snapshot.field)) return undefined;
+  return Object.freeze({ kind: snapshot.kind, field: snapshot.field });
+}
+
+function snapshotQuery(value) {
+  const snapshot = snapshotExactPlainDataObject(value, ['name', 'text', 'values', 'resultContract']);
+  if (!snapshot) return undefined;
+  if (!isNonEmptyString(snapshot.name) || !isNonEmptyString(snapshot.text)) return undefined;
+  const values = snapshotQueryValues(snapshot.values);
+  if (values === undefined) return undefined;
+  const resultContract = snapshotResultContract(snapshot.resultContract);
   if (resultContract === undefined) return undefined;
   return Object.freeze({
-    name: nameDescriptor.value,
-    text: textDescriptor.value,
+    name: snapshot.name,
+    text: snapshot.text,
     values: values,
     resultContract: resultContract,
   });
 }
 
-function snapshotCheck(source) {
-  if (!isObjectLike(source) || isProxy(source)) return undefined;
-  const keys = safeObjectKeys(source);
-  if (!keys || keys.length !== 3) return undefined;
-  if (!keys.includes('checkId') || !keys.includes('expected') || !keys.includes('query')) return undefined;
-  const checkIdDescriptor = safeOwnDataDescriptor(source, 'checkId');
-  const expectedDescriptor = safeOwnDataDescriptor(source, 'expected');
-  const queryDescriptor = safeOwnDataDescriptor(source, 'query');
-  if (!checkIdDescriptor || !expectedDescriptor || !queryDescriptor) return undefined;
-  if (!isNonEmptyString(checkIdDescriptor.value) || !KEBAB_CASE_PATTERN.test(checkIdDescriptor.value)) return undefined;
-  if (typeof expectedDescriptor.value !== 'boolean') return undefined;
-  const query = snapshotQuery(queryDescriptor.value);
+function snapshotCheck(value) {
+  const snapshot = snapshotExactPlainDataObject(value, ['checkId', 'expected', 'query']);
+  if (!snapshot) return undefined;
+  if (!isNonEmptyString(snapshot.checkId) || !KEBAB_CASE_PATTERN.test(snapshot.checkId)) {
+    return undefined;
+  }
+  if (typeof snapshot.expected !== 'boolean') return undefined;
+  const query = snapshotQuery(snapshot.query);
   if (query === undefined) return undefined;
   return Object.freeze({
-    checkId: checkIdDescriptor.value,
-    expected: expectedDescriptor.value,
+    checkId: snapshot.checkId,
+    expected: snapshot.expected,
     query: query,
   });
 }
 
-// Validates the ENTIRE resolved envelope before the first broker call so a
-// malformed later check can never cause partial execution.
-function snapshotResolvedChecks(resolverResult) {
-  if (!isObjectLike(resolverResult) || isProxy(resolverResult)) return undefined;
-  const checksDescriptor = safeOwnDataDescriptor(resolverResult, 'checks');
-  if (!checksDescriptor) return undefined;
-  const checksSource = checksDescriptor.value;
-  if (!safeArrayIsArray(checksSource) || isProxy(checksSource)) return undefined;
+// Validates the ENTIRE resolved envelope before the first broker call.
+function snapshotResolvedChecks(value) {
+  const checksSource = snapshotDenseArray(value);
+  if (checksSource === undefined) return undefined;
   const checks = [];
-  for (let index = 0; index < checksSource.length; index++) {
-    if (!(index in checksSource)) return undefined; // sparse
-    const check = snapshotCheck(checksSource[index]);
+  for (const checkSource of checksSource) {
+    const check = snapshotCheck(checkSource);
     if (check === undefined) return undefined;
     checks.push(check);
   }
   return checks;
 }
 
-// BOOLEAN_SINGLE_ROW interpretation. Returns true/false for a valid boolean
-// row, or undefined for every malformed shape. Top-level result metadata is
-// ignored; raw rows or metadata are never returned.
-function interpretBooleanSingleRow(brokerResult, field) {
-  if (!isObjectLike(brokerResult) || isProxy(brokerResult)) return undefined;
-  const rowsDescriptor = safeOwnDataDescriptor(brokerResult, 'rows');
+// Broker result: plain non-Proxy record with an own data `rows` property.
+// Top-level metadata may be present and is ignored; `rows` accessor/Proxy/symbol
+// are rejected. Returns the dense rows snapshot or undefined.
+function snapshotBrokerResultRows(value) {
+  if (!hasPlainPrototype(value)) return undefined;
+  const descriptors = safeOwnDescriptors(value);
+  if (!descriptors) return undefined;
+  const rowsDescriptor = descriptors.find(({ key }) => key === 'rows');
   if (!rowsDescriptor) return undefined;
-  const rows = rowsDescriptor.value;
-  if (!safeArrayIsArray(rows) || isProxy(rows)) return undefined;
-  if (rows.length !== 1) return undefined;
-  if (!(0 in rows)) return undefined; // sparse
-  const row = rows[0];
-  if (!isObjectLike(row) || isProxy(row)) return undefined;
-  const prototype = Object.getPrototypeOf(row);
-  if (prototype !== Object.prototype) return undefined; // custom/null prototype
-  const ownNames = Object.getOwnPropertyNames(row);
-  if (ownNames.length !== 1 || ownNames[0] !== field) return undefined; // extra or missing field
-  if (Object.getOwnPropertySymbols(row).length !== 0) return undefined; // symbol key
-  const fieldDescriptor = safeOwnDataDescriptor(row, field);
-  if (!fieldDescriptor) return undefined; // accessor / missing own data
-  if (typeof fieldDescriptor.value !== 'boolean') return undefined;
-  return fieldDescriptor.value;
+  if (!('value' in rowsDescriptor.descriptor) || rowsDescriptor.descriptor.enumerable !== true) {
+    return undefined;
+  }
+  return snapshotDenseArray(rowsDescriptor.descriptor.value);
 }
 
-// Await a dependency call without thenable assimilation and without exposing a
-// raw error. Only native Promises may be awaited; hostile returns fail closed.
-async function awaitDependencyCall(call, argument) {
+// BOOLEAN_SINGLE_ROW interpretation. Returns the boolean value or undefined for
+// every malformed shape. Raw rows or metadata are never returned or logged.
+function interpretBooleanSingleRow(rows, field) {
+  if (!rows || rows.length !== 1) return undefined;
+  const row = rows[0];
+  const rowSnapshot = snapshotExactPlainDataObject(row, [field]);
+  if (!rowSnapshot) return undefined;
+  const value = rowSnapshot[field];
+  if (typeof value !== 'boolean') return undefined;
+  return value;
+}
+
+// Thenable-safe dependency invocation. Never reads `raw.then`, never
+// assimilates an arbitrary thenable, never exposes a raw error, and returns a
+// collision-proof internal sentinel on failure.
+async function invokeDependency(call, argument) {
   let raw;
   try {
-    raw = call(argument);
+    raw = Reflect.apply(call, undefined, [argument]);
   } catch (error) {
-    return 'HOSTILE';
+    return INTERNAL_FAILURE;
   }
-  if (isObjectLike(raw) && isProxy(raw)) return 'HOSTILE';
-  if (isObjectLike(raw) && typeof raw.then === 'function') {
-    if (!(raw instanceof Promise)) return 'HOSTILE'; // non-native thenable
+
+  if (isProxy(raw)) return INTERNAL_FAILURE;
+
+  let value = raw;
+  if (isObjectLike(raw) && utilTypes.isPromise(raw)) {
+    if (!isNativePromise(raw)) return INTERNAL_FAILURE;
+    try {
+      value = await raw;
+    } catch (error) {
+      return INTERNAL_FAILURE;
+    }
+    if (isProxy(value)) return INTERNAL_FAILURE;
   }
-  try {
-    return await raw;
-  } catch (error) {
-    return 'HOSTILE';
+
+  // Reject any dependency result that carries an own `then` property (non-native
+  // thenable or hostile then getter) without reading the property value or
+  // invoking a getter.
+  if (isObjectLike(value)) {
+    if (isProxy(value)) return INTERNAL_FAILURE;
+    const descriptors = safeOwnDescriptors(value);
+    if (descriptors === undefined) return INTERNAL_FAILURE;
+    if (descriptors.some(({ key }) => key === 'then')) return INTERNAL_FAILURE;
   }
+
+  // Wrap so this async function never assimilates a direct arbitrary thenable.
+  return Object.freeze({ value: value });
 }
 
 function createMigrationPreconditionEvaluatorAdapter(config) {
-  if (!isObjectLike(config) || isProxy(config)) throw new Error(FACTORY_ERROR);
-  const configKeys = safeObjectKeys(config);
-  if (!configKeys || configKeys.length !== 2) throw new Error(FACTORY_ERROR);
-  if (!configKeys.includes('resolvePreconditionAuthority') || !configKeys.includes('queryLockedSession')) {
+  const configSnapshot = snapshotExactPlainDataObject(config, [
+    'resolvePreconditionAuthority',
+    'queryLockedSession',
+  ]);
+  if (!configSnapshot) throw new Error(FACTORY_ERROR);
+  if (
+    typeof configSnapshot.resolvePreconditionAuthority !== 'function'
+    || isProxy(configSnapshot.resolvePreconditionAuthority)
+    || typeof configSnapshot.queryLockedSession !== 'function'
+    || isProxy(configSnapshot.queryLockedSession)
+  ) {
     throw new Error(FACTORY_ERROR);
   }
-  const resolverDescriptor = safeOwnDataDescriptor(config, 'resolvePreconditionAuthority');
-  const brokerDescriptor = safeOwnDataDescriptor(config, 'queryLockedSession');
-  if (!resolverDescriptor || !brokerDescriptor) throw new Error(FACTORY_ERROR);
-  if (typeof resolverDescriptor.value !== 'function' || typeof brokerDescriptor.value !== 'function') {
-    throw new Error(FACTORY_ERROR);
-  }
-  const resolvePreconditionAuthority = resolverDescriptor.value;
-  const queryLockedSession = brokerDescriptor.value;
+  const resolvePreconditionAuthority = configSnapshot.resolvePreconditionAuthority;
+  const queryLockedSession = configSnapshot.queryLockedSession;
 
   async function evaluatePrecondition(input) {
-    const envelope = snapshotCallEnvelope(input);
-    if (envelope === undefined) return UNAVAILABLE_RESULT;
-    if (typeof envelope.targetMigrationId !== 'string' || !MIGRATION_ID_PATTERN.test(envelope.targetMigrationId)) {
+    const envelope = snapshotExactPlainDataObject(input, ['targetMigrationId', 'lockHandle']);
+    if (!envelope) return UNAVAILABLE_RESULT;
+    if (
+      typeof envelope.targetMigrationId !== 'string'
+      || !MIGRATION_ID_PATTERN.test(envelope.targetMigrationId)
+    ) {
       return UNAVAILABLE_RESULT;
     }
 
-    const resolverResult = await awaitDependencyCall(resolvePreconditionAuthority, {
+    const resolverOutcome = await invokeDependency(resolvePreconditionAuthority, {
       targetMigrationId: envelope.targetMigrationId,
     });
-    if (resolverResult === 'HOSTILE') return UNAVAILABLE_RESULT;
-    if (!isObjectLike(resolverResult) || isProxy(resolverResult)) return UNAVAILABLE_RESULT;
+    if (resolverOutcome === INTERNAL_FAILURE) return UNAVAILABLE_RESULT;
+    const resolverValue = resolverOutcome.value;
 
-    const statusDescriptor = safeOwnDataDescriptor(resolverResult, 'status');
-    if (!statusDescriptor) return UNAVAILABLE_RESULT;
-    const status = statusDescriptor.value;
+    // RESOLVED is a two-key record { status, checks }.
+    const resolvedEnvelope = snapshotExactPlainDataObject(resolverValue, ['status', 'checks']);
+    if (resolvedEnvelope && resolvedEnvelope.status === 'RESOLVED') {
+      const checks = snapshotResolvedChecks(resolvedEnvelope.checks);
+      if (checks === undefined) return UNAVAILABLE_RESULT;
+      if (checks.length === 0) return NOT_EVALUATED_RESULT;
+
+      let hasFail = false;
+      for (const check of checks) {
+        const query = Object.freeze({
+          name: check.query.name,
+          text: check.query.text,
+          values: check.query.values,
+        });
+        const brokerOutcome = await invokeDependency(queryLockedSession, {
+          lockHandle: envelope.lockHandle,
+          query: query,
+        });
+        if (brokerOutcome === INTERNAL_FAILURE) return UNAVAILABLE_RESULT;
+
+        const rows = snapshotBrokerResultRows(brokerOutcome.value);
+        if (rows === undefined) return UNAVAILABLE_RESULT;
+        const actual = interpretBooleanSingleRow(rows, check.query.resultContract.field);
+        if (actual === undefined) return UNAVAILABLE_RESULT; // stops later checks
+        if (actual !== check.expected) hasFail = true;
+      }
+
+      return hasFail ? FAIL_RESULT : PASS_RESULT;
+    }
+
+    // Non-RESOLVED status records are exactly one key: { status }.
+    const statusEnvelope = snapshotExactPlainDataObject(resolverValue, ['status']);
+    if (!statusEnvelope) return UNAVAILABLE_RESULT;
+    const status = statusEnvelope.status;
     if (status === 'ADOPTION_REQUIRED') return NOT_EVALUATED_RESULT;
     if (status === 'NOT_FOUND') return NOT_EVALUATED_RESULT;
     if (status === 'UNAVAILABLE') return UNAVAILABLE_RESULT;
-    if (status !== 'RESOLVED') return UNAVAILABLE_RESULT;
-
-    const checks = snapshotResolvedChecks(resolverResult);
-    if (checks === undefined) return UNAVAILABLE_RESULT;
-    if (checks.length === 0) return NOT_EVALUATED_RESULT;
-
-    let hasFail = false;
-    for (const check of checks) {
-      const query = Object.freeze({
-        name: check.query.name,
-        text: check.query.text,
-        values: check.query.values,
-      });
-      const brokerResult = await awaitDependencyCall(queryLockedSession, {
-        lockHandle: envelope.lockHandle,
-        query: query,
-      });
-      if (brokerResult === 'HOSTILE') return UNAVAILABLE_RESULT;
-      const actual = interpretBooleanSingleRow(brokerResult, check.query.resultContract.field);
-      if (actual === undefined) return UNAVAILABLE_RESULT; // stops later checks
-      if (actual !== check.expected) hasFail = true;
-    }
-
-    return hasFail ? FAIL_RESULT : PASS_RESULT;
+    return UNAVAILABLE_RESULT;
   }
 
   return Object.freeze({ evaluatePrecondition: evaluatePrecondition });
