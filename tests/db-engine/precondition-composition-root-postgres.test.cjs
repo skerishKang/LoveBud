@@ -144,7 +144,19 @@ async function assertServerVersion(cfg, dbName) {
 function makeOrchestratorDeps(root, counts) {
   return {
     validateSource: async function () { return { status: 'PASS' }; },
-    loadManifest: async function () { return { status: 'ACTIVE', migrations: [] }; },
+    loadManifest: async function () {
+      return {
+        status: 'ACTIVE',
+        migrations: [{
+          id: TARGET,
+          checksum: '0000000000000000000000000000000000000000',
+          depends_on: [],
+          transaction_mode: 'PROHIBITED',
+          risk_class: 'LOW',
+          destructive_operations: [],
+        }],
+      };
+    },
     acquireAdvisoryLock: root.acquireAdvisoryLock,
     readLedger: async function () { return []; },
     evaluatePrecondition: root.evaluatePrecondition,
