@@ -115,8 +115,8 @@ retention values are not recorded.
 | Snapshot presence | `PRESENT` |
 | Newest snapshot age bucket | `GE_7D` |
 
-A manual recovery point exists but the newest observed point is older than 7 days, which
-is stale relative to the policy's daily recovery-point expectation. Snapshot identifiers,
+A recovery point exists, but the newest observed point is older than 7 days, which is
+stale relative to the policy's daily recovery-point expectation. Snapshot identifiers,
 counts, and exact times are not recorded.
 
 ## 8. Final configuration verdict
