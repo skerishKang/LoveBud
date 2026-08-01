@@ -508,17 +508,21 @@ test('pagehide cancellation removes the active context and blocks stale terminal
 
 test('UI acknowledgement ordering gates terminal success, and false acknowledgement becomes bounded failure', async () => {
   const acknowledged = createHarness();
-  const seenAtAcknowledgement = [];
+  let firstSeenAtAcknowledgement = null;
   acknowledged.win.apiClient.getTrees = async () => [{ id: 'tree-1' }];
   await runLoad(acknowledged.win, {
+    // The settled-acknowledgement loop may re-check across bounded rendering
+    // boundaries; the ordering invariant is asserted on the FIRST snapshot.
     acknowledgeUi: () => {
-      seenAtAcknowledgement.push(...stagesOf(acknowledged.win));
+      if (firstSeenAtAcknowledgement === null) {
+        firstSeenAtAcknowledgement = stagesOf(acknowledged.win).slice();
+      }
       return true;
     },
   });
   const tax = acknowledged.win.LoveBudJourneyOutcomeTaxonomy;
-  assert.ok(seenAtAcknowledgement.includes(tax.STAGES.CLIENT_STATE_UPDATED));
-  assert.equal(seenAtAcknowledgement.includes(tax.STAGES.UI_ACKNOWLEDGED), false);
+  assert.ok(firstSeenAtAcknowledgement.includes(tax.STAGES.CLIENT_STATE_UPDATED));
+  assert.equal(firstSeenAtAcknowledgement.includes(tax.STAGES.UI_ACKNOWLEDGED), false);
   const acknowledgedStages = stagesOf(acknowledged.win);
   assert.ok(acknowledgedStages.indexOf(tax.STAGES.UI_ACKNOWLEDGED) > acknowledgedStages.indexOf(tax.STAGES.CLIENT_STATE_UPDATED));
   assert.ok(acknowledgedStages.indexOf(tax.STAGES.TERMINAL_SUCCESS) > acknowledgedStages.indexOf(tax.STAGES.UI_ACKNOWLEDGED));
@@ -531,7 +535,7 @@ test('UI acknowledgement ordering gates terminal success, and false acknowledgem
   assert.equal(countStage(rejected.win, rejectedTax.STAGES.UI_ACKNOWLEDGED), 0);
   assert.equal(successEvents(rejected.win).length, 0);
   assert.equal(failureEvents(rejected.win).length, 1);
-  assert.equal(failureEvents(rejected.win)[0].failureCode, rejectedTax.FAILURE_CODES.LB_UNEXPECTED_FAILURE);
+  assert.equal(failureEvents(rejected.win)[0].failureCode, rejectedTax.FAILURE_CODES.LB_UI_ACKNOWLEDGEMENT_FAILED);
   assertTerminalFailureMapping(failureEvents(rejected.win)[0], rejectedTax);
   assertBoundedEvents(acknowledged.win);
   assertBoundedEvents(rejected.win);
@@ -674,4 +678,158 @@ test('instrumentation contract itself uses fake scheduling and has no real-time 
   assert.equal(ran, false);
   fake.advance(1);
   assert.equal(ran, true);
+});
+
+// ============================================================================
+// Correction scenarios C1-C8 (Issue #3796 settled acknowledgement)
+// The real page acknowledgement observer (observeTerminalUiState) reads live
+// DOM, which can land one rendering boundary after renderTrees. These
+// scenarios exercise the settlement boundary instead of relying on the
+// `acknowledgeUi: () => true` stub used by the original harness. The default
+// stub remains the fast path for all pre-existing scenarios.
+// ============================================================================
+
+test('C1 settled acknowledgement: loaded terminal DOM lands one render boundary later', async () => {
+  const harness = createHarness();
+  const { win } = harness;
+  let terminalApplied = false;
+  win.apiClient.getTrees = async () => {
+    setImmediate(() => { terminalApplied = true; });
+    return [{ id: 'tree-1' }];
+  };
+  const run = await runLoad(win, {
+    acknowledgeUi: (state) => state === 'loaded' && terminalApplied,
+  });
+  const tax = win.LoveBudJourneyOutcomeTaxonomy;
+  assert.equal(countStage(win, tax.STAGES.UI_ACKNOWLEDGED), 1);
+  assert.equal(countStage(win, tax.STAGES.TERMINAL_SUCCESS), 1);
+  assert.equal(countStage(win, tax.STAGES.TERMINAL_FAILURE), 0);
+  assert.equal(successEvents(win)[0].resultCountBucket, 'positive');
+  assert.ok(run.rendered.length >= 1, 'render path must proceed');
+  assert.equal(win.LoveBudMyTreesData.JourneyTracker.getActiveContextCount(), 0);
+  assertBoundedEvents(win);
+});
+
+test('C2 settled acknowledgement: empty terminal DOM lands one render boundary later', async () => {
+  const harness = createHarness();
+  const { win } = harness;
+  let terminalApplied = false;
+  win.apiClient.getTrees = async () => {
+    setImmediate(() => { terminalApplied = true; });
+    return [];
+  };
+  const run = await runLoad(win, {
+    acknowledgeUi: (state) => state === 'empty' && terminalApplied,
+  });
+  const tax = win.LoveBudJourneyOutcomeTaxonomy;
+  assert.equal(countStage(win, tax.STAGES.UI_ACKNOWLEDGED), 1);
+  assert.equal(countStage(win, tax.STAGES.TERMINAL_SUCCESS), 1);
+  assert.equal(countStage(win, tax.STAGES.TERMINAL_FAILURE), 0);
+  assert.equal(successEvents(win)[0].resultCountBucket, 'zero');
+  assert.ok(run.rendered.length >= 1, 'empty render path must proceed');
+  assert.equal(win.LoveBudMyTreesData.JourneyTracker.getActiveContextCount(), 0);
+  assertBoundedEvents(win);
+});
+
+test('C3 settled acknowledgement: persistent terminal DOM mismatch fails closed with UI_ACKNOWLEDGEMENT_FAILED', async () => {
+  const harness = createHarness();
+  const { win } = harness;
+  win.apiClient.getTrees = async () => [{ id: 'tree-1' }];
+  await runLoad(win, { acknowledgeUi: () => false });
+  const tax = win.LoveBudJourneyOutcomeTaxonomy;
+  assert.equal(countStage(win, tax.STAGES.UI_ACKNOWLEDGED), 0);
+  assert.equal(countStage(win, tax.STAGES.TERMINAL_SUCCESS), 0);
+  assert.equal(countStage(win, tax.STAGES.TERMINAL_FAILURE), 1);
+  assert.equal(failureEvents(win)[0].failureCode, tax.FAILURE_CODES.LB_UI_ACKNOWLEDGEMENT_FAILED);
+  assertTerminalFailureMapping(failureEvents(win)[0], tax);
+  assert.equal(win.LoveBudMyTreesData.JourneyTracker.getActiveContextCount(), 0);
+  assertBoundedEvents(win);
+});
+
+test('C6 pagehide during pending acknowledgement emits no late success and removes the active context', async () => {
+  const harness = createHarness();
+  const { win } = harness;
+  let terminalApplied = false;
+  win.apiClient.getTrees = async () => {
+    // The terminal DOM would land one render boundary later, but pagehide
+    // arrives at that same boundary — before the settlement recheck can
+    // observe it. This exercises pagehide DURING a pending acknowledgement
+    // (after the response was accepted), which is exactly the NC3/NC10
+    // boundary the correction must enforce.
+    setImmediate(() => {
+      terminalApplied = true;
+      win.LoveBudMyTreesData.markOwnerListEpochStale();
+    });
+    return [{ id: 'tree-1' }];
+  };
+  const run = createLoadOptions(win, { acknowledgeUi: () => terminalApplied });
+  const promise = win.LoveBudMyTreesData.loadTrees(run.options);
+  await promise;
+  await drainMicrotasks();
+  const tax = win.LoveBudJourneyOutcomeTaxonomy;
+  assert.equal(countStage(win, tax.STAGES.UI_ACKNOWLEDGED), 0);
+  assert.equal(countStage(win, tax.STAGES.TERMINAL_SUCCESS), 0);
+  assert.equal(countStage(win, tax.STAGES.TERMINAL_FAILURE), 0);
+  assert.equal(countStage(win, tax.STAGES.CANCELLED), 1);
+  assert.equal(win.LoveBudMyTreesData.JourneyTracker.getActiveContextCount(), 0);
+  assertBoundedEvents(win);
+});
+
+test('C7 throwing evidence sink never breaks product load flow', async () => {
+  const harness = createHarness({
+    sink: {
+      events: [],
+      push() { throw new Error('sink exploded'); },
+    },
+  });
+  const { win } = harness;
+  let requestCount = 0;
+  win.apiClient.getTrees = async () => {
+    requestCount += 1;
+    return [{ id: 'tree-1' }];
+  };
+  const run = createLoadOptions(win);
+  await assert.doesNotReject(() => win.LoveBudMyTreesData.loadTrees(run.options));
+  await drainMicrotasks();
+  assert.equal(requestCount, 1);
+  assert.equal(run.rendered.length, 1);
+  assert.equal(run.rendered[0][0].id, 'tree-1');
+  assert.equal(win.LoveBudMyTreesData.JourneyTracker.getActiveContextCount(), 0);
+});
+
+test('C8 privacy canary: tree id/title/description/owner/query/error/response/token never reach events', async () => {
+  const harness = createHarness();
+  const { win } = harness;
+  const canaries = [
+    'CANARY_TREE_ID_7c4e',
+    'CANARY_TITLE_9f3a',
+    'CANARY_DESC_b2d1',
+    'CANARY_OWNER_e5a8',
+    'CANARY_QUERY_a1b2',
+    'CANARY_ERROR_c3d4',
+    'CANARY_RESPONSE_f6e7',
+    'CANARY_TOKEN_8f90',
+  ];
+  win.apiClient.getTrees = async ({ onLifecycle }) => {
+    if (onLifecycle) onLifecycle({ attempt: 1, statusClass: 'success', authHeaderPresent: true });
+    return [{ id: 'CANARY_TREE_ID_7c4e', title: 'CANARY_TITLE_9f3a', description: 'CANARY_DESC_b2d1', owner: 'CANARY_OWNER_e5a8' }];
+  };
+  await runLoad(win, { acknowledgeUi: () => true });
+  let serialized = JSON.stringify(outcomeSink(win).events);
+  for (const c of canaries.slice(0, 4)) {
+    assert.equal(serialized.includes(c), false, 'success-path canary leaked: ' + c);
+  }
+  win.apiClient.getTrees = async () => {
+    throw makeLoadError(
+      'fetch CANARY_QUERY_a1b2 failed; CANARY_ERROR_c3d4; CANARY_RESPONSE_f6e7; CANARY_TOKEN_8f90',
+      undefined,
+      'fetch_rejected'
+    );
+  };
+  await runLoad(win, { acknowledgeUi: () => true });
+  serialized = JSON.stringify(outcomeSink(win).events);
+  for (const c of canaries) {
+    assert.equal(serialized.includes(c), false, 'failure-path canary leaked: ' + c);
+  }
+  assertBoundedEvents(win);
 });

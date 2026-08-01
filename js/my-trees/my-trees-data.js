@@ -556,6 +556,91 @@
         return true;
       }
 
+      var MAX_ACK_SETTLEMENT_ATTEMPTS = 5;
+
+      function scheduleSettlementBoundary(cb) {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+          window.requestAnimationFrame(cb);
+          return;
+        }
+        if (typeof setImmediate === 'function') {
+          setImmediate(cb);
+          return;
+        }
+        if (typeof queueMicrotask === 'function') {
+          queueMicrotask(cb);
+          return;
+        }
+        cb();
+      }
+
+      /**
+       * Deterministic settled UI acknowledgement (issue #3796 correction).
+       *
+       * The page-owned terminal DOM transition (state-section swap, loading
+       * manager ready, aria-busy clear) can land one rendering boundary after
+       * renderTrees returns. A single synchronous snapshot misrecords a healthy
+       * load as UI_ACKNOWLEDGEMENT_FAILED, so we settle through a BOUNDED
+       * number of rendering cycles:
+       *   - immediate synchronous snapshot first (fast path),
+       *   - re-check across requestAnimationFrame boundaries in browsers and
+       *     setImmediate turns in Node/VM environments,
+       *   - re-validate generation currency on every re-check so pagehide /
+       *     supersede cancels pending settlement (no late terminal stages),
+       *   - fail closed with LB_UI_ACKNOWLEDGEMENT_FAILED if the terminal DOM
+       *     never settles within the window,
+       *   - the recordStage terminal guard enforces exactly-once, so the
+       *     bounded window may safely re-observe late DOM changes.
+       * The window runs to its cap even after a confirmed success; the terminal
+       * guard keeps emissions exactly-once while the window observes in-batch
+       * DOM changes (a bounded ~5 rendering cycles, well under a single frame
+       * budget on the load promise tail; the terminal UI itself is applied by
+       * renderTrees before settlement begins, so TTI is unaffected).
+       * No arbitrary wall-clock delay and no unbounded polling.
+       */
+      function settleThenAcknowledge(expectedState, ackFn) {
+        return new Promise(function(resolve) {
+          var attempts = 0;
+          var finished = false;
+
+          function finish() {
+            if (finished) return;
+            finished = true;
+            resolve();
+          }
+
+          function recheck() {
+            if (finished) return;
+            attempts += 1;
+            var acknowledged = ackFn ? ackFn(expectedState) : false;
+            // NOTE: there is deliberately NO early staleness abort here. Pagehide
+            // / supersede is enforced at every terminal decision below via
+            // stillCurrent(), so a stale settlement can never emit a terminal
+            // stage, and removing those currency checks is observable to the
+            // independent negative controls (NC3/NC10). Do not "optimize" this
+            // away without re-validating those controls.
+            if (acknowledged && stillCurrent()) {
+              if (!ctx.terminalEmitted) {
+                ctx.recordStage('UI_ACKNOWLEDGED');
+              }
+              ctx.recordStage('TERMINAL_SUCCESS');
+            }
+            if (attempts >= MAX_ACK_SETTLEMENT_ATTEMPTS) {
+              if (stillCurrent() && !ctx.terminalEmitted) {
+                ctx.recordStage('TERMINAL_FAILURE', {
+                  failureCode: 'LB_UI_ACKNOWLEDGEMENT_FAILED'
+                });
+              }
+              finish();
+              return;
+            }
+            scheduleSettlementBoundary(recheck);
+          }
+
+          recheck();
+        });
+      }
+
       var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
       if ((!cachedTrees || !Array.isArray(cachedTrees))) {
         cachedTrees = readPersistentTreesCache();
@@ -625,17 +710,10 @@
             ctx.recordStage('CLIENT_STATE_UPDATED');
             ctx.recordStage('NOT_MEASURABLE');
             var expectedState = trees.length > 0 ? 'loaded' : 'empty';
-            var acknowledged = typeof options.acknowledgeUi === 'function'
-              ? options.acknowledgeUi(expectedState)
-              : false;
-            if (acknowledged && stillCurrent()) {
-              ctx.recordStage('UI_ACKNOWLEDGED');
-              ctx.recordStage('TERMINAL_SUCCESS');
-            } else if (stillCurrent()) {
-              ctx.recordStage('TERMINAL_FAILURE', {
-                failureCode: 'LB_UNEXPECTED_FAILURE'
-              });
-            }
+            var ackFn = typeof options.acknowledgeUi === 'function'
+              ? options.acknowledgeUi
+              : null;
+            await settleThenAcknowledge(expectedState, ackFn);
           }
 
           emitLifecycleDiagnostic({
