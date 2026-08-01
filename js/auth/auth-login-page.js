@@ -233,6 +233,21 @@
     var signupBtn = document.getElementById('signup-btn-email');
     var lastTriggerButton = null;
 
+    // Shared accessibility lifecycle (js/shared/modal-a11y.js). Owns Tab
+    // containment, Escape, initial focus, and guarded invoker restoration.
+    // Login/signup mode, email/display-name form behavior, Auth calls, and the
+    // privacy boundary stay page-owned. The replace-listener compatibility key
+    // below is preserved.
+    var authA11y = window.LoveBudModalA11y && window.LoveBudModalA11y.createLifecycle({
+      getModal: function() { return modal; },
+      isOpen: function() { return !!(modal && modal.style.display === 'flex'); },
+      onRequestClose: function() { closeModal(); },
+      canClose: function() { return true; },
+      getInitialFocus: function() { return document.getElementById('email-auth-email'); },
+      getRestoreFocus: function() { return lastTriggerButton; },
+      bindTarget: 'modal'
+    });
+
     // Set canonical mode immediately
     if (typeof setEmailAuthMode === 'function') {
       setEmailAuthMode(initialMode);
@@ -287,16 +302,22 @@
       // 3. Sync UI based on canonical state
       syncAllUi();
       // 4. Focus email input now that modal is visible
-      var emailInput = document.getElementById('email-auth-email');
-      if (emailInput) { try { emailInput.focus(); } catch (e) {} }
+      if (authA11y) {
+        authA11y.focusInitial();
+      } else {
+        var emailInput = document.getElementById('email-auth-email');
+        if (emailInput) { try { emailInput.focus(); } catch (e) {} }
+      }
     }
 
     function closeModal() {
       if (modal) modal.style.display = 'none';
-      if (lastTriggerButton && typeof lastTriggerButton.focus === 'function') {
+      if (authA11y) {
+        authA11y.restoreFocusElement(lastTriggerButton);
+      } else if (lastTriggerButton && typeof lastTriggerButton.focus === 'function') {
         try { lastTriggerButton.focus(); } catch (e) {}
-        lastTriggerButton = null;
       }
+      lastTriggerButton = null;
     }
 
     // ── login CTA ──
@@ -343,31 +364,35 @@
       });
     }
 
-    // ── Escape + Tab focus-trap (unified, idempotent) ──
+    // ── Escape + Tab focus-trap (shared lifecycle; replace-listener key kept) ──
     if (modal) {
       replaceEventListener(modal, '__lovebudEmailEntryKeydown', 'keydown', function (e) {
-        // Escape: close modal and return focus to trigger
-        if (e.key === 'Escape' || e.key === 'Esc') {
-          closeModal();
-          return;
-        }
-        // Tab: trap focus inside modal
-        if (e.key === 'Tab') {
-          var focusable = modal.querySelectorAll(
-            'input:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-          );
-          if (focusable.length === 0) return;
-          var first = focusable[0];
-          var last = focusable[focusable.length - 1];
-          if (e.shiftKey) {
-            if (document.activeElement === first) {
-              e.preventDefault();
-              try { last.focus(); } catch (e2) {}
-            }
-          } else {
-            if (document.activeElement === last) {
-              e.preventDefault();
-              try { first.focus(); } catch (e2) {}
+        if (authA11y) {
+          authA11y.handleKeydown(e);
+        } else {
+          // Escape: close modal and return focus to trigger
+          if (e.key === 'Escape' || e.key === 'Esc') {
+            closeModal();
+            return;
+          }
+          // Tab: trap focus inside modal
+          if (e.key === 'Tab') {
+            var focusable = modal.querySelectorAll(
+              'input:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            );
+            if (focusable.length === 0) return;
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+            if (e.shiftKey) {
+              if (document.activeElement === first) {
+                e.preventDefault();
+                try { last.focus(); } catch (e2) {}
+              }
+            } else {
+              if (document.activeElement === last) {
+                e.preventDefault();
+                try { first.focus(); } catch (e2) {}
+              }
             }
           }
         }

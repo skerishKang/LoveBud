@@ -73,6 +73,22 @@
     let bound = false;
     let activeI18n = getI18n();
 
+    // Shared accessibility lifecycle (js/shared/modal-a11y.js). Owns Tab
+    // containment, Escape, initial focus, and guarded invoker restoration.
+    // The surface keeps the visual shell, backdrop close, save/cancel/error
+    // state, and input selection behavior.
+    const renameA11y = win && win.LoveBudModalA11y ? win.LoveBudModalA11y.createLifecycle({
+      documentRef: doc,
+      windowRef: win,
+      getModal: function() { return modalEl; },
+      isOpen: function() { return isOpen(); },
+      onRequestClose: function() { closeRenameModal(); },
+      canClose: function() { return true; },
+      getInitialFocus: function() { return inputEl; },
+      getRestoreFocus: function() { return lastFocusedEl; },
+      bindTarget: 'document'
+    }) : null;
+
     function element(id, tagName, className) {
       const el = doc.createElement(tagName || 'div');
       el.id = id;
@@ -115,26 +131,30 @@
       saveBtn = doc.getElementById(RENAME_MODAL_SAVE_ID);
       cancelBtn = doc.getElementById(RENAME_MODAL_CANCEL_ID);
 
-      if (!bound) {
-        modalEl.addEventListener('click', function(event) {
-          const target = event.target || {};
-          if (target === modalEl || target.getAttribute && target.getAttribute('data-rename-modal-close') === '1') {
-            closeRenameModal();
+        if (!bound) {
+          modalEl.addEventListener('click', function(event) {
+            const target = event.target || {};
+            if (target === modalEl || target.getAttribute && target.getAttribute('data-rename-modal-close') === '1') {
+              closeRenameModal();
+            }
+          });
+          // Surface-owned keydown listener delegating to the shared lifecycle;
+          // fallback only when the helper is absent.
+          doc.addEventListener('keydown', function(event) {
+            if (renameA11y) {
+              renameA11y.handleKeydown(event);
+            } else if ((event.key === 'Escape' || event.keyCode === 27) && isOpen()) {
+              closeRenameModal();
+            }
+          });
+          if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeRenameModal);
           }
-        });
-        doc.addEventListener('keydown', function(event) {
-          if ((event.key === 'Escape' || event.keyCode === 27) && isOpen()) {
-            closeRenameModal();
+          if (saveBtn) {
+            saveBtn.addEventListener('click', handleSaveClick);
           }
-        });
-        if (cancelBtn) {
-          cancelBtn.addEventListener('click', closeRenameModal);
+          bound = true;
         }
-        if (saveBtn) {
-          saveBtn.addEventListener('click', handleSaveClick);
-        }
-        bound = true;
-      }
 
       return modalEl;
     }
@@ -161,7 +181,9 @@
       if (doc.body && doc.body.classList) {
         doc.body.classList.remove('editor-rename-modal-open');
       }
-      if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
+      if (renameA11y) {
+        renameA11y.restoreFocusElement(lastFocusedEl);
+      } else if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
         lastFocusedEl.focus();
       }
     }
@@ -181,7 +203,9 @@
       if (doc.body && doc.body.classList) {
         doc.body.classList.add('editor-rename-modal-open');
       }
-      if (inputEl && typeof inputEl.focus === 'function') {
+      if (renameA11y) {
+        renameA11y.focusInitial();
+      } else if (inputEl && typeof inputEl.focus === 'function') {
         inputEl.focus();
       }
       return modalEl;

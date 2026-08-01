@@ -24,6 +24,22 @@
         let triggerEl = options.triggerEl || null;
         let bound = false;
 
+        // Shared accessibility lifecycle (js/shared/modal-a11y.js). Owns Tab
+        // containment, Escape, initial focus, and guarded invoker restoration.
+        // Dynamic markup, identifiers, shortcut copy, and the close control
+        // stay page-owned.
+        const helpA11y = win && win.LoveBudModalA11y ? win.LoveBudModalA11y.createLifecycle({
+            documentRef: doc,
+            windowRef: win,
+            getModal: function() { return modalEl; },
+            isOpen: function() { return isOpen(); },
+            onRequestClose: function() { closeHelpModal(); },
+            canClose: function() { return true; },
+            getInitialFocus: function() { return closeBtn; },
+            getRestoreFocus: function() { return triggerEl || lastFocusedEl; },
+            bindTarget: 'modal'
+        }) : null;
+
         function element(id, tagName, className) {
             const el = doc.createElement(tagName || 'div');
             el.id = id;
@@ -37,34 +53,6 @@
                 if (val && val !== key) return val;
             }
             return fallback;
-        }
-
-        function handleDialogKeyDown(event) {
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                event.stopPropagation();
-                closeHelpModal();
-                return;
-            }
-            if (event.key === 'Tab') {
-                const focusables = modalEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-                if (focusables.length === 0) return;
-
-                const firstEl = focusables[0];
-                const lastEl = focusables[focusables.length - 1];
-
-                if (event.shiftKey) {
-                    if (doc.activeElement === firstEl) {
-                        lastEl.focus();
-                        event.preventDefault();
-                    }
-                } else {
-                    if (doc.activeElement === lastEl) {
-                        firstEl.focus();
-                        event.preventDefault();
-                    }
-                }
-            }
         }
 
         function ensureModal() {
@@ -150,11 +138,6 @@
 
             doc.body.appendChild(modalEl);
 
-            const dialogEl = doc.getElementById('editorShortcutHelpDialog');
-            if (dialogEl) {
-                dialogEl.addEventListener('keydown', handleDialogKeyDown);
-            }
-
             const backdropEl = doc.getElementById('editorShortcutHelpModalBackdrop');
             if (backdropEl) {
                 backdropEl.addEventListener('click', closeHelpModal);
@@ -186,8 +169,11 @@
         function closeHelpModal() {
             if (!isOpen()) return;
             modalEl.hidden = true;
-            if (triggerEl) {
-                triggerEl.setAttribute('aria-expanded', 'false');
+            if (triggerEl) triggerEl.setAttribute('aria-expanded', 'false');
+            if (helpA11y) {
+                helpA11y.close();
+                helpA11y.restoreFocusElement(triggerEl || lastFocusedEl);
+            } else if (triggerEl && typeof triggerEl.focus === 'function') {
                 triggerEl.focus();
             } else if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
                 lastFocusedEl.focus();
@@ -207,9 +193,7 @@
             if (doc.body && doc.body.classList) {
                 doc.body.classList.add('editor-rename-modal-open');
             }
-            if (closeBtn && typeof closeBtn.focus === 'function') {
-                closeBtn.focus();
-            }
+            if (helpA11y) helpA11y.open();
             return modalEl;
         }
 
