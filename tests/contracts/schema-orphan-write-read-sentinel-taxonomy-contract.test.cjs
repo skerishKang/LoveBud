@@ -5,9 +5,10 @@
 // This contract EXECUTES the real taxonomy source
 // (js/observability/reliability-sentinel-taxonomy.js) in a restricted sandbox
 // and asserts exact bounded authorities, privacy rejection, fail-closed
-// behavior, determinism, byte stability, immutable boundaries, and the
-// capability-0 surface. It also validates the structural-semantics policy
-// document and the negative controls (NC1-NC10).
+// behavior, fixed sanitized error codes, bounded list normalization, canonical
+// serialization privacy boundaries, determinism, byte stability, immutable
+// boundaries, and the capability-0 surface. It also validates the
+// structural-semantics policy document and the negative controls (NC1-NC13).
 //
 // Classification: SOURCE_STATIC (not registered in any browser/process group
 // registry; tests/ci-test-group-registry.json is out of scope).
@@ -33,6 +34,15 @@ const PRIVATE_KEYS = [
   'database_url', 'request_id', 'provider_id', 'account_id', 'project_id',
   'timestamp', 'metadata',
 ];
+
+const REQUIRED_FIELDS = [
+  'operation_class', 'stage', 'outcome_code', 'release_sha',
+  'baseline_deviation', 'severity', 'owner_action', 'evidence_completeness',
+];
+
+const OPTIONAL_FIELDS = ['latency_bucket', 'count_bucket'];
+
+const ALLOWED_FIELDS = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS];
 
 function readSource() {
   return fs.readFileSync(TAXONOMY_PATH, 'utf8');
@@ -155,12 +165,14 @@ test('unknown enum / field / invalid SHA rejected; bounded enum accepted', () =>
   assert.equal(T.validateInput(VALID_INPUT).ok, true);
 });
 
-test('missing or invalid evidence can never resolve CONFIRMED', () => {
+test('missing or incomplete evidence can never resolve CONFIRMED (fail closed)', () => {
   const T = loadTaxonomy();
   assert.equal(T.validateInput(Object.assign({}, VALID_INPUT, { evidence_completeness: 'missing' })).ok, false);
   assert.equal(T.validateInput(Object.assign({}, VALID_INPUT, { evidence_completeness: 'invalid' })).ok, false);
+  assert.equal(T.validateInput(Object.assign({}, VALID_INPUT, { evidence_completeness: 'partial' })).ok, false);
   assert.throws(() => T.buildBoundedResult(Object.assign({}, VALID_INPUT, { evidence_completeness: 'missing' })), TypeError);
-  assert.equal(T.validateInput(Object.assign({}, VALID_INPUT, { evidence_completeness: 'partial' })).ok, true);
+  assert.throws(() => T.buildBoundedResult(Object.assign({}, VALID_INPUT, { evidence_completeness: 'partial' })), TypeError);
+  assert.equal(T.validateInput(Object.assign({}, VALID_INPUT, { evidence_completeness: 'complete' })).ok, true);
 });
 
 test('frozen/detached exports, frozen built result, immutable boundary', () => {
@@ -169,6 +181,7 @@ test('frozen/detached exports, frozen built result, immutable boundary', () => {
   assert.ok(Object.isFrozen(T.OPERATION_CLASSES));
   assert.ok(Object.isFrozen(T.CONVERGENCE_STAGE_ORDER));
   assert.ok(Object.isFrozen(T.ALLOWED_FIELDS));
+  assert.ok(Object.isFrozen(T.ERROR_CODES));
   const r = T.buildBoundedResult(VALID_INPUT);
   assert.ok(Object.isFrozen(r));
   assert.throws(() => { r.outcome_code = 'BROKEN'; }, TypeError);
@@ -179,10 +192,8 @@ test('frozen/detached exports, frozen built result, immutable boundary', () => {
   assert.equal(built.operation_class, 'STRUCTURAL_SCHEMA_CHECK');
 });
 
-test('normalizeList sorted/deduped; canonical JSON byte-stable & only allowed fields', () => {
+test('canonical JSON byte-stable, only allowed fields, accepts canonical result', () => {
   const T = loadTaxonomy();
-  assert.deepEqual(T.normalizeList(['b', 'a', 'b', 'c', 'a']), ['a', 'b', 'c']);
-  assert.deepEqual(T.normalizeList(['unexpected', 'unexpected', 'source']), ['source', 'unexpected']);
   const json1 = T.canonicalJson(T.buildBoundedResult(VALID_INPUT));
   const json2 = T.canonicalJson(T.buildBoundedResult(Object.assign({}, VALID_INPUT, { operation_class: 'TREE_CREATE_CONVERGENCE' })));
   assert.notEqual(json1, json2);
@@ -231,11 +242,8 @@ test('policy doc invariants', () => {
   assert.match(policy, /parent_id IS NOT NULL/i);
   assert.match(policy, /no matching parent/i);
   assert.match(policy, /provider unverified/i);
-assert.match(policy, /ARCHITECTURAL_RISK/i);
+  assert.match(policy, /ARCHITECTURAL_RISK/i);
   assert.match(policy, /UUID\/TEXT/i);
-  // Numeric Production threshold/row-count declaration absent. Issue refs
-  // (e.g. Refs #3835) and section numbers are exempt; threshold/row-count
-  // declarations are not.
   assert.ok(!/\b(?:threshold|rows?|count|memories)\s*[:=]\s*\d+(?:\.\d+)?%?/i.test(policy),
     'no Production threshold/row-count declaration');
   assert.match(policy, /no synthetic write/i);
@@ -249,47 +257,311 @@ function readPolicy() {
   return fs.readFileSync(POLICY_PATH, 'utf8');
 }
 
-// --- Negative controls (disposable mutation with byte-exact restore) ---
+// ---------------------------------------------------------------------------
+// R1-R9: required fields and fixed sanitized error boundaries.
+// ---------------------------------------------------------------------------
 
-test('NC1 unknown outcome code accepted when guard removed', () => {
-  withDisposableCopy((src) => src.replace("errors.push('unknown_outcome_code:' + String(input.outcome_code));", ''), (T) => {
+test('R1 empty object rejected', () => {
+  const T = loadTaxonomy();
+  const v = T.validateInput({});
+  assert.equal(v.ok, false);
+  assert.deepEqual(v.errors, [T.ERROR_CODES.MISSING_REQUIRED_FIELD]);
+  assert.throws(() => T.buildBoundedResult({}), TypeError);
+});
+
+test('R2 each required field missing is rejected', () => {
+  const T = loadTaxonomy();
+  for (const field of REQUIRED_FIELDS) {
+    const input = Object.assign({}, VALID_INPUT);
+    delete input[field];
+    const v = T.validateInput(input);
+    assert.equal(v.ok, false, 'missing ' + field + ' must be rejected');
+    assert.ok(v.errors.includes(T.ERROR_CODES.MISSING_REQUIRED_FIELD));
+    assert.throws(() => T.buildBoundedResult(input), TypeError, 'build must reject missing ' + field);
+  }
+});
+
+test('R3 optional latency_bucket absent is allowed', () => {
+  const T = loadTaxonomy();
+  const input = Object.assign({}, VALID_INPUT);
+  delete input.latency_bucket;
+  const v = T.validateInput(input);
+  assert.equal(v.ok, true);
+  const built = T.buildBoundedResult(input);
+  assert.ok(!('latency_bucket' in built));
+});
+
+test('R4 optional count_bucket absent is allowed', () => {
+  const T = loadTaxonomy();
+  const input = Object.assign({}, VALID_INPUT);
+  delete input.count_bucket;
+  const v = T.validateInput(input);
+  assert.equal(v.ok, true);
+  const built = T.buildBoundedResult(input);
+  assert.ok(!('count_bucket' in built));
+});
+
+test('R5 missing release_sha is rejected', () => {
+  const T = loadTaxonomy();
+  const input = Object.assign({}, VALID_INPUT);
+  delete input.release_sha;
+  const v = T.validateInput(input);
+  assert.equal(v.ok, false);
+  assert.ok(v.errors.includes(T.ERROR_CODES.MISSING_REQUIRED_FIELD));
+  assert.throws(() => T.buildBoundedResult(input), TypeError);
+});
+
+test('R6 missing evidence is rejected', () => {
+  const T = loadTaxonomy();
+  const input = Object.assign({}, VALID_INPUT);
+  delete input.evidence_completeness;
+  const v = T.validateInput(input);
+  assert.equal(v.ok, false);
+  assert.ok(v.errors.includes(T.ERROR_CODES.MISSING_REQUIRED_FIELD));
+  assert.throws(() => T.buildBoundedResult(input), TypeError);
+});
+
+test('R7 error codes are fixed, sanitized, bounded, frozen', () => {
+  const T = loadTaxonomy();
+  assert.ok(Object.isFrozen(T.ERROR_CODES));
+  const codes = Object.values(T.ERROR_CODES);
+  assert.ok(codes.length > 0);
+  const v = T.validateInput(Object.assign({}, VALID_INPUT, { outcome_code: 'FREE_FORM' }));
+  assert.equal(v.ok, false);
+  for (const e of v.errors) assert.ok(codes.includes(e), 'all errors must be fixed codes');
+  let thrown = '';
+  try { T.buildBoundedResult(Object.assign({}, VALID_INPUT, { outcome_code: 'FREE_FORM' })); } catch (err) { thrown = String(err.message); }
+  assert.ok(codes.includes(thrown), 'builder must throw a single fixed code');
+});
+
+test('R8 unknown outcome raw value is never echoed', () => {
+  const T = loadTaxonomy();
+  const payload = 'X' + Math.random().toString(36).slice(2);
+  const input = Object.assign({}, VALID_INPUT, { outcome_code: payload });
+  const v = T.validateInput(input);
+  assert.equal(v.ok, false);
+  assert.ok(v.errors.includes(T.ERROR_CODES.UNKNOWN_ENUM));
+  // errors are fixed codes and never contain the payload
+  for (const e of v.errors) assert.ok(!e.includes(payload), 'error must not echo raw value');
+  let thrown = '';
+  try { T.buildBoundedResult(input); } catch (err) { thrown = String(err.message); }
+  assert.ok(!thrown.includes(payload), 'thrown error must not echo raw value');
+});
+
+test('R9 private field raw value is never echoed', () => {
+  const T = loadTaxonomy();
+  const secret = 'SEC_' + Math.random().toString(36).slice(2);
+  const v = T.validateInput(Object.assign({}, VALID_INPUT, { token: secret }));
+  assert.equal(v.ok, false);
+  assert.ok(v.errors.includes(T.ERROR_CODES.PRIVATE_FIELD_REJECTED));
+  for (const e of v.errors) assert.ok(!e.includes(secret), 'error must not echo private value');
+});
+
+// ---------------------------------------------------------------------------
+// J1-J8: canonical JSON privacy boundary.
+// ---------------------------------------------------------------------------
+
+function forgedValid() {
+  return Object.assign({}, VALID_INPUT);
+}
+
+test('J1 valid built result canonicalJson succeeds', () => {
+  const T = loadTaxonomy();
+  const r = T.buildBoundedResult(VALID_INPUT);
+  const json = T.canonicalJson(r);
+  assert.equal(typeof json, 'string');
+  assert.deepEqual(JSON.parse(json), JSON.parse(T.canonicalJson(T.buildBoundedResult(VALID_INPUT))));
+});
+
+test('J2 forged token object rejected without echo', () => {
+  const T = loadTaxonomy();
+  let msg = '';
+  try { T.canonicalJson({ token: 'SENTINEL_SECRET' }); } catch (err) { msg = String(err.message); }
+  assert.equal(msg, T.ERROR_CODES.NON_CANONICAL_RESULT);
+  assert.ok(!msg.includes('SENTINEL_SECRET'));
+});
+
+test('J3 forged raw_error object rejected without echo', () => {
+  const T = loadTaxonomy();
+  let msg = '';
+  try { T.canonicalJson({ raw_error: 'SENTINEL_SECRET' }); } catch (err) { msg = String(err.message); }
+  assert.equal(msg, T.ERROR_CODES.NON_CANONICAL_RESULT);
+  assert.ok(!msg.includes('SENTINEL_SECRET'));
+  assert.ok(!msg.includes('raw_error'));
+});
+
+test('J4 forged unknown field object rejected without echo', () => {
+  const T = loadTaxonomy();
+  const forged = Object.assign({}, forgedValid());
+  forged.unknown_key = 'SENTINEL_SECRET';
+  Object.freeze(forged);
+  let msg = '';
+  try { T.canonicalJson(forged); } catch (err) { msg = String(err.message); }
+  assert.equal(msg, T.ERROR_CODES.NON_CANONICAL_RESULT);
+  assert.ok(!msg.includes('SENTINEL_SECRET'));
+});
+
+test('J5 forged unknown enum object rejected without echo', () => {
+  const T = loadTaxonomy();
+  const forged = Object.assign({}, forgedValid(), { outcome_code: 'FREE_FORM' });
+  Object.freeze(forged);
+  let msg = '';
+  try { T.canonicalJson(forged); } catch (err) { msg = String(err.message); }
+  assert.equal(msg, T.ERROR_CODES.NON_CANONICAL_RESULT);
+  assert.ok(!msg.includes('FREE_FORM'));
+});
+
+test('J6 unfrozen forged object rejected', () => {
+  const T = loadTaxonomy();
+  const forged = Object.assign({}, forgedValid());
+  assert.equal(T.isCanonicalResult(forged), false);
+  let msg = '';
+  try { T.canonicalJson(forged); } catch (err) { msg = String(err.message); }
+  assert.equal(msg, T.ERROR_CODES.NON_CANONICAL_RESULT);
+});
+
+test('J7 canonical error text never contains sentinel', () => {
+  const T = loadTaxonomy();
+  const cases = [
+    { token: 'SENTINEL_SECRET' },
+    { raw_error: 'SENTINEL_SECRET' },
+    Object.assign({}, forgedValid(), { exception: 'SENTINEL_SECRET' }),
+    Object.assign({}, forgedValid(), { stack: 'SENTINEL_SECRET' }),
+    {},
+  ];
+  for (const c of cases) {
+    try {
+      // deep-freeze to ensure a refusal (if any) is purely a canonical-bound refusal
+      const frozen = structuredClone(c);
+      deepFreezeLocal(frozen);
+      T.canonicalJson(frozen);
+    } catch (err) {
+      const m = String(err.message);
+      assert.ok(!m.includes('SENTINEL_SECRET'), 'canonical error must not leak sentinel');
+    }
+  }
+});
+
+function deepFreezeLocal(obj) {
+  if (obj === null || typeof obj !== 'object') return obj;
+  Object.values(obj).forEach(deepFreezeLocal);
+  return Object.freeze(obj);
+}
+
+test('J8 byte stability maintained', () => {
+  const T = loadTaxonomy();
+  const a = T.canonicalJson(T.buildBoundedResult(VALID_INPUT));
+  const b = T.canonicalJson(T.buildBoundedResult(Object.assign({}, VALID_INPUT)));
+  assert.equal(a, b);
+});
+
+// ---------------------------------------------------------------------------
+// L1-L3: bounded list normalization.
+// ---------------------------------------------------------------------------
+
+test('L1 bounded list sorted/deduped/frozen', () => {
+  const T = loadTaxonomy();
+  const list = T.normalizeBoundedList('outcome_code', ['CONFIRMED', 'TRANSPORT_FAILED', 'CONFIRMED', 'INSUFFICIENT_EVIDENCE']);
+  assert.deepEqual(list, ['CONFIRMED', 'INSUFFICIENT_EVIDENCE', 'TRANSPORT_FAILED']);
+  assert.ok(Object.isFrozen(list));
+  assert.throws(() => { list[0] = 'BROKEN'; }, TypeError);
+});
+
+test('L2 free-form list value rejected', () => {
+  const T = loadTaxonomy();
+  assert.throws(() => T.normalizeBoundedList('outcome_code', ['FREE_FORM']), TypeError);
+  assert.throws(() => T.normalizeBoundedList('operation_class', ['BOGUS_OP']), TypeError);
+  assert.throws(() => T.normalizeBoundedList('severity', ['FATAL']), TypeError);
+  assert.throws(() => T.normalizeBoundedList('bogus_kind', ['x']), TypeError);
+});
+
+test('L3 private sentinel list value rejected', () => {
+  const T = loadTaxonomy();
+  assert.throws(() => T.normalizeBoundedList('outcome_code', ['SENTINEL_SECRET']), TypeError);
+  assert.throws(() => T.normalizeBoundedList('operation_class', ['token']), TypeError);
+  assert.throws(() => T.normalizeBoundedList('outcome_code', ['raw_error']), TypeError);
+});
+
+test('L-kind repository-owned enum set; public normalizeList removed', () => {
+  const T = loadTaxonomy();
+  assert.equal(typeof T.normalizeList, 'undefined', 'generic normalizeList must be removed');
+  assert.ok(Object.isFrozen(T.REQUIRED_FIELDS));
+  assert.ok(Object.isFrozen(T.OPTIONAL_FIELDS));
+});
+
+// --- Negative controls (disposable mutation with byte-exact restore) ---
+// NC1-NC10, NC11-NC13.
+//
+// Each withDisposableCopy writes a transient mutated copy to tmp, loads the
+// mutated source, and finally asserts byte-exact restore of the real source.
+
+test('NC1 unknown outcome enum accepted when guard removed', () => {
+  withDisposableCopy((src) => src.replace(
+    "if ('outcome_code' in input && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);",
+    "/* outcome enum guard removed */"
+  ), (T) => {
+    // Removing only the free-form outcome guard accepts a raw code, proving the
+    // guard is load-bearing on the real source.
     const res = T.validateInput(Object.assign({}, VALID_INPUT, { outcome_code: 'FREE_FORM' }));
     assert.equal(res.ok, true, 'without enum guard a free-form code is accepted');
   });
 });
 
 test('NC2 missing evidence mapped to CONFIRMED when fail-closed guard removed', () => {
-  withDisposableCopy((src) => src.replace("errors.push('missing_evidence_not_confirmed');", ''), (T) => {
+  withDisposableCopy((src) => src.replace("errors.push(ERROR_CODES.CONFIRMED_EVIDENCE_INCOMPLETE);", "/* skip */"), (T) => {
     const res = T.validateInput(Object.assign({}, VALID_INPUT, { evidence_completeness: 'missing' }));
-    // Without the guard, missing evidence is no longer rejected; outcome stays CONFIRMED.
+    // Missing evidence is a valid enum; without the fail-closed guard it passes.
     assert.equal(res.ok, true);
     const built = T.buildBoundedResult(Object.assign({}, VALID_INPUT, { evidence_completeness: 'missing' }));
     assert.equal(built.outcome_code, 'CONFIRMED');
   });
 });
 
-test('NC3 raw ID field accepted when private-key reject removed', () => {
-  withDisposableCopy((src) => src.replace("if (Object.prototype.hasOwnProperty.call(PRIVATE_KEY_SET, key)) {\n        errors.push('private_key_rejected:' + key);\n      }", ''), (T) => {
-    // Removing the private-key branch only: owner_id still triggers
-    // unknown_field; for a true NC3 the field would otherwise pass privacy
-    // gating, so we assert the private-key branch exists in the normal source.
-    assert.ok(readSource().includes('private_key_rejected'), 'normal source has private-key rejection');
-    assert.equal(T.validateInput(Object.assign({}, VALID_INPUT, { owner_id: 'x' })).ok, false, 'raw id still rejected by unknown-field guard');
+test('NC3 raw ID accepted and exposed when private guard removed and owner_id allowed', () => {
+  withDisposableCopy((src) => {
+    let out = src;
+    // 1) Allow owner_id as an input field (add to ALLOWED_FIELDS).
+    out = out.replace("'operation_class',\n    'stage',", "'operation_class',\n    'owner_id',\n    'stage',");
+    // 2) Remove the private-field rejection branch entirely (keep unknown-field).
+    out = out.replace(
+      "if (Object.prototype.hasOwnProperty.call(PRIVATE_KEY_SET, key)) {\n        errors.push(ERROR_CODES.PRIVATE_FIELD_REJECTED);\n      } else if (!Object.prototype.hasOwnProperty.call(ALLOWED_FIELD_SET, key)) {",
+      "if (!Object.prototype.hasOwnProperty.call(ALLOWED_FIELD_SET, key)) {"
+    );
+    // 3) Expose owner_id in the built result.
+    out = out.replace(
+      "if (input[OPTIONAL_FIELDS[o]] !== undefined) {",
+      "result.owner_id = input.owner_id;\n      if (input[OPTIONAL_FIELDS[o]] !== undefined) {"
+    );
+    return out;
+  }, (T) => {
+    // With the privacy guard removed and owner_id accepted, a raw id now flows.
+    const input = Object.assign({}, VALID_INPUT, { owner_id: 'RAW_OWNER_ID_123' });
+    const built = T.buildBoundedResult(input);
+    assert.equal(built.owner_id, 'RAW_OWNER_ID_123', 'unsafe mutation leaks raw id');
+    // Brief assertion the mutation really accepted it.
+    assert.equal(T.validateInput(input).ok, true);
   });
 });
 
-test('NC4 raw exception echoed', () => {
-  withDisposableCopy((src) => src.replace("errors.push('unknown_outcome_code:' + String(input.outcome_code));", "errors.push(String(input.outcome_code));"), (T) => {
-    const res = T.validateInput(Object.assign({}, VALID_INPUT, { outcome_code: 'SECRET_PAYLOAD' }));
-    assert.ok(res.errors.some((e) => e.includes('SECRET_PAYLOAD')), 'raw value echoed without prefix');
-    // Normal source must NOT echo raw values; verified in privacy test.
+test('NC4 raw exception echoed; normal source never echoes', () => {
+  // normal source never echoes a raw value
+  const T = loadTaxonomy();
+  const v = T.validateInput(Object.assign({}, VALID_INPUT, { outcome_code: 'SENTINEL_UNIQUE_PRIVATE_VALUE' }));
+  assert.ok(v.errors.includes(T.ERROR_CODES.UNKNOWN_ENUM));
+  for (const e of v.errors) assert.ok(!e.includes('SENTINEL_UNIQUE_PRIVATE_VALUE'), 'normal source no raw echo');
+
+  // disposable mutation echoes the raw value -> contract flags the unsafe state
+  withDisposableCopy((src) => src.replace(
+    "if ('outcome_code' in input && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);",
+    "errors.push('raw:' + String(input.outcome_code));"
+  ), (T2) => {
+    const res = T2.validateInput(Object.assign({}, VALID_INPUT, { outcome_code: 'SENTINEL_UNIQUE_PRIVATE_VALUE' }));
+    assert.equal(res.errors.some((e) => e.includes('SENTINEL_UNIQUE_PRIVATE_VALUE')), true, 'mutation embeds raw value');
   });
 });
 
 test('NC5 parent_id IS NULL never labeled orphan', () => {
   const policy = readPolicy();
-  // The policy explicitly states a null parent is a valid root, never an
-  // orphan, and that the null-parent case is excluded from orphan candidates.
   assert.match(policy, /valid root memory[\s\S]{0,200}never[\s*<]{0,20}an[\s\S]{0,20}orphan/i);
   assert.match(policy, /The null-parent root case is excluded/i);
   assert.match(policy, /parent_id IS NOT NULL/i);
@@ -329,4 +601,37 @@ test('NC10 unknown metadata key accepted → rejected', () => {
   const T = loadTaxonomy();
   assert.equal(T.validateInput(Object.assign({}, VALID_INPUT, { metadata: { a: 1 } })).ok, false);
   assert.equal(T.validateInput(Object.assign({}, VALID_INPUT, { unexpected: 1 })).ok, false);
+});
+
+test('NC11 missing release_sha accepted when required-guard removed', () => {
+  withDisposableCopy((src) => src.replace(
+    "for (var r = 0; r < REQUIRED_FIELDS.length; r++) {\n      var rf = REQUIRED_FIELDS[r];\n      if (!(rf in input) || input[rf] === undefined || input[rf] === null) {\n        errors.push(ERROR_CODES.MISSING_REQUIRED_FIELD);\n      }\n    }",
+    "/* required-field loop removed */"
+  ), (T) => {
+    // Without the required-field loop, missing release_sha is accepted -> unsafe.
+    const input = Object.assign({}, VALID_INPUT);
+    delete input.release_sha;
+    assert.equal(T.validateInput(input).ok, true, 'guarded required loop is what rejects missing release_sha');
+  });
+});
+
+test('NC12 generic canonicalJson privacy bypass', () => {
+  withDisposableCopy((src) => src.replace(
+    "function isCanonicalResult(value) {\n    if (Object.isFrozen(value) !== true) return false;",
+    "function isCanonicalResult(value) {\n    return true; // NC12 bypass"
+  ), (T) => {
+    // Removing the canonical bound lets a private token be serialized.
+    const leaked = T.canonicalJson({ token: 'SECRET' });
+    assert.equal(typeof leaked, 'string');
+  });
+});
+
+test('NC13 free-form normalize list accepted', () => {
+  withDisposableCopy((src) => src.replace(
+    "if (!enumValid(v, set)) {\n        throw new TypeError(ERROR_CODES.UNKNOWN_VALUE);\n      }",
+    "/* value guard disabled */"
+  ), (T) => {
+    // Free-form value is accepted when the bounded-value guard is removed.
+    assert.deepEqual(T.normalizeBoundedList('outcome_code', ['SECRET']), ['SECRET']);
+  });
 });

@@ -1,6 +1,7 @@
 'use strict';
 
 // Issue #3835 — Reliability & Observability child (parent #3461).
+// Draft PR #3837.
 //
 // Independent privacy-safe reliability sentinel and write-read outcome
 // taxonomy authority.
@@ -10,6 +11,9 @@
 //     write, process, or alert execution);
 //   - rejects unknown fields, unknown enum values, invalid release SHA, and
 //     every private identifier key on both input and output;
+//   - is fail-closed on privacy boundaries: validation and canonical
+//     serialization never include a caller-controlled key/value, never echo a
+//     raw exception, and never disclose a stack;
 //   - never persists, never writes, never executes a sentinel, and never
 //     delivers an alert;
 //   - exposes only bounded, immutable, deterministic, byte-stable authority.
@@ -136,7 +140,7 @@
   });
 
   // ---------------------------------------------------------------------------
-  // Evidence completeness — bounded; missing/invalid can never resolve CONFIRMED.
+  // Evidence completeness — bounded; only 'complete' may resolve CONFIRMED.
   // ---------------------------------------------------------------------------
   var EVIDENCE_COMPLETENESS = Object.freeze({
     COMPLETE: 'complete',
@@ -189,6 +193,21 @@
     return deepFreeze(s);
   })();
 
+  // Required core fields (never defaulted to undefined; must be supplied).
+  var REQUIRED_FIELDS = makeFrozenArray([
+    'operation_class',
+    'stage',
+    'outcome_code',
+    'release_sha',
+    'baseline_deviation',
+    'severity',
+    'owner_action',
+    'evidence_completeness'
+  ]);
+
+  // Optional fields (absent is allowed; still bounded when present).
+  var OPTIONAL_FIELDS = makeFrozenArray(['latency_bucket', 'count_bucket']);
+
   // ---------------------------------------------------------------------------
   // Privacy-sensitive keys — rejected on BOTH input and output. Key-based strict
   // matching (NOT substring), so legitimate bounded enums (e.g. owner_action,
@@ -230,6 +249,24 @@
   })();
 
   // ---------------------------------------------------------------------------
+  // Fixed, sanitized error codes. These are bounded, frozen and carry NO
+  // caller-controlled key or value, no raw exception, and no stack. Thrown
+  // errors expose only these codes (never a serialized validation list).
+  // ---------------------------------------------------------------------------
+  var ERROR_CODES = Object.freeze({
+    INPUT_NOT_OBJECT: 'INPUT_NOT_OBJECT',
+    UNKNOWN_FIELD: 'UNKNOWN_FIELD',
+    PRIVATE_FIELD_REJECTED: 'PRIVATE_FIELD_REJECTED',
+    MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
+    UNKNOWN_ENUM: 'UNKNOWN_ENUM',
+    INVALID_RELEASE_SHA: 'INVALID_RELEASE_SHA',
+    CONFIRMED_EVIDENCE_INCOMPLETE: 'CONFIRMED_EVIDENCE_INCOMPLETE',
+    NON_CANONICAL_RESULT: 'NON_CANONICAL_RESULT',
+    UNKNOWN_KIND: 'UNKNOWN_KIND',
+    UNKNOWN_VALUE: 'UNKNOWN_VALUE'
+  });
+
+  // ---------------------------------------------------------------------------
   // Set guards.
   // ---------------------------------------------------------------------------
   var OPERATION_SET = (function () { var s = {}; for (var k in OPERATION_CLASSES) { if (Object.prototype.hasOwnProperty.call(OPERATION_CLASSES, k)) s[OPERATION_CLASSES[k]] = true; } return deepFreeze(s); })();
@@ -256,10 +293,6 @@
   // Deterministic canonical byte-stable JSON. Keys are sorted; identical input
   // always yields identical bytes.
   // ---------------------------------------------------------------------------
-  function canonicalJson(value) {
-    return JSON.stringify(value, replacerSorted);
-  }
-
   function replacerSorted(key, value) {
     if (value === null || typeof value !== 'object' || Array.isArray(value)) return value;
     var out = {};
@@ -272,108 +305,182 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Exact-input validator. Fail closed on any unknown or invalid field.
-  // Returns { ok, errors } — never throws; the builder throws.
+  // Enum guards used by validation and canonical serialization.
+  // ---------------------------------------------------------------------------
+  function enumValid(value, set) {
+    return value !== undefined && value !== null && Object.prototype.hasOwnProperty.call(set, value) && Boolean(set[value]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Exact-input validator. Fail closed on any unknown/invalid/private/required
+  // violation. Returns { ok, errors } where errors is a frozen array of fixed
+  // ERROR_CODES (never a caller-controlled key/value).
   // ---------------------------------------------------------------------------
   function validateInput(input) {
     var errors = [];
 
     if (input === null || typeof input !== 'object' || Array.isArray(input)) {
-      return { ok: false, errors: ['input must be a plain object'] };
+      return { ok: false, errors: makeFrozenArray([ERROR_CODES.INPUT_NOT_OBJECT]) };
     }
 
     var keys = Object.keys(input);
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
-      if (!Object.prototype.hasOwnProperty.call(ALLOWED_FIELD_SET, key)) {
-        errors.push('unknown_field:' + key);
-      }
       if (Object.prototype.hasOwnProperty.call(PRIVATE_KEY_SET, key)) {
-        errors.push('private_key_rejected:' + key);
+        errors.push(ERROR_CODES.PRIVATE_FIELD_REJECTED);
+      } else if (!Object.prototype.hasOwnProperty.call(ALLOWED_FIELD_SET, key)) {
+        errors.push(ERROR_CODES.UNKNOWN_FIELD);
       }
     }
 
-    if ('operation_class' in input && !OPERATION_SET[input.operation_class]) {
-      errors.push('unknown_operation_class');
+    for (var r = 0; r < REQUIRED_FIELDS.length; r++) {
+      var rf = REQUIRED_FIELDS[r];
+      if (!(rf in input) || input[rf] === undefined || input[rf] === null) {
+        errors.push(ERROR_CODES.MISSING_REQUIRED_FIELD);
+      }
     }
-    if ('stage' in input && !STAGE_SET[input.stage]) {
-      errors.push('unknown_stage');
-    }
-    if ('outcome_code' in input && !OUTCOME_SET[input.outcome_code]) {
-      errors.push('unknown_outcome_code:' + String(input.outcome_code));
-    }
-    if ('baseline_deviation' in input && !DEVIATION_SET[input.baseline_deviation]) {
-      errors.push('unknown_baseline_deviation');
-    }
-    if ('severity' in input && !SEVERITY_SET[input.severity]) {
-      errors.push('unknown_severity');
-    }
-    if ('owner_action' in input && !ACTION_SET[input.owner_action]) {
-      errors.push('unknown_owner_action');
-    }
-    if ('evidence_completeness' in input && !EVIDENCE_SET[input.evidence_completeness]) {
-      errors.push('unknown_evidence_completeness');
-    }
-    if ('latency_bucket' in input && !LATENCY_SET[input.latency_bucket]) {
-      errors.push('unknown_latency_bucket');
-    }
-    if ('count_bucket' in input && !COUNT_SET[input.count_bucket]) {
-      errors.push('unknown_count_bucket');
-    }
+
+    if ('operation_class' in input && !enumValid(input.operation_class, OPERATION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if ('stage' in input && !enumValid(input.stage, STAGE_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if ('outcome_code' in input && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if ('baseline_deviation' in input && !enumValid(input.baseline_deviation, DEVIATION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if ('severity' in input && !enumValid(input.severity, SEVERITY_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if ('owner_action' in input && !enumValid(input.owner_action, ACTION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if ('evidence_completeness' in input && !enumValid(input.evidence_completeness, EVIDENCE_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if ('latency_bucket' in input && !enumValid(input.latency_bucket, LATENCY_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if ('count_bucket' in input && !enumValid(input.count_bucket, COUNT_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
 
     if ('release_sha' in input && !isValidReleaseSha(input.release_sha)) {
-      errors.push('invalid_release_sha');
+      errors.push(ERROR_CODES.INVALID_RELEASE_SHA);
     }
 
-    // Missing/invalid evidence can never resolve to CONFIRMED (fail closed).
+    // CONFIRMED is only ever accepted when evidence is COMPLETE. Completion by
+    // partial/missing/invalid evidence is rejected (fail closed).
     if ('outcome_code' in input && input.outcome_code === OUTCOME_CODES.CONFIRMED) {
-      var ev = input.evidence_completeness;
-      if (ev === EVIDENCE_COMPLETENESS.MISSING || ev === EVIDENCE_COMPLETENESS.INVALID || ev === undefined) {
-        errors.push('missing_evidence_not_confirmed');
+      if (input.evidence_completeness !== EVIDENCE_COMPLETENESS.COMPLETE) {
+        errors.push(ERROR_CODES.CONFIRMED_EVIDENCE_INCOMPLETE);
       }
     }
 
-    return { ok: errors.length === 0, errors: errors };
+    var unique = [];
+    var seen = {};
+    var sorted = errors.slice().sort();
+    for (var u = 0; u < sorted.length; u++) {
+      if (!seen[sorted[u]]) { seen[sorted[u]] = true; unique.push(sorted[u]); }
+    }
+
+    return { ok: unique.length === 0, errors: makeFrozenArray(unique) };
   }
 
   // ---------------------------------------------------------------------------
   // Canonical bounded result builder. Fails closed (throws) on any invalid
-  // input. Returns a deep-frozen, canonical result carrying only allowed fields.
-  // The caller's input is never mutated.
+  // input with a single fixed ERROR_CODE (never a raw value/list). Returns a
+  // deep-frozen, canonical result carrying only allowed fields and never an
+  // undefined core field. The caller's input is never mutated.
   // ---------------------------------------------------------------------------
   function buildBoundedResult(input) {
     var validation = validateInput(input);
     if (!validation.ok) {
-      throw new TypeError('RELIABILITY_SENTINEL_VALIDATION_FAILED: ' + validation.errors.join(', '));
+      throw new TypeError(validation.errors[0]);
     }
 
-    // Copy on read; never mutate the caller's object.
     var result = {};
-    result.operation_class = input.operation_class;
-    result.stage = input.stage;
-    result.outcome_code = input.outcome_code;
-    result.baseline_deviation = input.baseline_deviation;
-    result.severity = input.severity;
-    result.owner_action = input.owner_action;
-    result.evidence_completeness = input.evidence_completeness;
-    if (input.latency_bucket !== undefined) result.latency_bucket = input.latency_bucket;
-    if (input.count_bucket !== undefined) result.count_bucket = input.count_bucket;
-    if (input.release_sha !== undefined) result.release_sha = input.release_sha;
+    for (var f = 0; f < REQUIRED_FIELDS.length; f++) {
+      result[REQUIRED_FIELDS[f]] = input[REQUIRED_FIELDS[f]];
+    }
+    for (var o = 0; o < OPTIONAL_FIELDS.length; o++) {
+      if (input[OPTIONAL_FIELDS[o]] !== undefined) {
+        result[OPTIONAL_FIELDS[o]] = input[OPTIONAL_FIELDS[o]];
+      }
+    }
 
     return deepFreeze(result);
   }
 
-  function normalizeList(values) {
-    if (!Array.isArray(values)) throw new TypeError('normalizeList expects an array');
-    var out = values.slice();
-    var seen = {};
+  // ---------------------------------------------------------------------------
+  // Canonical-result validator. canonicalJson() only ever serializes an object
+  // that passes this strict bound so arbitrary caller objects (containing
+  // tokens, raw errors, unknown keys or free-form enums) can never be emitted.
+  // ---------------------------------------------------------------------------
+  function isCanonicalResult(value) {
+    if (Object.isFrozen(value) !== true) return false;
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+
+    var keys = Object.keys(value);
+    if (keys.length === 0) return false;
+
+    for (var i = 0; i < keys.length; i++) {
+      if (!Object.prototype.hasOwnProperty.call(ALLOWED_FIELD_SET, keys[i])) return false;
+      if (Object.prototype.hasOwnProperty.call(PRIVATE_KEY_SET, keys[i])) return false;
+    }
+
+    for (var r = 0; r < REQUIRED_FIELDS.length; r++) {
+      if (!(REQUIRED_FIELDS[r] in value) || value[REQUIRED_FIELDS[r]] === undefined) return false;
+    }
+
+    if (!enumValid(value.operation_class, OPERATION_SET)) return false;
+    if (!enumValid(value.stage, STAGE_SET)) return false;
+    if (!enumValid(value.outcome_code, OUTCOME_SET)) return false;
+    if (!enumValid(value.baseline_deviation, DEVIATION_SET)) return false;
+    if (!enumValid(value.severity, SEVERITY_SET)) return false;
+    if (!enumValid(value.owner_action, ACTION_SET)) return false;
+    if (!enumValid(value.evidence_completeness, EVIDENCE_SET)) return false;
+    if ('latency_bucket' in value && !enumValid(value.latency_bucket, LATENCY_SET)) return false;
+    if ('count_bucket' in value && !enumValid(value.count_bucket, COUNT_SET)) return false;
+
+    if (!isValidReleaseSha(value.release_sha)) return false;
+
+    if (value.outcome_code === OUTCOME_CODES.CONFIRMED) {
+      if (value.evidence_completeness !== EVIDENCE_COMPLETENESS.COMPLETE) return false;
+    }
+
+    return true;
+  }
+
+  function canonicalJson(value) {
+    if (!isCanonicalResult(value)) {
+      throw new TypeError(ERROR_CODES.NON_CANONICAL_RESULT);
+    }
+    return JSON.stringify(value, replacerSorted);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Repository-owned enum sets for bounded list normalization. A caller can
+  // never supply an arbitrary allowed set; only these fixed kinds exist.
+  // ---------------------------------------------------------------------------
+  var NORMALIZE_ENUM_SETS = (function () {
+    var sets = {
+      operation_class: OPERATION_SET,
+      stage: STAGE_SET,
+      outcome_code: OUTCOME_SET,
+      baseline_deviation: DEVIATION_SET,
+      severity: SEVERITY_SET,
+      owner_action: ACTION_SET,
+      evidence: EVIDENCE_SET,
+      latency_bucket: LATENCY_SET,
+      count_bucket: COUNT_SET
+    };
+    return Object.freeze(sets);
+  })();
+
+  // Bounded list normalization: only repository-owned enum VALUES for a fixed
+  // kind are allowed. Free-form values and private identifiers are rejected.
+  function normalizeBoundedList(kind, values) {
+    var set = NORMALIZE_ENUM_SETS[kind];
+    if (!set) {
+      throw new TypeError(ERROR_CODES.UNKNOWN_KIND);
+    }
+    if (!Array.isArray(values)) {
+      throw new TypeError(ERROR_CODES.UNKNOWN_VALUE);
+    }
     var unique = [];
-    for (var i = 0; i < out.length; i++) {
-      var v = out[i];
-      if (!Object.prototype.hasOwnProperty.call(seen, v)) {
-        seen[v] = true;
-        unique.push(v);
+    var seen = {};
+    for (var i = 0; i < values.length; i++) {
+      var v = values[i];
+      if (!enumValid(v, set)) {
+        throw new TypeError(ERROR_CODES.UNKNOWN_VALUE);
       }
+      if (!seen[v]) { seen[v] = true; unique.push(v); }
     }
     unique.sort();
     return deepFreeze(unique);
@@ -402,6 +509,9 @@
     LATENCY_BUCKETS: LATENCY_BUCKETS,
     COUNT_BUCKETS: COUNT_BUCKETS,
     ALLOWED_FIELDS: ALLOWED_FIELDS,
+    REQUIRED_FIELDS: REQUIRED_FIELDS,
+    OPTIONAL_FIELDS: OPTIONAL_FIELDS,
+    ERROR_CODES: ERROR_CODES,
     PRIVATE_KEYS: PRIVATE_KEYS,
     CAPABILITIES: CAPABILITIES,
 
@@ -420,8 +530,9 @@
     isValidReleaseSha: isValidReleaseSha,
     validateInput: validateInput,
     buildBoundedResult: buildBoundedResult,
-    normalizeList: normalizeList,
-    canonicalJson: canonicalJson
+    isCanonicalResult: isCanonicalResult,
+    canonicalJson: canonicalJson,
+    normalizeBoundedList: normalizeBoundedList
   });
 
   // Attach to CommonJS / browser global.
