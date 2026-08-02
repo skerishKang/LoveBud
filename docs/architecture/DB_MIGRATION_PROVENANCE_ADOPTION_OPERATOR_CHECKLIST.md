@@ -6,6 +6,28 @@ This checklist documents what an operator must prepare before Phase B Production
 
 This document is a preparation and review aid. Approval gates, execution boundaries, and fail-closed checks remain in the committed source contracts listed in Repository References.
 
+## Primary Adoption Policy & Deferred Status (#3840)
+
+Issue #3840 selects a **clean target environment** (`CLEAN_TARGET_FIRST_SELECTED`) as the primary canonical adoption target for LoveBud migration provenance.
+
+The legacy Production database adoption framework detailed in this checklist is governed by the following bounded status:
+
+```text
+checklist target class:
+LEGACY_PRODUCTION_TARGET
+
+current execution status:
+DEFERRED_NOT_AUTHORIZED
+```
+
+The clean-target-first decision does **NOT** satisfy, replace, or bypass Phase B, Phase C, Phase D, or Phase E of this checklist. Any future adoption of a legacy production database remains deferred (`DEFERRED_NOT_AUTHORIZED`) and still requires all of the following prior to execution:
+- explicit owner approval event;
+- dedicated read-only credential boundary;
+- strict privacy allowlist and redaction boundary;
+- explicit read-only transaction boundary;
+- abstract role mapping verification;
+- recomputed receipt and attestation evidence package.
+
 ## Current Fail-Closed State
 
 The following state is read from current main source files. Do not interpret an empty manifest as an empty production schema. Run status and evidence status are authoritative; manifest shape alone is not.

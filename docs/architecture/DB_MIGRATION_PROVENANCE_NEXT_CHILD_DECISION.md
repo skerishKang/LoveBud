@@ -4,30 +4,42 @@
 
 Current status: `SAFE_IMPLEMENTATION_CHILD_SELECTED`
 
-Issue #3816 completes Step 7 in the migration-precondition authority sequence. The authority-and-adapter program of #3657 is complete. Step 8 (environment adoption) is not authorized and is not required to close #3657; it remains a separate future child under #3458.
+Issue #3840 completes Step 8 Child 1 (clean-target adoption policy) under migration provenance (#3458). Step 8 readiness audit Issue #3839 has been accepted. The selected next child is:
+
+```text
+Step 8 Child 2 — Canonical bootstrap migration capability & disposable PostgreSQL rehearsal
+```
+
+Current sequence posture:
 
 ```text
 Steps 1–7 complete
-Step 7 disposable PostgreSQL rehearsal implemented by #3816
-#3657 authority-and-adapter program complete after merge
-Step 8 environment adoption not authorized
+Step 8 readiness audit accepted
+Step 8 Child 1 clean-target adoption policy implemented by #3840 (Issue remains OPEN prior to PR merge)
+Step 8 Child 2 canonical bootstrap migration capability & disposable rehearsal selected as next child
+Step 8 Child 2 not implemented by Issue #3840
+Step 8 Child 3 target attribution & read-only catalog parity preflight not authorized
+Step 8 Child 4 fail-closed deploy gate & canonical target activation boundary not authorized
+Legacy Production Phase B/C/D/E preserved and deferred (DEFERRED_NOT_REJECTED)
+No exact Child 2 migration identity, timestamp, slug, filename, SQL body, or DDL sequence pre-determined
+Four authority manifests remain ADOPTION_REQUIRED and empty
 ```
 
-Issue #3657 remains the open parent authority until #3816 merges and independent Web CTO verification completes; after that, #3657 closure is eligible. This decision grants no runtime, database, SQL, environment, provider, or Production authority.
+Issue #3458 remains the open parent authority. This source-only decision grants no runtime, database, SQL, environment, provider, or Production authority.
 
-The historical audit baseline for Issue #3644 remains recorded as `eb030c1d4751dfee45d65f5a420caebebac6ebcc`. That SHA is historical evidence only and is not the implementation base for Issue #3678.
+The historical audit baseline for Issue #3644 remains recorded as `eb030c1d4751dfee45d65f5a420caebebac6ebcc`. That SHA is historical evidence only and is not the implementation base for Issue #3840.
 
 ## Why the previous decision changed
 
-The previous decision was written before completion of the evaluatePrecondition adapter and before implementation of the composition root. Issue #3802 completed Step 5, and Issue #3809 now completes Step 6 by adding the fail-closed composition root that wires the fixed authority resolver, the pinned-session lock adapter, and the evaluator into the frozen orchestrator-facing dependency surface.
+The previous decision was written after completion of the disposable PostgreSQL rehearsal for the precondition composition root (#3816). Read-only audit Issue #3839 reassessed Step 8 environment adoption readiness and recommended adopting a clean target environment first while deferring legacy production database adoption.
 
-Because Step 6 is now complete, the prior statement that Step 6 was the selected child is superseded. Issue #3816 completes Step 7 (disposable PostgreSQL rehearsal), after which the #3657 authority-and-adapter program is complete. Step 8 (environment adoption) is not authorized and is not required to close #3657; it remains a separate future child under #3458.
+Issue #3840 implements Step 8 Child 1 by formally selecting the clean-target-first canonical adoption policy. The ordered sequence advances to Step 8 Child 2 (`Canonical bootstrap migration capability & disposable PostgreSQL rehearsal`), which is selected for the next child but is not implemented here.
 
 ## Verified current incompatibility
 
-The repository now has a fixed authority contract, registry validation, readonly query catalog, loader-resolver, evaluatePrecondition adapter, and the composition root. It still has no authorized disposable PostgreSQL rehearsal that executes the composed dependency surface against an ephemeral engine.
+The repository now has a complete provenance foundation (Steps 1–7) and a clean-target adoption policy (Step 8 Child 1). It still has no canonical migration stream and no disposable engine rehearsal of the canonical runner executing against an active canonical migration stream.
 
-That missing rehearsal is the next incompatibility. It does not authorize skipping to environment adoption.
+That missing canonical bootstrap migration capability and rehearsal is the next incompatibility. It does not authorize pre-determining exact SQL filenames or DDL statements, nor does it authorize skipping to target environment attribution, preflight gate integration, or Production mutation.
 
 ## Selected next child
 
@@ -35,14 +47,17 @@ That missing rehearsal is the next incompatibility. It does not authorize skippi
 
 | Field | Current decision |
 |---|---|
-| Selected child | Disposable PostgreSQL rehearsal |
-| Sequence step | 7 |
-| Steps 1–6 | Complete |
-| Step 7 implementation in this child | Yes (implemented by Issue #3816) |
-| Step 8 | Not authorized |
-| Composition root selected | Yes (completed by Issue #3809) |
-| Disposable PostgreSQL rehearsal selected | Yes (implemented by Issue #3816) |
-| Environment adoption selected | No |
+| Selected child | Canonical bootstrap migration capability & disposable PostgreSQL rehearsal |
+| Sequence step | Step 8 Child 2 |
+| Steps 1–7 | Complete |
+| Step 8 Child 1 | Complete (implemented by Issue #3840; OPEN prior to PR merge) |
+| Step 8 Child 2 implementation in this child | No |
+| Steps 8 Child 3–4 | Not authorized |
+| Legacy Production Phase B/C/D/E | Preserved and deferred (`DEFERRED_NOT_REJECTED`) |
+| Exact Child 2 migration identity/filename/SQL | Not selected |
+| Clean-target policy selected | Yes (implemented by Issue #3840) |
+| Canonical bootstrap capability selected | Yes (selected for Child 2) |
+| Environment adoption / mutation selected | No |
 | Production access | None |
 | Database access | None |
 | SQL execution | None |
