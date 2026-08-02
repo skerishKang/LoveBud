@@ -8,6 +8,7 @@ const REGISTRY_PATH = path.join(ROOT, 'tests', 'ci-test-group-registry.json');
 const CLASSIFICATION_PATH = path.join(ROOT, 'tests', 'test-layer-classification.json');
 const PACKAGE_PATH = path.join(ROOT, 'package.json');
 const CI_YML_PATH = path.join(ROOT, '.github', 'workflows', 'ci.yml');
+const { loadCanonicalTestSuiteCounts } = require('./test-suite-count-authority.cjs');
 
 const VOCABULARY = [
   'SOURCE_STATIC', 'EXECUTED_FAKE', 'EXECUTED_REAL_LOCAL',
@@ -628,6 +629,24 @@ function buildReportData() {
   const suppTotal = Array.isArray(inv.supplemental) ? inv.supplemental.length : 0;
   const suppPython = inv.supplemental ? inv.supplemental.filter(s => s.layer === 'SUPPLEMENTAL_PYTHON').length : 0;
   const suppDbEngine = inv.supplemental ? inv.supplemental.filter(s => s.layer === 'DB_ENGINE_EXECUTION').length : 0;
+
+  // Canonical authority consistency gate (Issue #3838): the reporter's derived
+  // counts must agree with the canonical test-suite count authority.
+  const canonical = loadCanonicalTestSuiteCounts();
+  if (canonical.default_total !== defaultTotal) {
+    throw fail('LAYER_RECONCILIATION_MISMATCH', 'default_total diverges from canonical authority');
+  }
+  for (const v of VOCABULARY) {
+    if ((canonical[v] || 0) !== (classResult.counts[v] || 0)) {
+      throw fail('LAYER_RECONCILIATION_MISMATCH', 'Layer count diverges from canonical authority: ' + v);
+    }
+  }
+  if (canonical.browser_count !== realLocalInfo.browserCount || canonical.process_count !== realLocalInfo.processCount) {
+    throw fail('OVERLAPPING_MEMBERSHIP', 'Browser/process totals diverge from canonical authority');
+  }
+  if (canonical.supplemental_python !== suppPython || canonical.supplemental_db_engine !== suppDbEngine) {
+    throw fail('LAYER_RECONCILIATION_MISMATCH', 'Supplemental counts diverge from canonical authority');
+  }
 
   const groupResults = [];
   for (const g of reg.groups) {
