@@ -126,6 +126,13 @@ function readJsonFixed(filePath) {
   }
 }
 
+// Normalize a glob or path for canonical comparison. Treats '/' and the
+// platform separator identically so separator-only differences do not hide
+// duplicates (PR #3841 review). No environment or caller input is consulted.
+function normalizePathForCompare(value) {
+  return String(value).replace(/\\/g, '/');
+}
+
 function parseTestGlobs(testCommand) {
   if (typeof testCommand !== 'string' || !testCommand.trim()) {
     throw fail(ERROR_CODES.AUTHORITY_INPUT_INVALID, 'Empty test command');
@@ -142,9 +149,14 @@ function parseTestGlobs(testCommand) {
   }
   const globs = tokens.slice(2);
   if (globs.length === 0) throw fail(ERROR_CODES.AUTHORITY_INPUT_INVALID, 'No globs in test command');
+  const seenGlobs = new Set();
   for (const g of globs) {
     if (typeof g !== 'string' || !g.trim()) throw fail(ERROR_CODES.AUTHORITY_INPUT_INVALID, 'Invalid glob');
-    const norm = g.split(path.sep).join('/');
+    const norm = normalizePathForCompare(g);
+    if (seenGlobs.has(norm)) {
+      throw fail(ERROR_CODES.DUPLICATE_PATH, 'Duplicate test glob: ' + norm);
+    }
+    seenGlobs.add(norm);
     if (norm.startsWith('/') || /^[A-Za-z]:/.test(norm)) throw fail(ERROR_CODES.AUTHORITY_INPUT_INVALID, 'Absolute path in glob');
     const parts = norm.split('/').filter((p) => p.length > 0);
     if (parts.includes('..')) throw fail(ERROR_CODES.AUTHORITY_INPUT_INVALID, 'Path traversal in glob');
@@ -189,7 +201,15 @@ function deriveTestSuiteCountsFromSources(sources) {
   const classification = assertPlainObject(sources.classification, 'classification');
   const registry = assertPlainObject(sources.registry, 'registry');
   const enumeratedDefaultCi = assertNoProxyArray(sources.enumeratedDefaultCi, 'enumeratedDefaultCi');
-  for (const p of enumeratedDefaultCi) assertString(p, 'enumerated path');
+  const enumeratedSeen = new Set();
+  for (const p of enumeratedDefaultCi) {
+    assertString(p, 'enumerated path');
+    const norm = normalizePathForCompare(p);
+    if (enumeratedSeen.has(norm)) {
+      throw fail(ERROR_CODES.DUPLICATE_PATH, 'Duplicate default-CI inventory path: ' + norm);
+    }
+    enumeratedSeen.add(norm);
+  }
 
   const vocabulary = assertNoProxyArray(classification.vocabulary, 'classification.vocabulary');
   if (vocabulary.length !== VOCABULARY.length) {
@@ -353,6 +373,8 @@ module.exports = {
   SUPPLEMENTAL_VOCABULARY,
   CANONICAL_GROUP_ENUM,
   ERROR_CODES,
+  normalizePathForCompare,
+  parseTestGlobs,
   deriveTestSuiteCountsFromSources,
   loadCanonicalTestSuiteCounts,
 };

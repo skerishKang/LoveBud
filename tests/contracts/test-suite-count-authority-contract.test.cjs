@@ -28,6 +28,7 @@ const {
   SUPPLEMENTAL_VOCABULARY,
   CANONICAL_GROUP_ENUM,
   ERROR_CODES,
+  parseTestGlobs,
   deriveTestSuiteCountsFromSources,
   loadCanonicalTestSuiteCounts,
 } = require(AUTHORITY_PATH);
@@ -318,6 +319,31 @@ test('NC13. nondeterministic ordering is impossible (byte-stable)', () => {
   const r2 = deriveTestSuiteCountsFromSources(canonicalFixture());
   assert.deepEqual(r1, r2);
   assert.equal(serializeKeys(r1), serializeKeys(r2));
+});
+
+test('NC14. duplicate normalized default-CI inventory path fails closed', () => {
+  const fixture = canonicalFixture();
+  fixture.enumeratedDefaultCi.push(fixture.enumeratedDefaultCi[0]);
+  assertCodeThrows(() => deriveTestSuiteCountsFromSources(fixture), ERROR_CODES.DUPLICATE_PATH);
+  // Separator-only difference (Windows vs POSIX) is the same normalized path.
+  const sepFixture = canonicalFixture();
+  sepFixture.enumeratedDefaultCi.push('tests\\contracts\\a-source-static.test.cjs');
+  assertCodeThrows(() => deriveTestSuiteCountsFromSources(sepFixture), ERROR_CODES.DUPLICATE_PATH);
+});
+
+test('NC15. duplicate normalized fixed test glob fails closed', () => {
+  assertCodeThrows(
+    () => parseTestGlobs('node --test tests/contracts/*.test.cjs tests/contracts/*.test.cjs'),
+    ERROR_CODES.DUPLICATE_PATH
+  );
+  // Separator-only glob difference must also be rejected as a duplicate.
+  assertCodeThrows(
+    () => parseTestGlobs('node --test tests/contracts/*.test.cjs tests\\contracts\\*.test.cjs'),
+    ERROR_CODES.DUPLICATE_PATH
+  );
+  // A single well-formed glob still parses.
+  const single = parseTestGlobs('node --test tests/contracts/*.test.cjs');
+  assert.deepEqual(single, ['tests/contracts/*.test.cjs']);
 });
 
 test('14. this contract is registered SOURCE_STATIC with no side-effect imports', () => {
