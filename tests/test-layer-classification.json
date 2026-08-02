@@ -4777,6 +4777,18 @@
       ]
     },
     {
+      "path": "tests/contracts/database-external-logical-backup-source-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Statically analyzes modal_compute/recovery_backup_app.py and modal_compute/recovery_backup_policy.py to lock #3828 source-only external logical-backup boundaries: separate non-HTTP Modal app name lovebud-recovery-backup, exact three symbolic secret names (lovebud-db, lovebud-recovery-r2, lovebud-recovery-encryption), one-per-24h scheduled function, no @modal.asgi_app/@modal.web_endpoint/FastAPI/Flask, custom-format compressed pg_dump with no-owner/no-privileges, bounded single-attempt dump, streaming authenticated encryption with per-object nonce and stored tag, plaintext deletion before upload, staging upload then head verification then daily/weekly/monthly promotion then staging cleanup, finally cleanup, sanitized-only status via the pure policy module, no restore/reset/branch operation, no import or modification dependency on modal_compute/app.py, and policy-module purity (no modal/boto3/cryptography/psycopg/subprocess/env/network imports). No live provider, R2, Modal, DB, subprocess dump, network, or filesystem mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/database-external-logical-backup-behavior-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes only the pure deterministic policy module modal_compute/recovery_backup_policy.py through a local python3 subprocess (scenario script written to the OS temp directory, never the repository) to lock #3828 status semantics: daily-only/daily+weekly/daily+monthly/daily+weekly+monthly success, dump/encryption/plaintext-cleanup/upload/head-verification/daily-promotion failures, daily-valid-with-weekly/monthly-promotion-failure preservation, stale-daily and missing-weekly/monthly classification, and unknown/private/raw/impossible state rejection. No live provider, R2, Modal, DB, pg_dump, network, secret, or filesystem-backup operation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-story-view-foundation-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads production sources (js/my-trees/my-trees-story-view.js, js/search/search-story-view.js, js/my-trees/my-trees-page-bootstrap.js, pages/my-trees.html, css/tree-view-mode.css, js/i18n/i18n-my-trees.js, js/tree-view-mode-switcher.js) and asserts the #3811 My Trees Story thin-adapter contract: adapter initializes the shared LoveBudBrowseStoryView (results/navMount/translate/onGroupChange) without copying it, no second grouping/transition authority, no backend pagination, no autoplay/loop/swipe, entry via setMode('story', { initialTreeId }), result replacement via refresh({ preferredTreeId }), settled onGroupChange snapshot driving selection/preview sync with a mobile no-auto-open guard, My Trees-specific surface translation (i18n-my-trees.js story keys only), Story rail loaded-with-cards only, destroy() releasing listeners/observers, exact four modes (large/compact/list/story) with compact default and page-scoped storage key lovebud:myTrees:viewMode, My Trees HTML/script ordering (shared controller + adapter before bootstrap), and CSS geometry-only .trees-grid[data-tree-view-mode=\"story\"] selectors with reduced motion. No real browser, network, or production resource.",

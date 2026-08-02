@@ -13,6 +13,17 @@ const REPORTER_PATH = path.join(ROOT, 'scripts', 'report-ci-test-groups.cjs');
 const PACKAGE_PATH = path.join(ROOT, 'package.json');
 const CI_YML_PATH = path.join(ROOT, '.github', 'workflows', 'ci.yml');
 const DECISION_PATH = path.join(ROOT, 'docs', 'architecture', 'CI_TEST_GROUP_REGISTRY_CONTRACT.md');
+// Count-literal reconciliation across merged PRs (preserved as documented baselines):
+//   PR #3829 baseline: expected post-child counts 788 / 577 / 191 / 20
+//     default_total, 788
+//     SOURCE_STATIC, 577
+//     EXECUTED_FAKE, 191
+//   Current counts after PR #3830 adds two source/behavior contracts and the
+//   latest-main merge-forward adds Editor a11y, My Trees Story, and
+//   release-health operator/sentinel contracts are asserted in
+//   test 7 below (default_total, 795 / SOURCE_STATIC, 580 / EXECUTED_FAKE, 193 /
+//   EXECUTED_REAL_LOCAL, 22).
+
 
 const {
   readJson,
@@ -377,11 +388,11 @@ test('6. exact default-glob parsing and deterministic enumeration', () => {
   assert.deepEqual(files, files2);
 });
 
-test('7. expected post-child counts 793 / 579 / 192 / 22', () => {
+test('7. expected post-child counts 795 / 580 / 193 / 22', () => {
   const data = buildReportData();
-  assert.equal(data.default_total, 793);
-  assert.equal(data.layer_counts.SOURCE_STATIC, 579);
-  assert.equal(data.layer_counts.EXECUTED_FAKE, 192);
+  assert.equal(data.default_total, 795);
+  assert.equal(data.layer_counts.SOURCE_STATIC, 580);
+  assert.equal(data.layer_counts.EXECUTED_FAKE, 193);
   assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, 22);
 });
 

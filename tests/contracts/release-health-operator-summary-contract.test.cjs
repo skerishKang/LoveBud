@@ -912,16 +912,16 @@ test('this contract is classified EXECUTED_FAKE and count literals are reconcile
   assert.equal(entry.layer === 'SOURCE_STATIC', false);
 
   const registryContract = fs.readFileSync(REGISTRY_CONTRACT_PATH, 'utf8');
-  assert.match(registryContract, /expected post-child counts 793 \/ 579 \/ 192 \/ 22/);
-  assert.match(registryContract, /default_total,\s*793/);
-  assert.match(registryContract, /SOURCE_STATIC,\s*579/);
-  assert.match(registryContract, /EXECUTED_FAKE,\s*192/);
+  assert.match(registryContract, /expected post-child counts 795 \/ 580 \/ 193 \/ 22/);
+  assert.match(registryContract, /default_total,\s*795/);
+  assert.match(registryContract, /SOURCE_STATIC,\s*580/);
+  assert.match(registryContract, /EXECUTED_FAKE,\s*193/);
   assert.match(registryContract, /EXECUTED_REAL_LOCAL,\s*22/);
 
   // The CF smoke contract embeds the same count literals as regex-literal text.
   const cfSmoke = fs.readFileSync(CF_SMOKE_CONTRACT_PATH, 'utf8');
-  assert.ok(cfSmoke.includes('default_total,\\s*793'), 'CF smoke contract must embed default_total 793 literal');
-  assert.ok(cfSmoke.includes('SOURCE_STATIC,\\s*579'), 'CF smoke contract must embed SOURCE_STATIC 579 literal');
+  assert.ok(cfSmoke.includes('default_total,\\s*795'), 'CF smoke contract must embed default_total 795 literal');
+  assert.ok(cfSmoke.includes('SOURCE_STATIC,\\s*580'), 'CF smoke contract must embed SOURCE_STATIC 580 literal');
 });
 
 test('this contract executes only the pure module with synthetic fixtures', () => {
