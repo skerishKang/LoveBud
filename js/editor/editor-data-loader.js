@@ -249,6 +249,31 @@
         };
     }
 
+    function createCanonicalReread(options) {
+        const opts = options || {};
+        const treeId = opts.treeId;
+        const apiClient = opts.apiClient || null;
+        const normalizeMemory = opts.normalizeMemory || createNormalizeMemory();
+
+        return async function canonicalReread(identity) {
+            if (!treeId) return { memories: [] };
+            if (!apiClient || !apiClient.getMemoriesByTree) return { memories: [] };
+
+            try {
+                const apiMemories = await apiClient.getMemoriesByTree(treeId);
+                if (Array.isArray(apiMemories)) {
+                    const normalizedApi = apiMemories.map(normalizeMemory).filter(Boolean);
+                    const filteredApi = filterMemoriesForTree(normalizedApi, treeId);
+                    return { memories: filteredApi };
+                }
+                return { memories: [] };
+            } catch (e) {
+                console.warn('[editor] Canonical reread failed:', e.message);
+                return { memories: [] };
+            }
+        };
+    }
+
     function createRefreshMemories(options) {
         const opts = options || {};
         const treeId = opts.treeId;
@@ -281,6 +306,7 @@
         isCanonicalRootPlaceholder,
         loadInitialEditorTree,
         loadEditorMemories,
-        createRefreshMemories
+        createRefreshMemories,
+        createCanonicalReread
     };
 })();

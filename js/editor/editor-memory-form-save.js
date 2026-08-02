@@ -22,8 +22,40 @@ function createEditorMemoryFormSave(deps) {
         rerenderCanvas,
         focusNodeById,
         getCanonicalRootId,
-        editorDebugLog
+        editorDebugLog,
+        releaseSha,
+        canonicalReread
     } = deps;
+
+    function getConvergenceCore() {
+        if (typeof window.LoveBudWriteReadConvergenceCore !== 'object' || window.LoveBudWriteReadConvergenceCore === null) return null;
+        if (typeof window.LoveBudWriteReadConvergenceCore.createConvergenceCore !== 'function') return null;
+        return window.LoveBudWriteReadConvergenceCore;
+    }
+
+    function getTaxonomy() {
+        if (typeof window.LoveBudReliabilitySentinelTaxonomy !== 'object' || window.LoveBudReliabilitySentinelTaxonomy === null) return null;
+        return window.LoveBudReliabilitySentinelTaxonomy;
+    }
+
+    async function monitorCreateConvergence(createdMemoryResult) {
+        const coreFactory = getConvergenceCore();
+        const taxonomy = getTaxonomy();
+        if (!coreFactory || !taxonomy) return;
+        if (!releaseSha) return;
+        if (!canonicalReread || typeof canonicalReread !== 'function') return;
+        try {
+            const convergence = coreFactory.createConvergenceCore({
+                createMemory: async () => createdMemoryResult,
+                canonicalReread: canonicalReread,
+                taxonomy: taxonomy,
+                releaseSha: releaseSha
+            });
+            await convergence.converge(createdMemoryResult);
+        } catch (e) {
+            editorDebugLog('[editor] Convergence monitoring failed:', e?.message || e);
+        }
+    }
 
     async function createMemoryWithFallback(newMemoryData) {
         let createdMemory = null;
@@ -59,7 +91,9 @@ function createEditorMemoryFormSave(deps) {
                 delay: '0.5s'
             };
         }
-        return { createdMemory, useApi };
+        const result = { createdMemory, useApi };
+        monitorCreateConvergence(result);
+        return result;
     }
 
     function commitMemoryToTree(createdMemory, useApi) {
