@@ -57,9 +57,34 @@
     return proto === Object.prototype || proto === null;
   }
 
-  function isCallable(value) {
-    return typeof value === 'function';
+function isCallable(value) {
+  return typeof value === 'function';
+}
+
+function readOwnEnumerableDataProperty(object, key) {
+  if (!isPlainRecord(object)) {
+    throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
   }
+  var descriptor;
+  try {
+    descriptor = Object.getOwnPropertyDescriptor(object, key);
+  } catch (e) {
+    throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+  }
+  if (!descriptor) {
+    throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+  }
+  if (descriptor.enumerable !== true) {
+    throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+  }
+  if ('get' in descriptor || 'set' in descriptor) {
+    throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+  }
+  if (!('value' in descriptor)) {
+    throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+  }
+  return descriptor.value;
+}
 
   // ---------------------------------------------------------------------------
   // Fixed sanitized error codes. These are bounded, frozen and carry NO
@@ -126,21 +151,32 @@
     if (!isPlainRecord(rawResult)) {
       return { ok: false, error: ERROR_CODES.RESULT_NOT_OBJECT };
     }
-    if (!hasOwn(rawResult, 'rows') || !Array.isArray(rawResult.rows)) {
+    var rows;
+    try {
+      rows = readOwnEnumerableDataProperty(rawResult, 'rows');
+    } catch (e) {
+      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+    }
+    if (!Array.isArray(rows)) {
       return { ok: false, error: ERROR_CODES.RESULT_ROWS_NOT_ARRAY };
     }
-    if (rawResult.rows.length !== 1) {
+    if (rows.length !== 1) {
       return {
         ok: false,
-        error: rawResult.rows.length === 0 ? ERROR_CODES.ZERO_ROWS : ERROR_CODES.MULTIPLE_ROWS
+        error: rows.length === 0 ? ERROR_CODES.ZERO_ROWS : ERROR_CODES.MULTIPLE_ROWS
       };
     }
-    var row = rawResult.rows[0];
+    var row = rows[0];
     if (!isPlainRecord(row)) {
       return { ok: false, error: ERROR_CODES.ROW_NOT_OBJECT };
     }
     var expectedColumns = descriptor.result_contract.columns;
-    var actualKeys = Object.keys(row);
+    var actualKeys;
+    try {
+      actualKeys = Object.keys(row);
+    } catch (e) {
+      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+    }
     if (actualKeys.length !== expectedColumns.length) {
       return { ok: false, error: ERROR_CODES.EXTRA_COLUMN };
     }
@@ -150,7 +186,12 @@
       }
     }
     var column = expectedColumns[0];
-    var value = row[column];
+    var value;
+    try {
+      value = readOwnEnumerableDataProperty(row, column);
+    } catch (e) {
+      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+    }
     var countResult = validateSafeCount(value);
     if (!countResult.ok) {
       return { ok: false, error: countResult.error };

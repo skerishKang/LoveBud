@@ -27,7 +27,7 @@
 //   - byte-stable canonical output;
 //   - zero filesystem write/network/provider/deploy/alert/synthetic capability.
 //
-// It also runs the required negative controls (NC1-NC14).
+// It also runs the required negative controls (NC1-NC11f).
 //
 // Classification: SOURCE_STATIC (no browser/process/network/DB execution).
 //
@@ -304,20 +304,102 @@ test('safe integer string counts are accepted (PostgreSQL bigint text form)', as
   assert.equal(positive.outcome_code, 'ORPHAN_SIGNAL_DETECTED');
 });
 
-test('proxy/accessor/non-plain results are rejected (NC11)', async () => {
+test('rawResult.rows getter is rejected and never executed (NC11a)', async () => {
   const { evaluator } = loadEvaluator();
-  const badResults = [
-    { rows: [new Date()] },
-    { rows: [{ count: Object.create(null) }] },
-  ];
-  for (const bad of badResults) {
-    const result = await evaluator.evaluateSignal({
-      descriptorId: 'MEMORY_PARENT_ORPHAN_COUNT',
-      executor: makeExecutor(bad),
-      releaseSha: VALID_RELEASE_SHA,
-    });
-    assert.equal(result.outcome_code, 'INSUFFICIENT_EVIDENCE');
-  }
+  const rawResult = {};
+  Object.defineProperty(rawResult, 'rows', {
+    enumerable: true,
+    get() {
+      throw new Error('ROWS_GETTER_EXECUTED');
+    }
+  });
+  const result = await evaluator.evaluateSignal({
+    descriptorId: 'MEMORY_PARENT_ORPHAN_COUNT',
+    executor: makeExecutor(rawResult),
+    releaseSha: VALID_RELEASE_SHA,
+  });
+  assert.equal(result.outcome_code, 'INSUFFICIENT_EVIDENCE');
+  const json = JSON.stringify(result);
+  assert.doesNotMatch(json, /ROWS_GETTER_EXECUTED/);
+});
+
+test('row.count getter is rejected and never executed (NC11b)', async () => {
+  const { evaluator } = loadEvaluator();
+  const row = {};
+  Object.defineProperty(row, 'count', {
+    enumerable: true,
+    get() {
+      throw new Error('COUNT_GETTER_EXECUTED');
+    }
+  });
+  const result = await evaluator.evaluateSignal({
+    descriptorId: 'MEMORY_PARENT_ORPHAN_COUNT',
+    executor: makeExecutor({ rows: [row] }),
+    releaseSha: VALID_RELEASE_SHA,
+  });
+  assert.equal(result.outcome_code, 'INSUFFICIENT_EVIDENCE');
+  const json = JSON.stringify(result);
+  assert.doesNotMatch(json, /COUNT_GETTER_EXECUTED/);
+});
+
+test('setter/accessor descriptor on row column is rejected (NC11c)', async () => {
+  const { evaluator } = loadEvaluator();
+  const row = {};
+  Object.defineProperty(row, 'count', {
+    enumerable: true,
+    set(value) {}
+  });
+  const result = await evaluator.evaluateSignal({
+    descriptorId: 'MEMORY_PARENT_ORPHAN_COUNT',
+    executor: makeExecutor({ rows: [row] }),
+    releaseSha: VALID_RELEASE_SHA,
+  });
+  assert.equal(result.outcome_code, 'INSUFFICIENT_EVIDENCE');
+});
+
+test('throwing raw-result Proxy fails closed without raw error exposure (NC11d)', async () => {
+  const { evaluator } = loadEvaluator();
+  const proxy = new Proxy({}, {
+    getPrototypeOf() {
+      throw new Error('PROXY_SECRET');
+    }
+  });
+  const result = await evaluator.evaluateSignal({
+    descriptorId: 'MEMORY_PARENT_ORPHAN_COUNT',
+    executor: makeExecutor(proxy),
+    releaseSha: VALID_RELEASE_SHA,
+  });
+  assert.ok(result.outcome_code === 'MONITORING_FAILED' || result.outcome_code === 'INSUFFICIENT_EVIDENCE');
+  const json = JSON.stringify(result);
+  assert.doesNotMatch(json, /PROXY_SECRET/);
+});
+
+test('throwing row Proxy fails closed (NC11e)', async () => {
+  const { evaluator } = loadEvaluator();
+  const proxy = new Proxy({}, {
+    ownKeys() {
+      throw new Error('ROW_PROXY_SECRET');
+    }
+  });
+  const result = await evaluator.evaluateSignal({
+    descriptorId: 'MEMORY_PARENT_ORPHAN_COUNT',
+    executor: makeExecutor({ rows: [proxy] }),
+    releaseSha: VALID_RELEASE_SHA,
+  });
+  assert.equal(result.outcome_code, 'INSUFFICIENT_EVIDENCE');
+  const json = JSON.stringify(result);
+  assert.doesNotMatch(json, /ROW_PROXY_SECRET/);
+});
+
+test('inherited count property on row is rejected (NC11f)', async () => {
+  const { evaluator } = loadEvaluator();
+  const row = Object.create({ count: 0 });
+  const result = await evaluator.evaluateSignal({
+    descriptorId: 'MEMORY_PARENT_ORPHAN_COUNT',
+    executor: makeExecutor({ rows: [row] }),
+    releaseSha: VALID_RELEASE_SHA,
+  });
+  assert.equal(result.outcome_code, 'INSUFFICIENT_EVIDENCE');
 });
 
 // ---------------------------------------------------------------------------
