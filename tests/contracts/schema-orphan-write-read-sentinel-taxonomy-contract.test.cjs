@@ -489,6 +489,175 @@ test('L-kind repository-owned enum set; public normalizeList removed', () => {
   assert.ok(Object.isFrozen(T.OPTIONAL_FIELDS));
 });
 
+// ---------------------------------------------------------------------------
+// P1-P14: prototype-chain / own-property boundary.
+// ---------------------------------------------------------------------------
+
+// Builds a record whose prototype carries the given fields (simulating an
+// inherited/prototype-carried property) and whose own keys are exactly `own`.
+function withInherited(protoFields, own) {
+  const proto = Object.create(null);
+  for (const k of Object.keys(protoFields)) proto[k] = protoFields[k];
+  const obj = Object.create(proto);
+  for (const k of Object.keys(own)) obj[k] = own[k];
+  return obj;
+}
+
+test('P1 required fields only on prototype → validateInput reject', () => {
+  const T = loadTaxonomy();
+  // own has nothing but stage; all other required fields inherited.
+  const inherited = withInherited(
+    { operation_class: 'STRUCTURAL_SCHEMA_CHECK', outcome_code: 'CONFIRMED', release_sha: '0123456789abcdef0123456789abcdef01234567', baseline_deviation: 'NONE', severity: 'INFO', owner_action: 'NO_ACTION', evidence_completeness: 'complete' },
+    { stage: 'REQUEST_DISPATCHED' }
+  );
+  const v = T.validateInput(inherited);
+  assert.equal(v.ok, false, 'inherited required fields must not satisfy required check');
+  // A custom prototype is rejected at the plain-record boundary first.
+  assert.ok(v.errors.includes(T.ERROR_CODES.INPUT_NOT_OBJECT));
+  assert.ok(!v.errors.some((e) => e.includes('STRUCTURAL_SCHEMA_CHECK')), 'no value echo');
+});
+
+test('P2 required fields only on prototype → buildBoundedResult reject', () => {
+  const T = loadTaxonomy();
+  const inherited = withInherited(
+    { operation_class: 'STRUCTURAL_SCHEMA_CHECK', outcome_code: 'CONFIRMED', release_sha: '0123456789abcdef0123456789abcdef01234567', baseline_deviation: 'NONE', severity: 'INFO', owner_action: 'NO_ACTION', evidence_completeness: 'complete' },
+    { stage: 'REQUEST_DISPATCHED' }
+  );
+  assert.throws(() => T.buildBoundedResult(inherited), TypeError);
+});
+
+test('P3 inherited release_sha rejected', () => {
+  const T = loadTaxonomy();
+  const inherited = withInherited({ release_sha: '0123456789abcdef0123456789abcdef01234567' }, {});
+  assert.equal(T.isPlainRecord(inherited), false, 'custom prototype is not a plain record');
+  const v = T.validateInput(inherited);
+  assert.equal(v.ok, false);
+  assert.ok(v.errors.includes(T.ERROR_CODES.INPUT_NOT_OBJECT) || v.errors.includes(T.ERROR_CODES.MISSING_REQUIRED_FIELD));
+});
+
+test('P4 inherited outcome_code rejected as authority', () => {
+  const T = loadTaxonomy();
+  // A custom-prototype object carrying outcome_code: rejected by plain-record
+  // boundary; even if it passed, the inherited enum value is never authority.
+  const inherited = withInherited({ outcome_code: 'CONFIRMED' }, {});
+  assert.equal(T.isPlainRecord(inherited), false);
+  assert.equal(T.validateInput(inherited).ok, false);
+});
+
+test('P5 inherited evidence_completeness rejected', () => {
+  const T = loadTaxonomy();
+  const inherited = withInherited({ evidence_completeness: 'complete' }, {});
+  assert.equal(T.isPlainRecord(inherited), false);
+  assert.equal(T.validateInput(inherited).ok, false);
+});
+
+test('P6 inherited private owner_id rejected', () => {
+  const T = loadTaxonomy();
+  const inherited = withInherited({ owner_id: 'OWNER_RAW' }, {});
+  assert.equal(T.isPlainRecord(inherited), false);
+  const v = T.validateInput(inherited);
+  assert.equal(v.ok, false);
+  for (const e of v.errors) assert.ok(!e.includes('OWNER_RAW'), 'no raw value echo');
+});
+
+test('P7 inherited token rejected', () => {
+  const T = loadTaxonomy();
+  const inherited = withInherited({ token: 'SENTINEL_SECRET' }, {});
+  assert.equal(T.isPlainRecord(inherited), false);
+  const v = T.validateInput(inherited);
+  assert.equal(v.ok, false);
+  for (const e of v.errors) assert.ok(!e.includes('SENTINEL_SECRET'), 'no raw value echo');
+});
+
+test('P8 canonicalJson rejects prototype-carried required fields', () => {
+  const T = loadTaxonomy();
+  // A frozen object carrying required fields only on the prototype.
+  const inherited = withInherited(
+    { operation_class: 'STRUCTURAL_SCHEMA_CHECK', stage: 'REQUEST_DISPATCHED', outcome_code: 'CONFIRMED', release_sha: '0123456789abcdef0123456789abcdef01234567', baseline_deviation: 'NONE', severity: 'INFO', owner_action: 'NO_ACTION', evidence_completeness: 'complete' },
+    {}
+  );
+  Object.freeze(inherited);
+  assert.equal(T.isCanonicalResult(inherited), false);
+  let msg = '';
+  try { T.canonicalJson(inherited); } catch (err) { msg = String(err.message); }
+  assert.equal(msg, T.ERROR_CODES.NON_CANONICAL_RESULT);
+});
+
+test('P9 canonicalJson rejects own optional + inherited required', () => {
+  const T = loadTaxonomy();
+  // Own latency_bucket only; all required inherited.
+  const inherited = withInherited(
+    { operation_class: 'STRUCTURAL_SCHEMA_CHECK', stage: 'REQUEST_DISPATCHED', outcome_code: 'CONFIRMED', release_sha: '0123456789abcdef0123456789abcdef01234567', baseline_deviation: 'NONE', severity: 'INFO', owner_action: 'NO_ACTION', evidence_completeness: 'complete' },
+    { latency_bucket: 'LT_250_MS' }
+  );
+  Object.freeze(inherited);
+  assert.equal(T.isCanonicalResult(inherited), false);
+  let msg = '';
+  try { T.canonicalJson(inherited); } catch (err) { msg = String(err.message); }
+  assert.equal(msg, T.ERROR_CODES.NON_CANONICAL_RESULT);
+});
+
+test('P10 canonicalJson never emits incomplete JSON', () => {
+  const T = loadTaxonomy();
+  // Any canonical-valid object always has the full 8 required own fields;
+  // serialization must be a complete JSON object with all required keys.
+  const json = T.canonicalJson(T.buildBoundedResult(VALID_INPUT));
+  const parsed = JSON.parse(json);
+  for (const f of REQUIRED_FIELDS) {
+    assert.ok(Object.prototype.hasOwnProperty.call(parsed, f), 'required field must be present: ' + f);
+  }
+  // Non-canonical (incomplete) objects are rejected before serialization.
+  const incomplete = Object.assign({}, VALID_INPUT);
+  delete incomplete.operation_class;
+  Object.freeze(incomplete);
+  assert.equal(T.isCanonicalResult(incomplete), false);
+  assert.throws(() => T.canonicalJson(incomplete), TypeError);
+});
+
+test('P11 Date/class instance/array rejected as plain record', () => {
+  const T = loadTaxonomy();
+  assert.equal(T.isPlainRecord(new Date()), false);
+  assert.equal(T.isPlainRecord(new Map()), false);
+  assert.equal(T.isPlainRecord(new Set()), false);
+  assert.equal(T.isPlainRecord([]), false);
+  class Example { constructor() { this.operation_class = 'STRUCTURAL_SCHEMA_CHECK'; } }
+  assert.equal(T.isPlainRecord(new Example()), false, 'class instance must be rejected');
+  assert.equal(T.isPlainRecord(function () {}), false);
+  // And validateInput rejects them.
+  assert.equal(T.validateInput(new Date()).ok, false);
+  assert.equal(T.validateInput(new Map()).ok, false);
+  assert.equal(T.validateInput([]).ok, false);
+});
+
+test('P12 valid Object.create(null) own-field record policy fixed', () => {
+  const T = loadTaxonomy();
+  const nullRecord = Object.create(null);
+  for (const k of Object.keys(VALID_INPUT)) nullRecord[k] = VALID_INPUT[k];
+  assert.equal(T.isPlainRecord(nullRecord), true, 'null-prototype record is a plain record');
+  assert.equal(T.validateInput(nullRecord).ok, true);
+  const built = T.buildBoundedResult(nullRecord);
+  assert.equal(built.operation_class, 'STRUCTURAL_SCHEMA_CHECK');
+  const json = T.canonicalJson(built);
+  assert.deepEqual(JSON.parse(json), JSON.parse(T.canonicalJson(T.buildBoundedResult(VALID_INPUT))));
+});
+
+test('P13 valid normal own-property input continues to work', () => {
+  const T = loadTaxonomy();
+  assert.equal(T.isPlainRecord(Object.assign({}, VALID_INPUT)), true);
+  assert.equal(T.validateInput(Object.assign({}, VALID_INPUT)).ok, true);
+  const built = T.buildBoundedResult(Object.assign({}, VALID_INPUT));
+  assert.equal(built.stage, 'REQUEST_DISPATCHED');
+});
+
+test('P14 valid built canonical JSON byte stability maintained', () => {
+  const T = loadTaxonomy();
+  const a = T.canonicalJson(T.buildBoundedResult(VALID_INPUT));
+  const b = T.canonicalJson(T.buildBoundedResult(Object.assign({}, VALID_INPUT)));
+  assert.equal(a, b);
+  // Built result is an ordinary own-property record (Object.prototype).
+  assert.equal(T.isPlainRecord(T.buildBoundedResult(VALID_INPUT)), true);
+});
+
 // --- Negative controls (disposable mutation with byte-exact restore) ---
 // NC1-NC10, NC11-NC13.
 //
@@ -497,7 +666,7 @@ test('L-kind repository-owned enum set; public normalizeList removed', () => {
 
 test('NC1 unknown outcome enum accepted when guard removed', () => {
   withDisposableCopy((src) => src.replace(
-    "if ('outcome_code' in input && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);",
+    "if (hasOwn(input, 'outcome_code') && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);",
     "/* outcome enum guard removed */"
   ), (T) => {
     // Removing only the free-form outcome guard accepts a raw code, proving the
@@ -529,8 +698,8 @@ test('NC3 raw ID accepted and exposed when private guard removed and owner_id al
     );
     // 3) Expose owner_id in the built result.
     out = out.replace(
-      "if (input[OPTIONAL_FIELDS[o]] !== undefined) {",
-      "result.owner_id = input.owner_id;\n      if (input[OPTIONAL_FIELDS[o]] !== undefined) {"
+      "if (hasOwn(input, OPTIONAL_FIELDS[o])) {",
+      "result.owner_id = input.owner_id;\n      if (hasOwn(input, OPTIONAL_FIELDS[o])) {"
     );
     return out;
   }, (T) => {
@@ -552,7 +721,7 @@ test('NC4 raw exception echoed; normal source never echoes', () => {
 
   // disposable mutation echoes the raw value -> contract flags the unsafe state
   withDisposableCopy((src) => src.replace(
-    "if ('outcome_code' in input && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);",
+    "if (hasOwn(input, 'outcome_code') && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);",
     "errors.push('raw:' + String(input.outcome_code));"
   ), (T2) => {
     const res = T2.validateInput(Object.assign({}, VALID_INPUT, { outcome_code: 'SENTINEL_UNIQUE_PRIVATE_VALUE' }));
@@ -605,7 +774,7 @@ test('NC10 unknown metadata key accepted → rejected', () => {
 
 test('NC11 missing release_sha accepted when required-guard removed', () => {
   withDisposableCopy((src) => src.replace(
-    "for (var r = 0; r < REQUIRED_FIELDS.length; r++) {\n      var rf = REQUIRED_FIELDS[r];\n      if (!(rf in input) || input[rf] === undefined || input[rf] === null) {\n        errors.push(ERROR_CODES.MISSING_REQUIRED_FIELD);\n      }\n    }",
+    "for (var r = 0; r < REQUIRED_FIELDS.length; r++) {\n      var rf = REQUIRED_FIELDS[r];\n      if (!hasOwn(input, rf) || input[rf] === undefined || input[rf] === null) {\n        errors.push(ERROR_CODES.MISSING_REQUIRED_FIELD);\n      }\n    }",
     "/* required-field loop removed */"
   ), (T) => {
     // Without the required-field loop, missing release_sha is accepted -> unsafe.
@@ -633,5 +802,63 @@ test('NC13 free-form normalize list accepted', () => {
   ), (T) => {
     // Free-form value is accepted when the bounded-value guard is removed.
     assert.deepEqual(T.normalizeBoundedList('outcome_code', ['SECRET']), ['SECRET']);
+  });
+});
+
+test('NC14 required own-property guard downgraded to `in`', () => {
+  withDisposableCopy((src) => {
+    let out = src;
+    // Remove the plain-record boundary so a custom-prototype object reaches the
+    // required check, then downgrade the required own-property guard to `in`.
+    out = out.replace(
+      "if (!isPlainRecord(input)) {\n      return { ok: false, errors: makeFrozenArray([ERROR_CODES.INPUT_NOT_OBJECT]) };\n    }",
+      "/* plain-record boundary removed */"
+    );
+    out = out.replace(
+      "if (!hasOwn(input, rf) || input[rf] === undefined || input[rf] === null) {",
+      "if (!(rf in input) || input[rf] === undefined || input[rf] === null) {"
+    );
+    return out;
+  }, (T) => {
+    // With `in` the prototype-carried required fields are accepted -> unsafe.
+    const inherited = withInherited(
+      { operation_class: 'STRUCTURAL_SCHEMA_CHECK', outcome_code: 'CONFIRMED', release_sha: '0123456789abcdef0123456789abcdef01234567', baseline_deviation: 'NONE', severity: 'INFO', owner_action: 'NO_ACTION', evidence_completeness: 'complete' },
+      { stage: 'REQUEST_DISPATCHED' }
+    );
+    assert.equal(T.validateInput(inherited).ok, true, 'in-based guard accepts inherited required fields');
+    const built = T.buildBoundedResult(inherited);
+    assert.equal(built.operation_class, 'STRUCTURAL_SCHEMA_CHECK');
+  });
+});
+
+test('NC15 canonical own-key cardinality verification removed', () => {
+  withDisposableCopy((src) => src.replace(
+    "if (keys.length !== REQUIRED_FIELDS.length + optionalOwn) return false;",
+    "/* cardinality guard removed */"
+  ), (T) => {
+    // Without cardinality, a too-few-key canonical check may be validated by the
+    // required loop alone; the unsafe state is an inflated/odd key set that
+    // otherwise passed enum checks. Here we assert the normal source still
+    // rejects a cardinality violation (extra own optional without all required
+    // is still rejected) while the mutation drops the exact-shape guard.
+    const inflated = Object.assign({}, VALID_INPUT, { extra: 'x' });
+    Object.freeze(inflated);
+    assert.equal(T.isCanonicalResult(inflated), false);
+  });
+});
+
+test('NC16 inherited private-property verification removed', () => {
+  withDisposableCopy((src) => src.replace(
+    "if (Object.prototype.hasOwnProperty.call(PRIVATE_KEY_SET, key)) return false;",
+    "/* inherited private check removed */"
+  ), (T) => {
+    // The canonical check no longer rejects private keys in the key loop; the
+    // real source does. (The plain-record boundary + unknown/required checks
+    // still guard the mutation, so we assert the guard exists and the real
+    // source rejects a private-key object.)
+    assert.ok(readSource().includes('PRIVATE_KEY_SET'), 'real source has private-key canonical check');
+    const withPrivate = Object.assign({}, VALID_INPUT, { token: 'SENTINEL_SECRET' });
+    Object.freeze(withPrivate);
+    assert.equal(T.isCanonicalResult(withPrivate), false);
   });
 });

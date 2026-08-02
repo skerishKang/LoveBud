@@ -49,6 +49,25 @@
     return Object.freeze(target);
   }
 
+  // Own-property existence only. Inherited (prototype-carried) properties are
+  // NEVER treated as present: an inherited required field is missing, an
+  // inherited optional field is absent, and an inherited private field is never
+  // read as authority.
+  function hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(object, key);
+  }
+
+  // Plain own-property record boundary. Only ordinary records whose prototype
+  // is exactly Object.prototype or null are accepted. Date/Map/Set/class
+  // instances/functions/arrays (and any caller-controlled prototype) are
+  // rejected so caller prototype properties can never become authority.
+  function isPlainRecord(value) {
+    if (value === null || typeof value !== 'object') return false;
+    if (Array.isArray(value)) return false;
+    var proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+  }
+
   // ---------------------------------------------------------------------------
   // Operation classes (structural schema / parity plus write-read converge).
   // ---------------------------------------------------------------------------
@@ -208,6 +227,12 @@
   // Optional fields (absent is allowed; still bounded when present).
   var OPTIONAL_FIELDS = makeFrozenArray(['latency_bucket', 'count_bucket']);
 
+  var OPTIONAL_FIELD_SET = (function () {
+    var s = {};
+    for (var i = 0; i < OPTIONAL_FIELDS.length; i++) s[OPTIONAL_FIELDS[i]] = true;
+    return deepFreeze(s);
+  })();
+
   // ---------------------------------------------------------------------------
   // Privacy-sensitive keys — rejected on BOTH input and output. Key-based strict
   // matching (NOT substring), so legitimate bounded enums (e.g. owner_action,
@@ -319,7 +344,10 @@
   function validateInput(input) {
     var errors = [];
 
-    if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    // Plain own-property record boundary: only Object.prototype or null
+    // prototype records. Date/Map/Set/class instance/function/array and any
+    // caller-controlled prototype are rejected up front.
+    if (!isPlainRecord(input)) {
       return { ok: false, errors: makeFrozenArray([ERROR_CODES.INPUT_NOT_OBJECT]) };
     }
 
@@ -333,31 +361,34 @@
       }
     }
 
+    // Required fields must be OWN properties. A prototype-carried (inherited)
+    // required field is treated as MISSING (never read as authority).
     for (var r = 0; r < REQUIRED_FIELDS.length; r++) {
       var rf = REQUIRED_FIELDS[r];
-      if (!(rf in input) || input[rf] === undefined || input[rf] === null) {
+      if (!hasOwn(input, rf) || input[rf] === undefined || input[rf] === null) {
         errors.push(ERROR_CODES.MISSING_REQUIRED_FIELD);
       }
     }
 
-    if ('operation_class' in input && !enumValid(input.operation_class, OPERATION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
-    if ('stage' in input && !enumValid(input.stage, STAGE_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
-    if ('outcome_code' in input && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
-    if ('baseline_deviation' in input && !enumValid(input.baseline_deviation, DEVIATION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
-    if ('severity' in input && !enumValid(input.severity, SEVERITY_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
-    if ('owner_action' in input && !enumValid(input.owner_action, ACTION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
-    if ('evidence_completeness' in input && !enumValid(input.evidence_completeness, EVIDENCE_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
-    if ('latency_bucket' in input && !enumValid(input.latency_bucket, LATENCY_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
-    if ('count_bucket' in input && !enumValid(input.count_bucket, COUNT_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'operation_class') && !enumValid(input.operation_class, OPERATION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'stage') && !enumValid(input.stage, STAGE_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'outcome_code') && !enumValid(input.outcome_code, OUTCOME_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'baseline_deviation') && !enumValid(input.baseline_deviation, DEVIATION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'severity') && !enumValid(input.severity, SEVERITY_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'owner_action') && !enumValid(input.owner_action, ACTION_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'evidence_completeness') && !enumValid(input.evidence_completeness, EVIDENCE_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'latency_bucket') && !enumValid(input.latency_bucket, LATENCY_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    if (hasOwn(input, 'count_bucket') && !enumValid(input.count_bucket, COUNT_SET)) errors.push(ERROR_CODES.UNKNOWN_ENUM);
 
-    if ('release_sha' in input && !isValidReleaseSha(input.release_sha)) {
+    if (hasOwn(input, 'release_sha') && !isValidReleaseSha(input.release_sha)) {
       errors.push(ERROR_CODES.INVALID_RELEASE_SHA);
     }
 
     // CONFIRMED is only ever accepted when evidence is COMPLETE. Completion by
-    // partial/missing/invalid evidence is rejected (fail closed).
-    if ('outcome_code' in input && input.outcome_code === OUTCOME_CODES.CONFIRMED) {
-      if (input.evidence_completeness !== EVIDENCE_COMPLETENESS.COMPLETE) {
+    // partial/missing/invalid evidence is rejected (fail closed). Both values
+    // are read only when they are own properties.
+    if (hasOwn(input, 'outcome_code') && input.outcome_code === OUTCOME_CODES.CONFIRMED) {
+      if (hasOwn(input, 'evidence_completeness') && input.evidence_completeness !== EVIDENCE_COMPLETENESS.COMPLETE) {
         errors.push(ERROR_CODES.CONFIRMED_EVIDENCE_INCOMPLETE);
       }
     }
@@ -384,12 +415,14 @@
       throw new TypeError(validation.errors[0]);
     }
 
+    // Build a fully detached ordinary own-property record. Only own values from
+    // the validated input are copied; the caller's prototype never leaks in.
     var result = {};
     for (var f = 0; f < REQUIRED_FIELDS.length; f++) {
       result[REQUIRED_FIELDS[f]] = input[REQUIRED_FIELDS[f]];
     }
     for (var o = 0; o < OPTIONAL_FIELDS.length; o++) {
-      if (input[OPTIONAL_FIELDS[o]] !== undefined) {
+      if (hasOwn(input, OPTIONAL_FIELDS[o])) {
         result[OPTIONAL_FIELDS[o]] = input[OPTIONAL_FIELDS[o]];
       }
     }
@@ -404,18 +437,29 @@
   // ---------------------------------------------------------------------------
   function isCanonicalResult(value) {
     if (Object.isFrozen(value) !== true) return false;
-    if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+    if (!isPlainRecord(value)) return false;
 
     var keys = Object.keys(value);
     if (keys.length === 0) return false;
 
+    // Canonical exact own-key shape: every own key must be allowed, no private
+    // key may be present (own or inherited), and the own-key count must equal
+    // the 8 required own fields plus the own optional fields (0..2). This is
+    // the cardinality guard: an object can never pass with an incomplete or
+    // inflated key set.
+    var optionalOwn = 0;
     for (var i = 0; i < keys.length; i++) {
-      if (!Object.prototype.hasOwnProperty.call(ALLOWED_FIELD_SET, keys[i])) return false;
-      if (Object.prototype.hasOwnProperty.call(PRIVATE_KEY_SET, keys[i])) return false;
+      var key = keys[i];
+      if (!Object.prototype.hasOwnProperty.call(ALLOWED_FIELD_SET, key)) return false;
+      if (Object.prototype.hasOwnProperty.call(PRIVATE_KEY_SET, key)) return false;
+      if (Object.prototype.hasOwnProperty.call(OPTIONAL_FIELD_SET, key)) optionalOwn++;
     }
+    if (keys.length !== REQUIRED_FIELDS.length + optionalOwn) return false;
 
+    // Required fields must be OWN properties (inherited required fields are not
+    // authority and are rejected).
     for (var r = 0; r < REQUIRED_FIELDS.length; r++) {
-      if (!(REQUIRED_FIELDS[r] in value) || value[REQUIRED_FIELDS[r]] === undefined) return false;
+      if (!hasOwn(value, REQUIRED_FIELDS[r]) || value[REQUIRED_FIELDS[r]] === undefined) return false;
     }
 
     if (!enumValid(value.operation_class, OPERATION_SET)) return false;
@@ -425,8 +469,8 @@
     if (!enumValid(value.severity, SEVERITY_SET)) return false;
     if (!enumValid(value.owner_action, ACTION_SET)) return false;
     if (!enumValid(value.evidence_completeness, EVIDENCE_SET)) return false;
-    if ('latency_bucket' in value && !enumValid(value.latency_bucket, LATENCY_SET)) return false;
-    if ('count_bucket' in value && !enumValid(value.count_bucket, COUNT_SET)) return false;
+    if (hasOwn(value, 'latency_bucket') && !enumValid(value.latency_bucket, LATENCY_SET)) return false;
+    if (hasOwn(value, 'count_bucket') && !enumValid(value.count_bucket, COUNT_SET)) return false;
 
     if (!isValidReleaseSha(value.release_sha)) return false;
 
@@ -511,6 +555,7 @@
     ALLOWED_FIELDS: ALLOWED_FIELDS,
     REQUIRED_FIELDS: REQUIRED_FIELDS,
     OPTIONAL_FIELDS: OPTIONAL_FIELDS,
+    OPTIONAL_FIELD_SET: OPTIONAL_FIELD_SET,
     ERROR_CODES: ERROR_CODES,
     PRIVATE_KEYS: PRIVATE_KEYS,
     CAPABILITIES: CAPABILITIES,
@@ -527,6 +572,7 @@
 
     RELEASE_SHA_PATTERN: RELEASE_SHA_PATTERN,
 
+    isPlainRecord: isPlainRecord,
     isValidReleaseSha: isValidReleaseSha,
     validateInput: validateInput,
     buildBoundedResult: buildBoundedResult,
