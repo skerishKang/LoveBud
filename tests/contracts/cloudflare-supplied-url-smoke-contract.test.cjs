@@ -214,8 +214,8 @@ test('19. authorized file set is represented and forbidden project authorities r
 
   // Registry aggregate contract count literals must be present in the registry contract test.
   const registryContract = fs.readFileSync(REGISTRY_CONTRACT_PATH, 'utf-8');
-  assert.match(registryContract, /default_total,\s*790/);
-  assert.match(registryContract, /SOURCE_STATIC,\s*577/);
+  assert.match(registryContract, /default_total,\s*791/);
+  assert.match(registryContract, /SOURCE_STATIC,\s*578/);
   // package.json smoke script must keep its existing value (no modification required).
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, 'utf-8'));
   assert.ok(pkg.scripts['smoke:cloudflare'].includes('cloudflare-supplied-url-smoke.cjs'));
