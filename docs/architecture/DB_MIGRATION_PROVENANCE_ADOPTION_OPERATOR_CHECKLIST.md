@@ -6,6 +6,12 @@ This checklist documents what an operator must prepare before Phase B Production
 
 This document is a preparation and review aid. Approval gates, execution boundaries, and fail-closed checks remain in the committed source contracts listed in Repository References.
 
+## Primary Adoption Policy & Deferred Status (#3840)
+
+Issue #3840 selects a **clean target environment** (`CLEAN_TARGET_FIRST_SELECTED`) as the primary canonical adoption target for LoveBud migration provenance.
+
+The legacy Production database adoption framework detailed in Phase B/C/D/E of this checklist is **deferred** (`LEGACY_PRODUCTION_ADOPTION_DEFERRED`). It is preserved intact without deletion or modification as an operator preparation framework for any future explicit owner approval event. It does NOT authorize current execution, database connection, credential usage, or schema mutation.
+
 ## Current Fail-Closed State
 
 The following state is read from current main source files. Do not interpret an empty manifest as an empty production schema. Run status and evidence status are authoritative; manifest shape alone is not.
