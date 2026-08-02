@@ -3634,6 +3634,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/schema-orphan-structural-sentinel-readonly-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes the real query catalog and evaluation core in a restricted sandbox with synthetic fake executors only, and never connects to any database, network, provider, browser, or deployment target (#3842).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/search-csp-inline-cleanup-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
