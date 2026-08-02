@@ -595,6 +595,249 @@ test('human formatter separates technical status from Product/UI acceptance line
   assert.ok(text.includes('Product/UI acceptance: PRODUCT_ACCEPTANCE_PENDING'));
 });
 
+// --- Canonical fail-closed boundary: serializer/formatter revalidation ---
+
+function deepFreezeForTest(value) {
+  if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const key of Object.keys(value)) {
+      deepFreezeForTest(value[key]);
+    }
+  }
+  return value;
+}
+
+// Build a valid canonical summary, then produce a mutable copy of it with the
+// given field overrides so the targeted defect is exercised directly against
+// the public serializer/formatter (not against the builder).
+function forgedSummary(templateInput, overrides) {
+  const built = buildReleaseHealthOperatorSummary(validInput(templateInput));
+  const forged = {};
+  for (const key of Object.keys(built)) {
+    forged[key] = Array.isArray(built[key]) ? built[key].slice() : built[key];
+  }
+  Object.assign(forged, overrides || {});
+  return deepFreezeForTest(forged);
+}
+
+function expectCanonicalReject(forged, code, rawValue) {
+  for (const fn of [serializeReleaseHealthOperatorSummary, formatReleaseHealthOperatorSummary]) {
+    assert.throws(() => fn(forged), (err) => {
+      assert.equal(err.name, 'SummaryError');
+      assert.equal(err.code, code);
+      if (rawValue !== undefined) {
+        assert.equal(err.message.includes(rawValue), false, 'error must not echo raw value');
+      }
+      return true;
+    });
+  }
+}
+
+test('canonical build output passes the strengthened serializer/formatter boundary', () => {
+  const inputs = [
+    validInput(),
+    validInput({
+      health_state: 'DEGRADED',
+      response_recommendation: 'OBSERVE',
+      degraded_codes: ['latency_bucket_gte_5_s'],
+    }),
+    validInput({
+      health_state: 'BLOCKED',
+      response_recommendation: 'ROLLBACK_RECOMMENDED',
+      blocker_codes: ['release_sha_mismatch'],
+    }),
+    validInput({
+      health_state: 'INSUFFICIENT_EVIDENCE',
+      response_recommendation: 'OWNER_DECISION_REQUIRED',
+    }),
+  ];
+  for (const input of inputs) {
+    const built = buildReleaseHealthOperatorSummary(input);
+    assert.equal(Object.isFrozen(built), true);
+    assert.equal(Object.isFrozen(built.blocker_codes), true);
+    assert.equal(Object.isFrozen(built.degraded_codes), true);
+    assert.ok(serializeReleaseHealthOperatorSummary(built).length > 0);
+    assert.ok(formatReleaseHealthOperatorSummary(built).length > 0);
+  }
+});
+
+test('F1 serializer/formatter reject unknown health_state in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(null, { health_state: 'WARN' }),
+    ERROR_CODES.SUMMARY_UNKNOWN_ENUM,
+    'WARN'
+  );
+});
+
+test('F2 serializer/formatter reject unknown response recommendation in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(null, { response_recommendation: 'DEPLOY_NOW' }),
+    ERROR_CODES.SUMMARY_UNKNOWN_ENUM,
+    'DEPLOY_NOW'
+  );
+});
+
+test('F3 serializer/formatter reject unknown blocker code in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(
+      {
+        health_state: 'BLOCKED',
+        response_recommendation: 'FORWARD_FIX_REQUIRED',
+        blocker_codes: ['required_route_failure'],
+      },
+      { blocker_codes: ['required_route_failure', 'mystery_blocker'] }
+    ),
+    ERROR_CODES.SUMMARY_UNKNOWN_ENUM,
+    'mystery_blocker'
+  );
+});
+
+test('F4 serializer/formatter reject unknown degraded code in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(
+      {
+        health_state: 'DEGRADED',
+        response_recommendation: 'OBSERVE',
+        degraded_codes: ['latency_bucket_gte_5_s'],
+      },
+      { degraded_codes: ['latency_bucket_gte_5_s', 'mystery_degraded'] }
+    ),
+    ERROR_CODES.SUMMARY_UNKNOWN_ENUM,
+    'mystery_degraded'
+  );
+});
+
+test('F5 serializer/formatter reject non-array blocker_codes in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(null, { blocker_codes: 'required_route_failure' }),
+    ERROR_CODES.SUMMARY_INPUT_INVALID
+  );
+});
+
+test('F6 serializer/formatter reject duplicate blocker codes in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(
+      {
+        health_state: 'BLOCKED',
+        response_recommendation: 'FORWARD_FIX_REQUIRED',
+        blocker_codes: ['required_route_failure'],
+      },
+      { blocker_codes: ['required_route_failure', 'required_route_failure'] }
+    ),
+    ERROR_CODES.SUMMARY_INPUT_INVALID
+  );
+});
+
+test('F7 serializer/formatter reject unsorted blocker codes in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(
+      {
+        health_state: 'BLOCKED',
+        response_recommendation: 'FORWARD_FIX_REQUIRED',
+        blocker_codes: ['privacy_boundary_violation', 'release_sha_mismatch'],
+      },
+      { blocker_codes: ['required_route_failure', 'privacy_boundary_violation'] }
+    ),
+    ERROR_CODES.SUMMARY_INPUT_INVALID
+  );
+});
+
+test('F8 serializer/formatter reject forged evidence_completeness', () => {
+  expectCanonicalReject(
+    forgedSummary(null, { evidence_completeness: 'EVIDENCE_INCOMPLETE' }),
+    ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE,
+    'EVIDENCE_INCOMPLETE'
+  );
+});
+
+test('F9 serializer/formatter reject forged technical_acceptance', () => {
+  expectCanonicalReject(
+    forgedSummary(null, { technical_acceptance: 'TECHNICAL_DEGRADED' }),
+    ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE,
+    'TECHNICAL_DEGRADED'
+  );
+});
+
+test('F10 serializer/formatter reject forged owner_decision_state', () => {
+  expectCanonicalReject(
+    forgedSummary(null, { owner_decision_state: 'OWNER_ACTION_REQUIRED' }),
+    ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE,
+    'OWNER_ACTION_REQUIRED'
+  );
+});
+
+test('F11 serializer/formatter reject unknown product_acceptance in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(null, { product_acceptance: 'PRODUCT_APPROVED' }),
+    ERROR_CODES.SUMMARY_UNKNOWN_ENUM,
+    'PRODUCT_APPROVED'
+  );
+});
+
+test('F12 serializer/formatter reject HEALTHY with blocker contradiction in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(null, { blocker_codes: ['required_route_failure'] }),
+    ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE,
+    'required_route_failure'
+  );
+});
+
+test('F13 serializer/formatter reject DEGRADED without degraded code in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(
+      {
+        health_state: 'DEGRADED',
+        response_recommendation: 'OBSERVE',
+        degraded_codes: ['latency_bucket_gte_5_s'],
+      },
+      { degraded_codes: [] }
+    ),
+    ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE
+  );
+});
+
+test('F14 serializer/formatter reject BLOCKED without blocker in forged object', () => {
+  expectCanonicalReject(
+    forgedSummary(
+      {
+        health_state: 'BLOCKED',
+        response_recommendation: 'FORWARD_FIX_REQUIRED',
+        blocker_codes: ['required_route_failure'],
+      },
+      { blocker_codes: [] }
+    ),
+    ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE
+  );
+});
+
+test('F15 serializer/formatter reject raw/private string inside a code array without echo', () => {
+  const raw = 'super-secret-token-ABCDE12345';
+  expectCanonicalReject(
+    forgedSummary(
+      {
+        health_state: 'BLOCKED',
+        response_recommendation: 'FORWARD_FIX_REQUIRED',
+        blocker_codes: ['required_route_failure'],
+      },
+      { blocker_codes: [raw] }
+    ),
+    ERROR_CODES.SUMMARY_UNKNOWN_ENUM,
+    raw
+  );
+});
+
+test('F16 serializer/formatter reject exact-11-key unfrozen forged object', () => {
+  const built = buildReleaseHealthOperatorSummary(validInput());
+  const forged = {};
+  for (const key of Object.keys(built)) {
+    forged[key] = Array.isArray(built[key]) ? Object.freeze(built[key].slice()) : built[key];
+  }
+  assert.equal(Object.keys(forged).length, SUMMARY_KEY_ORDER.length);
+  assert.equal(Object.isFrozen(forged), false);
+  assert.equal(Object.isFrozen(forged.blocker_codes), true);
+  expectCanonicalReject(forged, ERROR_CODES.SUMMARY_INPUT_INVALID);
+});
+
 test('errors carry only fixed sanitized codes and never echo input values', () => {
   const sensitive = 'super-secret-token-ABCDE';
   try {

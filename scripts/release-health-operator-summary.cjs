@@ -147,6 +147,9 @@ const RESPONSE_RECOMMENDATION_SET = new Set(RESPONSE_RECOMMENDATIONS);
 const BLOCKER_CODE_SET = new Set(BLOCKER_CODES);
 const DEGRADED_CODE_SET = new Set(DEGRADED_CODES);
 const PRODUCT_ACCEPTANCE_SET = new Set(PRODUCT_ACCEPTANCE_STATES);
+const EVIDENCE_COMPLETENESS_SET = new Set(EVIDENCE_COMPLETENESS_STATES);
+const TECHNICAL_ACCEPTANCE_SET = new Set(TECHNICAL_ACCEPTANCE_STATES);
+const OWNER_DECISION_SET = new Set(OWNER_DECISION_STATES);
 const ALLOWED_INPUT_SET = new Set(ALLOWED_INPUT_FIELDS);
 const PRIVATE_FIELD_SET = new Set(PRIVATE_FIELD_NAMES);
 
@@ -309,8 +312,39 @@ function deepFreeze(value) {
   return value;
 }
 
-// Validate that a value is a canonical summary object with exactly the 11 keys
-// in the fixed order and the fixed contract/authority values.
+// Validate that a code array is canonical: frozen, every item bounded, no
+// duplicates, and lexicographically sorted. Any violation fails closed.
+function assertCanonicalCodeList(value, allowedSet) {
+  if (!Array.isArray(value)) {
+    fail(ERROR_CODES.SUMMARY_INPUT_INVALID);
+  }
+  if (!Object.isFrozen(value)) {
+    fail(ERROR_CODES.SUMMARY_INPUT_INVALID);
+  }
+  const seen = new Set();
+  for (let i = 0; i < value.length; i += 1) {
+    const item = value[i];
+    if (typeof item !== 'string' || !allowedSet.has(item)) {
+      fail(ERROR_CODES.SUMMARY_UNKNOWN_ENUM);
+    }
+    if (seen.has(item)) {
+      fail(ERROR_CODES.SUMMARY_INPUT_INVALID);
+    }
+    seen.add(item);
+    if (i > 0 && value[i - 1] > item) {
+      fail(ERROR_CODES.SUMMARY_INPUT_INVALID);
+    }
+  }
+  return value;
+}
+
+// Validate that a value is a canonical summary object: exactly the 11 keys in
+// the fixed order, fixed contract/authority values, a valid release SHA, all
+// enum fields within their exact bounded vocabularies, canonical frozen sorted
+// unique code arrays, a frozen summary object, and derived fields that exactly
+// match the canonical derivation. A caller-created forged object is therefore
+// never serialized or formatted; any violation fails closed with a fixed
+// sanitized code and no input value is echoed.
 function assertCanonicalSummary(summary) {
   if (!isPlainObject(summary)) {
     fail(ERROR_CODES.SUMMARY_INPUT_INVALID);
@@ -332,6 +366,37 @@ function assertCanonicalSummary(summary) {
   }
   if (typeof summary.release_sha !== 'string' || !RELEASE_SHA_PATTERN.test(summary.release_sha)) {
     fail(ERROR_CODES.SUMMARY_RELEASE_SHA_INVALID);
+  }
+  // Bounded enum revalidation of every enum field.
+  assertEnum(summary.health_state, HEALTH_STATE_SET);
+  assertEnum(summary.response_recommendation, RESPONSE_RECOMMENDATION_SET);
+  assertEnum(summary.evidence_completeness, EVIDENCE_COMPLETENESS_SET);
+  assertEnum(summary.technical_acceptance, TECHNICAL_ACCEPTANCE_SET);
+  assertEnum(summary.owner_decision_state, OWNER_DECISION_SET);
+  assertEnum(summary.product_acceptance, PRODUCT_ACCEPTANCE_SET);
+  // Canonical code lists: frozen, bounded, unique, sorted.
+  const blockerCodes = assertCanonicalCodeList(summary.blocker_codes, BLOCKER_CODE_SET);
+  const degradedCodes = assertCanonicalCodeList(summary.degraded_codes, DEGRADED_CODE_SET);
+  // Frozen canonical boundary: the summary object itself must be frozen.
+  if (!Object.isFrozen(summary)) {
+    fail(ERROR_CODES.SUMMARY_INPUT_INVALID);
+  }
+  // Cross-field consistency: derived fields must equal the canonical
+  // derivation. Forged derived fields are rejected, never silently accepted.
+  const derived = deriveState(
+    summary.health_state,
+    summary.response_recommendation,
+    blockerCodes,
+    degradedCodes
+  );
+  if (summary.evidence_completeness !== derived.evidenceCompleteness) {
+    fail(ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE);
+  }
+  if (summary.technical_acceptance !== derived.technicalAcceptance) {
+    fail(ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE);
+  }
+  if (summary.owner_decision_state !== deriveOwnerDecisionState(summary.response_recommendation)) {
+    fail(ERROR_CODES.SUMMARY_IMPOSSIBLE_STATE);
   }
 }
 
