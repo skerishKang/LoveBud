@@ -3634,6 +3634,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/schema-orphan-structural-sentinel-readonly-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes the real query catalog and evaluation core in a restricted sandbox with synthetic fake executors only, and never connects to any database, network, provider, browser, or deployment target (#3842).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/search-csp-inline-cleanup-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -4953,6 +4959,16 @@
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
       "rationale": "Rehearses the merged migration precondition composition root against a disposable PostgreSQL 17.4 engine (loopback LB_TEST_PG* only, no DATABASE_URL, no Production/Neon/Modal/provider): acquires/checks/releases the canonical advisory lock on the same pinned session, proves committed ADOPTION_REQUIRED authority -> NOT_EVALUATED (never implicit PASS) and orchestrator fail-closed before execution, proves a bounded construction-time ACTIVE seam yields PASS only through the same-session broker, proves bounded negative evidence -> FAIL, proves real advisory-lock contention between two composition roots, proves foreign/released handles fail closed with zero extra queries or session releases, and proves exact dedicated-session release with zero residual advisory locks. Permitted SQL is limited to the canonical advisory-lock acquire/check/release queries, fixed synthetic boolean SELECT evidence, and bounded read-only residual-lock verification; no DDL/DML/migration/ledger SQL. Runs only in GitHub Actions via npm run test:db-engine:precondition-composition-root; never executed locally (#3816).",
+      "capabilities": [
+        "postgresql",
+        "network"
+      ]
+    },
+    {
+      "path": "tests/db-engine/schema-orphan-structural-sentinel-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Rehearses the read-only structural sentinel aggregate queries (MEMORY_TREE_PARENT_ORPHAN_COUNT, MEMORY_PARENT_ORPHAN_COUNT) from the fixed repository-owned query catalog against a disposable PostgreSQL 17.4 engine (loopback LB_TEST_PG* only, no DATABASE_URL, no Production/Neon/Modal/provider): proves a root memory with parent_id NULL is not an orphan, a valid child memory is not an orphan, a missing parent memory increments only the parent-memory orphan aggregate, a memory referencing a missing tree increments only the tree-parent orphan aggregate, restoring the missing parents returns both aggregates to zero, the sentinel query is read-only and leaves fixture rows/contents unchanged, a read-only transaction/session carries sentinel execution, and the disposable DB is dropped with no residual DB state. Permitted SQL is limited to the fixed read-only aggregate SELECT statements from the catalog plus minimal synthetic schema/fixture setup; no migration/ledger/DDL-after-seed SQL. Runs only in GitHub Actions via npm run test:db-engine:structural-sentinel; never executed locally (#3842).",
       "capabilities": [
         "postgresql",
         "network"
