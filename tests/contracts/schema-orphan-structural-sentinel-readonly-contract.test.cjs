@@ -565,12 +565,21 @@ test('catalog/core source must not embed provider, env, network, or secret logic
   }
 });
 
-test('contract document exists and covers the required sections', () => {
+test('contract document exists and covers the required sections and CI wiring', () => {
   const doc = fs.readFileSync(CONTRACT_DOC_PATH, 'utf8');
   assert.match(doc, /MEMORY_TREE_PARENT_ORPHAN_COUNT/);
   assert.match(doc, /MEMORY_PARENT_ORPHAN_COUNT/);
   assert.match(doc, /CANONICAL_SCHEMA_AUTHORITY_REQUIRED/);
-  assert.match(doc, /STRUCTURAL_SENTINEL_DB_ENGINE_CI_BLOCKED/);
+  assert.doesNotMatch(doc, /STRUCTURAL_SENTINEL_DB_ENGINE_CI_BLOCKED/);
+  assert.match(doc, /DB_ENGINE_EXECUTION/);
+  assert.match(doc, /db-engine-structural-sentinel/);
+  assert.match(doc, /postgres:17\.4-bookworm/);
+  assert.match(doc, /170004/);
+  assert.match(doc, /LB_TEST_PG/);
+  assert.match(doc, /local DB execution prohibited/);
+  assert.match(doc, /authoritative PostgreSQL evidence pending fresh exact-head CI/);
+  assert.match(doc, /derived cardinality/);
+  assert.doesNotMatch(doc, /literal 9/);
   assert.match(doc, /valid root memory/);
   assert.match(doc, /CONFIRMED \/ NONE/);
   assert.match(doc, /ORPHAN_SIGNAL_DETECTED/);

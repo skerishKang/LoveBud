@@ -4959,6 +4959,16 @@
       ]
     },
     {
+      "path": "tests/db-engine/schema-orphan-structural-sentinel-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Rehearses the read-only structural sentinel aggregate queries (MEMORY_TREE_PARENT_ORPHAN_COUNT, MEMORY_PARENT_ORPHAN_COUNT) from the fixed repository-owned query catalog against a disposable PostgreSQL 17.4 engine (loopback LB_TEST_PG* only, no DATABASE_URL, no Production/Neon/Modal/provider): proves a root memory with parent_id NULL is not an orphan, a valid child memory is not an orphan, a missing parent memory increments only the parent-memory orphan aggregate, a memory referencing a missing tree increments only the tree-parent orphan aggregate, restoring the missing parents returns both aggregates to zero, the sentinel query is read-only and leaves fixture rows/contents unchanged, a read-only transaction/session carries sentinel execution, and the disposable DB is dropped with no residual DB state. Permitted SQL is limited to the fixed read-only aggregate SELECT statements from the catalog plus minimal synthetic schema/fixture setup; no migration/ledger/DDL-after-seed SQL. Runs only in GitHub Actions via npm run test:db-engine:structural-sentinel; never executed locally (#3842).",
+      "capabilities": [
+        "postgresql",
+        "network"
+      ]
+    },
+    {
       "path": "tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
