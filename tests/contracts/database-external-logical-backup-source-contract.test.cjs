@@ -48,6 +48,35 @@ test('4. one scheduled execution per 24-hour period', () => {
   assert.match(APP, /modal\.Period\(days\s*=\s*1\)/);
 });
 
+test('4b. exactly one non-HTTP Modal function binding on run_logical_backup', () => {
+  const functionDecorators = (APP.match(/@app\.function\s*\(/g) || []).length;
+  assert.equal(functionDecorators, 1, 'must be exactly one @app.function');
+  const fnStart = APP.indexOf('def run_logical_backup');
+  const decoratorEnd = APP.indexOf('@app.function');
+  assert.ok(fnStart !== -1 && decoratorEnd !== -1 && decoratorEnd < fnStart, 'decorator must precede run_logical_backup');
+  const binding = APP.slice(decoratorEnd, fnStart);
+  assert.match(binding, /image\s*=\s*BACKUP_IMAGE/);
+  assert.match(binding, /schedule\s*=\s*DAILY_SCHEDULE/);
+  assert.match(binding, /timeout\s*=\s*FUNCTION_TIMEOUT_SECONDS/);
+  assert.ok(!/@modal\.asgi_app|@modal\.web_endpoint/.test(binding), 'binding must remain non-HTTP');
+  // each exact symbolic secret must be bound through modal.Secret.from_name
+  for (const secretName of ['lovebud-db', 'lovebud-recovery-r2', 'lovebud-recovery-encryption']) {
+    assert.ok(
+      APP.includes(`modal.Secret.from_name(RECOVERY_DB_SECRET_NAME)`) ||
+      APP.includes(`modal.Secret.from_name(RECOVERY_R2_SECRET_NAME)`) ||
+      APP.includes(`modal.Secret.from_name(RECOVERY_ENCRYPTION_SECRET_NAME)`),
+      'secret constants must be referenced through modal.Secret.from_name'
+    );
+    const constantFor = {
+      'lovebud-db': 'RECOVERY_DB_SECRET_NAME',
+      'lovebud-recovery-r2': 'RECOVERY_R2_SECRET_NAME',
+      'lovebud-recovery-encryption': 'RECOVERY_ENCRYPTION_SECRET_NAME',
+    }[secretName];
+    assert.ok(APP.includes(`${constantFor} = '${secretName}'`) || APP.includes(`${constantFor} = "${secretName}"`), `constant ${constantFor} must carry ${secretName}`);
+    assert.ok(APP.includes(`modal.Secret.from_name(${constantFor})`), `modal.Secret.from_name(${constantFor}) binding required`);
+  }
+});
+
 test('5. custom-format compressed dump intent with no owner/privilege dependency', () => {
   assert.match(APP, /--format=custom|format=custom/);
   assert.match(APP, /--compress/);

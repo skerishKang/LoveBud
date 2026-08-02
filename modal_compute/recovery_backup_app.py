@@ -100,6 +100,9 @@ app = modal.App(RECOVERY_BACKUP_APP_NAME)
 # One scheduled execution per 24-hour period; no web endpoint, no manual trigger.
 DAILY_SCHEDULE = modal.Period(days=1)
 
+# Bounded runtime budget for a single scheduled backup execution.
+FUNCTION_TIMEOUT_SECONDS = 900
+
 
 def _log_phase(phase: str) -> None:
     # Sanitized phase-only logging: never logs values, commands, or stderr.
@@ -270,6 +273,16 @@ def _verified_upload(s3, bucket: str, key: str, enc_path: str) -> bool:
     return ok
 
 
+@app.function(
+    image=BACKUP_IMAGE,
+    secrets=[
+        modal.Secret.from_name(RECOVERY_DB_SECRET_NAME),
+        modal.Secret.from_name(RECOVERY_R2_SECRET_NAME),
+        modal.Secret.from_name(RECOVERY_ENCRYPTION_SECRET_NAME),
+    ],
+    schedule=DAILY_SCHEDULE,
+    timeout=FUNCTION_TIMEOUT_SECONDS,
+)
 def run_logical_backup() -> dict:
     """One compressed, encrypted, retained logical backup per 24-hour period."""
     if not _secrets_present():
