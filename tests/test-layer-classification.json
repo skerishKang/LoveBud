@@ -521,6 +521,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/release-health-operator-summary-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/release-health-threshold-response-policy-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Requires the canonical release health threshold/response policy document and deterministically locks the exact four health states, five response recommendations, precedence, hard-blocker set, no-success-default evidence completeness, latency diagnostic boundary, full rollback prerequisites, mandatory owner approval, automatic-rollback prohibition, technical/product acceptance separation, privacy exclusions, Step 6 operator-summary handoff, and policy authority without network, browser, Production, provider, database, or secret access (#3824, Step 5 of 6).",
@@ -3610,6 +3616,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/schema-orphan-write-read-sentinel-taxonomy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/search-csp-inline-cleanup-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -4775,6 +4787,21 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes only the pure deterministic policy module modal_compute/recovery_backup_policy.py through a local python3 subprocess (scenario script written to the OS temp directory, never the repository) to lock #3828 status semantics: daily-only/daily+weekly/daily+monthly/daily+weekly+monthly success, dump/encryption/plaintext-cleanup/upload/head-verification/daily-promotion failures, daily-valid-with-weekly/monthly-promotion-failure preservation, stale-daily and missing-weekly/monthly classification, and unknown/private/raw/impossible state rejection. No live provider, R2, Modal, DB, pg_dump, network, secret, or filesystem-backup operation.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-story-view-foundation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads production sources (js/my-trees/my-trees-story-view.js, js/search/search-story-view.js, js/my-trees/my-trees-page-bootstrap.js, pages/my-trees.html, css/tree-view-mode.css, js/i18n/i18n-my-trees.js, js/tree-view-mode-switcher.js) and asserts the #3811 My Trees Story thin-adapter contract: adapter initializes the shared LoveBudBrowseStoryView (results/navMount/translate/onGroupChange) without copying it, no second grouping/transition authority, no backend pagination, no autoplay/loop/swipe, entry via setMode('story', { initialTreeId }), result replacement via refresh({ preferredTreeId }), settled onGroupChange snapshot driving selection/preview sync with a mobile no-auto-open guard, My Trees-specific surface translation (i18n-my-trees.js story keys only), Story rail loaded-with-cards only, destroy() releasing listeners/observers, exact four modes (large/compact/list/story) with compact default and page-scoped storage key lovebud:myTrees:viewMode, My Trees HTML/script ordering (shared controller + adapter before bootstrap), and CSS geometry-only .trees-grid[data-tree-view-mode=\"story\"] selectors with reduced motion. No real browser, network, or production resource.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-story-view-foundation-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the real pages/my-trees.html and real product modules/CSS (js/my-trees/*, js/search/search-story-view.js, js/tree-view-mode-switcher.js, css/tree-view-mode.css) in Playwright Chromium via a local HTTP server with deterministic authenticated/API stubs (synthetic non-private owner-tree fixtures, inert Firebase). Asserts #3811 My Trees Story behavior: four-mode capability with compact default and stored-story persistence without Browse-key leakage, responsive group sizes 3/2/1 at 1440x900 / 900x900 / 390x844, selected-tree group entry, Next/Previous/Home/End selection + desktop preview-hub sync, mobile group navigation never auto-opening the bottom sheet, preserved card activation and owner actions, filter/result-replacement clamp, no Story rail in loading/empty/error states, leave/re-enter canonical DOM order restore, hidden-card tab/accessibility exclusion, reduced-motion immediate navigation, My Trees-specific localized labels, and zero pageerror/console/requestfailure/HTTP>=400/overflow/leak. No production write/auth/API/DB mutation.",
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
     }
   ],
   "supplemental": [

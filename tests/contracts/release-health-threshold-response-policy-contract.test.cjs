@@ -237,18 +237,18 @@ test('this contract is classified SOURCE_STATIC and registry/count literals are 
   assert.ok(entry, 'classification entry must exist for this contract test');
   assert.equal(entry.layer, 'SOURCE_STATIC');
 
-const registryContract = fs.readFileSync(REGISTRY_CONTRACT_PATH, 'utf8');
-  assert.match(registryContract, /expected post-child counts 791 \/ 578 \/ 192 \/ 21/);
-  assert.match(registryContract, /default_total,\s*791/);
-  assert.match(registryContract, /SOURCE_STATIC,\s*578/);
-  assert.match(registryContract, /EXECUTED_FAKE,\s*192/);
-  assert.match(registryContract, /EXECUTED_REAL_LOCAL,\s*21/);
+  const registryContract = fs.readFileSync(REGISTRY_CONTRACT_PATH, 'utf8');
+  assert.match(registryContract, /expected post-child counts 795 \/ 580 \/ 193 \/ 22/);
+  assert.match(registryContract, /default_total,\s*795/);
+  assert.match(registryContract, /SOURCE_STATIC,\s*580/);
+  assert.match(registryContract, /EXECUTED_FAKE,\s*193/);
+  assert.match(registryContract, /EXECUTED_REAL_LOCAL,\s*22/);
 
-  // The CF smoke contract embeds the same count literals as regexp-literal text
+  // The CF smoke contract embeds the same count literals as regex-literal text
   // (backslash-s), so match the literal source text rather than a whitespace class.
   const cfSmoke = fs.readFileSync(CF_SMOKE_CONTRACT_PATH, 'utf8');
-  assert.ok(cfSmoke.includes('default_total,\\s*791'), 'CF smoke contract must embed default_total 791 literal');
-  assert.ok(cfSmoke.includes('SOURCE_STATIC,\\s*578'), 'CF smoke contract must embed SOURCE_STATIC 578 literal');
+  assert.ok(cfSmoke.includes('default_total,\\s*795'), 'CF smoke contract must embed default_total 795 literal');
+  assert.ok(cfSmoke.includes('SOURCE_STATIC,\\s*580'), 'CF smoke contract must embed SOURCE_STATIC 580 literal');
 });
 
 test('this contract is source-static with no I/O side effect beyond reading files', () => {

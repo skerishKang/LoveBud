@@ -15,18 +15,71 @@
     "FULL_DEFAULT_REGRESSION"
   ],
   "group_enum_note": "Canonical ordered group vocabulary. Every group in this registry must appear in exactly this order in group_enum and in the same order in groups. Unknown, duplicate, misordered, or missing groups are fail-closed.",
-  "membership_source_enum": ["classification_layer", "package_glob", "path_pattern", "explicit_list"],
-  "execution_state_enum": ["ALWAYS", "ON_COMMIT", "ON_PR", "MANUAL", "NOT_EXECUTED"],
-  "runtime_enum": ["node", "node_browser", "python", "postgresql_ephemeral", "manual", "aggregate"],
-  "platform_enum": ["ubuntu", "cross_platform", "manual"],
-  "capability_enum": ["playwright", "chromium", "child_process", "filesystem", "postgresql", "network", "none"],
-  "artifact_expectation_enum": ["TAP test output", "screenshot evidence", "stdout or tool report", "command-defined; none registered by this child", "combined TAP output from all default-CI groups"],
-  "risk_gate_eligibility_enum": ["full_regression", "manual_only"],
-  "source_status_enum": ["CONFIRMED", "UNVERIFIED", "NOT_PRESENT"],
+  "membership_source_enum": [
+    "classification_layer",
+    "package_glob",
+    "path_pattern",
+    "explicit_list"
+  ],
+  "execution_state_enum": [
+    "ALWAYS",
+    "ON_COMMIT",
+    "ON_PR",
+    "MANUAL",
+    "NOT_EXECUTED"
+  ],
+  "runtime_enum": [
+    "node",
+    "node_browser",
+    "python",
+    "postgresql_ephemeral",
+    "manual",
+    "aggregate"
+  ],
+  "platform_enum": [
+    "ubuntu",
+    "cross_platform",
+    "manual"
+  ],
+  "capability_enum": [
+    "playwright",
+    "chromium",
+    "child_process",
+    "filesystem",
+    "postgresql",
+    "network",
+    "none"
+  ],
+  "artifact_expectation_enum": [
+    "TAP test output",
+    "screenshot evidence",
+    "stdout or tool report",
+    "command-defined; none registered by this child",
+    "combined TAP output from all default-CI groups"
+  ],
+  "risk_gate_eligibility_enum": [
+    "full_regression",
+    "manual_only"
+  ],
+  "source_status_enum": [
+    "CONFIRMED",
+    "UNVERIFIED",
+    "NOT_PRESENT"
+  ],
   "required_group_fields": [
-    "group", "purpose", "membership_source", "explicit_paths", "command_reference",
-    "default_pr_execution_state", "runtime", "platform", "capabilities",
-    "comparability", "artifact_expectation", "risk_gate_eligibility", "source_status"
+    "group",
+    "purpose",
+    "membership_source",
+    "explicit_paths",
+    "command_reference",
+    "default_pr_execution_state",
+    "runtime",
+    "platform",
+    "capabilities",
+    "comparability",
+    "artifact_expectation",
+    "risk_gate_eligibility",
+    "source_status"
   ],
   "field_definitions": {
     "group": "Group ID matching group_enum exactly.",
@@ -53,7 +106,9 @@
       "default_pr_execution_state": "ALWAYS",
       "runtime": "node",
       "platform": "ubuntu",
-      "capabilities": ["none"],
+      "capabilities": [
+        "none"
+      ],
       "comparability": "branch/main: same node --test command, same globs, deterministic per-path membership",
       "artifact_expectation": "TAP test output",
       "risk_gate_eligibility": "full_regression",
@@ -68,7 +123,9 @@
       "default_pr_execution_state": "ALWAYS",
       "runtime": "node",
       "platform": "ubuntu",
-      "capabilities": ["none"],
+      "capabilities": [
+        "none"
+      ],
       "comparability": "branch/main: same node --test command, same globs, deterministic per-path membership",
       "artifact_expectation": "TAP test output",
       "risk_gate_eligibility": "full_regression",
@@ -89,6 +146,7 @@
         "tests/contracts/home-video-modal-loading-3707-browser-contract.test.cjs",
         "tests/contracts/legacy-tree-entity-repair-package-contract.test.cjs",
         "tests/contracts/modal-a11y-core-dialogs-browser-contract.test.cjs",
+        "tests/contracts/my-trees-story-view-foundation-browser-contract.test.cjs",
         "tests/contracts/public-viewer-loading-3688-browser-contract.test.cjs",
         "tests/contracts/settings-display-name-edit-3617-browser-contract.test.cjs",
         "tests/contracts/settings-password-reset-3635-browser-contract.test.cjs",
@@ -101,7 +159,10 @@
       "default_pr_execution_state": "ALWAYS",
       "runtime": "node_browser",
       "platform": "ubuntu",
-      "capabilities": ["playwright", "chromium"],
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ],
       "comparability": "branch/main: same node --test command, same globs, deterministic per-path membership; requires Playwright Chromium installation",
       "artifact_expectation": "TAP test output",
       "risk_gate_eligibility": "full_regression",
@@ -121,7 +182,10 @@
       "default_pr_execution_state": "ALWAYS",
       "runtime": "node",
       "platform": "ubuntu",
-      "capabilities": ["child_process", "filesystem"],
+      "capabilities": [
+        "child_process",
+        "filesystem"
+      ],
       "comparability": "branch/main: same node --test command, same globs, deterministic per-path membership",
       "artifact_expectation": "TAP test output",
       "risk_gate_eligibility": "full_regression",
@@ -136,7 +200,11 @@
       "default_pr_execution_state": "ALWAYS",
       "runtime": "postgresql_ephemeral",
       "platform": "ubuntu",
-      "capabilities": ["postgresql", "child_process", "filesystem"],
+      "capabilities": [
+        "postgresql",
+        "child_process",
+        "filesystem"
+      ],
       "comparability": "branch/main: separate npm script per suite; test path matches tests/db-engine/; requires ephemeral PostgreSQL 17.4 service container",
       "artifact_expectation": "TAP test output",
       "risk_gate_eligibility": "full_regression",
@@ -151,7 +219,9 @@
       "default_pr_execution_state": "MANUAL",
       "runtime": "python",
       "platform": "cross_platform",
-      "capabilities": ["none"],
+      "capabilities": [
+        "none"
+      ],
       "comparability": "No branch/main dual execution defined.",
       "artifact_expectation": "stdout or tool report",
       "risk_gate_eligibility": "manual_only",
@@ -182,7 +252,10 @@
       "default_pr_execution_state": "NOT_EXECUTED",
       "runtime": "manual",
       "platform": "manual",
-      "capabilities": ["network", "child_process"],
+      "capabilities": [
+        "network",
+        "child_process"
+      ],
       "comparability": "No branch/main dual execution defined. Execution requires operator or dedicated CI workflow.",
       "artifact_expectation": "command-defined; none registered by this child",
       "risk_gate_eligibility": "manual_only",
@@ -197,7 +270,12 @@
       "default_pr_execution_state": "ALWAYS",
       "runtime": "aggregate",
       "platform": "ubuntu",
-      "capabilities": ["playwright", "chromium", "child_process", "filesystem"],
+      "capabilities": [
+        "playwright",
+        "chromium",
+        "child_process",
+        "filesystem"
+      ],
       "comparability": "branch/main: exact same npm test command and globs",
       "artifact_expectation": "combined TAP output from all default-CI groups",
       "risk_gate_eligibility": "full_regression",

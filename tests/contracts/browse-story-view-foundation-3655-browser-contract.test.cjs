@@ -974,34 +974,64 @@ test('#3655 browser: stored story restores on Browse; defaults stay compact othe
   }
 });
 
-test('#3655 browser: My Trees capability shows three buttons and rejects stored story', { timeout: 90000 }, async () => {
+test('#3655 browser: My Trees capability exposes four modes; stored story restores, unset/invalid stays compact', { timeout: 90000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-    const page = await context.newPage();
-    await page.addInitScript(() => localStorage.setItem('lovebud:myTrees:viewMode', 'story'));
-    await page.goto(`http://127.0.0.1:${port}/fixture-mytrees.html`, { waitUntil: 'networkidle' });
-    await page.waitForTimeout(150);
 
-    // (6) three buttons only; stored story falls back to compact, unrewritten
-    const modes = await page.$$eval('.tree-view-mode-btn', (btns) => btns.map((b) => b.getAttribute('data-mode')));
-    assert.deepEqual(modes, ['large', 'compact', 'list']);
-    assert.equal(await page.$('.tree-view-mode-btn[data-mode="story"]'), null);
+    // (6) #3811: four buttons; stored story restores Story
+    const pageS = await context.newPage();
+    await pageS.addInitScript(() => localStorage.setItem('lovebud:myTrees:viewMode', 'story'));
+    await pageS.goto(`http://127.0.0.1:${port}/fixture-mytrees.html`, { waitUntil: 'networkidle' });
+    await pageS.waitForTimeout(150);
+    const modes = await pageS.$$eval('.tree-view-mode-btn', (btns) => btns.map((b) => b.getAttribute('data-mode')));
+    assert.deepEqual(modes, ['large', 'compact', 'list', 'story']);
     assert.equal(
-      await page.evaluate(() => document.getElementById('trees-grid').getAttribute('data-tree-view-mode')),
+      await pageS.evaluate(() => document.getElementById('trees-grid').getAttribute('data-tree-view-mode')),
+      'story',
+      'stored My Trees story must restore into Story mode'
+    );
+    assert.equal(await pageS.evaluate(() => localStorage.getItem('lovebud:myTrees:viewMode')), 'story');
+    await pageS.close();
+
+    // unset -> compact default
+    const pageU = await context.newPage();
+    await pageU.addInitScript(() => localStorage.removeItem('lovebud:myTrees:viewMode'));
+    await pageU.goto(`http://127.0.0.1:${port}/fixture-mytrees.html`, { waitUntil: 'networkidle' });
+    await pageU.waitForTimeout(150);
+    assert.equal(
+      await pageU.evaluate(() => document.getElementById('trees-grid').getAttribute('data-tree-view-mode')),
       'compact'
     );
-    assert.equal(await page.evaluate(() => localStorage.getItem('lovebud:myTrees:viewMode')), 'story');
+    await pageU.close();
+
+    // invalid -> compact, unrewritten; Browse preference does not leak
+    const pageI = await context.newPage();
+    await pageI.addInitScript(() => {
+      localStorage.setItem('lovebud:myTrees:viewMode', 'invalid-mode');
+      localStorage.setItem('lovebud:browse:viewMode', 'story');
+    });
+    await pageI.goto(`http://127.0.0.1:${port}/fixture-mytrees.html`, { waitUntil: 'networkidle' });
+    await pageI.waitForTimeout(150);
+    assert.equal(
+      await pageI.evaluate(() => document.getElementById('trees-grid').getAttribute('data-tree-view-mode')),
+      'compact',
+      'invalid My Trees preference must fall back to compact'
+    );
+    assert.equal(await pageI.evaluate(() => localStorage.getItem('lovebud:myTrees:viewMode')), 'invalid-mode');
+    assert.equal(
+      await pageI.evaluate(() => localStorage.getItem('lovebud:browse:viewMode')),
+      'story',
+      'Browse preference must remain untouched'
+    );
+    await pageI.close();
     await context.close();
   } finally {
     await browser.close();
     await closeServer(server);
   }
 });
-
-/* ── Group behaviour ──────────────────────────────────────────────── */
-
 test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 cards', { timeout: 120000 }, async () => {
   const browser = await launchBrowser();
   const { server, port } = await startServer();
