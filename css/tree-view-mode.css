@@ -1022,12 +1022,12 @@
     top: 0;
     left: 0;
     right: 0;
-    animation: browse-story-exit-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: browse-story-exit-next 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
     pointer-events: none;
 }
 
 .browse-story-layer-incoming {
-    animation: browse-story-enter-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: browse-story-enter-next 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 #resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .browse-story-layer-outgoing {
@@ -1048,28 +1048,47 @@
 }
 
 @keyframes browse-story-exit-next {
-    from { opacity: 1; transform: translateX(0); }
-    to { opacity: 0; transform: translateX(-8%); }
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to { opacity: 0; transform: translateX(-24px) scale(0.99); }
 }
 
 @keyframes browse-story-exit-prev {
-    from { opacity: 1; transform: translateX(0); }
-    to { opacity: 0; transform: translateX(8%); }
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to { opacity: 0; transform: translateX(24px) scale(0.99); }
 }
 
 @keyframes browse-story-enter-next {
-    from { opacity: 0; transform: translateX(8%); }
-    to { opacity: 1; transform: translateX(0); }
+    from { opacity: 0; transform: translateX(24px) scale(0.99); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
 }
 
 @keyframes browse-story-enter-prev {
-    from { opacity: 0; transform: translateX(-8%); }
-    to { opacity: 1; transform: translateX(0); }
+    from { opacity: 0; transform: translateX(-24px) scale(0.99); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* #3845 bounded load-more busy state on the Story rail: the Next control
+ * stays visible but reads as busy while exactly one batch is requested. */
+.browse-story-navigation.browse-story-loading .browse-story-nav-btn {
+    cursor: progress;
+}
+
+.browse-story-navigation.browse-story-loading .browse-story-nav-btn[data-story-next] {
+    opacity: 0.72;
+}
+
+.browse-story-navigation.browse-story-loading .browse-story-nav-btn[data-story-next] .material-symbols-outlined {
+    animation: browse-story-next-busy 0.9s ease-in-out infinite;
+}
+
+@keyframes browse-story-next-busy {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
 }
 
 /* Legacy single-card entering class (kept for non-transition initial display) */
 #resultsList[data-tree-view-mode="story"] .tree-card.is-story-entering {
-    animation: browse-story-enter-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: browse-story-enter-next 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 #resultsList[data-tree-view-mode="story"][data-story-direction="prev"] .tree-card.is-story-entering {
@@ -1118,6 +1137,10 @@
 
     .browse-story-nav-btn {
         transition: none;
+    }
+
+    .browse-story-navigation.browse-story-loading .browse-story-nav-btn[data-story-next] .material-symbols-outlined {
+        animation: none;
     }
 }
 
@@ -1181,7 +1204,7 @@
 
 /* Legacy single-card entering class for the My Trees surface */
 .trees-grid[data-tree-view-mode="story"] .tree-card.is-story-entering {
-    animation: browse-story-enter-next 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: browse-story-enter-next 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .trees-grid[data-tree-view-mode="story"][data-story-direction="prev"] .tree-card.is-story-entering {

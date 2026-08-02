@@ -10,6 +10,18 @@
  *   - Groups ONLY the currently loaded `#resultsList` cards. The position
  *     indicator is a LOCAL group index over loaded results — it is NOT a
  *     backend page number and no server pagination semantics are added.
+ *
+ * #3845 truthful navigation (Browse-only current-position mode):
+ *   - `positionMode: 'current'` opts a surface into a current-only local
+ *     group indicator (never a loaded-total denominator) and a current-only
+ *     accessible position phrase. Other surfaces keep the existing
+ *     `{current} / {total}` semantics unchanged.
+ *   - optional injected `canRequestMore` / `requestMore` boundaries give a
+ *     surface a BOUNDED way to ask the existing Browse loader for exactly
+ *     one more result batch when Next is pressed on the last loaded local
+ *     group. The controller never performs network work itself and never
+ *     learns pagination identity; it only re-collects the appended
+ *     canonical cards and advances exactly one local group.
  *   - Reuses the canonical rendered `.tree-card[data-tree-id]` DOM built by
  *     LoveBudTreeCardComposition via js/search/search-card-renderer.js.
  *     No card HTML is rebuilt, no card content is rewritten, no new card
@@ -44,19 +56,21 @@
     var TRANSITION_WRAPPER_CLASS = 'browse-story-transition-stage';
     var NAV_CLASS = 'browse-story-navigation';
     var EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""]';
-    var TRANSITION_DURATION = 340;
+    var TRANSITION_DURATION = 260; /* #3845 restrained 220–280ms directional feedback */
+    var LOADING_CLASS = 'browse-story-loading';
 
     /* Surface-neutral semantic keys → Browse i18n key mapping (#3813).
      * The optional surface-adapter translator receives ONLY the semantic
      * keys below and is never handed `search.*` keys, `myTrees.*` keys, or
      * the i18n dictionary object itself. */
-    var SEMANTIC_KEYS = ['story.regionLabel', 'story.previous', 'story.next', 'story.label', 'story.position'];
+    var SEMANTIC_KEYS = ['story.regionLabel', 'story.previous', 'story.next', 'story.label', 'story.position', 'story.positionCurrent'];
     var SEMANTIC_TO_BROWSE = {
         'story.regionLabel': 'search.story.regionLabel',
         'story.previous': 'search.story.previous',
         'story.next': 'search.story.next',
         'story.label': 'search.viewMode.story',
-        'story.position': 'search.story.position'
+        'story.position': 'search.story.position',
+        'story.positionCurrent': 'search.story.positionCurrent'
     };
 
     /* Minimal fallbacks mirror js/i18n/i18n-search.js (same repository
@@ -66,7 +80,8 @@
         'search.story.regionLabel': { ko: '스토리 보기', en: 'Story view' },
         'search.story.previous': { ko: '이전 스토리 그룹', en: 'Previous story group' },
         'search.story.next': { ko: '다음 스토리 그룹', en: 'Next story group' },
-        'search.story.position': { ko: '스토리 {current} / {total}', en: 'Story {current} of {total}' }
+        'search.story.position': { ko: '스토리 {current} / {total}', en: 'Story {current} of {total}' },
+        'search.story.positionCurrent': { ko: '스토리 그룹 {current}', en: 'Story group {current}' }
     };
 
     function resolveElement(target) {
@@ -140,6 +155,15 @@
         var transitioning = false;
         var transitionTimer = null;
         var transitionToken = {};
+        var loadingMore = false;
+
+        /* #3845 Browse-only current-position mode and the bounded load-more
+         * boundary. Both are per-init injected surface options; when absent
+         * the controller behaves exactly as Browse/My Trees today (grouped
+         * denominator indicator, no load-more capability). */
+        var positionMode = opts.positionMode === 'current' ? 'current' : 'groups';
+        var canRequestMoreBoundary = typeof opts.canRequestMore === 'function' ? opts.canRequestMore : null;
+        var requestMoreBoundary = typeof opts.requestMore === 'function' ? opts.requestMore : null;
 
         /* Optional surface-adapter boundary (#3813): a translator that maps
          * surface-neutral semantic keys to surface strings, and a settled
@@ -275,12 +299,22 @@
             if (navLabel) navLabel.textContent = resolveSurfaceText('story.label', locale);
             if (prevBtn) prevBtn.setAttribute('aria-label', resolveSurfaceText('story.previous', locale));
             if (nextBtn) nextBtn.setAttribute('aria-label', resolveSurfaceText('story.next', locale));
-            indicatorCurrent.textContent = pad2(groupIndex + 1) + ' / ' + pad2(count);
-            indicatorA11y.textContent = resolveSurfaceText('story.position', locale)
-                .replace('{current}', String(groupIndex + 1))
-                .replace('{total}', String(count));
+            if (positionMode === 'current') {
+                /* #3845 Browse-only truthful position: the visible value is the
+                 * current local Story group index ONLY — never a loaded-total
+                 * denominator that could look like a stable backend total. */
+                indicatorCurrent.textContent = pad2(groupIndex + 1);
+                indicatorA11y.textContent = resolveSurfaceText('story.positionCurrent', locale)
+                    .replace('{current}', String(groupIndex + 1));
+            } else {
+                indicatorCurrent.textContent = pad2(groupIndex + 1) + ' / ' + pad2(count);
+                indicatorA11y.textContent = resolveSurfaceText('story.position', locale)
+                    .replace('{current}', String(groupIndex + 1))
+                    .replace('{total}', String(count));
+            }
             prevBtn.disabled = groupIndex <= 0;
-            nextBtn.disabled = groupIndex >= count - 1;
+            var atLast = groupIndex >= count - 1;
+            nextBtn.disabled = atLast && !canRequestMoreNow();
         }
 
         function cancelTransition(options) {
@@ -571,10 +605,92 @@
             });
         }
 
+        /* #3845 bounded load-more availability: true only in the Browse
+         * current-position mode, only when an injected boundary exists, and
+         * only when the existing Browse loader authority reports more
+         * results. Never a second pagination authority. */
+        function canRequestMoreNow() {
+            if (positionMode !== 'current') return false;
+            if (loadingMore || transitioning) return false;
+            if (!canRequestMoreBoundary) return false;
+            try {
+                return Boolean(canRequestMoreBoundary());
+            } catch (e) {
+                return false;
+            }
+        }
+
+        /* #3845: Next on the last loaded local group requests exactly one
+         * existing next-result batch through the injected boundary, then
+         * re-collects the appended canonical cards and advances exactly one
+         * local group. Busy state is bounded and exposed accessibly on the
+         * rail; duplicate dispatch is suppressed while busy. */
+        function requestMoreThenAdvance() {
+            if (!active || transitioning || loadingMore) return;
+            if (!requestMoreBoundary || !canRequestMoreNow()) return;
+            var previousGroupIndex = groupIndex;
+            var previousGroupCount = groupCount();
+            loadingMore = true;
+            if (nav) {
+                nav.setAttribute('aria-busy', 'true');
+                nav.classList.add(LOADING_CLASS);
+            }
+            updateNav();
+            var request;
+            try {
+                request = requestMoreBoundary();
+            } catch (e) {
+                settleMoreRequest(previousGroupIndex, previousGroupCount, false);
+                return;
+            }
+            Promise.resolve(request).then(function () {
+                settleMoreRequest(previousGroupIndex, previousGroupCount, true);
+            }).catch(function () {
+                settleMoreRequest(previousGroupIndex, previousGroupCount, false);
+            });
+        }
+
+        /* #3845 settled load-more state: clear busy, re-collect the canonical
+         * cards the loader rendered, and either advance exactly one local
+         * group (growth) or remain on the current group truthfully (failure
+         * or no new canonical cards). */
+        function settleMoreRequest(previousGroupIndex, previousGroupCount, loaded) {
+            if (disposed) return;
+            loadingMore = false;
+            if (nav) {
+                nav.removeAttribute('aria-busy');
+                nav.classList.remove(LOADING_CLASS);
+            }
+            cards = collectCards();
+            var newCount = groupCount();
+            if (loaded && newCount > previousGroupCount) {
+                /* Restore the group the user was viewing before advancing —
+                 * the loader's result-set reset moved visibility to group 0,
+                 * and the directional transition must animate out from the
+                 * previously-viewed group, not from group 0. Both steps run
+                 * in the same microtask checkpoint, so the intermediate
+                 * state is never painted. */
+                groupIndex = clampIndex(previousGroupIndex);
+                applyGroupImmediate();
+                /* Advance exactly one local group: the group right after the
+                 * previously loaded last group (group index === old count). */
+                groupIndex = clampIndex(previousGroupCount);
+                applyGroup('next');
+            } else {
+                groupIndex = clampIndex(previousGroupIndex);
+                applyGroupImmediate();
+            }
+        }
+
         function step(delta) {
             if (!active) return;
             if (transitioning) return;
+            if (loadingMore) return;
             var next = clampIndex(groupIndex + delta);
+            if (delta > 0 && next === groupIndex && canRequestMoreNow()) {
+                requestMoreThenAdvance();
+                return;
+            }
             if (next === groupIndex) return;
             groupIndex = next;
             applyGroup(delta > 0 ? 'next' : 'prev');
@@ -841,6 +957,7 @@
         function destroy() {
             if (disposed) return;
             deactivate();
+            loadingMore = false;
             disposed = true;
             if (observer) {
                 observer.disconnect();

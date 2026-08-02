@@ -15,9 +15,27 @@
       // the first cards are loaded (it syncs on result-set replacement).
       var storyController = null;
       if (window.LoveBudBrowseStoryView) {
+        // #3845 Browse-only truthful navigation: `positionMode: 'current'`
+        // shows the current local Story group index without a loaded-total
+        // denominator, and the bounded canRequestMore/requestMore boundary
+        // lets Next request exactly one more batch through the EXISTING
+        // Browse loader authority (window.LoveBudBrowseStoryLoadMore, set by
+        // js/search/index.js). The shared controller never fetches itself.
         storyController = window.LoveBudBrowseStoryView.init({
           results: '#resultsList',
           navMount: '#browseStoryNavMount',
+          positionMode: 'current',
+          canRequestMore: function () {
+            var loader = window.LoveBudBrowseStoryLoadMore;
+            return !!(loader && typeof loader.canRequestMore === 'function' && loader.canRequestMore());
+          },
+          requestMore: function () {
+            var loader = window.LoveBudBrowseStoryLoadMore;
+            if (loader && typeof loader.requestMore === 'function') {
+              return loader.requestMore();
+            }
+            return Promise.resolve(false);
+          },
         });
       }
 
