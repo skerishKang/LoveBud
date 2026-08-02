@@ -319,7 +319,18 @@ def run_logical_backup() -> dict:
             phase="encryption",
         )
 
-    workdir = tempfile.mkdtemp(prefix="lovebud-recovery-", dir="/tmp")
+    try:
+        workdir = tempfile.mkdtemp(prefix="lovebud-recovery-", dir="/tmp")
+    except Exception:
+        _log_phase("workdir_create_failed")
+        return make_sanitized_status(
+            backup_point_state=BACKUP_POINT_MISSING,
+            daily_tier=DAILY_TIER_MISSING,
+            weekly_tier=WEEKLY_TIER_MISSING,
+            monthly_tier=MONTHLY_TIER_MISSING,
+            cleanup_state=CLEANUP_FAILED,
+            phase="cleanup",
+        )
     dump_path = os.path.join(workdir, "backup.dump")
     enc_path = os.path.join(workdir, "backup.dump.enc")
 
@@ -351,17 +362,25 @@ def run_logical_backup() -> dict:
         if not dump_ok:
             _log_phase("dump_failed")
         else:
-            # 5-6. streaming AEAD envelope + plaintext deletion
+            # 5. streaming AEAD envelope
             try:
                 nonce = os.urandom(STREAM_AEAD_NONCE_BYTES)
                 _streaming_encrypt(dump_path, enc_path, encryption_key, nonce)
                 encryption_ok = True
-                os.remove(dump_path)
-                plaintext_cleanup_ok = True
-                _log_phase("plaintext_removed")
             except Exception:
                 encryption_ok = False
                 _log_phase("encryption_failed")
+
+            # 6. plaintext deletion is a separate failure boundary. Encryption
+            # success is preserved if cleanup fails, and upload never starts.
+            if encryption_ok:
+                try:
+                    os.remove(dump_path)
+                    plaintext_cleanup_ok = True
+                    _log_phase("plaintext_removed")
+                except Exception:
+                    plaintext_cleanup_ok = False
+                    _log_phase("plaintext_cleanup_failed")
 
         if dump_ok and encryption_ok and plaintext_cleanup_ok:
             # Provider client construction is a narrow, sanitized boundary.

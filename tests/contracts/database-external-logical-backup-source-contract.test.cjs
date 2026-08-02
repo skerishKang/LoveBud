@@ -90,8 +90,27 @@ test('4d. narrow provider failure containment without raw exception escape', () 
   // boundary, which fails closed by returning a sanitized status (never swallowing).
   const runFunctionBody = APP.slice(APP.indexOf('def run_logical_backup'));
   const fourSpaceCatches = (runFunctionBody.match(/^    except Exception:\s*$/gm) || []);
-  assert.equal(fourSpaceCatches.length, 1, 'only the narrow key-decode boundary is a 4-space catch');
+  assert.equal(fourSpaceCatches.length, 2, 'only key-decode and workdir boundaries are 4-space catches');
   assert.match(runFunctionBody, /except Exception:\s*\n\s*return make_sanitized_status\(/);
+  assert.match(runFunctionBody, /workdir = tempfile\.mkdtemp[\s\S]{0,240}except Exception:/);
+});
+
+test('4e. encryption and plaintext cleanup are separate narrow boundaries', () => {
+  const start = APP.indexOf('# 5. streaming AEAD envelope');
+  const upload = APP.indexOf('if dump_ok and encryption_ok and plaintext_cleanup_ok:');
+  const block = APP.slice(start, upload);
+  const cleanupStart = block.indexOf('if encryption_ok:');
+  assert.ok(cleanupStart !== -1, 'separate encryption_ok cleanup boundary');
+  const encryptionBlock = block.slice(0, cleanupStart);
+  const cleanupBlock = block.slice(cleanupStart);
+  assert.match(encryptionBlock, /_streaming_encrypt\(dump_path, enc_path, encryption_key, nonce\)/);
+  assert.ok(!encryptionBlock.includes('os.remove(dump_path)'), 'encryption block must not delete plaintext');
+  assert.match(cleanupBlock, /try:/);
+  assert.match(cleanupBlock, /os\.remove\(dump_path\)/);
+  assert.match(cleanupBlock, /plaintext_cleanup_ok = False/);
+  assert.match(cleanupBlock, /_log_phase\(["']plaintext_cleanup_failed["']\)/);
+  assert.ok(!/plaintext_cleanup_failed[\s\S]{0,120}encryption_ok = False/.test(cleanupBlock), 'cleanup failure must preserve encryption_ok');
+  assert.ok(!/plaintext_cleanup_failed[\s\S]{0,160}upload_ok = True/.test(cleanupBlock), 'upload cannot start after cleanup failure');
 });
 
 test('4b. exactly one non-HTTP Modal function binding on run_logical_backup', () => {

@@ -147,6 +147,66 @@ for _mode in ('client_fail', 'put_fail', 'head_fail', 'ok'):
     check('seam-' + _mode, lambda s=_status: s)
 check('seam-no-sentinel-output', lambda: all(SENTINEL not in line for line in ALL_LOG_LINES))
 
+# ---- encryption/cleanup and workdir-failure seams ----
+def run_encryption_cleanup_seam(encryption_fails=False, delete_fails=False):
+    upload_calls = []
+    logs = []
+    encryption_ok = False
+    plaintext_cleanup_ok = False
+    try:
+        if encryption_fails:
+            raise RuntimeError(SENTINEL)
+        encryption_ok = True
+    except Exception:
+        logs.append('phase=encryption')
+    if encryption_ok:
+        try:
+            if delete_fails:
+                raise RuntimeError(SENTINEL)
+            plaintext_cleanup_ok = True
+            logs.append('phase=plaintext_removed')
+        except Exception:
+            logs.append('phase=plaintext_cleanup')
+    if encryption_ok and plaintext_cleanup_ok:
+        upload_calls.append('upload')
+    status = p.evaluate_run(
+        dump_success=True,
+        encryption_success=encryption_ok,
+        plaintext_cleanup_success=plaintext_cleanup_ok,
+        upload_complete=bool(upload_calls),
+        post_upload_verified=bool(upload_calls),
+        daily_promotion_success=False,
+    )
+    return status, upload_calls, logs
+
+def run_workdir_failure_seam():
+    provider_calls = []
+    logs = []
+    try:
+        raise RuntimeError(SENTINEL)
+    except Exception:
+        logs.append('phase=cleanup')
+    status = p.make_sanitized_status(
+        backup_point_state=p.BACKUP_POINT_MISSING,
+        daily_tier=p.DAILY_TIER_MISSING,
+        weekly_tier=p.WEEKLY_TIER_MISSING,
+        monthly_tier=p.MONTHLY_TIER_MISSING,
+        cleanup_state=p.CLEANUP_FAILED,
+        phase='cleanup',
+    )
+    return status, provider_calls, logs
+
+for _name, _args in (
+    ('encryption-cleanup-success', (False, False)),
+    ('encryption-cleanup-failure', (False, True)),
+    ('encryption-failure-boundary', (True, False)),
+):
+    _status, _calls, _logs = run_encryption_cleanup_seam(*_args)
+    check('seam-' + _name, lambda s=_status, c=_calls, l=_logs: {'status': s, 'upload_calls': c, 'logs': l})
+_status, _calls, _logs = run_workdir_failure_seam()
+check('workdir-create-failure', lambda s=_status, c=_calls, l=_logs: {'status': s, 'provider_calls': c, 'logs': l})
+check('runtime-failure-sentinel-absent', lambda: all(SENTINEL not in line for line in ALL_LOG_LINES))
+
 # --- policy status scenarios ---
 check('daily-only-success', lambda: p.evaluate_run(**OK))
 check('daily-weekly-success', lambda: p.evaluate_run(**OK, weekly_promotion_decided=True, weekly_promotion_success=True))
@@ -343,4 +403,41 @@ test('S. fake provider seam: healthy provider yields expected upload path', () =
   const r = results['seam-ok'];
   assert.equal(r.status, 'PASS');
   assert.ok(JSON.stringify(r.value).indexOf('SENTINEL_UNIQUE_TOKEN_7f3a') === -1, 'no sentinel in healthy status');
+});
+
+test('T. encryption success and plaintext cleanup success permit upload', () => {
+  const r = results['seam-encryption-cleanup-success'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.backup_point_state, 'BACKUP_POINT_MISSING');
+  assert.deepEqual(r.value.upload_calls, ['upload']);
+  assert.deepEqual(r.value.logs, ['phase=plaintext_removed']);
+});
+
+test('U. plaintext cleanup failure preserves encryption success and blocks upload', () => {
+  const r = results['seam-encryption-cleanup-failure'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.backup_point_state, 'BACKUP_POINT_MISSING');
+  assert.equal(r.value.status.phase, 'plaintext_cleanup');
+  assert.deepEqual(r.value.upload_calls, []);
+  assert.deepEqual(r.value.logs, ['phase=plaintext_cleanup']);
+  assert.ok(JSON.stringify(r.value).indexOf('SENTINEL_UNIQUE_TOKEN_7f3a') === -1, 'no raw sentinel');
+});
+
+test('V. encryption failure does not enter plaintext cleanup or upload', () => {
+  const r = results['seam-encryption-failure-boundary'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.backup_point_state, 'BACKUP_POINT_MISSING');
+  assert.equal(r.value.status.phase, 'encryption');
+  assert.deepEqual(r.value.upload_calls, []);
+});
+
+test('W. workdir creation failure returns cleanup-failed sanitized status with no provider calls', () => {
+  const r = results['workdir-create-failure'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.backup_point_state, 'BACKUP_POINT_MISSING');
+  assert.equal(r.value.status.cleanup_state, 'CLEANUP_FAILED');
+  assert.equal(r.value.status.phase, 'cleanup');
+  assert.deepEqual(r.value.provider_calls, []);
+  assert.deepEqual(r.value.logs, ['phase=cleanup']);
+  assert.ok(JSON.stringify(r.value).indexOf('SENTINEL_UNIQUE_TOKEN_7f3a') === -1, 'no raw sentinel');
 });
