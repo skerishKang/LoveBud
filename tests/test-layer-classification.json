@@ -3766,6 +3766,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/shared-modal-a11y-reference-adoption-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads repository source/docs/configuration (js/shared/modal-a11y.js, js/index-inline-init.js, js/auth/auth-login-page.js, docs/design/MODAL_DIALOG_OWNERSHIP_BOUNDARY_DECISION.md, tests/test-layer-classification.json) and asserts on strings, regex, file existence, structure, order, or syntax markers only. Proves the Issue #3847 reference-adoption boundary: shared helper exposes no network/storage/Auth/API/provider capability; page controllers retain domain-state ownership; Home loading/retry state machine (#3688) is unchanged; Auth submit/validation authority is unchanged; exact Home and Auth reference surfaces adopt the helper; listener setup/cleanup is idempotent; Tab/Shift+Tab wrap and Escape delegation exist in the helper; disconnected invoker is never focused; malformed/hostile inputs fail closed; stale DRAFT status is removed from the decision header; #3672 remains OPEN; #3654/#3688 boundaries are preserved. Does not execute the asserted target runtime behavior (runtime behavior is proven by the EXECUTED_FAKE modal-a11y-shared-lifecycle-contract and EXECUTED_REAL_LOCAL modal-a11y-core-dialogs-browser-contract).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/shared-page-shell-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
