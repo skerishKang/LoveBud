@@ -819,3 +819,188 @@ test('vm runtime: setupEmailAuthForm signup submit calls createUserWithEmailAndP
   assert.equal(updateProfileCalls, 1, 'updateProfile must be called with displayName for signup');
   assert.equal(signInCalls, 0, 'signInWithEmailAndPassword must NOT be called for signup');
 });
+
+// ── 12. Shared modal a11y reference adoption (#3847) ────────────────────────
+// The Auth email modal (login/signup) delegates Tab containment, Escape, initial
+// focus, and guarded invoker restoration to js/shared/modal-a11y.js. These tests
+// prove the delegation contract in source and in a vm sandbox with a stub helper.
+
+test('auth-login-page.js adopts the shared modal a11y lifecycle (#3847)', function () {
+  const src = readFile(path.join(ROOT, 'js/auth/auth-login-page.js'));
+  assert.ok(src.includes('LoveBudModalA11y'),
+    'auth-login-page.js must reference LoveBudModalA11y');
+  assert.ok(src.includes('createLifecycle'),
+    'auth-login-page.js must create a shared lifecycle');
+  assert.ok(src.includes('authA11y.focusInitial()'),
+    'openModal must delegate initial focus to the shared lifecycle');
+  assert.ok(src.includes('authA11y.restoreFocusElement(lastTriggerButton)'),
+    'closeModal must delegate focus restoration to the shared lifecycle');
+  assert.ok(src.includes('authA11y.handleKeydown(e)'),
+    'modal keydown must delegate Tab/Escape to the shared lifecycle');
+  assert.ok(src.includes('getInitialFocus'),
+    'the shared lifecycle must receive the email input initial focus target');
+});
+
+// Shared-lifecycle stub that behaves like js/shared/modal-a11y.js for the
+// delegated responsibilities (focusInitial, handleKeydown Escape, restoreFocusElement).
+function makeSharedA11yStub() {
+  const calls = { createLifecycle: 0, focusInitial: 0, handleKeydown: 0, restoreFocusElement: 0 };
+  const lifecycle = {
+    focusInitial() {
+      calls.focusInitial++;
+      return true;
+    },
+    handleKeydown(ev) {
+      calls.handleKeydown++;
+      if (ev && (ev.key === 'Escape' || ev.key === 'Esc') &&
+          lifecycle.__options && typeof lifecycle.__options.onRequestClose === 'function') {
+        lifecycle.__options.onRequestClose();
+      }
+      return true;
+    },
+    restoreFocusElement(el) {
+      calls.restoreFocusElement++;
+      if (el && typeof el.focus === 'function') el.focus();
+      return true;
+    },
+    bind() {}, unbind() {}, open() { return true; }, close() { return true; }, dispose() { return true; }
+  };
+  return {
+    calls,
+    createLifecycle(options) {
+      calls.createLifecycle++;
+      lifecycle.__options = options || {};
+      return lifecycle;
+    }
+  };
+}
+
+function buildSharedA11ySandbox(opts) {
+  opts = opts || {};
+  const base = buildSandbox(opts);
+  const stub = makeSharedA11yStub();
+  // Inject the shared helper stub before setupEmailAuthEntry runs so the
+  // controller takes the shared-lifecycle primary path. buildSandbox() already
+  // bound the controller once (fallback path, helper absent), so reset the
+  // idempotence guard to allow the shared-lifecycle rebind.
+  base.sandbox.window.LoveBudModalA11y = stub;
+  base.sandbox.window.__lovebudEmailAuthEntryBound = false;
+  base.sandbox.window.LoveBudAuthLoginPage.setupEmailAuthEntry({
+    setEmailAuthMode: base.setCanonicalMode,
+    getEmailAuthMode: base.getCanonicalMode,
+    syncEmailAuthModeUi: function () {},
+    applyI18n: undefined,
+    initialMode: opts.initialMode || 'login',
+  });
+  return Object.assign({}, base, { stub });
+}
+
+test('vm runtime (#3847): controller creates exactly one shared lifecycle', function () {
+  const { stub } = buildSharedA11ySandbox({ initialMode: 'login' });
+  assert.equal(stub.calls.createLifecycle, 1,
+    'setupEmailAuthEntry must create exactly one shared lifecycle');
+});
+
+test('vm runtime (#3847): open delegates initial focus to the shared lifecycle', function () {
+  const { elements, stub } = buildSharedA11ySandbox({ initialMode: 'login' });
+  assert.equal(stub.calls.focusInitial, 0, 'no initial focus before open');
+  elements.emailBtn.click();
+  assert.equal(elements.modal.style.display, 'flex', 'modal must open');
+  assert.equal(stub.calls.focusInitial, 1,
+    'openModal must delegate initial focus to the shared lifecycle');
+});
+
+test('vm runtime (#3847): Escape delegates to the shared lifecycle close callback', function () {
+  const { elements, stub } = buildSharedA11ySandbox({ initialMode: 'login' });
+  elements.emailBtn.click();
+  assert.equal(elements.modal.style.display, 'flex', 'modal open');
+  assert.equal(stub.calls.handleKeydown, 0, 'no keydown before Escape');
+  const ev = {
+    type: 'keydown',
+    key: 'Escape',
+    shiftKey: false,
+    preventDefault() {},
+  };
+  elements.modal.dispatchEvent(ev);
+  assert.equal(stub.calls.handleKeydown, 1,
+    'modal keydown must delegate to the shared lifecycle');
+  assert.equal(elements.modal.style.display, 'none',
+    'Escape must close the modal through the shared lifecycle close callback');
+});
+
+test('vm runtime (#3847): close delegates focus restoration to the shared lifecycle', function () {
+  const { elements, stub } = buildSharedA11ySandbox({ initialMode: 'login' });
+  elements.emailBtn.click();
+  elements.emailBtn.__focused = false;
+  elements.closeBtn.click();
+  assert.equal(elements.modal.style.display, 'none', 'modal must close');
+  assert.equal(stub.calls.restoreFocusElement, 1,
+    'closeModal must delegate focus restoration to the shared lifecycle');
+  assert.equal(elements.emailBtn.__focused, true,
+    'focus must return to the original trigger button');
+});
+
+test('vm runtime (#3847): reopen cycles do not multiply lifecycle listeners', function () {
+  const { elements, stub, sandbox } = buildSharedA11ySandbox({ initialMode: 'login' });
+  // Open/close twice.
+  elements.emailBtn.click();
+  elements.closeBtn.click();
+  elements.signupBtn.click();
+  elements.closeBtn.click();
+  assert.equal(stub.calls.createLifecycle, 1,
+    'reopen must not create additional shared lifecycles');
+  assert.equal(stub.calls.handleKeydown, 0, 'no stray keydown events');
+  assert.equal(stub.calls.restoreFocusElement, 2,
+    'each close restores focus exactly once');
+});
+
+test('vm runtime (#3847): submit/validation semantics unchanged with the shared lifecycle', async function () {
+  const { sandbox, elements, getCanonicalMode, setCanonicalMode } = buildSharedA11ySandbox({ initialMode: 'login' });
+
+  let signInCalls = 0;
+  const mockUser = { uid: 'u1', displayName: null };
+  const mockFirebase = {
+    auth: function () {
+      return {
+        signInWithEmailAndPassword: async function () {
+          signInCalls++;
+          return { user: mockUser };
+        },
+        createUserWithEmailAndPassword: async function () { throw new Error('unexpected'); },
+        currentUser: mockUser,
+      };
+    },
+    apps: [{}],
+  };
+
+  elements.emailInput.value = 'test@example.com';
+  elements.passwordInput.value = 'password123';
+  elements.emailBtn.click();
+
+  sandbox.window.LoveBudAuthLoginPage.setupEmailAuthForm({
+    firebase: mockFirebase,
+    initFirebase: function () {},
+    getEnvironmentCheckError: function () { return null; },
+    getFriendlyErrorMessage: function () { return null; },
+    getEmailAuthMode: getCanonicalMode,
+    setEmailAuthMode: setCanonicalMode,
+    persistConfirmedAuthSession: async function () {},
+    preloadRedirectTargetData: function () {},
+    getRedirectTarget: function () { return 'my-trees.html'; },
+    isInvalidAuthSessionError: function () { return false; },
+    clearStaleFirebaseAuthState: function () {},
+  });
+
+  Object.defineProperty(sandbox.window, 'location', {
+    value: { pathname: '/pages/login.html', search: '', href: '' },
+    writable: true,
+    configurable: true,
+  });
+
+  const submitEvent = { type: 'submit', preventDefault: function () {} };
+  elements.form.dispatchEvent(submitEvent);
+  await new Promise(resolve => setTimeout(resolve, 50));
+
+  assert.equal(signInCalls, 1,
+    'login submit must still call signInWithEmailAndPassword exactly once');
+});

@@ -44,6 +44,7 @@ const {
   CLASSIFICATION_PATH: MOD_CLS_PATH,
   PACKAGE_PATH: MOD_PKG_PATH,
   CI_YML_PATH: MOD_CI_PATH,
+  EXPECTED_DB_ENGINE_SCRIPTS,
 } = require(REPORTER_PATH);
 const { loadCanonicalTestSuiteCounts } = require(AUTHORITY_PATH);
 
@@ -446,19 +447,43 @@ test('11. browser/process exact membership from reporter output', () => {
   for (const pp of processPaths) { assert.ok(realLocalSet.has(pp), pp + ' is EXECUTED_REAL_LOCAL'); }
 });
 
-test('12. nine DB-engine command references with one-to-one mapping', () => {
+test('12. canonical DB-engine script/target/supplemental cardinality with one-to-one mapping', () => {
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, 'utf8'));
   const inv = readJson(CLASSIFICATION_PATH);
   const { refs, errors } = getDbEngineScriptRefs(pkg);
   assert.equal(errors.length, 0, 'DB script errors: ' + errors.join('; '));
-  assert.equal(refs.length, 9);
+
+  // Canonical authority: reporter's expected-script count
+  const canonicalExpectedScriptCount = EXPECTED_DB_ENGINE_SCRIPTS.length;
+
+  // Derived from package.json: count test:db-engine:* scripts
+  const pkgDbScriptCount = Object.keys(pkg.scripts || {}).filter(s => s.startsWith('test:db-engine:')).length;
+
+  // Derived from supplemental classification
   const suppDb = Array.isArray(inv.supplemental) ? inv.supplemental.filter(s => s.layer === 'DB_ENGINE_EXECUTION') : [];
-  assert.equal(suppDb.length, 9);
+  const suppDbCount = suppDb.length;
+
+  // All three canonical authorities must agree
+  assert.equal(refs.length, canonicalExpectedScriptCount, 'reporter canonical expected-script count must equal package script count');
+  assert.equal(refs.length, pkgDbScriptCount, 'reporter canonical expected-script count must equal package test:db-engine:* script count');
+  assert.equal(refs.length, suppDbCount, 'reporter canonical expected-script count must equal supplemental DB_ENGINE_EXECUTION count');
+  assert.equal(pkgDbScriptCount, suppDbCount, 'package script count must equal supplemental DB_ENGINE_EXECUTION count');
+
+  // Exact script-target 1:1 mapping: no missing, no extra, no duplicates
   const scriptTargets = new Set(refs.map(r => r.target));
   const suppPaths = new Set(suppDb.map(s => s.path));
-  // One-to-one mapping
+
+  // The structural-sentinel script and target must be present
+  assert.ok(scriptTargets.has('tests/db-engine/schema-orphan-structural-sentinel-postgres.test.cjs'), 'structural-sentinel DB test target present');
+  assert.ok(suppPaths.has('tests/db-engine/schema-orphan-structural-sentinel-postgres.test.cjs'), 'structural-sentinel supplemental classification present');
+
+  // No missing script or supplemental path
   for (const t of scriptTargets) assert.ok(suppPaths.has(t), 'Missing supplemental: ' + t);
   for (const sp of suppPaths) assert.ok(scriptTargets.has(sp), 'Missing script: ' + sp);
+
+  // No duplicate targets
+  assert.equal(scriptTargets.size, refs.length, 'duplicate target detected');
+  assert.equal(suppPaths.size, suppDb.length, 'duplicate supplemental path detected');
 });
 
 test('13. active verify-static exact six-command sequence', () => {

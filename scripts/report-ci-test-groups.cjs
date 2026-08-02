@@ -87,7 +87,8 @@ const EXPECTED_DB_ENGINE_SCRIPTS = [
   { script: 'test:db-engine:generic-social-b',        target: 'tests/db-engine/generic-social-b-postgres.test.cjs' },
   { script: 'test:db-engine:migration-catalog-adapter', target: 'tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs' },
   { script: 'test:db-engine:precondition-composition-root', target: 'tests/db-engine/precondition-composition-root-postgres.test.cjs' },
-  { script: 'test:db-engine:clean-canonical-bootstrap', target: 'tests/db-engine/clean-canonical-bootstrap-postgres.test.cjs' },
+{ script: 'test:db-engine:clean-canonical-bootstrap', target: 'tests/db-engine/clean-canonical-bootstrap-postgres.test.cjs' },
+  { script: 'test:db-engine:structural-sentinel',     target: 'tests/db-engine/schema-orphan-structural-sentinel-postgres.test.cjs' },
 ];
 
 const CANONICAL_FIELD_DEFINITION_KEYS = [
@@ -716,7 +717,7 @@ function buildHumanOutput(data) {
     lines.push('    source status: ' + g.source_status);
   }
   lines.push('');
-  lines.push('DB-engine script references: ' + data.db_engine_script_count + '/9');
+lines.push('DB-engine script references: ' + data.db_engine_script_count + '/' + EXPECTED_DB_ENGINE_SCRIPTS.length);
   lines.push('Verify-static command references: ' + data.verify_static_command_count);
   if (Array.isArray(data.verify_static_commands)) {
     lines.push('Verify-static commands (canonical order):');
@@ -805,6 +806,7 @@ module.exports = {
   CANONICAL_REQUIRED_GROUP_FIELDS,
   CANONICAL_TOP_LEVEL_FIELDS,
   CANONICAL_GROUP_FIELDS,
+  EXPECTED_DB_ENGINE_SCRIPTS,
   assertEnumMatch,
   assertExactOrderedArray,
   isGroupSpecificValid,
