@@ -21,6 +21,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { EXPECTED_DB_ENGINE_SCRIPTS } = require('../../scripts/report-ci-test-groups.cjs');
+const { createCleanBootstrapRunner } = require('../../scripts/migration-clean-bootstrap-orchestrator-core.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -438,4 +439,253 @@ test('orchestrator uses sanitized fixed codes for all failure outcomes', () => {
   assert.ok(orchestrator.includes('LEDGER_VERIFICATION_FAILED'), 'orchestrator uses LEDGER_VERIFICATION_FAILED');
   assert.ok(orchestrator.includes('CATALOG_FINGERPRINT_POST_COMMIT_FAILED'), 'orchestrator uses CATALOG_FINGERPRINT_POST_COMMIT_FAILED');
   assert.ok(orchestrator.includes('RESIDUAL_STATE_POST_COMMIT_FAILED'), 'orchestrator uses RESIDUAL_STATE_POST_COMMIT_FAILED');
+});
+
+// ── 14. Fake-based integration tests (NC18-NC23) ──────────────────
+
+function makeFakeSession(tracking) {
+  tracking = tracking || {};
+  return {
+    query: async function (queryObject) {
+      if (tracking.queryCount !== undefined) tracking.queryCount++;
+      const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+      if (text === 'BEGIN') return { rows: [] };
+      if (/INSERT INTO schema_migration_ledger/i.test(text)) return { rows: [] };
+      if (/SELECT to_regclass/i.test(text)) return { rows: [{ exists: true }] };
+      if (/SELECT COUNT\(\*\)/i.test(text)) return { rows: [{ count: 1 }] };
+      if (text === 'COMMIT') return { rows: [] };
+      if (text === 'ROLLBACK') return { rows: [] };
+      return { rows: [] };
+    },
+    release: async function () {},
+  };
+}
+
+function makeFakeDeps(overrides) {
+  const defaults = {
+    openSession: async function () { return makeFakeSession(); },
+    verifyCleanTarget: async function () { return true; },
+    verifyCatalogFingerprint: async function () { return true; },
+    verifyNoResidualState: async function () { return true; },
+    now: async function () { return new Date().toISOString(); },
+  };
+  if (overrides) {
+    for (const key of Object.keys(overrides)) {
+      defaults[key] = overrides[key];
+    }
+  }
+  return defaults;
+}
+
+function makeValidConfig(overrides) {
+  const base = {
+    runnerVersion: 'v1',
+    environmentClass: 'disposable-test',
+    deployedCommit: '0000000000000000000000000000000000',
+    operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+    targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+    approvalReference: 'issue:3846',
+  };
+  if (overrides) {
+    for (const key of Object.keys(overrides)) {
+      base[key] = overrides[key];
+    }
+  }
+  return base;
+}
+
+test('NC18 unknown top-level config key is rejected', async () => {
+  let sessionOpenCount = 0;
+  const deps = makeFakeDeps({
+    openSession: async function () { sessionOpenCount++; return makeFakeSession(); },
+  });
+  const config = makeValidConfig({ unknownField: 'should-not-be-accepted', dependencies: deps });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'unknown config key rejected');
+  assert.equal(sessionOpenCount, 0, 'session open 0 for unknown config key');
+});
+
+test('NC19 unknown dependency key is rejected', async () => {
+  let sessionOpenCount = 0;
+  const deps = makeFakeDeps({
+    openSession: async function () { sessionOpenCount++; return makeFakeSession(); },
+    unknownDep: async function () {},
+  });
+  const config = makeValidConfig({ dependencies: deps });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'unknown dependency key rejected');
+  assert.equal(sessionOpenCount, 0, 'session open 0 for unknown dependency key');
+});
+
+test('NC20 config getter execution count is zero', async () => {
+  let getterCount = 0;
+  const config = makeValidConfig();
+  Object.defineProperty(config, 'runnerVersion', {
+    get: function () { getterCount++; return 'v1'; },
+    enumerable: true,
+    configurable: true,
+  });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'config with getter is rejected');
+  assert.equal(getterCount, 0, 'config getter execution count is zero');
+});
+
+test('NC21 dependency getter execution count is zero', async () => {
+  let getterCount = 0;
+  const deps = makeFakeDeps();
+  Object.defineProperty(deps, 'openSession', {
+    get: function () { getterCount++; return async function () { return makeFakeSession(); }; },
+    enumerable: true,
+    configurable: true,
+  });
+  const config = makeValidConfig({ dependencies: deps });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'dependency with getter is rejected');
+  assert.equal(getterCount, 0, 'dependency getter execution count is zero');
+});
+
+test('NC22 throwing Proxy on dependencies results in session open 0 and raw error leakage 0', async () => {
+  let sessionOpenCount = 0;
+  const realDeps = makeFakeDeps({
+    openSession: async function () { sessionOpenCount++; return makeFakeSession(); },
+  });
+  const throwingDeps = new Proxy(realDeps, {
+    ownKeys: function () {
+      throw new Error('raw proxy trap error');
+    },
+  });
+  const config = makeValidConfig({ dependencies: throwingDeps });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(sessionOpenCount, 0, 'session open 0 for throwing proxy');
+  assert.equal(result.blockers.length, 1, 'one blocker reported');
+  assert.equal(result.blockers[0], 'CLEAN_BOOTSTRAP_DEPENDENCY_MISSING', 'sanitized fixed code, no raw error');
+  assert.ok(!result.blockers[0].includes('raw proxy trap error'), 'no raw error leakage');
+});
+
+test('NC23 fingerprint failure after COMMIT returns catalogFingerprintVerified false', async () => {
+  let commitCount = 0;
+  let rollbackCount = 0;
+  const trackingSession = {
+    query: async function (queryObject) {
+      const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+      if (text === 'COMMIT') commitCount++;
+      if (text === 'ROLLBACK') rollbackCount++;
+      if (text === 'BEGIN') return { rows: [] };
+      if (/INSERT INTO schema_migration_ledger/i.test(text)) return { rows: [] };
+      if (/SELECT to_regclass/i.test(text)) return { rows: [{ exists: true }] };
+      if (/SELECT COUNT\(\*\)/i.test(text)) return { rows: [{ count: 1 }] };
+      return { rows: [] };
+    },
+    release: async function () {},
+  };
+  const deps = makeFakeDeps({
+    openSession: async function () { return trackingSession; },
+    verifyCatalogFingerprint: async function () { return false; },
+  });
+  const config = makeValidConfig({ dependencies: deps });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(result.outcome, 'COMMITTED_POST_VERIFICATION_FAILED', 'fingerprint failure reports truthfully');
+  assert.equal(result.ledgerAppended, true, 'ledgerAppended true after commit');
+  assert.equal(result.catalogFingerprintVerified, false, 'catalogFingerprintVerified false on fingerprint failure');
+  assert.equal(result.postCommitResidualVerified, false, 'postCommitResidualVerified false');
+  assert.equal(commitCount, 1, 'COMMIT called once');
+  assert.equal(rollbackCount, 0, 'ROLLBACK called zero times');
+});
+
+test('NC24 residual failure after successful fingerprint returns correct flags', async () => {
+  let commitCount = 0;
+  let rollbackCount = 0;
+  const trackingSession = {
+    query: async function (queryObject) {
+      const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+      if (text === 'COMMIT') commitCount++;
+      if (text === 'ROLLBACK') rollbackCount++;
+      if (text === 'BEGIN') return { rows: [] };
+      if (/INSERT INTO schema_migration_ledger/i.test(text)) return { rows: [] };
+      if (/SELECT to_regclass/i.test(text)) return { rows: [{ exists: true }] };
+      if (/SELECT COUNT\(\*\)/i.test(text)) return { rows: [{ count: 1 }] };
+      return { rows: [] };
+    },
+    release: async function () {},
+  };
+  const deps = makeFakeDeps({
+    openSession: async function () { return trackingSession; },
+    verifyNoResidualState: async function () { return false; },
+  });
+  const config = makeValidConfig({ dependencies: deps });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(result.outcome, 'COMMITTED_POST_VERIFICATION_FAILED', 'residual failure reports truthfully');
+  assert.equal(result.ledgerAppended, true, 'ledgerAppended true after commit');
+  assert.equal(result.catalogFingerprintVerified, true, 'catalogFingerprintVerified true (fingerprint succeeded)');
+  assert.equal(result.postCommitResidualVerified, false, 'postCommitResidualVerified false');
+  assert.equal(commitCount, 1, 'COMMIT called once');
+  assert.equal(rollbackCount, 0, 'ROLLBACK called zero times');
+});
+
+test('NC25 pre-commit transaction failure rolls back exactly once', async () => {
+  let rollbackCount = 0;
+  let commitCount = 0;
+  let queryCount = 0;
+  const trackingSession = {
+    query: async function (queryObject) {
+      queryCount++;
+      const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+      if (text === 'COMMIT') commitCount++;
+      if (text === 'ROLLBACK') rollbackCount++;
+      if (text === 'BEGIN') return { rows: [] };
+      if (/INSERT INTO schema_migration_ledger/i.test(text)) {
+        throw new Error('CLEAN_BOOTSTRAP_INJECTED_SQL_FAILURE');
+      }
+      if (/SELECT to_regclass/i.test(text)) return { rows: [{ exists: true }] };
+      if (/SELECT COUNT\(\*\)/i.test(text)) return { rows: [{ count: 1 }] };
+      return { rows: [] };
+    },
+    release: async function () {},
+  };
+  const deps = makeFakeDeps({
+    openSession: async function () { return trackingSession; },
+  });
+  const config = makeValidConfig({ dependencies: deps });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'pre-commit failure reports BLOCKED_BEFORE_COMMIT');
+  assert.equal(rollbackCount, 1, 'rollback exactly once');
+  assert.equal(commitCount, 0, 'commit zero times');
+  assert.equal(result.ledgerAppended, false, 'no ledger row appended');
+});
+
+test('NC26 post-commit failure rolls back zero times', async () => {
+  let rollbackCount = 0;
+  let commitCount = 0;
+  const trackingSession = {
+    query: async function (queryObject) {
+      const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+      if (text === 'COMMIT') commitCount++;
+      if (text === 'ROLLBACK') rollbackCount++;
+      if (text === 'BEGIN') return { rows: [] };
+      if (/INSERT INTO schema_migration_ledger/i.test(text)) return { rows: [] };
+      if (/SELECT to_regclass/i.test(text)) return { rows: [{ exists: true }] };
+      if (/SELECT COUNT\(\*\)/i.test(text)) return { rows: [{ count: 1 }] };
+      return { rows: [] };
+    },
+    release: async function () {},
+  };
+  const deps = makeFakeDeps({
+    openSession: async function () { return trackingSession; },
+    verifyCatalogFingerprint: async function () { return false; },
+  });
+  const config = makeValidConfig({ dependencies: deps });
+  const runner = createCleanBootstrapRunner(config);
+  const result = await runner.run();
+  assert.equal(result.outcome, 'COMMITTED_POST_VERIFICATION_FAILED', 'post-commit failure reports truthfully');
+  assert.equal(rollbackCount, 0, 'rollback zero times after commit');
+  assert.equal(commitCount, 1, 'commit once');
+  assert.equal(result.ledgerAppended, true, 'ledgerAppended true after commit');
 });

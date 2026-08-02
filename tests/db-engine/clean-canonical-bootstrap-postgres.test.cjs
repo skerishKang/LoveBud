@@ -321,7 +321,7 @@ test('B5 dirty target blocks before BEGIN: SQL executed 0 times', async () => {
 
     const result = await runner.run();
     assert.equal(sessionOpenCount, 1, 'session opened exactly once');
-    assert.equal(sqlExecuteCount, 1, 'only BEGIN was executed before block');
+    assert.equal(sqlExecuteCount, 0, 'no SQL executed before dirty-target block');
     assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'dirty target blocked before commit');
     assert.equal(result.ledgerAppended, false, 'no ledger row appended');
     assert.equal(result.blockers.length, 1, 'one blocker reported');
@@ -478,7 +478,7 @@ test('B9 clean verifier throws blocks before SQL and leaks no raw error', async 
 
     const result = await runner.run();
     assert.equal(sessionOpenCount, 1, 'session opened once');
-    assert.equal(sqlExecuteCount, 1, 'only BEGIN was executed before verifier threw');
+    assert.equal(sqlExecuteCount, 0, 'no SQL executed before verifier threw');
     assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'verifier throw blocked before commit');
     assert.equal(result.ledgerAppended, false, 'no ledger row appended');
     assert.equal(result.blockers[0], 'CLEAN_TARGET_VERIFICATION_FAILED', 'sanitized fixed code, no raw error');
@@ -581,7 +581,7 @@ test('B11 fingerprint failure after COMMIT reports COMMITTED_POST_VERIFICATION_F
     assert.equal(commitCount, 1, 'COMMIT called once');
     assert.equal(result.outcome, 'COMMITTED_POST_VERIFICATION_FAILED', 'fingerprint failure reports truthfully');
     assert.equal(result.ledgerAppended, true, 'ledgerAppended true after commit');
-    assert.equal(result.catalogFingerprintVerified, true, 'catalogFingerprintVerified true (commit succeeded)');
+    assert.equal(result.catalogFingerprintVerified, false, 'catalogFingerprintVerified false on fingerprint failure');
     pass('B11');
   });
 });
@@ -749,9 +749,9 @@ test('B14 release is called exactly once per session', async () => {
   });
 });
 
-// ── B15. Unknown config field does not bypass validation ──────────
+// ── B15. Unknown config field is rejected ──────────
 
-test('B15 unknown config field does not bypass validation', async () => {
+test('B15 unknown config field is rejected before session open', async () => {
   await withDisposableDb('b15_unknown_field', null, async (ctx) => {
     let sessionOpenCount = 0;
 
@@ -764,7 +764,7 @@ test('B15 unknown config field does not bypass validation', async () => {
     const runner = createCleanBootstrapRunner({
       runnerVersion: 'v1',
       environmentClass: 'disposable-test',
-      deployedCommit: '000000000000000000000000000000000000',
+      deployedCommit: '0000000000000000000000000000000000',
       operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
       targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
       approvalReference: 'issue:3846',
@@ -779,8 +779,136 @@ test('B15 unknown config field does not bypass validation', async () => {
     });
 
     const result = await runner.run();
-    assert.equal(result.outcome, 'BOOTSTRAPPED', 'unknown field does not block valid bootstrap');
-    assert.equal(sessionOpenCount, 1, 'session opened for valid config with unknown field');
+    assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'unknown config field is rejected');
+    assert.equal(sessionOpenCount, 0, 'session open 0 for unknown config field');
     pass('B15');
+  });
+});
+
+// ── B16. Residual failure after COMMIT: catalogFingerprintVerified true ──
+
+test('B16 residual failure after COMMIT reports catalogFingerprintVerified true', async () => {
+  await withDisposableDb('b16_residual_fail', null, async (ctx) => {
+    let commitCount = 0;
+    let rollbackCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      const session = await opener();
+      const originalQuery = session.query;
+      session.query = async function (queryObject) {
+        const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+        if (text === 'COMMIT') commitCount++;
+        if (text === 'ROLLBACK') rollbackCount++;
+        return originalQuery(queryObject);
+      };
+      return session;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '00000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return false; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(result.outcome, 'COMMITTED_POST_VERIFICATION_FAILED', 'residual failure reports truthfully');
+    assert.equal(result.ledgerAppended, true, 'ledgerAppended true after commit');
+    assert.equal(result.catalogFingerprintVerified, true, 'catalogFingerprintVerified true (fingerprint succeeded)');
+    assert.equal(result.postCommitResidualVerified, false, 'postCommitResidualVerified false');
+    assert.equal(rollbackCount, 0, 'ROLLBACK called zero times after commit');
+    assert.equal(commitCount, 1, 'COMMIT called once');
+    pass('B16');
+  });
+});
+
+// ── B17. Dirty second run: only read-only query, no mutation ──
+
+test('B17 dirty second run executes only clean-target read-only query', async () => {
+  await withDisposableDb('b17_dirty_second', null, async (ctx) => {
+    let sessionOpenCount = 0;
+    let sqlExecuteCount = 0;
+    let verifyCleanTargetCallCount = 0;
+    let commitCount = 0;
+    let rollbackCount = 0;
+    let ledgerInsertCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      sessionOpenCount++;
+      const session = await opener();
+      const originalQuery = session.query;
+      session.query = async function (queryObject) {
+        const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+        sqlExecuteCount++;
+        if (text === 'COMMIT') commitCount++;
+        if (text === 'ROLLBACK') rollbackCount++;
+        if (/INSERT INTO schema_migration_ledger/i.test(text)) ledgerInsertCount++;
+        return originalQuery(queryObject);
+      };
+      return session;
+    };
+
+    const verifyCleanTarget = async function (session, projection) {
+      verifyCleanTargetCallCount++;
+      const result = await session.query({
+        text: 'SELECT to_regclass($1::text) IS NOT NULL AS exists',
+        values: [LEDGER_TABLE],
+      });
+      const exists = Boolean(result.rows[0] && result.rows[0].exists);
+      return !exists;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '00000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget,
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const firstResult = await runner.run();
+    assert.equal(firstResult.outcome, 'BOOTSTRAPPED', 'first clean run bootstrapped');
+
+    const secondResult = await runner.run();
+    assert.equal(secondResult.outcome, 'BLOCKED_BEFORE_COMMIT', 'second run blocked by clean-target check');
+    assert.equal(secondResult.ledgerAppended, false, 'second ledger insert: 0');
+    assert.equal(verifyCleanTargetCallCount, 2, 'verifyCleanTarget called for both runs');
+    assert.equal(sqlExecuteCount, 1, 'query count only includes clean-target verifier read-only query');
+    assert.equal(commitCount, 0, 'BEGIN/bootstrap/ledger insert/COMMIT are 0 on second run');
+    assert.equal(rollbackCount, 0, 'ROLLBACK is 0 on second run');
+    assert.equal(ledgerInsertCount, 0, 'no ledger insert on second run');
+
+    const verifyClient = new Client(baseClientConfig(ctx.cfg, ctx.dbName));
+    verifyClient.on('error', function () { /* expected post-drop socket error */ });
+    try {
+      await verifyClient.connect();
+      const countResult = await verifyClient.query(
+        'SELECT COUNT(*)::int AS count FROM ' + LEDGER_TABLE,
+      );
+      assert.equal(Number(countResult.rows[0].count), 1, 'final ledger row count is 1');
+    } finally {
+      try { await verifyClient.end(); } catch { /* ignore */ }
+    }
+
+    pass('B17');
   });
 });
