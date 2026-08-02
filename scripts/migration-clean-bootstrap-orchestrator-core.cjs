@@ -13,30 +13,32 @@
  * and the on-disk SQL file, validates the committed authority (exactly one
  * migration, exactly one expected critical object, raw-byte checksum,
  * catalog-normalizer fingerprint), and returns a frozen projection plus a `run`
- * factory. The `run` factory opens ONE pinned session, executes the required
- * sequence atomically in a single transaction, and closes/rolls back on any
- * failure so no ledger relation, ledger row, or partial object remains.
+ * factory. The `run` factory opens ONE pinned session, validates config and
+ * clean-target evidence, executes the required sequence atomically in a single
+ * transaction, and closes/rolls back on any pre-commit failure so no ledger
+ * relation, ledger row, or partial object remains. Post-commit verification
+ * failures are reported truthfully as COMMITTED_POST_VERIFICATION_FAILED.
  *
+ *   validate config
  *   validate committed manifest/source
- *   verify exact one migration
- *   verify exact one expected critical object
- *   verify checksum
+ *   validate exact operation
+ *   validate exact target class
+ *   validate exact approval
+ *   open one pinned session
  *   verify clean target evidence
- *   verify explicit operation
- *   verify target class
- *   verify approval
- *   begin transaction
+ *   BEGIN
  *   execute exact committed SQL
  *   insert exact ledger row
  *   verify relation and row
- *   commit
+ *   COMMIT
  *   verify catalog fingerprint
- *   verify no residual state
+ *   verify post-commit residual state
  *
  * Dependencies (all functions):
  *   openSession()        -> { query(text, values), release() } on ONE dedicated client
  *   verifyCatalogFingerprint(expectedFingerprint) -> boolean (read-only catalog collection)
  *   verifyNoResidualState() -> boolean
+ *   verifyCleanTarget(session, projection) -> boolean
  *   now()                -> ISO timestamp string for the ledger applied_at
  *
  * Refs: #3846, #3840, #3839, #3816, #3809, #3802, #3657, #3458, #3425, #3435,
@@ -73,12 +75,19 @@ const FACTORY_ERRORS = Object.freeze({
   FINGERPRINT_INVALID: 'CLEAN_BOOTSTRAP_FINGERPRINT_INVALID',
   CONFIG_INVALID: 'CLEAN_BOOTSTRAP_CONFIG_INVALID',
   DEPENDENCY_MISSING: 'CLEAN_BOOTSTRAP_DEPENDENCY_MISSING',
+  OPERATION_INVALID: 'OPERATION_INVALID',
+  CLEAN_TARGET_VERIFICATION_FAILED: 'CLEAN_TARGET_VERIFICATION_FAILED',
+  TRANSACTION_FAILED: 'TRANSACTION_FAILED',
+  LEDGER_VERIFICATION_FAILED: 'LEDGER_VERIFICATION_FAILED',
+  CATALOG_FINGERPRINT_POST_COMMIT_FAILED: 'CATALOG_FINGERPRINT_POST_COMMIT_FAILED',
+  RESIDUAL_STATE_POST_COMMIT_FAILED: 'RESIDUAL_STATE_POST_COMMIT_FAILED',
 });
 
 const REQUIRED_RUN_DEPENDENCIES = Object.freeze([
   'openSession',
   'verifyCatalogFingerprint',
   'verifyNoResidualState',
+  'verifyCleanTarget',
   'now',
 ]);
 
@@ -226,29 +235,45 @@ function createCleanBootstrapRunner(config) {
   if (!isPlainRecord(config)) {
     throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
   }
-  const runnerVersion = config.runnerVersion;
-  const environmentClass = config.environmentClass;
-  const deployedCommit = config.deployedCommit;
-  const deps = config.dependencies;
-
-  if (!isNonEmptyString(runnerVersion)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
-  if (!isNonEmptyString(environmentClass)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
-  if (!isNonEmptyString(deployedCommit)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
-  if (!isPlainRecord(deps)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
-
-  for (const name of REQUIRED_RUN_DEPENDENCIES) {
-    if (typeof deps[name] !== 'function') {
-      throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING + ':' + name);
-    }
-  }
-
   const projection = loadBootstrapProjection();
 
   async function runBootstrap() {
     let session = null;
     let transactionOpen = false;
+    let committed = false;
     try {
+      const runnerVersion = config.runnerVersion;
+      const environmentClass = config.environmentClass;
+      const deployedCommit = config.deployedCommit;
+      const deps = config.dependencies;
+
+      if (!isNonEmptyString(runnerVersion)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
+      if (!isNonEmptyString(environmentClass)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
+      if (!isNonEmptyString(deployedCommit)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
+      if (!isPlainRecord(deps)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
+
+      for (const name of REQUIRED_RUN_DEPENDENCIES) {
+        if (typeof deps[name] !== 'function') {
+          throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
+        }
+      }
+
+      if (config.operation !== 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER') {
+        throw new Error(FACTORY_ERRORS.OPERATION_INVALID);
+      }
+      if (config.targetClass !== 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET') {
+        throw new Error(FACTORY_ERRORS.TARGET_CLASS_INVALID);
+      }
+      if (config.approvalReference !== 'issue:3846') {
+        throw new Error(FACTORY_ERRORS.APPROVAL_INVALID);
+      }
+
       session = await deps.openSession();
+
+      const cleanTargetResult = await deps.verifyCleanTarget(session, projection);
+      if (cleanTargetResult !== true) {
+        throw new Error(FACTORY_ERRORS.CLEAN_TARGET_VERIFICATION_FAILED);
+      }
 
       await session.query('BEGIN');
       transactionOpen = true;
@@ -275,7 +300,7 @@ function createCleanBootstrapRunner(config) {
       });
       const relationExists = Boolean(relationCheck.rows[0] && relationCheck.rows[0].exists);
       if (!relationExists) {
-        throw new Error(FACTORY_ERRORS.MIGRATION_NOT_FOUND);
+        throw new Error(FACTORY_ERRORS.LEDGER_VERIFICATION_FAILED);
       }
 
       const rowCheck = await session.query({
@@ -284,20 +309,21 @@ function createCleanBootstrapRunner(config) {
       });
       const rowCount = Number(rowCheck.rows[0] && rowCheck.rows[0].count);
       if (rowCount !== 1) {
-        throw new Error(FACTORY_ERRORS.MIGRATION_NOT_FOUND);
+        throw new Error(FACTORY_ERRORS.LEDGER_VERIFICATION_FAILED);
       }
 
       await session.query('COMMIT');
       transactionOpen = false;
+      committed = true;
 
       const fingerprintVerified = await deps.verifyCatalogFingerprint(projection.catalogFingerprint);
       if (fingerprintVerified !== true) {
-        throw new Error(FACTORY_ERRORS.FINGERPRINT_INVALID);
+        throw new Error(FACTORY_ERRORS.CATALOG_FINGERPRINT_POST_COMMIT_FAILED);
       }
 
       const noResidual = await deps.verifyNoResidualState();
       if (noResidual !== true) {
-        throw new Error(FACTORY_ERRORS.CHECKSUM_MISMATCH);
+        throw new Error(FACTORY_ERRORS.RESIDUAL_STATE_POST_COMMIT_FAILED);
       }
 
       return {
@@ -307,18 +333,23 @@ function createCleanBootstrapRunner(config) {
         checksum: projection.checksum,
         ledgerAppended: true,
         catalogFingerprintVerified: true,
+        postCommitResidualVerified: true,
       };
     } catch (error) {
+      const sanitizedCode = Object.values(FACTORY_ERRORS).includes(error && error.message)
+        ? error.message
+        : FACTORY_ERRORS.TRANSACTION_FAILED;
       if (session && transactionOpen) {
         try { await session.query('ROLLBACK'); } catch { /* preserve original error */ }
       }
       return {
-        outcome: 'BLOCKED_BEFORE_COMMIT',
-        blockers: [String(error && error.message ? error.message : error)],
+        outcome: committed ? 'COMMITTED_POST_VERIFICATION_FAILED' : 'BLOCKED_BEFORE_COMMIT',
+        blockers: [sanitizedCode],
         migrationId: projection.migrationId,
         checksum: projection.checksum,
-        ledgerAppended: false,
-        catalogFingerprintVerified: false,
+        ledgerAppended: committed,
+        catalogFingerprintVerified: committed,
+        postCommitResidualVerified: false,
       };
     } finally {
       if (session) {

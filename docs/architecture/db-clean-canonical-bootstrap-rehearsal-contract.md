@@ -97,7 +97,9 @@ bootstrap orchestrator. It:
   verify explicit operation → verify target class → verify approval → BEGIN →
   execute exact committed SQL → insert exact ledger row → verify relation and row
   → COMMIT → verify catalog fingerprint → verify no residual state`
-- on any failure: `ROLLBACK`; no ledger relation, ledger row, or partial object
+- on pre-commit failure: `ROLLBACK`; no committed ledger mutation
+- on post-commit verification failure: committed state is reported truthfully;
+  `ledgerAppended:true`, `COMMITTED_POST_VERIFICATION_FAILED`, operator investigation required
   remains
 
 It does **NOT** delegate the success path to

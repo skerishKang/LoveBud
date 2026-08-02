@@ -389,3 +389,53 @@ test('NC17 catalog fingerprint is derived by the normalizer, not reused from the
   assert.match(object.fingerprint, /^sha256:[a-f0-9]{64}$/, 'catalog fingerprint is a normalizer sha256');
   assert.equal(sqlChecksum, sha256File(SQL_FILE_PATH), 'SQL checksum is the raw byte checksum');
 });
+
+// ── 13. verifyCleanTarget dependency and config authority ──────────
+
+test('orchestrator requires verifyCleanTarget as a dependency', () => {
+  const orchestrator = read(ORCHESTRATOR_PATH);
+  assert.ok(orchestrator.includes('verifyCleanTarget'), 'orchestrator requires verifyCleanTarget dependency');
+  assert.ok(orchestrator.includes('REQUIRED_RUN_DEPENDENCIES'), 'orchestrator declares required run dependencies');
+});
+
+test('orchestrator validates exact operation, target class, and approval before session open', () => {
+  const orchestrator = read(ORCHESTRATOR_PATH);
+  assert.ok(orchestrator.includes('BOOTSTRAP_CLEAN_CANONICAL_LEDGER'), 'orchestrator validates exact operation');
+  assert.ok(orchestrator.includes('DISPOSABLE_POSTGRES_REHEARSAL_TARGET'), 'orchestrator validates exact target class');
+  assert.ok(orchestrator.includes('issue:3846'), 'orchestrator validates exact approval reference');
+  assert.ok(orchestrator.includes('OPERATION_INVALID'), 'orchestrator uses OPERATION_INVALID fixed code');
+  assert.ok(orchestrator.includes('TARGET_CLASS_INVALID'), 'orchestrator uses TARGET_CLASS_INVALID fixed code');
+  assert.ok(orchestrator.includes('APPROVAL_INVALID'), 'orchestrator uses APPROVAL_INVALID fixed code');
+});
+
+test('orchestrator calls verifyCleanTarget before BEGIN', () => {
+  const orchestrator = read(ORCHESTRATOR_PATH);
+  const verifyCleanTargetIndex = orchestrator.indexOf('verifyCleanTarget');
+  const beginIndex = orchestrator.indexOf("'BEGIN'");
+  assert.ok(verifyCleanTargetIndex > -1, 'verifyCleanTarget is present');
+  assert.ok(beginIndex > -1, 'BEGIN is present');
+  assert.ok(verifyCleanTargetIndex < beginIndex, 'verifyCleanTarget is called before BEGIN');
+});
+
+test('orchestrator uses COMMITTED_POST_VERIFICATION_FAILED for post-commit failures', () => {
+  const orchestrator = read(ORCHESTRATOR_PATH);
+  assert.ok(orchestrator.includes('COMMITTED_POST_VERIFICATION_FAILED'), 'orchestrator reports post-commit failures truthfully');
+  assert.ok(orchestrator.includes('postCommitResidualVerified'), 'orchestrator includes postCommitResidualVerified in result');
+});
+
+test('orchestrator does not leak raw dependency errors in blockers', () => {
+  const orchestrator = read(ORCHESTRATOR_PATH);
+  assert.ok(!orchestrator.includes('String(error'), 'orchestrator does not use String(error)');
+  assert.ok(!orchestrator.includes('String(error.message'), 'orchestrator does not use String(error.message)');
+  assert.ok(!orchestrator.includes('error.stack'), 'orchestrator does not expose error.stack');
+  assert.ok(!orchestrator.includes("error.message ? error.message : error"), 'orchestrator does not leak raw error message');
+});
+
+test('orchestrator uses sanitized fixed codes for all failure outcomes', () => {
+  const orchestrator = read(ORCHESTRATOR_PATH);
+  assert.ok(orchestrator.includes('CLEAN_TARGET_VERIFICATION_FAILED'), 'orchestrator uses CLEAN_TARGET_VERIFICATION_FAILED');
+  assert.ok(orchestrator.includes('TRANSACTION_FAILED'), 'orchestrator uses TRANSACTION_FAILED');
+  assert.ok(orchestrator.includes('LEDGER_VERIFICATION_FAILED'), 'orchestrator uses LEDGER_VERIFICATION_FAILED');
+  assert.ok(orchestrator.includes('CATALOG_FINGERPRINT_POST_COMMIT_FAILED'), 'orchestrator uses CATALOG_FINGERPRINT_POST_COMMIT_FAILED');
+  assert.ok(orchestrator.includes('RESIDUAL_STATE_POST_COMMIT_FAILED'), 'orchestrator uses RESIDUAL_STATE_POST_COMMIT_FAILED');
+});

@@ -283,3 +283,504 @@ test('B4 global cleanup leaves no disposable database, open client, or cleanup e
   assert.deepEqual(errors, [], 'no global cleanup errors');
   pass('B4');
 });
+
+// ── B5. Dirty target: verifyCleanTarget blocks before BEGIN ──────────
+
+test('B5 dirty target blocks before BEGIN: SQL executed 0 times', async () => {
+  await withDisposableDb('b5_dirty_target', null, async (ctx) => {
+    let sessionOpenCount = 0;
+    let sqlExecuteCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      sessionOpenCount++;
+      const session = await opener();
+      const originalQuery = session.query;
+      session.query = async function (queryObject) {
+        sqlExecuteCount++;
+        return originalQuery(queryObject);
+      };
+      return session;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return false; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(sessionOpenCount, 1, 'session opened exactly once');
+    assert.equal(sqlExecuteCount, 1, 'only BEGIN was executed before block');
+    assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'dirty target blocked before commit');
+    assert.equal(result.ledgerAppended, false, 'no ledger row appended');
+    assert.equal(result.blockers.length, 1, 'one blocker reported');
+    assert.equal(result.blockers[0], 'CLEAN_TARGET_VERIFICATION_FAILED', 'sanitized fixed code');
+    pass('B5');
+  });
+});
+
+// ── B6. Wrong operation: session open 0 ──────────────────────────
+
+test('B6 wrong operation blocks before session open', async () => {
+  await withDisposableDb('b6_wrong_operation', null, async (ctx) => {
+    let sessionOpenCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      sessionOpenCount++;
+      return opener();
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'WRONG_OPERATION',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(sessionOpenCount, 0, 'session open 0 for wrong operation');
+    assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'wrong operation blocked before commit');
+    assert.equal(result.ledgerAppended, false, 'no ledger row appended');
+    assert.equal(result.blockers[0], 'OPERATION_INVALID', 'sanitized fixed code');
+    pass('B6');
+  });
+});
+
+// ── B7. Wrong target class: session open 0 ────────────────────────
+
+test('B7 wrong target class blocks before session open', async () => {
+  await withDisposableDb('b7_wrong_target', null, async (ctx) => {
+    let sessionOpenCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      sessionOpenCount++;
+      return opener();
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'WRONG_TARGET_CLASS',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(sessionOpenCount, 0, 'session open 0 for wrong target class');
+    assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'wrong target blocked before commit');
+    assert.equal(result.ledgerAppended, false, 'no ledger row appended');
+    assert.equal(result.blockers[0], 'TARGET_CLASS_INVALID', 'sanitized fixed code');
+    pass('B7');
+  });
+});
+
+// ── B8. Wrong approval: session open 0 ────────────────────────────
+
+test('B8 wrong approval blocks before session open', async () => {
+  await withDisposableDb('b8_wrong_approval', null, async (ctx) => {
+    let sessionOpenCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      sessionOpenCount++;
+      return opener();
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:9999',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(sessionOpenCount, 0, 'session open 0 for wrong approval');
+    assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'wrong approval blocked before commit');
+    assert.equal(result.ledgerAppended, false, 'no ledger row appended');
+    assert.equal(result.blockers[0], 'APPROVAL_INVALID', 'sanitized fixed code');
+    pass('B8');
+  });
+});
+
+// ── B9. Clean verifier throws: SQL executed 0, raw error leakage 0 ──
+
+test('B9 clean verifier throws blocks before SQL and leaks no raw error', async () => {
+  await withDisposableDb('b9_verifier_throws', null, async (ctx) => {
+    let sessionOpenCount = 0;
+    let sqlExecuteCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      sessionOpenCount++;
+      const session = await opener();
+      const originalQuery = session.query;
+      session.query = async function (queryObject) {
+        sqlExecuteCount++;
+        return originalQuery(queryObject);
+      };
+      return session;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { throw new Error('raw dependency error: SELECT * FROM pg_tables'); },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(sessionOpenCount, 1, 'session opened once');
+    assert.equal(sqlExecuteCount, 1, 'only BEGIN was executed before verifier threw');
+    assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'verifier throw blocked before commit');
+    assert.equal(result.ledgerAppended, false, 'no ledger row appended');
+    assert.equal(result.blockers[0], 'CLEAN_TARGET_VERIFICATION_FAILED', 'sanitized fixed code, no raw error');
+    assert.ok(!result.blockers[0].includes('SELECT'), 'no raw SQL in blocker');
+    assert.ok(!result.blockers[0].includes('pg_tables'), 'no raw table name in blocker');
+    pass('B9');
+  });
+});
+
+// ── B10. SQL failure after BEGIN: ROLLBACK 1, COMMIT 0 ──────────
+
+test('B10 SQL failure after BEGIN rolls back and reports BLOCKED_BEFORE_COMMIT', async () => {
+  await withDisposableDb('b10_sql_failure', null, async (ctx) => {
+    let commitCount = 0;
+    let rollbackCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const failingOpener = async function openSession() {
+      const session = await opener();
+      const originalQuery = session.query;
+      session.query = async function (queryObject) {
+        const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+        if (text === 'COMMIT') {
+          commitCount++;
+        }
+        if (text === 'ROLLBACK') {
+          rollbackCount++;
+        }
+        if (/INSERT\s+INTO\s+schema_migration_ledger/i.test(text)) {
+          throw new Error('CLEAN_BOOTSTRAP_INJECTED_SQL_FAILURE');
+        }
+        return originalQuery(queryObject);
+      };
+      return session;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: failingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(rollbackCount, 1, 'ROLLBACK called once');
+    assert.equal(commitCount, 0, 'COMMIT called zero times');
+    assert.equal(result.outcome, 'BLOCKED_BEFORE_COMMIT', 'SQL failure reports BLOCKED_BEFORE_COMMIT');
+    assert.equal(result.ledgerAppended, false, 'no ledger row appended');
+    pass('B10');
+  });
+});
+
+// ── B11. Fingerprint failure after COMMIT: ROLLBACK 0, ledgerAppended true ──
+
+test('B11 fingerprint failure after COMMIT reports COMMITTED_POST_VERIFICATION_FAILED', async () => {
+  await withDisposableDb('b11_fingerprint_fail', null, async (ctx) => {
+    let commitCount = 0;
+    let rollbackCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      const session = await opener();
+      const originalQuery = session.query;
+      session.query = async function (queryObject) {
+        const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+        if (text === 'COMMIT') commitCount++;
+        if (text === 'ROLLBACK') rollbackCount++;
+        return originalQuery(queryObject);
+      };
+      return session;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return false; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(rollbackCount, 0, 'ROLLBACK called zero times after COMMIT');
+    assert.equal(commitCount, 1, 'COMMIT called once');
+    assert.equal(result.outcome, 'COMMITTED_POST_VERIFICATION_FAILED', 'fingerprint failure reports truthfully');
+    assert.equal(result.ledgerAppended, true, 'ledgerAppended true after commit');
+    assert.equal(result.catalogFingerprintVerified, true, 'catalogFingerprintVerified true (commit succeeded)');
+    pass('B11');
+  });
+});
+
+// ── B12. Residual failure after COMMIT: ROLLBACK 0, ledgerAppended true ──
+
+test('B12 residual failure after COMMIT reports COMMITTED_POST_VERIFICATION_FAILED', async () => {
+  await withDisposableDb('b12_residual_fail', null, async (ctx) => {
+    let commitCount = 0;
+    let rollbackCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      const session = await opener();
+      const originalQuery = session.query;
+      session.query = async function (queryObject) {
+        const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+        if (text === 'COMMIT') commitCount++;
+        if (text === 'ROLLBACK') rollbackCount++;
+        return originalQuery(queryObject);
+      };
+      return session;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return false; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(rollbackCount, 0, 'ROLLBACK called zero times after COMMIT');
+    assert.equal(commitCount, 1, 'COMMIT called once');
+    assert.equal(result.outcome, 'COMMITTED_POST_VERIFICATION_FAILED', 'residual failure reports truthfully');
+    assert.equal(result.ledgerAppended, true, 'ledgerAppended true after commit');
+    assert.equal(result.postCommitResidualVerified, false, 'postCommitResidualVerified false');
+    pass('B12');
+  });
+});
+
+// ── B13. Second run against already-bootstrapped target ──────────
+
+test('B13 second run against already-bootstrapped target is blocked by clean-target check', async () => {
+  await withDisposableDb('b13_second_run', null, async (ctx) => {
+    let sessionOpenCount = 0;
+    let sqlExecuteCount = 0;
+    let verifyCleanTargetCallCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      sessionOpenCount++;
+      const session = await opener();
+      const originalQuery = session.query;
+      session.query = async function (queryObject) {
+        const text = typeof queryObject === 'string' ? queryObject : queryObject.text;
+        sqlExecuteCount++;
+        return originalQuery(queryObject);
+      };
+      return session;
+    };
+
+    const verifyCleanTarget = async function (session, projection) {
+      verifyCleanTargetCallCount++;
+      const result = await session.query({
+        text: 'SELECT to_regclass($1::text) IS NOT NULL AS exists',
+        values: [LEDGER_TABLE],
+      });
+      const exists = Boolean(result.rows[0] && result.rows[0].exists);
+      return !exists;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget,
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const firstResult = await runner.run();
+    assert.equal(firstResult.outcome, 'BOOTSTRAPPED', 'first clean run bootstrapped');
+    assert.equal(firstResult.ledgerAppended, true, 'first run appended ledger');
+
+    const secondResult = await runner.run();
+    assert.equal(secondResult.outcome, 'BLOCKED_BEFORE_COMMIT', 'second run blocked by clean-target check');
+    assert.equal(secondResult.ledgerAppended, false, 'second ledger insert: 0');
+    assert.equal(verifyCleanTargetCallCount, 2, 'verifyCleanTarget called for both runs');
+
+    const verifyClient = new Client(baseClientConfig(ctx.cfg, ctx.dbName));
+    verifyClient.on('error', function () { /* expected post-drop socket error */ });
+    try {
+      await verifyClient.connect();
+      const countResult = await verifyClient.query(
+        'SELECT COUNT(*)::int AS count FROM ' + LEDGER_TABLE,
+      );
+      assert.equal(Number(countResult.rows[0].count), 1, 'ledger row count still exactly 1');
+
+      const relationResult = await verifyClient.query(
+        'SELECT COUNT(*)::int AS count FROM pg_class WHERE relname = $1',
+        [LEDGER_TABLE],
+      );
+      assert.equal(Number(relationResult.rows[0].count), 1, 'unexpected extra relation: 0');
+    } finally {
+      try { await verifyClient.end(); } catch { /* ignore */ }
+    }
+
+    pass('B13');
+  });
+});
+
+// ── B14. Session release exactly once ────────────────────────────
+
+test('B14 release is called exactly once per session', async () => {
+  await withDisposableDb('b14_release_once', null, async (ctx) => {
+    let releaseCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      const session = await opener();
+      const originalRelease = session.release;
+      session.release = async function () {
+        releaseCount++;
+        return originalRelease();
+      };
+      return session;
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    await runner.run();
+    assert.equal(releaseCount, 1, 'release called exactly once');
+    pass('B14');
+  });
+});
+
+// ── B15. Unknown config field does not bypass validation ──────────
+
+test('B15 unknown config field does not bypass validation', async () => {
+  await withDisposableDb('b15_unknown_field', null, async (ctx) => {
+    let sessionOpenCount = 0;
+
+    const opener = createSessionOpener(ctx.cfg, ctx.dbName);
+    const trackingOpener = async function openSession() {
+      sessionOpenCount++;
+      return opener();
+    };
+
+    const runner = createCleanBootstrapRunner({
+      runnerVersion: 'v1',
+      environmentClass: 'disposable-test',
+      deployedCommit: '000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
+      unknownField: 'should-not-bypass',
+      dependencies: Object.assign({
+        openSession: trackingOpener,
+        verifyCleanTarget: async function () { return true; },
+        verifyCatalogFingerprint: async function () { return true; },
+        verifyNoResidualState: async function () { return true; },
+        now: async function () { return new Date().toISOString(); },
+      }),
+    });
+
+    const result = await runner.run();
+    assert.equal(result.outcome, 'BOOTSTRAPPED', 'unknown field does not block valid bootstrap');
+    assert.equal(sessionOpenCount, 1, 'session opened for valid config with unknown field');
+    pass('B15');
+  });
+});
