@@ -23,6 +23,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/test-suite-count-authority-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads fixed repository-owned classification/registry/package sources and executes the pure canonical test-suite count authority with synthetic fixtures and negative controls; derives deterministic frozen default-CI counts and supplemental totals without network, child process, filesystem write, database, browser, or Production access (#3838).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/home-i18n-runtime-metadata-3627-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

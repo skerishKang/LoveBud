@@ -10,19 +10,18 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const REGISTRY_PATH = path.join(ROOT, 'tests', 'ci-test-group-registry.json');
 const CLASSIFICATION_PATH = path.join(ROOT, 'tests', 'test-layer-classification.json');
 const REPORTER_PATH = path.join(ROOT, 'scripts', 'report-ci-test-groups.cjs');
+const AUTHORITY_PATH = path.join(ROOT, 'scripts', 'test-suite-count-authority.cjs');
 const PACKAGE_PATH = path.join(ROOT, 'package.json');
 const CI_YML_PATH = path.join(ROOT, '.github', 'workflows', 'ci.yml');
 const DECISION_PATH = path.join(ROOT, 'docs', 'architecture', 'CI_TEST_GROUP_REGISTRY_CONTRACT.md');
-// Count-literal reconciliation across merged PRs (preserved as documented baselines):
+// Global default-CI count literals are no longer duplicated in this contract.
+// Historical merged-PR baselines are preserved below for documentation only:
 //   PR #3829 baseline: expected post-child counts 788 / 577 / 191 / 20
-//     default_total, 788
-//     SOURCE_STATIC, 577
-//     EXECUTED_FAKE, 191
-//   Current counts after PR #3830 adds two source/behavior contracts and the
-//   latest-main merge-forward adds Editor a11y, My Trees Story, and
-//   release-health operator/sentinel contracts are asserted in
-//   test 7 below (default_total, 795 / SOURCE_STATIC, 580 / EXECUTED_FAKE, 193 /
-//   EXECUTED_REAL_LOCAL, 22).
+//   Later baselines reached default_total 795 / SOURCE_STATIC 580 /
+//   EXECUTED_FAKE 193 / EXECUTED_REAL_LOCAL 22.
+// Current counts are derived from the canonical test-suite count authority
+// (Issue #3838): test 7 and test 11 compare the reporter against
+// scripts/test-suite-count-authority.cjs instead of hardcoding literals.
 
 
 const {
@@ -46,6 +45,7 @@ const {
   PACKAGE_PATH: MOD_PKG_PATH,
   CI_YML_PATH: MOD_CI_PATH,
 } = require(REPORTER_PATH);
+const { loadCanonicalTestSuiteCounts } = require(AUTHORITY_PATH);
 
 const EXPECTED_GROUP_IDS = [
   'SOURCE_STATIC',
@@ -388,19 +388,24 @@ test('6. exact default-glob parsing and deterministic enumeration', () => {
   assert.deepEqual(files, files2);
 });
 
-test('7. expected post-child counts 795 / 580 / 193 / 22', () => {
+test('7. canonical authority derives the exact global counts', () => {
   const data = buildReportData();
-  assert.equal(data.default_total, 795);
-  assert.equal(data.layer_counts.SOURCE_STATIC, 580);
-  assert.equal(data.layer_counts.EXECUTED_FAKE, 193);
-  assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, 22);
+  const canonical = loadCanonicalTestSuiteCounts();
+  assert.equal(data.default_total, canonical.default_total);
+  assert.equal(data.layer_counts.SOURCE_STATIC, canonical.SOURCE_STATIC);
+  assert.equal(data.layer_counts.EXECUTED_FAKE, canonical.EXECUTED_FAKE);
+  assert.equal(data.layer_counts.EXECUTED_REAL_LOCAL, canonical.EXECUTED_REAL_LOCAL);
+  // default_total equals the sum of all layer counts.
+  const layerSum = Object.values(data.layer_counts).reduce((a, b) => a + b, 0);
+  assert.equal(canonical.default_total, layerSum);
 });
 
-test('8. supplemental reconciliation 10 Python + 8 DB = 18', () => {
+test('8. supplemental reconciliation matches the canonical authority', () => {
   const data = buildReportData();
-  assert.equal(data.supplemental_python, 10);
-  assert.equal(data.supplemental_db_engine, 8);
-  assert.equal(data.supplemental_total, 18);
+  const canonical = loadCanonicalTestSuiteCounts();
+  assert.equal(data.supplemental_python, canonical.supplemental_python);
+  assert.equal(data.supplemental_db_engine, canonical.supplemental_db_engine);
+  assert.equal(data.supplemental_total, canonical.supplemental_python + canonical.supplemental_db_engine);
 });
 
 test('9. zero default/supplemental duplicates', () => {
@@ -427,10 +432,11 @@ test('11. browser/process exact membership from reporter output', () => {
   assert.ok(process, 'process group in output');
   assert.ok(browser.count > 0, 'browser count > 0, got ' + browser.count);
   assert.ok(process.count > 0, 'process count > 0, got ' + process.count);
-  assert.equal(browser.count + process.count, 22, 'browser + process = 22');
+  const canonical = loadCanonicalTestSuiteCounts();
+  assert.equal(browser.count + process.count, canonical.EXECUTED_REAL_LOCAL, 'browser + process = canonical EXECUTED_REAL_LOCAL');
   const inv = readJson(CLASSIFICATION_PATH);
   const realLocal = inv.entries.filter(e => e.layer === 'EXECUTED_REAL_LOCAL');
-  assert.equal(realLocal.length, 22);
+  assert.equal(realLocal.length, canonical.EXECUTED_REAL_LOCAL);
   // Verify each browser and process path is EXECUTED_REAL_LOCAL
   const reg = readJson(REGISTRY_PATH);
   const browserPaths = reg.groups.find(g => g.group === 'BROWSER_REAL_LOCAL').explicit_paths;

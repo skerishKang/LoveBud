@@ -21,10 +21,10 @@ const CANONICAL_SOURCE = `${SOURCE}\n${TAXONOMY_SOURCE}`;
 // (git diff --name-status origin/main...HEAD) and the PR body, not asserted here.
 // tests/ci-test-group-registry.json is a protected aggregate authority and is NOT
 // part of this cumulative diff.
-// Count-literal reconciliation with the PR #3829 baseline (documented, not asserted here):
-//   default_total,\s*788
-//   SOURCE_STATIC,\s*578
-// Current literals after PR #3830 + latest-main merge-forward are asserted below with \s*795 / \s*580.
+// Global default-CI count literals are no longer duplicated in this contract.
+// Historical PR #3829 baseline was default_total 788 / SOURCE_STATIC 578; later
+// baselines reached default_total 795 / SOURCE_STATIC 580. Current counts derive
+// from the canonical test-suite count authority (Issue #3838) referenced below.
 const CUMULATIVE_BOUNDARY_FILES = [
   'scripts/release-health-taxonomy.cjs',
   'scripts/cloudflare-supplied-url-smoke.cjs',
@@ -216,10 +216,11 @@ test('19. authorized file set is represented and forbidden project authorities r
   assert.ok(entry, 'classification entry must exist for this contract test');
   assert.equal(entry.layer, 'SOURCE_STATIC');
 
-  // Registry aggregate contract count literals must be present in the registry contract test.
+  // Global count totals derive from the canonical test-suite count authority
+  // (Issue #3838): the registry contract must reference it rather than duplicate
+  // numeric literals across contracts.
   const registryContract = fs.readFileSync(REGISTRY_CONTRACT_PATH, 'utf-8');
-  assert.match(registryContract, /default_total,\s*795/);
-  assert.match(registryContract, /SOURCE_STATIC,\s*580/);
+  assert.match(registryContract, /test-suite-count-authority/);
   // package.json smoke script must keep its existing value (no modification required).
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, 'utf-8'));
   assert.ok(pkg.scripts['smoke:cloudflare'].includes('cloudflare-supplied-url-smoke.cjs'));
