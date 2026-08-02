@@ -4,7 +4,12 @@
   "fingerprint_algorithm": "sha256",
   "normalizer_version": "1.0",
   "metadata_contract_path": "db/migration-provenance/catalog-metadata-contract.json",
-  "critical_objects": [],
+  "critical_objects": [
+    {
+      "name": "table:public.schema_migration_ledger",
+      "fingerprint": "sha256:8a3eee38e8dfa13f34eaf82255f0a9de166fbb2f3d8f6a3f096ea815c04fb7dd"
+    }
+  ],
   "adoption_rule": "No live catalog snapshot or historical application record is committed here. A separately approved read-only adoption procedure must create sanitized object fingerprints before ACTIVE status is allowed.",
   "comparison_scope": [
     "columns",

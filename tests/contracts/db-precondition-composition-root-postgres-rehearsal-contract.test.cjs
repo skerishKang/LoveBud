@@ -114,7 +114,7 @@ test('exactly one new CI job with postgres:17.4-bookworm and 170004 assertion', 
   assert.equal(jobCount, 1, 'exactly one rehearsal job definition');
   assert.ok(workflow.includes('image: postgres:17.4-bookworm'), 'postgres:17.4-bookworm service');
   assert.ok(workflow.includes('npm run test:db-engine:precondition-composition-root'), 'job runs only the rehearsal script');
-  assert.equal((workflow.match(/170004/g) || []).length, 8, 'each of the eight DB-engine jobs asserts 170004');
+  assert.equal((workflow.match(/170004/g) || []).length, 9, 'each of the nine DB-engine jobs asserts 170004');
   const versionAssert = workflow.match(/test "\$\{VER\}" = "170004"/);
   assert.ok(versionAssert, 'exact server_version_num 170004 assertion');
 });

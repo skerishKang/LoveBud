@@ -16,14 +16,15 @@ Current sequence posture:
 Steps 1–7 complete
 Step 8 readiness audit accepted
 Step 8 Child 1 clean-target adoption policy implemented by #3840 (Issue remains OPEN prior to PR merge)
-Step 8 Child 2 canonical bootstrap migration capability & disposable rehearsal selected as next child
+Step 8 Child 2 canonical bootstrap rehearsal implemented by Issue #3846
 Step 8 Child 2 not implemented by Issue #3840
 Step 8 Child 3 target attribution & read-only catalog parity preflight not authorized
 Step 8 Child 4 fail-closed deploy gate & canonical target activation boundary not authorized
 Legacy Production Phase B/C/D/E preserved and deferred (DEFERRED_NOT_REJECTED)
 No exact Child 2 migration identity, timestamp, slug, filename, SQL body, or DDL sequence pre-determined
-Four authority manifests remain ADOPTION_REQUIRED and empty
++canonical bootstrap migration (20260802094500_bootstrap-migration-ledger) authored by Issue #3846; manifests remain ADOPTION_REQUIRED
 ```
+
 
 Issue #3458 remains the open parent authority. This source-only decision grants no runtime, database, SQL, environment, provider, or Production authority.
 

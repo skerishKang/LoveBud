@@ -173,15 +173,25 @@ function validateCleanTargetAdoptionState(inputs) {
   if (canonicalMigrationsData.status !== 'ADOPTION_REQUIRED') {
     throw new Error('NC3 Failure: canonical-migrations.json status is not ADOPTION_REQUIRED');
   }
-  if (!Array.isArray(canonicalMigrationsData.migrations) || canonicalMigrationsData.migrations.length !== 0) {
-    throw new Error('NC4 Failure: canonical-migrations.json migrations collection is not empty');
+  if (!Array.isArray(canonicalMigrationsData.migrations) || canonicalMigrationsData.migrations.length !== 1) {
+    throw new Error('NC4 Failure: canonical-migrations.json migrations collection must have exactly one entry');
+  }
+  const committedMigration = canonicalMigrationsData.migrations[0];
+  if (committedMigration.id !== '20260802094500_bootstrap-migration-ledger') {
+    throw new Error('NC4 Failure: canonical-migrations.json migration id does not match committed identity');
+  }
+  if (committedMigration.path !== 'db/migrations/20260802094500_bootstrap-migration-ledger.sql') {
+    throw new Error('NC4 Failure: canonical-migrations.json migration path does not match committed identity');
   }
 
   if (expectedSchemaData.status !== 'ADOPTION_REQUIRED') {
     throw new Error('NC3 Failure: expected-schema-manifest.json status is not ADOPTION_REQUIRED');
   }
-  if (!Array.isArray(expectedSchemaData.critical_objects) || expectedSchemaData.critical_objects.length !== 0) {
-    throw new Error('NC4 Failure: expected-schema-manifest.json critical_objects collection is not empty');
+  if (!Array.isArray(expectedSchemaData.critical_objects) || expectedSchemaData.critical_objects.length !== 1) {
+    throw new Error('NC4 Failure: expected-schema-manifest.json critical_objects collection must have exactly one entry');
+  }
+  if (expectedSchemaData.critical_objects[0].name !== 'table:public.schema_migration_ledger') {
+    throw new Error('NC4 Failure: expected-schema-manifest.json critical object name does not match committed identity');
   }
 
   if (preconditionRegistryData.status !== 'ADOPTION_REQUIRED') {
@@ -335,17 +345,23 @@ test('Assertion 10: Provider / secret / database mutation is unauthorized (#3840
   assert.ok(docText.includes('database mutation: NOT_AUTHORIZED'));
 });
 
-test('Assertion 11: Four provenance JSON authorities remain ADOPTION_REQUIRED with empty collections (#3840)', () => {
+test('Assertion 11: Four provenance JSON authorities remain ADOPTION_REQUIRED with exact populated/empty collections (#3840)', () => {
   const canonical = JSON.parse(fs.readFileSync(PATHS.canonicalMigrationsJson, 'utf8'));
   const expected = JSON.parse(fs.readFileSync(PATHS.expectedSchemaJson, 'utf8'));
   const precondition = JSON.parse(fs.readFileSync(PATHS.preconditionRegistryJson, 'utf8'));
   const readonlyCatalog = JSON.parse(fs.readFileSync(PATHS.readonlyCatalogJson, 'utf8'));
 
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(canonical.migrations, []);
+  assert.equal(canonical.migrations.length, 1);
+  assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
+  assert.equal(
+    canonical.migrations[0].path,
+    'db/migrations/20260802094500_bootstrap-migration-ledger.sql'
+  );
 
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(expected.critical_objects.length, 1);
+  assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
 
   assert.equal(precondition.status, 'ADOPTION_REQUIRED');
   assert.deepEqual(precondition.entries, []);

@@ -446,14 +446,14 @@ test('11. browser/process exact membership from reporter output', () => {
   for (const pp of processPaths) { assert.ok(realLocalSet.has(pp), pp + ' is EXECUTED_REAL_LOCAL'); }
 });
 
-test('12. eight DB-engine command references with one-to-one mapping', () => {
+test('12. nine DB-engine command references with one-to-one mapping', () => {
   const pkg = JSON.parse(fs.readFileSync(PACKAGE_PATH, 'utf8'));
   const inv = readJson(CLASSIFICATION_PATH);
   const { refs, errors } = getDbEngineScriptRefs(pkg);
   assert.equal(errors.length, 0, 'DB script errors: ' + errors.join('; '));
-  assert.equal(refs.length, 8);
+  assert.equal(refs.length, 9);
   const suppDb = Array.isArray(inv.supplemental) ? inv.supplemental.filter(s => s.layer === 'DB_ENGINE_EXECUTION') : [];
-  assert.equal(suppDb.length, 8);
+  assert.equal(suppDb.length, 9);
   const scriptTargets = new Set(refs.map(r => r.target));
   const suppPaths = new Set(suppDb.map(s => s.path));
   // One-to-one mapping
