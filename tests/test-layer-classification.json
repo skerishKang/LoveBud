@@ -3601,6 +3601,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/schema-orphan-write-read-sentinel-taxonomy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/search-csp-inline-cleanup-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
