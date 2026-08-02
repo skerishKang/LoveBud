@@ -93,6 +93,7 @@ BACKUP_IMAGE = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("postgresql-client")
     .pip_install("boto3", "cryptography")
+    .add_local_python_source("modal_compute")
 )
 
 app = modal.App(RECOVERY_BACKUP_APP_NAME)
@@ -356,12 +357,26 @@ def run_logical_backup() -> dict:
                 _log_phase("encryption_failed")
 
         if dump_ok and encryption_ok and plaintext_cleanup_ok:
-            s3 = _s3_client()
-            bucket = os.environ[R2_BUCKET_ENV]
-            run_key = _unique_run_key()
-            staging_key = _object_key(STAGING_PREFIX, run_key)
-            upload_ok = _verified_upload(s3, bucket, staging_key, enc_path)
-            verify_ok = upload_ok
+            # Provider client construction is a narrow, sanitized boundary.
+            try:
+                s3 = _s3_client()
+            except Exception:
+                _log_phase("storage_client_failed")
+                s3 = None
+            if s3 is not None:
+                bucket = os.environ[R2_BUCKET_ENV]
+                run_key = _unique_run_key()
+                staging_key = _object_key(STAGING_PREFIX, run_key)
+                # Upload and verification are a narrow, sanitized boundary: retry
+                # exhaustion or unexpected provider responses never escape as raw
+                # exceptions; the outcome is expressed in the sanitized status.
+                try:
+                    upload_ok = _verified_upload(s3, bucket, staging_key, enc_path)
+                    verify_ok = upload_ok
+                except Exception:
+                    upload_ok = False
+                    verify_ok = False
+                    _log_phase("upload_or_verification_failed")
 
         if dump_ok and encryption_ok and plaintext_cleanup_ok and upload_ok and verify_ok:
             # 9. daily promotion from the staging object under the unique run key

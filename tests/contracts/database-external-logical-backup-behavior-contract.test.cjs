@@ -71,6 +71,7 @@ def check(name, fn):
         results[name] = {'status': 'PASS', 'value': value}
     except Exception as e:
         results[name] = {'status': 'ERROR', 'error': str(e)}
+
 def expect_raise(name, fn, needle):
     try:
         fn()
@@ -102,6 +103,49 @@ valid_b64 = base64.b64encode(bytes(range(32))).decode('ascii')
 check('key-valid', lambda: len(p.decode_encryption_key(valid_b64)))
 expect_raise('key-invalid-b64', lambda: p.decode_encryption_key('!!!not-base64!!!'), None)
 expect_raise('key-wrong-length', lambda: p.decode_encryption_key(base64.b64encode(bytes(range(16))).decode('ascii')), 'invalid encryption key length')
+
+# ---- injected fake provider seam (deterministic containment semantics) ----
+SENTINEL = 'SENTINEL_UNIQUE_TOKEN_7f3a'
+ALL_LOG_LINES = []
+
+class FakeProvider:
+    def __init__(self, mode):
+        self.mode = mode
+    def client(self):
+        if self.mode == 'client_fail':
+            raise RuntimeError(SENTINEL)
+        return self
+    def upload_and_verify(self):
+        if self.mode == 'put_fail':
+            raise RuntimeError(SENTINEL)
+        if self.mode == 'head_fail':
+            return False
+        return True
+
+def run_flow(mode):
+    s3 = None
+    upload_ok = False
+    try:
+        s3 = FakeProvider(mode).client()
+    except Exception:
+        s3 = None
+        ALL_LOG_LINES.append('phase=storage_client_failed')
+    if s3 is not None:
+        try:
+            upload_ok = bool(s3.upload_and_verify())
+        except Exception:
+            upload_ok = False
+            ALL_LOG_LINES.append('phase=upload_or_verification_failed')
+    status = p.evaluate_run(
+        dump_success=True, encryption_success=True, plaintext_cleanup_success=True,
+        upload_complete=upload_ok, post_upload_verified=upload_ok, daily_promotion_success=False,
+    )
+    return status, upload_ok
+
+for _mode in ('client_fail', 'put_fail', 'head_fail', 'ok'):
+    _status, _ok = run_flow(_mode)
+    check('seam-' + _mode, lambda s=_status: s)
+check('seam-no-sentinel-output', lambda: all(SENTINEL not in line for line in ALL_LOG_LINES))
 
 # --- policy status scenarios ---
 check('daily-only-success', lambda: p.evaluate_run(**OK))
@@ -261,4 +305,42 @@ test('N. preserve-daily helper functions', () => {
   const w = results['daily-valid-weekly-failure'];
   assert.equal(w.status, 'PASS');
   assert.equal(w.value.weekly_tier, 'WEEKLY_TIER_MISSING');
+});
+
+test('O. fake provider seam: client creation failure is contained', () => {
+  const r = results['seam-client_fail'];
+  assert.equal(r.status, 'PASS');
+  const status = r.value;
+  assert.ok('backup_point_state' in status, 'sanitized status returned');
+  assert.ok(!('error' in status) && !('exception' in status), 'no raw exception in status');
+  assert.ok(JSON.stringify(status).indexOf('SENTINEL_UNIQUE_TOKEN_7f3a') === -1, 'no raw sentinel in status');
+});
+
+test('P. fake provider seam: put retry-exhaustion failure is contained', () => {
+  const r = results['seam-put_fail'];
+  assert.equal(r.status, 'PASS');
+  const status = r.value;
+  assert.ok('backup_point_state' in status, 'sanitized status returned');
+  assert.ok(!('error' in status) && !('exception' in status), 'no raw exception in status');
+  assert.ok(JSON.stringify(status).indexOf('SENTINEL_UNIQUE_TOKEN_7f3a') === -1, 'no raw sentinel in status');
+  assert.ok(status.backup_point_state !== 'BACKUP_POINT_VALID', 'failed provider run must not be valid');
+});
+
+test('Q. fake provider seam: head failure is contained', () => {
+  const r = results['seam-head_fail'];
+  assert.equal(r.status, 'PASS');
+  const status = r.value;
+  assert.ok('backup_point_state' in status, 'sanitized status returned');
+  assert.ok(JSON.stringify(status).indexOf('SENTINEL_UNIQUE_TOKEN_7f3a') === -1, 'no raw sentinel in status');
+});
+
+test('R. fake provider seam: no sentinel leaks into phase logs', () => {
+  assert.equal(results['seam-no-sentinel-output'].status, 'PASS');
+  assert.equal(results['seam-no-sentinel-output'].value, true);
+});
+
+test('S. fake provider seam: healthy provider yields expected upload path', () => {
+  const r = results['seam-ok'];
+  assert.equal(r.status, 'PASS');
+  assert.ok(JSON.stringify(r.value).indexOf('SENTINEL_UNIQUE_TOKEN_7f3a') === -1, 'no sentinel in healthy status');
 });

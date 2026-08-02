@@ -48,6 +48,36 @@ test('4. one scheduled execution per 24-hour period', () => {
   assert.match(APP, /modal\.Period\(days\s*=\s*1\)/);
 });
 
+test('4c. Modal image includes modal_compute local python source', () => {
+  const imageBlock = APP.slice(APP.indexOf('BACKUP_IMAGE = ('), APP.indexOf('app = modal.App'));
+  assert.match(imageBlock, /add_local_python_source\(["']modal_compute["']\)/);
+  assert.match(imageBlock, /apt_install\(["']postgresql-client["']\)/);
+  assert.match(imageBlock, /pip_install\(["']boto3["'],\s*["']cryptography["']\)/);
+});
+
+test('4d. narrow provider failure containment without raw exception escape', () => {
+  const flowStart = APP.indexOf('if dump_ok and encryption_ok and plaintext_cleanup_ok:');
+  const dailyBlock = APP.indexOf('# 9. daily promotion');
+  const flow = APP.slice(flowStart, dailyBlock);
+  // client construction is a narrow sanitized boundary
+  assert.match(flow, /try:\s*\n\s*s3 = _s3_client\(\)/);
+  assert.match(flow, /except Exception:\s*\n\s*_log_phase\(["']storage_client_failed["']\)/);
+  assert.match(flow, /s3 = None/);
+  // upload + verification are a narrow sanitized boundary
+  assert.match(flow, /try:\s*\n\s*upload_ok = _verified_upload\(/);
+  assert.match(flow, /except Exception:\s*\n\s*upload_ok = False/);
+  assert.match(flow, /_log_phase\(["']upload_or_verification_failed["']\)/);
+  // raw exception strings must never reach status or logs
+  assert.ok(!/print\([^)]*except|print\([^)]*\be\b\)/.test(flow), 'no raw exception message logging');
+  assert.ok(!/str\(e\)|repr\(e\)|traceback/.test(flow), 'no exception serialization into status/logs');
+  // no broad outer catch: the only 4-space bare catch is the narrow encryption-key
+  // boundary, which fails closed by returning a sanitized status (never swallowing).
+  const runFunctionBody = APP.slice(APP.indexOf('def run_logical_backup'));
+  const fourSpaceCatches = (runFunctionBody.match(/^    except Exception:\s*$/gm) || []);
+  assert.equal(fourSpaceCatches.length, 1, 'only the narrow key-decode boundary is a 4-space catch');
+  assert.match(runFunctionBody, /except Exception:\s*\n\s*return make_sanitized_status\(/);
+});
+
 test('4b. exactly one non-HTTP Modal function binding on run_logical_backup', () => {
   const functionDecorators = (APP.match(/@app\.function\s*\(/g) || []).length;
   assert.equal(functionDecorators, 1, 'must be exactly one @app.function');
