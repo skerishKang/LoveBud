@@ -5,9 +5,10 @@ Source-only architecture/design-system decision for Issue #3788 (parent design-s
 ## 1. Status and exact source baseline
 
 ```text
-Status:      DRAFT decision record — pending Web CTO review
-Baseline:    origin/main 62da156eb4cff1873d96cdcb5e580c80e7db666f
-Issue:       #3788 — Decide canonical modal and dialog ownership boundaries (source-only)
+Status:      FINAL merged decision authority
+Baseline:    origin/main 1ae856c52c7af1a8d4d2e4a7978ab46fe603a18f
+Issue:       #3788 — Decide canonical modal and dialog ownership boundaries (source-only) — CLOSED completed
+Merge:       PR #3789 — bfebb14b174ebc68eec4b7e7f02f668086b366a5
 Parent:      #3672 — Keep OPEN
 Authorities: #3706 CANONICAL_COMPONENT_VARIANT_INVENTORY_CONTRACT.md (§4.13 Modal/Dialog)
              #3753 FORCED_COLORS_FOCUS_COVERAGE_AUDIT.md (§6 Modal/dialog controls)
