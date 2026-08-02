@@ -521,6 +521,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/release-health-operator-summary-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/release-health-threshold-response-policy-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Requires the canonical release health threshold/response policy document and deterministically locks the exact four health states, five response recommendations, precedence, hard-blocker set, no-success-default evidence completeness, latency diagnostic boundary, full rollback prerequisites, mandatory owner approval, automatic-rollback prohibition, technical/product acceptance separation, privacy exclusions, Step 6 operator-summary handoff, and policy authority without network, browser, Production, provider, database, or secret access (#3824, Step 5 of 6).",
@@ -1150,7 +1156,10 @@
       "path": "tests/contracts/editor-loading-3688-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes real Editor markup/CSS (pages/editor.html, css/editor.css, css/editor/editor-base.css, css/global.css, css/global/lovetree-loading-states.css) and the real js/editor/editor-initial-load-flow.js in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Synthetic auth/data fixture only: loadInitialEditorTree and loadEditorMemories are deferred synthetic gates; syncCurrentTreeData, renderTreeLoadError, markEditorReady, showToast, and redirectToEditorLogin are bounded observable fixture callbacks. Asserts the staged loading contract per source: 500ms region indicator delay, 8000ms long-wait escalation, region-owned sidebar (lt-loading-inline) and canvas (lt-loading-compact) owners, role=status/aria-live=polite, spinner aria-hidden, success/stopped/rejection cleanup, auth-required vs tree-error distinction, no flash on fast completion, no stale timer mutation, reduced-motion animation removal, no horizontal overflow, zero pageerror, zero unexpected console error, zero same-origin request failure, zero unexpected HTTP failure, zero external network, zero browser/context/server leak. No production write/auth/API/DB mutation; no production URL, Firebase network, real account, or real private identifiers used.",
-      "capabilities": ["playwright", "chromium"]
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
     },
     {
       "path": "tests/contracts/editor-memory-actions-readiness-dependency-checker-contract.test.cjs",
@@ -2098,7 +2107,10 @@
       "path": "tests/contracts/modal-a11y-core-dialogs-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes real LoveBud page HTML (index.html, pages/editor.html, pages/my-trees.html, pages/login.html) and the real six core modal controllers (js/index-inline-init.js, js/editor/editor-memory-form.js, js/editor/editor-rename-ui.js, js/editor/editor-shortcuts-help.js, js/my-trees/my-trees-actions.js, js/auth/auth-login-page.js) plus the shared js/shared/modal-a11y.js in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts plus a forced-colors/WHCM probe. Synthetic safe fixtures only (inert scripts, stubbed i18n/api/helper modules, fulfilled external hosts); no Production URL, real login, Auth provider, private IDs, API writes, DB, cache, storage, or external network. Asserts the shared modal accessibility lifecycle per source: initial focus after visibility, live Tab/Shift+Tab containment, focus containment, Escape close (exactly once, busy-gated), guarded invoker restoration, body scroll ownership, reopen-without-listener-duplication, close/dispose state release, page usability after close, and browser health (zero pageerror, console error, same-origin request/HTTP failure, external network, overflow, leak).",
-      "capabilities": ["playwright", "chromium"]
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
     },
     {
       "path": "tests/contracts/modal-a11y-shared-lifecycle-contract.test.cjs",
@@ -2644,7 +2656,10 @@
       "path": "tests/contracts/public-viewer-loading-3688-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes real production CSS/JS chains (css/global.css, css/viewer/public-tree-viewer.css, css/visitor-viewer.css, js/api/base-api-fetch.js, js/postgres-client.js, js/viewer/*.js, js/visitor-viewer/*.js, js/i18n/i18n-*.js) in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Intercepts only the production public memories data path (/api/community/memories) with a deterministic deferred resolver and stubs fonts.googleapis.com with empty CSS. Asserts the staged loading contract per source: shell aria-busy lifecycle, role=status/aria-live=polite loading, role=status empty state (no treeId path), role=alert error state with a keyboard/focusable retry, deterministic fallback shell for bounded empty payloads, single visible state owner, hidden-attribute visibility authority, reduced-motion animation removal, no horizontal overflow, zero pageerror, zero unexpected console error, zero same-origin request failures, zero unexpected HTTP failures, zero external network attempts, and no browser/context/server leaks. No production write/auth/API/DB mutation; no production URL used.",
-      "capabilities": ["playwright", "chromium"]
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
     },
     {
       "path": "tests/contracts/public-viewer-reaction-safe-fallback-contract.test.cjs",
