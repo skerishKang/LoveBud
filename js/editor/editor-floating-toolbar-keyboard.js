@@ -15,6 +15,7 @@
   'use strict';
 
   var flashTimer = null;
+  var boundKeyboardToolbars = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
 
   /**
    * Flash a toolbar button for visual feedback after keyboard activation.
@@ -139,25 +140,50 @@
 
     ctx.toolbar.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
-        // Deselect the current node
+        // 1. Determine whether the open dropdown owns focus (restoration target).
+        var dropdownEl = ctx.dropdown;
+        var moreButton = ctx.moreBtn;
+        var dropdownOwnedFocus = !!(dropdownEl && moreButton &&
+          dropdownEl.classList.contains('is-visible') &&
+          dropdownEl.contains(document.activeElement));
+
+        // 2. Deselect the current node (bounded).
         var selectedEl = ctx.getSelectedNode ? ctx.getSelectedNode() : null;
         if (selectedEl) {
           selectedEl.classList.remove(selectedClass);
           selectedEl.blur();
         }
+
+        // 3. Toolbar dismissal (controller's hideToolbar also hides the dropdown).
         if (ctx.hideToolbar) ctx.hideToolbar();
 
-        // Also clear detail panel selection by clicking on empty canvas
+        // 4. Dropdown cleanup is independent of the optional canvas dispatch.
+        if (window.LoveBudFloatingToolbarDropdown) {
+          window.LoveBudFloatingToolbarDropdown.hide(ctx.dropdown, ctx.moreBtn);
+        }
+
+        // 5. Restore focus to the trigger when the dropdown owned focus.
+        if (dropdownOwnedFocus && moreButton && typeof moreButton.focus === 'function') {
+          moreButton.focus();
+        }
+
+        // 6. Optional canvas deselection dispatch — SVG-safe (dispatchEvent is
+        //    available on SVGElement) and narrowly guarded so a failure can never
+        //    interrupt dropdown cleanup or focus restoration.
         var canvasArea = document.getElementById('canvasArea');
         if (canvasArea) {
           var emptySpot = canvasArea.querySelector('.canvas-svg');
-          if (emptySpot) {
-            emptySpot.click();
+          if (emptySpot && typeof emptySpot.dispatchEvent === 'function') {
+            try {
+              emptySpot.dispatchEvent(new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window
+              }));
+            } catch (dispatchError) {
+              // Bounded: the canvas deselection dispatch is optional.
+            }
           }
-        }
-        // Also hide dropdown if open
-        if (window.LoveBudFloatingToolbarDropdown) {
-          window.LoveBudFloatingToolbarDropdown.hide(ctx.dropdown, ctx.moreBtn);
         }
       }
 
@@ -222,7 +248,16 @@
    * @param {Object} ctx
    */
   function bind(ctx) {
-    if (!ctx) return;
+    if (!ctx || !ctx.toolbar) return;
+
+    if (boundKeyboardToolbars) {
+      if (boundKeyboardToolbars.has(ctx.toolbar)) return;
+      boundKeyboardToolbars.add(ctx.toolbar);
+    } else {
+      if (ctx.toolbar.dataset && ctx.toolbar.dataset.ftbKeyboardBound === '1') return;
+      if (ctx.toolbar.dataset) ctx.toolbar.dataset.ftbKeyboardBound = '1';
+    }
+
     bindDocumentShortcuts(ctx);
     bindToolbarNavigation(ctx);
   }
