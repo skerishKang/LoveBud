@@ -84,6 +84,19 @@ One Production dump occurs at most once per execution. Incomplete uploads are ne
 as valid. Only idempotent object operations are retried, and only a bounded number of
 times; `pg_dump` is never retried unboundedly.
 
+### Backup runtime client authority
+
+- backup runtime client authority: **PostgreSQL 17.4**
+- the source image is pinned to `postgres:17.4-bookworm`, which provides a `pg_dump`
+  client with major version 17
+- this source-only child does **not** build or deploy the image and no `pg_dump` was
+  executed
+- future deployment must verify the deployed client (major 17) before the first live
+  backup runs
+
+No Production database URL, host, provider/account/project identifier, bucket, endpoint,
+credential, secret value, exact execution timestamp, or local path appears here.
+
 ## 5. Operational non-actions (this child)
 
 ```text

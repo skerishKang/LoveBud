@@ -48,11 +48,27 @@ test('4. one scheduled execution per 24-hour period', () => {
   assert.match(APP, /modal\.Period\(days\s*=\s*1\)/);
 });
 
-test('4c. Modal image includes modal_compute local python source', () => {
-  const imageBlock = APP.slice(APP.indexOf('BACKUP_IMAGE = ('), APP.indexOf('app = modal.App'));
-  assert.match(imageBlock, /add_local_python_source\(["']modal_compute["']\)/);
-  assert.match(imageBlock, /apt_install\(["']postgresql-client["']\)/);
+test('4c. Modal image pins PostgreSQL 17 client and preserves modal_compute local source', () => {
+  const imageBlock = APP.slice(APP.indexOf('POSTGRES_BACKUP_IMAGE'), APP.indexOf('app = modal.App'));
+  // exact pinned tag tied to the from_registry construction
+  assert.match(APP, /POSTGRES_BACKUP_IMAGE\s*=\s*["']postgres:17\.4-bookworm["']/);
+  assert.match(imageBlock, /modal\.Image\.from_registry\(/);
+  assert.match(imageBlock, /from_registry\(\s*POSTGRES_BACKUP_IMAGE/);
+  // exact Python 3.11 runtime
+  assert.match(APP, /POSTGRES_PYTHON_VERSION\s*=\s*["']3\.11["']/);
+  assert.match(imageBlock, /add_python\s*=\s*POSTGRES_PYTHON_VERSION/);
+  // python dependencies limited to boto3 + cryptography
   assert.match(imageBlock, /pip_install\(["']boto3["'],\s*["']cryptography["']\)/);
+  // local modal_compute source preserved
+  assert.match(imageBlock, /add_local_python_source\(["']modal_compute["']\)/);
+  // negative: no unversioned / floating / wrong-major image references anywhere
+  assert.ok(!/apt_install\(["']postgresql-client["']\)/.test(APP), 'generic postgresql-client apt package removed');
+  assert.ok(!/postgresql-client/.test(APP), 'unversioned postgresql-client package removed');
+  assert.ok(!/postgres:latest/.test(APP), 'no latest tag');
+  assert.ok(!/postgres:17["']/.test(APP), 'no floating major-17 tag (minor required)');
+  assert.ok(!/postgres:16/.test(APP), 'no PostgreSQL 16 series');
+  assert.ok(!/postgres:18/.test(APP), 'no PostgreSQL 18 series');
+  assert.ok(!/modal\.Image\.debian_slim/.test(APP), 'no debian_slim fallback image');
 });
 
 test('4d. narrow provider failure containment without raw exception escape', () => {

@@ -89,9 +89,16 @@ R2_OBJECT_METADATA = {
     "content-kind": "encrypted-postgresql-custom-dump",
 }
 
+# Deterministic PostgreSQL 17 backup-client authority: the official image tag is
+# pinned to a fixed minor so the deployed client provides `pg_dump` major 17.
+POSTGRES_BACKUP_IMAGE = "postgres:17.4-bookworm"
+POSTGRES_PYTHON_VERSION = "3.11"
+
 BACKUP_IMAGE = (
-    modal.Image.debian_slim(python_version="3.11")
-    .apt_install("postgresql-client")
+    modal.Image.from_registry(
+        POSTGRES_BACKUP_IMAGE,
+        add_python=POSTGRES_PYTHON_VERSION,
+    )
     .pip_install("boto3", "cryptography")
     .add_local_python_source("modal_compute")
 )
