@@ -104,11 +104,22 @@ test('4. Browse initializer passes exactly four modes and keeps default compact'
     assert.match(browseInit, /LoveBudBrowseStoryView/);
 });
 
-test('6. My Trees initializer does not pass story (no modes option at all)', () => {
-    assert.ok(!/story/.test(myTreesBootstrap), 'My Trees bootstrap must not mention story');
-    assert.ok(!/modes\s*:/.test(myTreesBootstrap), 'My Trees bootstrap must not pass a modes option');
+test('6. My Trees initializer exposes exactly four modes (large/compact/list/story) with compact default and a page-scoped key', () => {
+    // #3811: My Trees gains the optional `story` mode; the capability is
+    // surface-scoped and persists under the My Trees storage key only.
+    assert.match(myTreesBootstrap, /\[\s*['"]large['"]\s*,\s*['"]compact['"]\s*,\s*['"]list['"]\s*,\s*['"]story['"]\s*\]/);
     assert.match(myTreesBootstrap, /defaultMode:\s*['"]compact['"]/);
-    assert.ok(!/story/.test(myTreesHtml), 'My Trees HTML must not mention story');
+    assert.match(myTreesBootstrap, /lovebud:myTrees:viewMode/);
+    // Browse and My Trees storage keys remain separate.
+    assert.equal(myTreesBootstrap.includes('lovebud:browse:viewMode'), false, 'My Trees bootstrap must not use the Browse storage key');
+    // The Story nav mount is present and the shared controller + thin
+    // adapter load before the bootstrap.
+    assert.ok(myTreesHtml.includes('id="myTreesStoryNavMount"'), 'My Trees HTML must mount the Story nav target');
+    const storyIdx = myTreesHtml.indexOf('../js/search/search-story-view.js');
+    const adapterIdx = myTreesHtml.indexOf('../js/my-trees/my-trees-story-view.js');
+    const bootstrapIdx = myTreesHtml.indexOf('../js/my-trees/my-trees-page-bootstrap.js');
+    assert.ok(storyIdx !== -1 && adapterIdx !== -1 && bootstrapIdx !== -1, 'story + adapter + bootstrap scripts present');
+    assert.ok(storyIdx < adapterIdx && adapterIdx < bootstrapIdx, 'shared controller then adapter then bootstrap script order');
 });
 
 test('7. shared switcher defaults to the three base modes', () => {
@@ -297,9 +308,17 @@ test('19. reduced-motion CSS exists for the Story sections (wrappers + entering)
     assert.match(viewModeCss, /prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?browse-story-layer-incoming[\s\S]*?animation:\s*none/);
 });
 
-test('20. no .trees-grid story selector (My Trees untouched)', () => {
-    assert.equal(/\.trees-grid\[data-tree-view-mode="story"\]/.test(viewModeCss), false);
-    assert.equal(viewModeCss.includes('trees-grid[data-tree-view-mode="story"]'), false);
+test('20. My Trees Story selectors are page-geometry-only and never a second JS/grouping authority', () => {
+    // #3811: My Trees gains `.trees-grid[data-tree-view-mode="story"]`
+    // geometry selectors. They reuse the shared browse-story-* grammar and
+    // must not become a second grouping/animation authority.
+    assert.match(viewModeCss, /\.trees-grid\[data-tree-view-mode="story"\]\s*\{/);
+    assert.match(viewModeCss, /\.trees-grid\[data-tree-view-mode="story"\]\s+\.tree-card\[hidden\]\s*\{[^}]*display:\s*none/);
+    // The Browse #resultsList Story selectors remain unchanged.
+    assert.match(viewModeCss, /#resultsList\[data-tree-view-mode="story"\]/);
+    assert.match(viewModeCss, /\.browse-story-transition-stage/);
+    assert.match(viewModeCss, /\.browse-story-layer-outgoing/);
+    assert.match(viewModeCss, /\.browse-story-layer-incoming/);
 });
 
 test('Story mode keeps token-driven styling (no hardcoded travel palette)', () => {

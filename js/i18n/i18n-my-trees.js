@@ -101,6 +101,15 @@
     'myTrees.hub_meta_views_label': { ko: '조회수', en: 'Views' },
     'myTrees.hub_meta_likes_label': { ko: '좋아요', en: 'Likes' },
     'myTrees.hub_meta_comments_label': { ko: '댓글', en: 'Comments' },
-    'myTrees.hub_meta_shares_label': { ko: '공유', en: 'Shares' }
+    'myTrees.hub_meta_shares_label': { ko: '공유', en: 'Shares' },
+    'myTrees.story.label': { ko: '스토리', en: 'Story' },
+    'myTrees.story.regionLabel': { ko: '나의 트리 스토리', en: 'My tree story' },
+    'myTrees.story.previous': { ko: '이전 스토리', en: 'Previous story' },
+    'myTrees.story.next': { ko: '다음 스토리', en: 'Next story' },
+    'myTrees.story.position': { ko: '현재 그룹 {current} / 전체 {total}', en: 'Story {current} of {total}' },
+    'myTrees.story.first': { ko: '첫 스토리', en: 'First story' },
+    'myTrees.story.last': { ko: '마지막 스토리', en: 'Last story' },
+    'myTrees.story.home': { ko: '첫 스토리 그룹', en: 'First story group' },
+    'myTrees.story.end': { ko: '마지막 스토리 그룹', en: 'Last story group' }
   };
 })();
