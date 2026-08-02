@@ -697,6 +697,41 @@ test('S12 repeated init/open/close never duplicates listeners or actions', async
     await page.keyboard.press('ArrowDown');
     assert.equal((await menuState(page)).activeId, 'ftbScoutAction', 'one key press moves exactly one item');
 
+    // Toolbar navigation must also be idempotent: duplicate handlers could
+    // call the same destination focus method more than once while leaving the
+    // final active element unchanged.
+    await page.evaluate(() => {
+      const continueBtn = document.getElementById('ftbContinueBtn');
+      const originalFocus = continueBtn.focus.bind(continueBtn);
+      window.__toolbarContinueFocusCount = 0;
+      continueBtn.focus = function () {
+        window.__toolbarContinueFocusCount += 1;
+        return originalFocus();
+      };
+      document.getElementById('ftbEditBtn').focus();
+    });
+    await page.keyboard.press('ArrowRight');
+    const toolbarFocusResult = await page.evaluate(() => ({
+      count: window.__toolbarContinueFocusCount,
+      activeId: document.activeElement ? document.activeElement.id : ''
+    }));
+    assert.equal(toolbarFocusResult.count, 1, 'one ArrowRight invokes destination focus exactly once');
+    assert.equal(toolbarFocusResult.activeId, 'ftbContinueBtn', 'ArrowRight focuses the continue button');
+
+    // Document shortcuts must likewise dispatch exactly once after repeated
+    // bind() calls. The real edit button is the deterministic fallback action.
+    await page.evaluate(() => {
+      const toolbar = document.getElementById('editorFloatingToolbar');
+      const editBtn = document.getElementById('ftbEditBtn');
+      toolbar.classList.remove('is-hidden');
+      toolbar.classList.add('is-visible');
+      toolbar.style.display = '';
+      window.__editDispatchCount = 0;
+      editBtn.addEventListener('click', function () { window.__editDispatchCount += 1; });
+    });
+    await page.keyboard.press('e');
+    assert.equal(await page.evaluate(() => window.__editDispatchCount), 1, 'one E shortcut dispatches edit exactly once');
+
     await closeIfOpen(page);
     assertHealth(health, 'S12');
     await context.close();
@@ -813,11 +848,14 @@ test('source: template trigger ARIA + keyboard SVG-safe dispatch + dropdown cont
 
   assert.ok(!/emptySpot\.click\(\)/.test(keyboard), 'keyboard module never calls a direct SVG .click()');
   assert.ok(keyboard.includes("dispatchEvent(new MouseEvent('click',"), 'keyboard uses SVG-safe dispatchEvent');
-  assert.ok(keyboard.includes('window.LoveBudFloatingToolbarDropdown.hide'), 'keyboard explicitly hides the dropdown');
-  assert.ok(keyboard.includes('moreButton.focus()'), 'keyboard restores trigger focus');
-  assert.ok(keyboard.includes('typeof emptySpot.dispatchEvent === \'function\''), 'canvas dispatch is guarded');
+   assert.ok(keyboard.includes('window.LoveBudFloatingToolbarDropdown.hide'), 'keyboard explicitly hides the dropdown');
+   assert.ok(keyboard.includes('moreButton.focus()'), 'keyboard restores trigger focus');
+   assert.ok(keyboard.includes('typeof emptySpot.dispatchEvent === \'function\''), 'canvas dispatch is guarded');
+   assert.ok(keyboard.includes('boundKeyboardToolbars'), 'keyboard binding has a toolbar idempotence guard');
+   assert.ok(keyboard.includes('boundKeyboardToolbars.has'), 'keyboard binding checks toolbar identity');
+   assert.ok(keyboard.includes('ftbKeyboardBound'), 'keyboard dataset fallback guard is preserved');
 
-  assert.ok(dropdown.includes('handleDropdownKeydown'), 'dropdown module has a keydown contract handler');
+   assert.ok(dropdown.includes('handleDropdownKeydown'), 'dropdown module has a keydown contract handler');
   assert.ok(dropdown.includes('getNavigableItems'), 'dropdown module filters navigable items');
   assert.ok(dropdown.includes('isNavigableItem'), 'dropdown module excludes hidden/disabled items');
   assert.ok(dropdown.includes('new WeakSet'), 'dropdown module has an idempotence guard');

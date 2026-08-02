@@ -15,6 +15,7 @@
   'use strict';
 
   var flashTimer = null;
+  var boundKeyboardToolbars = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
 
   /**
    * Flash a toolbar button for visual feedback after keyboard activation.
@@ -247,7 +248,16 @@
    * @param {Object} ctx
    */
   function bind(ctx) {
-    if (!ctx) return;
+    if (!ctx || !ctx.toolbar) return;
+
+    if (boundKeyboardToolbars) {
+      if (boundKeyboardToolbars.has(ctx.toolbar)) return;
+      boundKeyboardToolbars.add(ctx.toolbar);
+    } else {
+      if (ctx.toolbar.dataset && ctx.toolbar.dataset.ftbKeyboardBound === '1') return;
+      if (ctx.toolbar.dataset) ctx.toolbar.dataset.ftbKeyboardBound = '1';
+    }
+
     bindDocumentShortcuts(ctx);
     bindToolbarNavigation(ctx);
   }
