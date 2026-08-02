@@ -149,6 +149,20 @@ CANONICAL_BOOTSTRAP_DISPOSABLE_REHEARSAL_SELECTED
 
 ---
 
+## Exact Child 1 Source Boundary
+
+```text
+A docs/architecture/DB_MIGRATION_PROVENANCE_CLEAN_TARGET_ADOPTION_DECISION.md
+A tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs
+M docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md
+M docs/architecture/DB_MIGRATION_PROVENANCE_ADOPTION_OPERATOR_CHECKLIST.md
+M tests/test-layer-classification.json
+```
+
+No sixth file is authorized.
+
+---
+
 ## Prohibited Actions and Non-Goals
 
 Issue #3840 does not:

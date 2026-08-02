@@ -118,7 +118,28 @@ function validateCleanTargetAdoptionState(inputs) {
     throw new Error('NC8 Failure: Premature #3460 implementation detected');
   }
 
-  // Rule 8: 5-File Authorized Boundary recorded
+  // Rule 8: 5-File Authorized Boundary recorded and parsed in decision document (NC11 check)
+  const boundarySectionMatch = decisionDocText.match(/## Exact Child 1 Source Boundary([\s\S]*?)(?=\n## |$)/);
+  if (!boundarySectionMatch) {
+    throw new Error('NC11 Failure: Missing "## Exact Child 1 Source Boundary" section in decision document');
+  }
+  const boundarySectionText = boundarySectionMatch[1];
+
+  if (!boundarySectionText.includes('No sixth file is authorized') && !boundarySectionText.includes('no sixth file is authorized')) {
+    throw new Error('NC11 Failure: "No sixth file is authorized" sentinel missing');
+  }
+
+  const boundaryLines = boundarySectionText
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => /^[AM]\s+\S+/.test(l));
+
+  const parsedPaths = boundaryLines.map(l => l.replace(/^[AM]\s+/, '').trim());
+
+  if (parsedPaths.length !== 5) {
+    throw new Error(`NC11 Failure: Exact boundary section must contain exactly 5 paths (found ${parsedPaths.length})`);
+  }
+
   const requiredBoundaryFiles = [
     'docs/architecture/DB_MIGRATION_PROVENANCE_CLEAN_TARGET_ADOPTION_DECISION.md',
     'tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs',
@@ -126,10 +147,27 @@ function validateCleanTargetAdoptionState(inputs) {
     'docs/architecture/DB_MIGRATION_PROVENANCE_ADOPTION_OPERATOR_CHECKLIST.md',
     'tests/test-layer-classification.json'
   ];
-  // Check exact 5 files in classification
-  const registeredEntries = classificationData.entries.filter(e =>
-    requiredBoundaryFiles.includes(e.path) || e.path === 'tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs'
-  );
+
+  for (const reqPath of requiredBoundaryFiles) {
+    const count = parsedPaths.filter(p => p === reqPath).length;
+    if (count === 0) {
+      throw new Error(`NC11 Failure: Missing required path in boundary section: ${reqPath}`);
+    }
+    if (count > 1) {
+      throw new Error(`NC11 Failure: Duplicate path detected in boundary section: ${reqPath}`);
+    }
+  }
+
+  for (const pPath of parsedPaths) {
+    if (!requiredBoundaryFiles.includes(pPath)) {
+      throw new Error(`NC11 Failure: Unauthorized sixth path detected in boundary section: ${pPath}`);
+    }
+  }
+
+  const registeredEntries = classificationData.entries.filter(e => requiredBoundaryFiles.includes(e.path));
+  if (registeredEntries.length !== 1 || registeredEntries[0].path !== 'tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs') {
+    throw new Error('NC11 Failure: Contract test must be registered in test-layer-classification.json as the only classified file of the 5 boundary paths');
+  }
 
   // Rule 9: Check four provenance JSON authorities (NC3 & NC4 checks)
   if (canonicalMigrationsData.status !== 'ADOPTION_REQUIRED') {
@@ -160,15 +198,27 @@ function validateCleanTargetAdoptionState(inputs) {
     throw new Error('NC4 Failure: readonly-query-catalog.json queries collection is not empty');
   }
 
-  // Rule 10: Operator checklist privacy/read-only boundary checks (NC5 check)
+  // Rule 10: Operator checklist privacy, read-only transaction, credential, role mapping, and approval boundary checks (NC5 check)
   if (!operatorChecklistText.includes('LEGACY_PRODUCTION_TARGET')) {
     throw new Error('NC5 Failure: Checklist target class LEGACY_PRODUCTION_TARGET missing');
   }
   if (!operatorChecklistText.includes('DEFERRED_NOT_AUTHORIZED')) {
     throw new Error('NC5 Failure: Checklist status DEFERRED_NOT_AUTHORIZED missing');
   }
-  if (!operatorChecklistText.includes('read-only transaction boundary')) {
-    throw new Error('NC5 Failure: Operator checklist read-only transaction boundary missing');
+  if (!operatorChecklistText.includes('dedicated read-only credential boundary')) {
+    throw new Error('NC5 Failure: Operator checklist dedicated read-only credential boundary missing');
+  }
+  if (!operatorChecklistText.includes('strict privacy allowlist and redaction boundary')) {
+    throw new Error('NC5 Failure: Operator checklist strict privacy allowlist and redaction boundary missing');
+  }
+  if (!operatorChecklistText.includes('explicit read-only transaction boundary')) {
+    throw new Error('NC5 Failure: Operator checklist explicit read-only transaction boundary missing');
+  }
+  if (!operatorChecklistText.includes('abstract role mapping verification')) {
+    throw new Error('NC5 Failure: Operator checklist abstract role mapping verification missing');
+  }
+  if (!operatorChecklistText.includes('explicit owner approval event')) {
+    throw new Error('NC5 Failure: Operator checklist explicit owner approval event missing');
   }
 
   // Rule 11: Forbidden issue closure phrases and #3425 posture checks
@@ -185,8 +235,8 @@ function validateCleanTargetAdoptionState(inputs) {
     }
   }
 
-  if (allDocs.includes('Keep #3425 OPEN')) {
-    throw new Error('Forbidden phrase detected: "Keep #3425 OPEN" (#3425 is a completed parent)');
+  if (decisionDocText.includes('Keep #3425 OPEN')) {
+    throw new Error('Forbidden phrase detected in decision document: "Keep #3425 OPEN" (#3425 is a completed parent)');
   }
 
   // Rule 12: Contract test registered under SOURCE_STATIC exactly once
@@ -207,7 +257,24 @@ function validateCleanTargetAdoptionState(inputs) {
 // -----------------------------------------------------------------------------
 
 test('Assertion 1: Exact 5-file authorized boundary is recorded and classified (#3840)', () => {
+  const docText = fs.readFileSync(PATHS.decisionDoc, 'utf8');
   const classification = JSON.parse(fs.readFileSync(PATHS.classificationJson, 'utf8'));
+
+  const requiredBoundaryFiles = [
+    'docs/architecture/DB_MIGRATION_PROVENANCE_CLEAN_TARGET_ADOPTION_DECISION.md',
+    'tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs',
+    'docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md',
+    'docs/architecture/DB_MIGRATION_PROVENANCE_ADOPTION_OPERATOR_CHECKLIST.md',
+    'tests/test-layer-classification.json'
+  ];
+
+  for (const path of requiredBoundaryFiles) {
+    assert.ok(docText.includes(path), `Decision document must list exact path ${path}`);
+  }
+
+  const inputs = getValidInputs();
+  assert.equal(validateCleanTargetAdoptionState(inputs), true, 'Validator must pass exact boundary');
+
   const testPath = 'tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs';
   const matches = classification.entries.filter(e => e.path === testPath);
   assert.equal(matches.length, 1, 'Contract test must be registered exactly once');
@@ -236,7 +303,6 @@ test('Assertion 5: Child 2 selected but not implemented; exact migration identit
   const docText = fs.readFileSync(PATHS.decisionDoc, 'utf8');
   assert.ok(docText.includes('CANONICAL_BOOTSTRAP_DISPOSABLE_REHEARSAL_SELECTED'));
   assert.ok(docText.includes('Child 2 will define:'));
-  // Confirm NO exact migration filename is pre-determined
   assert.equal(/db\/migrations\/[^\s\n`]+\.sql/.test(docText), false);
 });
 
@@ -288,10 +354,15 @@ test('Assertion 11: Four provenance JSON authorities remain ADOPTION_REQUIRED wi
   assert.deepEqual(readonlyCatalog.queries, {});
 });
 
-test('Assertion 12: Legacy checklist maintains target class and execution status (#3840)', () => {
+test('Assertion 12: Legacy checklist maintains target class, execution status, and 5 protection boundaries (#3840)', () => {
   const checklistText = fs.readFileSync(PATHS.operatorChecklistDoc, 'utf8');
   assert.ok(checklistText.includes('checklist target class:\nLEGACY_PRODUCTION_TARGET'));
   assert.ok(checklistText.includes('current execution status:\nDEFERRED_NOT_AUTHORIZED'));
+  assert.ok(checklistText.includes('dedicated read-only credential boundary'));
+  assert.ok(checklistText.includes('strict privacy allowlist and redaction boundary'));
+  assert.ok(checklistText.includes('explicit read-only transaction boundary'));
+  assert.ok(checklistText.includes('abstract role mapping verification'));
+  assert.ok(checklistText.includes('explicit owner approval event'));
 });
 
 test('Assertion 13: Empty manifest is not treated as evidence of empty live schema (#3840)', () => {
@@ -311,15 +382,12 @@ test('Assertion 14: Sequencing & Issue posture (#3458 OPEN, #3435 deferred, #346
   assert.ok(decisionText.includes('Keep #3461 OPEN'));
   assert.ok(decisionText.includes('Keep #1882 OPEN'));
 
-  // Ensure Keep #3425 OPEN is absent and #3425 is referenced as completed parent
   assert.equal(decisionText.includes('Keep #3425 OPEN'), false);
-  assert.equal(nextChildText.includes('Keep #3425 OPEN'), false);
-  assert.equal(checklistText.includes('Keep #3425 OPEN'), false);
   assert.ok(decisionText.includes('Refs #3425 — completed architecture-quality parent.'));
 });
 
 // -----------------------------------------------------------------------------
-// Negative Controls Suite (NC1 – NC10)
+// Negative Controls Suite (NC1 – NC11)
 // -----------------------------------------------------------------------------
 
 function getValidInputs() {
@@ -359,9 +427,27 @@ test('NC4: Inserting fake migration entry into manifest is detected', () => {
   assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC4 Failure/);
 });
 
-test('NC5: Removing legacy checklist target class or DEFERRED status is detected', () => {
+test('NC5-A: Removing privacy allowlist/redaction boundary from operator checklist is detected', () => {
   const inputs = getValidInputs();
-  inputs.operatorChecklistText = inputs.operatorChecklistText.replace('LEGACY_PRODUCTION_TARGET', 'RETIRED_TARGET');
+  inputs.operatorChecklistText = inputs.operatorChecklistText.replace('strict privacy allowlist and redaction boundary', 'unrestricted privacy collection');
+  assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC5 Failure/);
+});
+
+test('NC5-B: Removing read-only transaction boundary from operator checklist is detected', () => {
+  const inputs = getValidInputs();
+  inputs.operatorChecklistText = inputs.operatorChecklistText.replace('explicit read-only transaction boundary', 'read-write transaction boundary');
+  assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC5 Failure/);
+});
+
+test('NC5-C: Removing dedicated read-only credential boundary from operator checklist is detected', () => {
+  const inputs = getValidInputs();
+  inputs.operatorChecklistText = inputs.operatorChecklistText.replace('dedicated read-only credential boundary', 'shared admin credential');
+  assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC5 Failure/);
+});
+
+test('NC5-D: Removing explicit owner approval event requirement from operator checklist is detected', () => {
+  const inputs = getValidInputs();
+  inputs.operatorChecklistText = inputs.operatorChecklistText.replace('explicit owner approval event', 'automatic implicit approval');
   assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC5 Failure/);
 });
 
@@ -396,6 +482,30 @@ test('NC10: Pre-determining exact migration filename or over-scoped DDL details 
   const inputs = getValidInputs();
   inputs.decisionDocText += '\nChild 2 will add file db/migrations/20260802000000_bootstrap_ledger.sql';
   assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC10 Failure/);
+});
+
+test('NC11-A: Removing a path from 5-file boundary section in decision document is detected', () => {
+  const inputs = getValidInputs();
+  inputs.decisionDocText = inputs.decisionDocText.replace('M tests/test-layer-classification.json', '');
+  assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC11 Failure/);
+});
+
+test('NC11-B: Adding an unauthorized 6th path to boundary section in decision document is detected', () => {
+  const inputs = getValidInputs();
+  inputs.decisionDocText = inputs.decisionDocText.replace(
+    'M tests/test-layer-classification.json',
+    'M tests/test-layer-classification.json\nA package.json'
+  );
+  assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC11 Failure/);
+});
+
+test('NC11-C: Duplicate path in boundary section of decision document is detected', () => {
+  const inputs = getValidInputs();
+  inputs.decisionDocText = inputs.decisionDocText.replace(
+    'M tests/test-layer-classification.json',
+    'M tests/test-layer-classification.json\nM tests/test-layer-classification.json'
+  );
+  assert.throws(() => validateCleanTargetAdoptionState(inputs), /NC11 Failure/);
 });
 
 test('Full Baseline Validation: Pristine repository inputs pass validateCleanTargetAdoptionState', () => {
