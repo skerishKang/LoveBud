@@ -20,6 +20,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { EXPECTED_DB_ENGINE_SCRIPTS } = require('../../scripts/report-ci-test-groups.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -102,8 +103,8 @@ test('exactly one new CI job with postgres:17.4-bookworm and 170004 assertion', 
   );
   assert.equal(
     (workflow.match(/170004/g) || []).length,
-    9,
-    'each of the nine DB-engine jobs asserts 170004',
+    EXPECTED_DB_ENGINE_SCRIPTS.length,
+    'each canonical DB-engine job asserts 170004',
   );
   assert.ok(
     workflow.includes('postgres:17.4-bookworm'),
