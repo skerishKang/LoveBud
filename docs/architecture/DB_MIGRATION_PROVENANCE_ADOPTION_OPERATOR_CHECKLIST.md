@@ -10,7 +10,23 @@ This document is a preparation and review aid. Approval gates, execution boundar
 
 Issue #3840 selects a **clean target environment** (`CLEAN_TARGET_FIRST_SELECTED`) as the primary canonical adoption target for LoveBud migration provenance.
 
-The legacy Production database adoption framework detailed in Phase B/C/D/E of this checklist is **deferred** (`LEGACY_PRODUCTION_ADOPTION_DEFERRED`). It is preserved intact without deletion or modification as an operator preparation framework for any future explicit owner approval event. It does NOT authorize current execution, database connection, credential usage, or schema mutation.
+The legacy Production database adoption framework detailed in this checklist is governed by the following bounded status:
+
+```text
+checklist target class:
+LEGACY_PRODUCTION_TARGET
+
+current execution status:
+DEFERRED_NOT_AUTHORIZED
+```
+
+The clean-target-first decision does **NOT** satisfy, replace, or bypass Phase B, Phase C, Phase D, or Phase E of this checklist. Any future adoption of a legacy production database remains deferred (`DEFERRED_NOT_AUTHORIZED`) and still requires all of the following prior to execution:
+- explicit owner approval event;
+- dedicated read-only credential boundary;
+- strict privacy allowlist and redaction boundary;
+- explicit read-only transaction boundary;
+- abstract role mapping verification;
+- recomputed receipt and attestation evidence package.
 
 ## Current Fail-Closed State
 

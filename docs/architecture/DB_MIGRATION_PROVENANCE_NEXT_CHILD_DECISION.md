@@ -4,20 +4,24 @@
 
 Current status: `SAFE_IMPLEMENTATION_CHILD_SELECTED`
 
-Issue #3840 completes Step 8 Child 1 (clean-target adoption policy) under migration provenance (#3458). The selected next child is:
+Issue #3840 completes Step 8 Child 1 (clean-target adoption policy) under migration provenance (#3458). Step 8 readiness audit Issue #3839 has been accepted. The selected next child is:
 
 ```text
-Step 8 Child 2 — Canonical bootstrap migration & disposable PostgreSQL rehearsal
+Step 8 Child 2 — Canonical bootstrap migration capability & disposable PostgreSQL rehearsal
 ```
 
 Current sequence posture:
 
 ```text
 Steps 1–7 complete
-Step 8 Child 1 clean-target adoption policy implemented by #3840
-Step 8 Child 2 canonical bootstrap migration & disposable rehearsal selected as next child
-Legacy Production DB adoption deferred (preserved for future explicit approval)
+Step 8 readiness audit accepted
+Step 8 Child 1 clean-target adoption policy implemented by #3840 (Issue remains OPEN prior to PR merge)
+Step 8 Child 2 canonical bootstrap migration capability & disposable rehearsal selected as next child
 Step 8 Child 2 not implemented by Issue #3840
+Step 8 Child 3 target attribution & read-only catalog parity preflight not authorized
+Step 8 Child 4 fail-closed deploy gate & canonical target activation boundary not authorized
+Legacy Production Phase B/C/D/E preserved and deferred (DEFERRED_NOT_REJECTED)
+No exact Child 2 migration identity, timestamp, slug, filename, SQL body, or DDL sequence pre-determined
 Four authority manifests remain ADOPTION_REQUIRED and empty
 ```
 
@@ -29,13 +33,13 @@ The historical audit baseline for Issue #3644 remains recorded as `eb030c1d4751d
 
 The previous decision was written after completion of the disposable PostgreSQL rehearsal for the precondition composition root (#3816). Read-only audit Issue #3839 reassessed Step 8 environment adoption readiness and recommended adopting a clean target environment first while deferring legacy production database adoption.
 
-Issue #3840 implements Step 8 Child 1 by formally selecting the clean-target-first canonical adoption policy. The ordered sequence advances to Step 8 Child 2 (`Canonical bootstrap migration & disposable PostgreSQL rehearsal`), which is selected for the next child but is not implemented here.
+Issue #3840 implements Step 8 Child 1 by formally selecting the clean-target-first canonical adoption policy. The ordered sequence advances to Step 8 Child 2 (`Canonical bootstrap migration capability & disposable PostgreSQL rehearsal`), which is selected for the next child but is not implemented here.
 
 ## Verified current incompatibility
 
-The repository now has a complete provenance foundation (Steps 1–7) and a clean-target adoption policy (Step 8 Child 1). It still has no canonical migration SQL file (e.g. `db/migrations/20260802000000_bootstrap_ledger.sql`) and no disposable engine rehearsal of the canonical runner executing against an active canonical migration stream.
+The repository now has a complete provenance foundation (Steps 1–7) and a clean-target adoption policy (Step 8 Child 1). It still has no canonical migration stream and no disposable engine rehearsal of the canonical runner executing against an active canonical migration stream.
 
-That missing canonical bootstrap migration and rehearsal is the next incompatibility. It does not authorize skipping to target environment attribution, preflight gate integration, or Production mutation.
+That missing canonical bootstrap migration capability and rehearsal is the next incompatibility. It does not authorize pre-determining exact SQL filenames or DDL statements, nor does it authorize skipping to target environment attribution, preflight gate integration, or Production mutation.
 
 ## Selected next child
 
@@ -43,14 +47,16 @@ That missing canonical bootstrap migration and rehearsal is the next incompatibi
 
 | Field | Current decision |
 |---|---|
-| Selected child | Canonical bootstrap migration & disposable PostgreSQL rehearsal |
+| Selected child | Canonical bootstrap migration capability & disposable PostgreSQL rehearsal |
 | Sequence step | Step 8 Child 2 |
 | Steps 1–7 | Complete |
-| Step 8 Child 1 | Complete (implemented by Issue #3840) |
+| Step 8 Child 1 | Complete (implemented by Issue #3840; OPEN prior to PR merge) |
 | Step 8 Child 2 implementation in this child | No |
 | Steps 8 Child 3–4 | Not authorized |
+| Legacy Production Phase B/C/D/E | Preserved and deferred (`DEFERRED_NOT_REJECTED`) |
+| Exact Child 2 migration identity/filename/SQL | Not selected |
 | Clean-target policy selected | Yes (implemented by Issue #3840) |
-| Canonical bootstrap migration selected | Yes (selected for Child 2) |
+| Canonical bootstrap capability selected | Yes (selected for Child 2) |
 | Environment adoption / mutation selected | No |
 | Production access | None |
 | Database access | None |
