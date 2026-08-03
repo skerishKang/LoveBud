@@ -66,8 +66,8 @@ const FACTORY_ERRORS = Object.freeze({
   MIGRATION_PATH_INVALID: 'CLEAN_BOOTSTRAP_MIGRATION_PATH_INVALID',
   RISK_CLASS_INVALID: 'CLEAN_BOOTSTRAP_RISK_CLASS_INVALID',
   TRANSACTION_MODE_INVALID: 'CLEAN_BOOTSTRAP_TRANSACTION_MODE_INVALID',
-  TARGET_CLASS_INVALID: 'CLEAN_BOOTSTRAP_TARGET_CLASS_INVALID',
-  APPROVAL_INVALID: 'CLEAN_BOOTSTRAP_APPROVAL_INVALID',
+  TARGET_CLASS_INVALID: 'TARGET_CLASS_INVALID',
+  APPROVAL_INVALID: 'APPROVAL_INVALID',
   SQL_FILE_NOT_FOUND: 'CLEAN_BOOTSTRAP_SQL_NOT_FOUND',
   CHECKSUM_MISMATCH: 'CLEAN_BOOTSTRAP_CHECKSUM_MISMATCH',
   CRITICAL_OBJECT_COUNT_INVALID: 'CLEAN_BOOTSTRAP_CRITICAL_OBJECT_COUNT_INVALID',
@@ -380,7 +380,12 @@ function createCleanBootstrapRunner(config) {
 
         session = await openSession();
 
-        const cleanTargetResult = await verifyCleanTarget(session, projection);
+        let cleanTargetResult;
+        try {
+          cleanTargetResult = await verifyCleanTarget(session, projection);
+        } catch {
+          throw new Error(FACTORY_ERRORS.CLEAN_TARGET_VERIFICATION_FAILED);
+        }
         if (cleanTargetResult !== true) {
           throw new Error(FACTORY_ERRORS.CLEAN_TARGET_VERIFICATION_FAILED);
         }

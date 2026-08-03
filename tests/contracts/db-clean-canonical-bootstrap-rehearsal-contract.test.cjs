@@ -2,15 +2,22 @@
 
 /**
  * Source-static contract for Issue #3846 (Step 8 Child 2 clean canonical
- * bootstrap rehearsal). Locks the exact eleven-file cumulative boundary, package
- * script, CI job, PostgreSQL service image/version, loopback-only LB_TEST_PG*
- * boundary, committed-authority invariants (ADOPTION_REQUIRED manifest with
- * exactly one migration and exactly one expected critical object; no synthetic
- * ACTIVE manifest; no generic-runner success path; no unauthorized `bootstrap`
- * top-level field), orchestrator boundary (dedicated orchestrator owns the
- * bootstrap path; generic runner unchanged), classification entries, and parent
- * completion posture. Real DB behavior belongs to the DB-engine test, which runs
- * only on GitHub Actions; string checks here do not claim DB behavior.
+ * bootstrap rehearsal). Locks the original eleven-file primary boundary,
+ * package script, CI job, PostgreSQL service image/version, loopback-only
+ * LB_TEST_PG* boundary, committed-authority invariants (ADOPTION_REQUIRED
+ * manifest with exactly one migration and exactly one expected critical
+ * object; no synthetic ACTIVE manifest; no generic-runner success path; no
+ * unauthorized `bootstrap` top-level field), orchestrator boundary (dedicated
+ * orchestrator owns the bootstrap path; generic runner unchanged),
+ * classification entries, and parent completion posture. Real DB behavior
+ * belongs to the DB-engine test, which runs only on GitHub Actions; string
+ * checks here do not claim DB behavior.
+ *
+ * The eleven files below are the original primary boundary. The final
+ * cumulative PR scope is exactly 24 files: the 11 original files plus the
+ * reconciliation/compatibility files plus the authorized CI reconciliation
+ * file `tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs`
+ * (the 24th cumulative path).
  *
  * Refs: #3846, #3840, #3839, #3816, #3809, #3802, #3657, #3458, #3425, #3435,
  * #3437, #1882
@@ -69,12 +76,17 @@ function isPlainRecord(value) {
 
 // ── 1. Eleven-file boundary ──────────────────────────────────────────────────
 
-test('exactly eleven files exist in the cumulative boundary', () => {
+test('original primary boundary of eleven files exists', () => {
   for (const rel of EXPECTED_ELEVEN) {
     assert.ok(fs.existsSync(path.join(ROOT, rel)), 'required file exists: ' + rel);
   }
-  assert.equal(EXPECTED_ELEVEN.length, 11, 'exact boundary is eleven files');
+  assert.equal(EXPECTED_ELEVEN.length, 11, 'original primary boundary is eleven files');
   assert.deepEqual(EXPECTED_ELEVEN, EXPECTED_ELEVEN.slice().sort(), 'boundary list is sorted');
+  assert.ok(
+    fs.existsSync(path.join(ROOT, 'tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs')),
+    'authorized CI reconciliation file is the 24th cumulative path',
+  );
+  assert.ok(!EXPECTED_ELEVEN.includes('tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs'), 'reconciliation file is outside the original eleven');
   assert.ok(!fs.existsSync(path.join(ROOT, 'tests/contracts/canonical-bootstrap-rehearsal-contract.test.cjs')), 'superseded stub removed');
   assert.ok(!fs.existsSync(path.join(ROOT, 'tests/db-engine/canonical-bootstrap-rehearsal-postgres.test.cjs')), 'superseded DB test removed');
   assert.ok(!fs.existsSync(path.join(ROOT, 'docs/architecture/canonical-bootstrap-rehearsal-contract.md')), 'superseded contract doc removed');

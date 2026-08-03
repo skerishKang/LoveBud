@@ -82,7 +82,8 @@ function createSessionOpener(cfg, dbName) {
   };
 }
 
-function buildRunDeps(ctx, overrides) {
+function buildRunDeps(ctx, overrides, capture) {
+  capture = capture || {};
   const opener = createSessionOpener(ctx.cfg, ctx.dbName);
   return Object.assign({
     openSession: opener,
@@ -103,13 +104,11 @@ function buildRunDeps(ctx, overrides) {
         roleMapping: { lovebud_ci: 'APPLICATION' },
         contract,
       });
-      assert.ok(Array.isArray(evidence.objects), 'catalog evidence objects array');
-      const ledger = evidence.objects.find(function (item) {
+      const ledger = (evidence.objects || []).find(function (item) {
         return item.name === EXPECTED_CRITICAL_OBJECT_NAME;
       });
-      assert.ok(ledger, 'catalog evidence contains ledger table object');
-      assert.equal(ledger.fingerprint, expectedFingerprint, 'catalog fingerprint matches committed expected-schema manifest');
-      return true;
+      capture.observedFingerprint = ledger ? ledger.fingerprint : null;
+      return ledger ? ledger.fingerprint === expectedFingerprint : false;
     },
     verifyNoResidualState: async function () {
       const session = await opener();
@@ -127,7 +126,7 @@ function buildRunDeps(ctx, overrides) {
   }, overrides || {});
 }
 
-async function runDedicatedBootstrap(ctx, overrides) {
+async function runDedicatedBootstrap(ctx, overrides, capture) {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
   const expectedSchema = JSON.parse(fs.readFileSync(SCHEMA_MANIFEST_PATH, 'utf8'));
 
@@ -151,7 +150,7 @@ async function runDedicatedBootstrap(ctx, overrides) {
     operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
     targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
     approvalReference: 'issue:3846',
-    dependencies: buildRunDeps(ctx, overrides),
+    dependencies: buildRunDeps(ctx, overrides, capture),
   });
 
   return runner.run();
@@ -187,8 +186,14 @@ test('B2 committed-authority bootstrap applies SQL, creates ledger table, record
     assert.deepEqual(projection.destructiveOperations, [], 'no destructive operations');
     assert.equal(projection.approvalReference, 'issue:3846', 'approval reference');
 
-    const result = await runDedicatedBootstrap(ctx);
-    assert.equal(result.outcome, 'BOOTSTRAPPED', 'dedicated bootstrap outcome');
+    const capture = {};
+    const result = await runDedicatedBootstrap(ctx, undefined, capture);
+    assert.equal(
+      result.outcome,
+      'BOOTSTRAPPED',
+      'dedicated bootstrap outcome (observedFingerprint=' + capture.observedFingerprint + ', committedFingerprint=' + projection.catalogFingerprint + ')'
+    );
+    assert.equal(capture.observedFingerprint, projection.catalogFingerprint, 'observed catalog fingerprint matches committed expected-schema manifest');
     assert.deepEqual(result.blockers, [], 'no blockers');
     assert.equal(result.ledgerAppended, true, 'ledger row appended');
     assert.equal(result.catalogFingerprintVerified, true, 'catalog fingerprint verified');
@@ -896,14 +901,20 @@ test('B17 dirty second run executes only clean-target read-only query', async ()
     const firstResult = await runner.run();
     assert.equal(firstResult.outcome, 'BOOTSTRAPPED', 'first clean run bootstrapped');
 
+    const secondBaseline = {
+      queries: sqlExecuteCount,
+      commits: commitCount,
+      rollbacks: rollbackCount,
+      inserts: ledgerInsertCount,
+    };
     const secondResult = await runner.run();
     assert.equal(secondResult.outcome, 'BLOCKED_BEFORE_COMMIT', 'second run blocked by clean-target check');
     assert.equal(secondResult.ledgerAppended, false, 'second ledger insert: 0');
     assert.equal(verifyCleanTargetCallCount, 2, 'verifyCleanTarget called for both runs');
-    assert.equal(sqlExecuteCount, 1, 'query count only includes clean-target verifier read-only query');
-    assert.equal(commitCount, 0, 'BEGIN/bootstrap/ledger insert/COMMIT are 0 on second run');
-    assert.equal(rollbackCount, 0, 'ROLLBACK is 0 on second run');
-    assert.equal(ledgerInsertCount, 0, 'no ledger insert on second run');
+    assert.equal(sqlExecuteCount - secondBaseline.queries, 1, 'second run executes exactly one clean-target read-only query');
+    assert.equal(commitCount - secondBaseline.commits, 0, 'BEGIN/bootstrap/ledger insert/COMMIT are 0 on second run');
+    assert.equal(rollbackCount - secondBaseline.rollbacks, 0, 'ROLLBACK is 0 on second run');
+    assert.equal(ledgerInsertCount - secondBaseline.inserts, 0, 'no ledger insert on second run');
 
     const verifyClient = new Client(baseClientConfig(ctx.cfg, ctx.dbName));
     verifyClient.on('error', function () { /* expected post-drop socket error */ });

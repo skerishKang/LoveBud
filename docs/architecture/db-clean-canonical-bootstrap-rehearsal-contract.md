@@ -7,7 +7,9 @@ migration rehearsal (Issue #3846, Step 8 Child 2). The bootstrap migration is th
 first entry in the committed canonical migration manifest — it creates the
 `schema_migration_ledger` table.
 
-## Exactly 11 files
+## File boundary
+
+### Original primary boundary (eleven files)
 
 ```text
 A  db/migrations/20260802094500_bootstrap-migration-ledger.sql
@@ -22,6 +24,28 @@ M  .github/workflows/ci.yml
 M  tests/test-layer-classification.json
 M  docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md
 ```
+
+### Final cumulative scope (exactly 24 files)
+
+The original eleven-file primary boundary was expanded through compatibility and
+reconciliation approvals. The final cumulative PR scope is exactly 24 files: the
+11 original files plus the reconciliation/compatibility files
+(`docs/architecture/db-schema-change-inventory.json`,
+`scripts/expected-schema-candidate-core.cjs`,
+`scripts/report-ci-test-groups.cjs`, the contract tests
+`adoption-attestation-contract.test.cjs`,
+`db-adoption-baseline-collection-plan-contract.test.cjs`,
+`db-migration-canonical-manifest-adapter-contract.test.cjs`,
+`db-clean-target-adoption-decision-contract.test.cjs`,
+`db-migration-identity-order-checksum-contract.test.cjs`,
+`expected-schema-candidate-contract.test.cjs`,
+`migration-catalog-fingerprint-contract.test.cjs`,
+`migration-catalog-postgres-adapter-contract.test.cjs`, and
+`migration-provenance-gate-contract.test.cjs`) plus the authorized CI
+reconciliation file
+`tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs` (the 24th
+cumulative path). No other path may be added without a revised Web CTO scope
+approval.
 
 ## Naming conventions
 
