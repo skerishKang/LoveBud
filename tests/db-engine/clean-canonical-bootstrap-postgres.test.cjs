@@ -86,6 +86,7 @@ function buildRunDeps(ctx, overrides) {
   const opener = createSessionOpener(ctx.cfg, ctx.dbName);
   return Object.assign({
     openSession: opener,
+    verifyCleanTarget: async function () { return true; },
     verifyCatalogFingerprint: async function (expectedFingerprint) {
       const contract = loadContract(ROOT);
       const evidence = await collectCatalogEvidence({
@@ -147,6 +148,9 @@ async function runDedicatedBootstrap(ctx, overrides) {
     runnerVersion: 'v1',
     environmentClass: 'disposable-test',
     deployedCommit: '0000000000000000000000000000000000000000',
+    operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+    targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+    approvalReference: 'issue:3846',
     dependencies: buildRunDeps(ctx, overrides),
   });
 
@@ -244,8 +248,12 @@ test('B3 injected transactional failure rolls back and leaves no residual state'
       runnerVersion: 'v1',
       environmentClass: 'disposable-test',
       deployedCommit: '0000000000000000000000000000000000000000',
+      operation: 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER',
+      targetClass: 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET',
+      approvalReference: 'issue:3846',
       dependencies: Object.assign({
         openSession: failingSession,
+        verifyCleanTarget: async function () { return true; },
         verifyCatalogFingerprint: async function () { return true; },
         verifyNoResidualState: async function () { return true; },
         now: async function () { return new Date().toISOString(); },

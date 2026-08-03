@@ -74,6 +74,7 @@ const FACTORY_ERRORS = Object.freeze({
   CRITICAL_OBJECT_NAME_INVALID: 'CLEAN_BOOTSTRAP_CRITICAL_OBJECT_NAME_INVALID',
   FINGERPRINT_INVALID: 'CLEAN_BOOTSTRAP_FINGERPRINT_INVALID',
   CONFIG_INVALID: 'CLEAN_BOOTSTRAP_CONFIG_INVALID',
+  PROXY_OR_ACCESSOR_INPUT: 'CLEAN_BOOTSTRAP_PROXY_OR_ACCESSOR_INPUT',
   DEPENDENCY_MISSING: 'CLEAN_BOOTSTRAP_DEPENDENCY_MISSING',
   OPERATION_INVALID: 'OPERATION_INVALID',
   CLEAN_TARGET_VERIFICATION_FAILED: 'CLEAN_TARGET_VERIFICATION_FAILED',
@@ -164,6 +165,30 @@ function readRequiredOwnEnumerableDataProperty(object, key, errorCode) {
     throw new Error(errorCode || FACTORY_ERRORS.CONFIG_INVALID);
   }
   return descriptor.value;
+}
+
+function validatePlainRecord(value, errorCode) {
+  if (value === null || typeof value !== 'object') {
+    throw new Error(errorCode || FACTORY_ERRORS.CONFIG_INVALID);
+  }
+  let proto;
+  try {
+    proto = Object.getPrototypeOf(value);
+  } catch {
+    throw new Error(FACTORY_ERRORS.PROXY_OR_ACCESSOR_INPUT);
+  }
+  if (proto !== Object.prototype && proto !== null) {
+    throw new Error(errorCode || FACTORY_ERRORS.CONFIG_INVALID);
+  }
+  let isArray;
+  try {
+    isArray = Array.isArray(value);
+  } catch {
+    throw new Error(FACTORY_ERRORS.PROXY_OR_ACCESSOR_INPUT);
+  }
+  if (isArray) {
+    throw new Error(errorCode || FACTORY_ERRORS.CONFIG_INVALID);
+  }
 }
 
 function loadManifest() {
@@ -287,7 +312,7 @@ const LEDGER_INSERT_SQL = [
 ].join('\n');
 
 function createCleanBootstrapRunner(config) {
-  if (!isPlainRecord(config)) {
+  if (config === null || typeof config !== 'object') {
     throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
   }
   const projection = loadBootstrapProjection();
@@ -298,9 +323,7 @@ function createCleanBootstrapRunner(config) {
       let committed = false;
       let fingerprintVerified = false;
       try {
-        if (!isPlainRecord(config)) {
-          throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
-        }
+        validatePlainRecord(config, FACTORY_ERRORS.CONFIG_INVALID);
         let configKeys;
         try {
           configKeys = Object.keys(config);
@@ -310,49 +333,54 @@ function createCleanBootstrapRunner(config) {
         if (configKeys.length !== ALLOWED_CONFIG_KEYS.length || !configKeys.every(function (k) { return ALLOWED_CONFIG_KEYS.includes(k); })) {
           throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
         }
+
         const runnerVersion = readRequiredOwnEnumerableDataProperty(config, 'runnerVersion');
         const environmentClass = readRequiredOwnEnumerableDataProperty(config, 'environmentClass');
         const deployedCommit = readRequiredOwnEnumerableDataProperty(config, 'deployedCommit');
-        const deps = readRequiredOwnEnumerableDataProperty(config, 'dependencies');
+        const operation = readRequiredOwnEnumerableDataProperty(config, 'operation');
+        const targetClass = readRequiredOwnEnumerableDataProperty(config, 'targetClass');
+        const approvalReference = readRequiredOwnEnumerableDataProperty(config, 'approvalReference');
+        const dependencies = readRequiredOwnEnumerableDataProperty(config, 'dependencies');
 
         if (!isNonEmptyString(runnerVersion)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
         if (!isNonEmptyString(environmentClass)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
         if (!isNonEmptyString(deployedCommit)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
-        if (!isPlainRecord(deps)) throw new Error(FACTORY_ERRORS.CONFIG_INVALID);
-
-        let depKeys;
-        try {
-          depKeys = Object.keys(deps);
-        } catch {
-          throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
-        }
-        if (depKeys.length !== ALLOWED_DEPENDENCY_KEYS.length || !depKeys.every(function (k) { return ALLOWED_DEPENDENCY_KEYS.includes(k); })) {
-          throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
-        }
-
-        for (const name of REQUIRED_RUN_DEPENDENCIES) {
-          const depFn = readRequiredOwnEnumerableDataProperty(deps, name, FACTORY_ERRORS.DEPENDENCY_MISSING);
-          if (typeof depFn !== 'function') {
-            throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
-          }
-        }
-
-        const operation = readRequiredOwnEnumerableDataProperty(config, 'operation');
         if (operation !== 'BOOTSTRAP_CLEAN_CANONICAL_LEDGER') {
           throw new Error(FACTORY_ERRORS.OPERATION_INVALID);
         }
-        const targetClass = readRequiredOwnEnumerableDataProperty(config, 'targetClass');
         if (targetClass !== 'DISPOSABLE_POSTGRES_REHEARSAL_TARGET') {
           throw new Error(FACTORY_ERRORS.TARGET_CLASS_INVALID);
         }
-        const approvalReference = readRequiredOwnEnumerableDataProperty(config, 'approvalReference');
         if (approvalReference !== 'issue:3846') {
           throw new Error(FACTORY_ERRORS.APPROVAL_INVALID);
         }
 
-        session = await deps.openSession();
+        validatePlainRecord(dependencies, FACTORY_ERRORS.DEPENDENCY_MISSING);
+        let dependencyKeys;
+        try {
+          dependencyKeys = Object.keys(dependencies);
+        } catch {
+          throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
+        }
+        if (dependencyKeys.length !== ALLOWED_DEPENDENCY_KEYS.length || !dependencyKeys.every(function (k) { return ALLOWED_DEPENDENCY_KEYS.includes(k); })) {
+          throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
+        }
 
-        const cleanTargetResult = await deps.verifyCleanTarget(session, projection);
+        const openSession = readRequiredOwnEnumerableDataProperty(dependencies, 'openSession', FACTORY_ERRORS.DEPENDENCY_MISSING);
+        const verifyCleanTarget = readRequiredOwnEnumerableDataProperty(dependencies, 'verifyCleanTarget', FACTORY_ERRORS.DEPENDENCY_MISSING);
+        const verifyCatalogFingerprint = readRequiredOwnEnumerableDataProperty(dependencies, 'verifyCatalogFingerprint', FACTORY_ERRORS.DEPENDENCY_MISSING);
+        const verifyNoResidualState = readRequiredOwnEnumerableDataProperty(dependencies, 'verifyNoResidualState', FACTORY_ERRORS.DEPENDENCY_MISSING);
+        const now = readRequiredOwnEnumerableDataProperty(dependencies, 'now', FACTORY_ERRORS.DEPENDENCY_MISSING);
+
+        if (typeof openSession !== 'function') throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
+        if (typeof verifyCleanTarget !== 'function') throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
+        if (typeof verifyCatalogFingerprint !== 'function') throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
+        if (typeof verifyNoResidualState !== 'function') throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
+        if (typeof now !== 'function') throw new Error(FACTORY_ERRORS.DEPENDENCY_MISSING);
+
+        session = await openSession();
+
+        const cleanTargetResult = await verifyCleanTarget(session, projection);
         if (cleanTargetResult !== true) {
           throw new Error(FACTORY_ERRORS.CLEAN_TARGET_VERIFICATION_FAILED);
         }
@@ -362,7 +390,7 @@ function createCleanBootstrapRunner(config) {
 
         await session.query({ text: projection.sqlText, values: [] });
 
-        const appliedAt = await deps.now();
+        const appliedAt = await now();
         await session.query({
           text: LEDGER_INSERT_SQL,
           values: [
@@ -398,13 +426,13 @@ function createCleanBootstrapRunner(config) {
         transactionOpen = false;
         committed = true;
 
-        const fpResult = await deps.verifyCatalogFingerprint(projection.catalogFingerprint);
+        const fpResult = await verifyCatalogFingerprint(projection.catalogFingerprint);
         if (fpResult !== true) {
           throw new Error(FACTORY_ERRORS.CATALOG_FINGERPRINT_POST_COMMIT_FAILED);
         }
         fingerprintVerified = true;
 
-        const noResidual = await deps.verifyNoResidualState();
+        const noResidual = await verifyNoResidualState();
         if (noResidual !== true) {
           throw new Error(FACTORY_ERRORS.RESIDUAL_STATE_POST_COMMIT_FAILED);
         }

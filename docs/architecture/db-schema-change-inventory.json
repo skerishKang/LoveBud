@@ -1508,6 +1508,36 @@
       "automation": "manual",
       "ledger_candidate": "no",
       "notes": "Historical PostgreSQL migration guidance. Pre-ledger reference only; can be mistaken for the canonical runner. Retain as history; prohibit new execution. Carried forward from migration-path-inventory.json."
+    },
+    {
+      "path": "db/migrations/20260802094500_bootstrap-migration-ledger.sql",
+      "category": "sql_migration",
+      "engine": "postgres",
+      "operations": ["CREATE TABLE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3846",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "gated",
+      "ledger_candidate": "yes",
+      "notes": "public.schema_migration_ledger만 생성, canonical bootstrap migration source"
+    },
+    {
+      "path": "scripts/migration-clean-bootstrap-orchestrator-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3846",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "dedicated clean-target bootstrap authority, SQL 직접 실행 capability 없음, dependency-injected transaction orchestration"
     }
   ]
 }
