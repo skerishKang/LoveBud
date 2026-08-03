@@ -329,13 +329,19 @@ test('Story mode keeps token-driven styling (no hardcoded travel palette)', () =
     assert.match(storySection, /var\(--on-surface\)/);
 });
 
-test('Story animation uses bidirectional 8% translate with exit + enter keyframes', () => {
-    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?translateX\(8%\)/);
-    assert.match(viewModeCss, /@keyframes browse-story-enter-prev\s*\{[\s\S]*?translateX\(-8%\)/);
-    assert.match(viewModeCss, /@keyframes browse-story-exit-next\s*\{[\s\S]*?translateX\(-8%\)/);
-    assert.match(viewModeCss, /@keyframes browse-story-exit-prev\s*\{[\s\S]*?translateX\(8%\)/);
-    assert.match(viewModeCss, /340ms\s+cubic-bezier\(0\.22,\s*1,\s*0\.36,\s*1\)/);
+test('#3845: Story animation is a restrained 24px / 260ms translate with scale and exit + enter keyframes', () => {
+    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?translateX\(24px\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-enter-prev\s*\{[\s\S]*?translateX\(-24px\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-exit-next\s*\{[\s\S]*?translateX\(-24px\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-exit-prev\s*\{[\s\S]*?translateX\(24px\)/);
+    // bounded directional feedback: 16–24px, small 0.99→1 scale, ~220–280ms
+    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?scale\(0\.99\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?scale\(1\)/);
+    assert.match(viewModeCss, /260ms\s+cubic-bezier\(0\.22,\s*1,\s*0\.36,\s*1\)/);
+    // no large carousel sweep (>=200px travel) anywhere in the Story grammar
     assert.equal(/browse-story[\s\S]*?translateX\([2-9]00px/.test(viewModeCss), false);
+    // JS transition duration matches the CSS (220–280ms target)
+    assert.match(storyModule, /TRANSITION_DURATION\s*=\s*260/);
 });
 
 test('Story transition wrapper owns motion without nested entering-card animation', () => {
@@ -346,10 +352,10 @@ test('Story transition wrapper owns motion without nested entering-card animatio
     assert.match(scopedOverride[1], /(?:^|;)\s*animation:\s*none\s*;/);
     assert.match(scopedOverride[1], /(?:^|;)\s*transform:\s*none\s*;/);
     assert.match(viewModeCss, /\.browse-story-layer-incoming\s*\{[^}]*animation:\s*browse-story-enter-next\b/);
-    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?translateX\(8%\)/);
-    assert.match(viewModeCss, /@keyframes browse-story-enter-prev\s*\{[\s\S]*?translateX\(-8%\)/);
-    assert.match(viewModeCss, /@keyframes browse-story-exit-next\s*\{[\s\S]*?translateX\(-8%\)/);
-    assert.match(viewModeCss, /@keyframes browse-story-exit-prev\s*\{[\s\S]*?translateX\(8%\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-enter-next\s*\{[\s\S]*?translateX\(24px\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-enter-prev\s*\{[\s\S]*?translateX\(-24px\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-exit-next\s*\{[\s\S]*?translateX\(-24px\)/);
+    assert.match(viewModeCss, /@keyframes browse-story-exit-prev\s*\{[\s\S]*?translateX\(24px\)/);
 });
 
 /* ── 6) Cross-cutting prohibitions ──────────────────────────────────── */
@@ -398,7 +404,8 @@ test('i18n keys exist in ko and en', () => {
         'search.story.regionLabel',
         'search.story.previous',
         'search.story.next',
-        'search.story.position'
+        'search.story.position',
+        'search.story.positionCurrent'
     ]) {
         const entry = w.i18nSearch[key];
         assert.ok(entry && typeof entry === 'object', `missing i18n entry ${key}`);
@@ -409,6 +416,9 @@ test('i18n keys exist in ko and en', () => {
     assert.equal(w.i18nSearch['search.viewMode.story'].en, 'Story');
     assert.match(w.i18nSearch['search.story.position'].ko, /스토리 \{current\} \/ \{total\}/);
     assert.match(w.i18nSearch['search.story.position'].en, /Story \{current\} of \{total\}/);
+    // #3845 Browse current-only position phrase (no loaded-total denominator)
+    assert.equal(w.i18nSearch['search.story.positionCurrent'].ko, '스토리 그룹 {current}');
+    assert.equal(w.i18nSearch['search.story.positionCurrent'].en, 'Story group {current}');
 });
 
 test('switcher label table carries the Story label', () => {
@@ -556,4 +566,52 @@ test('39. adapter boundary adds no pagination/framework/autoplay/looping semanti
     ]) {
         assert.equal(banned.test(src), false, 'adapter boundary must not introduce ' + banned);
     }
+});
+
+/* ── 10) #3845 truthful navigation boundaries ───────────────────────── */
+test('#3845: controller exposes a Browse-only current-position mode and a bounded load-more boundary', () => {
+    assert.match(storyModule, /positionMode/);
+    assert.match(storyModule, /opts\.positionMode\s*===\s*['"]current['"]/);
+    assert.match(storyModule, /typeof\s+opts\.canRequestMore\s*===\s*['"]function['"]/);
+    assert.match(storyModule, /typeof\s+opts\.requestMore\s*===\s*['"]function['"]/);
+    assert.match(storyModule, /story\.positionCurrent/);
+    assert.match(storyModule, /'story\.positionCurrent':\s*'search\.story\.positionCurrent'/);
+    // Browse shell-init wires the boundary and the Browse-only mode
+    assert.match(browseInit, /positionMode:\s*['"]current['"]/);
+    assert.match(browseInit, /canRequestMore:/);
+    assert.match(browseInit, /requestMore:/);
+    assert.match(browseInit, /LoveBudBrowseStoryLoadMore/);
+});
+
+test('#3845: the shared controller never claims a loaded-total denominator in Browse current mode', () => {
+    // The current-mode branch renders the current group index only; the
+    // grouped `{current} / {total}` text stays reserved for other surfaces.
+    assert.match(storyModule, /positionMode === 'current'/);
+    assert.match(storyModule, /indicatorCurrent\.textContent = pad2\(groupIndex \+ 1\);/);
+    assert.match(storyModule, /'story\.positionCurrent'/);
+    assert.match(storyModule, /nextBtn\.disabled = atLast && !canRequestMoreNow\(\);/);
+    assert.match(storyModule, /function canRequestMoreNow\(\)/);
+    assert.match(storyModule, /if \(positionMode !== 'current'\) return false;/);
+    assert.match(storyModule, /function requestMoreThenAdvance\(\)/);
+    assert.match(storyModule, /function settleMoreRequest\(/);
+});
+
+test('#3845: My Trees thin adapter never opts into the Browse-only mode or load-more boundary', () => {
+    const myTreesAdapter = read('js/my-trees/my-trees-story-view.js');
+    assert.equal(myTreesAdapter.includes('positionMode'), false, 'My Trees adapter must not pass positionMode');
+    assert.equal(myTreesAdapter.includes('canRequestMore'), false, 'My Trees adapter must not pass canRequestMore');
+    assert.equal(myTreesAdapter.includes('requestMore'), false, 'My Trees adapter must not pass requestMore');
+    assert.match(myTreesAdapter, /story\.position':\s*'myTrees\.story\.position'/);
+});
+
+test('#3845: index.js exposes a bounded Browse Story load-more authority reusing the existing loader', () => {
+    const indexSrc = read('js/search/index.js');
+    assert.match(indexSrc, /LoveBudBrowseStoryLoadMore\s*=\s*\{/);
+    assert.match(indexSrc, /canRequestMore:\s*function/);
+    assert.match(indexSrc, /requestMore:\s*function/);
+    // forwards to the existing loader authority — no new fetch/pagination
+    assert.match(indexSrc, /callbacks\.loadMorePublicTrees\(\)/);
+    assert.match(indexSrc, /state\.hasMoreTrees/);
+    assert.match(indexSrc, /state\.apiTreesLoaded/);
+    assert.match(indexSrc, /state\.isLoadingMore/);
 });
