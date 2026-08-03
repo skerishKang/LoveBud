@@ -173,8 +173,12 @@ For U0/U1, small reversible micro branches/PRs are preferred.
 - **Preferred shell:** PowerShell 7 through `pwsh.exe`.
 - Use Windows-native tools and paths by default.
 - WSL은 현재 task 또는 operator가 명시적으로 승인한 경우에만 사용한다. WSL은 implicit fallback이 아니다.
+- 승인된 WSL 작업은 `$HOME/worktrees/<task-name>`의 WSL 내부 ext4에서 수행한다.
+- `/mnt/c`, `/mnt/d`, `/mnt/g` 등 `/mnt/*`는 저장·백업·산출물 보관·읽기 전용 비교 용도로만 사용한다.
+- 승인된 WSL 작업에서 `/mnt/*` 아래 npm ci/install/test/lint/build/Playwright/dev server/대량 검색을 실행하지 않는다.
 - 필수 Windows-native 도구가 없으면 중단하고 보고한다. WSL로 자동 우회하지 않는다.
 - Codex, Kilo, Hermes 등 도구 정체성만으로 WSL/bash를 추론하지 않는다.
+- 상세 정책은 `docs/ops/WSL_EXT4_WORKSPACE_POLICY.md`를 따른다.
 
 Detailed source: `docs/ops/PATHS_AND_SHELLS.md`.
 
@@ -230,6 +234,7 @@ Recommended order:
 - `docs/ops/PR_CHECKLIST.md`
 - `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`
 - `docs/ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md`
+- `docs/ops/WSL_EXT4_WORKSPACE_POLICY.md`
 - `docs/engineering/CODE_ARCHITECTURE.md`
 - `docs/engineering/REVIEW_GUARDRAILS.md`
 
