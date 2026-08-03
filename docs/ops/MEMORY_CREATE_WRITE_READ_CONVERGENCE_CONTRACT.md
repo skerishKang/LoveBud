@@ -196,3 +196,20 @@ single API promise created
 The UI acknowledgement completion may precede monitoring completion. Progress summaries emitted while the release SHA is unresolved simply omit the `release_sha` field (bounded semantics, privacy preserved); the final `CONFIRMED` always carries the valid release SHA.
 
 On API rejection the UI local fallback still runs once (returned `useApi: false`) while the core records `REQUEST_DISPATCHED` / `TRANSPORT_FAILED`. A local-fallback memory is never classified as `SERVER_ACKNOWLEDGED`, `PERSISTED_REREAD_CONFIRMED`, or `ACKNOWLEDGED_REREAD_MISSING`.
+
+### 10.4 Cross-save stale observer gating
+
+Every save through one `createEditorMemoryFormSave` runtime instance claims the next monotonic generation from a counter shared across that instance. The real caller's `convergenceObserver` is wrapped in a `guardedObserver` that drops every event from a save which is no longer the latest-started one — this is the only cross-save stale boundary, because each per-save convergence core carries its own internal token that cannot gate events across separately created cores.
+
+```text
+save A starts -> generation 1
+save B starts -> generation 2
+A REQUEST_DISPATCHED before B starts: delivered
+A progress/final after B starts: dropped
+B progress/final: delivered (final CONFIRMED exactly once)
+stale A final: 0
+stale A SERVER_ACKNOWLEDGED after B start: 0
+stale A TRANSPORT_FAILED after B confirmed: 0
+```
+
+The generation value is a closure local shared by the runtime instance; it is never exposed in summaries, observer payloads, console output, errors, DOM, storage, or test snapshots. The guard remains active even when the caller injects no observer (events are gated then dropped; the save path, exactly-once API write, and at-most-one reread per successful save are unchanged). The same-core stale test (one core, two `converge` calls) remains valid for the core's internal token; the integration above proves the cross-save boundary through two real `createMemoryWithFallback` calls on one save runtime.

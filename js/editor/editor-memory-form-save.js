@@ -27,6 +27,25 @@ function createEditorMemoryFormSave(deps) {
 
     let apiCreatePromise = null;
 
+    // #3852 — cross-save monotonic generation shared across every save in this
+    // Editor runtime instance. The latest-started save wins: a save that
+    // completes after a newer save has begun is suppressed from the observer
+    // entirely. This is the ONLY cross-save stale boundary — each per-save
+    // convergence core carries its own internal token, which cannot gate
+    // events across separately created cores. The generation value is a
+    // closure local shared by this instance and is never exposed in summaries,
+    // observer payloads, console output, errors, DOM, storage, or snapshots.
+    let latestConvergenceGeneration = 0;
+
+    function beginConvergenceGeneration() {
+        latestConvergenceGeneration += 1;
+        return latestConvergenceGeneration;
+    }
+
+    function isLatestGeneration(generation) {
+        return generation === latestConvergenceGeneration;
+    }
+
     function getConvergenceCore() {
         if (typeof window.LoveBudWriteReadConvergenceCore !== 'object' || window.LoveBudWriteReadConvergenceCore === null) return null;
         if (typeof window.LoveBudWriteReadConvergenceCore.createConvergenceCore !== 'function') return null;
@@ -118,6 +137,23 @@ function createEditorMemoryFormSave(deps) {
     // release manifest is still PENDING. The UI save result never awaits this
     // task, the canonical reread, the observer, or the final summary.
     function monitorCreateConvergence(apiPromise) {
+        // Each save claims the next generation at start, before any guard, so a
+        // later save always supersedes an earlier save's observer events — even
+        // when the later save's own monitoring safe-skips.
+        const generation = beginConvergenceGeneration();
+
+        // Shared cross-save observer gate. A save that is no longer the
+        // latest-started one is suppressed entirely; the real caller observer is
+        // only ever invoked for the latest save. The guard stays active even
+        // when no observer is injected (events are gated, the save path and the
+        // exactly-once API write are unchanged).
+        function guardedObserver(summary) {
+            if (!isLatestGeneration(generation)) return;
+            if (typeof convergenceObserver === 'function') {
+                convergenceObserver(summary);
+            }
+        }
+
         try {
             const coreFactory = getConvergenceCore();
             const taxonomy = getTaxonomy();
@@ -140,7 +176,7 @@ function createEditorMemoryFormSave(deps) {
                 releaseReadiness: releaseSha
                     ? null
                     : function () { return authority.whenReady(); },
-                observer: typeof convergenceObserver === 'function' ? convergenceObserver : null
+                observer: guardedObserver
             });
             // converge() records REQUEST_DISPATCHED synchronously before its first
             // await, so this call precedes any API settlement. The acknowledgement

@@ -1458,3 +1458,170 @@ test('release manifest authority: whenReady resolves a frozen bounded result sha
   assert.equal(fetchCalls[0].opts.credentials, 'same-origin');
   assert.equal(fetchCalls[0].opts.headers.Accept, 'application/json');
 });
+
+/* ── #3852 cross-save stale observer gating (real Editor runtime) ────────── */
+
+test('cross-save stale: overlapping saves share one generation guard (B final delivered once, late A final dropped)', async () => {
+  const sandbox = loadRealEditorSandbox();
+  const taxonomy = sandbox.window.LoveBudReliabilitySentinelTaxonomy;
+  sandbox.window.LoveBudReleaseManifestAuthority = mockReleaseAuthorityReady();
+  const apiGateA = createDeferred();
+  const apiGateB = createDeferred();
+  let createCalls = 0;
+  let rereadCalls = 0;
+  sandbox.window.apiClient = {
+    createMemory: (data) => {
+      createCalls += 1;
+      const isA = createCalls === 1;
+      const gate = isA ? apiGateA : apiGateB;
+      const memId = isA ? 'api-mem-1' : 'api-mem-2';
+      return gate.promise.then(() => ({ id: memId, treeId: 'tree-1' }));
+    },
+    getMemoriesByTree: async () => {
+      rereadCalls += 1;
+      return [{ id: 'api-mem-1', treeId: 'tree-1' }, { id: 'api-mem-2', treeId: 'tree-1' }];
+    }
+  };
+  const observed = [];
+  const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultFormDeps({
+    nextMemoryId: () => 'local-mem-1',
+    convergenceObserver: (summary) => { observed.push(summary); }
+  }));
+
+  // Two real saves through one Editor save runtime; each save creates its own
+  // convergence core — only the shared generation guard can gate across them.
+  const saveAPromise = save.createMemoryWithFallback({ title: 'A', treeId: 'tree-1', timestamp: '2026-01-01' });
+  const saveBPromise = save.createMemoryWithFallback({ title: 'B', treeId: 'tree-1', timestamp: '2026-01-01' });
+  assert.equal(createCalls, 2, 'two saves, exactly one API write each');
+  assert.ok(
+    observed.some((s) => s.stage === taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED),
+    'A REQUEST_DISPATCHED before B starts is allowed and delivered'
+  );
+
+  // B completes first: API resolve -> canonical reread -> CONFIRMED delivered once.
+  apiGateB.resolve();
+  await settleAsync();
+  const resultB = await saveBPromise;
+  assert.equal(resultB.useApi, true);
+  assert.equal(resultB.createdMemory.id, 'api-mem-2');
+  const confirmedBeforeA = observed.filter((s) => s.outcome_code === taxonomy.OUTCOME_CODES.CONFIRMED);
+  assert.equal(confirmedBeforeA.length, 1, 'B final CONFIRMED delivered exactly once');
+  assert.equal(confirmedBeforeA[0].release_sha, validReleaseSha());
+
+  // A completes late: its final must be dropped (A is no longer the latest save).
+  apiGateA.resolve();
+  const resultA = await saveAPromise;
+  await settleAsync();
+  assert.equal(resultA.useApi, true);
+  assert.equal(resultA.createdMemory.id, 'api-mem-1');
+  assert.equal(createCalls, 2, 'no second write per save');
+  assert.equal(rereadCalls, 2, 'one canonical reread per successful save');
+  assert.equal(
+    observed.filter((s) => s.outcome_code === taxonomy.OUTCOME_CODES.CONFIRMED).length,
+    1,
+    'stale A final CONFIRMED must not be delivered'
+  );
+  assert.equal(
+    observed.filter((s) => s.stage === taxonomy.CONVERGENCE_STAGES.SERVER_ACKNOWLEDGED).length,
+    1,
+    'stale A SERVER_ACKNOWLEDGED event after B start must not be delivered'
+  );
+});
+
+test('cross-save stale: A transport failure after B confirmed -> stale TRANSPORT_FAILED dropped, B final kept, A fallback intact', async () => {
+  const sandbox = loadRealEditorSandbox();
+  const taxonomy = sandbox.window.LoveBudReliabilitySentinelTaxonomy;
+  sandbox.window.LoveBudReleaseManifestAuthority = mockReleaseAuthorityReady();
+  const apiGateA = createDeferred();
+  const apiGateB = createDeferred();
+  const consoleOut = [];
+  sandbox.console = {
+    warn: (...args) => { consoleOut.push(args.join(' ')); },
+    error: (...args) => { consoleOut.push(args.join(' ')); },
+    log: (...args) => { consoleOut.push(args.join(' ')); }
+  };
+  let createCalls = 0;
+  let rereadCalls = 0;
+  sandbox.window.apiClient = {
+    createMemory: (data) => {
+      createCalls += 1;
+      if (createCalls === 1) {
+        return apiGateA.promise.then(() => { throw new Error('A transport secret'); });
+      }
+      return apiGateB.promise.then(() => ({ id: 'api-mem-2', treeId: 'tree-1' }));
+    },
+    getMemoriesByTree: async () => {
+      rereadCalls += 1;
+      return [{ id: 'api-mem-2', treeId: 'tree-1' }];
+    }
+  };
+  const observed = [];
+  const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultFormDeps({
+    nextMemoryId: () => 'local-mem-1',
+    convergenceObserver: (summary) => { observed.push(summary); }
+  }));
+
+  const saveAPromise = save.createMemoryWithFallback({ title: 'A', treeId: 'tree-1', timestamp: '2026-01-01' });
+  const saveBPromise = save.createMemoryWithFallback({ title: 'B', treeId: 'tree-1', timestamp: '2026-01-01' });
+  assert.equal(createCalls, 2);
+
+  apiGateB.resolve();
+  await settleAsync();
+  const resultB = await saveBPromise;
+  assert.equal(resultB.useApi, true);
+  assert.equal(
+    observed.filter((s) => s.outcome_code === taxonomy.OUTCOME_CODES.CONFIRMED).length,
+    1,
+    'B final CONFIRMED delivered exactly once'
+  );
+
+  apiGateA.resolve();
+  const resultA = await saveAPromise;
+  await settleAsync();
+  assert.equal(resultA.useApi, false, 'A local fallback preserved');
+  assert.equal(resultA.createdMemory.id, 'local-mem-1');
+  assert.equal(
+    observed.filter((s) => s.outcome_code === taxonomy.OUTCOME_CODES.TRANSPORT_FAILED).length,
+    0,
+    'stale A TRANSPORT_FAILED observer event must be dropped'
+  );
+  assert.equal(createCalls, 2, 'one write per save');
+  assert.equal(rereadCalls, 1, 'only B performed the canonical reread');
+  assert.ok(
+    !consoleOut.join('\n').includes('A transport secret'),
+    'raw A error must not leak to console'
+  );
+});
+
+test('cross-save stale: no observer injected -> generation guard active, saves unchanged, one write each', async () => {
+  const sandbox = loadRealEditorSandbox();
+  sandbox.window.LoveBudReleaseManifestAuthority = mockReleaseAuthorityReady();
+  const apiGateA = createDeferred();
+  const apiGateB = createDeferred();
+  let createCalls = 0;
+  sandbox.window.apiClient = {
+    createMemory: (data) => {
+      createCalls += 1;
+      const isA = createCalls === 1;
+      const gate = isA ? apiGateA : apiGateB;
+      const memId = isA ? 'api-mem-1' : 'api-mem-2';
+      return gate.promise.then(() => ({ id: memId, treeId: 'tree-1' }));
+    },
+    getMemoriesByTree: async () => [{ id: 'api-mem-1', treeId: 'tree-1' }, { id: 'api-mem-2', treeId: 'tree-1' }]
+  };
+  // No convergenceObserver is injected (defaultFormDeps does not provide one).
+  const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultFormDeps({ nextMemoryId: () => 'local-mem-1' }));
+
+  const saveAPromise = save.createMemoryWithFallback({ title: 'A', treeId: 'tree-1', timestamp: '2026-01-01' });
+  const saveBPromise = save.createMemoryWithFallback({ title: 'B', treeId: 'tree-1', timestamp: '2026-01-01' });
+  assert.equal(createCalls, 2, 'one write per save without an observer');
+  apiGateB.resolve();
+  const resultB = await saveBPromise;
+  assert.equal(resultB.useApi, true);
+  assert.equal(resultB.createdMemory.id, 'api-mem-2');
+  apiGateA.resolve();
+  const resultA = await saveAPromise;
+  assert.equal(resultA.useApi, true);
+  assert.equal(resultA.createdMemory.id, 'api-mem-1');
+  assert.equal(createCalls, 2, 'no second write per save without an observer');
+});
