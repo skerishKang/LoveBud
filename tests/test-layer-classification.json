@@ -2050,6 +2050,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/memory-create-write-read-convergence-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real convergence core with injected fake create/reread/observer dependencies and proves the bounded write-read convergence contract: dispatch once, acknowledge once, reread once, identity presence decision, stale-result protection, privacy boundary, observer failure semantics, release SHA validation, frozen/detached output, and byte-stable canonical JSON. No real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/memory-wiki-ontology-atlas-foundation-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

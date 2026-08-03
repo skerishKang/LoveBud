@@ -249,6 +249,47 @@
         };
     }
 
+    function createCanonicalReread(options) {
+        const opts = options || {};
+        const treeId = opts.treeId;
+        const apiClient = opts.apiClient || null;
+        const normalizeMemory = opts.normalizeMemory || createNormalizeMemory();
+
+        function fixedRereadError(code) {
+            const err = new Error(code);
+            err.code = code;
+            return err;
+        }
+
+        return async function canonicalReread(identity) {
+            // Authority unavailable must be a fixed sanitized rejection, never a
+            // silent empty array (Refs #3852).
+            if (!treeId) throw fixedRereadError('CANONICAL_REREAD_AUTHORITY_UNAVAILABLE');
+            if (!apiClient || typeof apiClient.getMemoriesByTree !== 'function') {
+                throw fixedRereadError('CANONICAL_REREAD_AUTHORITY_UNAVAILABLE');
+            }
+
+            let apiMemories;
+            try {
+                apiMemories = await apiClient.getMemoriesByTree(treeId);
+            } catch (e) {
+                // Transport rejection becomes a fixed sanitized rejection; the raw
+                // provider error is never surfaced.
+                throw fixedRereadError('CANONICAL_REREAD_TRANSPORT_FAILED');
+            }
+
+            if (!Array.isArray(apiMemories)) {
+                // Malformed response maps to INSUFFICIENT_EVIDENCE in the core via a
+                // fixed malformed result (never an authoritative empty array).
+                return Object.freeze({ malformed: true });
+            }
+
+            const normalizedApi = apiMemories.map(normalizeMemory).filter(Boolean);
+            const filteredApi = filterMemoriesForTree(normalizedApi, treeId);
+            return { memories: filteredApi };
+        };
+    }
+
     function createRefreshMemories(options) {
         const opts = options || {};
         const treeId = opts.treeId;
@@ -281,6 +322,7 @@
         isCanonicalRootPlaceholder,
         loadInitialEditorTree,
         loadEditorMemories,
-        createRefreshMemories
+        createRefreshMemories,
+        createCanonicalReread
     };
 })();
