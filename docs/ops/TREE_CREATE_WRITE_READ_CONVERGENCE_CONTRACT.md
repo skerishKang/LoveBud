@@ -10,6 +10,33 @@ This document defines the contract for the tree-create write/read convergence bo
 
 ## 2. Operation class and stages
 
+The convergence core supports exactly two create-operation profiles. The dispatch property and the acknowledgement property are derived by the core from the operation class; callers cannot select arbitrary properties.
+
+```text
+MEMORY_CREATE_CONVERGENCE
+  dispatch property:      createMemory
+  acknowledgement property: createdMemory
+
+TREE_CREATE_CONVERGENCE
+  dispatch property:      createTree
+  acknowledgement property: createdTree
+```
+
+All other taxonomy-known operation classes are NOT create profiles and are rejected at core creation as `UNKNOWN_OPERATION_CLASS` with zero dispatch, zero canonical reread, and zero observer events. This includes the non-create taxonomy classes:
+
+```text
+STRUCTURAL_SCHEMA_CHECK
+TREE_PARENT_INTEGRITY_CHECK
+MEMORY_PARENT_INTEGRITY_CHECK
+SOCIAL_TARGET_INTEGRITY_CHECK
+BROWSE_ELIGIBILITY_BASELINE_CHECK
+PUBLIC_THRESHOLD_CONVERGENCE
+```
+
+Unknown operation classes are likewise rejected as `UNKNOWN_OPERATION_CLASS`.
+
+For this contract the relevant profile is:
+
 ```text
 operation_class: TREE_CREATE_CONVERGENCE
 
@@ -125,12 +152,10 @@ observer slow -> does not block redirect
 
 ## 10. Dependencies
 
-The convergence core is the shared #3852 pure dependency-injected engine, used through a bounded generalization that keeps memory-create behavior byte-identical:
+The convergence core is the shared #3852 pure dependency-injected engine, used through a bounded generalization that keeps memory-create behavior byte-identical. The operation class selects one of exactly two supported profiles, and the core derives the dispatch property and the acknowledgement property from that profile:
 
 ```text
 operationClass: 'TREE_CREATE_CONVERGENCE'  (default remains MEMORY_CREATE_CONVERGENCE)
-createKey: 'createTree'                    (default remains createMemory)
-ackKey: 'createdTree'                      (default remains createdMemory)
 createTree: function() -> Promise<{ createdTree, useApi } | null>   (wraps the real shared API promise)
 canonicalReread: function() -> Promise<tree rows array> | null      (wraps apiClient.getTrees)
 taxonomy: object (reliability-sentinel-taxonomy.js)
@@ -138,6 +163,8 @@ releaseSha: string (40-char lowercase hex) | null when releaseReadiness provided
 releaseReadiness: function() -> Promise<{ ok, releaseSha }> | null (optional)
 observer: function(summary) | null (optional)
 ```
+
+Callers never pass `createKey` or `ackKey`: the dispatch key (`createTree`) and the acknowledgement key (`createdTree`) are derived by the core from the operation class. Explicit `createKey`/`ackKey` deps are accepted only when they exactly match the profile-derived keys; any mismatch (`TREE_CREATE_CONVERGENCE` with `createMemory`/`createdMemory`, `MEMORY_CREATE_CONVERGENCE` with `createTree`/`createdTree`, or any arbitrary key) fails closed at core creation as `UNKNOWN_INPUT` with zero dispatch, zero reread, and zero observer events. Raw keys or caller values are never included in the error.
 
 The core fires `REQUEST_DISPATCHED` before awaiting anything. When `releaseSha` is deferred (release manifest still PENDING at create time), the core resolves it through `releaseReadiness` after recording `REQUEST_DISPATCHED` and before the canonical reread / final `CONFIRMED`. A missing or invalid resolved SHA produces a bounded `MONITORING_FAILED` — the operation is never classified `CONFIRMED` without a valid SHA.
 
@@ -257,6 +284,17 @@ stale earlier events suppressed
 raw tree identity/error leakage 0
 missing release SHA cannot become CONFIRMED
 memory-create #3852 regression 0
+non-create taxonomy classes rejected (STRUCTURAL_SCHEMA_CHECK, TREE_PARENT_INTEGRITY_CHECK,
+  MEMORY_PARENT_INTEGRITY_CHECK, SOCIAL_TARGET_INTEGRITY_CHECK,
+  BROWSE_ELIGIBILITY_BASELINE_CHECK, PUBLIC_THRESHOLD_CONVERGENCE) with zero
+  dispatch / reread / observer
+unknown operation class rejected
+mismatched explicit createKey/ackKey tuple fails closed with zero dispatch /
+  reread / observer (TREE + memory tuple, MEMORY + tree tuple, arbitrary keys)
+inherited Object.prototype name as operation class rejected
+accessor operationClass getter never invoked
+Proxy profile input never leaks raw values
+supported profiles exactly 2 (memory behavior unchanged)
 ```
 
 Classification: `EXECUTED_FAKE` (real source, injected fake dependencies; no real external system or production resource used).

@@ -437,8 +437,6 @@
       var releaseSha = getCurrentTreeReleaseSha();
       var convergence = coreFactory.createConvergenceCore({
         operationClass: 'TREE_CREATE_CONVERGENCE',
-        createKey: 'createTree',
-        ackKey: 'createdTree',
         createTree: function () { return apiPromise; },
         canonicalReread: canonicalReread,
         taxonomy: taxonomy,

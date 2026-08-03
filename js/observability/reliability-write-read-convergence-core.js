@@ -17,12 +17,21 @@
 //     write path;
 //   - is fail-closed on every privacy and safety boundary.
 //
-// #3855 — bounded generalization: the create dispatch key, the acknowledgement
-// record key, and the taxonomy operation class are configurable with memory
-// defaults (createKey='createMemory', ackKey='createdMemory',
-// operationClass='MEMORY_CREATE_CONVERGENCE') so the memory-create behavior
-// and its contract remain byte-identical while the tree-create path reuses the
-// same engine with operationClass='TREE_CREATE_CONVERGENCE'.
+// #3855 — bounded generalization: exactly two create-operation profiles are
+// supported, each fixing the create dispatch property and the acknowledgement
+// property to the operation class:
+//
+//   MEMORY_CREATE_CONVERGENCE -> createMemory / createdMemory
+//   TREE_CREATE_CONVERGENCE   -> createTree   / createdTree
+//
+// The dispatch and acknowledgement keys are derived from the operation class
+// by the core; callers cannot select arbitrary properties. Non-create
+// taxonomy classes (STRUCTURAL_SCHEMA_CHECK, TREE_PARENT_INTEGRITY_CHECK,
+// MEMORY_PARENT_INTEGRITY_CHECK, SOCIAL_TARGET_INTEGRITY_CHECK,
+// BROWSE_ELIGIBILITY_BASELINE_CHECK, PUBLIC_THRESHOLD_CONVERGENCE) and unknown
+// classes are rejected. Explicit createKey/ackKey deps are accepted only when
+// they exactly match the profile-derived keys; any mismatch fails closed.
+// The memory-create behavior and its contract remain byte-identical.
 //
 // Refs #3852.
 // Refs #3855.
@@ -164,6 +173,20 @@
     ACKNOWLEDGEMENT_MISSING_ID: 'ACKNOWLEDGEMENT_MISSING_ID'
   });
 
+  // #3855 — the exact set of supported create-operation profiles. Each profile
+  // fixes the dispatch property and the acknowledgement property that the core
+  // derives from the operation class; callers may not choose arbitrary keys.
+  var CREATE_PROFILES = Object.freeze({
+    MEMORY_CREATE_CONVERGENCE: Object.freeze({
+      createKey: 'createMemory',
+      ackKey: 'createdMemory'
+    }),
+    TREE_CREATE_CONVERGENCE: Object.freeze({
+      createKey: 'createTree',
+      ackKey: 'createdTree'
+    })
+  });
+
   var ERROR_CODE_SET = (function () {
     var s = {};
     for (var k in ERROR_CODES) {
@@ -210,12 +233,12 @@
         return { ok: false, error: ERROR_CODES.UNKNOWN_INPUT };
       }
 
-      // #3855 — bounded generalization. operationClass (default
-      // MEMORY_CREATE_CONVERGENCE), createKey (default 'createMemory'), and
-      // ackKey (default 'createdMemory') are optional deps read through the
-      // descriptor-safe reader; memory defaults keep the #3852 contract
-      // unchanged while tree-create passes TREE_CREATE_CONVERGENCE / 'createTree'
-      // / 'createdTree'.
+      // #3855 — bounded generalization. The operation class (default
+      // MEMORY_CREATE_CONVERGENCE) selects one of the exact supported create
+      // profiles, which fixes the dispatch property and the acknowledgement
+      // property. Callers cannot select arbitrary dispatch/ack keys; explicit
+      // createKey/ackKey deps are accepted only when they exactly match the
+      // profile-derived keys.
       var operationClassValue;
       try {
         operationClassValue = readOptionalOwnEnumerableDataProperty(deps, 'operationClass');
@@ -229,31 +252,37 @@
       if (typeof operationClass !== 'string' || operationClass.length === 0) {
         return { ok: false, error: ERROR_CODES.UNKNOWN_OPERATION_CLASS };
       }
+      var profile = hasOwn(CREATE_PROFILES, operationClass)
+        ? CREATE_PROFILES[operationClass]
+        : null;
+      if (!profile) {
+        return { ok: false, error: ERROR_CODES.UNKNOWN_OPERATION_CLASS };
+      }
+      var createKey = profile.createKey;
+      var ackKey = profile.ackKey;
 
-      var createKeyValue;
+      var explicitCreateKeyValue;
       try {
-        createKeyValue = readOptionalOwnEnumerableDataProperty(deps, 'createKey');
+        explicitCreateKeyValue = readOptionalOwnEnumerableDataProperty(deps, 'createKey');
       } catch (e) {
         return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
       }
-      var createKey = createKeyValue === undefined || createKeyValue === null
-        ? 'createMemory'
-        : createKeyValue;
-      if (typeof createKey !== 'string' || createKey.length === 0) {
-        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+      if (explicitCreateKeyValue !== undefined && explicitCreateKeyValue !== null) {
+        if (typeof explicitCreateKeyValue !== 'string' || explicitCreateKeyValue !== createKey) {
+          return { ok: false, error: ERROR_CODES.UNKNOWN_INPUT };
+        }
       }
 
-      var ackKeyValue;
+      var explicitAckKeyValue;
       try {
-        ackKeyValue = readOptionalOwnEnumerableDataProperty(deps, 'ackKey');
+        explicitAckKeyValue = readOptionalOwnEnumerableDataProperty(deps, 'ackKey');
       } catch (e) {
         return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
       }
-      var ackKey = ackKeyValue === undefined || ackKeyValue === null
-        ? 'createdMemory'
-        : ackKeyValue;
-      if (typeof ackKey !== 'string' || ackKey.length === 0) {
-        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+      if (explicitAckKeyValue !== undefined && explicitAckKeyValue !== null) {
+        if (typeof explicitAckKeyValue !== 'string' || explicitAckKeyValue !== ackKey) {
+          return { ok: false, error: ERROR_CODES.UNKNOWN_INPUT };
+        }
       }
 
       var createMemoryValue;
@@ -383,14 +412,14 @@
       if (operationClass === undefined || operationClass === null || typeof operationClass !== 'string' || operationClass.length === 0) {
         operationClass = 'MEMORY_CREATE_CONVERGENCE';
       }
-      createKey = readOptionalOwnEnumerableDataProperty(deps, 'createKey');
-      if (createKey === undefined || createKey === null || typeof createKey !== 'string' || createKey.length === 0) {
-        createKey = 'createMemory';
+      var profile = hasOwn(CREATE_PROFILES, operationClass)
+        ? CREATE_PROFILES[operationClass]
+        : null;
+      if (!profile) {
+        throw new TypeError(ERROR_CODES.UNKNOWN_OPERATION_CLASS);
       }
-      ackKey = readOptionalOwnEnumerableDataProperty(deps, 'ackKey');
-      if (ackKey === undefined || ackKey === null || typeof ackKey !== 'string' || ackKey.length === 0) {
-        ackKey = 'createdMemory';
-      }
+      createKey = profile.createKey;
+      ackKey = profile.ackKey;
       createMemory = readOwnEnumerableDataProperty(deps, createKey);
       canonicalReread = readOwnEnumerableDataProperty(deps, 'canonicalReread');
       taxonomy = readOwnEnumerableDataProperty(deps, 'taxonomy');

@@ -6,8 +6,9 @@
 // reliability-write-read-convergence-core.js, and my-trees/my-trees-actions.js
 // — with injected fake transports (createTree, getTrees, release manifest
 // authority). Proves the #3852 convergence core is reused through a bounded
-// generalization (operationClass='TREE_CREATE_CONVERGENCE', createKey='createTree',
-// ackKey='createdTree') without changing memory-create behavior, and that the
+// generalization (operationClass='TREE_CREATE_CONVERGENCE', dispatch key and
+// acknowledgement key derived from the operation class profile:
+// createTree/createdTree) without changing memory-create behavior, and that the
 // real My Trees create path distinguishes:
 //
 //   REQUEST_DISPATCHED → SERVER_ACKNOWLEDGED → canonical reread →
@@ -23,6 +24,16 @@
 // mutates modal/cache state, and never exposes the acknowledged tree identity
 // or raw errors. Stale earlier create flows' observer events are suppressed by
 // a page-shared monotonic generation.
+//
+// The supported operation profiles are exactly two:
+//   MEMORY_CREATE_CONVERGENCE -> createMemory / createdMemory
+//   TREE_CREATE_CONVERGENCE   -> createTree   / createdTree
+// Non-create taxonomy classes (STRUCTURAL_SCHEMA_CHECK, TREE_PARENT_INTEGRITY_CHECK,
+// MEMORY_PARENT_INTEGRITY_CHECK, SOCIAL_TARGET_INTEGRITY_CHECK,
+// BROWSE_ELIGIBILITY_BASELINE_CHECK, PUBLIC_THRESHOLD_CONVERGENCE) and unknown
+// classes are rejected. Explicit createKey/ackKey deps are accepted only when
+// they exactly match the profile-derived keys; any mismatch fails closed with
+// zero dispatch, zero reread, and zero observer events.
 //
 // Refs #3855.
 // Refs #3852 — memory-create convergence core.
@@ -87,13 +98,13 @@ function loadConvergenceCore() {
   return sandbox.window.LoveBudWriteReadConvergenceCore;
 }
 
-// Core-level defaults for the TREE_CREATE_CONVERGENCE operation.
+// Core-level defaults for the TREE_CREATE_CONVERGENCE operation. The dispatch
+// key (createTree) and acknowledgement key (createdTree) are derived from the
+// operation class by the core; the caller supplies only the dispatch wrapper.
 function treeDeps(overrides) {
   return Object.assign(
     {
       operationClass: 'TREE_CREATE_CONVERGENCE',
-      createKey: 'createTree',
-      ackKey: 'createdTree',
       createTree: async () => ({ createdTree: { id: 'tree-1' }, useApi: true }),
       canonicalReread: async () => [{ id: 'tree-1' }],
       taxonomy: defaultTaxonomy(),
@@ -653,6 +664,144 @@ test('tree core: unknown operation class fails closed', () => {
       treeDeps({ operationClass: 'DOES_NOT_EXIST' })
     ),
     /UNKNOWN_OPERATION_CLASS/
+  );
+});
+
+// #3855 — bounded profiles. Every taxonomy-known NON-create operation class is
+// rejected as UNKNOWN_OPERATION_CLASS at core creation with zero dispatch, zero
+// canonical reread, and zero observer events.
+function assertProfileRejectedWithZeroSideEffects(operationClass) {
+  let dispatchCalls = 0;
+  let rereadCalls = 0;
+  const events = [];
+  assert.throws(
+    () => loadConvergenceCore().createConvergenceCore(
+      treeDeps({
+        operationClass: operationClass,
+        createTree: async () => { dispatchCalls += 1; return { createdTree: { id: 'tree-1' }, useApi: true }; },
+        canonicalReread: async () => { rereadCalls += 1; return [{ id: 'tree-1' }]; },
+        observer: (s) => events.push(s)
+      })
+    ),
+    /UNKNOWN_OPERATION_CLASS/,
+    operationClass + ' must be rejected as UNKNOWN_OPERATION_CLASS'
+  );
+  assert.equal(dispatchCalls, 0, operationClass + ': zero create dispatch');
+  assert.equal(rereadCalls, 0, operationClass + ': zero canonical reread');
+  assert.equal(events.length, 0, operationClass + ': zero observer events');
+}
+
+test('tree core: STRUCTURAL_SCHEMA_CHECK is not a create profile and fails closed', () => {
+  assertProfileRejectedWithZeroSideEffects('STRUCTURAL_SCHEMA_CHECK');
+});
+
+test('tree core: TREE_PARENT_INTEGRITY_CHECK is not a create profile and fails closed', () => {
+  assertProfileRejectedWithZeroSideEffects('TREE_PARENT_INTEGRITY_CHECK');
+});
+
+test('tree core: MEMORY_PARENT_INTEGRITY_CHECK is not a create profile and fails closed', () => {
+  assertProfileRejectedWithZeroSideEffects('MEMORY_PARENT_INTEGRITY_CHECK');
+});
+
+test('tree core: SOCIAL_TARGET_INTEGRITY_CHECK is not a create profile and fails closed', () => {
+  assertProfileRejectedWithZeroSideEffects('SOCIAL_TARGET_INTEGRITY_CHECK');
+});
+
+test('tree core: BROWSE_ELIGIBILITY_BASELINE_CHECK is not a create profile and fails closed', () => {
+  assertProfileRejectedWithZeroSideEffects('BROWSE_ELIGIBILITY_BASELINE_CHECK');
+});
+
+test('tree core: PUBLIC_THRESHOLD_CONVERGENCE is not a create profile and fails closed', () => {
+  assertProfileRejectedWithZeroSideEffects('PUBLIC_THRESHOLD_CONVERGENCE');
+});
+
+// Explicit createKey/ackKey tuples are accepted only when they exactly match
+// the profile-derived keys; any mismatch fails closed at core creation.
+function assertKeyTupleRejectedWithZeroSideEffects(operationClass, createKey, ackKey) {
+  let dispatchCalls = 0;
+  let rereadCalls = 0;
+  const events = [];
+  assert.throws(
+    () => loadConvergenceCore().createConvergenceCore(
+      treeDeps({
+        operationClass: operationClass,
+        createKey: createKey,
+        ackKey: ackKey,
+        createTree: async () => { dispatchCalls += 1; return { createdTree: { id: 'tree-1' }, useApi: true }; },
+        canonicalReread: async () => { rereadCalls += 1; return [{ id: 'tree-1' }]; },
+        observer: (s) => events.push(s)
+      })
+    ),
+    /UNKNOWN_INPUT/,
+    operationClass + ' with ' + createKey + '/' + ackKey + ' must be rejected as UNKNOWN_INPUT'
+  );
+  assert.equal(dispatchCalls, 0, 'mismatched tuple: zero create dispatch');
+  assert.equal(rereadCalls, 0, 'mismatched tuple: zero canonical reread');
+  assert.equal(events.length, 0, 'mismatched tuple: zero observer events');
+}
+
+test('tree core: TREE_CREATE_CONVERGENCE with memory key tuple fails closed', () => {
+  assertKeyTupleRejectedWithZeroSideEffects('TREE_CREATE_CONVERGENCE', 'createMemory', 'createdMemory');
+});
+
+test('tree core: MEMORY_CREATE_CONVERGENCE with tree key tuple fails closed', () => {
+  assertKeyTupleRejectedWithZeroSideEffects('MEMORY_CREATE_CONVERGENCE', 'createTree', 'createdTree');
+});
+
+test('tree core: arbitrary explicit createKey is rejected for TREE_CREATE_CONVERGENCE', () => {
+  assertKeyTupleRejectedWithZeroSideEffects('TREE_CREATE_CONVERGENCE', 'arbitraryCreate', 'createdTree');
+});
+
+test('tree core: arbitrary explicit ackKey is rejected for TREE_CREATE_CONVERGENCE', () => {
+  assertKeyTupleRejectedWithZeroSideEffects('TREE_CREATE_CONVERGENCE', 'createTree', 'arbitraryAck');
+});
+
+test('tree core: matching explicit key tuple remains accepted for TREE_CREATE_CONVERGENCE', async () => {
+  const taxonomy = defaultTaxonomy();
+  let dispatchCalls = 0;
+  const convergence = loadConvergenceCore().createConvergenceCore(
+    treeDeps({
+      createKey: 'createTree',
+      ackKey: 'createdTree',
+      createTree: async () => { dispatchCalls += 1; return { createdTree: { id: 'tree-1' }, useApi: true }; }
+    })
+  );
+  const summary = await convergence.converge({});
+  assert.equal(summary.outcome_code, taxonomy.OUTCOME_CODES.CONFIRMED);
+  assert.equal(dispatchCalls, 1, 'exactly one dispatch with matching explicit tuple');
+});
+
+// Inherited Object.prototype names are never valid operation classes (own-key
+// profile lookup only), and accessor/proxy profile inputs never execute user
+// code or leak raw values.
+test('tree core: inherited Object.prototype name as operation class is rejected', () => {
+  assert.throws(
+    () => loadConvergenceCore().createConvergenceCore(treeDeps({ operationClass: 'toString' })),
+    /UNKNOWN_OPERATION_CLASS/
+  );
+});
+
+test('tree core: accessor operationClass getter is never invoked and fails closed', () => {
+  let getterCalls = 0;
+  const deps = treeDeps({});
+  Object.defineProperty(deps, 'operationClass', {
+    enumerable: true,
+    get() { getterCalls += 1; return 'TREE_CREATE_CONVERGENCE'; }
+  });
+  assert.throws(
+    () => loadConvergenceCore().createConvergenceCore(deps),
+    /PROXY_OR_ACCESSOR_INPUT/
+  );
+  assert.equal(getterCalls, 0, 'accessor getter must never be invoked');
+});
+
+test('tree core: Proxy profile input trap never leaks raw values', () => {
+  const proxy = new Proxy(treeDeps({}), {
+    getPrototypeOf() { throw new Error('secret profile leak'); }
+  });
+  assert.throws(
+    () => loadConvergenceCore().createConvergenceCore(proxy),
+    /PROXY_OR_ACCESSOR_INPUT/
   );
 });
 
