@@ -38,13 +38,39 @@ function createEditorMemoryFormSave(deps) {
         return window.LoveBudReliabilitySentinelTaxonomy;
     }
 
-    // #3852 — release SHA comes from the page-level bounded authority
-    // (pages/editor.html registers window.LoveBudReleaseManifestAuthority).
-    // READY -> 40-char lowercase hex; anything else -> null (monitoring safe skip).
-    function getReleaseSha() {
+    // #3852 — page-level bounded release authority (pages/editor.html registers
+    // window.LoveBudReleaseManifestAuthority). The synchronous getCurrent()/
+    // getState() are used by the save runtime; the async whenReady() seam is
+    // used by monitoring so the first save is observed even while the manifest
+    // is still PENDING.
+    function getReleaseAuthority() {
         try {
             const authority = window.LoveBudReleaseManifestAuthority;
             if (!authority || typeof authority.getCurrent !== 'function') return null;
+            if (typeof authority.getState !== 'function') return null;
+            if (typeof authority.whenReady !== 'function') return null;
+            return authority;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function getReleaseState() {
+        try {
+            const authority = getReleaseAuthority();
+            if (!authority) return 'UNAVAILABLE';
+            return authority.getState();
+        } catch (e) {
+            return 'UNAVAILABLE';
+        }
+    }
+
+    // READY -> 40-char lowercase hex; PENDING/UNAVAILABLE -> null. Never blocks.
+    function getCurrentReleaseSha() {
+        try {
+            if (getReleaseState() !== 'READY') return null;
+            const authority = getReleaseAuthority();
+            if (!authority) return null;
             const state = authority.getCurrent();
             if (!state || state.ok !== true || typeof state.releaseSha !== 'string') return null;
             return /^[0-9a-f]{40}$/.test(state.releaseSha) ? state.releaseSha : null;
@@ -86,34 +112,54 @@ function createEditorMemoryFormSave(deps) {
         return apiCreatePromise;
     }
 
-    // Fire-and-observe monitoring. The UI save result only waits for the actual
-    // API acknowledgement; the convergence summary, canonical reread, and
-    // release telemetry never block or alter the save result.
-    async function monitorCreateConvergence(createdMemoryResult, apiPromise) {
-        const coreFactory = getConvergenceCore();
-        const taxonomy = getTaxonomy();
-        if (!coreFactory || !taxonomy) return;
-        const releaseSha = getReleaseSha();
-        if (!releaseSha) return; // monitoring safe skip
-        const canonicalReread = resolveCanonicalReread();
-        if (!canonicalReread || typeof canonicalReread !== 'function') return;
+    // Fire-and-observe monitoring. Starts synchronously at the creation of the
+    // single API write promise so the core records REQUEST_DISPATCHED BEFORE
+    // the transport settles — the first save is always observed, even when the
+    // release manifest is still PENDING. The UI save result never awaits this
+    // task, the canonical reread, the observer, or the final summary.
+    function monitorCreateConvergence(apiPromise) {
         try {
+            const coreFactory = getConvergenceCore();
+            const taxonomy = getTaxonomy();
+            if (!coreFactory || !taxonomy) return null;
+            const authority = getReleaseAuthority();
+            if (!authority) return null;
+            const canonicalReread = resolveCanonicalReread();
+            if (!canonicalReread || typeof canonicalReread !== 'function') return null;
+
+            // A terminal UNAVAILABLE release state (no manifest, HTTP error, or
+            // already-settled failure) safe-skips with zero observer events.
+            if (getReleaseState() === 'UNAVAILABLE') return null;
+
+            const releaseSha = getCurrentReleaseSha();
             const convergence = coreFactory.createConvergenceCore({
                 createMemory: function () { return apiPromise; },
                 canonicalReread: canonicalReread,
                 taxonomy: taxonomy,
                 releaseSha: releaseSha,
+                releaseReadiness: releaseSha
+                    ? null
+                    : function () { return authority.whenReady(); },
                 observer: typeof convergenceObserver === 'function' ? convergenceObserver : null
             });
-            await convergence.converge(createdMemoryResult);
+            // converge() records REQUEST_DISPATCHED synchronously before its first
+            // await, so this call precedes any API settlement. The acknowledgement
+            // is derived from the shared apiPromise; a plain record payload keeps
+            // the dispatch-contract validation intact.
+            return convergence.converge({});
         } catch (e) {
             editorDebugLog('[editor] Convergence monitoring unavailable');
+            return null;
         }
     }
 
     async function createMemoryWithFallback(newMemoryData) {
         apiCreatePromise = null;
         const apiPromise = dispatchApiCreateOnce(newMemoryData);
+        // Start convergence monitoring at dispatch time — before the UI awaits
+        // the shared API promise — so REQUEST_DISPATCHED precedes settlement.
+        // The returned task is fire-and-observe and never blocks the save.
+        const monitoringTask = monitorCreateConvergence(apiPromise);
         let createdMemory = null;
         let useApi = false;
         try {
@@ -145,7 +191,10 @@ function createEditorMemoryFormSave(deps) {
             };
         }
         const result = { createdMemory, useApi };
-        monitorCreateConvergence(result, apiPromise);
+        if (monitoringTask && typeof monitoringTask.catch === 'function') {
+            // Sanitized guard: never a raw error, stack, identity, or payload.
+            monitoringTask.catch(() => editorDebugLog('[editor] Convergence monitoring unavailable'));
+        }
         return result;
     }
 

@@ -805,11 +805,20 @@ function loadDataLoaderSandbox() {
 }
 
 function mockReleaseAuthorityReady() {
-  return { getCurrent: () => ({ ok: true, releaseSha: validReleaseSha() }) };
+  const sha = validReleaseSha();
+  return {
+    getState: () => 'READY',
+    getCurrent: () => ({ ok: true, releaseSha: sha }),
+    whenReady: () => Promise.resolve({ ok: true, releaseSha: sha })
+  };
 }
 
 function mockReleaseAuthorityUnavailable() {
-  return { getCurrent: () => ({ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' }) };
+  return {
+    getState: () => 'UNAVAILABLE',
+    getCurrent: () => ({ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' }),
+    whenReady: () => Promise.resolve({ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' })
+  };
 }
 
 test('core: taxonomy get traps never invoked during capture or converge', async () => {
@@ -1151,7 +1160,7 @@ test('release manifest authority (real editor.html source): single same-origin n
   const sandbox = createSandbox({
     fetch: (url, opts) => {
       fetchCalls.push({ url, opts });
-      return Promise.resolve({ json: () => Promise.resolve({ contract_version: '1', release_sha: sha }) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ contract_version: '1', release_sha: sha }) });
     }
   });
   vm.runInContext(extractReleaseManifestAuthoritySource(), sandbox);
@@ -1174,7 +1183,7 @@ test('release manifest authority (real editor.html source): single same-origin n
 
 test('release manifest authority: invalid manifest -> UNAVAILABLE failure result', async () => {
   const sandbox = createSandbox({
-    fetch: () => Promise.resolve({ json: () => Promise.resolve({ contract_version: '2', release_sha: 'not-hex' }) })
+    fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve({ contract_version: '2', release_sha: 'not-hex' }) })
   });
   vm.runInContext(extractReleaseManifestAuthoritySource(), sandbox);
   const authority = sandbox.window.LoveBudReleaseManifestAuthority;
@@ -1212,4 +1221,240 @@ test('release manifest authority registered before the form-save runtime in edit
   assert.ok(authIdx >= 0, 'release authority must be registered');
   assert.ok(saveIdx >= 0, 'form-save script must exist');
   assert.ok(authIdx < saveIdx, 'release authority must register before the form-save runtime');
+});
+
+/* ── #3852 first-save boundary (real editor.html authority + real runtime) ── */
+
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+function loadFirstSaveSandbox(fetchImpl) {
+  const sandbox = createSandbox({ fetch: fetchImpl });
+  vm.runInContext(extractReleaseManifestAuthoritySource(), sandbox);
+  vm.runInContext(read('js/observability/reliability-sentinel-taxonomy.js'), sandbox);
+  vm.runInContext(read('js/observability/reliability-write-read-convergence-core.js'), sandbox);
+  vm.runInContext(read('js/editor/editor-data-loader.js'), sandbox);
+  vm.runInContext(read('js/editor/editor-memory-form-save.js'), sandbox);
+  return sandbox;
+}
+
+test('first save: PENDING manifest + API pending -> REQUEST_DISPATCHED precedes API settle, final CONFIRMED with SHA', async () => {
+  const sha = validReleaseSha();
+  const manifestGate = createDeferred();
+  const apiGate = createDeferred();
+  let manifestResolved = false;
+  const sandbox = loadFirstSaveSandbox(() =>
+    manifestGate.promise.then(() => {
+      manifestResolved = true;
+      return { ok: true, json: () => Promise.resolve({ contract_version: '1', release_sha: sha }) };
+    })
+  );
+  const taxonomy = sandbox.window.LoveBudReliabilitySentinelTaxonomy;
+  let createCalls = 0;
+  let rereadCalls = 0;
+  sandbox.window.apiClient = {
+    createMemory: () => {
+      createCalls += 1;
+      return apiGate.promise.then(() => ({ id: 'api-mem-1', treeId: 'tree-1' }));
+    },
+    getMemoriesByTree: async () => {
+      rereadCalls += 1;
+      return [{ id: 'api-mem-1', treeId: 'tree-1' }];
+    }
+  };
+  const observed = [];
+  const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultFormDeps({
+    convergenceObserver: (summary) => { observed.push(summary); }
+  }));
+  const savePromise = save.createMemoryWithFallback({ title: 'Test', treeId: 'tree-1', timestamp: '2026-01-01' });
+
+  // Both manifest and API are still pending here; monitoring started
+  // synchronously at dispatch, so REQUEST_DISPATCHED must already be observed
+  // while the transport has not settled.
+  assert.equal(manifestResolved, false, 'manifest is still pending');
+  assert.equal(createCalls, 1, 'API write dispatched exactly once');
+  const dispatchEvents = observed.filter((s) => s.stage === taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED);
+  assert.ok(dispatchEvents.length >= 1, 'REQUEST_DISPATCHED observed before API settlement');
+
+  manifestGate.resolve();
+  await settleAsync();
+  apiGate.resolve();
+  const result = await savePromise;
+  await settleAsync();
+
+  assert.equal(createCalls, 1, 'API create exactly once');
+  assert.equal(rereadCalls, 1, 'canonical reread exactly once');
+  assert.equal(result.useApi, true);
+  assert.equal(result.createdMemory.id, 'api-mem-1');
+  const finalEvent = observed[observed.length - 1];
+  assert.equal(finalEvent.stage, taxonomy.CONVERGENCE_STAGES.PERSISTED_REREAD_CONFIRMED);
+  assert.equal(finalEvent.outcome_code, taxonomy.OUTCOME_CODES.CONFIRMED);
+  assert.equal(finalEvent.release_sha, sha, 'final CONFIRMED must carry the valid release SHA');
+});
+
+test('first save: manifest resolves after the API -> UI completes on API ack alone, monitoring finalizes later', async () => {
+  const sha = validReleaseSha();
+  const manifestGate = createDeferred();
+  const apiGate = createDeferred();
+  const sandbox = loadFirstSaveSandbox(() =>
+    manifestGate.promise.then(() => ({
+      ok: true,
+      json: () => Promise.resolve({ contract_version: '1', release_sha: sha })
+    }))
+  );
+  const taxonomy = sandbox.window.LoveBudReliabilitySentinelTaxonomy;
+  let createCalls = 0;
+  let rereadCalls = 0;
+  sandbox.window.apiClient = {
+    createMemory: () => {
+      createCalls += 1;
+      return apiGate.promise.then(() => ({ id: 'api-mem-1', treeId: 'tree-1' }));
+    },
+    getMemoriesByTree: async () => { rereadCalls += 1; return [{ id: 'api-mem-1', treeId: 'tree-1' }]; }
+  };
+  const observed = [];
+  const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultFormDeps({
+    convergenceObserver: (summary) => { observed.push(summary); }
+  }));
+  const savePromise = save.createMemoryWithFallback({ title: 'Test', treeId: 'tree-1', timestamp: '2026-01-01' });
+  assert.ok(
+    observed.some((s) => s.stage === taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED),
+    'REQUEST_DISPATCHED recorded before API settlement'
+  );
+
+  // UI completes on the API acknowledgement alone while the manifest is still
+  // pending — the monitoring task never blocks the save result.
+  apiGate.resolve();
+  const result = await savePromise;
+  assert.equal(result.useApi, true);
+  assert.equal(result.createdMemory.id, 'api-mem-1');
+  assert.equal(createCalls, 1, 'API create exactly once');
+  assert.equal(
+    observed.filter((s) => s.outcome_code === taxonomy.OUTCOME_CODES.CONFIRMED).length,
+    0,
+    'no CONFIRMED before the manifest resolves'
+  );
+
+  manifestGate.resolve();
+  await settleAsync();
+  assert.equal(rereadCalls, 1, 'canonical reread exactly once after readiness');
+  const finalEvent = observed[observed.length - 1];
+  assert.equal(finalEvent.stage, taxonomy.CONVERGENCE_STAGES.PERSISTED_REREAD_CONFIRMED);
+  assert.equal(finalEvent.outcome_code, taxonomy.OUTCOME_CODES.CONFIRMED);
+  assert.equal(finalEvent.release_sha, sha);
+});
+
+test('first save: manifest HTTP non-success (404) with valid JSON shape -> UNAVAILABLE, no CONFIRMED, write once', async () => {
+  const sha = validReleaseSha();
+  const sandbox = loadFirstSaveSandbox(() =>
+    Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ contract_version: '1', release_sha: sha }) })
+  );
+  const taxonomy = sandbox.window.LoveBudReliabilitySentinelTaxonomy;
+  let createCalls = 0;
+  let rereadCalls = 0;
+  sandbox.window.apiClient = {
+    createMemory: async (data) => { createCalls += 1; return { id: 'api-mem-1', ...data }; },
+    getMemoriesByTree: async () => { rereadCalls += 1; return [{ id: 'api-mem-1', treeId: 'tree-1' }]; }
+  };
+  const observed = [];
+  const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultFormDeps({
+    convergenceObserver: (summary) => { observed.push(summary); }
+  }));
+  const result = await save.createMemoryWithFallback({ title: 'Test', treeId: 'tree-1' });
+  await settleAsync();
+  assert.equal(createCalls, 1, 'save must not be blocked');
+  assert.equal(rereadCalls, 0, 'reread must not run without a valid release SHA');
+  assert.equal(result.useApi, true, 'save result keeps its existing semantics');
+  assert.equal(
+    observed.filter((s) => s.outcome_code === taxonomy.OUTCOME_CODES.CONFIRMED).length,
+    0,
+    'CONFIRMED must never be recorded without a valid SHA'
+  );
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  assert.equal(authority.getState(), 'UNAVAILABLE');
+});
+
+test('release manifest authority: HTTP non-success with valid JSON shape -> never READY', async () => {
+  const sha = validReleaseSha();
+  const sandbox = createSandbox({
+    fetch: () => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ contract_version: '1', release_sha: sha }) })
+  });
+  vm.runInContext(extractReleaseManifestAuthoritySource(), sandbox);
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  authority.getCurrent(); // trigger the lazy fetch
+  await settleAsync();
+  assert.equal(authority.getState(), 'UNAVAILABLE');
+  const state = authority.getCurrent();
+  assert.equal(state.ok, false);
+  assert.equal(state.code, 'RELEASE_SHA_UNAVAILABLE');
+  const ready = await authority.whenReady();
+  assert.equal(ready.ok, false);
+});
+
+test('release manifest authority: extra own field -> UNAVAILABLE (exact-key enforcement)', async () => {
+  const sha = validReleaseSha();
+  const sandbox = createSandbox({
+    fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve({ contract_version: '1', release_sha: sha, extra: 'forbidden' }) })
+  });
+  vm.runInContext(extractReleaseManifestAuthoritySource(), sandbox);
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  authority.getCurrent(); // trigger the lazy fetch
+  await settleAsync();
+  assert.equal(authority.getState(), 'UNAVAILABLE');
+  const state = authority.getCurrent();
+  assert.equal(state.ok, false);
+  assert.equal(state.code, 'RELEASE_SHA_UNAVAILABLE');
+  const ready = await authority.whenReady();
+  assert.equal(ready.ok, false);
+});
+
+test('release manifest authority: accessor own key -> UNAVAILABLE without invoking the getter', async () => {
+  const sha = validReleaseSha();
+  const manifest = {};
+  let getterCalls = 0;
+  Object.defineProperty(manifest, 'contract_version', {
+    enumerable: true,
+    get() { getterCalls += 1; return '1'; }
+  });
+  Object.defineProperty(manifest, 'release_sha', { enumerable: true, value: sha });
+  const sandbox = createSandbox({
+    fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve(manifest) })
+  });
+  vm.runInContext(extractReleaseManifestAuthoritySource(), sandbox);
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  authority.getCurrent(); // trigger the lazy fetch
+  await settleAsync();
+  assert.equal(getterCalls, 0, 'manifest accessor getter must never run');
+  assert.equal(authority.getState(), 'UNAVAILABLE');
+});
+
+test('release manifest authority: whenReady resolves a frozen bounded result sharing the single fetch', async () => {
+  const sha = validReleaseSha();
+  const fetchCalls = [];
+  const sandbox = createSandbox({
+    fetch: (url, opts) => {
+      fetchCalls.push({ url, opts });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ contract_version: '1', release_sha: sha }) });
+    }
+  });
+  vm.runInContext(extractReleaseManifestAuthoritySource(), sandbox);
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  const pending = authority.getCurrent();
+  assert.equal(pending.ok, false);
+  assert.equal(pending.code, 'RELEASE_SHA_UNAVAILABLE');
+  const ready = await authority.whenReady();
+  assert.equal(ready.ok, true);
+  assert.equal(ready.releaseSha, sha);
+  assert.equal(Object.isFrozen(ready), true);
+  assert.deepEqual(Object.keys(ready), ['ok', 'releaseSha']);
+  assert.equal(authority.getState(), 'READY');
+  assert.equal(fetchCalls.length, 1, 'whenReady shares the single in-flight fetch');
+  assert.equal(fetchCalls[0].url, '/.well-known/release.json');
+  assert.equal(fetchCalls[0].opts.cache, 'no-store');
+  assert.equal(fetchCalls[0].opts.credentials, 'same-origin');
+  assert.equal(fetchCalls[0].opts.headers.Accept, 'application/json');
 });

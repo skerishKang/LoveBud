@@ -266,12 +266,25 @@
       } catch (e) {
         return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
       }
-      if (releaseShaValue === undefined || releaseShaValue === null) {
-        return { ok: false, error: ERROR_CODES.MISSING_RELEASE_SHA };
+      var releaseReadinessValue;
+      try {
+        releaseReadinessValue = readOptionalOwnEnumerableDataProperty(deps, 'releaseReadiness');
+      } catch (e) {
+        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
       }
-      var shaCheck = validateReleaseSha(releaseShaValue);
-      if (!shaCheck.ok) {
-        return { ok: false, error: shaCheck.error };
+      if (releaseShaValue === undefined || releaseShaValue === null) {
+        // #3852 — a deferred release SHA is allowed only when a callable
+        // releaseReadiness seam is provided. The SHA is resolved inside
+        // converge() AFTER REQUEST_DISPATCHED is recorded, so the first save
+        // is always observed even when the release manifest is still PENDING.
+        if (!isCallable(releaseReadinessValue)) {
+          return { ok: false, error: ERROR_CODES.MISSING_RELEASE_SHA };
+        }
+      } else {
+        var shaCheck = validateReleaseSha(releaseShaValue);
+        if (!shaCheck.ok) {
+          return { ok: false, error: shaCheck.error };
+        }
       }
 
       var observerValue;
@@ -309,12 +322,17 @@
     var canonicalReread;
     var taxonomy;
     var releaseSha;
+    var releaseReadiness = null;
     var observer = null;
     try {
       createMemory = readOwnEnumerableDataProperty(deps, 'createMemory');
       canonicalReread = readOwnEnumerableDataProperty(deps, 'canonicalReread');
       taxonomy = readOwnEnumerableDataProperty(deps, 'taxonomy');
-      releaseSha = readOwnEnumerableDataProperty(deps, 'releaseSha');
+      releaseSha = readOptionalOwnEnumerableDataProperty(deps, 'releaseSha') || null;
+      var readinessValue = readOptionalOwnEnumerableDataProperty(deps, 'releaseReadiness');
+      if (typeof readinessValue === 'function') {
+        releaseReadiness = readinessValue;
+      }
       var observerValue = readOptionalOwnEnumerableDataProperty(deps, 'observer');
       if (observerValue !== undefined && observerValue !== null) {
         observer = observerValue;
@@ -412,6 +430,12 @@
     var nextToken = monotonicToken();
     var latestToken = 0;
     var latestSummary = null;
+    // #3852 — first-save boundary. The release SHA is page-global and may be
+    // resolved asynchronously (via releaseReadiness) AFTER REQUEST_DISPATCHED
+    // is recorded; every summary uses the resolved value so the final
+    // CONFIRMED always carries a valid SHA while progress summaries emitted
+    // before readiness simply omit the field.
+    var currentReleaseSha = releaseSha;
 
     function sanitizeSummary(summary) {
       if (!summary || !isPlainRecord(summary)) return null;
@@ -458,7 +482,7 @@
         sanitizeSummary({
           operation_class: OP_MEMORY_CREATE,
           stage: stage,
-          release_sha: releaseSha,
+          release_sha: currentReleaseSha,
           baseline_deviation: DEV_UNKNOWN,
           severity: SEV_INFO,
           owner_action: ACT_NO_ACTION,
@@ -482,7 +506,7 @@
           operation_class: OP_MEMORY_CREATE,
           stage: STAGE_REQUEST_DISPATCHED,
           outcome_code: OUTCOME_ACK_MISSING,
-          release_sha: releaseSha,
+          release_sha: currentReleaseSha,
           baseline_deviation: DEV_UNKNOWN,
           severity: SEV_BLOCKING,
           owner_action: ACT_INVESTIGATE,
@@ -500,6 +524,60 @@
 
       try {
         notifyProgress(token, STAGE_REQUEST_DISPATCHED);
+
+        // #3852 — first-save boundary. When the release manifest is still
+        // PENDING at save time, the SHA is resolved through the release
+        // readiness seam AFTER REQUEST_DISPATCHED is recorded (dispatch
+        // chronology never waits for the manifest) and BEFORE the canonical
+        // reread / final CONFIRMED. A missing or invalid release SHA resolves
+        // to a bounded MONITORING_FAILED — the operation is never classified
+        // CONFIRMED without a valid SHA.
+        if (currentReleaseSha === null && typeof releaseReadiness === 'function') {
+          var ready = null;
+          try {
+            ready = await releaseReadiness();
+          } catch (e) {
+            ready = null;
+          }
+          var readyOk = false;
+          var readySha = null;
+          if (ready !== null && ready !== undefined && typeof ready === 'object') {
+            var okValue;
+            var shaValue;
+            try {
+              okValue = readOptionalOwnEnumerableDataProperty(ready, 'ok');
+              shaValue = readOwnEnumerableDataProperty(ready, 'releaseSha');
+            } catch (e) {
+              okValue = undefined;
+              shaValue = undefined;
+            }
+            readyOk =
+              okValue === true &&
+              typeof shaValue === 'string' &&
+              isValidReleaseSha(shaValue);
+            if (readyOk) {
+              readySha = shaValue;
+            }
+          }
+          if (!readyOk) {
+            var releaseUnavailable = sanitizeSummary({
+              operation_class: OP_MEMORY_CREATE,
+              stage: STAGE_REQUEST_DISPATCHED,
+              outcome_code: OUTCOME_MONITORING_FAILED,
+              release_sha: null,
+              baseline_deviation: DEV_UNKNOWN,
+              severity: SEV_WARNING,
+              owner_action: ACT_INVESTIGATE,
+              evidence_completeness: EV_MISSING
+            });
+            if (recordSummary(token, releaseUnavailable)) {
+              notifyObserver(releaseUnavailable);
+            }
+            return releaseUnavailable;
+          }
+          currentReleaseSha = readySha;
+        }
+
         var createResult = await createMemory(payload);
 
         if (!createResult || typeof createResult !== 'object') {
@@ -507,7 +585,7 @@
             operation_class: OP_MEMORY_CREATE,
             stage: STAGE_REQUEST_DISPATCHED,
             outcome_code: OUTCOME_ACK_MISSING,
-            release_sha: releaseSha,
+            release_sha: currentReleaseSha,
             baseline_deviation: DEV_UNKNOWN,
             severity: SEV_BLOCKING,
             owner_action: ACT_INVESTIGATE,
@@ -539,7 +617,7 @@
             operation_class: OP_MEMORY_CREATE,
             stage: STAGE_REQUEST_DISPATCHED,
             outcome_code: OUTCOME_ACK_MISSING,
-            release_sha: releaseSha,
+            release_sha: currentReleaseSha,
             baseline_deviation: DEV_UNKNOWN,
             severity: SEV_BLOCKING,
             owner_action: ACT_INVESTIGATE,
@@ -564,7 +642,7 @@
             operation_class: OP_MEMORY_CREATE,
             stage: STAGE_REQUEST_DISPATCHED,
             outcome_code: OUTCOME_ACK_MISSING,
-            release_sha: releaseSha,
+            release_sha: currentReleaseSha,
             baseline_deviation: DEV_UNKNOWN,
             severity: SEV_BLOCKING,
             owner_action: ACT_INVESTIGATE,
@@ -586,7 +664,7 @@
             operation_class: OP_MEMORY_CREATE,
             stage: STAGE_SERVER_ACKNOWLEDGED,
             outcome_code: OUTCOME_MONITORING_FAILED,
-            release_sha: releaseSha,
+            release_sha: currentReleaseSha,
             baseline_deviation: DEV_UNKNOWN,
             severity: SEV_WARNING,
             owner_action: ACT_INVESTIGATE,
@@ -603,7 +681,7 @@
             operation_class: OP_MEMORY_CREATE,
             stage: STAGE_SERVER_ACKNOWLEDGED,
             outcome_code: OUTCOME_INSUFFICIENT_EVIDENCE,
-            release_sha: releaseSha,
+            release_sha: currentReleaseSha,
             baseline_deviation: DEV_UNKNOWN,
             severity: SEV_WARNING,
             owner_action: ACT_INVESTIGATE,
@@ -638,7 +716,7 @@
             operation_class: OP_MEMORY_CREATE,
             stage: STAGE_SERVER_ACKNOWLEDGED,
             outcome_code: OUTCOME_INSUFFICIENT_EVIDENCE,
-            release_sha: releaseSha,
+            release_sha: currentReleaseSha,
             baseline_deviation: DEV_UNKNOWN,
             severity: SEV_WARNING,
             owner_action: ACT_INVESTIGATE,
@@ -671,7 +749,7 @@
             operation_class: OP_MEMORY_CREATE,
             stage: STAGE_PERSISTED_REREAD_CONFIRMED,
             outcome_code: OUTCOME_CONFIRMED,
-            release_sha: releaseSha,
+            release_sha: currentReleaseSha,
             latency_bucket: LATENCY_LT_250_MS,
             count_bucket: COUNT_POSITIVE,
             baseline_deviation: DEV_NONE,
@@ -689,7 +767,7 @@
           operation_class: OP_MEMORY_CREATE,
           stage: STAGE_SERVER_ACKNOWLEDGED,
           outcome_code: OUTCOME_ACK_REREAD_MISSING,
-          release_sha: releaseSha,
+          release_sha: currentReleaseSha,
           baseline_deviation: DEV_UNKNOWN,
           severity: SEV_WARNING,
           owner_action: ACT_INVESTIGATE,
@@ -710,7 +788,7 @@
           outcome_code: isAccessorError
             ? OUTCOME_ACK_MISSING
             : OUTCOME_TRANSPORT_FAILED,
-          release_sha: releaseSha,
+          release_sha: currentReleaseSha,
           baseline_deviation: DEV_UNKNOWN,
           severity: SEV_BLOCKING,
           owner_action: ACT_INVESTIGATE,

@@ -104,9 +104,11 @@ schedule background work
 
 ## 7. Release SHA authority
 
-`pages/editor.html` registers a bounded same-origin page authority (`window.LoveBudReleaseManifestAuthority`) before the form-save runtime. It performs at most one `no-store` same-origin fetch to `/.well-known/release.json` per page, initiated lazily on the first `getCurrent()` read (so page load never issues a network request), accepts only the exact keys `release_sha` (40-char lowercase hex) and `contract_version` (`"1"`), and exposes `getCurrent()` returning a frozen `{ ok: true, releaseSha }` or `{ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' }`. It never persists to storage, never retries, and never schedules timers.
+`pages/editor.html` registers a bounded same-origin page authority (`window.LoveBudReleaseManifestAuthority`) before the form-save runtime. It performs at most one `no-store` same-origin fetch to `/.well-known/release.json` per page, initiated lazily on the first read (so page load never issues a network request). The manifest contract is enforced exactly: only the own keys `release_sha` (40-char lowercase hex data property) and `contract_version` (`"1"`) are accepted; extra keys, missing keys, accessor keys, inherited keys, non-`"1"` contract versions, invalid SHAs, non-ok HTTP responses (`response.ok !== true`, e.g. 404 even with a valid-shaped JSON body), missing `response.json`, and malformed JSON all map to `UNAVAILABLE`. State distinguishes `PENDING` / `READY` / `UNAVAILABLE`.
 
-The save runtime resolves the release SHA from that authority. When the manifest is PENDING or UNAVAILABLE the memory save is never blocked or duplicated — monitoring performs a safe skip. The convergence core still requires a valid 40-char lowercase hex release SHA per summary and never maps a missing/invalid SHA to success.
+It exposes three bounded members: `getCurrent()` (synchronous, frozen `{ ok: true, releaseSha }` or `{ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' }`), `getState()` (`'PENDING' | 'READY' | 'UNAVAILABLE'`), and `whenReady()` (the async readiness seam that resolves the same frozen bounded result and shares the single in-flight fetch promise). It never persists to storage, never retries, and never schedules timers.
+
+The save runtime resolves the release SHA from that authority. When the manifest is PENDING the memory save is never blocked or duplicated: monitoring starts at dispatch and waits on the same in-flight release promise (`whenReady`), while the UI save result waits only for the API acknowledgement. When the manifest is in a terminal UNAVAILABLE state monitoring performs a safe skip with zero observer events. The convergence core still requires a valid 40-char lowercase hex release SHA for any `CONFIRMED` summary and never maps a missing/invalid SHA to success.
 
 ## 8. Write and reread count guarantees
 
@@ -133,9 +135,12 @@ The convergence core is pure and dependency-injected. It accepts:
 createMemory: function(payload) -> Promise<{ createdMemory, useApi } | null>
 canonicalReread: function(identity) -> Promise<{ memories: [...] } | [...] | null>
 taxonomy: object (reliability-sentinel-taxonomy.js)
-releaseSha: string (40-char lowercase hex)
+releaseSha: string (40-char lowercase hex) | null when releaseReadiness provided
+releaseReadiness: function() -> Promise<{ ok, releaseSha }> | null (optional)
 observer: function(summary) | null (optional)
 ```
+
+The core fires `REQUEST_DISPATCHED` before awaiting anything. When `releaseSha` is deferred (release manifest still PENDING at save time), the core resolves it through `releaseReadiness` after recording `REQUEST_DISPATCHED` and before the canonical reread / final `CONFIRMED`. A missing or invalid resolved SHA produces a bounded `MONITORING_FAILED` — the operation is never classified `CONFIRMED` without a valid SHA.
 
 The core must not contain fetch, XMLHttpRequest, provider SDK, database client, environment variable, localStorage, sessionStorage, IndexedDB, cookie, filesystem, setInterval, retry loop, alert delivery, or deployment logic.
 
@@ -144,7 +149,8 @@ The core must not contain fetch, XMLHttpRequest, provider SDK, database client, 
 The real caller (`editor-memory-form.js`) does not inject `releaseSha` or `canonicalReread`. The save runtime resolves both internally:
 
 ```text
-releaseSha       <- window.LoveBudReleaseManifestAuthority.getCurrent()
+releaseSha       <- window.LoveBudReleaseManifestAuthority.getCurrent()  (READY only)
+releaseReadiness <- window.LoveBudReleaseManifestAuthority.whenReady()    (PENDING only)
 canonicalReread  <- window.LoveBudEditorDataLoader.createCanonicalReread({
                      treeId, apiClient: window.apiClient, normalizeMemory })
 ```
@@ -173,5 +179,20 @@ monitoring retry: 0
 ```
 
 The UI save result waits only for the actual API acknowledgement. The canonical reread, observer event, summary recording, and release telemetry are fire-and-observe and never block the save. Monitoring catch logs only `[editor] Convergence monitoring unavailable` — never a raw error, stack, identity, or payload.
+
+### 10.3 First-save boundary (observer chronology)
+
+Monitoring starts synchronously at the creation of the single API write promise — before the UI awaits it — so `REQUEST_DISPATCHED` is recorded before the transport settles, even when the release manifest is still `PENDING`:
+
+```text
+single API promise created
+-> monitoring task starts immediately
+-> REQUEST_DISPATCHED recorded before API settlement
+-> UI awaits only the same API promise
+-> acknowledgement (SERVER_ACKNOWLEDGED after fulfillment / TRANSPORT_FAILED after rejection)
+-> exactly one canonical reread when the release SHA is available
+```
+
+The UI acknowledgement completion may precede monitoring completion. Progress summaries emitted while the release SHA is unresolved simply omit the `release_sha` field (bounded semantics, privacy preserved); the final `CONFIRMED` always carries the valid release SHA.
 
 On API rejection the UI local fallback still runs once (returned `useApi: false`) while the core records `REQUEST_DISPATCHED` / `TRANSPORT_FAILED`. A local-fallback memory is never classified as `SERVER_ACKNOWLEDGED`, `PERSISTED_REREAD_CONFIRMED`, or `ACKNOWLEDGED_REREAD_MISSING`.
