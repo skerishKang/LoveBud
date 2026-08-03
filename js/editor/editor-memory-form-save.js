@@ -1,4 +1,3 @@
-
 function createEditorMemoryFormSave(deps) {
     const {
         i18n,
@@ -22,23 +21,191 @@ function createEditorMemoryFormSave(deps) {
         rerenderCanvas,
         focusNodeById,
         getCanonicalRootId,
-        editorDebugLog
+        editorDebugLog,
+        convergenceObserver
     } = deps;
 
+    let apiCreatePromise = null;
+
+    // #3852 — cross-save monotonic generation shared across every save in this
+    // Editor runtime instance. The latest-started save wins: a save that
+    // completes after a newer save has begun is suppressed from the observer
+    // entirely. This is the ONLY cross-save stale boundary — each per-save
+    // convergence core carries its own internal token, which cannot gate
+    // events across separately created cores. The generation value is a
+    // closure local shared by this instance and is never exposed in summaries,
+    // observer payloads, console output, errors, DOM, storage, or snapshots.
+    let latestConvergenceGeneration = 0;
+
+    function beginConvergenceGeneration() {
+        latestConvergenceGeneration += 1;
+        return latestConvergenceGeneration;
+    }
+
+    function isLatestGeneration(generation) {
+        return generation === latestConvergenceGeneration;
+    }
+
+    function getConvergenceCore() {
+        if (typeof window.LoveBudWriteReadConvergenceCore !== 'object' || window.LoveBudWriteReadConvergenceCore === null) return null;
+        if (typeof window.LoveBudWriteReadConvergenceCore.createConvergenceCore !== 'function') return null;
+        return window.LoveBudWriteReadConvergenceCore;
+    }
+
+    function getTaxonomy() {
+        if (typeof window.LoveBudReliabilitySentinelTaxonomy !== 'object' || window.LoveBudReliabilitySentinelTaxonomy === null) return null;
+        return window.LoveBudReliabilitySentinelTaxonomy;
+    }
+
+    // #3852 — page-level bounded release authority (pages/editor.html registers
+    // window.LoveBudReleaseManifestAuthority). The synchronous getCurrent()/
+    // getState() are used by the save runtime; the async whenReady() seam is
+    // used by monitoring so the first save is observed even while the manifest
+    // is still PENDING.
+    function getReleaseAuthority() {
+        try {
+            const authority = window.LoveBudReleaseManifestAuthority;
+            if (!authority || typeof authority.getCurrent !== 'function') return null;
+            if (typeof authority.getState !== 'function') return null;
+            if (typeof authority.whenReady !== 'function') return null;
+            return authority;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function getReleaseState() {
+        try {
+            const authority = getReleaseAuthority();
+            if (!authority) return 'UNAVAILABLE';
+            return authority.getState();
+        } catch (e) {
+            return 'UNAVAILABLE';
+        }
+    }
+
+    // READY -> 40-char lowercase hex; PENDING/UNAVAILABLE -> null. Never blocks.
+    function getCurrentReleaseSha() {
+        try {
+            if (getReleaseState() !== 'READY') return null;
+            const authority = getReleaseAuthority();
+            if (!authority) return null;
+            const state = authority.getCurrent();
+            if (!state || state.ok !== true || typeof state.releaseSha !== 'string') return null;
+            return /^[0-9a-f]{40}$/.test(state.releaseSha) ? state.releaseSha : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // #3852 — the canonical reread authority is resolved inside the save runtime
+    // from the existing editor data-loader, so the real caller (editor-memory-form.js)
+    // no longer needs to inject releaseSha/canonicalReread.
+    function resolveCanonicalReread() {
+        try {
+            const loader = window.LoveBudEditorDataLoader;
+            if (!loader || typeof loader.createCanonicalReread !== 'function') return null;
+            return loader.createCanonicalReread({
+                treeId: treeId,
+                apiClient: window.apiClient,
+                normalizeMemory: normalizeMemory
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // #3852 — exactly-once API write. The real API promise is created once and
+    // shared by the UI path and the convergence monitoring path, so the core
+    // observes the actual transport outcome and can never issue a second write.
+    function dispatchApiCreateOnce(payload) {
+        if (apiCreatePromise) return apiCreatePromise;
+        const client = window.apiClient;
+        if (!client || typeof client.createMemory !== 'function') {
+            apiCreatePromise = Promise.reject(new Error('createMemory API not available'));
+            return apiCreatePromise;
+        }
+        apiCreatePromise = client.createMemory(payload).then(function (createdMemory) {
+            return { createdMemory: createdMemory, useApi: true };
+        });
+        return apiCreatePromise;
+    }
+
+    // Fire-and-observe monitoring. Starts synchronously at the creation of the
+    // single API write promise so the core records REQUEST_DISPATCHED BEFORE
+    // the transport settles — the first save is always observed, even when the
+    // release manifest is still PENDING. The UI save result never awaits this
+    // task, the canonical reread, the observer, or the final summary.
+    function monitorCreateConvergence(apiPromise) {
+        // Each save claims the next generation at start, before any guard, so a
+        // later save always supersedes an earlier save's observer events — even
+        // when the later save's own monitoring safe-skips.
+        const generation = beginConvergenceGeneration();
+
+        // Shared cross-save observer gate. A save that is no longer the
+        // latest-started one is suppressed entirely; the real caller observer is
+        // only ever invoked for the latest save. The guard stays active even
+        // when no observer is injected (events are gated, the save path and the
+        // exactly-once API write are unchanged).
+        function guardedObserver(summary) {
+            if (!isLatestGeneration(generation)) return;
+            if (typeof convergenceObserver === 'function') {
+                convergenceObserver(summary);
+            }
+        }
+
+        try {
+            const coreFactory = getConvergenceCore();
+            const taxonomy = getTaxonomy();
+            if (!coreFactory || !taxonomy) return null;
+            const authority = getReleaseAuthority();
+            if (!authority) return null;
+            const canonicalReread = resolveCanonicalReread();
+            if (!canonicalReread || typeof canonicalReread !== 'function') return null;
+
+            // A terminal UNAVAILABLE release state (no manifest, HTTP error, or
+            // already-settled failure) safe-skips with zero observer events.
+            if (getReleaseState() === 'UNAVAILABLE') return null;
+
+            const releaseSha = getCurrentReleaseSha();
+            const convergence = coreFactory.createConvergenceCore({
+                createMemory: function () { return apiPromise; },
+                canonicalReread: canonicalReread,
+                taxonomy: taxonomy,
+                releaseSha: releaseSha,
+                releaseReadiness: releaseSha
+                    ? null
+                    : function () { return authority.whenReady(); },
+                observer: guardedObserver
+            });
+            // converge() records REQUEST_DISPATCHED synchronously before its first
+            // await, so this call precedes any API settlement. The acknowledgement
+            // is derived from the shared apiPromise; a plain record payload keeps
+            // the dispatch-contract validation intact.
+            return convergence.converge({});
+        } catch (e) {
+            editorDebugLog('[editor] Convergence monitoring unavailable');
+            return null;
+        }
+    }
+
     async function createMemoryWithFallback(newMemoryData) {
+        apiCreatePromise = null;
+        const apiPromise = dispatchApiCreateOnce(newMemoryData);
+        // Start convergence monitoring at dispatch time — before the UI awaits
+        // the shared API promise — so REQUEST_DISPATCHED precedes settlement.
+        // The returned task is fire-and-observe and never blocks the save.
+        const monitoringTask = monitorCreateConvergence(apiPromise);
         let createdMemory = null;
         let useApi = false;
         try {
-            if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
-                createdMemory = await window.apiClient.createMemory(newMemoryData);
-                useApi = true;
-                setLocalSaveMode(false);
-                editorDebugLog('[editor] API createMemory success');
-            } else {
-                throw new Error('createMemory API not available');
-            }
+            const apiResult = await apiPromise;
+            createdMemory = apiResult.createdMemory;
+            useApi = apiResult.useApi;
+            setLocalSaveMode(false);
+            editorDebugLog('[editor] API createMemory success');
         } catch (e) {
-            console.warn('[editor] API createMemory failed, using local save:', e?.message || e);
+            console.warn('[editor] API createMemory failed, using local save');
             if (e?.message?.includes('401') || e?.message?.includes('403')) {
                 showToast(i18n('no_permission_local'), 'warn');
             } else if (e?.message?.includes('400')) {
@@ -59,7 +226,12 @@ function createEditorMemoryFormSave(deps) {
                 delay: '0.5s'
             };
         }
-        return { createdMemory, useApi };
+        const result = { createdMemory, useApi };
+        if (monitoringTask && typeof monitoringTask.catch === 'function') {
+            // Sanitized guard: never a raw error, stack, identity, or payload.
+            monitoringTask.catch(() => editorDebugLog('[editor] Convergence monitoring unavailable'));
+        }
+        return result;
     }
 
     function commitMemoryToTree(createdMemory, useApi) {
