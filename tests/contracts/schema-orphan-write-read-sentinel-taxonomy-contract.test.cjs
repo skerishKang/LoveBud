@@ -862,3 +862,355 @@ test('NC16 inherited private-property verification removed', () => {
     assert.equal(T.isCanonicalResult(withPrivate), false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Child 4A (#3861) — bounded alert envelope + provider-neutral delivery core.
+//
+// Executes the REAL alert delivery core source
+// (js/observability/reliability-alert-delivery-core.js) in a restricted
+// sandbox and proves the bounded provider-neutral delivery boundary:
+// canonical envelope schema, deterministic dedupe, fail-closed severity/owner
+// policy, at-most-once injected delivery effect, sanitized failures, privacy
+// boundary, descriptor/accessor/Proxy safety, frozen/detached results, byte
+// stability, non-throwing producer boundary, and zero capability.
+//
+// Refs #3861. Refs #3835. Refs #3461 — Keep OPEN.
+// ---------------------------------------------------------------------------
+
+const ALERT_CORE_PATH = path.join(ROOT, 'js', 'observability', 'reliability-alert-delivery-core.js');
+
+function readAlertCoreSource() {
+  return fs.readFileSync(ALERT_CORE_PATH, 'utf8');
+}
+
+function loadAlertCore() {
+  const sandbox = { window: {} };
+  new Function('window', readAlertCoreSource())(sandbox.window);
+  assert.ok(sandbox.window.LoveBudReliabilityAlertDeliveryCore, 'must expose alert core');
+  return sandbox.window.LoveBudReliabilityAlertDeliveryCore;
+}
+
+// Valid structural-sentinel bounded authority output (as produced by #3851).
+function validStructuralInput() {
+  return {
+    source_class: 'STRUCTURAL_SENTINEL',
+    operation_class: 'STRUCTURAL_SCHEMA_CHECK',
+    stage: 'REQUEST_DISPATCHED',
+    outcome_code: 'ORPHAN_SIGNAL_DETECTED',
+    release_sha: '0123456789abcdef0123456789abcdef01234567',
+    latency_bucket: 'TIMEOUT_OR_UNKNOWN',
+    count_bucket: 'positive',
+    baseline_deviation: 'MATERIAL_DEVIATION',
+    severity: 'WARNING',
+    owner_action: 'INVESTIGATE',
+    evidence_completeness: 'complete',
+  };
+}
+
+// Valid write/read convergence bounded authority output (as produced by
+// #3852/#3855).
+function validConvergenceInput() {
+  return {
+    source_class: 'WRITE_READ_CONVERGENCE',
+    operation_class: 'TREE_CREATE_CONVERGENCE',
+    stage: 'PERSISTED_REREAD_CONFIRMED',
+    outcome_code: 'ACKNOWLEDGED_REREAD_MISSING',
+    release_sha: '0123456789abcdef0123456789abcdef01234567',
+    latency_bucket: 'LT_500_MS',
+    count_bucket: 'unknown',
+    baseline_deviation: 'UNKNOWN',
+    severity: 'WARNING',
+    owner_action: 'INVESTIGATE',
+    evidence_completeness: 'complete',
+  };
+}
+
+function createCore(overrides) {
+  const T = loadTaxonomy();
+  const core = loadAlertCore();
+  const effect = overrides && overrides.effect ? overrides.effect : async () => 'ACCEPTED';
+  const deps = Object.assign({ taxonomy: T, deliverAlert: effect }, overrides && overrides.deps ? overrides.deps : {});
+  return { T, core, instance: core.createAlertDeliveryCore(deps) };
+}
+
+test('A1 valid structural alert -> deterministic envelope -> delivery ACCEPTED', async () => {
+  const { T, core, instance } = createCore({});
+  const calls = [];
+  const custom = core.createAlertDeliveryCore({
+    taxonomy: T,
+    deliverAlert: async (envelope) => { calls.push(envelope); return 'ACCEPTED'; },
+  });
+  const result = await custom.deliverAlert(validStructuralInput());
+  assert.equal(result.outcome, 'DELIVERY_ACCEPTED');
+  assert.ok(result.envelope, 'envelope present');
+  assert.ok(Object.isFrozen(result.envelope));
+  assert.equal(result.envelope.contract_version, '1');
+  assert.equal(result.envelope.source_class, 'STRUCTURAL_SENTINEL');
+  assert.equal(result.envelope.operation_class, 'STRUCTURAL_SCHEMA_CHECK');
+  assert.equal(result.envelope.outcome_code, 'ORPHAN_SIGNAL_DETECTED');
+  assert.equal(result.envelope.severity, 'WARNING');
+  assert.equal(result.envelope.advisory_action, 'INVESTIGATE');
+  assert.equal(result.envelope.owner_class, 'DATABASE_OWNER');
+  assert.equal(result.envelope.evidence_completeness, 'complete');
+  assert.equal(result.envelope.release_sha, '0123456789abcdef0123456789abcdef01234567');
+  assert.ok(/^[0-9a-f]{64}$/.test(result.envelope.dedupe_fingerprint), 'fingerprint is lowercase sha256 hex');
+  assert.equal(calls.length, 1, 'delivery effect invoked exactly once');
+  assert.equal(calls[0], result.envelope, 'effect receives the exact canonical envelope');
+});
+
+test('A2 valid write/read divergence alert -> deterministic envelope -> delivery ACCEPTED', async () => {
+  const { T, core } = createCore({});
+  const calls = [];
+  const custom = core.createAlertDeliveryCore({
+    taxonomy: T,
+    deliverAlert: async (envelope) => { calls.push(envelope); return 'ACCEPTED'; },
+  });
+  const result = await custom.deliverAlert(validConvergenceInput());
+  assert.equal(result.outcome, 'DELIVERY_ACCEPTED');
+  assert.equal(result.envelope.source_class, 'WRITE_READ_CONVERGENCE');
+  assert.equal(result.envelope.operation_class, 'TREE_CREATE_CONVERGENCE');
+  assert.equal(result.envelope.owner_class, 'RELIABILITY_OWNER');
+  assert.equal(result.envelope.latency_bucket, 'LT_500_MS');
+  assert.equal(calls.length, 1);
+});
+
+test('A3 duplicate fingerprint -> delivery suppressed, effect count 0', async () => {
+  const { T, core } = createCore({});
+  const input = validStructuralInput();
+  const first = core.createAlertDeliveryCore({ taxonomy: T, deliverAlert: async () => 'ACCEPTED' });
+  const firstResult = await first.deliverAlert(input);
+  assert.equal(firstResult.outcome, 'DELIVERY_ACCEPTED');
+  const fp = firstResult.envelope.dedupe_fingerprint;
+  let effectCalls = 0;
+  const second = core.createAlertDeliveryCore({
+    taxonomy: T,
+    priorFingerprints: [fp],
+    deliverAlert: async () => { effectCalls += 1; return 'ACCEPTED'; },
+  });
+  const result = await second.deliverAlert(input);
+  assert.equal(result.outcome, 'DELIVERY_SUPPRESSED_DUPLICATE');
+  assert.equal(effectCalls, 0, 'duplicate suppressed before effect');
+  assert.equal(result.envelope.dedupe_fingerprint, fp);
+});
+
+test('A4 missing/invalid release SHA -> effect count 0', async () => {
+  const { instance } = createCore({});
+  let effectCalls = 0;
+  const custom = createCore({ deps: { deliverAlert: async () => { effectCalls += 1; return 'ACCEPTED'; } } });
+  const bad = Object.assign({}, validStructuralInput(), { release_sha: 'not-a-sha' });
+  const missing = Object.assign({}, validStructuralInput());
+  delete missing.release_sha;
+  const r1 = await custom.instance.deliverAlert(bad);
+  const r2 = await custom.instance.deliverAlert(missing);
+  assert.equal(r1.outcome, 'DELIVERY_NOT_ATTEMPTED_INVALID_INPUT');
+  assert.equal(r2.outcome, 'DELIVERY_NOT_ATTEMPTED_INVALID_INPUT');
+  assert.equal(effectCalls, 0, 'invalid SHA never reaches effect');
+});
+
+test('A5 unknown source/operation/outcome -> effect count 0', async () => {
+  let effectCalls = 0;
+  const custom = createCore({ deps: { deliverAlert: async () => { effectCalls += 1; return 'ACCEPTED'; } } });
+  const badSource = Object.assign({}, validStructuralInput(), { source_class: 'NOPE' });
+  const badOp = Object.assign({}, validStructuralInput(), { operation_class: 'FREE_FORM' });
+  const badOutcome = Object.assign({}, validStructuralInput(), { outcome_code: 'FREE_FORM' });
+  for (const input of [badSource, badOp, badOutcome]) {
+    const r = await custom.instance.deliverAlert(input);
+    assert.equal(r.outcome, 'DELIVERY_NOT_ATTEMPTED_INVALID_INPUT');
+  }
+  assert.equal(effectCalls, 0, 'unknown enum never reaches effect');
+});
+
+test('A6 insufficient evidence -> fail closed, effect count 0', async () => {
+  let effectCalls = 0;
+  const custom = createCore({ deps: { deliverAlert: async () => { effectCalls += 1; return 'ACCEPTED'; } } });
+  const missing = Object.assign({}, validStructuralInput(), { evidence_completeness: 'missing' });
+  const invalid = Object.assign({}, validStructuralInput(), { evidence_completeness: 'invalid' });
+  const r1 = await custom.instance.deliverAlert(missing);
+  const r2 = await custom.instance.deliverAlert(invalid);
+  assert.equal(r1.outcome, 'DELIVERY_NOT_ATTEMPTED_INSUFFICIENT_EVIDENCE');
+  assert.equal(r2.outcome, 'DELIVERY_NOT_ATTEMPTED_INSUFFICIENT_EVIDENCE');
+  assert.equal(effectCalls, 0, 'insufficient evidence never reaches effect');
+});
+
+test('A7 injected ACCEPTED/REJECTED/TIMEOUT/UNAVAILABLE mapping', async () => {
+  const { T, core } = createCore({});
+  const cases = [
+    ['ACCEPTED', 'DELIVERY_ACCEPTED'],
+    ['REJECTED', 'DELIVERY_REJECTED'],
+    ['TIMEOUT', 'DELIVERY_TIMEOUT'],
+    ['UNAVAILABLE', 'DELIVERY_UNAVAILABLE'],
+  ];
+  for (const [response, expected] of cases) {
+    const custom = core.createAlertDeliveryCore({ taxonomy: T, deliverAlert: async () => response });
+    const result = await custom.deliverAlert(validStructuralInput());
+    assert.equal(result.outcome, expected, response + ' must map to ' + expected);
+  }
+});
+
+test('A8 injected throw/rejection -> sanitized failure, raw leakage 0', async () => {
+  const { T, core } = createCore({});
+  const secret = 'RAW_' + Math.random().toString(36).slice(2);
+  const throwing = core.createAlertDeliveryCore({
+    taxonomy: T,
+    deliverAlert: async () => { throw new Error(secret); },
+  });
+  const rejecting = core.createAlertDeliveryCore({
+    taxonomy: T,
+    deliverAlert: async () => Promise.reject(new Error(secret)),
+  });
+  const r1 = await throwing.deliverAlert(validStructuralInput());
+  const r2 = await rejecting.deliverAlert(validStructuralInput());
+  assert.equal(r1.outcome, 'DELIVERY_FAILED_SANITIZED');
+  assert.equal(r2.outcome, 'DELIVERY_FAILED_SANITIZED');
+  const json = JSON.stringify([r1, r2]);
+  assert.ok(!json.includes(secret), 'raw error must never leak');
+  assert.ok(!json.includes('stack'), 'stack must never leak');
+  assert.ok(!json.includes('Error'), 'Error text must never leak');
+});
+
+test('A9 unknown/private fields rejected before effect', async () => {
+  let effectCalls = 0;
+  const custom = createCore({ deps: { deliverAlert: async () => { effectCalls += 1; return 'ACCEPTED'; } } });
+  const unknown = Object.assign({}, validStructuralInput(), { unknown_key: 'x' });
+  const privateFields = ['token', 'cookie', 'authorization', 'email', 'tree_id', 'memory_id', 'title', 'content', 'raw_error', 'stack', 'timestamp', 'metadata'];
+  assert.equal((await custom.instance.deliverAlert(unknown)).outcome, 'DELIVERY_NOT_ATTEMPTED_INVALID_INPUT');
+  for (const key of privateFields) {
+    const input = Object.assign({}, validStructuralInput(), { [key]: 'SENTINEL_SECRET' });
+    const result = await custom.instance.deliverAlert(input);
+    assert.equal(result.outcome, 'DELIVERY_NOT_ATTEMPTED_INVALID_INPUT', key + ' must be rejected');
+  }
+  assert.equal(effectCalls, 0, 'unknown/private fields never reach effect');
+});
+
+test('A10 descriptor/accessor/Proxy hostile input -> getter/trap/raw leakage 0', async () => {
+  let effectCalls = 0;
+  const custom = createCore({ deps: { deliverAlert: async () => { effectCalls += 1; return 'ACCEPTED'; } } });
+  // Accessor getter input: getter must never be invoked.
+  const accessorInput = validStructuralInput();
+  let getterCalls = 0;
+  Object.defineProperty(accessorInput, 'severity', {
+    enumerable: true,
+    get() { getterCalls += 1; return 'WARNING'; },
+  });
+  const r1 = await custom.instance.deliverAlert(accessorInput);
+  assert.equal(r1.outcome, 'DELIVERY_NOT_ATTEMPTED_INVALID_INPUT');
+  assert.equal(getterCalls, 0, 'accessor getter must never be invoked');
+  // Proxy getPrototypeOf trap input: no trap leakage.
+  const proxyInput = new Proxy({}, {
+    getPrototypeOf() { throw new Error('SENTINEL_TRAP'); },
+  });
+  const r2 = await custom.instance.deliverAlert(proxyInput);
+  assert.equal(r2.outcome, 'DELIVERY_NOT_ATTEMPTED_INVALID_INPUT');
+  const json = JSON.stringify([r1, r2]);
+  assert.ok(!json.includes('SENTINEL_TRAP'), 'trap value must never leak');
+  assert.equal(effectCalls, 0, 'hostile input never reaches effect');
+});
+
+test('A11 envelope/result/export frozen and detached', async () => {
+  const { T, core, instance } = createCore({});
+  assert.ok(Object.isFrozen(core));
+  assert.ok(Object.isFrozen(core.ERROR_CODES));
+  assert.ok(Object.isFrozen(core.ENVELOPE_FIELDS));
+  assert.ok(Object.isFrozen(core.SOURCE_CLASSES));
+  assert.ok(Object.isFrozen(core.OWNER_CLASSES));
+  assert.ok(Object.isFrozen(core.DELIVERY_OUTCOMES));
+  assert.ok(Object.isFrozen(instance));
+  const result = await instance.deliverAlert(validStructuralInput());
+  assert.ok(Object.isFrozen(result));
+  assert.ok(Object.isFrozen(result.envelope));
+  assert.throws(() => { result.envelope.outcome_code = 'BROKEN'; }, TypeError);
+  // Detached: mutating the caller input never mutates the delivered envelope.
+  const input = validStructuralInput();
+  const result2 = await instance.deliverAlert(input);
+  const before = result2.envelope.operation_class;
+  input.operation_class = 'TREE_CREATE_CONVERGENCE';
+  assert.equal(result2.envelope.operation_class, before, 'envelope is detached from caller input');
+});
+
+test('A12 same bounded input -> byte-stable envelope and fingerprint', async () => {
+  const { T, core } = createCore({});
+  const custom = core.createAlertDeliveryCore({ taxonomy: T, deliverAlert: async () => 'ACCEPTED' });
+  const a = await custom.deliverAlert(validStructuralInput());
+  const b = await custom.deliverAlert(validStructuralInput());
+  assert.equal(JSON.stringify(a.envelope), JSON.stringify(b.envelope), 'byte-stable envelope');
+  assert.equal(a.envelope.dedupe_fingerprint, b.envelope.dedupe_fingerprint, 'byte-stable fingerprint');
+  // Reordered keys must not change the fingerprint.
+  const reordered = validStructuralInput();
+  const tmp = reordered.owner_action;
+  delete reordered.owner_action;
+  reordered.owner_action = tmp;
+  const c = await custom.deliverAlert(reordered);
+  assert.equal(c.envelope.dedupe_fingerprint, a.envelope.dedupe_fingerprint, 'key order does not affect fingerprint');
+});
+
+test('A13 monitoring failure does not throw', async () => {
+  const { T, core } = createCore({});
+  const custom = core.createAlertDeliveryCore({
+    taxonomy: T,
+    deliverAlert: async () => { throw new Error('boom'); },
+  });
+  let threw = false;
+  let result;
+  try {
+    result = await custom.deliverAlert(validStructuralInput());
+  } catch (e) {
+    threw = true;
+  }
+  assert.equal(threw, false, 'producer boundary never throws');
+  assert.equal(result.outcome, 'DELIVERY_FAILED_SANITIZED');
+});
+
+test('A14 delivery effect maximum exactly 1', async () => {
+  const { T, core } = createCore({});
+  let effectCalls = 0;
+  const custom = core.createAlertDeliveryCore({
+    taxonomy: T,
+    deliverAlert: async () => { effectCalls += 1; return 'ACCEPTED'; },
+  });
+  const result = await custom.deliverAlert(validStructuralInput());
+  assert.equal(effectCalls, 1, 'effect invoked at most once for a single alert');
+  assert.equal(result.outcome, 'DELIVERY_ACCEPTED');
+  // Multiple alerts each invoke the effect exactly once.
+  await custom.deliverAlert(validConvergenceInput());
+  assert.equal(effectCalls, 2, 'one effect invocation per distinct alert');
+});
+
+test('A15 no network/provider/storage/DB/filesystem capability in core', () => {
+  const src = readAlertCoreSource();
+  assert.ok(!/\bfetch\s*\(/.test(src), 'no fetch');
+  assert.ok(!/new\s+XMLHttpRequest/.test(src), 'no XHR');
+  assert.ok(!/new\s+WebSocket/.test(src), 'no websocket');
+  assert.ok(!/child_process/.test(src), 'no child_process');
+  assert.ok(!/require\(['"](?:https?|fs|net|dgram|child_process|http|https)/.test(src), 'no node capability require');
+  assert.ok(!/\.writeFileSync\s*\(/.test(src), 'no filesystem write');
+  assert.ok(!/\.appendFileSync\s*\(/.test(src), 'no filesystem append');
+  assert.ok(!/process\.env/.test(src), 'no env read');
+  assert.ok(!/localStorage/.test(src), 'no storage');
+  assert.ok(!/sessionStorage/.test(src), 'no session storage');
+  assert.ok(!/\bpg\b[\s\S]*connect/i.test(src), 'no DB connect');
+  assert.ok(!/document\./.test(src), 'no DOM access');
+  assert.ok(!/setTimeout/.test(src), 'no timers');
+  assert.ok(!/setInterval/.test(src), 'no interval');
+});
+
+test('A14b prior fingerprint validation is bounded', () => {
+  const { T, core } = createCore({});
+  assert.throws(() => core.createAlertDeliveryCore({ taxonomy: T, priorFingerprints: 'not-hex', deliverAlert: async () => 'ACCEPTED' }), /INVALID_FINGERPRINT/);
+  assert.throws(() => core.createAlertDeliveryCore({ taxonomy: T, priorFingerprints: ['ok'.repeat(32)], deliverAlert: async () => 'ACCEPTED' }), /INVALID_FINGERPRINT/);
+  const good = core.createAlertDeliveryCore({
+    taxonomy: T,
+    priorFingerprints: ['a'.repeat(64), 'a'.repeat(64), 'b'.repeat(64)],
+    deliverAlert: async () => 'ACCEPTED',
+  });
+  assert.ok(Array.isArray(good.normalizePriorFingerprints(['a'.repeat(64), 'a'.repeat(64), 'b'.repeat(64)])));
+  const normalized = good.normalizePriorFingerprints(['b'.repeat(64), 'a'.repeat(64), 'a'.repeat(64)]);
+  assert.deepEqual(normalized, ['a'.repeat(64), 'b'.repeat(64)]);
+  assert.ok(Object.isFrozen(normalized));
+});
+
+test('A14c missing/non-callable delivery effect fails closed at creation', () => {
+  const { T, core } = createCore({});
+  assert.throws(() => core.createAlertDeliveryCore({ taxonomy: T, deliverAlert: undefined }), /MISSING_DELIVERY_EFFECT/);
+  assert.throws(() => core.createAlertDeliveryCore({ taxonomy: T, deliverAlert: 'not-a-function' }), /DELIVERY_EFFECT_NOT_CALLABLE/);
+  assert.throws(() => core.createAlertDeliveryCore({ taxonomy: undefined, deliverAlert: async () => 'ACCEPTED' }), /MISSING_TAXONOMY/);
+});
