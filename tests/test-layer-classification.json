@@ -4855,6 +4855,12 @@
       "capabilities": [
         "filesystem"
       ]
+    },
+    {
+      "path": "tests/contracts/db-fail-closed-deploy-gate-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
     }
   ],
   "supplemental": [
