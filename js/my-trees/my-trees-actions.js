@@ -155,6 +155,308 @@
     visibilityField.appendChild(help);
   }
 
+  /* ── #3855 — page-level bounded release manifest authority ──────────────────
+   * Registered from this actions module (pages/my-trees.html forbids active
+   * inline script blocks, so the authority cannot live in the page markup).
+   * At most one no-store same-origin fetch to /.well-known/release.json per
+   * page, initiated lazily on the first read so page load never issues a
+   * network request. The manifest contract is enforced exactly: only the own
+   * keys release_sha (40-char lowercase hex data property) and
+   * contract_version ("1") are accepted; extra keys, missing keys, accessor
+   * keys, inherited keys, non-"1" contract versions, invalid SHAs, non-ok
+   * HTTP responses, missing response.json, and malformed JSON all map to
+   * UNAVAILABLE. State distinguishes PENDING / READY / UNAVAILABLE.
+   * getCurrent() is synchronous; getState() exposes the state; whenReady()
+   * is the bounded async readiness seam that monitoring awaits, sharing the
+   * single in-flight fetch promise. Never persists to storage, never
+   * retries, never schedules timers, and never emits dynamic console output.
+   * A shared shell / existing authority is never overwritten.
+   */
+  if (
+    typeof window !== 'undefined' &&
+    (!window.LoveBudReleaseManifestAuthority ||
+      typeof window.LoveBudReleaseManifestAuthority.getCurrent !== 'function')
+  ) {
+    window.LoveBudReleaseManifestAuthority = (function () {
+      var state = 'PENDING';
+      var releaseSha = null;
+      var requestPromise = null;
+
+      function isValidReleaseSha(value) {
+        return typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
+      }
+
+      function hasExactManifestKeys(data) {
+        var keys;
+        try {
+          keys = Object.keys(data).sort();
+        } catch (e) {
+          return false;
+        }
+        if (keys.length !== 2) return false;
+        if (keys[0] !== 'contract_version' || keys[1] !== 'release_sha') return false;
+        for (var i = 0; i < keys.length; i++) {
+          var descriptor;
+          try {
+            descriptor = Object.getOwnPropertyDescriptor(data, keys[i]);
+          } catch (e) {
+            return false;
+          }
+          if (!descriptor || !('value' in descriptor)) return false;
+        }
+        return true;
+      }
+
+      function applyManifest(data) {
+        if (!data || typeof data !== 'object' || data === null) {
+          state = 'UNAVAILABLE';
+          return;
+        }
+        if (!hasExactManifestKeys(data)) {
+          state = 'UNAVAILABLE';
+          return;
+        }
+        if (data.contract_version !== '1') {
+          state = 'UNAVAILABLE';
+          return;
+        }
+        if (!isValidReleaseSha(data.release_sha)) {
+          state = 'UNAVAILABLE';
+          return;
+        }
+        releaseSha = data.release_sha;
+        state = 'READY';
+      }
+
+      function boundedResult() {
+        if (state === 'READY' && releaseSha !== null) {
+          return Object.freeze({ ok: true, releaseSha: releaseSha });
+        }
+        return Object.freeze({ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' });
+      }
+
+      function readBoundedManifest() {
+        if (requestPromise) return requestPromise;
+        requestPromise = new Promise(function (resolve) {
+          function settleUnavailable() {
+            state = 'UNAVAILABLE';
+            resolve(boundedResult());
+          }
+          try {
+            if (typeof window.fetch !== 'function') {
+              settleUnavailable();
+              return;
+            }
+            // Same-origin is the fetch default for the auth-mode option, so it
+            // is not spelled out here.
+            window
+              .fetch('/.well-known/release.json', {
+                cache: 'no-store',
+                headers: { Accept: 'application/json' }
+              })
+              .then(function (response) {
+                if (!response || response.ok !== true || typeof response.json !== 'function') {
+                  settleUnavailable();
+                  return null;
+                }
+                return response.json();
+              })
+              .then(function (data) {
+                applyManifest(data);
+                resolve(boundedResult());
+              })
+              .catch(function () {
+                settleUnavailable();
+              });
+          } catch (e) {
+            settleUnavailable();
+          }
+        });
+        return requestPromise;
+      }
+
+      return Object.freeze({
+        getCurrent: function () {
+          if (state === 'PENDING') {
+            readBoundedManifest();
+          }
+          return boundedResult();
+        },
+        getState: function () {
+          return state;
+        },
+        whenReady: function () {
+          if (state !== 'PENDING') {
+            return Promise.resolve(boundedResult());
+          }
+          return readBoundedManifest();
+        }
+      });
+    })();
+  }
+
+  /* ── #3855 — tree-create write/read convergence wiring ──────────────────────
+   * Reuses the #3852 convergence core (js/observability/reliability-write-read-
+   * convergence-core.js) with operationClass TREE_CREATE_CONVERGENCE. Bounded
+   * and non-blocking: the real apiClient.createTree write is created exactly
+   * once per submit and shared by the UI path and the monitoring task; the
+   * monitoring task never blocks the redirect, never issues a second write,
+   * never mutates modal/cache state, and never exposes the acknowledged tree
+   * identity or raw errors. A page-lifetime monotonic generation suppresses
+   * stale earlier create flows' observer events after a newer flow starts.
+   */
+  var apiTreeCreatePromise = null;
+  var latestTreeConvergenceGeneration = 0;
+
+  function beginTreeConvergenceGeneration() {
+    latestTreeConvergenceGeneration += 1;
+    return latestTreeConvergenceGeneration;
+  }
+
+  function isLatestTreeGeneration(generation) {
+    return generation === latestTreeConvergenceGeneration;
+  }
+
+  function getTreeConvergenceCore() {
+    if (typeof window.LoveBudWriteReadConvergenceCore !== 'object' || window.LoveBudWriteReadConvergenceCore === null) return null;
+    if (typeof window.LoveBudWriteReadConvergenceCore.createConvergenceCore !== 'function') return null;
+    return window.LoveBudWriteReadConvergenceCore;
+  }
+
+  function getTreeTaxonomy() {
+    if (typeof window.LoveBudReliabilitySentinelTaxonomy !== 'object' || window.LoveBudReliabilitySentinelTaxonomy === null) return null;
+    return window.LoveBudReliabilitySentinelTaxonomy;
+  }
+
+  // #3855 — page-level bounded release authority registered by this module
+  // (window.LoveBudReleaseManifestAuthority; pages/my-trees.html forbids active
+  // inline script blocks, so the authority lives in this actions module and is
+  // available before any create flow runs). getState() is synchronous;
+  // getCurrent() returns READY result only; whenReady() is the async readiness
+  // seam used by monitoring so the first create is observed while PENDING.
+  function getTreeReleaseAuthority() {
+    try {
+      var authority = window.LoveBudReleaseManifestAuthority;
+      if (!authority || typeof authority.getCurrent !== 'function') return null;
+      if (typeof authority.getState !== 'function') return null;
+      if (typeof authority.whenReady !== 'function') return null;
+      return authority;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getTreeReleaseState() {
+    try {
+      var authority = getTreeReleaseAuthority();
+      if (!authority) return 'UNAVAILABLE';
+      return authority.getState();
+    } catch (e) {
+      return 'UNAVAILABLE';
+    }
+  }
+
+  // READY -> 40-char lowercase hex; PENDING/UNAVAILABLE -> null. Never blocks.
+  function getCurrentTreeReleaseSha() {
+    try {
+      if (getTreeReleaseState() !== 'READY') return null;
+      var authority = getTreeReleaseAuthority();
+      if (!authority) return null;
+      var state = authority.getCurrent();
+      if (!state || state.ok !== true || typeof state.releaseSha !== 'string') return null;
+      return /^[0-9a-f]{40}$/.test(state.releaseSha) ? state.releaseSha : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // #3855 — canonical reread through the existing repository-owned read
+  // authority window.apiClient.getTrees() (the same authority that backs the
+  // create snapshot and reconciliation). Returns the authoritative tree list;
+  // the convergence core filters rows by the acknowledged repository-owned id.
+  function resolveTreeCanonicalReread() {
+    try {
+      var client = window.apiClient;
+      if (!client || typeof client.getTrees !== 'function') return null;
+      return function canonicalTreeReread() {
+        return client.getTrees();
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // #3855 — exactly-once API write. The real apiClient.createTree promise is
+  // created once and shared by the UI path and the convergence monitoring path,
+  // so monitoring observes the actual transport outcome and can never issue a
+  // second write.
+  function dispatchTreeCreateOnce(payload) {
+    if (apiTreeCreatePromise) return apiTreeCreatePromise;
+    var client = window.apiClient;
+    if (!client || typeof client.createTree !== 'function') {
+      apiTreeCreatePromise = Promise.reject(new Error('createTree API not available'));
+      return apiTreeCreatePromise;
+    }
+    apiTreeCreatePromise = client.createTree(payload).then(function (createdTree) {
+      return { createdTree: createdTree, useApi: true };
+    });
+    return apiTreeCreatePromise;
+  }
+
+  // #3855 — fire-and-observe monitoring. Starts synchronously at the creation
+  // of the single API write promise so the core records REQUEST_DISPATCHED
+  // BEFORE the transport settles. The UI create result never awaits this task,
+  // the canonical reread, the observer, or the final summary. Each create flow
+  // claims the next generation at start, before any guard, so a later flow
+  // always supersedes an earlier flow's observer events — even when the later
+  // flow's own monitoring safe-skips. Generation values are closure-local and
+  // never exposed in summaries, observer payloads, console, DOM, or storage.
+  function monitorTreeCreateConvergence(apiPromise, convergenceObserver) {
+    var generation = beginTreeConvergenceGeneration();
+
+    function guardedObserver(summary) {
+      if (!isLatestTreeGeneration(generation)) return;
+      if (typeof convergenceObserver === 'function') {
+        convergenceObserver(summary);
+      }
+    }
+
+    try {
+      var coreFactory = getTreeConvergenceCore();
+      var taxonomy = getTreeTaxonomy();
+      if (!coreFactory || !taxonomy) return null;
+      var authority = getTreeReleaseAuthority();
+      if (!authority) return null;
+      var canonicalReread = resolveTreeCanonicalReread();
+      if (!canonicalReread || typeof canonicalReread !== 'function') return null;
+
+      // A terminal UNAVAILABLE release state safe-skips with zero observer
+      // events (no manifest, HTTP error, or already-settled failure).
+      if (getTreeReleaseState() === 'UNAVAILABLE') return null;
+
+      var releaseSha = getCurrentTreeReleaseSha();
+      var convergence = coreFactory.createConvergenceCore({
+        operationClass: 'TREE_CREATE_CONVERGENCE',
+        createKey: 'createTree',
+        ackKey: 'createdTree',
+        createTree: function () { return apiPromise; },
+        canonicalReread: canonicalReread,
+        taxonomy: taxonomy,
+        releaseSha: releaseSha,
+        releaseReadiness: releaseSha
+          ? null
+          : function () { return authority.whenReady(); },
+        observer: guardedObserver
+      });
+      // converge() records REQUEST_DISPATCHED synchronously before its first
+      // await, so this call precedes any API settlement.
+      return convergence.converge({});
+    } catch (e) {
+      myTreesDebugLog('[my-trees-actions] Convergence monitoring unavailable');
+      return null;
+    }
+  }
+
   function setupCreateTreeModal(options) {
     if (createTreeModalState.initialized) {
       return createTreeModalState;
@@ -616,10 +918,22 @@
 
         if (window.apiClient && window.apiClient.createTree) {
           await takeSnapshot();
-          newTree = await window.apiClient.createTree({
+          apiTreeCreatePromise = null;
+          var treeApiPromise = dispatchTreeCreateOnce({
             title: modalResult.title,
             visibility: 'public'
           });
+          // Start convergence monitoring at dispatch time — before the UI awaits
+          // the shared API promise — so REQUEST_DISPATCHED precedes settlement.
+          // The returned task is fire-and-observe and never blocks the redirect.
+          var treeMonitoringTask = monitorTreeCreateConvergence(treeApiPromise, options && options.convergenceObserver);
+          var treeApiResult = await treeApiPromise;
+          newTree = treeApiResult ? treeApiResult.createdTree : null;
+          if (treeMonitoringTask && typeof treeMonitoringTask.catch === 'function') {
+            treeMonitoringTask.catch(function () {
+              myTreesDebugLog('[my-trees-actions] Convergence monitoring unavailable');
+            });
+          }
           myTreesDebugLog('[my-trees-actions] Tree created');
         } else {
           newTree = { id: 'tree-' + Date.now(), title: modalResult.title, visibility: 'public' };

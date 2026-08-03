@@ -1,7 +1,7 @@
 'use strict';
 
-// Issue #3852 — Memory-create write/read convergence core
-// (Reliability & Observability child of parent #3461).
+// Issue #3852/#3855 — Memory-create and tree-create write/read convergence core
+// (Reliability & Observability children of parent #3461).
 //
 // This module is a PURE DEPENDENCY-INJECTED AUTHORITY. It:
 //   - carries NO capability (no network, provider, database, SQL,
@@ -17,7 +17,15 @@
 //     write path;
 //   - is fail-closed on every privacy and safety boundary.
 //
+// #3855 — bounded generalization: the create dispatch key, the acknowledgement
+// record key, and the taxonomy operation class are configurable with memory
+// defaults (createKey='createMemory', ackKey='createdMemory',
+// operationClass='MEMORY_CREATE_CONVERGENCE') so the memory-create behavior
+// and its contract remain byte-identical while the tree-create path reuses the
+// same engine with operationClass='TREE_CREATE_CONVERGENCE'.
+//
 // Refs #3852.
+// Refs #3855.
 // Refs #3835 — taxonomy authority.
 // Refs #3842 — structural sentinel pattern.
 // Refs #3461 — Keep OPEN.
@@ -202,9 +210,55 @@
         return { ok: false, error: ERROR_CODES.UNKNOWN_INPUT };
       }
 
+      // #3855 — bounded generalization. operationClass (default
+      // MEMORY_CREATE_CONVERGENCE), createKey (default 'createMemory'), and
+      // ackKey (default 'createdMemory') are optional deps read through the
+      // descriptor-safe reader; memory defaults keep the #3852 contract
+      // unchanged while tree-create passes TREE_CREATE_CONVERGENCE / 'createTree'
+      // / 'createdTree'.
+      var operationClassValue;
+      try {
+        operationClassValue = readOptionalOwnEnumerableDataProperty(deps, 'operationClass');
+      } catch (e) {
+        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+      }
+      var operationClass =
+        operationClassValue === undefined || operationClassValue === null
+          ? 'MEMORY_CREATE_CONVERGENCE'
+          : operationClassValue;
+      if (typeof operationClass !== 'string' || operationClass.length === 0) {
+        return { ok: false, error: ERROR_CODES.UNKNOWN_OPERATION_CLASS };
+      }
+
+      var createKeyValue;
+      try {
+        createKeyValue = readOptionalOwnEnumerableDataProperty(deps, 'createKey');
+      } catch (e) {
+        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+      }
+      var createKey = createKeyValue === undefined || createKeyValue === null
+        ? 'createMemory'
+        : createKeyValue;
+      if (typeof createKey !== 'string' || createKey.length === 0) {
+        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+      }
+
+      var ackKeyValue;
+      try {
+        ackKeyValue = readOptionalOwnEnumerableDataProperty(deps, 'ackKey');
+      } catch (e) {
+        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+      }
+      var ackKey = ackKeyValue === undefined || ackKeyValue === null
+        ? 'createdMemory'
+        : ackKeyValue;
+      if (typeof ackKey !== 'string' || ackKey.length === 0) {
+        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+      }
+
       var createMemoryValue;
       try {
-        createMemoryValue = readOptionalOwnEnumerableDataProperty(deps, 'createMemory');
+        createMemoryValue = readOptionalOwnEnumerableDataProperty(deps, createKey);
       } catch (e) {
         return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
       }
@@ -247,16 +301,13 @@
       if (!isPlainRecord(operationClasses)) {
         return { ok: false, error: ERROR_CODES.UNKNOWN_OPERATION_CLASS };
       }
-      var operationClassValue;
+      var operationClassEnumValue;
       try {
-        operationClassValue = readOptionalOwnEnumerableDataProperty(
-          operationClasses,
-          'MEMORY_CREATE_CONVERGENCE'
-        );
+        operationClassEnumValue = readOptionalOwnEnumerableDataProperty(operationClasses, operationClass);
       } catch (e) {
         return { ok: false, error: ERROR_CODES.UNKNOWN_OPERATION_CLASS };
       }
-      if (operationClassValue === undefined || operationClassValue === null || !operationClassValue) {
+      if (operationClassEnumValue === undefined || operationClassEnumValue === null || !operationClassEnumValue) {
         return { ok: false, error: ERROR_CODES.UNKNOWN_OPERATION_CLASS };
       }
 
@@ -324,8 +375,23 @@
     var releaseSha;
     var releaseReadiness = null;
     var observer = null;
+    var operationClass;
+    var createKey;
+    var ackKey;
     try {
-      createMemory = readOwnEnumerableDataProperty(deps, 'createMemory');
+      operationClass = readOptionalOwnEnumerableDataProperty(deps, 'operationClass');
+      if (operationClass === undefined || operationClass === null || typeof operationClass !== 'string' || operationClass.length === 0) {
+        operationClass = 'MEMORY_CREATE_CONVERGENCE';
+      }
+      createKey = readOptionalOwnEnumerableDataProperty(deps, 'createKey');
+      if (createKey === undefined || createKey === null || typeof createKey !== 'string' || createKey.length === 0) {
+        createKey = 'createMemory';
+      }
+      ackKey = readOptionalOwnEnumerableDataProperty(deps, 'ackKey');
+      if (ackKey === undefined || ackKey === null || typeof ackKey !== 'string' || ackKey.length === 0) {
+        ackKey = 'createdMemory';
+      }
+      createMemory = readOwnEnumerableDataProperty(deps, createKey);
       canonicalReread = readOwnEnumerableDataProperty(deps, 'canonicalReread');
       taxonomy = readOwnEnumerableDataProperty(deps, 'taxonomy');
       releaseSha = readOptionalOwnEnumerableDataProperty(deps, 'releaseSha') || null;
@@ -391,7 +457,7 @@
       taxActions = readOwnEnumerableDataProperty(taxonomy, 'OWNER_ACTIONS');
       taxCompleteness = readOwnEnumerableDataProperty(taxonomy, 'EVIDENCE_COMPLETENESS');
 
-      OP_MEMORY_CREATE = readOwnEnumerableDataProperty(taxOpClasses, 'MEMORY_CREATE_CONVERGENCE');
+      OP_MEMORY_CREATE = readOwnEnumerableDataProperty(taxOpClasses, operationClass);
       STAGE_REQUEST_DISPATCHED = readOwnEnumerableDataProperty(taxStages, 'REQUEST_DISPATCHED');
       STAGE_SERVER_ACKNOWLEDGED = readOwnEnumerableDataProperty(taxStages, 'SERVER_ACKNOWLEDGED');
       STAGE_PERSISTED_REREAD_CONFIRMED = readOwnEnumerableDataProperty(
@@ -608,7 +674,7 @@
 
         var rawMemory;
         try {
-          rawMemory = readOptionalOwnEnumerableDataProperty(createResult, 'createdMemory');
+          rawMemory = readOptionalOwnEnumerableDataProperty(createResult, ackKey);
         } catch (e) {
           rawMemory = null;
         }
