@@ -169,14 +169,48 @@ For U0/U1, small reversible micro branches/PRs are preferred.
 
 ## 10. Current local execution environment
 
-- **Primary OS:** Windows.
-- **Preferred shell:** PowerShell 7 through `pwsh.exe`.
-- Use Windows-native tools and paths by default.
-- WSL은 현재 task 또는 operator가 명시적으로 승인한 경우에만 사용한다. WSL은 implicit fallback이 아니다.
-- 필수 Windows-native 도구가 없으면 중단하고 보고한다. WSL로 자동 우회하지 않는다.
-- Codex, Kilo, Hermes 등 도구 정체성만으로 WSL/bash를 추론하지 않는다.
+### Native Windows workers
 
-Detailed source: `docs/ops/PATHS_AND_SHELLS.md`.
+- **Repository default OS:** Windows.
+- **Preferred shell:** PowerShell 7 through `pwsh.exe`.
+- Use Windows-native tools and Windows paths.
+- Do not switch to WSL because a Windows-native tool is missing; stop and report.
+
+### Explicit WSL workers
+
+- WSL remains an explicit task/operator assignment, not an implicit fallback.
+- Once a worker is assigned to WSL, all active Git worktrees and heavy development commands must use the WSL internal Linux filesystem under:
+
+```text
+$HOME/worktrees/<task-name>
+```
+
+- `/mnt/c/**`, `/mnt/d/**`, `/mnt/g/**`, and other `/mnt/*` Windows mounts are preservation/artifact locations only.
+- Do **not** run the following from `/mnt/*`:
+
+```text
+npm ci
+npm install
+npm test
+npm run lint
+npm run typecheck
+npm run build
+npm run db:check
+Playwright
+local development servers
+large repository-wide file traversal/copy
+```
+
+- Do not copy or permanently symlink `node_modules` between worktrees. Run a fresh `npm ci` in each ext4 workspace.
+- Migrate in-progress mounted worktrees without losing branch/HEAD/staged/unstaged/untracked state. Preserve the old mounted worktree until the restored ext4 workspace and actual task push are verified; never auto-delete it.
+- Migration does not authorize a Node major change or expand task scope.
+
+Detailed sources:
+
+- `docs/ops/PATHS_AND_SHELLS.md`
+- `docs/ops/WSL_EXT4_WORKSPACE_POLICY.md`
+
+Do not infer OS/shell/filesystem from Codex, Kilo, Hermes, computer number, or historical paths. Confirm the actual execution environment.
 
 Do not print secret files or environment values. Report presence/status only.
 
@@ -217,8 +251,9 @@ Recommended order:
 3. `docs/project/project_index.md`
 4. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
 5. `docs/project/UI_RAPID_ITERATION_LANE.md` for UI work
-6. relevant product/design/engineering/ops documents
-7. current remote Issue/PR/diff/CI evidence
+6. `docs/ops/PATHS_AND_SHELLS.md` and, for explicit WSL work, `docs/ops/WSL_EXT4_WORKSPACE_POLICY.md`
+7. relevant product/design/engineering/ops documents
+8. current remote Issue/PR/diff/CI evidence
 
 ## 14. Key detailed documents
 
@@ -228,6 +263,8 @@ Recommended order:
 - `docs/project/VERIFICATION_AND_EVIDENCE.md`
 - `docs/project/AGENT_OPERATION_GUARDRAILS.md`
 - `docs/ops/PR_CHECKLIST.md`
+- `docs/ops/PATHS_AND_SHELLS.md`
+- `docs/ops/WSL_EXT4_WORKSPACE_POLICY.md`
 - `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`
 - `docs/ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md`
 - `docs/engineering/CODE_ARCHITECTURE.md`
@@ -238,12 +275,14 @@ Recommended order:
 ```text
 verify current remote state
 → classify real risk
+→ select the correct native Windows or WSL-ext4 execution lane
 → use the smallest safe implementation/evidence path
 → independently review exact head
 → squash merge
 → confirm affected Production behavior
 ```
 
+Refs #3865.
 Refs #3664.
 Refs #3662.
 Refs #1882 — Keep OPEN.
