@@ -647,7 +647,7 @@ test('future-safe populated template with two critical objects builds PASS', () 
     critical_objects: [
       {
         name: 'table:public.schema_migration_ledger',
-        fingerprint: 'sha256:8a3eee38e8dfa13f34eaf82255f0a9de166fbb2f3d8f6a3f096ea815c04fb7dd',
+        fingerprint: 'sha256:961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1',
       },
       {
         name: 'table:public.example_tree',
@@ -698,7 +698,7 @@ test('rejection: template with ACTIVE status', () => {
     critical_objects: [
       {
         name: 'table:public.schema_migration_ledger',
-        fingerprint: 'sha256:8a3eee38e8dfa13f34eaf82255f0a9de166fbb2f3d8f6a3f096ea815c04fb7dd',
+        fingerprint: 'sha256:961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1',
       },
     ],
     adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
@@ -781,7 +781,7 @@ test('rejection: template with unknown manifest field rejected by validator', ()
     critical_objects: [
       {
         name: 'table:public.schema_migration_ledger',
-        fingerprint: 'sha256:8a3eee38e8dfa13f34eaf82255f0a9de166fbb2f3d8f6a3f096ea815c04fb7dd',
+        fingerprint: 'sha256:961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1',
       },
     ],
     adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
@@ -803,7 +803,7 @@ test('rejection: template with invalid comparison_scope', () => {
     critical_objects: [
       {
         name: 'table:public.schema_migration_ledger',
-        fingerprint: 'sha256:8a3eee38e8dfa13f34eaf82255f0a9de166fbb2f3d8f6a3f096ea815c04fb7dd',
+        fingerprint: 'sha256:961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1',
       },
     ],
     adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
