@@ -1084,6 +1084,72 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: same-origin failures ${health.sameOriginFailures.join(' | ')}`);
       assert.equal(health.http4xx.length, 0, `${vp.name}: HTTP>=400 ${health.http4xx.join(' | ')}`);
 
+      // ── L. Initial invalid URL fails closed to 전체 ──
+      health.pageErrors.length = 0;
+      health.consoleErrors.length = 0;
+      health.sameOriginFailures.length = 0;
+      health.http4xx.length = 0;
+      health.stubbedApi.length = 0;
+      health.external = 0;
+      await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => {
+        const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
+        const act = chips.filter(c => c.classList.contains('active'));
+        let category = null;
+        try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
+        return document.querySelectorAll('#resultsList .tree-card').length >= 6
+          && act.length === 1
+          && act[0].getAttribute('data-category') === '전체'
+          && category === null;
+      }, null, { timeout: 20000 });
+      const sL = await read();
+      assert.deepEqual(sL.active, ['전체'], `${vp.name}: L initial-invalid active`);
+      assert.deepEqual(sL.checked, ['전체'], `${vp.name}: L initial-invalid checked`);
+      assert.deepEqual(sL.tabZero, ['전체'], `${vp.name}: L initial-invalid tabindex`);
+      assert.equal(sL.cardCount, 6, `${vp.name}: L initial-invalid default results`);
+      assert.equal(sL.category, null, `${vp.name}: L initial-invalid category removed from URL`);
+      assert.equal(health.pageErrors.length, 0, `${vp.name}: L pageerrors ${health.pageErrors.join(' | ')}`);
+      assert.equal(health.consoleErrors.length, 0, `${vp.name}: L console errors ${health.consoleErrors.join(' | ')}`);
+      assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: L same-origin failures ${health.sameOriginFailures.join(' | ')}`);
+      assert.equal(health.http4xx.length, 0, `${vp.name}: L HTTP>=400 ${health.http4xx.join(' | ')}`);
+
+      // ── M. Invalid popstate restore fails closed to 전체 ──
+      health.pageErrors.length = 0;
+      health.consoleErrors.length = 0;
+      health.sameOriginFailures.length = 0;
+      health.http4xx.length = 0;
+      await page.evaluate(() => {
+        const invalidUrl = window.location.pathname + '?category=__invalid_category__';
+        history.pushState(null, '', invalidUrl);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      await page.waitForFunction(() => {
+        const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
+        const act = chips.filter(c => c.classList.contains('active'));
+        let category = null;
+        try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
+        return document.querySelectorAll('#resultsList .tree-card').length >= 6
+          && act.length === 1
+          && act[0].getAttribute('data-category') === '전체'
+          && category === null;
+      }, null, { timeout: 10000 });
+      const sM = await read();
+      assert.deepEqual(sM.active, ['전체'], `${vp.name}: M popstate-invalid active`);
+      assert.deepEqual(sM.checked, ['전체'], `${vp.name}: M popstate-invalid checked`);
+      assert.deepEqual(sM.tabZero, ['전체'], `${vp.name}: M popstate-invalid tabindex`);
+      assert.equal(sM.cardCount, 6, `${vp.name}: M popstate-invalid default results restored`);
+      assert.equal(sM.category, null, `${vp.name}: M popstate-invalid category removed`);
+      const focusInvariantM = await page.evaluate(() => {
+        const chip = [...document.querySelectorAll('.filter-row .tag-chip')].find(c => c.getAttribute('data-category') === '전체');
+        chip.focus();
+        return document.activeElement === chip;
+      });
+      assert.equal(focusInvariantM, true, `${vp.name}: M chip focus/keyboard invariant maintained`);
+      assert.equal(health.pageErrors.length, 0, `${vp.name}: M pageerrors ${health.pageErrors.join(' | ')}`);
+      assert.equal(health.consoleErrors.length, 0, `${vp.name}: M console errors ${health.consoleErrors.join(' | ')}`);
+      assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: M same-origin failures ${health.sameOriginFailures.join(' | ')}`);
+      assert.equal(health.http4xx.length, 0, `${vp.name}: M HTTP>=400 ${health.http4xx.join(' | ')}`);
+
       await context.close();
     }
   } finally {

@@ -357,6 +357,39 @@ tests.push({
     },
 });
 
+tests.push({
+    name: 'search-controls fails closed to the canonical first chip for unknown categories',
+    fn: () => {
+        const src = fs.readFileSync(path.join(ROOT, 'js/search/search-controls.js'), 'utf8');
+        assert.ok(src.includes('didFallback'), 'must expose a bounded didFallback verdict');
+        assert.ok(src.includes('activeChip = tagChips[0]'), 'must fall back to the canonical first chip');
+        assert.ok(src.includes('state.currentCategory = getChipCategory(activeChip)'), 'must correct state.currentCategory');
+        assert.ok(src.includes('return { activeChip, didFallback };'), 'must return the bounded result object');
+        assert.ok(src.includes('if (result && result.didFallback && state.urlStateReady)'), 'fallback reconcile must be a single gated branch');
+        assert.ok(src.includes('callbacks.renderResults(true)'), 'fallback reconcile must re-render');
+        assert.ok(src.includes("callbacks.updateUrlState({ historyMode: 'replace' })"), 'fallback reconcile must rewrite the URL');
+    },
+});
+
+tests.push({
+    name: 'search-controls fail-closed fallback stays bounded (no duplicate render/write)',
+    fn: () => {
+        const src = fs.readFileSync(path.join(ROOT, 'js/search/search-controls.js'), 'utf8');
+        const renders = (src.match(/callbacks\.renderResults\(/g) || []).length;
+        const urls = (src.match(/callbacks\.updateUrlState\(/g) || []).length;
+        assert.equal(renders, urls, 'renderResults and updateUrlState must stay paired');
+        const fallbackBranch = src.match(/if \(result && result\.didFallback && state\.urlStateReady\)\s*\{[^}]*\}/);
+        assert.ok(fallbackBranch, 'fallback reconcile must exist as one gated branch');
+        assert.ok(
+            fallbackBranch[0].includes('renderResults') && fallbackBranch[0].includes('updateUrlState'),
+            'fallback branch must contain the paired render/URL reconcile'
+        );
+        // exactly-one invariant: binary aria-checked/tabindex sync keeps one selected chip
+        assert.ok(src.includes("chip.setAttribute('aria-checked', isActive ? 'true' : 'false')"), 'aria-checked sync must be binary');
+        assert.ok(src.includes("chip.setAttribute('tabindex', isActive ? '0' : '-1')"), 'tabindex sync must be binary');
+    },
+});
+
 // ── Runner ──────────────────────────────────────────────────────────────────
 (async () => {
     let passed = 0;

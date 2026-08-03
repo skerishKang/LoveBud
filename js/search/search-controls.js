@@ -17,16 +17,38 @@
          * Single authority for chip selection state (roving radio group):
          * exactly one chip carries .active + aria-checked="true" + tabindex="0",
          * every other chip is inactive with aria-checked="false" + tabindex="-1".
+         *
+         * Unknown/malformed categories fail closed to the canonical first chip:
+         * when no chip matches state.currentCategory, the state is corrected to
+         * the first chip's category and { didFallback: true } is returned so the
+         * class-mutation observer can issue a bounded render/URL reconcile.
          */
         function syncCategoryChipSemantics() {
-            if (!tagChips) return;
+            if (!tagChips) return { activeChip: null, didFallback: false };
+
+            let activeChip = null;
+            for (const chip of tagChips) {
+                if (getChipCategory(chip) === state.currentCategory) {
+                    activeChip = chip;
+                    break;
+                }
+            }
+
+            let didFallback = false;
+            if (!activeChip && tagChips.length > 0) {
+                activeChip = tagChips[0];
+                state.currentCategory = getChipCategory(activeChip);
+                didFallback = true;
+            }
+
             tagChips.forEach(chip => {
-                const chipCategory = getChipCategory(chip);
-                const isActive = chipCategory === state.currentCategory;
+                const isActive = chip === activeChip;
                 chip.classList.toggle('active', isActive);
                 chip.setAttribute('aria-checked', isActive ? 'true' : 'false');
                 chip.setAttribute('tabindex', isActive ? '0' : '-1');
             });
+
+            return { activeChip, didFallback };
         }
 
         /**
@@ -113,9 +135,19 @@
 
             // URL-state restore (and any external code) toggles the active class
             // directly; converge the full radio-group semantics in that case too.
+            // An unknown category fails closed to the canonical first chip — only
+            // then (and only once the page is ready) is a bounded render/URL
+            // reconcile issued, so valid restores never duplicate work.
             const container = tagChips.length ? tagChips[0].parentElement : null;
             if (container && typeof MutationObserver === 'function') {
-                const observer = new MutationObserver(() => syncCategoryChipSemantics());
+                const observer = new MutationObserver(() => {
+                    const result = syncCategoryChipSemantics();
+                    if (result && result.didFallback && state.urlStateReady) {
+                        callbacks.renderResults(true);
+                        callbacks.updateUrlState({ historyMode: 'replace' });
+                        ui?.syncControlsFromState?.();
+                    }
+                });
                 observer.observe(container, {
                     attributes: true,
                     attributeFilter: ['class'],
