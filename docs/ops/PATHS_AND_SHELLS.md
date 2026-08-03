@@ -74,6 +74,53 @@ Get-Command pg_dump.exe -ErrorAction Stop
 
 ---
 
+## 명시 승인된 WSL 작업의 현재 실행 경로
+
+WSL을 사용해도 Windows-native 기본값은 바뀌지 않는다. 승인된 WSL 작업만 아래 경로 규칙을 따른다.
+
+```text
+Windows-native task
+→ Windows path + PowerShell 7
+
+explicitly authorized WSL task
+→ $HOME/worktrees/<task-name> + WSL ext4
+
+/mnt/*
+→ 저장, archive, backup, 원본, 산출물, 읽기 전용 비교
+```
+
+승인된 WSL 작업에서 `/mnt/*` 아래에서는 다음을 실행하지 않는다.
+
+```text
+npm ci
+npm install
+npm test
+npm run lint
+npm run typecheck
+npm run build
+Playwright
+개발 서버
+대량 파일 생성
+broad grep/find
+```
+
+진행 중인 `/mnt/*` worktree를 ext4로 이전할 때는 다음 안전 원칙을 따른다.
+
+```text
+진행 중 작업 이전 시 기존 worktree 삭제 금지
+branch/HEAD/status 기록
+git bundle 또는 exact local history 보존
+staged/unstaged patch 보존
+untracked source 명시 복사
+node_modules 복사·symlink 금지
+old/new hash 비교
+사용자 승인 전 기존 mounted worktree 보존
+```
+
+상세 정책: `docs/ops/WSL_EXT4_WORKSPACE_POLICY.md`.
+
+---
+
 ## 한글/공백 경로 처리
 
 이 프로젝트 경로에는 한글과 공백이 포함될 수 있다.
