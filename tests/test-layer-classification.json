@@ -3844,6 +3844,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-create-write-read-convergence-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real convergence core and real My Trees create actions runtime with injected fake createTree/getTrees/release-manifest dependencies and proves the bounded tree-create write-read convergence contract: createTree exactly once, REQUEST_DISPATCHED before settlement, SERVER_ACKNOWLEDGED once, canonical reread maximum once, identity-present CONFIRMED vs identity-absent ACKNOWLEDGED_REREAD_MISSING, create rejection TRANSPORT_FAILED, missing ack ACKNOWLEDGEMENT_MISSING, reread rejection MONITORING_FAILED, malformed reread INSUFFICIENT_EVIDENCE, observer failure non-blocking, slow monitoring not delaying redirect, stale cross-save generation suppression, privacy boundary, release SHA validation, memory-create #3852 regression preservation, and the exact two-profile boundary (MEMORY_CREATE_CONVERGENCE -> createMemory/createdMemory, TREE_CREATE_CONVERGENCE -> createTree/createdTree) with non-create taxonomy classes, unknown classes, and mismatched explicit createKey/ackKey tuples rejected as UNKNOWN_OPERATION_CLASS/UNKNOWN_INPUT with zero dispatch, reread, and observer events. No real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-comment-read-list-route-impl-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
