@@ -1538,6 +1538,51 @@
       "automation": "automatic",
       "ledger_candidate": "no",
       "notes": "dedicated clean-target bootstrap authority, SQL 직접 실행 capability 없음, dependency-injected transaction orchestration"
+    },
+    {
+      "path": "scripts/migration-readonly-target-attribution-parity-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3860 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "Source-only dependency-injected read-only target attribution & catalog parity preflight core. No database, network, shell, env, filesystem, URL, or credential capability; invokes at most one injected read-only collection effect; never activates manifests or targets."
+    },
+    {
+      "path": "tests/db-engine/readonly-target-attribution-parity-postgres.test.cjs",
+      "category": "db_engine_test",
+      "engine": "postgres_ephemeral_ci",
+      "operations": ["READ_ONLY"],
+      "canonical_status": "TEST_FIXTURE_ONLY",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "test harness / #3860 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "gated",
+      "ledger_candidate": "no",
+      "notes": "Fresh GitHub Actions PostgreSQL 17.4 read-only parity rehearsal (R1-R7). Fixture setup SQL is separated from the read-only preflight invocation and query-count evidence; never executed locally."
+    },
+    {
+      "path": "docs/architecture/db-readonly-target-attribution-parity-contract.md",
+      "category": "doc_runbook",
+      "engine": "none",
+      "operations": ["READ_ONLY"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3860 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "reviewer",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "Source-only architecture contract for the read-only target attribution & catalog parity preflight boundary and outcome vocabulary."
     }
   ]
 }
