@@ -1096,7 +1096,10 @@
       "path": "tests/contracts/editor-floating-toolbar-dropdown-a11y-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes real Editor floating-toolbar markup (pages/editor.html via the real js/editor/templates/editor-floating-toolbar-template.js), the real js/editor/editor-floating-toolbar-keyboard.js and js/editor/editor-floating-toolbar-dropdown.js, and the real floating-toolbar CSS chain in Playwright Chromium via a local HTTP server on an ephemeral 127.0.0.1 port across desktop (1440x900) and mobile (390x844) viewports with normal and reduced-motion contexts. Synthetic safe editor fixtures only (inert scripts, stubbed i18n, fulfilled external hosts, no API writes). Asserts the Issue #3810 contract: SVG-safe Escape with non-callable SVG .click() path, dropdown cleanup in the toolbar Escape handler independent of the optional canvas dispatch, trigger focus restoration, aria-haspopup=menu/aria-controls/aria-expanded synchronization, keyboard-open first visible enabled menuitem focus, ArrowDown/ArrowUp wrap, Home/End, Escape close+restore, Tab/Shift+Tab close without focus trap, hidden/aria-hidden/disabled/display:none item exclusion, outside-click close without focus theft, duplicate-listener idempotence, existing mouse action dispatch compatibility (Delete/Share/Focus), and browser health (zero pageerror, console error, same-origin request/HTTP failure, external network, horizontal overflow, leak). No production write/auth/API/DB mutation; no production URL, real login, private data, or external network used.",
-      "capabilities": ["playwright", "chromium"]
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
     },
     {
       "path": "tests/contracts/editor-floating-toolbar-template-contract.test.cjs",
@@ -4844,6 +4847,14 @@
         "playwright",
         "chromium"
       ]
+    },
+    {
+      "path": "tests/contracts/db-readonly-target-attribution-parity-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": [
+        "filesystem"
+      ]
     }
   ],
   "supplemental": [
@@ -5019,6 +5030,16 @@
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
       "rationale": "Rehearses the clean canonical bootstrap migration against a disposable PostgreSQL 17.4 engine (loopback LB_TEST_PG* only, no DATABASE_URL, no Production/Neon/Modal/provider): applies the bootstrap SQL that creates schema_migration_ledger, proves the ledger table exists, proves the ledger record is recorded with exact field values, verifies the advisory lock is acquired and released with no residual locks, and asserts server_version_num 170004. Runs only in GitHub Actions via npm run test:db-engine:clean-canonical-bootstrap; never executed locally (#3846).",
+      "capabilities": [
+        "postgresql",
+        "network"
+      ]
+    },
+    {
+      "path": "tests/db-engine/readonly-target-attribution-parity-postgres.test.cjs",
+      "layer": "DB_ENGINE_EXECUTION",
+      "defaultCi": false,
+      "rationale": "Runs only in fresh GitHub Actions PostgreSQL 17.4 (loopback LB_TEST_PG*); never executed locally.",
       "capabilities": [
         "postgresql",
         "network"
