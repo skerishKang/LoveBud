@@ -222,11 +222,19 @@ function extractRepositoryOwnedFields(template) {
   if (template === null || typeof template !== 'object' || Array.isArray(template)) {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_INPUT_INVALID, { field: 'template' });
   }
+  const validation = validateExpectedSchemaManifest(template);
+  if (!validation.ok) {
+    fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED, { field: 'template' });
+  }
+  if (Array.isArray(template.critical_objects)) {
+    for (const object of template.critical_objects) {
+      if (object && object.name && !OBJECT_NAME_PATTERN.test(object.name)) {
+        fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED, { field: 'critical_objects' });
+      }
+    }
+  }
   if (template.status !== FORCED_STATUS) {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED, { field: 'status' });
-  }
-  if (!Array.isArray(template.critical_objects) || template.critical_objects.length !== 0) {
-    fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED, { field: 'critical_objects' });
   }
   if (template.format_version !== SUPPORTED_FORMAT_VERSION) {
     fail(FAILURE.EXPECTED_SCHEMA_CANDIDATE_FORMAT_MISMATCH);

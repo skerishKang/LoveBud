@@ -562,13 +562,15 @@ test('existing disposable adapter restrictions unchanged', () => {
   assert.doesNotMatch(adapter, /process\.env\.DATABASE_URL/);
   assert.doesNotMatch(adapter, /neon\.tech|cloud\.neon/);
 });
-test('manifests remain inactive/empty and gate keeps adoption baseline blocker', () => {
+test('manifests remain populated/inactive and gate keeps adoption baseline blocker', () => {
   const expected = readJson(EXPECTED_SCHEMA);
   const canonical = readJson(CANONICAL);
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(expected.critical_objects.length, 1);
+  assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(canonical.migrations, []);
+  assert.equal(canonical.migrations.length, 1);
+  assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
   assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
   assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
 

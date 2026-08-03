@@ -409,7 +409,7 @@ const EXPECTED_SCHEMA_PATH = path.join(
 );
 const CANONICAL_PATH = path.join(ROOT, 'db', 'migration-provenance', 'canonical-migrations.json');
 
-test('pipeline: adapter evidence → inactive candidate → same-evidence match → drift mismatch', {
+test('pipeline: adapter evidence → inactive candidate → same-evidence match → drift mismatch (committed manifest populated but inactive)', {
   concurrency: false,
 }, async () => {
   await withDisposableDb('cand_pipe', FIXTURE_SQL, async (ctx) => {
@@ -467,13 +467,28 @@ test('pipeline: adapter evidence → inactive candidate → same-evidence match 
     assert.equal(gateAfterDrift.decision, 'FAIL_CLOSED');
     assert.ok(gateAfterDrift.blockers.includes('GATE_ADOPTION_BASELINE_REQUIRED'));
 
-    // Adapter/candidate builder no-mutation of committed manifests.
+    // Adapter/candidate builder no-mutation of committed manifests: the
+    // committed manifests remain exactly the populated-but-inactive committed
+    // authority (ADOPTION_REQUIRED; one critical object; one bootstrap
+    // migration; no unauthorized bootstrap field; no ACTIVE activation).
     const expected = loadJson(EXPECTED_SCHEMA_PATH);
     const canonical = loadJson(CANONICAL_PATH);
     assert.equal(expected.status, 'ADOPTION_REQUIRED');
-    assert.deepEqual(expected.critical_objects, []);
+    assert.equal(expected.bootstrap, undefined, 'no unauthorized bootstrap field');
+    assert.equal(expected.critical_objects.length, 1, 'exactly one committed critical object (populated but inactive)');
+    assert.equal(
+      expected.critical_objects[0].name,
+      'table:public.schema_migration_ledger',
+      'committed critical object name'
+    );
     assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-    assert.deepEqual(canonical.migrations, []);
+    assert.equal(canonical.bootstrap, undefined, 'no unauthorized bootstrap field');
+    assert.equal(canonical.migrations.length, 1, 'exactly one committed migration (populated but inactive)');
+    assert.equal(
+      canonical.migrations[0].id,
+      '20260802094500_bootstrap-migration-ledger',
+      'committed bootstrap migration id'
+    );
 
     await adapter.assertNoCatalogMutation(opts(ctx));
   });

@@ -784,15 +784,17 @@ test('valid synthetic attestation does not activate manifests', () => {
       approval_reference: 'decision:synthetic-ok',
       environment_class: 'DISPOSABLE_CI',
       attestation_scope: 'INACTIVE_BASELINE',
-      expected_migrations: [],
+      expected_migrations: canonical.migrations.map((m) => ({ id: m.id, checksum: m.checksum })),
     },
     contract
   );
   assert.equal(validation.ok, true);
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(expected.critical_objects.length, 1);
+  assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(canonical.migrations, []);
+  assert.equal(canonical.migrations.length, 1);
+  assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
 });
 
 test('overall provenance gate remains FAIL_CLOSED with GATE_ADOPTION_BASELINE_REQUIRED', () => {
@@ -918,13 +920,15 @@ test('CLI target mode missing trusted flags fails closed without leaking values'
   }
 });
 
-test('canonical and expected-schema manifests remain empty/inactive', () => {
+test('canonical and expected-schema manifests remain populated/inactive', () => {
   const expected = readJson(EXPECTED_SCHEMA);
   const canonical = readJson(CANONICAL);
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(expected.critical_objects.length, 1);
+  assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(canonical.migrations, []);
+  assert.equal(canonical.migrations.length, 1);
+  assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
   assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
   assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
 });

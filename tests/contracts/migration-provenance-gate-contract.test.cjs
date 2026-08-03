@@ -130,7 +130,7 @@ test('committed provenance source configuration is complete and static-only', ()
   assert.equal(result.ok, true, result.errors.join('\n'));
   assert.equal(result.summary.discovered_paths, discovered.length);
   assert.ok(result.summary.inventory_rows >= result.summary.discovered_paths);
-  assert.equal(result.summary.canonical_migrations, 0);
+  assert.equal(result.summary.canonical_migrations, 1);
 
   const inventoryPaths = new Set(inventory.entries.map((entry) => entry.path));
   for (const discoveredPath of discovered) {
@@ -179,8 +179,36 @@ test('manifest and ledger contract cannot drift independently', () => {
   assert.ok(result.errors.includes('MIGRATION_LEDGER_CONTRACT_MISMATCH'));
 });
 
-test('empty bootstrap manifest remains valid', () => {
-  const result = core.validateMigrationManifest(bootstrapManifest(), ROOT);
+test('committed populated ADOPTION_REQUIRED manifest is valid', () => {
+  const manifest = bootstrapManifest();
+  const result = core.validateMigrationManifest(manifest, ROOT);
+  assert.equal(result.ok, true, result.errors.join('\n'));
+  assert.equal(result.migrations.length, 1);
+  assert.equal(result.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
+  assert.equal(
+    result.migrations[0].path,
+    'db/migrations/20260802094500_bootstrap-migration-ledger.sql'
+  );
+});
+
+test('synthetic empty ADOPTION_REQUIRED manifest remains valid', () => {
+  const syntheticEmpty = {
+    format_version: '1.0',
+    status: 'ADOPTION_REQUIRED',
+    canonical_directory: 'db/migrations',
+    ledger: {
+      contract_path: 'db/migration-provenance/ledger-contract.json',
+      required_record_fields: [
+        'migration_id', 'content_checksum', 'applied_at',
+        'runner_version', 'environment_class', 'deployed_commit',
+        'transaction_outcome'
+      ]
+    },
+    migration_id_format: 'YYYYMMDDHHMMSS_slug',
+    checksum_algorithm: 'sha256',
+    migrations: []
+  };
+  const result = core.validateMigrationManifest(syntheticEmpty, ROOT);
   assert.equal(result.ok, true, result.errors.join('\n'));
   assert.equal(result.migrations.length, 0);
 });
@@ -389,9 +417,11 @@ test('valid synthetic attestation still fails closed when committed manifests ar
     false
   );
   assert.equal(expectedSchema.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(expectedSchema.critical_objects, []);
+  assert.equal(expectedSchema.critical_objects.length, 1);
+  assert.equal(expectedSchema.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(canonical.migrations, []);
+  assert.equal(canonical.migrations.length, 1);
+  assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
 });
 
 test('self-consistent ATTESTED evidence without trusted binding fails closed', () => {

@@ -473,6 +473,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/db-clean-canonical-bootstrap-rehearsal-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/card-surface-parity-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -5006,6 +5012,16 @@
         "postgresql",
         "child_process",
         "filesystem"
+      ]
+    },
+    {
+      "path": "tests/db-engine/clean-canonical-bootstrap-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Rehearses the clean canonical bootstrap migration against a disposable PostgreSQL 17.4 engine (loopback LB_TEST_PG* only, no DATABASE_URL, no Production/Neon/Modal/provider): applies the bootstrap SQL that creates schema_migration_ledger, proves the ledger table exists, proves the ledger record is recorded with exact field values, verifies the advisory lock is acquired and released with no residual locks, and asserts server_version_num 170004. Runs only in GitHub Actions via npm run test:db-engine:clean-canonical-bootstrap; never executed locally (#3846).",
+      "capabilities": [
+        "postgresql",
+        "network"
       ]
     }
   ]

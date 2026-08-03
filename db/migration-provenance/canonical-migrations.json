@@ -21,7 +21,27 @@
   "ordering_rule": "The migrations array is strictly ascending by migration ID; duplicate IDs, duplicate paths, and timestamp reversal are rejected.",
   "checksum_byte_rule": "Checksum is SHA-256 over the raw bytes of the SQL file with no newline, whitespace, comment, or BOM normalization; any byte change (LF/CRLF, trailing newline, trailing space, comment, BOM, single byte) fails closed. An applied migration is never edited; a correction is a new forward-fix migration.",
   "identity_order_checksum_contract": "docs/architecture/db-migration-identity-order-checksum-contract.md",
-  "migrations": [],
+  "migrations": [
+    {
+      "id": "20260802094500_bootstrap-migration-ledger",
+      "name": "bootstrap-migration-ledger",
+      "path": "db/migrations/20260802094500_bootstrap-migration-ledger.sql",
+      "checksum": "sha256:c04d6e8cf074514e1835cd837f6ae72ccd96b775a507a12d2b394733977918cc",
+      "depends_on": [],
+      "risk_class": "ADDITIVE",
+      "transaction_mode": "REQUIRED",
+      "expected_preconditions": [
+        { "check": "table_exists", "target": "schema_migration_ledger", "expected": false }
+      ],
+      "expected_postconditions": [
+        { "check": "table_exists", "target": "schema_migration_ledger", "expected": true }
+      ],
+      "rollback_support": "DROP TABLE schema_migration_ledger",
+      "destructive_operations": [],
+      "owner_domain": "migration-provenance",
+      "approval_reference": "issue:3846"
+    }
+  ],
   "activation_rule": "No existing scripts are retroactively declared applied. A separately approved adoption baseline must be attested before this manifest changes to ACTIVE.",
   "destructive_ddl_rule": "A canonical migration containing destructive DDL must set risk_class=DESTRUCTIVE, declare the full set of statically detected destructive operations from the fixed operation vocabulary (no partial, unknown, duplicate, or spurious declaration), and carry a structured approval reference (issue:/pr:/adr:/change:/approval:; not empty, placeholder, or malformed). Recognized dynamic/procedural ambiguity signals (EXECUTE of a string/format, DO blocks, LANGUAGE plpgsql, format()/concatenation building DDL) fail closed as REVIEW_REQUIRED regardless of declaration or approval. Missing, partial, unknown, spurious, placeholder-approved, or malformed declarations fail closed.",
   "destructive_ddl_contract": "docs/architecture/db-destructive-ddl-approval-contract.md",

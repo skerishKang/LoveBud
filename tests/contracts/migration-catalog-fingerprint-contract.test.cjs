@@ -547,18 +547,24 @@ test('no database/network/shell/environment dependency in new tools', () => {
   assert.equal(typeof pkg.scripts['build:migration-catalog-evidence'], 'string');
 });
 
-test('expected-schema and canonical manifests remain ADOPTION_REQUIRED and empty', () => {
+test('expected-schema and canonical manifests remain ADOPTION_REQUIRED and populated', () => {
   const expected = readJson(EXPECTED_SCHEMA);
   const canonical = readJson(CANONICAL);
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(expected.critical_objects.length, 1);
+  assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(expected.normalizer_version, '1.0');
   assert.equal(
     expected.metadata_contract_path,
     'db/migration-provenance/catalog-metadata-contract.json'
   );
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(canonical.migrations, []);
+  assert.equal(canonical.migrations.length, 1);
+  assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
+  assert.equal(
+    canonical.migrations[0].path,
+    'db/migrations/20260802094500_bootstrap-migration-ledger.sql'
+  );
 });
 
 test('gate version binding rejects mismatched normalizer versions', () => {

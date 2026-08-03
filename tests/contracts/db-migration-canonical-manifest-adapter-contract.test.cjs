@@ -261,9 +261,11 @@ describe('DB migration canonical manifest adapter contract (#3652)', () => {
       const adapter = createMigrationCanonicalManifestAdapter();
       const result = await adapter.loadManifest({ targetMigrationId: 'test' });
       assert.strictEqual(result.status, 'ADOPTION_REQUIRED');
-      assert.deepStrictEqual([...result.migrations], []);
+      assert.strictEqual(result.migrations.length, 1);
+      assert.strictEqual(result.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
       assert.ok(Object.isFrozen(result));
       assert.ok(Object.isFrozen(result.migrations));
+      assert.ok(Object.isFrozen(result.migrations[0]));
       assert.deepStrictEqual(Reflect.ownKeys(result), ['status', 'migrations']);
     });
 
