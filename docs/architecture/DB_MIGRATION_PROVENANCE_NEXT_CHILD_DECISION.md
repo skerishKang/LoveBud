@@ -2,45 +2,117 @@
 
 ## Decision summary
 
-Current status: `SAFE_IMPLEMENTATION_CHILD_SELECTED`
-
-Issue #3840 completes Step 8 Child 1 (clean-target adoption policy) under migration provenance (#3458). Step 8 readiness audit Issue #3839 has been accepted. The selected next child is:
+Step 8 readiness audit Issue #3839 has been accepted. Issue #3840 completes
+Step 8 Child 1 (clean-target adoption policy) under migration provenance
+(#3458). Issue #3846 implements Step 8 Child 2 (canonical bootstrap migration
+capability & disposable PostgreSQL rehearsal). The selected next child is:
 
 ```text
-Step 8 Child 2 — Canonical bootstrap migration capability & disposable PostgreSQL rehearsal
+Step 8 Child 3 — Read-only target attribution & catalog parity
 ```
 
 Current sequence posture:
 
 ```text
-Steps 1–7 complete
-Step 8 readiness audit accepted
-Step 8 Child 1 clean-target adoption policy implemented by #3840 (Issue remains OPEN prior to PR merge)
-Step 8 Child 2 canonical bootstrap rehearsal implemented by Issue #3846
-Step 8 Child 2 not implemented by Issue #3840
-Step 8 Child 3 target attribution & read-only catalog parity preflight not authorized
-Step 8 Child 4 fail-closed deploy gate & canonical target activation boundary not authorized
-Legacy Production Phase B/C/D/E preserved and deferred (DEFERRED_NOT_REJECTED)
-No exact Child 2 migration identity, timestamp, slug, filename, SQL body, or DDL sequence pre-determined
-+canonical bootstrap migration (20260802094500_bootstrap-migration-ledger) authored by Issue #3846; manifests remain ADOPTION_REQUIRED
+Steps 1–7:
+COMPLETE
+
+Step 8 readiness audit:
+ACCEPTED
+
+Step 8 Child 1:
+COMPLETE
+implemented by #3840
+
+Step 8 Child 2:
+IMPLEMENTED BY #3846
+pending Web CTO merge/closure until PR #3857 merges
+
+canonical bootstrap migration:
+20260802094500_bootstrap-migration-ledger
+
+canonical-migrations manifest:
+populated but ADOPTION_REQUIRED
+
+expected-schema manifest:
+populated but ADOPTION_REQUIRED
+
+Step 8 Child 3:
+SELECTED AS THE ONLY NEXT CHILD
+not implemented by PR #3857
+not runtime-authorized by PR #3857
+
+exact marker:
+READ_ONLY_TARGET_ATTRIBUTION_CATALOG_PARITY_SELECTED
+
+Step 8 Child 4:
+NOT AUTHORIZED
+
+#3460:
+still waits for #3458 completion
+
+Legacy Production Phase B/C/D/E:
+DEFERRED_NOT_REJECTED
+
+Production/provider/environment target binding:
+NONE
+
+manifest ACTIVE transition:
+NONE
+
+database or SQL execution authorized by this decision document:
+NONE
 ```
 
+Steps 1–7 complete. Step 8 Child 1 clean-target adoption policy implemented by Issue #3840. Step 8 Child 2 canonical bootstrap rehearsal (disposable PostgreSQL rehearsal) implemented by Issue #3846; pending Web CTO merge/closure until PR #3857 merges. The canonical bootstrap migration 20260802094500_bootstrap-migration-ledger is authored by Issue #3846; the committed manifests remain populated but `ADOPTION_REQUIRED`.
 
-Issue #3458 remains the open parent authority. This source-only decision grants no runtime, database, SQL, environment, provider, or Production authority.
+Issue #3458 remains the open parent authority. This source-only decision grants
+no runtime, database, SQL, environment, provider, or Production authority.
 
-The historical audit baseline for Issue #3644 remains recorded as `eb030c1d4751dfee45d65f5a420caebebac6ebcc`. That SHA is historical evidence only and is not the implementation base for Issue #3840.
+Child 3 selection is not an implementation authorization. It authorizes:
+
+- no target connection
+- no provider/environment binding
+- no live catalog collection
+- no Production access
+- no SQL execution
+- no manifest ACTIVE transition
+- no deploy gate implementation
+- no Child 4 implementation
+
+The historical audit baseline for Issue #3644 remains recorded as
+`eb030c1d4751dfee45d65f5a420caebebac6ebcc`. That SHA is historical evidence
+only and is not the implementation base for Issue #3840.
 
 ## Why the previous decision changed
 
-The previous decision was written after completion of the disposable PostgreSQL rehearsal for the precondition composition root (#3816). Read-only audit Issue #3839 reassessed Step 8 environment adoption readiness and recommended adopting a clean target environment first while deferring legacy production database adoption.
+The previous decision was written after completion of the disposable PostgreSQL
+rehearsal for the precondition composition root (#3816). Read-only audit
+Issue #3839 reassessed Step 8 environment adoption readiness and recommended
+adopting a clean target environment first while deferring legacy production
+database adoption.
 
-Issue #3840 implements Step 8 Child 1 by formally selecting the clean-target-first canonical adoption policy. The ordered sequence advances to Step 8 Child 2 (`Canonical bootstrap migration capability & disposable PostgreSQL rehearsal`), which is selected for the next child but is not implemented here.
+Issue #3840 implements Step 8 Child 1 by formally selecting the
+clean-target-first canonical adoption policy. Issue #3846 then implemented
+Step 8 Child 2 (canonical bootstrap migration capability & disposable
+PostgreSQL rehearsal). The ordered sequence now advances to Step 8 Child 3
+(read-only target attribution & catalog parity), which is selected as the only
+next child but is not implemented here.
 
 ## Verified current incompatibility
 
-The repository now has a complete provenance foundation (Steps 1–7) and a clean-target adoption policy (Step 8 Child 1). It still has no canonical migration stream and no disposable engine rehearsal of the canonical runner executing against an active canonical migration stream.
+The repository now has a complete provenance foundation (Steps 1–7), a
+clean-target adoption policy (Step 8 Child 1), and a canonical bootstrap
+migration capability with disposable PostgreSQL rehearsal (Step 8 Child 2,
+implemented by Issue #3846). The committed manifests are populated but remain
+ADOPTION_REQUIRED, and no read-only target attribution or catalog parity
+evidence exists.
 
-That missing canonical bootstrap migration capability and rehearsal is the next incompatibility. It does not authorize pre-determining exact SQL filenames or DDL statements, nor does it authorize skipping to target environment attribution, preflight gate integration, or Production mutation.
+That missing read-only target attribution & catalog parity is the next
+incompatibility. This decision does not authorize target connection, live
+catalog collection, provider/environment binding, Production access, SQL
+execution, manifest ACTIVE transition, a deploy gate implementation, or Child 4
+implementation.
 
 ## Selected next child
 
@@ -48,22 +120,32 @@ That missing canonical bootstrap migration capability and rehearsal is the next 
 
 | Field | Current decision |
 |---|---|
-| Selected child | Canonical bootstrap migration capability & disposable PostgreSQL rehearsal |
-| Sequence step | Step 8 Child 2 |
+| Selected child | Read-only target attribution & catalog parity |
+| Sequence step | Step 8 Child 3 |
 | Steps 1–7 | Complete |
 | Step 8 Child 1 | Complete (implemented by Issue #3840; OPEN prior to PR merge) |
-| Step 8 Child 2 implementation in this child | No |
-| Steps 8 Child 3–4 | Not authorized |
+| Step 8 Child 2 | Implemented by Issue #3846; pending Web CTO merge/closure until PR #3857 merges |
+| Step 8 Child 3 implementation in this child | No (selected only, not implemented) |
+| Step 8 Child 4 | Not authorized |
 | Legacy Production Phase B/C/D/E | Preserved and deferred (`DEFERRED_NOT_REJECTED`) |
-| Exact Child 2 migration identity/filename/SQL | Not selected |
+| Canonical bootstrap migration | 20260802094500_bootstrap-migration-ledger |
+| canonical-migrations manifest | Populated but ADOPTION_REQUIRED |
+| expected-schema manifest | Populated but ADOPTION_REQUIRED |
+| #3460 | Still waits for #3458 completion |
 | Clean-target policy selected | Yes (implemented by Issue #3840) |
-| Canonical bootstrap capability selected | Yes (selected for Child 2) |
+| Canonical bootstrap capability selected | Yes (implemented by Issue #3846) |
+| Target attribution / catalog parity implementation | Selected only, not implemented |
 | Environment adoption / mutation selected | No |
 | Production access | None |
 | Database access | None |
 | SQL execution | None |
+| Manifest ACTIVE transition | None |
 
-The Step 7 child is implemented by Issue #3816. After #3816 merges and independent Web CTO verification completes, #3657 closure is eligible. Step 8 environment adoption is not authorized and remains separate under #3458.
+The Step 7 child is implemented by Issue #3816. After #3816 merges and
+independent Web CTO verification completes, #3657 closure is eligible. Step 8
+Child 3 selection is not an implementation or runtime authorization, and Step 8
+Child 4 and environment adoption remain not authorized and separate under
+#3458.
 
 ### Superseded historical selection retained for audit compatibility
 
@@ -100,6 +182,20 @@ Issue #3678 recorded the sequence posture as Steps 1–4 complete, Step 5 (evalu
 Issue #3802 recorded the sequence posture as Steps 1–5 complete, Step 6 (composition root) selected but not implemented, and Steps 7–8 not authorized. That posture is superseded by Issue #3809, which implements Step 6 and selects Step 7 (disposable PostgreSQL rehearsal) without implementing it. The historical Step-5-era wording is retained only as audit evidence.
 
 Issue #3809 recorded the sequence posture as Steps 1–6 complete, Step 7 (disposable PostgreSQL rehearsal) selected but not implemented, and Step 8 not authorized. That posture is superseded by Issue #3816, which implements Step 7 and completes the #3657 authority-and-adapter program. The historical Step-6-era wording is retained only as audit evidence.
+
+### Superseded #3840-era posture retained for audit compatibility
+
+The following #3840-era marker and Child 3/Child 4 wording are retained
+literally as historical evidence only. They are superseded by the current
+posture above: Step 8 Child 3 is now selected as the only next child and is not
+implemented or runtime-authorized by PR #3857. They confer no current
+implementation authority:
+
+```text
+Current status: SAFE_IMPLEMENTATION_CHILD_SELECTED
+Step 8 Child 3 target attribution & read-only catalog parity preflight not authorized
+Step 8 Child 4 fail-closed deploy gate & canonical target activation boundary not authorized
+```
 
 ## Exact allowed files
 

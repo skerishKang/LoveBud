@@ -400,6 +400,74 @@ test('decision doc records Steps 1-7 complete, Child 2 bootstrap implemented, Ch
   );
 });
 
+// ── 10b. Next-child decision posture (current decision section) ──────────────
+
+const NEXT_CHILD_DECISION_PATH = 'docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md';
+const HISTORICAL_SPLIT = '### Superseded historical selection retained for audit compatibility';
+
+function currentDecisionSection() {
+  const decision = read(NEXT_CHILD_DECISION_PATH);
+  const index = decision.indexOf(HISTORICAL_SPLIT);
+  return index === -1 ? decision : decision.slice(0, index);
+}
+
+test('next-child decision selects read-only target attribution & catalog parity as the only next child', () => {
+  const posture = currentDecisionSection();
+  assert.ok(/Step 8 Child 3/i.test(posture), 'decision identifies Step 8 Child 3');
+  assert.ok(/target attribution/i.test(posture), 'decision identifies target attribution');
+  assert.ok(/catalog parity/i.test(posture), 'decision identifies read-only catalog parity');
+  assert.ok(/only next child/i.test(posture), 'Child 3 selected as the only next child');
+  assert.ok(/not implemented by PR #3857/.test(posture), 'Child 3 not implemented by PR #3857');
+  assert.ok(/not runtime-authorized by PR #3857/.test(posture), 'Child 3 not runtime-authorized by PR #3857');
+  assert.ok(
+    /READ_ONLY_TARGET_ATTRIBUTION_CATALOG_PARITY_SELECTED/.test(posture),
+    'decision records the exact selected marker',
+  );
+  assert.ok(/IMPLEMENTED BY #3846/.test(posture), 'Child 2 implemented by #3846');
+  assert.ok(
+    /pending Web CTO merge\/closure until PR #3857 merges/.test(posture),
+    'Child 2 pending Web CTO merge/closure until PR #3857 merges',
+  );
+  assert.ok(/populated but ADOPTION_REQUIRED/.test(posture), 'committed manifests populated but ADOPTION_REQUIRED');
+});
+
+test('next-child decision marker appears exactly once in the document', () => {
+  const decision = read(NEXT_CHILD_DECISION_PATH);
+  const matches = decision.match(/READ_ONLY_TARGET_ATTRIBUTION_CATALOG_PARITY_SELECTED/g) || [];
+  assert.equal(matches.length, 1, 'exactly one occurrence of the selected marker');
+});
+
+test('next-child decision preserves non-implementation posture', () => {
+  const posture = currentDecisionSection();
+  assert.ok(/Step 8 Child 4/i.test(posture), 'Child 4 identified');
+  assert.ok(/not authorized/i.test(posture), 'Child 4 not authorized');
+  assert.ok(/#3458/.test(posture), '#3458 referenced');
+  assert.ok(/#3460/.test(posture) && /#3458/.test(posture), '#3460 waits for #3458 completion');
+  assert.ok(/DEFERRED_NOT_REJECTED/.test(posture), 'legacy posture DEFERRED_NOT_REJECTED');
+  assert.ok(/ADOPTION_REQUIRED/.test(posture), 'manifests remain ADOPTION_REQUIRED');
+  assert.ok(/NONE/.test(posture), 'no provider/Production/target binding and no ACTIVE transition');
+  assert.ok(
+    /not an implementation authorization|not an implementation or runtime authorization/i.test(posture),
+    'Child 3 selection is not an implementation authorization',
+  );
+});
+
+test('next-child decision removes stale pre-implementation phrases from the current posture', () => {
+  const posture = currentDecisionSection();
+  assert.ok(
+    !posture.includes('No exact Child 2 migration identity, timestamp, slug, filename, SQL body, or DDL sequence pre-determined'),
+    'no stale Child 2 identity pre-determination phrase',
+  );
+  assert.ok(
+    !posture.includes('Step 8 Child 3 target attribution & read-only catalog parity preflight not authorized'),
+    'no stale Child 3 not-authorized phrase',
+  );
+  assert.ok(
+    !posture.includes('+canonical bootstrap migration'),
+    'no accidental literal +canonical bootstrap migration phrase',
+  );
+});
+
 // ── 11. Contract doc existence ────────────────────────────────────────────────
 
 test('contract doc exists and records the 11-file boundary', () => {
