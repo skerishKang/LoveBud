@@ -187,6 +187,7 @@ function buildHomeFixture() {
   <script src="js/i18n/i18n-core.js"></script>
   <script src="js/i18n/i18n-shared.js"></script>
   <script src="js/i18n/i18n-home-v3.js"></script>
+  <script src="js/shared/modal-a11y.js"></script>
   <script src="js/index-inline-init.js"></script>
 </body>
 </html>`;
@@ -648,6 +649,158 @@ test('home video modal loading states (#3707)', async (t) => {
           }));
           assert.ok(overflow.bodyScrollWidth <= overflow.bodyClientWidth + 1, 'body has no horizontal overflow');
           assert.ok(overflow.htmlScrollWidth <= overflow.htmlClientWidth + 1, 'html has no horizontal overflow');
+        } finally {
+          await teardown(env);
+        }
+      });
+
+      // -----------------------------------------------------------------
+      // Group I — shared modal a11y reference adoption (#3847).
+      // The Home surface delegates Tab containment, Escape, initial focus,
+      // and focus restoration to js/shared/modal-a11y.js. The fixture loads
+      // the shared helper, so the primary lifecycle path is exercised.
+      // -----------------------------------------------------------------
+      await t.test('I1. shared modal a11y helper is the active lifecycle', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page } = env;
+          const hasHelper = await page.evaluate(() =>
+            typeof window.LoveBudModalA11y === 'object' &&
+            typeof window.LoveBudModalA11y.createLifecycle === 'function');
+          assert.equal(hasHelper, true, 'js/shared/modal-a11y.js loaded and exposes createLifecycle');
+        } finally {
+          await teardown(env);
+        }
+      });
+
+      await t.test('I2. open gives initial focus inside the modal', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page } = env;
+          env.ctl.setMode('pending');
+          await openModal(page);
+          const active = await page.evaluate(() => ({
+            tag: document.activeElement && document.activeElement.tagName,
+            cls: document.activeElement && document.activeElement.className,
+            inside: (function () {
+              const m = document.querySelector('.hero-video-modal');
+              return !!m && !!document.activeElement && m.contains(document.activeElement);
+            })(),
+          }));
+          assert.equal(active.inside, true, 'initial focus is inside the modal');
+          assert.equal(active.cls.includes('hero-video-modal-close'), true,
+            'initial focus is the close button via the shared lifecycle');
+        } finally {
+          await teardown(env);
+        }
+      });
+
+      await t.test('I3. Tab and Shift+Tab stay inside the modal', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page } = env;
+          env.ctl.setMode('pending');
+          await openModal(page);
+          for (let i = 0; i < 4; i++) {
+            await page.keyboard.press('Tab');
+            const inside = await page.evaluate(() => {
+              const m = document.querySelector('.hero-video-modal');
+              return !!m && !!document.activeElement && m.contains(document.activeElement);
+            });
+            assert.equal(inside, true, 'Tab keeps focus inside (step ' + i + ')');
+          }
+          for (let i = 0; i < 4; i++) {
+            await page.keyboard.press('Shift+Tab');
+            const inside = await page.evaluate(() => {
+              const m = document.querySelector('.hero-video-modal');
+              return !!m && !!document.activeElement && m.contains(document.activeElement);
+            });
+            assert.equal(inside, true, 'Shift+Tab keeps focus inside (step ' + i + ')');
+          }
+        } finally {
+          await teardown(env);
+        }
+      });
+
+      await t.test('I4. Escape closes through the shared lifecycle and restores focus', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page } = env;
+          env.ctl.setMode('pending');
+          await openModal(page);
+          await page.keyboard.press('Escape');
+          await page.waitForSelector('.hero-video-modal', { state: 'detached', timeout: 2000 });
+          assert.strictEqual(await page.locator('.hero-video-modal').count(), 0, 'modal removed after Escape');
+          const restored = await page.evaluate(() => {
+            const playBtn = document.querySelector('.growth-stage-card-play');
+            return document.activeElement === playBtn ||
+              (document.activeElement && document.activeElement.closest('.growth-stage-card'));
+          });
+          assert.equal(restored, true, 'focus restored to the invoker card');
+        } finally {
+          await teardown(env);
+        }
+      });
+
+      await t.test('I5. reopen/close cycles do not multiply listeners', async () => {
+        const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
+        const page = await context.newPage();
+        const pageErrors = [];
+        page.on('pageerror', (err) => pageErrors.push(err.message));
+        // Count net document keydown listeners through the shared helper.
+        await page.addInitScript(() => {
+          window.__lovebudKeydownCount = 0;
+          const origAdd = EventTarget.prototype.addEventListener;
+          const origRemove = EventTarget.prototype.removeEventListener;
+          EventTarget.prototype.addEventListener = function (type, fn, opts) {
+            if (type === 'keydown' && this === document) window.__lovebudKeydownCount++;
+            return origAdd.call(this, type, fn, opts);
+          };
+          EventTarget.prototype.removeEventListener = function (type, fn, opts) {
+            if (type === 'keydown' && this === document) window.__lovebudKeydownCount--;
+            return origRemove.call(this, type, fn, opts);
+          };
+        });
+        const ctl = await setupIframeControl(page);
+        await page.goto(baseUrl + '/fixture-home.html');
+        await page.waitForLoadState('domcontentloaded');
+        await page.clock.install();
+        try {
+          ctl.setMode('pending');
+          for (let cycle = 0; cycle < 3; cycle++) {
+            await openModal(page);
+            const openCount = await page.evaluate(() => window.__lovebudKeydownCount);
+            assert.equal(openCount, 1, 'exactly one document keydown listener while open (cycle ' + cycle + ')');
+            await closeModalViaButton(page);
+            const closedCount = await page.evaluate(() => window.__lovebudKeydownCount);
+            assert.equal(closedCount, 0, 'no lingering document keydown listener after close (cycle ' + cycle + ')');
+          }
+          assert.strictEqual(pageErrors.length, 0, `no page errors, got: ${pageErrors.join(', ')}`);
+        } finally {
+          try { await ctl.abortHeld(); } catch (e) { /* ignore */ }
+          await context.close();
+        }
+      });
+
+      await t.test('I6. loading/retry behavior remains intact with the shared lifecycle', async () => {
+        const env = await newModalPage(browser, vp, baseUrl, {});
+        try {
+          const { page, ctl } = env;
+          ctl.setMode('pending');
+          await openModal(page);
+          assert.ok(await page.locator('.hero-video-modal-loading').isVisible(), 'loading overlay visible');
+          await page.clock.fastForward(8000);
+          const cls = await page.locator('.hero-video-modal-loading').getAttribute('class');
+          assert.ok(cls.includes('is-long-wait'), 'long-wait state preserved');
+          await page.clock.fastForward(22000);
+          await page.waitForSelector('.hero-video-modal-error', { timeout: 2000 });
+          assert.ok(await page.locator('.hero-video-modal-retry-btn').isVisible(), 'retry button visible');
+          ctl.setMode('success');
+          await page.locator('.hero-video-modal-retry-btn').dispatchEvent('click');
+          await page.clock.fastForward(100);
+          await page.waitForSelector('.hero-video-modal-ready', { timeout: 2000 });
+          assert.ok(await page.locator('.hero-video-modal-ready').isVisible(), 'retry reaches READY');
+          assert.strictEqual(env.pageErrors.length, 0, `no page errors, got: ${env.pageErrors.join(', ')}`);
         } finally {
           await teardown(env);
         }
