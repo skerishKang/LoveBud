@@ -56,11 +56,17 @@
     border-radius: 99px;
     background: rgba(255,255,255,0.76);
     color: var(--on-surface-variant);
+    font: inherit;
     font-size: 12px;
     font-weight: 700;
+    line-height: inherit;
+    text-align: center;
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid rgba(144, 73, 81, 0.08);
+    margin: 0;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .tag-chip.active {
