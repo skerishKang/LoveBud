@@ -62,17 +62,23 @@ function runCli(args, options = {}) {
 const START_EXPECTED_HASH = sha256File(EXPECTED_SCHEMA);
 const START_CANONICAL_HASH = sha256File(CANONICAL);
 
-test('committed expected-schema remains ADOPTION_REQUIRED empty and hash-stable', () => {
+test('committed expected-schema remains ADOPTION_REQUIRED populated and hash-stable', () => {
   const expected = readJson(EXPECTED_SCHEMA);
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(expected.critical_objects.length, 1);
+  assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
 });
 
-test('committed canonical migrations remain ADOPTION_REQUIRED empty and hash-stable', () => {
+test('committed canonical migrations remain ADOPTION_REQUIRED populated and hash-stable', () => {
   const canonical = readJson(CANONICAL);
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(canonical.migrations, []);
+  assert.equal(canonical.migrations.length, 1);
+  assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
+  assert.equal(
+    canonical.migrations[0].path,
+    'db/migrations/20260802094500_bootstrap-migration-ledger.sql'
+  );
   assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
 });
 
@@ -631,11 +637,204 @@ test('resolveRepoConfinedEvidencePath accepts in-repo regular file', () => {
   assert.equal(core.isPathOutside(resolved.realRoot, resolved.realEvidence), false);
 });
 
+test('future-safe populated template with two critical objects builds PASS', () => {
+  const twoObjectTemplate = {
+    format_version: '1.0',
+    status: 'ADOPTION_REQUIRED',
+    fingerprint_algorithm: 'sha256',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      {
+        name: 'table:public.schema_migration_ledger',
+        fingerprint: 'sha256:961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1',
+      },
+      {
+        name: 'table:public.example_tree',
+        fingerprint: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      },
+    ],
+    adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
+    comparison_scope: ['columns', 'types', 'nullability'],
+  };
+  const evidence = sampleEvidence();
+  const candidate = core.buildExpectedSchemaCandidate(evidence, twoObjectTemplate);
+  assert.equal(candidate.status, 'ADOPTION_REQUIRED');
+  assert.equal(candidate.critical_objects.length, evidence.objects.length);
+  assert.ok(candidate.critical_objects.length >= 2);
+});
+
+test('candidate critical_objects are evidence-only, not copied from template', () => {
+  const templateWithExtraObject = {
+    format_version: '1.0',
+    status: 'ADOPTION_REQUIRED',
+    fingerprint_algorithm: 'sha256',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      {
+        name: 'table:public.template_only_object',
+        fingerprint: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      },
+    ],
+    adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
+    comparison_scope: ['columns', 'types', 'nullability'],
+  };
+  const evidence = sampleEvidence();
+  const candidate = core.buildExpectedSchemaCandidate(evidence, templateWithExtraObject);
+  const evidenceNames = new Set(evidence.objects.map((o) => o.name));
+  const candidateNames = new Set(candidate.critical_objects.map((o) => o.name));
+  assert.equal(candidateNames.has('table:public.template_only_object'), false);
+  assert.deepEqual(candidateNames, evidenceNames);
+});
+
+test('rejection: template with ACTIVE status', () => {
+  const activeTemplate = {
+    format_version: '1.0',
+    status: 'ACTIVE',
+    fingerprint_algorithm: 'sha256',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      {
+        name: 'table:public.schema_migration_ledger',
+        fingerprint: 'sha256:961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1',
+      },
+    ],
+    adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
+    comparison_scope: ['columns', 'types', 'nullability'],
+  };
+  assertFail(
+    () => core.buildExpectedSchemaCandidate(sampleEvidence(), activeTemplate),
+    'EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED'
+  );
+});
+
+test('rejection: template with non-array critical_objects', () => {
+  const badTemplate = {
+    format_version: '1.0',
+    status: 'ADOPTION_REQUIRED',
+    fingerprint_algorithm: 'sha256',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: 'not-an-array',
+    adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
+    comparison_scope: ['columns', 'types', 'nullability'],
+  };
+  assertFail(
+    () => core.buildExpectedSchemaCandidate(sampleEvidence(), badTemplate),
+    'EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED'
+  );
+});
+
+test('rejection: template with malformed object name in critical_objects', () => {
+  const badTemplate = {
+    format_version: '1.0',
+    status: 'ADOPTION_REQUIRED',
+    fingerprint_algorithm: 'sha256',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      {
+        name: 'public.example_tree',
+        fingerprint: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      },
+    ],
+    adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
+    comparison_scope: ['columns', 'types', 'nullability'],
+  };
+  assertFail(
+    () => core.buildExpectedSchemaCandidate(sampleEvidence(), badTemplate),
+    'EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED'
+  );
+});
+
+test('rejection: template with malformed fingerprint in critical_objects', () => {
+  const badTemplate = {
+    format_version: '1.0',
+    status: 'ADOPTION_REQUIRED',
+    fingerprint_algorithm: 'sha256',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      {
+        name: 'table:public.schema_migration_ledger',
+        fingerprint: 'not-a-fingerprint',
+      },
+    ],
+    adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
+    comparison_scope: ['columns', 'types', 'nullability'],
+  };
+  assertFail(
+    () => core.buildExpectedSchemaCandidate(sampleEvidence(), badTemplate),
+    'EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED'
+  );
+});
+
+test('rejection: template with unknown manifest field rejected by validator', () => {
+  const badTemplate = {
+    format_version: '1.0',
+    status: 'ADOPTION_REQUIRED',
+    fingerprint_algorithm: 'sha256',
+    normalizer_version: '2.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      {
+        name: 'table:public.schema_migration_ledger',
+        fingerprint: 'sha256:961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1',
+      },
+    ],
+    adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
+    comparison_scope: ['columns', 'types', 'nullability'],
+  };
+  assertFail(
+    () => core.buildExpectedSchemaCandidate(sampleEvidence(), badTemplate),
+    'EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED'
+  );
+});
+
+test('rejection: template with invalid comparison_scope', () => {
+  const badTemplate = {
+    format_version: '1.0',
+    status: 'ADOPTION_REQUIRED',
+    fingerprint_algorithm: 'sha256',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      {
+        name: 'table:public.schema_migration_ledger',
+        fingerprint: 'sha256:961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1',
+      },
+    ],
+    adoption_rule: 'No live catalog snapshot or historical application record is committed here.',
+    comparison_scope: [],
+  };
+  assertFail(
+    () => core.buildExpectedSchemaCandidate(sampleEvidence(), badTemplate),
+    'EXPECTED_SCHEMA_CANDIDATE_VALIDATION_FAILED'
+  );
+});
+
+test('source negative control: no cardinality hardcode in core', () => {
+  const coreSource = fs.readFileSync(CORE, 'utf8');
+  assert.equal(coreSource.includes('critical_objects.length !== 0'), false);
+  assert.equal(coreSource.includes('critical_objects.length !== 1'), false);
+  assert.equal(coreSource.includes('critical_objects.length === 1'), false);
+});
+
 test('post-suite committed manifests still unchanged', () => {
   assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
   assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
   assert.equal(readJson(EXPECTED_SCHEMA).status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(readJson(EXPECTED_SCHEMA).critical_objects, []);
+  assert.equal(readJson(EXPECTED_SCHEMA).critical_objects.length, 1);
+  assert.equal(
+    readJson(EXPECTED_SCHEMA).critical_objects[0].name,
+    'table:public.schema_migration_ledger'
+  );
   assert.equal(readJson(CANONICAL).status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(readJson(CANONICAL).migrations, []);
+  assert.equal(readJson(CANONICAL).migrations.length, 1);
+  assert.equal(
+    readJson(CANONICAL).migrations[0].id,
+    '20260802094500_bootstrap-migration-ledger'
+  );
 });

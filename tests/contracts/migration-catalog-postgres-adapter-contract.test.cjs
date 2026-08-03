@@ -469,13 +469,15 @@ test('CLI fail-closed uses CATALOG_POSTGRES_ADAPTER without secrets', () => {
   assert.equal(res.stdout.includes('password'), false);
 });
 
-test('manifests remain ADOPTION_REQUIRED empty', () => {
+test('manifests remain ADOPTION_REQUIRED populated', () => {
   const expected = readJson(EXPECTED_SCHEMA);
   const canonical = readJson(CANONICAL);
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(expected.critical_objects, []);
+  assert.equal(expected.critical_objects.length, 1);
+  assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.deepEqual(canonical.migrations, []);
+  assert.equal(canonical.migrations.length, 1);
+  assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
 });
 
 test('classification + fixture markers', () => {

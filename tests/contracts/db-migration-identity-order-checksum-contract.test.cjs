@@ -142,12 +142,13 @@ const SQL_LF = Buffer.from('CREATE TABLE probe (id text);\n', 'utf8');
 
 describe('DB migration identity/order/checksum contract (#3458)', () => {
 
-  describe('1. Committed canonical stream is unchanged (no activation)', () => {
-    it('canonical manifest remains ADOPTION_REQUIRED with empty migrations', () => {
-      const manifest = JSON.parse(fs.readFileSync(CANONICAL_MANIFEST_PATH, 'utf8'));
-      assert.strictEqual(manifest.status, 'ADOPTION_REQUIRED');
-      assert.deepStrictEqual(manifest.migrations, []);
-    });
+   describe('1. Committed canonical stream is unchanged (no activation)', () => {
+     it('canonical manifest remains ADOPTION_REQUIRED with exactly one committed bootstrap migration', () => {
+       const manifest = JSON.parse(fs.readFileSync(CANONICAL_MANIFEST_PATH, 'utf8'));
+       assert.strictEqual(manifest.status, 'ADOPTION_REQUIRED');
+       assert.strictEqual(manifest.migrations.length, 1, 'exactly one committed migration');
+       assert.strictEqual(manifest.migrations[0].id, '20260802094500_bootstrap-migration-ledger', 'committed bootstrap migration ID');
+     });
     it('canonical manifest declares the ID format and sha256 algorithm', () => {
       const manifest = JSON.parse(fs.readFileSync(CANONICAL_MANIFEST_PATH, 'utf8'));
       assert.match(manifest.migration_id_format, /YYYYMMDDHHMMSS_slug/);
