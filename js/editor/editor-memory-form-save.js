@@ -1,4 +1,3 @@
-
 function createEditorMemoryFormSave(deps) {
     const {
         i18n,
@@ -23,9 +22,10 @@ function createEditorMemoryFormSave(deps) {
         focusNodeById,
         getCanonicalRootId,
         editorDebugLog,
-        releaseSha,
-        canonicalReread
+        convergenceObserver
     } = deps;
+
+    let apiCreatePromise = null;
 
     function getConvergenceCore() {
         if (typeof window.LoveBudWriteReadConvergenceCore !== 'object' || window.LoveBudWriteReadConvergenceCore === null) return null;
@@ -38,39 +38,92 @@ function createEditorMemoryFormSave(deps) {
         return window.LoveBudReliabilitySentinelTaxonomy;
     }
 
-    async function monitorCreateConvergence(createdMemoryResult) {
+    // #3852 — release SHA comes from the page-level bounded authority
+    // (pages/editor.html registers window.LoveBudReleaseManifestAuthority).
+    // READY -> 40-char lowercase hex; anything else -> null (monitoring safe skip).
+    function getReleaseSha() {
+        try {
+            const authority = window.LoveBudReleaseManifestAuthority;
+            if (!authority || typeof authority.getCurrent !== 'function') return null;
+            const state = authority.getCurrent();
+            if (!state || state.ok !== true || typeof state.releaseSha !== 'string') return null;
+            return /^[0-9a-f]{40}$/.test(state.releaseSha) ? state.releaseSha : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // #3852 — the canonical reread authority is resolved inside the save runtime
+    // from the existing editor data-loader, so the real caller (editor-memory-form.js)
+    // no longer needs to inject releaseSha/canonicalReread.
+    function resolveCanonicalReread() {
+        try {
+            const loader = window.LoveBudEditorDataLoader;
+            if (!loader || typeof loader.createCanonicalReread !== 'function') return null;
+            return loader.createCanonicalReread({
+                treeId: treeId,
+                apiClient: window.apiClient,
+                normalizeMemory: normalizeMemory
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // #3852 — exactly-once API write. The real API promise is created once and
+    // shared by the UI path and the convergence monitoring path, so the core
+    // observes the actual transport outcome and can never issue a second write.
+    function dispatchApiCreateOnce(payload) {
+        if (apiCreatePromise) return apiCreatePromise;
+        const client = window.apiClient;
+        if (!client || typeof client.createMemory !== 'function') {
+            apiCreatePromise = Promise.reject(new Error('createMemory API not available'));
+            return apiCreatePromise;
+        }
+        apiCreatePromise = client.createMemory(payload).then(function (createdMemory) {
+            return { createdMemory: createdMemory, useApi: true };
+        });
+        return apiCreatePromise;
+    }
+
+    // Fire-and-observe monitoring. The UI save result only waits for the actual
+    // API acknowledgement; the convergence summary, canonical reread, and
+    // release telemetry never block or alter the save result.
+    async function monitorCreateConvergence(createdMemoryResult, apiPromise) {
         const coreFactory = getConvergenceCore();
         const taxonomy = getTaxonomy();
         if (!coreFactory || !taxonomy) return;
-        if (!releaseSha) return;
+        const releaseSha = getReleaseSha();
+        if (!releaseSha) return; // monitoring safe skip
+        const canonicalReread = resolveCanonicalReread();
         if (!canonicalReread || typeof canonicalReread !== 'function') return;
         try {
             const convergence = coreFactory.createConvergenceCore({
-                createMemory: async () => createdMemoryResult,
+                createMemory: function () { return apiPromise; },
                 canonicalReread: canonicalReread,
                 taxonomy: taxonomy,
-                releaseSha: releaseSha
+                releaseSha: releaseSha,
+                observer: typeof convergenceObserver === 'function' ? convergenceObserver : null
             });
             await convergence.converge(createdMemoryResult);
         } catch (e) {
-            editorDebugLog('[editor] Convergence monitoring failed:', e?.message || e);
+            editorDebugLog('[editor] Convergence monitoring unavailable');
         }
     }
 
     async function createMemoryWithFallback(newMemoryData) {
+        apiCreatePromise = null;
+        const apiPromise = dispatchApiCreateOnce(newMemoryData);
         let createdMemory = null;
         let useApi = false;
         try {
-            if (window.apiClient && typeof window.apiClient.createMemory === 'function') {
-                createdMemory = await window.apiClient.createMemory(newMemoryData);
-                useApi = true;
-                setLocalSaveMode(false);
-                editorDebugLog('[editor] API createMemory success');
-            } else {
-                throw new Error('createMemory API not available');
-            }
+            const apiResult = await apiPromise;
+            createdMemory = apiResult.createdMemory;
+            useApi = apiResult.useApi;
+            setLocalSaveMode(false);
+            editorDebugLog('[editor] API createMemory success');
         } catch (e) {
-            console.warn('[editor] API createMemory failed, using local save:', e?.message || e);
+            console.warn('[editor] API createMemory failed, using local save');
             if (e?.message?.includes('401') || e?.message?.includes('403')) {
                 showToast(i18n('no_permission_local'), 'warn');
             } else if (e?.message?.includes('400')) {
@@ -92,7 +145,7 @@ function createEditorMemoryFormSave(deps) {
             };
         }
         const result = { createdMemory, useApi };
-        monitorCreateConvergence(result);
+        monitorCreateConvergence(result, apiPromise);
         return result;
     }
 

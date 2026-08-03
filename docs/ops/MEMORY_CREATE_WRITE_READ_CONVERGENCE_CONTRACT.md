@@ -104,7 +104,9 @@ schedule background work
 
 ## 7. Release SHA authority
 
-The release SHA is supplied as a dependency to the convergence core. It must be a valid 40-character lowercase hex string. The core validates it and includes it in every summary. Missing or invalid release SHA is not mapped to success.
+`pages/editor.html` registers a bounded same-origin page authority (`window.LoveBudReleaseManifestAuthority`) before the form-save runtime. It performs at most one `no-store` same-origin fetch to `/.well-known/release.json` per page, initiated lazily on the first `getCurrent()` read (so page load never issues a network request), accepts only the exact keys `release_sha` (40-char lowercase hex) and `contract_version` (`"1"`), and exposes `getCurrent()` returning a frozen `{ ok: true, releaseSha }` or `{ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' }`. It never persists to storage, never retries, and never schedules timers.
+
+The save runtime resolves the release SHA from that authority. When the manifest is PENDING or UNAVAILABLE the memory save is never blocked or duplicated — monitoring performs a safe skip. The convergence core still requires a valid 40-char lowercase hex release SHA per summary and never maps a missing/invalid SHA to success.
 
 ## 8. Write and reread count guarantees
 
@@ -136,3 +138,40 @@ observer: function(summary) | null (optional)
 ```
 
 The core must not contain fetch, XMLHttpRequest, provider SDK, database client, environment variable, localStorage, sessionStorage, IndexedDB, cookie, filesystem, setInterval, retry loop, alert delivery, or deployment logic.
+
+### 10.1 Real Editor wiring (#3852)
+
+The real caller (`editor-memory-form.js`) does not inject `releaseSha` or `canonicalReread`. The save runtime resolves both internally:
+
+```text
+releaseSha       <- window.LoveBudReleaseManifestAuthority.getCurrent()
+canonicalReread  <- window.LoveBudEditorDataLoader.createCanonicalReread({
+                     treeId, apiClient: window.apiClient, normalizeMemory })
+```
+
+The canonical reread authority is `createCanonicalReread` in `editor-data-loader.js`:
+
+```text
+authority unavailable (no treeId / no apiClient / no getMemoriesByTree)
+  -> fixed sanitized rejection CANONICAL_REREAD_AUTHORITY_UNAVAILABLE
+transport rejection
+  -> fixed sanitized rejection CANONICAL_REREAD_TRANSPORT_FAILED
+malformed response (not an array)
+  -> fixed malformed result { malformed: true }  (core: INSUFFICIENT_EVIDENCE)
+valid array -> { memories: filtered }
+valid empty array [] -> { memories: [] } (authoritative; core: ACKNOWLEDGED_REREAD_MISSING)
+```
+
+### 10.2 Exactly-once shared write promise
+
+The save runtime creates the real `window.apiClient.createMemory` promise once per save and shares the same promise between the UI result path and the convergence monitoring path:
+
+```text
+window.apiClient.createMemory: exactly 1
+second write: 0
+monitoring retry: 0
+```
+
+The UI save result waits only for the actual API acknowledgement. The canonical reread, observer event, summary recording, and release telemetry are fire-and-observe and never block the save. Monitoring catch logs only `[editor] Convergence monitoring unavailable` — never a raw error, stack, identity, or payload.
+
+On API rejection the UI local fallback still runs once (returned `useApi: false`) while the core records `REQUEST_DISPATCHED` / `TRANSPORT_FAILED`. A local-fallback memory is never classified as `SERVER_ACKNOWLEDGED`, `PERSISTED_REREAD_CONFIRMED`, or `ACKNOWLEDGED_REREAD_MISSING`.

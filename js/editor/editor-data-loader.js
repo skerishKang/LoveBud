@@ -255,22 +255,38 @@
         const apiClient = opts.apiClient || null;
         const normalizeMemory = opts.normalizeMemory || createNormalizeMemory();
 
-        return async function canonicalReread(identity) {
-            if (!treeId) return { memories: [] };
-            if (!apiClient || !apiClient.getMemoriesByTree) return { memories: [] };
+        function fixedRereadError(code) {
+            const err = new Error(code);
+            err.code = code;
+            return err;
+        }
 
-            try {
-                const apiMemories = await apiClient.getMemoriesByTree(treeId);
-                if (Array.isArray(apiMemories)) {
-                    const normalizedApi = apiMemories.map(normalizeMemory).filter(Boolean);
-                    const filteredApi = filterMemoriesForTree(normalizedApi, treeId);
-                    return { memories: filteredApi };
-                }
-                return { memories: [] };
-            } catch (e) {
-                console.warn('[editor] Canonical reread failed:', e.message);
-                return { memories: [] };
+        return async function canonicalReread(identity) {
+            // Authority unavailable must be a fixed sanitized rejection, never a
+            // silent empty array (Refs #3852).
+            if (!treeId) throw fixedRereadError('CANONICAL_REREAD_AUTHORITY_UNAVAILABLE');
+            if (!apiClient || typeof apiClient.getMemoriesByTree !== 'function') {
+                throw fixedRereadError('CANONICAL_REREAD_AUTHORITY_UNAVAILABLE');
             }
+
+            let apiMemories;
+            try {
+                apiMemories = await apiClient.getMemoriesByTree(treeId);
+            } catch (e) {
+                // Transport rejection becomes a fixed sanitized rejection; the raw
+                // provider error is never surfaced.
+                throw fixedRereadError('CANONICAL_REREAD_TRANSPORT_FAILED');
+            }
+
+            if (!Array.isArray(apiMemories)) {
+                // Malformed response maps to INSUFFICIENT_EVIDENCE in the core via a
+                // fixed malformed result (never an authoritative empty array).
+                return Object.freeze({ malformed: true });
+            }
+
+            const normalizedApi = apiMemories.map(normalizeMemory).filter(Boolean);
+            const filteredApi = filterMemoriesForTree(normalizedApi, treeId);
+            return { memories: filteredApi };
         };
     }
 

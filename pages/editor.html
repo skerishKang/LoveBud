@@ -200,6 +200,83 @@
     <script src="../js/editor/editor-memory-form-preview.js?v=20260510-1003"></script>
     <script src="../js/editor/editor-memory-form-time.js?v=20260510-1004"></script>
     <script src="../js/editor/editor-memory-form-payload.js?v=20260510-1004"></script>
+    <script>
+      // #3852 — bounded same-origin release manifest authority. Registered before
+      // the memory form-save runtime. At most one no-store same-origin fetch per
+      // page, initiated lazily on the first getCurrent() read so page load never
+      // issues a network request (environments without the manifest never
+      // surface a 404 console error). Accepts only the exact keys release_sha
+      // (40-char lowercase hex) and contract_version ("1"). Never persists to
+      // storage, never retries, never schedules timers, and never emits dynamic
+      // console output.
+      window.LoveBudReleaseManifestAuthority = (function () {
+        var state = 'PENDING';
+        var releaseSha = null;
+        var readStarted = false;
+
+        function isValidReleaseSha(value) {
+          return typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
+        }
+
+        function applyManifest(data) {
+          if (!data || typeof data !== 'object' || data === null) {
+            state = 'UNAVAILABLE';
+            return;
+          }
+          if (data.contract_version !== '1') {
+            state = 'UNAVAILABLE';
+            return;
+          }
+          if (!isValidReleaseSha(data.release_sha)) {
+            state = 'UNAVAILABLE';
+            return;
+          }
+          releaseSha = data.release_sha;
+          state = 'READY';
+        }
+
+        function readBoundedManifest() {
+          if (readStarted) return;
+          readStarted = true;
+          try {
+            if (typeof window.fetch !== 'function') {
+              state = 'UNAVAILABLE';
+              return;
+            }
+            window
+              .fetch('/.well-known/release.json', {
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' }
+              })
+              .then(function (response) {
+                if (!response || typeof response.json !== 'function') return;
+                return response.json();
+              })
+              .then(function (data) {
+                applyManifest(data);
+              })
+              .catch(function () {
+                state = 'UNAVAILABLE';
+              });
+          } catch (e) {
+            state = 'UNAVAILABLE';
+          }
+        }
+
+        return Object.freeze({
+          getCurrent: function () {
+            if (!readStarted && state === 'PENDING') {
+              readBoundedManifest();
+            }
+            if (state === 'READY' && releaseSha !== null) {
+              return Object.freeze({ ok: true, releaseSha: releaseSha });
+            }
+            return Object.freeze({ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' });
+          }
+        });
+      })();
+    </script>
     <script src="../js/observability/reliability-write-read-convergence-core.js?v=20260803-3852"></script>
     <script src="../js/editor/editor-memory-form-save.js?v=20260701-1"></script>
     <script src="../js/editor/editor-memory-form.js?v=20260713-3483-1"></script>

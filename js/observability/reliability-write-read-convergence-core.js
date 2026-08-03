@@ -47,62 +47,91 @@
     return Object.prototype.hasOwnProperty.call(object, key);
   }
 
+  // Plain own-property record boundary (#3852). We never use
+  // Object.prototype.toString.call(value) because it can invoke a
+  // Symbol.toStringTag getter or a Proxy get trap. Instead we use a bounded
+  // getPrototypeOf probe (the prototype chain root is the terminal prototype,
+  // i.e. an Object.prototype-like with prototype null, or the object has a
+  // null prototype). This is realm-agnostic: objects created in other realms
+  // (VM sandboxes, API responses) are still recognized as plain records while
+  // class instances / Date / Map / Set / arrays / functions are rejected.
+  // Callers wrap the probe so a throwing getPrototypeOf Proxy is mapped to a
+  // fixed PROXY_OR_ACCESSOR_INPUT code (never a raw leakage).
   function isPlainRecord(value) {
     if (value === null || typeof value !== 'object') return false;
     if (Array.isArray(value)) return false;
-    return Object.prototype.toString.call(value) === '[object Object]';
+    var proto = Object.getPrototypeOf(value);
+    if (proto === null) return true;
+    var rootProto = Object.getPrototypeOf(proto);
+    return rootProto === null;
   }
 
   function isCallable(value) {
     return typeof value === 'function';
   }
 
+  function proxyOrAccessorInput() {
+    return new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+  }
+
   function readOwnEnumerableDataProperty(object, key) {
-    if (!isPlainRecord(object)) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+    var plain;
+    try {
+      plain = isPlainRecord(object);
+    } catch (e) {
+      throw proxyOrAccessorInput();
+    }
+    if (!plain) {
+      throw proxyOrAccessorInput();
     }
     var descriptor;
     try {
       descriptor = Object.getOwnPropertyDescriptor(object, key);
     } catch (e) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     if (!descriptor) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     if (descriptor.enumerable !== true) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     if ('get' in descriptor || 'set' in descriptor) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     if (!('value' in descriptor)) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     return descriptor.value;
   }
 
   function readOptionalOwnEnumerableDataProperty(object, key) {
-    if (!isPlainRecord(object)) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+    var plain;
+    try {
+      plain = isPlainRecord(object);
+    } catch (e) {
+      throw proxyOrAccessorInput();
+    }
+    if (!plain) {
+      throw proxyOrAccessorInput();
     }
     var descriptor;
     try {
       descriptor = Object.getOwnPropertyDescriptor(object, key);
     } catch (e) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     if (!descriptor) {
       return undefined;
     }
     if (descriptor.enumerable !== true) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     if ('get' in descriptor || 'set' in descriptor) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     if (!('value' in descriptor)) {
-      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+      throw proxyOrAccessorInput();
     }
     return descriptor.value;
   }
@@ -262,24 +291,6 @@
     }
   }
 
-  function validateOutcomeCode(taxonomy, outcomeCode) {
-    if (!taxonomy || !hasOwn(taxonomy, 'OUTCOME_CODES')) return false;
-    var set = taxonomy.OUTCOME_CODES;
-    return hasOwn(set, outcomeCode) && Boolean(set[outcomeCode]);
-  }
-
-  function validateStage(taxonomy, stage) {
-    if (!taxonomy || !hasOwn(taxonomy, 'CONVERGENCE_STAGES')) return false;
-    var set = taxonomy.CONVERGENCE_STAGES;
-    return hasOwn(set, stage) && Boolean(set[stage]);
-  }
-
-  function validateOperationClass(taxonomy, opClass) {
-    if (!taxonomy || !hasOwn(taxonomy, 'OPERATION_CLASSES')) return false;
-    var set = taxonomy.OPERATION_CLASSES;
-    return hasOwn(set, opClass) && Boolean(set[opClass]);
-  }
-
   function monotonicToken() {
     var counter = 0;
     return function () {
@@ -308,6 +319,92 @@
       if (observerValue !== undefined && observerValue !== null) {
         observer = observerValue;
       }
+    } catch (e) {
+      throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+    }
+
+    // -------------------------------------------------------------------------
+    // #3852 — One-time descriptor-safe taxonomy capture. Every enum table and
+    // every enum value used below is read exactly once through own-enumerable
+    // data descriptors at core creation. The execution flow never performs a
+    // repeated direct read (taxonomy.OPERATION_CLASSES, ...) so Proxy get traps
+    // and accessor getters can never be invoked.
+    // -------------------------------------------------------------------------
+    var taxOpClasses;
+    var taxStages;
+    var taxOutcomes;
+    var taxLatency;
+    var taxCount;
+    var taxDeviation;
+    var taxSeverity;
+    var taxActions;
+    var taxCompleteness;
+    var OP_MEMORY_CREATE;
+    var STAGE_REQUEST_DISPATCHED;
+    var STAGE_SERVER_ACKNOWLEDGED;
+    var STAGE_PERSISTED_REREAD_CONFIRMED;
+    var OUTCOME_ACK_MISSING;
+    var OUTCOME_TRANSPORT_FAILED;
+    var OUTCOME_MONITORING_FAILED;
+    var OUTCOME_INSUFFICIENT_EVIDENCE;
+    var OUTCOME_CONFIRMED;
+    var OUTCOME_ACK_REREAD_MISSING;
+    var LATENCY_LT_250_MS;
+    var COUNT_POSITIVE;
+    var DEV_NONE;
+    var DEV_UNKNOWN;
+    var SEV_INFO;
+    var SEV_WARNING;
+    var SEV_BLOCKING;
+    var ACT_NO_ACTION;
+    var ACT_INVESTIGATE;
+    var EV_COMPLETE;
+    var EV_MISSING;
+    var EV_INVALID;
+    var EV_PARTIAL;
+    try {
+      taxOpClasses = readOwnEnumerableDataProperty(taxonomy, 'OPERATION_CLASSES');
+      taxStages = readOwnEnumerableDataProperty(taxonomy, 'CONVERGENCE_STAGES');
+      taxOutcomes = readOwnEnumerableDataProperty(taxonomy, 'OUTCOME_CODES');
+      taxLatency = readOwnEnumerableDataProperty(taxonomy, 'LATENCY_BUCKETS');
+      taxCount = readOwnEnumerableDataProperty(taxonomy, 'COUNT_BUCKETS');
+      taxDeviation = readOwnEnumerableDataProperty(taxonomy, 'BASELINE_DEVIATION_CLASSES');
+      taxSeverity = readOwnEnumerableDataProperty(taxonomy, 'SEVERITIES');
+      taxActions = readOwnEnumerableDataProperty(taxonomy, 'OWNER_ACTIONS');
+      taxCompleteness = readOwnEnumerableDataProperty(taxonomy, 'EVIDENCE_COMPLETENESS');
+
+      OP_MEMORY_CREATE = readOwnEnumerableDataProperty(taxOpClasses, 'MEMORY_CREATE_CONVERGENCE');
+      STAGE_REQUEST_DISPATCHED = readOwnEnumerableDataProperty(taxStages, 'REQUEST_DISPATCHED');
+      STAGE_SERVER_ACKNOWLEDGED = readOwnEnumerableDataProperty(taxStages, 'SERVER_ACKNOWLEDGED');
+      STAGE_PERSISTED_REREAD_CONFIRMED = readOwnEnumerableDataProperty(
+        taxStages,
+        'PERSISTED_REREAD_CONFIRMED'
+      );
+      OUTCOME_ACK_MISSING = readOwnEnumerableDataProperty(taxOutcomes, 'ACKNOWLEDGEMENT_MISSING');
+      OUTCOME_TRANSPORT_FAILED = readOwnEnumerableDataProperty(taxOutcomes, 'TRANSPORT_FAILED');
+      OUTCOME_MONITORING_FAILED = readOwnEnumerableDataProperty(taxOutcomes, 'MONITORING_FAILED');
+      OUTCOME_INSUFFICIENT_EVIDENCE = readOwnEnumerableDataProperty(
+        taxOutcomes,
+        'INSUFFICIENT_EVIDENCE'
+      );
+      OUTCOME_CONFIRMED = readOwnEnumerableDataProperty(taxOutcomes, 'CONFIRMED');
+      OUTCOME_ACK_REREAD_MISSING = readOwnEnumerableDataProperty(
+        taxOutcomes,
+        'ACKNOWLEDGED_REREAD_MISSING'
+      );
+      LATENCY_LT_250_MS = readOwnEnumerableDataProperty(taxLatency, 'LT_250_MS');
+      COUNT_POSITIVE = readOwnEnumerableDataProperty(taxCount, 'POSITIVE');
+      DEV_NONE = readOwnEnumerableDataProperty(taxDeviation, 'NONE');
+      DEV_UNKNOWN = readOwnEnumerableDataProperty(taxDeviation, 'UNKNOWN');
+      SEV_INFO = readOwnEnumerableDataProperty(taxSeverity, 'INFO');
+      SEV_WARNING = readOwnEnumerableDataProperty(taxSeverity, 'WARNING');
+      SEV_BLOCKING = readOwnEnumerableDataProperty(taxSeverity, 'BLOCKING');
+      ACT_NO_ACTION = readOwnEnumerableDataProperty(taxActions, 'NO_ACTION');
+      ACT_INVESTIGATE = readOwnEnumerableDataProperty(taxActions, 'INVESTIGATE');
+      EV_COMPLETE = readOwnEnumerableDataProperty(taxCompleteness, 'COMPLETE');
+      EV_MISSING = readOwnEnumerableDataProperty(taxCompleteness, 'MISSING');
+      EV_INVALID = readOwnEnumerableDataProperty(taxCompleteness, 'INVALID');
+      EV_PARTIAL = readOwnEnumerableDataProperty(taxCompleteness, 'PARTIAL');
     } catch (e) {
       throw new TypeError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
     }
@@ -342,24 +439,30 @@
       }
     }
 
+    // Returns true only when the summary is stored (the latest token). A stale
+    // earlier completion is rejected here and must never reach the observer.
     function recordSummary(token, summary) {
       if (token < latestToken) {
-        return;
+        return false;
       }
       latestToken = token;
       latestSummary = summary;
+      return true;
     }
 
-    function notifyProgress(stage) {
+    function notifyProgress(token, stage) {
+      if (token < latestToken) {
+        return;
+      }
       notifyObserver(
         sanitizeSummary({
-          operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
+          operation_class: OP_MEMORY_CREATE,
           stage: stage,
           release_sha: releaseSha,
-          baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-          severity: taxonomy.SEVERITIES.INFO,
-          owner_action: taxonomy.OWNER_ACTIONS.NO_ACTION,
-          evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.PARTIAL
+          baseline_deviation: DEV_UNKNOWN,
+          severity: SEV_INFO,
+          owner_action: ACT_NO_ACTION,
+          evidence_completeness: EV_PARTIAL
         })
       );
     }
@@ -367,19 +470,27 @@
     async function converge(payload) {
       var token = nextToken();
 
-      if (!payload || !isPlainRecord(payload)) {
+      var payloadPlain = false;
+      try {
+        payloadPlain = payload !== null && payload !== undefined && isPlainRecord(payload);
+      } catch (e) {
+        payloadPlain = false;
+      }
+
+      if (!payloadPlain) {
         var invalidSummary = sanitizeSummary({
-          operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-          stage: taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED,
-          outcome_code: taxonomy.OUTCOME_CODES.ACKNOWLEDGEMENT_MISSING,
+          operation_class: OP_MEMORY_CREATE,
+          stage: STAGE_REQUEST_DISPATCHED,
+          outcome_code: OUTCOME_ACK_MISSING,
           release_sha: releaseSha,
-          baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-          severity: taxonomy.SEVERITIES.BLOCKING,
-          owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-          evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.INVALID
+          baseline_deviation: DEV_UNKNOWN,
+          severity: SEV_BLOCKING,
+          owner_action: ACT_INVESTIGATE,
+          evidence_completeness: EV_INVALID
         });
-        recordSummary(token, invalidSummary);
-        notifyObserver(invalidSummary);
+        if (recordSummary(token, invalidSummary)) {
+          notifyObserver(invalidSummary);
+        }
         return invalidSummary;
       }
 
@@ -388,22 +499,23 @@
       var createdMemory = null;
 
       try {
-        notifyProgress(taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED);
+        notifyProgress(token, STAGE_REQUEST_DISPATCHED);
         var createResult = await createMemory(payload);
 
         if (!createResult || typeof createResult !== 'object') {
           var ackMissing = sanitizeSummary({
-            operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-            stage: taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED,
-            outcome_code: taxonomy.OUTCOME_CODES.ACKNOWLEDGEMENT_MISSING,
+            operation_class: OP_MEMORY_CREATE,
+            stage: STAGE_REQUEST_DISPATCHED,
+            outcome_code: OUTCOME_ACK_MISSING,
             release_sha: releaseSha,
-            baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-            severity: taxonomy.SEVERITIES.BLOCKING,
-            owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-            evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.MISSING
+            baseline_deviation: DEV_UNKNOWN,
+            severity: SEV_BLOCKING,
+            owner_action: ACT_INVESTIGATE,
+            evidence_completeness: EV_MISSING
           });
-          recordSummary(token, ackMissing);
-          notifyObserver(ackMissing);
+          if (recordSummary(token, ackMissing)) {
+            notifyObserver(ackMissing);
+          }
           return ackMissing;
         }
 
@@ -423,95 +535,118 @@
           rawMemory = null;
         }
         if (!rawMemory || typeof rawMemory !== 'object') {
-          var ackMissing = sanitizeSummary({
-            operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-            stage: taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED,
-            outcome_code: taxonomy.OUTCOME_CODES.ACKNOWLEDGEMENT_MISSING,
+          var ackMissingMemory = sanitizeSummary({
+            operation_class: OP_MEMORY_CREATE,
+            stage: STAGE_REQUEST_DISPATCHED,
+            outcome_code: OUTCOME_ACK_MISSING,
             release_sha: releaseSha,
-            baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-            severity: taxonomy.SEVERITIES.BLOCKING,
-            owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-            evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.MISSING
+            baseline_deviation: DEV_UNKNOWN,
+            severity: SEV_BLOCKING,
+            owner_action: ACT_INVESTIGATE,
+            evidence_completeness: EV_MISSING
           });
-          recordSummary(token, ackMissing);
-          notifyObserver(ackMissing);
-          return ackMissing;
+          if (recordSummary(token, ackMissingMemory)) {
+            notifyObserver(ackMissingMemory);
+          }
+          return ackMissingMemory;
         }
 
-        acknowledgedIdentity = readOwnEnumerableDataProperty(rawMemory, 'id');
-        if (acknowledgedIdentity === undefined || acknowledgedIdentity === null) {
+        // #3852 — the acknowledgement identity is a non-empty string only.
+        // String()/toString()/valueOf() are never called on the identity, so no
+        // user code can run. Accessor identity is rejected via the descriptor.
+        try {
+          acknowledgedIdentity = readOwnEnumerableDataProperty(rawMemory, 'id');
+        } catch (e) {
+          acknowledgedIdentity = null;
+        }
+        if (typeof acknowledgedIdentity !== 'string' || acknowledgedIdentity.length === 0) {
           var ackMissingId = sanitizeSummary({
-            operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-            stage: taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED,
-            outcome_code: taxonomy.OUTCOME_CODES.ACKNOWLEDGEMENT_MISSING,
+            operation_class: OP_MEMORY_CREATE,
+            stage: STAGE_REQUEST_DISPATCHED,
+            outcome_code: OUTCOME_ACK_MISSING,
             release_sha: releaseSha,
-            baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-            severity: taxonomy.SEVERITIES.BLOCKING,
-            owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-            evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.MISSING
+            baseline_deviation: DEV_UNKNOWN,
+            severity: SEV_BLOCKING,
+            owner_action: ACT_INVESTIGATE,
+            evidence_completeness: EV_MISSING
           });
-          recordSummary(token, ackMissingId);
-          notifyObserver(ackMissingId);
+          if (recordSummary(token, ackMissingId)) {
+            notifyObserver(ackMissingId);
+          }
           return ackMissingId;
         }
 
-        notifyProgress(taxonomy.CONVERGENCE_STAGES.SERVER_ACKNOWLEDGED);
+        notifyProgress(token, STAGE_SERVER_ACKNOWLEDGED);
 
         var rereadResult;
         try {
           rereadResult = await canonicalReread(acknowledgedIdentity);
         } catch (e) {
           var monitoringFailed = sanitizeSummary({
-            operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-            stage: taxonomy.CONVERGENCE_STAGES.SERVER_ACKNOWLEDGED,
-            outcome_code: taxonomy.OUTCOME_CODES.MONITORING_FAILED,
+            operation_class: OP_MEMORY_CREATE,
+            stage: STAGE_SERVER_ACKNOWLEDGED,
+            outcome_code: OUTCOME_MONITORING_FAILED,
             release_sha: releaseSha,
-            baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-            severity: taxonomy.SEVERITIES.WARNING,
-            owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-            evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.MISSING
+            baseline_deviation: DEV_UNKNOWN,
+            severity: SEV_WARNING,
+            owner_action: ACT_INVESTIGATE,
+            evidence_completeness: EV_MISSING
           });
-          recordSummary(token, monitoringFailed);
-          notifyObserver(monitoringFailed);
+          if (recordSummary(token, monitoringFailed)) {
+            notifyObserver(monitoringFailed);
+          }
           return monitoringFailed;
         }
 
         if (!rereadResult || typeof rereadResult !== 'object') {
           var rereadMalformed = sanitizeSummary({
-            operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-            stage: taxonomy.CONVERGENCE_STAGES.SERVER_ACKNOWLEDGED,
-            outcome_code: taxonomy.OUTCOME_CODES.INSUFFICIENT_EVIDENCE,
+            operation_class: OP_MEMORY_CREATE,
+            stage: STAGE_SERVER_ACKNOWLEDGED,
+            outcome_code: OUTCOME_INSUFFICIENT_EVIDENCE,
             release_sha: releaseSha,
-            baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-            severity: taxonomy.SEVERITIES.WARNING,
-            owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-            evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.INVALID
+            baseline_deviation: DEV_UNKNOWN,
+            severity: SEV_WARNING,
+            owner_action: ACT_INVESTIGATE,
+            evidence_completeness: EV_INVALID
           });
-          recordSummary(token, rereadMalformed);
-          notifyObserver(rereadMalformed);
+          if (recordSummary(token, rereadMalformed)) {
+            notifyObserver(rereadMalformed);
+          }
           return rereadMalformed;
         }
 
+        // #3852 — the reread memories array is read through a descriptor-safe
+        // reader; direct `rereadResult.memories` access is forbidden because it
+        // could invoke a getter or Proxy get trap.
         var rereadMemories = null;
-        if (hasOwn(rereadResult, 'memories') && Array.isArray(rereadResult.memories)) {
-          rereadMemories = rereadResult.memories;
-        } else if (Array.isArray(rereadResult)) {
+        if (Array.isArray(rereadResult)) {
           rereadMemories = rereadResult;
+        } else {
+          var memoriesValue;
+          try {
+            memoriesValue = readOwnEnumerableDataProperty(rereadResult, 'memories');
+          } catch (e) {
+            memoriesValue = null;
+          }
+          if (Array.isArray(memoriesValue)) {
+            rereadMemories = memoriesValue;
+          }
         }
 
         if (!rereadMemories) {
           var rereadMissing = sanitizeSummary({
-            operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-            stage: taxonomy.CONVERGENCE_STAGES.SERVER_ACKNOWLEDGED,
-            outcome_code: taxonomy.OUTCOME_CODES.INSUFFICIENT_EVIDENCE,
+            operation_class: OP_MEMORY_CREATE,
+            stage: STAGE_SERVER_ACKNOWLEDGED,
+            outcome_code: OUTCOME_INSUFFICIENT_EVIDENCE,
             release_sha: releaseSha,
-            baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-            severity: taxonomy.SEVERITIES.WARNING,
-            owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-            evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.INVALID
+            baseline_deviation: DEV_UNKNOWN,
+            severity: SEV_WARNING,
+            owner_action: ACT_INVESTIGATE,
+            evidence_completeness: EV_INVALID
           });
-          recordSummary(token, rereadMissing);
-          notifyObserver(rereadMissing);
+          if (recordSummary(token, rereadMissing)) {
+            notifyObserver(rereadMissing);
+          }
           return rereadMissing;
         }
 
@@ -519,64 +654,71 @@
         for (var i = 0; i < rereadMemories.length; i++) {
           var mem = rereadMemories[i];
           if (!mem || typeof mem !== 'object') continue;
+          var memId;
           try {
-            var memId = readOwnEnumerableDataProperty(mem, 'id');
-            if (String(memId) === String(acknowledgedIdentity)) {
-              identityFound = true;
-              break;
-            }
+            memId = readOwnEnumerableDataProperty(mem, 'id');
           } catch (e) {
             continue;
+          }
+          if (typeof memId === 'string' && memId === acknowledgedIdentity) {
+            identityFound = true;
+            break;
           }
         }
 
         if (identityFound) {
           var confirmed = sanitizeSummary({
-            operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-            stage: taxonomy.CONVERGENCE_STAGES.PERSISTED_REREAD_CONFIRMED,
-            outcome_code: taxonomy.OUTCOME_CODES.CONFIRMED,
+            operation_class: OP_MEMORY_CREATE,
+            stage: STAGE_PERSISTED_REREAD_CONFIRMED,
+            outcome_code: OUTCOME_CONFIRMED,
             release_sha: releaseSha,
-            latency_bucket: taxonomy.LATENCY_BUCKETS.LT_250_MS,
-            count_bucket: taxonomy.COUNT_BUCKETS.POSITIVE,
-            baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.NONE,
-            severity: taxonomy.SEVERITIES.INFO,
-            owner_action: taxonomy.OWNER_ACTIONS.NO_ACTION,
-            evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.COMPLETE
+            latency_bucket: LATENCY_LT_250_MS,
+            count_bucket: COUNT_POSITIVE,
+            baseline_deviation: DEV_NONE,
+            severity: SEV_INFO,
+            owner_action: ACT_NO_ACTION,
+            evidence_completeness: EV_COMPLETE
           });
-          recordSummary(token, confirmed);
-          notifyObserver(confirmed);
+          if (recordSummary(token, confirmed)) {
+            notifyObserver(confirmed);
+          }
           return confirmed;
         }
 
         var ackRereadMissing = sanitizeSummary({
-          operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-          stage: taxonomy.CONVERGENCE_STAGES.SERVER_ACKNOWLEDGED,
-          outcome_code: taxonomy.OUTCOME_CODES.ACKNOWLEDGED_REREAD_MISSING,
+          operation_class: OP_MEMORY_CREATE,
+          stage: STAGE_SERVER_ACKNOWLEDGED,
+          outcome_code: OUTCOME_ACK_REREAD_MISSING,
           release_sha: releaseSha,
-          baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-          severity: taxonomy.SEVERITIES.WARNING,
-          owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-          evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.COMPLETE
+          baseline_deviation: DEV_UNKNOWN,
+          severity: SEV_WARNING,
+          owner_action: ACT_INVESTIGATE,
+          evidence_completeness: EV_COMPLETE
         });
-        recordSummary(token, ackRereadMissing);
-        notifyObserver(ackRereadMissing);
+        if (recordSummary(token, ackRereadMissing)) {
+          notifyObserver(ackRereadMissing);
+        }
         return ackRereadMissing;
       } catch (e) {
-        var isAccessorError = e.message === ERROR_CODES.PROXY_OR_ACCESSOR_INPUT;
+        var isAccessorError =
+          typeof e === 'object' &&
+          e !== null &&
+          e.message === ERROR_CODES.PROXY_OR_ACCESSOR_INPUT;
         var transportFailedSummary = sanitizeSummary({
-          operation_class: taxonomy.OPERATION_CLASSES.MEMORY_CREATE_CONVERGENCE,
-          stage: taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED,
+          operation_class: OP_MEMORY_CREATE,
+          stage: STAGE_REQUEST_DISPATCHED,
           outcome_code: isAccessorError
-            ? taxonomy.OUTCOME_CODES.ACKNOWLEDGEMENT_MISSING
-            : taxonomy.OUTCOME_CODES.TRANSPORT_FAILED,
+            ? OUTCOME_ACK_MISSING
+            : OUTCOME_TRANSPORT_FAILED,
           release_sha: releaseSha,
-          baseline_deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
-          severity: taxonomy.SEVERITIES.BLOCKING,
-          owner_action: taxonomy.OWNER_ACTIONS.INVESTIGATE,
-          evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.MISSING
+          baseline_deviation: DEV_UNKNOWN,
+          severity: SEV_BLOCKING,
+          owner_action: ACT_INVESTIGATE,
+          evidence_completeness: EV_MISSING
         });
-        recordSummary(token, transportFailedSummary);
-        notifyObserver(transportFailedSummary);
+        if (recordSummary(token, transportFailedSummary)) {
+          notifyObserver(transportFailedSummary);
+        }
         return transportFailedSummary;
       }
     }
