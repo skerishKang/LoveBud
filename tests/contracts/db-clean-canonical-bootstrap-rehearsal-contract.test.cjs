@@ -58,6 +58,33 @@ const EXPECTED_ELEVEN = [
   'tests/test-layer-classification.json',
 ];
 
+const EXPECTED_FINAL_TWENTY_FOUR = [
+  '.github/workflows/ci.yml',
+  'db/migration-provenance/canonical-migrations.json',
+  'db/migration-provenance/expected-schema-manifest.json',
+  'db/migrations/20260802094500_bootstrap-migration-ledger.sql',
+  'docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md',
+  'docs/architecture/db-clean-canonical-bootstrap-rehearsal-contract.md',
+  'docs/architecture/db-schema-change-inventory.json',
+  'package.json',
+  'scripts/expected-schema-candidate-core.cjs',
+  'scripts/migration-clean-bootstrap-orchestrator-core.cjs',
+  'scripts/report-ci-test-groups.cjs',
+  'tests/contracts/adoption-attestation-contract.test.cjs',
+  'tests/contracts/adoption-baseline-collection-plan-contract.test.cjs',
+  'tests/contracts/db-clean-canonical-bootstrap-rehearsal-contract.test.cjs',
+  'tests/contracts/db-migration-canonical-manifest-adapter-contract.test.cjs',
+  'tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs',
+  'tests/contracts/db-migration-identity-order-checksum-contract.test.cjs',
+  'tests/contracts/expected-schema-candidate-contract.test.cjs',
+  'tests/contracts/migration-catalog-fingerprint-contract.test.cjs',
+  'tests/contracts/migration-catalog-postgres-adapter-contract.test.cjs',
+  'tests/contracts/migration-provenance-gate-contract.test.cjs',
+  'tests/db-engine/clean-canonical-bootstrap-postgres.test.cjs',
+  'tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs',
+  'tests/test-layer-classification.json',
+];
+
 function read(rel) {
   return fs.readFileSync(path.join(ROOT, rel), 'utf8');
 }
@@ -106,6 +133,40 @@ test('original primary boundary of eleven files exists', () => {
       !read(ORCHESTRATOR_PATH).includes('release.json'),
     'orchestrator executable authority never reads or writes the release manifest',
   );
+});
+
+// ── 1b. Final authorized 24-path vocabulary ─────────────────────────────────
+
+test('final cumulative scope is the exact authorized 24 repository paths', () => {
+  assert.equal(EXPECTED_FINAL_TWENTY_FOUR.length, 24, 'exactly 24 authorized cumulative paths');
+  assert.deepEqual(
+    EXPECTED_FINAL_TWENTY_FOUR,
+    EXPECTED_FINAL_TWENTY_FOUR.slice().sort(),
+    'final 24 list is sorted',
+  );
+  assert.equal(new Set(EXPECTED_FINAL_TWENTY_FOUR).size, 24, 'no duplicate paths in final 24');
+  for (const rel of EXPECTED_FINAL_TWENTY_FOUR) {
+    assert.ok(fs.existsSync(path.join(ROOT, rel)), 'authorized path exists in repository: ' + rel);
+  }
+  for (const rel of EXPECTED_ELEVEN) {
+    assert.ok(
+      EXPECTED_FINAL_TWENTY_FOUR.includes(rel),
+      'original primary path is inside the final 24: ' + rel,
+    );
+  }
+  assert.ok(
+    EXPECTED_FINAL_TWENTY_FOUR.includes('tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs'),
+    'authorized DB-engine reconciliation path is included',
+  );
+  assert.ok(
+    !EXPECTED_FINAL_TWENTY_FOUR.includes('.well-known/release.json') &&
+      !EXPECTED_FINAL_TWENTY_FOUR.includes('scripts/build-static.js'),
+    'release manifest builder and artifact are outside the authorized 24',
+  );
+  const outOfScope = EXPECTED_FINAL_TWENTY_FOUR.filter(function (rel) {
+    return /home|scout|browser|playwright|viewport/i.test(rel);
+  });
+  assert.deepEqual(outOfScope, [], 'no Home/Scout/browser files in the authorized 24');
 });
 
 // ── 2. Package script ────────────────────────────────────────────────────────
