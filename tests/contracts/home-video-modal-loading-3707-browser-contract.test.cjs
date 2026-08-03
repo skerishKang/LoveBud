@@ -1005,6 +1005,11 @@ test('J. real Home structural baseline (real-page)', async (t) => {
               hasHero: !!hero,
               realIndex: window.location.pathname.replace(/\/+$/, '').endsWith('/index.html'),
               stageState: stage ? stage.getAttribute('data-stage-state') : null,
+              activeTitleI18nKeys: activeTitle
+                ? Array.from(activeTitle.querySelectorAll('[data-i18n]')).map((el) => el.getAttribute('data-i18n'))
+                : [],
+              activeTitleText: activeTitle ? (activeTitle.textContent || '').trim() : '',
+              activeDescText: activeDesc ? (activeDesc.textContent || '').trim() : '',
             },
             hero: rect(hero),
             title: rect(activeTitle),
@@ -1022,6 +1027,7 @@ test('J. real Home structural baseline (real-page)', async (t) => {
             htmlOverflow: doc.scrollWidth - doc.clientWidth,
             bodyOverflow: document.body.scrollWidth - document.body.clientWidth,
             docWidth: docW,
+            viewportWidth: window.innerWidth,
             primary: {
               href: primary ? primary.getAttribute('href') : null,
               visible: rect(primary) ? rect(primary).visible : false,
@@ -1053,6 +1059,13 @@ test('J. real Home structural baseline (real-page)', async (t) => {
           assert.equal(snap.identity.lang, 'ko', 'real Home document lang');
           assert.equal(snap.identity.hasHero, true, 'real Home hero section present');
           assert.equal(snap.identity.stageState, 'completed', 'growth cycle reached completed tree');
+          assert.deepEqual(snap.identity.activeTitleI18nKeys,
+            ['home.v3.title.soft', 'home.v3.title.warm', 'home.v3.title.accent'],
+            'active Home title carries the real-page i18n key set');
+          assert.ok(snap.identity.activeTitleText.length > 0, 'active Home title text non-empty');
+          assert.notEqual(snap.identity.activeTitleText, 'Test', 'real Home title text is not the fixture title text');
+          assert.notEqual(snap.identity.activeDescText, 'Test description', 'real Home description is not the fixture description');
+          assert.notEqual(snap.identity.title, 'Home Modal Test Fixture', 'real Home document title is not the fixture document title');
         });
 
         await t.test('J2. hero and copy geometry are visible and positive', () => {
@@ -1102,28 +1115,43 @@ test('J. real Home structural baseline (real-page)', async (t) => {
           assert.ok(snap.copyCollageOverlap <= 1, `copy/collage material overlap ~0, got ${snap.copyCollageOverlap}`);
         });
 
+        await t.test('J7. hero/title/actions/collage stay inside horizontal viewport bounds', () => {
+          const elements = [
+            ['hero', snap.hero],
+            ['title', snap.title],
+            ['actions', snap.actions],
+            ['collage', snap.collage],
+          ];
+          for (const [name, r] of elements) {
+            assert.ok(r, `${name} rect exists`);
+            assert.ok(r.x >= -1, `${name} left inside viewport (x=${r.x})`);
+            assert.ok(r.right <= snap.viewportWidth + 1,
+              `${name} right inside viewport (right=${r.right}, viewportWidth=${snap.viewportWidth})`);
+          }
+        });
+
+        await t.test('J8. growth-stage cards stay inside document horizontal bounds', () => {
+          for (const card of snap.cards) {
+            assert.ok(card.x >= -1 && card.right <= snap.docWidth + 1,
+              `card inside document horizontal bounds (x=${card.x}, right=${card.right}, docWidth=${snap.docWidth})`);
+          }
+        });
+
         if (vp.name === 'mobile') {
-          await t.test('J7. mobile reading order: title < description < CTA group < collage', () => {
+          await t.test('J9. mobile reading order: title < description < CTA group < collage', () => {
             assert.ok(snap.title.y < snap.desc.y, 'title top < description top');
             assert.ok(snap.desc.y < snap.actions.y, 'description top < CTA group top');
             assert.ok(snap.actions.y < snap.collage.y, 'CTA group top < collage top');
             assert.ok(snap.actionsCollageOverlap <= 1, `CTA group/collage overlap ~0, got ${snap.actionsCollageOverlap}`);
           });
-
-          await t.test('J8. mobile growth-stage cards stay inside document horizontal bounds', () => {
-            for (const card of snap.cards) {
-              assert.ok(card.x >= -1 && card.right <= snap.docWidth + 1,
-                `card inside document horizontal bounds (x=${card.x}, right=${card.right}, docWidth=${snap.docWidth})`);
-            }
-          });
         }
 
-        await t.test('J9. no horizontal overflow on html or body', () => {
+        await t.test('J10. no horizontal overflow on html or body', () => {
           assert.ok(snap.htmlOverflow <= 1, `documentElement horizontal overflow ~0, got ${snap.htmlOverflow}`);
           assert.ok(snap.bodyOverflow <= 1, `body horizontal overflow ~0, got ${snap.bodyOverflow}`);
         });
 
-        await t.test('J10. browser health: pageerror / console error / same-origin failure / HTTP>=400 all zero', () => {
+        await t.test('J11. browser health: pageerror / console error / same-origin failure / HTTP>=400 all zero', () => {
           assert.strictEqual(pageErrors.length, 0, `pageerror zero, got: ${pageErrors.join(', ')}`);
           assert.strictEqual(consoleErrors.length, 0, `unexpected console error zero, got: ${consoleErrors.join(', ')}`);
           assert.strictEqual(sameOriginFailures.length, 0, `same-origin request failure zero, got: ${sameOriginFailures.join(', ')}`);
