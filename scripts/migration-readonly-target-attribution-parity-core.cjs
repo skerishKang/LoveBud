@@ -166,14 +166,17 @@ function validateCriticalObjectVocabulary(criticalObjects, emptyFailure, objectF
     fail(emptyFailure, { field: 'critical_objects' });
   }
   const seen = new Set();
+  const normalized = [];
   for (const object of criticalObjects) {
     if (!isPlainRecord(object)) {
       fail(objectFailure, { field: 'critical_object' });
     }
     const keys = readExactKeys(object, objectFailure);
     requireExactKeySet(keys, ALLOWED_OBJECT_KEYS, objectFailure);
-    const name = requireNonEmptyString(object.name, objectFailure, 'name');
-    const fingerprint = requireNonEmptyString(object.fingerprint, objectFailure, 'fingerprint');
+    const name = readOwnEnumerableDataProperty(object, 'name', objectFailure);
+    const fingerprint = readOwnEnumerableDataProperty(object, 'fingerprint', objectFailure);
+    requireNonEmptyString(name, objectFailure, 'name');
+    requireNonEmptyString(fingerprint, objectFailure, 'fingerprint');
     if (!OBJECT_NAME_PATTERN.test(name)) {
       fail(objectFailure, { field: 'name' });
     }
@@ -184,10 +187,9 @@ function validateCriticalObjectVocabulary(criticalObjects, emptyFailure, objectF
       fail(objectFailure, { field: 'name' });
     }
     seen.add(name);
+    normalized.push({ name, fingerprint });
   }
-  return sortByName(
-    criticalObjects.map((object) => ({ name: object.name, fingerprint: object.fingerprint }))
-  );
+  return sortByName(normalized);
 }
 
 function validateCommittedAuthority(committedAuthority) {

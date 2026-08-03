@@ -206,9 +206,17 @@ test('more than one injected dependency is rejected before any effect', async ()
 });
 
 test('same bounded input produces byte-stable results', async () => {
-  const first = JSON.stringify(run(() => matchingEvidence()));
-  const second = JSON.stringify(run(() => matchingEvidence()));
-  assert.equal(first, second);
+  const firstResult = await run(() => matchingEvidence());
+  const secondResult = await run(() => matchingEvidence());
+  const first = JSON.stringify(firstResult);
+  const second = JSON.stringify(secondResult);
+  assert.notEqual(first, '{}', 'serialized result is a real awaited result');
+  assert.notEqual(second, '{}', 'serialized result is a real awaited result');
+  assert.equal(firstResult.outcome, 'PARITY_CONFIRMED');
+  assert.equal(secondResult.outcome, 'PARITY_CONFIRMED');
+  assert.equal(first, second, 'byte-stable serialized equality');
+  assert.equal(Object.isFrozen(firstResult), true, 'first result frozen');
+  assert.equal(Object.isFrozen(secondResult), true, 'second result frozen');
 });
 
 // ── 4. NC1–NC4: attribution and approval fail closed with zero effects ──────
@@ -411,6 +419,110 @@ test('NC9 accessor and Proxy hostile inputs fail without getter/trap leakage', a
   assert.equal(proxyResult.outcome, 'TARGET_ATTRIBUTION_INVALID');
   assert.equal(proxyResult.collectionEffectCount, 0);
   assert.ok(!JSON.stringify(proxyResult).includes('trap leaked raw value'), 'no trap message leakage');
+});
+
+test('nested committed authority accessor getter is never invoked and fails closed', async () => {
+  let getterCalls = 0;
+  let collectorCalls = 0;
+  const object = {};
+  Object.defineProperty(object, 'name', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      getterCalls += 1;
+      return COMMITTED_LEDGER_OBJECT.name;
+    },
+  });
+  Object.defineProperty(object, 'fingerprint', {
+    enumerable: true,
+    configurable: true,
+    value: COMMITTED_LEDGER_OBJECT.fingerprint,
+  });
+  const result = await run(
+    () => {
+      collectorCalls += 1;
+      return matchingEvidence();
+    },
+    { committedAuthority: { status: 'ADOPTION_REQUIRED', critical_objects: [object] } }
+  );
+  assert.equal(result.outcome, 'EXPECTED_SCHEMA_INVALID');
+  assert.equal(result.collectionEffectCount, 0);
+  assert.equal(collectorCalls, 0, 'collector never invoked for invalid committed authority');
+  assert.equal(getterCalls, 0, 'nested committed getter never invoked');
+  assert.ok(!JSON.stringify(result).includes('getter'), 'no getter detail leakage');
+});
+
+test('nested observed evidence accessor getter is never invoked and fails closed', async () => {
+  let getterCalls = 0;
+  let collectorCalls = 0;
+  const object = {};
+  Object.defineProperty(object, 'name', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      getterCalls += 1;
+      return COMMITTED_LEDGER_OBJECT.name;
+    },
+  });
+  Object.defineProperty(object, 'fingerprint', {
+    enumerable: true,
+    configurable: true,
+    value: COMMITTED_LEDGER_OBJECT.fingerprint,
+  });
+  const result = await run(() => {
+    collectorCalls += 1;
+    return { format_version: '1.0', normalizer_version: '1.0', objects: [object] };
+  });
+  assert.equal(result.outcome, 'INSUFFICIENT_EVIDENCE');
+  assert.equal(result.collectionEffectCount, 1);
+  assert.equal(collectorCalls, 1, 'collector invoked exactly once');
+  assert.equal(getterCalls, 0, 'nested observed getter never invoked');
+  assert.ok(!JSON.stringify(result).includes('getter'), 'no getter detail leakage');
+});
+
+test('nested Proxy get trap is never invoked and no raw detail leaks', async () => {
+  let getTrapCalls = 0;
+  const makeProxyObject = () =>
+    new Proxy(
+      {
+        name: COMMITTED_LEDGER_OBJECT.name,
+        fingerprint: COMMITTED_LEDGER_OBJECT.fingerprint,
+      },
+      {
+        get(target, key, receiver) {
+          getTrapCalls += 1;
+          throw new Error('nested raw trap detail');
+        },
+      }
+    );
+
+  const committedResult = await run(
+    () => matchingEvidence(),
+    {
+      committedAuthority: {
+        status: 'ADOPTION_REQUIRED',
+        critical_objects: [makeProxyObject()],
+      },
+    }
+  );
+  assert.equal(getTrapCalls, 0, 'committed nested get trap never invoked');
+  assert.ok(
+    !JSON.stringify(committedResult).includes('nested raw trap detail'),
+    'no committed raw detail leakage'
+  );
+  assert.equal(committedResult.outcome, 'PARITY_CONFIRMED', 'descriptor-safe reads resolve the committed proxy vocabulary');
+
+  const observedResult = await run(() => ({
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: [makeProxyObject()],
+  }));
+  assert.equal(getTrapCalls, 0, 'observed nested get trap never invoked');
+  assert.ok(
+    !JSON.stringify(observedResult).includes('nested raw trap detail'),
+    'no observed raw detail leakage'
+  );
+  assert.equal(observedResult.outcome, 'PARITY_CONFIRMED', 'descriptor-safe reads resolve the observed proxy vocabulary');
 });
 
 test('NC10 collector throw/reject maps to sanitized CATALOG_COLLECTION_FAILED', async () => {
