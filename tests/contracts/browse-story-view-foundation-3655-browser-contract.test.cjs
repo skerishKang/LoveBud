@@ -240,12 +240,48 @@ ${cards}
         '<div class="search-empty-state"><h3 class="search-empty-heading">조건에 맞는 트리가 없어요</h3></div>';
     };
 
+    /* #3845: fake bounded load-more adapter mirroring js/search/index.js's
+     * window.LoveBudBrowseStoryLoadMore boundary. The controller never
+     * fetches — it only calls these injected functions. Tests drive the
+     * flags below to simulate growth / exhaustion / failure / busy. */
+    window.__loadMoreAvailable = false;
+    window.__loadMoreFail = false;
+    window.__loadMoreCalls = 0;
+    window.__pendingMore = [];
+    window.LoveBudBrowseStoryLoadMore = {
+      canRequestMore: function () {
+        return window.__loadMoreAvailable;
+      },
+      requestMore: function () {
+        window.__loadMoreCalls += 1;
+        if (window.__loadMoreFail) return Promise.reject(new Error('synthetic load-more failure'));
+        if (window.__pendingMore.length) {
+          var current = Array.from(document.querySelectorAll('#resultsList .tree-card[data-tree-id]'))
+            .map(function (c) { return c.getAttribute('data-tree-id'); });
+          window.__renderCards(current.concat(window.__pendingMore));
+          window.__pendingMore = [];
+        }
+        return Promise.resolve(true);
+      }
+    };
+
     ui.attachCardEvents(resultsList, ${JSON.stringify(BROWSE_IDS)}.map(function (id) { return { id: id }; }));
 
-    /* Mirror js/search/search-page-shell-init.js wiring (Browse only). */
+    /* Mirror js/search/search-page-shell-init.js wiring (Browse only),
+     * including #3845 positionMode + the bounded load-more boundary. */
     var storyController = window.LoveBudBrowseStoryView.init({
       results: '#resultsList',
-      navMount: '#browseStoryNavMount'
+      navMount: '#browseStoryNavMount',
+      positionMode: 'current',
+      canRequestMore: function () {
+        var loader = window.LoveBudBrowseStoryLoadMore;
+        return !!(loader && typeof loader.canRequestMore === 'function' && loader.canRequestMore());
+      },
+      requestMore: function () {
+        var loader = window.LoveBudBrowseStoryLoadMore;
+        if (loader && typeof loader.requestMore === 'function') return loader.requestMore();
+        return Promise.resolve(false);
+      }
     });
     var switcher = window.LoveBudTreeViewModeSwitcher.init({
       storageKey: 'lovebud:browse:viewMode',
@@ -950,7 +986,7 @@ test('#3655 browser: stored story restores on Browse; defaults stay compact othe
     let st = await storyState(pageS);
     assert.equal(st.mode, 'story', 'stored story must restore into Story mode');
     assert.equal(st.visible.length, 3, 'stored story restore shows the first wide group');
-    assert.equal(st.indicator, '01 / 03');
+    assert.equal(st.indicator, '01', '#3845 current-only indicator (no loaded-total denominator)');
     assert.equal(st.navHidden, false);
     await pageS.close();
 
@@ -1046,8 +1082,8 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
     assert.equal(st.mode, 'story');
     assert.equal(st.visible.length, 3, 'wide shows 3 cards');
     assert.equal(st.groupSizeAttr, '3');
-    assert.equal(st.indicator, '01 / 03', '(15) indicator matches ceil(7/3)');
-    assert.equal(st.a11y, '스토리 1 / 3');
+    assert.equal(st.indicator, '01', '(15) current-only indicator (no denominator)');
+    assert.equal(st.a11y, '스토리 그룹 1', '#3845 current-only accessible phrase');
     assert.equal(st.prevDisabled, true, '(13) first boundary disabled');
     assert.equal(st.nextDisabled, false);
 
@@ -1057,7 +1093,7 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
     await pageW.waitForTimeout(420);
     st = await storyState(pageW);
     assert.deepEqual(st.visible, ['browse-4', 'browse-5', 'browse-6'], '(11) next moves one group');
-    assert.equal(st.indicator, '02 / 03');
+    assert.equal(st.indicator, '02');
     assert.equal(st.prevDisabled, false);
     sequence.push(...st.visible);
 
@@ -1066,8 +1102,8 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
     st = await storyState(pageW);
     assert.deepEqual(st.visible, ['browse-7']);
     assert.equal(st.groupSizeAttr, '1', 'partial last group renders a single centered slot');
-    assert.equal(st.nextDisabled, true, '(14) last boundary disabled');
-    assert.equal(st.indicator, '03 / 03');
+    assert.equal(st.nextDisabled, true, '(14) last boundary disabled without more results');
+    assert.equal(st.indicator, '03');
     sequence.push(...st.visible);
     assert.deepEqual(sequence, BROWSE_IDS, '(10) every card appears once, in order');
 
@@ -1087,7 +1123,7 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
     st = await storyState(pageT);
     assert.equal(st.visible.length, 2, 'tablet shows 2 cards');
     assert.equal(st.groupSizeAttr, '2');
-    assert.equal(st.indicator, '01 / 04', 'tablet groups ceil(7/2)');
+    assert.equal(st.indicator, '01', 'tablet: current-only indicator');
     await tablet.close();
 
     // (9) mobile: 1 visible
@@ -1099,7 +1135,7 @@ test('#3655 browser: responsive group sizes 3/2/1 and local sequence of all 7 ca
     st = await storyState(pageM);
     assert.equal(st.visible.length, 1, 'mobile shows 1 card');
     assert.equal(st.groupSizeAttr, '1');
-    assert.equal(st.indicator, '01 / 07');
+    assert.equal(st.indicator, '01');
     await mobile.close();
   } finally {
     await browser.close();
@@ -1123,14 +1159,14 @@ test('#3655 browser: result replacement, skeleton, empty and one-card coherence'
     await page.click('[data-story-next]');
     await page.waitForTimeout(420);
     let st = await storyState(page);
-    assert.equal(st.indicator, '03 / 03');
+    assert.equal(st.indicator, '03');
 
     // (18) replacement resets/clamps — no blank group
     await page.evaluate(() => window.__renderCards(['n-1', 'n-2', 'n-3']));
     await page.waitForTimeout(120);
     st = await storyState(page);
     assert.equal(st.mode, 'story', 'mode attribute survives replacement');
-    assert.equal(st.indicator, '01 / 01', 'new result set resets to the first group');
+    assert.equal(st.indicator, '01', 'new result set resets to the first group');
     assert.equal(st.visible.length, 3, 'no blank group after replacement');
     assert.deepEqual(st.visible, ['n-1', 'n-2', 'n-3']);
 
@@ -1138,7 +1174,7 @@ test('#3655 browser: result replacement, skeleton, empty and one-card coherence'
     await page.evaluate(() => window.__renderCards(['solo-1']));
     await page.waitForTimeout(120);
     st = await storyState(page);
-    assert.equal(st.indicator, '01 / 01');
+    assert.equal(st.indicator, '01');
     assert.equal(st.prevDisabled, true);
     assert.equal(st.nextDisabled, true);
     assert.deepEqual(st.visible, ['solo-1']);
@@ -1185,7 +1221,7 @@ test('#3655 browser: result replacement, skeleton, empty and one-card coherence'
     st = await storyState(page);
     assert.equal(st.mode, 'story');
     assert.equal(st.visible.length, 3);
-    assert.equal(st.indicator, '01 / 03');
+    assert.equal(st.indicator, '01');
     await context.close();
   } finally {
     await browser.close();
@@ -1209,34 +1245,34 @@ test('#3655 browser: keyboard navigation semantics', { timeout: 120000 }, async 
     await page.keyboard.press('ArrowRight');
     await page.waitForTimeout(420);
     let st = await storyState(page);
-    assert.equal(st.indicator, '02 / 03', '(21) ArrowRight moves to the next group');
+    assert.equal(st.indicator, '02', '(21) ArrowRight moves to the next group');
 
     // (26) one keydown = exactly one group movement
-    assert.notEqual(st.indicator, '03 / 03', '(26) a single keydown must not move twice');
+    assert.notEqual(st.indicator, '03', '(26) a single keydown must not move twice');
 
     // (22) ArrowLeft
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(420);
     st = await storyState(page);
-    assert.equal(st.indicator, '01 / 03', '(22) ArrowLeft moves back');
+    assert.equal(st.indicator, '01', '(22) ArrowLeft moves back');
 
     // boundary clamp: ArrowLeft at the first group stays put
     await page.keyboard.press('ArrowLeft');
     await page.waitForTimeout(420);
     st = await storyState(page);
-    assert.equal(st.indicator, '01 / 03', 'index clamps at the first group');
+    assert.equal(st.indicator, '01', 'index clamps at the first group');
 
     // (24) End
     await page.keyboard.press('End');
     await page.waitForTimeout(420);
     st = await storyState(page);
-    assert.equal(st.indicator, '03 / 03', '(24) End jumps to the last group');
+    assert.equal(st.indicator, '03', '(24) End jumps to the last group');
 
     // (23) Home
     await page.keyboard.press('Home');
     await page.waitForTimeout(420);
     st = await storyState(page);
-    assert.equal(st.indicator, '01 / 03', '(23) Home jumps to the first group');
+    assert.equal(st.indicator, '01', '(23) Home jumps to the first group');
 
     // (25) editable targets are never intercepted
     await page.focus('#searchInput');
@@ -1245,13 +1281,13 @@ test('#3655 browser: keyboard navigation semantics', { timeout: 120000 }, async 
     await page.keyboard.press('End');
     await page.waitForTimeout(420);
     st = await storyState(page);
-    assert.equal(st.indicator, '01 / 03', '(25) arrow/Home keys inside an input must not move groups');
+    assert.equal(st.indicator, '01', '(25) arrow/Home keys inside an input must not move groups');
 
     // modifier combinations are ignored
     await page.keyboard.press('Control+ArrowRight');
     await page.waitForTimeout(420);
     st = await storyState(page);
-    assert.equal(st.indicator, '01 / 03', 'modifier+arrow is ignored');
+    assert.equal(st.indicator, '01', 'modifier+arrow is ignored');
 
     // (27) focus stays predictable (on the focused nav button)
     await page.focus('[data-story-next]');
@@ -1262,7 +1298,7 @@ test('#3655 browser: keyboard navigation semantics', { timeout: 120000 }, async 
       indicator: document.querySelector('.browse-story-indicator-current').textContent,
     }));
     assert.equal(focusState.onNext, true, '(27) focus remains on the nav control');
-    assert.equal(focusState.indicator, '02 / 03');
+    assert.equal(focusState.indicator, '02');
     await context.close();
   } finally {
     await browser.close();
@@ -1605,7 +1641,7 @@ test('#3655 browser: prev direction uses opposite transforms', { timeout: 120000
 
     await page.waitForTimeout(400);
     const st = await storyState(page);
-    assert.equal(st.indicator, '01 / 03');
+    assert.equal(st.indicator, '01');
     await context.close();
   } finally {
     await browser.close();
@@ -1625,17 +1661,17 @@ test('#3655 browser: rapid double-click is blocked during transition', { timeout
 
     await page.click('[data-story-next]');
     await page.click('[data-story-next]');
-    // Wait for transition to complete (340+20ms) before checking indicator
+    // Wait for transition to complete (260+20ms) before checking indicator
     await page.waitForTimeout(450);
 
     const midState = await page.evaluate(() => {
       return document.querySelector('.browse-story-indicator-current').textContent;
     });
-    assert.equal(midState, '02 / 03', 'rapid double-click must only move one group');
+    assert.equal(midState, '02', 'rapid double-click must only move one group');
 
     await page.waitForTimeout(400);
     const st = await storyState(page);
-    assert.equal(st.indicator, '02 / 03');
+    assert.equal(st.indicator, '02');
     assert.deepEqual(st.visible, ['browse-4', 'browse-5', 'browse-6']);
 
     await context.close();
@@ -1661,7 +1697,7 @@ test('#3655 browser: keyboard blocked during transition', { timeout: 120000 }, a
     await page.waitForTimeout(400);
 
     const st = await storyState(page);
-    assert.equal(st.indicator, '02 / 03', 'second ArrowRight during transition must be blocked');
+    assert.equal(st.indicator, '02', 'second ArrowRight during transition must be blocked');
 
     await context.close();
   } finally {
@@ -2059,7 +2095,7 @@ test('#3655 browser: external results.innerHTML during transition cancels cleanl
     assert.equal(state.ariaBusy, null, 'aria-busy cleared after external replacement');
     assert.deepEqual(state.oldIds, [], 'no old browse- IDs remain in DOM');
     assert.deepEqual(state.visible, ['new-1', 'new-2', 'new-3'], 'new cards displayed after external replacement');
-    assert.equal(state.indicator, '01 / 01', 'indicator reset after external replacement');
+    assert.equal(state.indicator, '01', 'indicator reset after external replacement');
     assert.equal(state.heightProp, '', '--story-transition-height removed after replacement');
     assert.deepEqual(pageErrors, [], 'no page errors during external replacement');
 
@@ -2238,7 +2274,7 @@ test('#3655 browser: story re-entry after cancellation works correctly', { timeo
     const st = await storyState(page);
     assert.equal(st.mode, 'story', 'story mode re-entered');
     assert.equal(st.visible.length, 3, 'shows 3 cards after re-entry');
-    assert.equal(st.indicator, '01 / 03', 'indicator reset to first group');
+    assert.equal(st.indicator, '01', 'indicator reset to first group');
     assert.equal(st.navHidden, false, 'nav visible after re-entry');
     assert.equal(st.prevDisabled, true, 'prev disabled at first group');
 
@@ -2246,7 +2282,7 @@ test('#3655 browser: story re-entry after cancellation works correctly', { timeo
     await page.click('[data-story-next]');
     await page.waitForTimeout(420);
     const st2 = await storyState(page);
-    assert.equal(st2.indicator, '02 / 03', 'navigation works after re-entry');
+    assert.equal(st2.indicator, '02', 'navigation works after re-entry');
     assert.deepEqual(pageErrors, [], 'no page errors during story re-entry');
 
     await context.close();
@@ -2453,7 +2489,7 @@ test('#3655 browser: refresh during transition cleans up completely', { timeout:
     // Verify indicator shows first group
     const st = await storyState(page);
     assert.equal(st.mode, 'story', 'story mode preserved after refresh');
-    assert.equal(st.indicator, '01 / 03', 'indicator reset to first group after refresh');
+    assert.equal(st.indicator, '01', 'indicator reset to first group after refresh');
     assert.equal(st.prevDisabled, true, 'prev disabled at first group');
     assert.equal(st.nextDisabled, false, 'next enabled');
 
@@ -2461,7 +2497,7 @@ test('#3655 browser: refresh during transition cleans up completely', { timeout:
     await page.click('[data-story-next]');
     await page.waitForTimeout(420);
     const st2 = await storyState(page);
-    assert.equal(st2.indicator, '02 / 03', 'navigation works after refresh');
+    assert.equal(st2.indicator, '02', 'navigation works after refresh');
 
     assert.deepEqual(pageErrors, [], 'no page errors during refresh');
     await context.close();
@@ -2727,7 +2763,7 @@ test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens 
     /* (1) legacy plain init without options enters Story at group 0 */
     await activateStory(page, null);
     await waitForStoryGroupReady(page, {
-      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01 / 03',
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01',
     });
     let st = await storyState(page);
     assert.deepEqual(st.visible, ['browse-1', 'browse-2', 'browse-3'], 'legacy entry stays at group 0');
@@ -2736,7 +2772,7 @@ test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens 
     await activateStory(page, 'browse-6');
     await waitForStoryGroupReady(page, {
       mode: 'story', expectNoTransition: true, visibleCount: 3,
-      visibleOrder: ['browse-4', 'browse-5', 'browse-6'], indicator: '02 / 03',
+      visibleOrder: ['browse-4', 'browse-5', 'browse-6'], indicator: '02',
     });
     st = await storyState(page);
     assert.equal(st.groupSizeAttr, '3', 'wide group size 3');
@@ -2745,13 +2781,13 @@ test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens 
     await activateStory(page, 'does-not-exist');
     await waitForStoryGroupReady(page, {
       mode: 'story', expectNoTransition: true, visibleCount: 3,
-      visibleOrder: ['browse-1', 'browse-2', 'browse-3'], indicator: '01 / 03',
+      visibleOrder: ['browse-1', 'browse-2', 'browse-3'], indicator: '01',
     });
 
     /* (7) public goTo moves via the existing transition authority */
     await page.evaluate(() => window.__storyController.goTo(2));
     await waitForStoryGroupReady(page, {
-      mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03 / 03',
+      mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03',
     });
     st = await storyState(page);
     assert.deepEqual(st.visible, ['browse-7'], 'goTo(2) reaches the last group');
@@ -2759,22 +2795,22 @@ test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens 
     /* (8) out-of-range goTo clamps (no wrap, no error) */
     await page.evaluate(() => window.__storyController.goTo(99));
     await waitForStoryGroupReady(page, {
-      mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03 / 03',
+      mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03',
     });
     await page.evaluate(() => window.__storyController.goTo(-5));
     await waitForStoryGroupReady(page, {
       mode: 'story', expectNoTransition: true, visibleCount: 3,
-      visibleOrder: ['browse-1', 'browse-2', 'browse-3'], indicator: '01 / 03',
+      visibleOrder: ['browse-1', 'browse-2', 'browse-3'], indicator: '01',
     });
 
     /* (23) no-option result replacement still resets to group 0 */
     await page.evaluate(() => window.__storyController.goTo(1));
     await waitForStoryGroupReady(page, {
-      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '02 / 03',
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '02',
     });
     await page.evaluate(() => window.__renderCards(['x1', 'x2', 'x3', 'x4', 'x5']));
     await waitForStoryGroupReady(page, {
-      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01 / 02',
+      mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '01',
     });
     st = await storyState(page);
     assert.deepEqual(st.visible, ['x1', 'x2', 'x3'], 'plain result replacement resets to group 0');
@@ -2808,7 +2844,7 @@ test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens 
     await activateStory(tPage, 'browse-5');
     await waitForStoryGroupReady(tPage, {
       mode: 'story', expectNoTransition: true, visibleCount: 2,
-      visibleOrder: ['browse-5', 'browse-6'], indicator: '03 / 04',
+      visibleOrder: ['browse-5', 'browse-6'], indicator: '03',
     });
     await tContext.close();
 
@@ -2821,7 +2857,7 @@ test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens 
     await activateStory(mPage, 'browse-7');
     await waitForStoryGroupReady(mPage, {
       mode: 'story', expectNoTransition: true, visibleCount: 1,
-      visibleOrder: ['browse-7'], indicator: '07 / 07',
+      visibleOrder: ['browse-7'], indicator: '07',
     });
     await mContext.close();
 
@@ -3285,5 +3321,333 @@ test('#3813 browser: card activation and media lifecycle stay intact with the ad
     await browser.close();
     await closeServer(server);
     throw err;
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════
+ * #3845 — truthful navigation (real Chromium, synthetic results only)
+ * ══════════════════════════════════════════════════════════════════ */
+
+test('#3845 browser: truthful current-only indicator; Next inside loaded groups never requests more', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // initial: current-only indicator — no loaded-total denominator
+    let st = await storyState(page);
+    assert.equal(st.indicator, '01', 'visible value is the current local Story group index only');
+    assert.equal(st.indicator.includes('/'), false, 'no denominator (01 / 02 or 1 of 2) may appear');
+    assert.equal(st.a11y, '스토리 그룹 1', 'accessible phrase is current-only (스토리 그룹 1)');
+    assert.equal(st.prevDisabled, true, 'prev disabled at the first group');
+    assert.equal(st.nextDisabled, false, 'Next available while results remain');
+
+    // Next inside loaded groups: group change without any request
+    await page.click('[data-story-next]');
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '02' });
+    assert.equal(await page.evaluate(() => window.__loadMoreCalls), 0, 'moving within loaded groups must not request more');
+
+    await page.click('[data-story-next]');
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03' });
+    assert.equal(await page.evaluate(() => window.__loadMoreCalls), 0, 'still zero requests at the loaded end');
+
+    // loaded end with no more backend results: Next is disabled, no false total
+    st = await storyState(page);
+    assert.equal(st.nextDisabled, true, 'Next disabled at the loaded end when the source reports no more');
+    assert.equal(st.indicator, '03', 'indicator stays current-only at the end');
+    await context.close();
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+});
+
+test('#3845 browser: Next at the loaded end requests exactly one batch and advances one local group', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    const health = captureBrowserHealth(page, fixtureOrigin);
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // arm the fake loader with one more batch of 3, then jump to the loaded end
+    await page.evaluate(() => {
+      window.__loadMoreAvailable = true;
+      window.__loadMoreCalls = 0;
+      window.__pendingMore = ['browse-8', 'browse-9', 'browse-10'];
+    });
+    await page.evaluate(() => window.__storyController.goTo(2));
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03' });
+    let st = await storyState(page);
+    assert.equal(st.nextDisabled, false, 'Next available at the loaded end while the source has more');
+
+    // Next at the loaded end: bounded busy state exposed on the rail
+    const busy = await page.evaluate(() => {
+      const next = document.querySelector('[data-story-next]');
+      next.click();
+      const nav = document.querySelector('.browse-story-navigation');
+      return {
+        ariaBusy: nav.getAttribute('aria-busy'),
+        loadingClass: nav.classList.contains('browse-story-loading'),
+        nextDisabled: next.disabled,
+        scrollY: window.scrollY,
+      };
+    });
+    assert.equal(busy.ariaBusy, 'true', 'busy state is exposed accessibly on the rail');
+    assert.equal(busy.loadingClass, true, 'loading class marks the rail while busy');
+    assert.equal(busy.nextDisabled, true, 'Next is disabled while the batch is loading');
+    assert.equal(busy.scrollY, 0, 'no vertical scroll action is used to unlock the group');
+
+    // the directional transition must animate out from the previously-viewed
+    // group (browse-7,8,9), not from group 0 after the loader's result reset
+    await page.waitForFunction(() => document.querySelector('.browse-story-layer-outgoing'), { timeout: 5000 });
+    const outLayer = await page.evaluate(() =>
+      Array.from(document.querySelector('.browse-story-layer-outgoing').querySelectorAll('.tree-card[data-tree-id]'))
+        .map(c => c.getAttribute('data-tree-id'))
+    );
+    assert.deepEqual(outLayer, ['browse-7', 'browse-8', 'browse-9'],
+      'outgoing layer is the previously-viewed group, not group 0');
+
+    // exactly one batch appended; controller advances exactly one local group
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '04' });
+    st = await storyState(page);
+    assert.deepEqual(st.visible, ['browse-10'], 'advanced to the newly appended local group');
+    assert.equal(await page.evaluate(() => window.__loadMoreCalls), 1, 'exactly one batch was requested');
+
+    const cleared = await page.evaluate(() => {
+      const nav = document.querySelector('.browse-story-navigation');
+      return {
+        ariaBusy: nav.getAttribute('aria-busy'),
+        loadingClass: nav.classList.contains('browse-story-loading'),
+        direction: document.getElementById('resultsList').getAttribute('data-story-direction'),
+        wrappers: document.querySelectorAll('.browse-story-transition-stage').length,
+      };
+    });
+    assert.equal(cleared.ariaBusy, null, 'busy state cleared after settling');
+    assert.equal(cleared.loadingClass, false, 'loading class removed after settling');
+    assert.equal(cleared.direction, 'next', 'forward direction attribute settles to next');
+    assert.equal(cleared.wrappers, 0, 'no leftover transition wrappers');
+
+    // backward direction also settles correctly after the advance
+    await page.click('[data-story-prev]');
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '03' });
+    st = await storyState(page);
+    assert.deepEqual(st.visible, ['browse-7', 'browse-8', 'browse-9'], 'backward navigation settles to the previous group');
+    const backSettled = await page.evaluate(() => ({
+      direction: document.getElementById('resultsList').getAttribute('data-story-direction'),
+      wrappers: document.querySelectorAll('.browse-story-transition-stage').length,
+    }));
+    assert.equal(backSettled.direction, 'prev', 'backward direction attribute settles to prev');
+    assert.equal(backSettled.wrappers, 0, 'no wrappers after backward settle');
+
+    // no horizontal overflow at 1440x900 and no browser health issues
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    assert.ok(overflow.scrollWidth <= overflow.clientWidth + 1, 'no horizontal overflow at 1440x900');
+    assert.deepEqual(health.pageerrors, [], 'no page errors');
+    assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.requestFailures, [], 'no same-origin request failures');
+    assert.deepEqual(health.responseErrors, [], 'no same-origin HTTP >=400');
+
+    await context.close();
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+});
+
+test('#3845 browser: repeated Next clicks while loading dispatch exactly one request', { timeout: 120000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    await page.evaluate(() => {
+      window.__loadMoreAvailable = true;
+      window.__loadMoreCalls = 0;
+      window.__pendingMore = ['browse-8', 'browse-9', 'browse-10'];
+    });
+    await page.evaluate(() => window.__storyController.goTo(2));
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03' });
+
+    // three synchronous clicks on Next while the first batch is loading
+    const clicks = await page.evaluate(() => {
+      const next = document.querySelector('[data-story-next]');
+      next.click();
+      next.click();
+      next.click();
+      return window.__loadMoreCalls;
+    });
+    assert.equal(clicks, 1, 'repeated clicks must dispatch exactly one request');
+
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '04' });
+    assert.equal(await page.evaluate(() => window.__loadMoreCalls), 1, 'still exactly one request after settling');
+    await context.close();
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+});
+
+test('#3845 browser: exhaustion disables Next; no-growth and failure settle truthfully on the current group', { timeout: 150000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const page = await context.newPage();
+    await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(150);
+
+    // (a) exhausted source (default): Next disabled on the final loaded group
+    await page.evaluate(() => window.__storyController.goTo(2));
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03' });
+    let st = await storyState(page);
+    assert.equal(st.nextDisabled, true, 'exhausted source disables Next on the final loaded group');
+
+    // (b) no-growth: one request succeeds but appends no canonical cards → stay
+    await page.evaluate(() => {
+      window.__loadMoreAvailable = true;
+      window.__loadMoreCalls = 0;
+      window.__pendingMore = [];
+    });
+    // re-arm requires a real move so updateNav recomputes the Next state
+    // (goTo to the current group is a no-op and keeps the stale disabled state)
+    await page.evaluate(() => window.__storyController.goTo(1));
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '02' });
+    await page.evaluate(() => window.__storyController.goTo(2));
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03' });
+    await page.evaluate(() => document.querySelector('[data-story-next]').click());
+    await page.waitForTimeout(150);
+    st = await storyState(page);
+    assert.equal(st.indicator, '03', 'no-growth keeps the current group');
+    assert.equal(st.visible.length, 1, 'no new canonical cards appear');
+    assert.equal(await page.evaluate(() => window.__loadMoreCalls), 1, 'one request was attempted');
+    assert.equal(st.nextDisabled, false, 'Next stays available while the source still reports more');
+    const navBusy = await page.evaluate(() =>
+      document.querySelector('.browse-story-navigation').getAttribute('aria-busy'));
+    assert.equal(navBusy, null, 'busy state cleared after no-growth');
+
+    // (c) failure: rejected request → stay on the current group, busy cleared
+    await page.evaluate(() => {
+      window.__loadMoreFail = true;
+      window.__loadMoreCalls = 0;
+      window.__pendingMore = ['browse-8'];
+    });
+    await page.evaluate(() => document.querySelector('[data-story-next]').click());
+    await page.waitForTimeout(150);
+    st = await storyState(page);
+    assert.equal(st.indicator, '03', 'failed request keeps the current group');
+    assert.equal(await page.evaluate(() => window.__loadMoreCalls), 1, 'failure consumed exactly one request');
+    const navBusy2 = await page.evaluate(() =>
+      document.querySelector('.browse-story-navigation').getAttribute('aria-busy'));
+    assert.equal(navBusy2, null, 'busy state cleared after failure');
+
+    // (d) growth then exhaustion: Next disabled on the final loaded group
+    await page.evaluate(() => {
+      window.__loadMoreFail = false;
+      window.__loadMoreAvailable = true;
+      window.__loadMoreCalls = 0;
+      window.__pendingMore = ['browse-8', 'browse-9', 'browse-10'];
+    });
+    await page.evaluate(() => document.querySelector('[data-story-next]').click());
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '04' });
+    await page.evaluate(() => { window.__loadMoreAvailable = false; });
+    // move away and back so updateNav recomputes the Next state at the end
+    await page.evaluate(() => window.__storyController.goTo(2));
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 3, indicator: '03' });
+    await page.evaluate(() => window.__storyController.goTo(3));
+    await waitForStoryGroupReady(page, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '04' });
+    st = await storyState(page);
+    assert.equal(st.indicator, '04', 'exhausted final group stays put');
+    assert.equal(st.nextDisabled, true, 'Next disabled once the source is exhausted on the final group');
+    assert.equal(await page.evaluate(() => window.__loadMoreCalls), 1, 'no extra request after exhaustion');
+    await context.close();
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+});
+
+test('#3845 browser: reduced-motion load-more advance is immediate; mobile 390x844 has no overflow', { timeout: 150000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  try {
+    /* ── reduced motion: immediate advance, no transition wrappers ── */
+    const rmContext = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: 'reduce',
+    });
+    const rmPage = await rmContext.newPage();
+    await rmPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await rmPage.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await rmPage.waitForTimeout(150);
+    await rmPage.evaluate(() => {
+      window.__loadMoreAvailable = true;
+      window.__loadMoreCalls = 0;
+      window.__pendingMore = ['browse-8', 'browse-9', 'browse-10'];
+    });
+    await rmPage.evaluate(() => window.__storyController.goTo(2));
+    await waitForStoryGroupReady(rmPage, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '03' });
+    await rmPage.evaluate(() => document.querySelector('[data-story-next]').click());
+    const rmState = await rmPage.evaluate(() => ({
+      indicator: document.querySelector('.browse-story-indicator-current').textContent,
+      wrappers: document.querySelectorAll('.browse-story-transition-stage').length,
+      visible: Array.from(document.querySelectorAll('#resultsList .tree-card[data-tree-id]'))
+        .filter(c => !c.hidden).map(c => c.getAttribute('data-tree-id')),
+    }));
+    assert.equal(rmState.indicator, '04', 'reduced-motion load-more advance settles immediately');
+    assert.equal(rmState.wrappers, 0, 'reduced-motion leaves no transition wrappers');
+    assert.deepEqual(rmState.visible, ['browse-10'], 'reduced-motion advances to the new group');
+    assert.equal(await rmPage.evaluate(() => window.__loadMoreCalls), 1, 'reduced-motion still requests exactly one batch');
+    await rmContext.close();
+
+    /* ── mobile 390x844: load-more advance causes no horizontal overflow ── */
+    const mContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const mPage = await mContext.newPage();
+    await mPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
+    await mPage.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
+    await mPage.waitForTimeout(150);
+    await mPage.evaluate(() => {
+      window.__loadMoreAvailable = true;
+      window.__loadMoreCalls = 0;
+      window.__pendingMore = ['browse-8', 'browse-9', 'browse-10'];
+    });
+    // mobile: 1 card per group → advance to the last loaded group (07)
+    for (let i = 2; i <= 7; i += 1) {
+      await mPage.click('[data-story-next]');
+      await waitForStoryGroupReady(mPage, {
+        mode: 'story', expectNoTransition: true, visibleCount: 1,
+        indicator: String(i).padStart(2, '0'),
+      });
+    }
+    await mPage.evaluate(() => document.querySelector('[data-story-next]').click());
+    await waitForStoryGroupReady(mPage, { mode: 'story', expectNoTransition: true, visibleCount: 1, indicator: '08' });
+    const mOverflow = await mPage.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    assert.ok(mOverflow.scrollWidth <= mOverflow.clientWidth + 1,
+      `no horizontal overflow at 390x844 (scroll ${mOverflow.scrollWidth} vs client ${mOverflow.clientWidth})`);
+    const mState = await storyState(mPage);
+    assert.deepEqual(mState.visible, ['browse-8'], 'mobile advances to the next newly available group');
+    await mContext.close();
+  } finally {
+    await browser.close();
+    await closeServer(server);
   }
 });

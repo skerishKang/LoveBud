@@ -109,6 +109,12 @@
       ko: '스토리 {current} / {total}',
       en: 'Story {current} of {total}'
     },
+    // #3845 Browse-only current-position phrase: the visible value is the
+    // current local Story group index only — never a loaded-total total.
+    'search.story.positionCurrent': {
+      ko: '스토리 그룹 {current}',
+      en: 'Story group {current}'
+    },
 
     // 미리보기
     'search.previewTitle': {
