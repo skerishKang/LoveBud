@@ -87,7 +87,8 @@ const EXPECTED_DB_ENGINE_SCRIPTS = [
   { script: 'test:db-engine:generic-social-b',        target: 'tests/db-engine/generic-social-b-postgres.test.cjs' },
   { script: 'test:db-engine:migration-catalog-adapter', target: 'tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs' },
   { script: 'test:db-engine:precondition-composition-root', target: 'tests/db-engine/precondition-composition-root-postgres.test.cjs' },
-{ script: 'test:db-engine:clean-canonical-bootstrap', target: 'tests/db-engine/clean-canonical-bootstrap-postgres.test.cjs' },
+  { script: 'test:db-engine:clean-canonical-bootstrap', target: 'tests/db-engine/clean-canonical-bootstrap-postgres.test.cjs' },
+  { script: 'test:db-engine:readonly-target-attribution-parity', target: 'tests/db-engine/readonly-target-attribution-parity-postgres.test.cjs' },
   { script: 'test:db-engine:structural-sentinel',     target: 'tests/db-engine/schema-orphan-structural-sentinel-postgres.test.cjs' },
 ];
 
