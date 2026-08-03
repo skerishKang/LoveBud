@@ -391,6 +391,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    /* #3845: bounded Browse Story load-more boundary. The Story controller is
+     * pure presentation and never reaches the loader directly; this tiny
+     * adapter exposes only the EXISTING loader authority (the same guards as
+     * the scroll path: api-loaded, has-more, not already loading, limit cap,
+     * plus the load-more in-flight flag) to the controller's injected
+     * canRequestMore/requestMore boundaries. No new fetch or pagination is
+     * added here — it forwards to callbacks.loadMorePublicTrees. */
+    window.LoveBudBrowseStoryLoadMore = {
+        canRequestMore: function () {
+            return !loadMoreRequestInFlight
+                && state.apiTreesLoaded
+                && state.hasMoreTrees
+                && !state.isLoadingMore
+                && Number(state.currentLimit || 0) < 60;
+        },
+        requestMore: function () {
+            return callbacks.loadMorePublicTrees();
+        }
+    };
+
     const controls = window.LoveBudSearchControls.createSearchControls({
         refs,
         state,
