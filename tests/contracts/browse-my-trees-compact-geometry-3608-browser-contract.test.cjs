@@ -1198,16 +1198,27 @@ async function newRealBrowsePage(browser, vp, baseUrl) {
   const sameOriginFailures = [];
   const http4xx = [];
   const stubbed = { apiTrees: 0, apiOther: 0, external: 0 };
+  const sameOriginApiRequests = [];
+  const sameOriginRequests = [];
+  page.on('request', (request) => {
+    let u;
+    try {
+      u = new URL(request.url());
+    } catch (e) {
+      return;
+    }
+    if (u.hostname !== '127.0.0.1') return;
+    const entry = { method: request.method(), pathname: u.pathname };
+    sameOriginRequests.push(entry);
+    if (u.pathname.startsWith('/api/')) {
+      sameOriginApiRequests.push(entry);
+    }
+  });
   page.on('pageerror', (err) => pageErrors.push(String(err && err.message ? err.message : err)));
-  page.on('console', (m) => {
-    if (m.type() !== 'error') return;
-    // net::ERR_NETWORK_CHANGED is a browser network-stack abort emitted when
-    // the TEST MACHINE's host network changes (Windows/WSL host networking,
-    // docker/telegram/homecloud services flapping) — an environment artifact,
-    // not a page/product failure. Like intentionally stubbed external
-    // requests, it is not counted as a product failure.
-    if (m.text().includes('net::ERR_NETWORK_CHANGED')) return;
-    consoleErrors.push(m.text());
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
   });
   page.on('requestfailed', (req) => {
     try {
@@ -1263,7 +1274,7 @@ async function newRealBrowsePage(browser, vp, baseUrl) {
   });
   await page.goto(baseUrl + '/pages/search.html', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('domcontentloaded');
-  return { context, page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed };
+  return { context, page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests };
 }
 
 async function teardownRealBrowse(env) {
@@ -1387,6 +1398,28 @@ async function captureBrowseBaseline(page) {
         resultsHead: region('.browse-results-head') && region('.browse-results-head').y,
         list: region('#resultsList') && region('#resultsList').y,
       },
+      domOrder: (() => {
+        const precedes = (first, second) => {
+          if (!first || !second) return false;
+          return Boolean(
+            first.compareDocumentPosition(second) &
+              Node.DOCUMENT_POSITION_FOLLOWING
+          );
+        };
+        const header = document.querySelector('#shared-header');
+        const panel = document.querySelector('.search-panel-header');
+        const utility = document.querySelector('.browse-utility-row');
+        const resultsHead = document.querySelector('.browse-results-head');
+        const list = document.querySelector('#resultsList');
+        return {
+          headerPrecedesPanel: precedes(header, panel),
+          panelPrecedesUtility: precedes(panel, utility),
+          panelPrecedesResultsHead: precedes(panel, resultsHead),
+          panelPrecedesList: precedes(panel, list),
+          utilityPrecedesResultsHead: precedes(utility, resultsHead),
+          resultsHeadPrecedesList: precedes(resultsHead, list),
+        };
+      })(),
       overlaps: {
         listRail: overlapArea(region('#resultsList'), region('.lovetree-calm-right-rail')),
         mainRail: overlapArea(region('.lovetree-calm-main-column'), region('.lovetree-calm-right-rail')),
@@ -1456,7 +1489,7 @@ test('Browse real-page structural baseline', { timeout: 120000 }, async (t) => {
 
       const env = await newRealBrowsePage(browser, vp, baseUrl);
       try {
-        const { page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed } = env;
+        const { page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests } = env;
 
         // Deterministic readiness: the real API feed is stubbed and the page
         // has rendered at least one real (non-skeleton) tree card.
@@ -1571,10 +1604,16 @@ test('Browse real-page structural baseline', { timeout: 120000 }, async (t) => {
 
         await t.test('G. reading order and overlap', () => {
           const o = snap.order;
+          const dom = snap.domOrder;
           if (vp.name === 'desktop') {
             assert.ok(o.panel < o.utility, `search panel header < utility controls (${o.panel} < ${o.utility})`);
             assert.ok(o.utility < o.resultsHead, `utility controls < results header (${o.utility} < ${o.resultsHead})`);
             assert.ok(o.resultsHead < o.list, `results header < results list (${o.resultsHead} < ${o.list})`);
+            assert.equal(dom.panelPrecedesUtility, true, '.search-panel-header must precede .browse-utility-row in DOM order');
+            assert.equal(dom.panelPrecedesResultsHead, true, '.search-panel-header must precede .browse-results-head in DOM order');
+            assert.equal(dom.panelPrecedesList, true, '.search-panel-header must precede #resultsList in DOM order');
+            assert.equal(dom.utilityPrecedesResultsHead, true, '.browse-utility-row must precede .browse-results-head in DOM order');
+            assert.equal(dom.resultsHeadPrecedesList, true, '.browse-results-head must precede #resultsList in DOM order');
             assert.ok(snap.overlaps.listRail <= 1, `main results / visible right rail material overlap ~0, got ${snap.overlaps.listRail}`);
             assert.ok(snap.overlaps.mainRail <= 1, `main column / right rail overlap ~0, got ${snap.overlaps.mainRail}`);
             assert.ok(snap.overlaps.headFirstCard <= 1, `results header / first card overlap ~0, got ${snap.overlaps.headFirstCard}`);
@@ -1583,6 +1622,10 @@ test('Browse real-page structural baseline', { timeout: 120000 }, async (t) => {
             assert.ok(o.panel < o.utility, `title < search input / filter controls (${o.panel} < ${o.utility})`);
             assert.ok(o.utility < o.resultsHead, `search input / filter controls < results header (${o.utility} < ${o.resultsHead})`);
             assert.ok(o.resultsHead < o.list, `results header < results list (${o.resultsHead} < ${o.list})`);
+            assert.equal(dom.headerPrecedesPanel, true, '#shared-header must precede .search-panel-header in DOM order');
+            assert.equal(dom.panelPrecedesUtility, true, '.search-panel-header must precede .browse-utility-row in DOM order');
+            assert.equal(dom.utilityPrecedesResultsHead, true, '.browse-utility-row must precede .browse-results-head in DOM order');
+            assert.equal(dom.resultsHeadPrecedesList, true, '.browse-results-head must precede #resultsList in DOM order');
             const badOverlap = snap.overlaps.controlsFirstCard.filter((c) => c.area > 1);
             assert.deepEqual(badOverlap, [], `visible controls vs first card overlap ~0, got ${JSON.stringify(badOverlap)}`);
             const rail = snap.regions.rightRail;
@@ -1607,6 +1650,36 @@ test('Browse real-page structural baseline', { timeout: 120000 }, async (t) => {
           // presented as real network success.
           assert.ok(stubbed.apiTrees >= 1, `deterministic /api/community/trees stub used (${stubbed.apiTrees} fulfillment)`);
           assert.ok(stubbed.external >= 1, `external requests all stubbed (${stubbed.external} fulfilled, 0 real external network)`);
+        });
+
+        await t.test('I. public-route API request allowlist', () => {
+          // Exact positive allowlist: the public Browse page may call only the
+          // public community trees feed over the same-origin API boundary.
+          const requestSet = Array.from(
+            new Set(sameOriginApiRequests.map(({ method, pathname }) => `${method} ${pathname}`))
+          ).sort();
+          assert.deepEqual(
+            requestSet,
+            ['GET /api/community/trees'],
+            `same-origin API request set must be exactly GET /api/community/trees, got: ${JSON.stringify(requestSet)}`
+          );
+          // No other /api/* request may have been stubbed with an empty body.
+          assert.equal(stubbed.apiOther, 0, `non-tree /api/* stub fulfillments must be 0, got ${stubbed.apiOther}`);
+
+          // Prohibited-category assertion across every same-origin request
+          // (auth/login/session/user/private routes must never be touched).
+          const forbiddenPathname = (pathname) => {
+            const forbiddenPrefixes = ['/api/auth', '/api/login', '/api/session', '/api/user', '/modal/private'];
+            return forbiddenPrefixes.some(
+              (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+            );
+          };
+          const forbiddenRequests = sameOriginRequests.filter(({ pathname }) => forbiddenPathname(pathname));
+          assert.deepEqual(
+            forbiddenRequests,
+            [],
+            `no auth/login/session/private/owner-profile same-origin request, got: ${JSON.stringify(forbiddenRequests)}`
+          );
         });
       } finally {
         await teardownRealBrowse(env);
