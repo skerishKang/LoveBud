@@ -367,3 +367,89 @@ test('classification registers the contract as EXECUTED_FAKE', () => {
   assert.ok(entry, 'contract classified');
   assert.equal(entry.layer, 'EXECUTED_FAKE');
 });
+
+// ── 7. Hostile trap negative controls ────────────────────────────────────────
+
+function makeHostileThrownObject() {
+  const state = { thrownGetterCalls: 0 };
+  const hostile = {};
+  Object.defineProperty(hostile, 'category', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      state.thrownGetterCalls += 1;
+      throw new Error('raw hostile category detail');
+    },
+  });
+  return { hostile, state };
+}
+
+function assertHostileClosed(result, state, trapCalls) {
+  assert.ok(trapCalls >= 1, 'hostile trap executed');
+  assert.equal(state.thrownGetterCalls, 0, 'hostile thrown category getter never invoked');
+  assert.equal(result.verdict, 'DEPLOY_GATE_BLOCKED_INVALID_INPUT');
+  assert.equal(result.blocked_gate, 'input');
+  assert.ok(
+    !JSON.stringify(result).includes('raw hostile category detail'),
+    'no raw hostile category detail leakage'
+  );
+}
+
+test('hostile getPrototypeOf trap throw fails closed without reading thrown detail', () => {
+  const { hostile, state } = makeHostileThrownObject();
+  let trapCalls = 0;
+  const evidence = new Proxy(validEvidence(), {
+    getPrototypeOf() {
+      trapCalls += 1;
+      throw hostile;
+    },
+  });
+  const result = evaluate(evidence);
+  assertHostileClosed(result, state, trapCalls);
+});
+
+test('hostile ownKeys trap throw fails closed without reading thrown detail', () => {
+  const { hostile, state } = makeHostileThrownObject();
+  let trapCalls = 0;
+  const evidence = new Proxy(validEvidence(), {
+    ownKeys() {
+      trapCalls += 1;
+      throw hostile;
+    },
+  });
+  const result = evaluate(evidence);
+  assertHostileClosed(result, state, trapCalls);
+});
+
+test('hostile getOwnPropertyDescriptor trap throw fails closed without reading thrown detail', () => {
+  const { hostile, state } = makeHostileThrownObject();
+  let trapCalls = 0;
+  const evidence = new Proxy(validEvidence(), {
+    getOwnPropertyDescriptor() {
+      trapCalls += 1;
+      throw hostile;
+    },
+  });
+  const result = evaluate(evidence);
+  assertHostileClosed(result, state, trapCalls);
+});
+
+// ── 8. Export surface immutability ───────────────────────────────────────────
+
+test('export surface is frozen and rejects mutation with unchanged public keys', () => {
+  const publicKeys = Object.keys(gate).sort();
+  assert.equal(Object.isFrozen(gate), true, 'export object frozen');
+  assert.throws(() => {
+    gate.CONTRACT_VERSION = 'changed';
+  }, TypeError, 'CONTRACT_VERSION reassignment rejected');
+  assert.throws(() => {
+    gate.extra = true;
+  }, TypeError, 'extra export rejected');
+  assert.throws(() => {
+    delete gate.evaluateDeployGate;
+  }, TypeError, 'export deletion rejected');
+  assert.equal(gate.CONTRACT_VERSION, '1.0');
+  assert.equal(typeof gate.evaluateDeployGate, 'function');
+  assert.equal(gate.extra, undefined, 'extra export absent');
+  assert.deepEqual(Object.keys(gate).sort(), publicKeys, 'public key set unchanged');
+});

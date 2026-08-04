@@ -133,10 +133,12 @@ function isPlainRecord(value) {
   return proto === Object.prototype || proto === null;
 }
 
+const INTERNAL_FAILURES = new WeakMap();
+
 function fail(verdict) {
-  const err = new Error(verdict);
-  err.category = verdict;
-  throw err;
+  const failure = Object.create(null);
+  INTERNAL_FAILURES.set(failure, verdict);
+  throw failure;
 }
 
 function readOwnEnumerableDataProperty(object, key) {
@@ -309,10 +311,21 @@ function evaluateDeployGate(input) {
       ACTIVATION_APPROVAL_VERDICT_VALUES
     );
   } catch (error) {
-    if (error && typeof error === 'object' && typeof error.category === 'string') {
-      return makeBlockedResult(error.category, BLOCKED_GATES.INPUT);
+    if (
+      error !== null &&
+      (typeof error === 'object' || typeof error === 'function') &&
+      INTERNAL_FAILURES.has(error)
+    ) {
+      return makeBlockedResult(
+        INTERNAL_FAILURES.get(error),
+        BLOCKED_GATES.INPUT
+      );
     }
-    return makeBlockedResult(VERDICTS.DEPLOY_GATE_BLOCKED_INVALID_INPUT, BLOCKED_GATES.INPUT);
+
+    return makeBlockedResult(
+      VERDICTS.DEPLOY_GATE_BLOCKED_INVALID_INPUT,
+      BLOCKED_GATES.INPUT
+    );
   }
 
   // Fail-closed gate evaluation in fixed order using only local sanitized values.
@@ -362,7 +375,7 @@ function evaluateDeployGate(input) {
   return makeConfirmedResult();
 }
 
-module.exports = {
+module.exports = Object.freeze({
   CONTRACT_VERSION,
   RELEASE_SHA_PATTERN,
   VERDICTS,
@@ -380,4 +393,4 @@ module.exports = {
   RECOVERY_GATE_VERDICT_VALUES,
   ACTIVATION_APPROVAL_VERDICT_VALUES,
   evaluateDeployGate,
-};
+});
