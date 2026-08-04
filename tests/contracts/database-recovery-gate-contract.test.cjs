@@ -437,6 +437,77 @@ test('hostile getOwnPropertyDescriptor trap throw fails closed without reading t
   assertHostileClosed(result, state, trapCalls);
 });
 
+// ── 5b. Exact own-key validation: non-enumerable, Symbol, raw detail leakage ───
+
+test('non-enumerable unknown own string key is rejected without value leakage', () => {
+  const evidence = validEvidence();
+  Object.defineProperty(evidence, 'hidden_provider_metadata', {
+    enumerable: false,
+    configurable: true,
+    value: 'private',
+  });
+  const result = evaluate(evidence);
+  assert.equal(result.verdict, 'RECOVERY_GATE_BLOCKED_INVALID_INPUT');
+  assert.equal(result.blocked_gate, 'input');
+  assertAllFlagsFalse(result);
+  assert.ok(!JSON.stringify(result).includes('private'), 'no raw non-enumerable value leakage');
+});
+
+test('unknown own Symbol key is rejected without value leakage', () => {
+  const evidence = validEvidence();
+  evidence[Symbol('private')] = 'private';
+  const result = evaluate(evidence);
+  assert.equal(result.verdict, 'RECOVERY_GATE_BLOCKED_INVALID_INPUT');
+  assert.equal(result.blocked_gate, 'input');
+  assertAllFlagsFalse(result);
+  assert.ok(!JSON.stringify(result).includes('private'), 'no raw Symbol value leakage');
+});
+
+test('hostile ownKeys trap throwing raw detail fails closed without leakage', () => {
+  const evidence = new Proxy(validEvidence(), {
+    ownKeys() {
+      throw new Error('raw provider detail leaked from ownKeys trap');
+    },
+  });
+  const result = evaluate(evidence);
+  assert.equal(result.verdict, 'RECOVERY_GATE_BLOCKED_INVALID_INPUT');
+  assert.equal(result.blocked_gate, 'input');
+  assertAllFlagsFalse(result);
+  assert.ok(!JSON.stringify(result).includes('raw provider detail leaked'), 'no raw ownKeys detail leakage');
+});
+
+test('hostile getOwnPropertyDescriptor trap throwing raw detail fails closed without leakage', () => {
+  const evidence = new Proxy(validEvidence(), {
+    getOwnPropertyDescriptor() {
+      throw new Error('raw provider detail leaked from descriptor trap');
+    },
+  });
+  const result = evaluate(evidence);
+  assert.equal(result.verdict, 'RECOVERY_GATE_BLOCKED_INVALID_INPUT');
+  assert.equal(result.blocked_gate, 'input');
+  assertAllFlagsFalse(result);
+  assert.ok(!JSON.stringify(result).includes('raw provider detail leaked'), 'no raw descriptor detail leakage');
+});
+
+test('valid evidence with exactly 11 enumerable string data properties confirms', () => {
+  const evidence = validEvidence();
+  const ownKeys = Reflect.ownKeys(evidence);
+  assert.equal(ownKeys.length, 11, 'exactly 11 own keys');
+  for (const key of ownKeys) {
+    assert.equal(typeof key, 'string', 'every own key is a string');
+    assert.ok(gate.ALLOWED_INPUT_KEYS.includes(key), 'every own key is allowed: ' + String(key));
+    const descriptor = Object.getOwnPropertyDescriptor(evidence, key);
+    assert.equal(descriptor.enumerable, true, 'every own key is enumerable: ' + key);
+    assert.equal(descriptor.configurable, true, 'every own key is configurable: ' + key);
+    assert.equal(descriptor.writable, true, 'every own key is writable: ' + key);
+    assert.equal(typeof descriptor.get, 'undefined', 'no getter: ' + key);
+    assert.equal(typeof descriptor.set, 'undefined', 'no setter: ' + key);
+  }
+  const result = evaluate(evidence);
+  assert.equal(result.verdict, 'RECOVERY_GATE_CONFIRMED');
+  assertAllFlagsFalse(result);
+});
+
 // ── 6. Determinism, frozen, detached, input immutability ─────────────────────
 
 test('same bounded input produces byte-stable awaited results', () => {

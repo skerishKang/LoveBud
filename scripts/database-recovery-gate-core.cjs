@@ -142,7 +142,7 @@ function readOwnEnumerableDataProperty(object, key) {
 function readExactKeys(record) {
   let keys;
   try {
-    keys = Object.keys(record);
+    keys = Reflect.ownKeys(record);
   } catch {
     fail(VERDICTS.RECOVERY_GATE_BLOCKED_INVALID_INPUT);
   }
@@ -156,6 +156,7 @@ function requirePlainRecord(value) {
 function requireExactKeySet(keys) {
   if (keys.length !== ALLOWED_INPUT_KEYS.length) fail(VERDICTS.RECOVERY_GATE_BLOCKED_INVALID_INPUT);
   for (const key of keys) {
+    if (typeof key !== 'string') fail(VERDICTS.RECOVERY_GATE_BLOCKED_INVALID_INPUT);
     if (!ALLOWED_INPUT_KEYS.includes(key)) fail(VERDICTS.RECOVERY_GATE_BLOCKED_INVALID_INPUT);
   }
 }
