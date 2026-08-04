@@ -37,11 +37,11 @@
                     <input type="text" id="searchInput" class="search-input" placeholder="아티스트, 첫 순간, 감정으로 찾아보기" required>
                 </div>
 
-                <div class="filter-row" aria-label="감상 보조 필터">
-                    <span class="tag-chip active" data-category="전체">전체</span>
-                    <span class="tag-chip" data-category="입덕">첫 순간</span>
-                    <span class="tag-chip" data-category="성장">이어진 마음</span>
-                    <span class="tag-chip" data-category="최애">깊어진 마음</span>
+                <div class="filter-row" role="radiogroup" aria-label="감상 보조 필터">
+                    <button type="button" class="tag-chip active" data-category="전체" role="radio" aria-checked="true" tabindex="0">전체</button>
+                    <button type="button" class="tag-chip" data-category="입덕" role="radio" aria-checked="false" tabindex="-1">첫 순간</button>
+                    <button type="button" class="tag-chip" data-category="성장" role="radio" aria-checked="false" tabindex="-1">이어진 마음</button>
+                    <button type="button" class="tag-chip" data-category="최애" role="radio" aria-checked="false" tabindex="-1">깊어진 마음</button>
                 </div>
             </div>
 

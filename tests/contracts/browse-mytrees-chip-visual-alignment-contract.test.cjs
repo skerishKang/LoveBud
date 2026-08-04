@@ -282,6 +282,114 @@ tests.push({
     },
 });
 
+// ── 13. Browse filter-chip keyboard accessibility (semantics) ─────────────
+tests.push({
+    name: 'Browse chips are native buttons with radio semantics (exactly 4)',
+    fn: () => {
+        const html = fs.readFileSync(path.join(ROOT, 'pages/search.html'), 'utf8');
+        const chips = [...html.matchAll(/<button\b[^>]*class="[^"]*\btag-chip\b[^"]*"[^>]*>/g)].map(m => m[0]);
+        assert.equal(chips.length, 4, 'Browse must define exactly 4 chip buttons');
+        for (const chip of chips) {
+            assert.match(chip, /type="button"/, 'chip must be type=button');
+            assert.match(chip, /role="radio"/, 'chip must expose role=radio');
+        }
+    },
+});
+
+tests.push({
+    name: 'Browse filter-row is a radiogroup and chip taxonomy is preserved',
+    fn: () => {
+        const html = fs.readFileSync(path.join(ROOT, 'pages/search.html'), 'utf8');
+        const row = html.match(/<div\s+class="filter-row"[^>]*>/);
+        assert.ok(row, 'filter-row div must exist');
+        assert.match(row[0], /role="radiogroup"/, 'filter-row must be a radiogroup');
+        assert.match(row[0], /aria-label="감상 보조 필터"/, 'filter-row must keep its aria-label');
+        const cats = [...html.matchAll(/data-category="([^"]+)"/g)].map(m => m[1]);
+        assert.deepEqual(cats, ['전체', '입덕', '성장', '최애'], 'data-category taxonomy must be preserved');
+    },
+});
+
+tests.push({
+    name: 'Exactly one chip initially selected (aria-checked=true + tabindex=0)',
+    fn: () => {
+        const html = fs.readFileSync(path.join(ROOT, 'pages/search.html'), 'utf8');
+        const chips = [...html.matchAll(/<button\b[^>]*class="[^"]*\btag-chip\b[^"]*"[^>]*>/g)].map(m => m[0]);
+        assert.equal(chips.length, 4);
+        assert.equal(chips.filter(c => /aria-checked="true"/.test(c)).length, 1, 'exactly one aria-checked=true');
+        assert.equal(chips.filter(c => /tabindex="0"/.test(c)).length, 1, 'exactly one tabindex=0');
+        assert.equal(chips.filter(c => /aria-checked="false"/.test(c)).length, 3, 'three aria-checked=false');
+        assert.equal(chips.filter(c => /tabindex="-1"/.test(c)).length, 3, 'three tabindex=-1');
+    },
+});
+
+tests.push({
+    name: 'search-controls unifies chip activation, semantics sync and keyboard nav',
+    fn: () => {
+        const src = fs.readFileSync(path.join(ROOT, 'js/search/search-controls.js'), 'utf8');
+        assert.ok(src.includes('function activateCategoryChip'), 'must define activateCategoryChip');
+        assert.ok(src.includes('function syncCategoryChipSemantics'), 'must define syncCategoryChipSemantics');
+        assert.ok(src.includes('function moveCategoryChipFocus'), 'must define moveCategoryChipFocus');
+        assert.ok(src.includes("setAttribute('aria-checked'"), 'must sync aria-checked');
+        assert.ok(src.includes("setAttribute('tabindex'"), 'must sync tabindex');
+        assert.ok(src.includes("classList.toggle('active'"), 'must sync the active class');
+        for (const key of ["'ArrowRight'", "'ArrowDown'", "'ArrowLeft'", "'ArrowUp'", "'Home'", "'End'"]) {
+            assert.ok(src.includes(key), `keydown must handle ${key}`);
+        }
+    },
+});
+
+tests.push({
+    name: '.tag-chip is button-normalized and keeps canonical focus ring via global.css',
+    fn: () => {
+        const re = /\.tag-chip\s*{([^}]*)}/m;
+        const m = re.exec(SEARCH_CONTROLS_CSS);
+        assert.ok(m, '.tag-chip block must exist in search-controls.css');
+        const block = m[1];
+        assert.ok(block.includes('appearance: none'), '.tag-chip must reset appearance');
+        assert.ok(block.includes('-webkit-appearance: none'), '.tag-chip must reset webkit appearance');
+        assert.ok(block.includes('font: inherit') || block.includes('font-family: inherit'), '.tag-chip must inherit font');
+        assert.ok(block.includes('margin: 0'), '.tag-chip must reset margin');
+        assert.match(
+            GLOBAL_CSS,
+            /body\s+\.tag-chip:focus-visible\s*\{[^}]*var\(--control-focus-ring\)/,
+            'global.css must keep the canonical tag-chip focus-visible ring'
+        );
+    },
+});
+
+tests.push({
+    name: 'search-controls fails closed to the canonical first chip for unknown categories',
+    fn: () => {
+        const src = fs.readFileSync(path.join(ROOT, 'js/search/search-controls.js'), 'utf8');
+        assert.ok(src.includes('didFallback'), 'must expose a bounded didFallback verdict');
+        assert.ok(src.includes('activeChip = tagChips[0]'), 'must fall back to the canonical first chip');
+        assert.ok(src.includes('state.currentCategory = getChipCategory(activeChip)'), 'must correct state.currentCategory');
+        assert.ok(src.includes('return { activeChip, didFallback };'), 'must return the bounded result object');
+        assert.ok(src.includes('if (result && result.didFallback && state.urlStateReady)'), 'fallback reconcile must be a single gated branch');
+        assert.ok(src.includes('callbacks.renderResults(true)'), 'fallback reconcile must re-render');
+        assert.ok(src.includes("callbacks.updateUrlState({ historyMode: 'replace' })"), 'fallback reconcile must rewrite the URL');
+    },
+});
+
+tests.push({
+    name: 'search-controls fail-closed fallback stays bounded (no duplicate render/write)',
+    fn: () => {
+        const src = fs.readFileSync(path.join(ROOT, 'js/search/search-controls.js'), 'utf8');
+        const renders = (src.match(/callbacks\.renderResults\(/g) || []).length;
+        const urls = (src.match(/callbacks\.updateUrlState\(/g) || []).length;
+        assert.equal(renders, urls, 'renderResults and updateUrlState must stay paired');
+        const fallbackBranch = src.match(/if \(result && result\.didFallback && state\.urlStateReady\)\s*\{[^}]*\}/);
+        assert.ok(fallbackBranch, 'fallback reconcile must exist as one gated branch');
+        assert.ok(
+            fallbackBranch[0].includes('renderResults') && fallbackBranch[0].includes('updateUrlState'),
+            'fallback branch must contain the paired render/URL reconcile'
+        );
+        // exactly-one invariant: binary aria-checked/tabindex sync keeps one selected chip
+        assert.ok(src.includes("chip.setAttribute('aria-checked', isActive ? 'true' : 'false')"), 'aria-checked sync must be binary');
+        assert.ok(src.includes("chip.setAttribute('tabindex', isActive ? '0' : '-1')"), 'tabindex sync must be binary');
+    },
+});
+
 // ── Runner ──────────────────────────────────────────────────────────────────
 (async () => {
     let passed = 0;
