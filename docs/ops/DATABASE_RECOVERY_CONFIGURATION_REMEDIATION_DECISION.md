@@ -281,3 +281,50 @@ external retention per policy.
   recorded.
 - Manual semantic review (English and Korean) confirms no private or exact-current-state
   value is disclosed.
+
+## 9. Recovery gate implementation status (Issue #3880)
+
+Issue #3880 implements the source-only pre-change recovery gate decision core and the
+stale/missing recovery-point vocabulary for Layers C+D. This section records that status
+only; it changes no provider configuration and grants no execution authority.
+
+```text
+Layer C — pre-change recovery gate source core:
+IMPLEMENTED BY #3880
+pending Web CTO review / merge / fresh exact-head CI
+
+Layer D — stale/missing recovery-point vocabulary:
+IMPLEMENTED BY #3880
+alert delivery runtime remains #3461
+```
+
+Implementation marker: `RECOVERY_PRE_CHANGE_GATE` (Issue #3880).
+
+```text
+Layer A — provider history/schedule remediation:
+STILL REQUIRED
+(owner-authorized provider mutation, separately gated)
+
+Layer B — external retained logical backup / provisioning:
+STILL REQUIRED
+(source-only pipeline #3828 implemented; provisioning and deployment separate)
+
+fresh read-only re-inspection:
+STILL REQUIRED before any live RECOVERY_POINT_VALID assertion
+
+next recovery step:
+isolated restore-drill authority and synthetic invariant rehearsal (Layer E)
+```
+
+The source-only gate (`scripts/database-recovery-gate-core.cjs`) evaluates bounded
+sanitized recovery evidence, is deterministic and descriptor-safe, performs zero
+provider/network/database/snapshot/restore/Production effects, and fails closed when
+provider capability is unverified or recovery posture is missing, stale, unknown, or
+overdue. `RECOVERY_GATE_CONFIRMED` is a synthetic source-level model only; it does not
+prove live provider capability, snapshot existence, restore ability, or approval.
+
+Refs #3880.
+Refs #3460 — Keep OPEN.
+Refs #3461 — Keep OPEN (alert delivery runtime boundary).
+Refs #3435 — Keep OPEN/deferred.
+Refs #1882 — Keep OPEN.
