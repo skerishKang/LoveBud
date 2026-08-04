@@ -1141,7 +1141,7 @@ test('real Editor wiring: no raw error, memory id, tree id, or user content leak
   assert.ok(!consoleJoined.includes('secret provider error'), 'raw error must not appear in console');
 });
 
-/* ── #3852 release manifest authority (real pages/editor.html source) ────── */
+/* ── #3852/#3886 release manifest authority (real external source) ────────── */
 
 function extractReleaseManifestAuthoritySource() {
   // #3886 — the release-manifest authority moved from the inline <script> block
@@ -1254,9 +1254,13 @@ test('#3886 source-static: #3887 i18n dictionary inline block remains out of sco
   );
 });
 
-test('#3886 source-static: _headers CSP script-src is unchanged and has no unsafe-inline', () => {
-  const headers = read('_headers');
-  const cspLine = headers.split('\n').find((l) => l.indexOf('Content-Security-Policy') >= 0);
+test('#3886 source-static: _headers is byte-identical to origin/main with no script unsafe-inline', () => {
+  // Exact-main comparison: _headers must not have been modified by this branch.
+  const { execSync } = require('node:child_process');
+  const baseline = execSync('git show origin/main:_headers', { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(read('_headers'), baseline, '_headers must be byte-identical to origin/main');
+
+  const cspLine = baseline.split('\n').find((l) => l.indexOf('Content-Security-Policy') >= 0);
   assert.ok(cspLine, '_headers must define a Content-Security-Policy');
   // Only script-src is the authority seam for inline execution: style-src
   // legitimately carries a pre-existing 'unsafe-inline' and must stay untouched.
