@@ -807,3 +807,353 @@ test('#3688 browser: canonical staged loading skeleton runtime', { timeout: 9000
     await closeServer(server);
   }
 });
+
+test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () => {
+  let browser;
+  try {
+    browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+  } catch (err) {
+    throw new Error(`PLAYWRIGHT_BROWSER_BINARY_UNAVAILABLE: ${err && err.message ? err.message : err}`);
+  }
+  const { server, port } = await startServer();
+
+  // Deterministic synthetic public trees: 2 per stage so category filters are meaningful.
+  const syntheticTrees = [
+    { id: 'a11y-1', title: '입덕 트리 알파', visibility: 'public', stage: '입덕', memoryCount: 1, theme: 'first moments', createdAt: '2026-01-01T00:00:00Z' },
+    { id: 'a11y-2', title: '입덕 트리 베타', visibility: 'public', stage: '입덕', memoryCount: 2, theme: 'first moments', createdAt: '2026-01-02T00:00:00Z' },
+    { id: 'a11y-3', title: '성장 트리 감마', visibility: 'public', stage: '성장', memoryCount: 3, theme: 'growing', createdAt: '2026-01-03T00:00:00Z' },
+    { id: 'a11y-4', title: '성장 트리 델타', visibility: 'public', stage: '성장', memoryCount: 4, theme: 'growing', createdAt: '2026-01-04T00:00:00Z' },
+    { id: 'a11y-5', title: '최애 트리 엡실론', visibility: 'public', stage: '최애', memoryCount: 5, theme: 'deep love', createdAt: '2026-01-05T00:00:00Z' },
+    { id: 'a11y-6', title: '최애 트리 제타', visibility: 'public', stage: '최애', memoryCount: 6, theme: 'deep love', createdAt: '2026-01-06T00:00:00Z' },
+  ];
+
+  const chipStateReader = (page) => () => page.evaluate(() => {
+    const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
+    const cat = (c) => c.getAttribute('data-category');
+    let category = null;
+    try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
+    return {
+      active: chips.filter(c => c.classList.contains('active')).map(cat),
+      checked: chips.filter(c => c.getAttribute('aria-checked') === 'true').map(cat),
+      tabZero: chips.filter(c => c.getAttribute('tabindex') === '0').map(cat),
+      activeElement: document.activeElement && document.activeElement.getAttribute
+        ? document.activeElement.getAttribute('data-category')
+        : null,
+      cards: [...document.querySelectorAll('#resultsList .tree-card')].map(c => c.textContent.trim()),
+      cardCount: [...document.querySelectorAll('#resultsList .tree-card')].length,
+      category,
+    };
+  });
+
+  const assertInvariant = (label, s, expected) => {
+    assert.deepEqual(s.active, [expected], `${label}: active=${s.active.join(',') || '(none)'}`);
+    assert.deepEqual(s.checked, [expected], `${label}: aria-checked=true=${s.checked.join(',') || '(none)'}`);
+    assert.deepEqual(s.tabZero, [expected], `${label}: tabindex=0=${s.tabZero.join(',') || '(none)'}`);
+    assert.equal(s.activeElement, expected, `${label}: focused chip=${s.activeElement}`);
+  };
+
+  const assertCards = (label, s, expectedCount, keyword) => {
+    assert.equal(s.cardCount, expectedCount, `${label}: cardCount=${s.cardCount}`);
+    if (keyword) {
+      for (const text of s.cards) {
+        assert.ok(text.includes(keyword), `${label}: card "${text.slice(0, 30)}" must include ${keyword}`);
+      }
+    }
+  };
+
+  const waitActive = (page, expected) => page.waitForFunction((exp) => {
+    const act = [...document.querySelectorAll('.filter-row .tag-chip')].filter(c => c.classList.contains('active'));
+    return act.length === 1 && act[0].getAttribute('data-category') === exp;
+  }, expected, { timeout: 5000 });
+
+  try {
+    for (const vp of [
+      { name: 'desktop', viewport: { width: 1440, height: 900 }, isMobile: false },
+      { name: 'mobile', viewport: { width: 390, height: 844 }, isMobile: true },
+    ]) {
+      const context = await browser.newContext({ viewport: vp.viewport, isMobile: vp.isMobile, hasTouch: vp.isMobile });
+      const page = await context.newPage();
+      const health = { pageErrors: [], consoleErrors: [], sameOriginFailures: [], http4xx: [], stubbedApi: [], external: 0 };
+      page.on('pageerror', (err) => health.pageErrors.push(String((err && err.message) || err)));
+      page.on('console', (msg) => { if (msg.type() === 'error') health.consoleErrors.push(msg.text()); });
+      page.on('requestfailed', (request) => {
+        const url = request.url();
+        if (url.startsWith(`http://127.0.0.1:${port}`) && request.failure()) {
+          health.sameOriginFailures.push(`${url} - ${request.failure().errorText}`);
+        }
+      });
+      page.on('response', (response) => {
+        const url = response.url();
+        if (url.startsWith(`http://127.0.0.1:${port}`) && response.status() >= 400) {
+          health.http4xx.push(`${response.status()}: ${url}`);
+        }
+      });
+
+      await page.route('**/*', (route) => {
+        const url = route.request().url();
+        const type = route.request().resourceType();
+        let pathname = '';
+        try { pathname = new URL(url).pathname; } catch (e) {}
+        if (pathname === '/api/community/trees') {
+          health.stubbedApi.push(pathname);
+          route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(syntheticTrees) });
+          return;
+        }
+        if (pathname.startsWith('/api/')) {
+          health.stubbedApi.push(pathname);
+          route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+          return;
+        }
+        if (url.includes('googleapis') || url.includes('firebase') || url.includes('identitytoolkit') || url.includes('firestore') || url.includes('gstatic')) {
+          if (type === 'fetch' || type === 'xhr') {
+            route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+            return;
+          }
+          health.external += 1;
+        }
+        route.continue();
+      });
+
+      await page.goto(`http://127.0.0.1:${port}/pages/search.html`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(
+        () => document.querySelectorAll('#resultsList .tree-card').length >= 6,
+        null,
+        { timeout: 20000 }
+      );
+
+      const read = chipStateReader(page);
+
+      // ── A. Initial radio-group semantics ──
+      const s0 = await read();
+      assert.equal(s0.activeElement, null, `${vp.name}: nothing focused initially`);
+      assert.deepEqual(s0.active, ['전체'], `${vp.name}: initial active`);
+      assert.deepEqual(s0.checked, ['전체'], `${vp.name}: initial aria-checked=true`);
+      assert.deepEqual(s0.tabZero, ['전체'], `${vp.name}: initial tabindex=0`);
+      assert.equal(s0.cardCount, 6, `${vp.name}: initial card count`);
+      assert.equal(s0.category, null, `${vp.name}: initial URL category absent`);
+
+      const markup = await page.evaluate(() => {
+        const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
+        const row = document.querySelector('.filter-row');
+        const rr = row.getBoundingClientRect();
+        return {
+          chipCount: chips.length,
+          allButtons: chips.every(c => c.tagName === 'BUTTON'),
+          allTypeButton: chips.every(c => c.getAttribute('type') === 'button'),
+          allRoleRadio: chips.every(c => c.getAttribute('role') === 'radio'),
+          rowRole: row.getAttribute('role'),
+          rowLabel: row.getAttribute('aria-label'),
+          categories: chips.map(c => c.getAttribute('data-category')),
+          clipping: chips.map(c => {
+            const r = c.getBoundingClientRect();
+            return { cat: c.getAttribute('data-category'), left: r.left, right: r.right, rowLeft: rr.left, rowRight: rr.right };
+          }),
+        };
+      });
+      assert.equal(markup.chipCount, 4, `${vp.name}: chip count`);
+      assert.equal(markup.allButtons, true, `${vp.name}: chips must be BUTTON`);
+      assert.equal(markup.allTypeButton, true, `${vp.name}: chips must be type=button`);
+      assert.equal(markup.allRoleRadio, true, `${vp.name}: chips must be role=radio`);
+      assert.equal(markup.rowRole, 'radiogroup', `${vp.name}: filter-row role`);
+      assert.equal(markup.rowLabel, '감상 보조 필터', `${vp.name}: filter-row label`);
+      assert.deepEqual(markup.categories, ['전체', '입덕', '성장', '최애'], `${vp.name}: taxonomy`);
+      for (const c of markup.clipping) {
+        assert.ok(c.left >= c.rowLeft - 1, `${vp.name}: ${c.cat} not clipped left`);
+        assert.ok(c.right <= c.rowRight + 1, `${vp.name}: ${c.cat} not clipped right`);
+      }
+
+      // ── B. Tab reaches the selected chip ──
+      await page.click('#searchInput');
+      await page.keyboard.press('Tab');
+      await page.waitForFunction(() => {
+        const el = document.activeElement;
+        return el && el.classList && el.classList.contains('tag-chip');
+      }, null, { timeout: 5000 });
+      const tabCat = await page.evaluate(() =>
+        document.activeElement && document.activeElement.getAttribute('data-category')
+      );
+      assert.equal(tabCat, '전체', `${vp.name}: Tab must land on the selected chip`);
+
+      // ── C. focus() succeeds and focused chip stays inside viewport ──
+      const focusInfo = await page.evaluate(() => {
+        const chip = [...document.querySelectorAll('.filter-row .tag-chip')].find(c => c.getAttribute('data-category') === '성장');
+        chip.focus();
+        const r = chip.getBoundingClientRect();
+        return { ok: document.activeElement === chip, cat: chip.getAttribute('data-category'), x: r.left, right: r.right, vw: window.innerWidth };
+      });
+      assert.equal(focusInfo.ok, true, `${vp.name}: focus() must succeed on a chip`);
+      assert.equal(focusInfo.cat, '성장', `${vp.name}: focus() target`);
+      assert.ok(focusInfo.x >= -1, `${vp.name}: focused chip left >= -1`);
+      assert.ok(focusInfo.right <= focusInfo.vw + 1, `${vp.name}: focused chip right within viewport`);
+
+      // ── D. ArrowLeft: previous (성장 -> 입덕) with full sync ──
+      await page.keyboard.press('ArrowLeft');
+      await waitActive(page, '입덕');
+      const sD = await read();
+      assertInvariant(`${vp.name} ArrowLeft->입덕`, sD, '입덕');
+      assert.equal(sD.category, '입덕', `${vp.name}: ArrowLeft URL sync`);
+      assertCards(`${vp.name} ArrowLeft->입덕`, sD, 2, '입덕 트리');
+
+      // ── E. ArrowLeft prev (입덕 -> 전체) then wrap prev (전체 -> 최애) ──
+      await page.keyboard.press('ArrowLeft');
+      await waitActive(page, '전체');
+      let sE = await read();
+      assertInvariant(`${vp.name} ArrowLeft->전체`, sE, '전체');
+      assert.equal(sE.cardCount, 6, `${vp.name}: 전체 cards`);
+      await page.keyboard.press('ArrowLeft');
+      await waitActive(page, '최애');
+      sE = await read();
+      assertInvariant(`${vp.name} ArrowLeft wrap->최애`, sE, '최애');
+      assert.equal(sE.category, '최애', `${vp.name}: wrap URL sync`);
+      assertCards(`${vp.name} ArrowLeft wrap->최애`, sE, 2, '최애 트리');
+
+      // ── F. ArrowRight wrap (최애 -> 전체) ──
+      await page.keyboard.press('ArrowRight');
+      await waitActive(page, '전체');
+      const sF = await read();
+      assertInvariant(`${vp.name} ArrowRight wrap->전체`, sF, '전체');
+      assert.equal(sF.cardCount, 6, `${vp.name}: wrap back to 전체`);
+
+      // ── G. End / Home ──
+      await page.keyboard.press('End');
+      await waitActive(page, '최애');
+      let sG = await read();
+      assertInvariant(`${vp.name} End->최애`, sG, '최애');
+      await page.keyboard.press('Home');
+      await waitActive(page, '전체');
+      sG = await read();
+      assertInvariant(`${vp.name} Home->전체`, sG, '전체');
+
+      // ── H. ArrowDown / ArrowUp ──
+      await page.keyboard.press('ArrowDown');
+      await waitActive(page, '입덕');
+      let sH = await read();
+      assertInvariant(`${vp.name} ArrowDown->입덕`, sH, '입덕');
+      await page.keyboard.press('ArrowUp');
+      await waitActive(page, '전체');
+      sH = await read();
+      assertInvariant(`${vp.name} ArrowUp->전체`, sH, '전체');
+
+      // ── I. Enter activation (native button click, single activation) ──
+      const enterCat = await page.evaluate(() => {
+        const chip = [...document.querySelectorAll('.filter-row .tag-chip')].find(c => c.getAttribute('data-category') === '성장');
+        chip.focus();
+        return chip.getAttribute('data-category');
+      });
+      assert.equal(enterCat, '성장', `${vp.name}: Enter focus target`);
+      await page.keyboard.press('Enter');
+      await waitActive(page, '성장');
+      let sI = await read();
+      assertInvariant(`${vp.name} Enter->성장`, sI, '성장');
+      assert.equal(sI.category, '성장', `${vp.name}: Enter URL sync`);
+      assertCards(`${vp.name} Enter->성장`, sI, 2, '성장 트리');
+      await page.keyboard.press('Enter');
+      await waitActive(page, '성장');
+      sI = await read();
+      assertInvariant(`${vp.name} Enter again (no toggle)`, sI, '성장');
+      assert.equal(sI.cardCount, 2, `${vp.name}: Enter double activation 0`);
+
+      // ── J. Space activation (native button click, single activation) ──
+      const spaceCat = await page.evaluate(() => {
+        const chip = [...document.querySelectorAll('.filter-row .tag-chip')].find(c => c.getAttribute('data-category') === '최애');
+        chip.focus();
+        return chip.getAttribute('data-category');
+      });
+      assert.equal(spaceCat, '최애', `${vp.name}: Space focus target`);
+      await page.keyboard.press('Space');
+      await waitActive(page, '최애');
+      let sJ = await read();
+      assertInvariant(`${vp.name} Space->최애`, sJ, '최애');
+      assert.equal(sJ.category, '최애', `${vp.name}: Space URL sync`);
+      assertCards(`${vp.name} Space->최애`, sJ, 2, '최애 트리');
+      await page.keyboard.press('Space');
+      await waitActive(page, '최애');
+      sJ = await read();
+      assertInvariant(`${vp.name} Space again (no toggle)`, sJ, '최애');
+      assert.equal(sJ.cardCount, 2, `${vp.name}: Space double activation 0`);
+
+      // ── K. Final single-selection invariant + browser health ──
+      const finalState = await read();
+      assert.equal(finalState.active.length, 1, `${vp.name}: exactly one active`);
+      assert.equal(finalState.checked.length, 1, `${vp.name}: exactly one aria-checked=true`);
+      assert.equal(finalState.tabZero.length, 1, `${vp.name}: exactly one tabindex=0`);
+
+      assert.ok(health.stubbedApi.length >= 1, `${vp.name}: deterministic API stub used`);
+      assert.equal(health.pageErrors.length, 0, `${vp.name}: pageerrors ${health.pageErrors.join(' | ')}`);
+      assert.equal(health.consoleErrors.length, 0, `${vp.name}: console errors ${health.consoleErrors.join(' | ')}`);
+      assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: same-origin failures ${health.sameOriginFailures.join(' | ')}`);
+      assert.equal(health.http4xx.length, 0, `${vp.name}: HTTP>=400 ${health.http4xx.join(' | ')}`);
+
+      // ── L. Initial invalid URL fails closed to 전체 ──
+      health.pageErrors.length = 0;
+      health.consoleErrors.length = 0;
+      health.sameOriginFailures.length = 0;
+      health.http4xx.length = 0;
+      health.stubbedApi.length = 0;
+      health.external = 0;
+      await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => {
+        const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
+        const act = chips.filter(c => c.classList.contains('active'));
+        let category = null;
+        try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
+        return document.querySelectorAll('#resultsList .tree-card').length >= 6
+          && act.length === 1
+          && act[0].getAttribute('data-category') === '전체'
+          && category === null;
+      }, null, { timeout: 20000 });
+      const sL = await read();
+      assert.deepEqual(sL.active, ['전체'], `${vp.name}: L initial-invalid active`);
+      assert.deepEqual(sL.checked, ['전체'], `${vp.name}: L initial-invalid checked`);
+      assert.deepEqual(sL.tabZero, ['전체'], `${vp.name}: L initial-invalid tabindex`);
+      assert.equal(sL.cardCount, 6, `${vp.name}: L initial-invalid default results`);
+      assert.equal(sL.category, null, `${vp.name}: L initial-invalid category removed from URL`);
+      assert.equal(health.pageErrors.length, 0, `${vp.name}: L pageerrors ${health.pageErrors.join(' | ')}`);
+      assert.equal(health.consoleErrors.length, 0, `${vp.name}: L console errors ${health.consoleErrors.join(' | ')}`);
+      assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: L same-origin failures ${health.sameOriginFailures.join(' | ')}`);
+      assert.equal(health.http4xx.length, 0, `${vp.name}: L HTTP>=400 ${health.http4xx.join(' | ')}`);
+
+      // ── M. Invalid popstate restore fails closed to 전체 ──
+      health.pageErrors.length = 0;
+      health.consoleErrors.length = 0;
+      health.sameOriginFailures.length = 0;
+      health.http4xx.length = 0;
+      await page.evaluate(() => {
+        const invalidUrl = window.location.pathname + '?category=__invalid_category__';
+        history.pushState(null, '', invalidUrl);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      await page.waitForFunction(() => {
+        const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
+        const act = chips.filter(c => c.classList.contains('active'));
+        let category = null;
+        try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
+        return document.querySelectorAll('#resultsList .tree-card').length >= 6
+          && act.length === 1
+          && act[0].getAttribute('data-category') === '전체'
+          && category === null;
+      }, null, { timeout: 10000 });
+      const sM = await read();
+      assert.deepEqual(sM.active, ['전체'], `${vp.name}: M popstate-invalid active`);
+      assert.deepEqual(sM.checked, ['전체'], `${vp.name}: M popstate-invalid checked`);
+      assert.deepEqual(sM.tabZero, ['전체'], `${vp.name}: M popstate-invalid tabindex`);
+      assert.equal(sM.cardCount, 6, `${vp.name}: M popstate-invalid default results restored`);
+      assert.equal(sM.category, null, `${vp.name}: M popstate-invalid category removed`);
+      const focusInvariantM = await page.evaluate(() => {
+        const chip = [...document.querySelectorAll('.filter-row .tag-chip')].find(c => c.getAttribute('data-category') === '전체');
+        chip.focus();
+        return document.activeElement === chip;
+      });
+      assert.equal(focusInvariantM, true, `${vp.name}: M chip focus/keyboard invariant maintained`);
+      assert.equal(health.pageErrors.length, 0, `${vp.name}: M pageerrors ${health.pageErrors.join(' | ')}`);
+      assert.equal(health.consoleErrors.length, 0, `${vp.name}: M console errors ${health.consoleErrors.join(' | ')}`);
+      assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: M same-origin failures ${health.sameOriginFailures.join(' | ')}`);
+      assert.equal(health.http4xx.length, 0, `${vp.name}: M HTTP>=400 ${health.http4xx.join(' | ')}`);
+
+      await context.close();
+    }
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+});
