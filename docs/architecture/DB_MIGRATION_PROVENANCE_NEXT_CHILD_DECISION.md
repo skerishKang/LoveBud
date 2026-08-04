@@ -6,10 +6,12 @@ Step 8 readiness audit Issue #3839 has been accepted. Issue #3840 completes
 Step 8 Child 1 (clean-target adoption policy). Issue #3846 implements Step 8
 Child 2 (canonical bootstrap migration capability & disposable PostgreSQL
 rehearsal). Issue #3860 implements Step 8 Child 3 (read-only target
-attribution & catalog parity preflight). The selected next child is:
+attribution & catalog parity preflight). Issue #3872 implements the Step 8
+Child 4 source-only fail-closed deploy gate decision core. The selected next
+child is:
 
 ```text
-Step 8 Child 4 — Fail-closed deploy gate & canonical target activation boundary
+#3458 completion review
 ```
 
 Current sequence posture:
@@ -23,8 +25,23 @@ COMPLETE
 IMPLEMENTED BY #3846
 
 Step 8 Child 3:
-IMPLEMENTED BY #3860
-pending merge / independent CI
+COMPLETE
+
+Step 8 Child 4 source-only decision core:
+IMPLEMENTED BY #3872
+pending Web CTO merge / independent CI
+
+provider/environment binding:
+NONE
+
+manifest ACTIVE transition:
+NONE
+
+target activation:
+NONE
+
+deployment integration:
+NONE
 
 canonical bootstrap migration:
 20260802094500_bootstrap-migration-ledger
@@ -35,33 +52,25 @@ populated but ADOPTION_REQUIRED
 expected-schema manifest:
 populated but ADOPTION_REQUIRED
 
-Step 8 Child 4:
+#3458 completion review:
 SELECTED AS THE ONLY NEXT CHILD
-not implemented by this PR
-not authorized for implementation in this PR
-
-exact marker:
-FAIL_CLOSED_DEPLOY_GATE_TARGET_ACTIVATION_SELECTED
 
 #3460:
 still waits for #3458 completion
 
 Legacy Production Phase B/C/D/E:
 DEFERRED_NOT_REJECTED
-
-Production/provider/environment target binding:
-NONE
-
-manifest ACTIVE transition:
-NONE
-
-database or SQL execution authorized by this decision document:
-NONE
 ```
 
-Steps 1–7 complete. Step 8 Child 1 clean-target adoption policy implemented by Issue #3840. Step 8 Child 2 canonical bootstrap rehearsal (disposable PostgreSQL rehearsal) implemented by Issue #3846; it was pending Web CTO merge/closure until PR #3857 merges. Step 8 Child 3 read-only target attribution & catalog parity preflight is implemented by Issue #3860 and was not implemented by PR #3857 and not runtime-authorized by PR #3857. The canonical bootstrap migration 20260802094500_bootstrap-migration-ledger is authored by Issue #3846. The committed manifests remain populated but `ADOPTION_REQUIRED`; no manifest activation or target activation is implied.
+exact marker:
 
-The prior selection marker `READ_ONLY_TARGET_ATTRIBUTION_CATALOG_PARITY_SELECTED` selected Step 8 Child 3 (read-only target attribution & catalog parity) as the only next child. Issue #3860 now implements that child. The `FAIL_CLOSED_DEPLOY_GATE_TARGET_ACTIVATION_SELECTED` marker selects Step 8 Child 4 as the only next child only. These selections are not an implementation authorization: this PR authorizes no deploy gate implementation, no target activation, no manifest ACTIVE transition, no provider/environment binding, no Production access, and no Child 4 implementation.
+```text
+MIGRATION_PROVENANCE_COMPLETION_REVIEW_SELECTED
+```
+
+Steps 1–7 complete. Step 8 Child 1 clean-target adoption policy implemented by Issue #3840. Step 8 Child 2 canonical bootstrap rehearsal (disposable PostgreSQL rehearsal) implemented by Issue #3846; it was pending Web CTO merge/closure until PR #3857 merges. Step 8 Child 3 read-only target attribution & catalog parity preflight is implemented by Issue #3860 and was not implemented by PR #3857 and not runtime-authorized by PR #3857. Step 8 Child 4 source-only fail-closed deploy gate decision core implemented by Issue #3872; pending Web CTO merge/closure and independent CI. The canonical bootstrap migration 20260802094500_bootstrap-migration-ledger is authored by Issue #3846. The committed manifests remain populated but `ADOPTION_REQUIRED`; no manifest activation, target activation, provider binding, or deployment integration is implied.
+
+The prior selection marker `READ_ONLY_TARGET_ATTRIBUTION_CATALOG_PARITY_SELECTED` selected Step 8 Child 3 as the only next child. Issue #3860 now completes that child. The `MIGRATION_PROVENANCE_COMPLETION_REVIEW_SELECTED` marker selects the #3458 completion review as the only next child only. These selections are not an implementation authorization: this PR authorizes no provider binding, no Production access, no SQL execution, no manifest ACTIVE transition, no target activation, no deployment integration, and no #3458 completion review implementation.
 
 Issue #3458 remains the open parent authority. This source-only decision grants
 no runtime, database, SQL, environment, provider, or Production authority.
@@ -72,28 +81,27 @@ only and is not the implementation base for Issue #3840.
 
 ## Why the previous decision changed
 
-The previous decision selected Step 8 Child 3 (read-only target attribution &
-catalog parity) as the only next child. Issue #3860 now implements that child
-as a source-only, dependency-injected preflight proven only against disposable
-PostgreSQL 17.4 in GitHub Actions. The ordered sequence now advances to Step 8
-Child 4 (fail-closed deploy gate & canonical target activation boundary), which
-is selected as the only next child but is not implemented here.
+The previous decision selected Step 8 Child 4 (fail-closed deploy gate &
+canonical target activation boundary) as the only next child. Issue #3872 now
+implements that child's first bounded slice: a source-only fail-closed deploy
+gate decision core with no provider, database, SQL, or deployment capability.
+The ordered sequence now advances to the #3458 completion review, which is
+selected as the only next child but is not implemented here.
 
 ## Verified current incompatibility
 
 The repository now has a complete provenance foundation (Steps 1–7), a
 clean-target adoption policy (Step 8 Child 1), a canonical bootstrap migration
-capability with disposable PostgreSQL rehearsal (Step 8 Child 2, implemented by
-Issue #3846), and a read-only target attribution & catalog parity preflight
-(Step 8 Child 3, implemented by Issue #3860). The committed manifests are
-populated but remain ADOPTION_REQUIRED, and no fail-closed deploy gate or
-canonical target activation boundary exists.
+capability with disposable PostgreSQL rehearsal (Step 8 Child 2), a read-only
+target attribution & catalog parity preflight (Step 8 Child 3), and a
+source-only fail-closed deploy gate decision core (Step 8 Child 4, implemented
+by Issue #3872). The committed manifests are populated but remain
+ADOPTION_REQUIRED, and no #3458 completion review exists.
 
-That missing fail-closed deploy gate & canonical target activation boundary is
-the next incompatibility. This decision does not authorize target connection,
-live catalog collection, provider/environment binding, Production access, SQL
-execution, manifest ACTIVE transition, a deploy gate implementation, or Child 4
-implementation.
+That missing #3458 completion review is the next incompatibility. This decision
+does not authorize target connection, provider/environment binding, Production
+access, SQL execution, manifest ACTIVE transition, target activation, or
+deployment integration.
 
 ## Selected next child
 
@@ -101,13 +109,13 @@ implementation.
 
 | Field | Current decision |
 |---|---|
-| Selected child | Fail-closed deploy gate & canonical target activation boundary |
-| Sequence step | Step 8 Child 4 |
+| Selected child | #3458 completion review |
+| Sequence step | #3458 completion review |
 | Step 8 Child 1 | Complete (implemented by Issue #3840) |
 | Step 8 Child 2 | Complete (implemented by Issue #3846) |
-| Step 8 Child 3 | Implemented by Issue #3860; pending merge / independent CI |
-| Step 8 Child 4 implementation in this child | No (selected only, not implemented) |
-| Step 8 Child 4 | Not authorized for implementation in this PR |
+| Step 8 Child 3 | Complete (implemented by Issue #3860) |
+| Step 8 Child 4 source-only decision core | Implemented by Issue #3872; pending merge / independent CI |
+| Step 8 Child 4 provider/deploy implementation | Not authorized |
 | Legacy Production Phase B/C/D/E | Preserved and deferred (`DEFERRED_NOT_REJECTED`) |
 | Canonical bootstrap migration | 20260802094500_bootstrap-migration-ledger |
 | canonical-migrations manifest | Populated but ADOPTION_REQUIRED |
@@ -116,7 +124,8 @@ implementation.
 | Clean-target policy selected | Yes (implemented by Issue #3840) |
 | Canonical bootstrap capability selected | Yes (implemented by Issue #3846) |
 | Target attribution / catalog parity implementation | Implemented by Issue #3860 (Step 8 Child 3) |
-| Deploy gate / target activation implementation | Selected only, not implemented |
+| Fail-closed deploy gate decision core | Implemented by Issue #3872 (Step 8 Child 4) |
+| #3458 completion review implementation | Selected only, not implemented |
 | Environment adoption / mutation selected | No |
 | Production access | None |
 | Database access | None |
@@ -126,9 +135,9 @@ implementation.
 
 The Step 7 child is implemented by Issue #3816. After #3816 merges and
 independent Web CTO verification completes, #3657 closure is eligible. Step 8
-Child 4 selection is not an implementation or runtime authorization; Child 4
-and environment adoption remain not authorized and separate under #3458.
-
+Child 4 provider/deploy binding and the #3458 completion review are not
+implementation or runtime authorizations; #3460 and environment adoption remain
+not authorized and separate under #3458.
 
 ### Superseded historical selection retained for audit compatibility
 
@@ -179,6 +188,12 @@ Current status: SAFE_IMPLEMENTATION_CHILD_SELECTED
 Step 8 Child 3 target attribution & read-only catalog parity preflight not authorized
 Step 8 Child 4 fail-closed deploy gate & canonical target activation boundary not authorized
 ```
+
+The superseded Child 4 selection marker `FAIL_CLOSED_DEPLOY_GATE_TARGET_ACTIVATION_SELECTED`
+selected Step 8 Child 4 as the only next child. Issue #3872 now implements that
+child's first bounded slice (the source-only fail-closed deploy gate decision
+core). The marker is retained here as historical evidence only and confers no
+current implementation authority.
 
 ## Exact allowed files
 

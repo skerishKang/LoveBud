@@ -1583,6 +1583,51 @@
       "automation": "manual",
       "ledger_candidate": "no",
       "notes": "Source-only architecture contract for the read-only target attribution & catalog parity preflight boundary and outcome vocabulary."
+    },
+    {
+      "path": "scripts/migration-fail-closed-deploy-gate-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3872 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "Source-only fail-closed deploy gate decision core. Pure bounded-evidence authority with no provider, DB, SQL, filesystem, env, network, storage, or deployment capability; never activates manifests or targets."
+    },
+    {
+      "path": "docs/architecture/db-fail-closed-deploy-gate-contract.md",
+      "category": "doc_runbook",
+      "engine": "none",
+      "operations": ["READ_ONLY"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #3872 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "reviewer",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "Source-only architecture contract for the fail-closed deploy gate decision core boundary, input schema, and verdict vocabulary."
+    },
+    {
+      "path": "tests/contracts/db-fail-closed-deploy-gate-contract.test.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["VALIDATE"],
+      "canonical_status": "TEST_FIXTURE_ONLY",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "test harness / #3872 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "Executed-fake source-static contract running the real pure gate core with bounded synthetic evidence only; no external capability."
     }
   ]
 }
