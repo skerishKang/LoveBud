@@ -191,3 +191,134 @@ test('#3577: editor routes activate My Trees as active nav (regression from #359
     assert.ok(js.includes("activeKey === 'myTrees'"),
         'Nav rendering must check activeKey for myTrees');
 });
+
+
+
+// ── #3883: CSP-safe editor script-load diagnostics ──
+
+const vm = require('node:vm');
+const path = require('node:path');
+
+function readRel(rel) {
+  return fs.readFileSync(path.join(__dirname, '..', '..', rel), 'utf8');
+}
+
+function inlineScriptBodiesWithoutSrc(html) {
+  const bodies = [];
+  const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    if (!/src=/i.test(m[1])) bodies.push(m[2]);
+  }
+  return bodies;
+}
+
+test('#3883: pages/editor.html has no inline diagnostic executable script', () => {
+  const html = readRel('pages/editor.html');
+  const inline = inlineScriptBodiesWithoutSrc(html);
+  for (const body of inline) {
+    assert.ok(
+      !body.includes('LoveBudEditorDebug') &&
+        !body.includes('Script load failed') &&
+        !/addEventListener\s*\([\s\S]*['"]error['"]/.test(body),
+      'no inline script block may contain the diagnostic listener logic'
+    );
+  }
+});
+
+test('#3883: external diagnostic script is referenced in editor.html', () => {
+  const html = readRel('pages/editor.html');
+  assert.match(
+    html,
+    /<script src="\.\.\/js\/editor\/editor-script-load-diagnostics\.js\?v=20260804-3883-1"><\/script>/
+  );
+});
+
+test('#3883: diagnostic script loads before dependent editor runtime scripts', () => {
+  const html = readRel('pages/editor.html');
+  const diagIdx = html.indexOf('editor-script-load-diagnostics.js');
+  const firstEditorIdx = html.indexOf('js/editor/editor-interaction-mode.js');
+  const entryIdx = html.indexOf('js/editor.js');
+  assert.ok(diagIdx >= 0, 'diagnostic script must be present');
+  assert.ok(diagIdx < firstEditorIdx, 'diagnostic must load before first editor runtime script');
+  assert.ok(diagIdx < entryIdx, 'diagnostic must load before editor entry js/editor.js');
+  assert.ok(html.indexOf('js/cache-utils.js') > diagIdx, 'diagnostic must load before cache-utils.js');
+});
+
+test('#3883: diagnostic JS registers a window error capture listener', () => {
+  const js = readRel('js/editor/editor-script-load-diagnostics.js');
+  assert.match(js, /window\.addEventListener\s*\(\s*['"]error['"]/);
+  assert.match(js, /,\s*true\s*\)/); // capture phase = true
+  assert.match(js, /tagName\s*===\s*['"]SCRIPT['"]/);
+});
+
+test('#3883: diagnostic only handles SCRIPT load failures (bounded)', () => {
+  const js = readRel('js/editor/editor-script-load-diagnostics.js');
+  assert.match(js, /e\.target\.tagName\s*===\s*['"]SCRIPT['"]/);
+  assert.match(js, /\.pathname/); // bounded src representation
+  assert.doesNotMatch(js, /searchParams|\.query/);
+});
+
+test('#3883: LoveBudEditorDebug init and errors append semantics preserved', () => {
+  const js = readRel('js/editor/editor-script-load-diagnostics.js');
+  assert.match(
+    js,
+    /window\.LoveBudEditorDebug\s*=\s*window\.LoveBudEditorDebug\s*\|\|\s*\{\s*logs:\s*\[\],\s*errors:\s*\[\]\s*\}/
+  );
+  assert.match(js, /errors\.push\s*\(/);
+  assert.match(js, /msg:\s*['"]Script load failed['"]/);
+});
+
+test('#3883: _headers script-src unchanged and no unsafe-inline in script-src', () => {
+  const headers = readRel('_headers');
+  assert.match(
+    headers,
+    /script-src 'self' https:\/\/www\.gstatic\.com https:\/\/apis\.google\.com/
+  );
+  assert.doesNotMatch(headers, /script-src[^;]*unsafe-inline/);
+});
+
+test('#3883: no credential/private identifier logging in diagnostic', () => {
+  const js = readRel('js/editor/editor-script-load-diagnostics.js');
+  assert.doesNotMatch(
+    js,
+    /token|cookie|authorization|password|email|ownerId|treeId|memoryId|response/i
+  );
+});
+
+test('#3883 runtime: bounded fake dispatch captures only SCRIPT failure', () => {
+  const js = readRel('js/editor/editor-script-load-diagnostics.js');
+  const listeners = {};
+  const logged = [];
+  const fakeWindow = {
+    addEventListener: (type, fn) => {
+      listeners[type] = fn;
+    },
+    location: { href: 'https://lovebud.pages.dev/pages/editor?treeId=secret' }
+  };
+  const context = vm.createContext({
+    window: fakeWindow,
+    console: { error: (...args) => logged.push(args.join(' ')) },
+    URL
+  });
+  vm.runInContext(js, context);
+
+  assert.equal(typeof listeners.error, 'function', 'error listener must be registered');
+
+  // Non-SCRIPT target must be ignored (no record).
+  listeners.error({ target: { tagName: 'IMG', src: '/assets/x.png' } });
+  assert.equal(fakeWindow.LoveBudEditorDebug, undefined, 'no record for non-SCRIPT target');
+
+  // SCRIPT failure with query/hash URL -> pathname-only bounded record.
+  listeners.error({
+    target: {
+      tagName: 'SCRIPT',
+      src: 'https://lovebud.pages.dev/js/editor/editor.js?v=20260418-1&token=abc'
+    }
+  });
+  assert.ok(fakeWindow.LoveBudEditorDebug, 'LoveBudEditorDebug must be initialized');
+  assert.equal(fakeWindow.LoveBudEditorDebug.errors.length, 1, 'one error record');
+  assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].msg, 'Script load failed');
+  assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].src, '/js/editor/editor.js');
+  assert.ok(!logged.some((line) => line.includes('token=abc')), 'no raw query in console output');
+});
