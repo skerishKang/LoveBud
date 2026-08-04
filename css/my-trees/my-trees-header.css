@@ -132,7 +132,9 @@ white-space: nowrap;
         font-size: 16px;
     }
     /* Switch results controls from stretching grid to flex:
-       sort select grows, view-mode segmented control shrinks to fit. */
+       sort select grows and may take a full line, while the view-mode
+       segmented control reflows below it so every mode stays inside the
+       viewport on narrow mobile widths. */
     .my-trees-results-controls {
         flex: 1 1 100%;
         width: 100%;
@@ -140,7 +142,7 @@ white-space: nowrap;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
     }
     .my-trees-results-controls .sort-control {
         flex: 1 1 auto;
@@ -151,11 +153,19 @@ white-space: nowrap;
         min-height: 40px;
         font-size: 13px;
     }
+    /* The view-mode mount keeps flex: 0 0 auto (Browse rhythm parity) but is
+       bounded to its own full-width line on mobile so the segmented control
+       can bounded-wrap below the sort control instead of overflowing the
+       viewport. flex-basis auto resolves to the bounded width here. */
     .my-trees-results-controls .my-trees-view-mode-mount {
         flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
     }
-    /* view-mode segmented control stays shrink-to-fit on mobile */
+    /* Allow the shared segmented control to bounded-wrap on My Trees mobile,
+       matching the shared Browse control behavior (#3892). */
     .my-trees-view-mode-mount .tree-view-mode-control {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
     }
 }
