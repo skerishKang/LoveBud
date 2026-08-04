@@ -4,25 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>러브트리 편집 | LoveTree</title>
-    <script>
-      window.addEventListener(
-        "error",
-        function (e) {
-          if (e.target && e.target.tagName === "SCRIPT") {
-            console.error("Script load failed:", e.target.src);
-            window.LoveBudEditorDebug = window.LoveBudEditorDebug || {
-              logs: [],
-              errors: [],
-            };
-            window.LoveBudEditorDebug.errors.push({
-              msg: "Script load failed",
-              src: e.target.src,
-            });
-          }
-        },
-        true,
-      );
-    </script>
+    <script src="../js/editor/editor-script-load-diagnostics.js?v=20260804-3883-1"></script>
     <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon.ico" sizes="32x32" />
     <link rel="stylesheet" href="../css/editor.css?v=20260730-3704-1" />
