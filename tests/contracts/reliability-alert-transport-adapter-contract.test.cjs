@@ -24,6 +24,12 @@
 //   same bounded input -> awaited byte-stable result
 //   all capability/effect flags false (even for synthetic outcomes)
 //   zero network/env/filesystem/storage/queue/provider SDK capability
+//   effect receives deeply frozen detached control snapshot (T23)
+//   effect mutation attempts cannot alter result / leak private data (T24)
+//   enum non-string coercion blocked (Symbol.toPrimitive + Proxy get) (T25/T26)
+//   deps exact own-key schema (T27) + inherited/non-enumerable/accessor/Proxy
+//     rejection with 0 getter/trap calls (T28)
+//   envelope contract_version must be exactly '1' (T29)
 //
 // The synthetic effect seam must NOT be usable through the default
 // provider-unselected production posture.
@@ -430,4 +436,163 @@ test('T22 Proxy get trap -> 0 on envelope and control inputs', async () => {
   const r2 = await instance.dispatchTransport(validEnvelope(), ctlProxy);
   assert.equal(r2.outcome, 'TRANSPORT_EFFECT_ACCEPTED_SYNTHETIC');
   assert.equal(controlGetTrap, 0, 'control get trap must never fire (descriptor reads)');
+});
+
+test('T23 effect receives deeply frozen detached control snapshot', async () => {
+  let effectCalls = 0;
+  let receivedControl = null;
+  const { instance } = createAdapter(async (env, ctl) => {
+    effectCalls += 1;
+    receivedControl = ctl;
+    return 'ACCEPTED';
+  });
+  const callerControl = validControl({ synthetic_effect_authorized: true });
+  const result = await instance.dispatchTransport(validEnvelope(), callerControl);
+  assert.equal(result.outcome, 'TRANSPORT_EFFECT_ACCEPTED_SYNTHETIC');
+  assert.equal(effectCalls, 1);
+  assert.ok(Object.isFrozen(receivedControl), 'effect must receive a frozen control snapshot');
+  assert.equal(Object.isFrozen(callerControl), false, 'caller control object must NOT be frozen');
+  // Detached: mutating the caller later must never mutate the received snapshot.
+  const before = receivedControl.release_sha;
+  callerControl.release_sha = 'c'.repeat(40);
+  assert.equal(receivedControl.release_sha, before, 'received control is detached from caller');
+  assert.equal(receivedControl.provider_class, 'PROVIDER_UNSELECTED');
+});
+
+test('T24 effect mutation attempts cannot alter result or leak private data', async () => {
+  let effectCalls = 0;
+  const mutationResults = [];
+  const { instance } = createAdapter(async (env, ctl) => {
+    effectCalls += 1;
+    try { ctl.release_sha = 'x'.repeat(40); mutationResults.push('sha-mutated'); } catch (e) { mutationResults.push('sha-threw'); }
+    try { ctl.secret_status = 'SECRET_VALUE'; mutationResults.push('secret-mutated'); } catch (e) { mutationResults.push('secret-threw'); }
+    try { ctl.extra = 'PRIVATE'; mutationResults.push('extra-mutated'); } catch (e) { mutationResults.push('extra-threw'); }
+    try { delete ctl.provider_class; mutationResults.push('deleted'); } catch (e) { mutationResults.push('delete-threw'); }
+    return 'ACCEPTED';
+  });
+  const result = await instance.dispatchTransport(validEnvelope(), validControl({ synthetic_effect_authorized: true }));
+  assert.equal(result.outcome, 'TRANSPORT_EFFECT_ACCEPTED_SYNTHETIC');
+  assert.equal(effectCalls, 1);
+  assert.deepEqual(
+    mutationResults,
+    ['sha-threw', 'secret-threw', 'extra-threw', 'delete-threw'],
+    'every mutation attempt on the frozen snapshot must throw'
+  );
+  assert.equal(result.release_sha, VALID_RELEASE_SHA, 'result release_sha stays canonical');
+  assert.equal(result.secret_status, 'NOT_REQUIRED_FOR_SOURCE_ADAPTER', 'no injected private value in result');
+  assert.equal(result.provider_class, 'PROVIDER_UNSELECTED', 'provider_class cannot be deleted');
+  const json = JSON.stringify(result);
+  assert.ok(!json.includes('SECRET_VALUE'), 'injected private value must never leak');
+  assert.ok(!json.includes('PRIVATE'), 'injected key must never leak');
+});
+
+test('T25 enum non-string object coercion -> 0 Symbol.toPrimitive/toString/valueOf calls', async () => {
+  let effectCalls = 0;
+  let coercionCalls = 0;
+  const { instance } = createAdapter(async () => { effectCalls += 1; return 'ACCEPTED'; });
+  const coercingValue = {
+    [Symbol.toPrimitive]() { coercionCalls += 1; return 'PROVIDER_UNSELECTED'; },
+    toString() { coercionCalls += 1; return 'PROVIDER_UNSELECTED'; },
+    valueOf() { coercionCalls += 1; return 'PROVIDER_UNSELECTED'; },
+  };
+  const enumFields = ['provider_class', 'runtime_binding', 'secret_status', 'retry_attempt_class', 'dedupe_state_class'];
+  for (const field of enumFields) {
+    const control = validControl({ synthetic_effect_authorized: true });
+    control[field] = coercingValue;
+    const r = await instance.dispatchTransport(validEnvelope(), control);
+    assert.equal(r.outcome, 'TRANSPORT_NOT_ATTEMPTED_INVALID_INPUT', field + ' must reject non-string enum value');
+  }
+  assert.equal(coercionCalls, 0, 'Symbol.toPrimitive/toString/valueOf must never be invoked');
+  assert.equal(effectCalls, 0, 'coerced enum must never reach the effect');
+});
+
+test('T26 enum Proxy get trap -> 0 on non-string enum values', async () => {
+  let effectCalls = 0;
+  let getTrapCalls = 0;
+  const { instance } = createAdapter(async () => { effectCalls += 1; return 'ACCEPTED'; });
+  const enumProxy = new Proxy({}, {
+    get(target, prop) { getTrapCalls += 1; return 'PROVIDER_UNSELECTED'; },
+  });
+  const enumFields = ['provider_class', 'runtime_binding', 'secret_status', 'retry_attempt_class', 'dedupe_state_class'];
+  for (const field of enumFields) {
+    const control = validControl({ synthetic_effect_authorized: true });
+    control[field] = enumProxy;
+    const r = await instance.dispatchTransport(validEnvelope(), control);
+    assert.equal(r.outcome, 'TRANSPORT_NOT_ATTEMPTED_INVALID_INPUT', field + ' must reject proxy enum value');
+  }
+  assert.equal(getTrapCalls, 0, 'Proxy get trap must never fire on enum coercion');
+  assert.equal(effectCalls, 0, 'proxy enum must never reach the effect');
+});
+
+test('T27 deps exact own-key schema (undefined/null/{}/{invokeTransport} only)', () => {
+  const A = loadAdapter();
+  const fn = async () => 'ACCEPTED';
+  assert.doesNotThrow(() => A.createAlertTransportAdapter(undefined));
+  assert.doesNotThrow(() => A.createAlertTransportAdapter(null));
+  assert.doesNotThrow(() => A.createAlertTransportAdapter({}));
+  assert.doesNotThrow(() => A.createAlertTransportAdapter({ invokeTransport: fn }));
+  const rejected = [
+    { invokeTransport: fn, token: 'x' },
+    { invokeTransport: fn, endpoint: 'x' },
+    { metadata: {} },
+    { provider_id: 'x' },
+    { unknown_key: 1 },
+  ];
+  for (const deps of rejected) {
+    assert.throws(
+      () => A.createAlertTransportAdapter(deps),
+      /UNKNOWN_FIELD|PROXY_OR_ACCESSOR_INPUT/,
+      'deps keys ' + JSON.stringify(Object.keys(deps)) + ' must be rejected at creation'
+    );
+  }
+});
+
+test('T28 deps inherited/non-enumerable/accessor/Proxy rejection with 0 getter/trap calls', () => {
+  const A = loadAdapter();
+  const fn = async () => 'ACCEPTED';
+  // Inherited invokeTransport over a plain (non-null-rooted) prototype is
+  // rejected by the plain-record gate.
+  const inheritedPlain = Object.create({ invokeTransport: fn });
+  assert.throws(() => A.createAlertTransportAdapter(inheritedPlain), /PROXY_OR_ACCESSOR_INPUT/);
+  // Inherited invokeTransport over a null-rooted chain passes the plain-record
+  // gate and must still be rejected by the prototype-chain probe.
+  const root = Object.create(null);
+  root.invokeTransport = fn;
+  const inheritedNullRoot = Object.create(root);
+  assert.throws(() => A.createAlertTransportAdapter(inheritedNullRoot), /UNKNOWN_FIELD/);
+  // Non-enumerable own invokeTransport must be rejected.
+  const nonEnum = {};
+  Object.defineProperty(nonEnum, 'invokeTransport', { value: fn, enumerable: false });
+  assert.throws(() => A.createAlertTransportAdapter(nonEnum), /UNKNOWN_FIELD/);
+  // Accessor invokeTransport must be rejected WITHOUT invoking the getter.
+  let getterCalls = 0;
+  const accessor = {};
+  Object.defineProperty(accessor, 'invokeTransport', {
+    enumerable: true,
+    get() { getterCalls += 1; return fn; },
+  });
+  assert.throws(() => A.createAlertTransportAdapter(accessor), /PROXY_OR_ACCESSOR_INPUT/);
+  assert.equal(getterCalls, 0, 'deps accessor getter must never be invoked');
+  // Hostile Proxy must be rejected with zero reads of the thrown object.
+  let messageReads = 0;
+  const hostileThrown = {
+    get message() { messageReads += 1; return 'SENTINEL_MESSAGE'; },
+    get stack() { return 'SENTINEL_STACK'; },
+  };
+  const hostileDeps = new Proxy({}, { getPrototypeOf() { throw hostileThrown; } });
+  assert.throws(() => A.createAlertTransportAdapter(hostileDeps), /PROXY_OR_ACCESSOR_INPUT/);
+  assert.equal(messageReads, 0, 'hostile thrown-object message getter must never be read');
+});
+
+test('T29 invalid envelope contract version -> effect 0', async () => {
+  let effectCalls = 0;
+  const { instance } = createAdapter(async () => { effectCalls += 1; return 'ACCEPTED'; });
+  const badVersions = ['2', '1.0', 'unknown', { toString: () => '1' }];
+  for (const version of badVersions) {
+    const env = validEnvelope();
+    env.contract_version = version;
+    const r = await instance.dispatchTransport(env, validControl({ synthetic_effect_authorized: true }));
+    assert.equal(r.outcome, 'TRANSPORT_NOT_ATTEMPTED_INVALID_INPUT', 'contract_version must be exactly "1"');
+  }
+  assert.equal(effectCalls, 0, 'invalid contract version never invokes the effect');
 });

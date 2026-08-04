@@ -132,35 +132,28 @@
     return descriptor.value;
   }
 
-  function readOptionalOwnEnumerableDataProperty(object, key) {
-    var plain;
-    try {
-      plain = isPlainRecord(object);
-    } catch (e) {
-      throw proxyOrAccessorInput();
+  // Descriptor-safe prototype-chain probe: true when `key` is an own property
+  // of `object` or any ancestor. Never reads a value; a hostile trap only
+  // fails closed to true. Used to reject an inherited `invokeTransport` on the
+  // exact-empty-object deps path so it cannot silently pass as an empty deps
+  // object.
+  function hasOwnOnPrototypeChain(object, key) {
+    var cursor = object;
+    while (cursor !== null) {
+      var descriptor;
+      try {
+        descriptor = Object.getOwnPropertyDescriptor(cursor, key);
+      } catch (e) {
+        return true;
+      }
+      if (descriptor !== undefined) return true;
+      try {
+        cursor = Object.getPrototypeOf(cursor);
+      } catch (e) {
+        return true;
+      }
     }
-    if (!plain) {
-      throw proxyOrAccessorInput();
-    }
-    var descriptor;
-    try {
-      descriptor = Object.getOwnPropertyDescriptor(object, key);
-    } catch (e) {
-      throw proxyOrAccessorInput();
-    }
-    if (!descriptor) {
-      return undefined;
-    }
-    if (descriptor.enumerable !== true) {
-      throw proxyOrAccessorInput();
-    }
-    if ('get' in descriptor || 'set' in descriptor) {
-      throw proxyOrAccessorInput();
-    }
-    if (!('value' in descriptor)) {
-      throw proxyOrAccessorInput();
-    }
-    return descriptor.value;
+    return false;
   }
 
   // ---------------------------------------------------------------------------
@@ -434,7 +427,9 @@
   }
 
   function enumValid(value, set) {
-    return value !== undefined && value !== null && hasOwn(set, value) && Boolean(set[value]);
+    if (typeof value !== 'string') return false;
+    if (value.length === 0) return false;
+    return hasOwn(set, value) && set[value] === true;
   }
 
   // Exact own-key canonical-envelope validation. Accepts only the exact 12-key
@@ -488,7 +483,7 @@
   // object). Consumes the envelope as opaque canonical authority; never
   // recomputes severity/owner/dedupe semantics.
   function validateCanonicalSnapshot(snapshot) {
-    if (typeof snapshot.contract_version !== 'string' || snapshot.contract_version.length === 0) return false;
+    if (snapshot.contract_version !== CONTRACT_VERSION) return false;
     if (!listContains(ENVELOPE_SOURCE_CLASSES, snapshot.source_class)) return false;
     if (!listContains(ENVELOPE_OPERATION_CLASSES, snapshot.operation_class)) return false;
     if (!listContains(ENVELOPE_OUTCOME_CODES, snapshot.outcome_code)) return false;
@@ -524,13 +519,31 @@
         if (!isPlainRecord(deps)) {
           throw internalError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
         }
-        var effectValue = readOptionalOwnEnumerableDataProperty(deps, 'invokeTransport');
-        if (effectValue !== undefined && effectValue !== null) {
+        // Exact own-key schema: either an exact empty plain object (with no
+        // inherited invokeTransport) or exactly one own enumerable data
+        // property named 'invokeTransport' (callable). Unknown, extra,
+        // private, inherited, non-enumerable, accessor, or Proxy-hostile deps
+        // all fail closed with a fixed sanitized internal code.
+        var depsKeys;
+        try {
+          depsKeys = Object.keys(deps);
+        } catch (e) {
+          throw internalError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
+        }
+        if (depsKeys.length === 0) {
+          if (hasOwnOnPrototypeChain(deps, 'invokeTransport')) {
+            throw internalError(ERROR_CODES.UNKNOWN_FIELD);
+          }
+          effectProvided = false;
+        } else if (depsKeys.length === 1 && depsKeys[0] === 'invokeTransport') {
+          var effectValue = readOwnEnumerableDataProperty(deps, 'invokeTransport');
           if (!isCallable(effectValue)) {
             throw internalError(ERROR_CODES.SYNTHETIC_EFFECT_NOT_CALLABLE);
           }
           injectedEffect = effectValue;
           effectProvided = true;
+        } else {
+          throw internalError(ERROR_CODES.UNKNOWN_FIELD);
         }
       }
     } catch (e) {
@@ -658,7 +671,11 @@
             envelopeFrozen
           );
         }
-        control = validation.values;
+        // The effect receives a deeply frozen detached snapshot — never the
+        // caller's control object. Mutation attempts inside the injected
+        // effect (result fields, private values, release_sha) therefore cannot
+        // alter the canonical values read by the result.
+        control = deepFreeze(validation.values);
 
         // Release SHA consistency between envelope and control.
         if (control.release_sha !== envelopeFrozen.release_sha) {
