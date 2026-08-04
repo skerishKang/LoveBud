@@ -322,3 +322,93 @@ test('#3883 runtime: bounded fake dispatch captures only SCRIPT failure', () => 
   assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].src, 'https://lovebud.pages.dev/js/editor/editor.js');
   assert.ok(!logged.some((line) => line.includes('token=abc')), 'no raw query in console output');
 });
+
+test('#3883 runtime: allowed external origin preserved and raw value never leaked', () => {
+  const js = readRel('js/editor/editor-script-load-diagnostics.js');
+  const listeners = {};
+  const logged = [];
+  const fakeWindow = {
+    addEventListener: (type, fn) => {
+      listeners[type] = fn;
+    },
+    location: { href: 'https://lovebud.pages.dev/pages/editor?treeId=secret' }
+  };
+  const context = vm.createContext({
+    window: fakeWindow,
+    console: { error: (...args) => logged.push(args.join(' ')) },
+    URL
+  });
+  vm.runInContext(js, context);
+
+  // Case A: same-origin query/hash stripped.
+  listeners.error({
+    target: {
+      tagName: 'SCRIPT',
+      src: 'https://lovebud.local/js/editor/example.js?token=private#fragment'
+    }
+  });
+  assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].src, 'https://lovebud.local/js/editor/example.js',
+    'same-origin src must strip query and hash');
+
+  // Case B: allowed external origin preserved (origin + pathname), query/hash stripped.
+  listeners.error({
+    target: {
+      tagName: 'SCRIPT',
+      src: 'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js?token=private#fragment'
+    }
+  });
+  const extSrc = fakeWindow.LoveBudEditorDebug.errors[1].src;
+  assert.equal(extSrc, 'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js',
+    'external origin + pathname must be preserved');
+  assert.ok(extSrc.startsWith('https://www.gstatic.com'), 'gstatic origin must be kept');
+  assert.ok(extSrc.endsWith('/firebasejs/8.10.1/firebase-app.js'), 'pathname must be kept');
+  assert.ok(!extSrc.includes('token=private'), 'query token must be stripped');
+  assert.ok(!extSrc.includes('#fragment'), 'hash must be stripped');
+
+  // console must never contain the raw private token.
+  assert.ok(!logged.some((line) => line.includes('token=private')), 'no raw token in console output');
+  const serialized = JSON.stringify(fakeWindow.LoveBudEditorDebug);
+  assert.ok(!serialized.includes('token=private'), 'no raw token in serialized debug state');
+  assert.ok(!serialized.includes('#fragment'), 'no hash in serialized debug state');
+});
+
+test('#3883 runtime: malformed src yields empty string without leaking raw value', () => {
+  const js = readRel('js/editor/editor-script-load-diagnostics.js');
+  const listeners = {};
+  const logged = [];
+  const fakeWindow = {
+    addEventListener: (type, fn) => {
+      listeners[type] = fn;
+    },
+    location: { href: 'https://lovebud.pages.dev/pages/editor?treeId=secret' }
+  };
+  const context = vm.createContext({
+    window: fakeWindow,
+    console: { error: (...args) => logged.push(args.join(' ')) },
+    URL
+  });
+  vm.runInContext(js, context);
+
+  // Case C: new URL(raw, base) throws for this malformed src.
+  const rawMalformed = 'http://[raw-private-value';
+  assert.throws(() => new URL(rawMalformed, 'https://lovebud.pages.dev/'), 'fixture must actually be malformed');
+
+  let threw = false;
+  try {
+    listeners.error({ target: { tagName: 'SCRIPT', src: rawMalformed } });
+  } catch (err) {
+    threw = true;
+  }
+  assert.equal(threw, false, 'malformed src must not throw out of the listener');
+
+  assert.ok(fakeWindow.LoveBudEditorDebug, 'LoveBudEditorDebug must be initialized');
+  assert.equal(fakeWindow.LoveBudEditorDebug.errors.length, 1, 'one error record');
+  assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].src, '', 'malformed src must resolve to empty string');
+  assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].msg, 'Script load failed');
+
+  const serialized = JSON.stringify(fakeWindow.LoveBudEditorDebug);
+  assert.ok(!serialized.includes('raw-private-value'), 'no malformed raw value in serialized debug state');
+  assert.ok(!logged.some((line) => line.includes('raw-private-value')), 'no malformed raw value in console output');
+  assert.equal(serialized, JSON.stringify({ logs: [], errors: [{ msg: 'Script load failed', src: '' }] }),
+    'record shape stays bounded');
+});

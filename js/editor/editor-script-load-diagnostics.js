@@ -16,10 +16,15 @@
  *   - errors.push({ msg: "Script load failed", src })
  *
  * Bounded and non-leaking:
- *   - recorded src is the URL pathname only (query/hash stripped), so dynamic
- *     query values can never reach diagnostics or console.
- *   - only pathname-level detail is emitted; secrets and private identifiers
- *     are never read, stored, or printed.
+ *   - recorded src is the script origin + pathname only; query string and hash
+ *     are always stripped so dynamic or private URL values can never reach
+ *     diagnostics or console.
+ *   - origin is preserved so a same-origin failure can be told apart from an
+ *     allowed external script source (gstatic / apis.google.com).
+ *   - malformed src values resolve to the empty string; the raw malformed URL
+ *     is never recorded, sliced, or used as a fallback.
+ *   - secrets, credentials, user data, and dynamic identifiers are never read,
+ *     stored, or printed.
  *   - never throws; a diagnostic failure cannot block Editor startup.
  */
 (function initEditorScriptLoadDiagnostics() {
