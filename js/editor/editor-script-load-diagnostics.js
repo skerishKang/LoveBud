@@ -1,0 +1,74 @@
+/**
+ * LoveBud Editor — CSP-safe script-load diagnostics
+ * Issue #3883
+ *
+ * Production CSP (script-src 'self' https://www.gstatic.com https://apis.google.com)
+ * blocks inline scripts. The previous diagnostic error listener lived in an
+ * inline <script> in pages/editor.html, producing a reproducible CSP console
+ * violation on every Editor load. This same-origin external file preserves the
+ * listener's semantics and execution timing.
+ *
+ * Semantics preserved:
+ *   - capture-phase window "error" listener
+ *   - SCRIPT-tagged load failures only
+ *   - console.error("Script load failed:", src)
+ *   - window.LoveBudEditorDebug = { logs: [], errors: [] } init
+ *   - errors.push({ msg: "Script load failed", src })
+ *
+ * Bounded and non-leaking:
+ *   - recorded src is the script origin + pathname only; query string and hash
+ *     are always stripped so dynamic or private URL values can never reach
+ *     diagnostics or console.
+ *   - origin is preserved so a same-origin failure can be told apart from an
+ *     allowed external script source (gstatic / apis.google.com).
+ *   - malformed src values resolve to the empty string; the raw malformed URL
+ *     is never recorded, sliced, or used as a fallback.
+ *   - secrets, credentials, user data, and dynamic identifiers are never read,
+ *     stored, or printed.
+ *   - never throws; a diagnostic failure cannot block Editor startup.
+ */
+(function initEditorScriptLoadDiagnostics() {
+  'use strict';
+
+  function boundedScriptSrc(raw) {
+    if (typeof raw !== 'string' || raw === '') return '';
+    try {
+      // Bounded safe representation: origin + pathname only. Strips any query
+      // or hash so dynamic or private URL parts never persist, while still
+      // distinguishing an external (gstatic/apis) failure from a same-origin one.
+      var base = (window.location && window.location.href) || 'https://lovebud.pages.dev/';
+      var parsed = new URL(raw, base);
+      return parsed.origin + parsed.pathname;
+    } catch (err) {
+      // Malformed src: never echo raw content.
+      return '';
+    }
+  }
+
+  function recordScriptLoadFailure(target) {
+    var src = boundedScriptSrc(target && target.src);
+    try {
+      console.error('Script load failed:', src);
+    } catch (ignore) {
+      // Console unavailable must never throw through.
+    }
+    window.LoveBudEditorDebug = window.LoveBudEditorDebug || {
+      logs: [],
+      errors: []
+    };
+    window.LoveBudEditorDebug.errors.push({
+      msg: 'Script load failed',
+      src: src
+    });
+  }
+
+  window.addEventListener(
+    'error',
+    function (e) {
+      if (e && e.target && e.target.tagName === 'SCRIPT') {
+        recordScriptLoadFailure(e.target);
+      }
+    },
+    true
+  );
+})();
