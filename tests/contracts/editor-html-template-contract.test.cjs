@@ -309,7 +309,7 @@ test('#3883 runtime: bounded fake dispatch captures only SCRIPT failure', () => 
   listeners.error({ target: { tagName: 'IMG', src: '/assets/x.png' } });
   assert.equal(fakeWindow.LoveBudEditorDebug, undefined, 'no record for non-SCRIPT target');
 
-  // SCRIPT failure with query/hash URL -> pathname-only bounded record.
+  // SCRIPT failure with query/hash URL -> origin+pathname bounded record.
   listeners.error({
     target: {
       tagName: 'SCRIPT',
@@ -319,6 +319,6 @@ test('#3883 runtime: bounded fake dispatch captures only SCRIPT failure', () => 
   assert.ok(fakeWindow.LoveBudEditorDebug, 'LoveBudEditorDebug must be initialized');
   assert.equal(fakeWindow.LoveBudEditorDebug.errors.length, 1, 'one error record');
   assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].msg, 'Script load failed');
-  assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].src, '/js/editor/editor.js');
+  assert.equal(fakeWindow.LoveBudEditorDebug.errors[0].src, 'https://lovebud.pages.dev/js/editor/editor.js');
   assert.ok(!logged.some((line) => line.includes('token=abc')), 'no raw query in console output');
 });

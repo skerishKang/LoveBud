@@ -28,13 +28,15 @@
   function boundedScriptSrc(raw) {
     if (typeof raw !== 'string' || raw === '') return '';
     try {
-      // Bounded safe representation: pathname only. Strips any query/hash so
-      // dynamic or private URL parts never persist in diagnostics.
+      // Bounded safe representation: origin + pathname only. Strips any query
+      // or hash so dynamic or private URL parts never persist, while still
+      // distinguishing an external (gstatic/apis) failure from a same-origin one.
       var base = (window.location && window.location.href) || 'https://lovebud.pages.dev/';
-      return new URL(raw, base).pathname;
+      var parsed = new URL(raw, base);
+      return parsed.origin + parsed.pathname;
     } catch (err) {
-      // Non-URL fallback: bounded prefix, never echoes error details.
-      return raw.slice(0, 200);
+      // Malformed src: never echo raw content.
+      return '';
     }
   }
 
