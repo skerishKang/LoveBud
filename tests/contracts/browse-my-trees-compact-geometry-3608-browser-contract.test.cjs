@@ -1157,3 +1157,460 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
     await closeServer(server);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Group: Browse real-page structural baseline (#3863)
+//
+// Loads the ACTUAL repository /pages/search.html (never /fixture-browse.html)
+// through the same local server, so every same-origin repository asset
+// (CSS/JS) is fetched over the real server chain. Everything else is stubbed
+// deterministically by the harness — never by production code:
+//   * external origins (Google Fonts, Firebase SDK on gstatic) receive
+//     fulfilled stub responses, so there is no real external network
+//     dependency and no authenticated session is ever created;
+//   * the same-origin /api/community/trees feed is fulfilled with fixed
+//     synthetic public trees (deterministic title/stage/count), and every
+//     other /api/* request is fulfilled with an empty JSON array.
+// Intentionally stubbed requests are aggregated separately and are never
+// counted as product failures or presented as real network success.
+// ---------------------------------------------------------------------------
+const BASELINE_SYNTHETIC_TREES = [
+  { id: 'baseline-1', title: '기준 트리 하나', visibility: 'public', stage: '입덕', memoryCount: 3, theme: 'first moments', createdAt: '2026-01-01T00:00:00Z' },
+  { id: 'baseline-2', title: '기준 트리 둘', visibility: 'public', stage: '성장', memoryCount: 5, theme: 'growing', createdAt: '2026-01-02T00:00:00Z' },
+  { id: 'baseline-3', title: '기준 트리 셋', visibility: 'public', stage: '최애', memoryCount: 7, theme: 'deep love', createdAt: '2026-01-03T00:00:00Z' },
+];
+
+const BASELINE_VIEWPORTS = [
+  { name: 'desktop', width: 1440, height: 900, isMobile: false },
+  { name: 'mobile', width: 390, height: 844, isMobile: true },
+];
+
+async function newRealBrowsePage(browser, vp, baseUrl) {
+  const context = await browser.newContext({
+    viewport: { width: vp.width, height: vp.height },
+    reducedMotion: 'no-preference',
+    isMobile: vp.isMobile,
+    hasTouch: vp.isMobile,
+  });
+  const page = await context.newPage();
+  const pageErrors = [];
+  const consoleErrors = [];
+  const sameOriginFailures = [];
+  const http4xx = [];
+  const stubbed = { apiTrees: 0, apiOther: 0, external: 0 };
+  page.on('pageerror', (err) => pageErrors.push(String(err && err.message ? err.message : err)));
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    // net::ERR_NETWORK_CHANGED is a browser network-stack abort emitted when
+    // the TEST MACHINE's host network changes (Windows/WSL host networking,
+    // docker/telegram/homecloud services flapping) — an environment artifact,
+    // not a page/product failure. Like intentionally stubbed external
+    // requests, it is not counted as a product failure.
+    if (m.text().includes('net::ERR_NETWORK_CHANGED')) return;
+    consoleErrors.push(m.text());
+  });
+  page.on('requestfailed', (req) => {
+    try {
+      const u = new URL(req.url());
+      if (u.hostname === '127.0.0.1') {
+        sameOriginFailures.push(req.url() + ' :: ' + ((req.failure() && req.failure().errorText) || 'unknown'));
+      }
+    } catch (e) { /* ignore */ }
+  });
+  page.on('response', (r) => {
+    try {
+      const u = new URL(r.url());
+      if (u.hostname === '127.0.0.1' && r.status() >= 400) {
+        http4xx.push(r.status() + ' ' + r.url());
+      }
+    } catch (e) { /* ignore */ }
+  });
+  await page.route('**/*', async (route) => {
+    const url = route.request().url();
+    let host = '';
+    let pathname = '';
+    try {
+      const u = new URL(url);
+      host = u.hostname;
+      pathname = u.pathname;
+    } catch (e) {
+      await route.continue();
+      return;
+    }
+    if (host !== '127.0.0.1') {
+      // Zero real external network: every external request is stubbed.
+      if (host.includes('gstatic') || host.includes('firebase')) {
+        await route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* firebase stub */' });
+      } else if (host.includes('fonts')) {
+        await route.fulfill({ status: 200, contentType: 'text/css', body: '/* font stub */' });
+      } else {
+        await route.fulfill({ status: 200, contentType: 'application/octet-stream', body: '' });
+      }
+      stubbed.external += 1;
+      return;
+    }
+    if (pathname === '/api/community/trees') {
+      stubbed.apiTrees += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(BASELINE_SYNTHETIC_TREES) });
+      return;
+    }
+    if (pathname.startsWith('/api/')) {
+      stubbed.apiOther += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto(baseUrl + '/pages/search.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('domcontentloaded');
+  return { context, page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed };
+}
+
+async function teardownRealBrowse(env) {
+  try { await env.context.close(); } catch (e) { /* ignore */ }
+}
+
+async function captureBrowseBaseline(page) {
+  return page.evaluate(() => {
+    const rectOf = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const visible = r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0;
+      return { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom, visible, display: cs.display, hiddenAttr: el.hasAttribute('hidden') };
+    };
+    const region = (sel) => rectOf(document.querySelector(sel));
+    const overlapArea = (a, b) => {
+      if (!a || !b) return 0;
+      const w = Math.min(a.right, b.right) - Math.max(a.x, b.x);
+      const h = Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y);
+      return w > 0 && h > 0 ? w * h : 0;
+    };
+    const accessibleName = (el) => {
+      if (!el) return '';
+      if (el.getAttribute('aria-label')) return el.getAttribute('aria-label').trim();
+      const labelledby = el.getAttribute('aria-labelledby');
+      if (labelledby) {
+        const ref = document.getElementById(labelledby);
+        if (ref) return (ref.textContent || '').trim();
+      }
+      if (el.labels && el.labels.length) return (el.labels[0].textContent || '').trim();
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        if (el.getAttribute('placeholder')) return el.getAttribute('placeholder').trim();
+      }
+      if (el.getAttribute('title')) return el.getAttribute('title').trim();
+      return (el.textContent || '').trim();
+    };
+    const chips = Array.from(document.querySelectorAll('.filter-row .tag-chip')).map((c) => {
+      const r = c.getBoundingClientRect();
+      return {
+        category: c.getAttribute('data-category'),
+        text: (c.textContent || '').trim(),
+        r: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom },
+        visible: r.width > 0 && r.height > 0,
+      };
+    });
+    const cards = Array.from(document.querySelectorAll('#resultsList .tree-card'))
+      .filter((c) => c.getAttribute('data-tree-id'))
+      .map((c) => {
+        const r = c.getBoundingClientRect();
+        return {
+          id: c.getAttribute('data-tree-id'),
+          title: ((c.querySelector('.tree-title') || {}).textContent || '').trim(),
+          r: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom },
+          visible: r.width > 0 && r.height > 0,
+        };
+      });
+    const viewButtons = Array.from(document.querySelectorAll('#browseViewModeMount .tree-view-mode-btn')).map((b) => {
+      const r = b.getBoundingClientRect();
+      return {
+        mode: b.getAttribute('data-mode'),
+        label: b.getAttribute('aria-label'),
+        checked: b.getAttribute('aria-checked'),
+        r: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom },
+        visible: r.width > 0 && r.height > 0,
+      };
+    });
+    const sortSelect = document.querySelector('#browseSortSelect');
+    const inputEl = document.querySelector('#searchInput');
+    const inputRect = rectOf(inputEl);
+    const sortRect = rectOf(sortSelect);
+    const firstCard = cards.length ? cards[0] : null;
+    const controls = [
+      { name: 'searchInput', r: inputRect },
+      { name: 'sortSelect', r: sortRect },
+      ...viewButtons.map((b, i) => ({ name: 'viewModeBtn' + i, r: b.r })),
+      ...chips.map((c, i) => ({ name: 'chip' + i, r: c.r })),
+    ];
+    return {
+      identity: {
+        title: document.title,
+        pathname: window.location.pathname,
+        lang: document.documentElement.lang,
+        hasEyebrowContainer: !!document.querySelector('.search-panel-eyebrow'),
+        hasEyebrowKey: !!document.querySelector('.search-panel-header [data-i18n="search.eyebrow"]'),
+        eyebrowText: ((document.querySelector('.search-panel-header [data-i18n="search.eyebrow"]') || {}).textContent || '').trim(),
+        hasTitle: !!document.querySelector('.search-panel-header h1[data-i18n="search.title"]'),
+        titleText: ((document.querySelector('.search-panel-header h1[data-i18n="search.title"]') || {}).textContent || '').trim(),
+        hasSubtitle: !!document.querySelector('.search-panel-header p[data-i18n="search.subtitle"]'),
+        subtitleText: ((document.querySelector('.search-panel-header p[data-i18n="search.subtitle"]') || {}).textContent || '').trim(),
+        bodyText: (document.body.textContent || ''),
+      },
+      regions: {
+        sharedHeader: region('#shared-header'),
+        panelHeader: region('.search-panel-header'),
+        searchInput: inputRect,
+        filterRow: region('.filter-row'),
+        resultsHead: region('.browse-results-head'),
+        sortControls: region('#browseSortControls'),
+        viewModeMount: region('#browseViewModeMount'),
+        ownerCtaSlot: region('.browse-results-owner-cta-slot'),
+        resultsList: region('#resultsList'),
+        rightRail: region('.lovetree-calm-right-rail'),
+        loadingStatus: region('#browseLoadingStatus'),
+      },
+      chips,
+      cards,
+      viewButtons,
+      sortSelectInfo: sortSelect
+        ? { tag: sortSelect.tagName, id: sortSelect.id, label: sortSelect.getAttribute('aria-label'), name: accessibleName(sortSelect) }
+        : null,
+      searchInputName: accessibleName(inputEl),
+      firstViewButtonName: viewButtons.length
+        ? accessibleName(document.querySelector('#browseViewModeMount .tree-view-mode-btn'))
+        : '',
+      firstChipName: chips.length ? accessibleName(document.querySelector('.filter-row .tag-chip')) : '',
+      order: {
+        header: region('#shared-header') && region('#shared-header').y,
+        panel: region('.search-panel-header') && region('.search-panel-header').y,
+        utility: region('.browse-utility-row') && region('.browse-utility-row').y,
+        resultsHead: region('.browse-results-head') && region('.browse-results-head').y,
+        list: region('#resultsList') && region('#resultsList').y,
+      },
+      overlaps: {
+        listRail: overlapArea(region('#resultsList'), region('.lovetree-calm-right-rail')),
+        mainRail: overlapArea(region('.lovetree-calm-main-column'), region('.lovetree-calm-right-rail')),
+        headFirstCard: firstCard ? overlapArea(region('.browse-results-head'), firstCard.r) : 0,
+        controlsFirstCard: firstCard ? controls.map((c) => ({ name: c.name, area: overlapArea(c.r, firstCard.r) })) : [],
+      },
+      overflow: {
+        html: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        body: document.body.scrollWidth - document.body.clientWidth,
+      },
+      viewportWidth: window.innerWidth,
+      storageKeys: Object.keys(localStorage),
+      sessionKeys: Object.keys(sessionStorage),
+    };
+  });
+}
+
+async function captureBrowseFocus(page) {
+  return page.evaluate(() => {
+    const accessibleName = (el) => {
+      if (!el) return '';
+      if (el.getAttribute('aria-label')) return el.getAttribute('aria-label').trim();
+      const labelledby = el.getAttribute('aria-labelledby');
+      if (labelledby) {
+        const ref = document.getElementById(labelledby);
+        if (ref) return (ref.textContent || '').trim();
+      }
+      if (el.labels && el.labels.length) return (el.labels[0].textContent || '').trim();
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        if (el.getAttribute('placeholder')) return el.getAttribute('placeholder').trim();
+      }
+      if (el.getAttribute('title')) return el.getAttribute('title').trim();
+      return (el.textContent || '').trim();
+    };
+    const probe = (el) => {
+      if (!el) return { ok: false, name: '', left: 0, right: 0, vw: window.innerWidth };
+      let ok = false;
+      try {
+        el.focus();
+        ok = document.activeElement === el;
+      } catch (e) { /* not focusable */ }
+      const r = el.getBoundingClientRect();
+      return { ok, name: accessibleName(el), left: r.left, right: r.right, vw: window.innerWidth };
+    };
+    return {
+      searchInput: probe(document.querySelector('#searchInput')),
+      sortSelect: probe(document.querySelector('#browseSortSelect')),
+      viewModeBtn: probe(document.querySelector('#browseViewModeMount .tree-view-mode-btn')),
+      chip: probe(document.querySelector('.filter-row .tag-chip')),
+    };
+  });
+}
+
+test('Browse real-page structural baseline', { timeout: 120000 }, async (t) => {
+  const { server, port } = await startServer();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  t.after(async () => {
+    await closeServer(server);
+  });
+
+  for (const vp of BASELINE_VIEWPORTS) {
+    await t.test(`viewport ${vp.name} (${vp.width}x${vp.height})`, async (t) => {
+      const browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+      t.after(async () => {
+        await browser.close();
+      });
+
+      const env = await newRealBrowsePage(browser, vp, baseUrl);
+      try {
+        const { page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed } = env;
+
+        // Deterministic readiness: the real API feed is stubbed and the page
+        // has rendered at least one real (non-skeleton) tree card.
+        await page.waitForFunction(() => {
+          return Array.from(document.querySelectorAll('#resultsList .tree-card'))
+            .some((c) => c.getAttribute('data-tree-id'));
+        }, null, { timeout: 20000 });
+
+        const snap = await captureBrowseBaseline(page);
+        const focus = await captureBrowseFocus(page);
+
+        await t.test('A. real-page identity', () => {
+          assert.equal(snap.identity.pathname, '/pages/search.html', 'must inspect the real repository /pages/search.html, not the fixture');
+          assert.equal(snap.identity.title, '러브트리 둘러보기 | 러브트리', 'real Browse document title');
+          assert.equal(snap.identity.lang, 'ko', 'real Browse document lang');
+          assert.equal(snap.identity.hasEyebrowContainer, true, '.search-panel-eyebrow region present');
+          assert.equal(snap.identity.hasEyebrowKey, true, '[data-i18n="search.eyebrow"] present inside the panel header');
+          assert.equal(snap.identity.hasTitle, true, '.search-panel-header h1[data-i18n="search.title"] present');
+          assert.equal(snap.identity.hasSubtitle, true, '.search-panel-header p[data-i18n="search.subtitle"] present');
+          assert.ok(snap.identity.eyebrowText.length > 0, 'visible eyebrow text non-empty');
+          assert.ok(snap.identity.titleText.length > 0, 'visible title text non-empty');
+          assert.ok(snap.identity.subtitleText.length > 0, 'visible subtitle text non-empty');
+          assert.notEqual(snap.identity.title, 'Browse Compact Tree', 'real document title is not the fixture title');
+          assert.ok(!snap.identity.bodyText.includes('Browse Compact Tree'), 'fixture-only browse card copy absent');
+          assert.ok(!snap.identity.bodyText.includes('Home Modal Test Fixture'), 'fixture-only home copy absent');
+        });
+
+        await t.test('B. public-route boundary', () => {
+          const owner = snap.regions.ownerCtaSlot;
+          assert.ok(owner, 'owner CTA slot region present');
+          assert.equal(owner.hiddenAttr, true, 'owner CTA slot hidden on public baseline');
+          assert.equal(owner.display, 'none', 'owner CTA slot display none on public baseline');
+          const authLike = (k) => /auth|firebase|token|session|user/i.test(k);
+          assert.deepEqual(snap.storageKeys.filter(authLike), [], 'no authenticated fixture/session in localStorage');
+          assert.deepEqual(snap.sessionKeys.filter(authLike), [], 'no authenticated fixture/session in sessionStorage');
+          assert.equal(snap.identity.pathname, '/pages/search.html', 'no login/page navigation from Browse');
+        });
+
+        await t.test('C. required regions present', () => {
+          const required = [
+            'sharedHeader', 'panelHeader', 'searchInput', 'filterRow', 'resultsHead',
+            'sortControls', 'viewModeMount', 'ownerCtaSlot', 'resultsList', 'rightRail', 'loadingStatus',
+          ];
+          for (const name of required) {
+            assert.ok(snap.regions[name], `required region ${name} present`);
+          }
+          assert.ok(snap.chips.length >= 1, `at least 1 visible filter chip, got ${snap.chips.length}`);
+          assert.ok(snap.cards.length >= 1, `at least 1 real tree card, got ${snap.cards.length}`);
+          assert.ok(snap.viewButtons.length >= 1, 'view-mode control buttons present');
+          assert.ok(snap.sortSelectInfo, 'browse sort select present');
+        });
+
+        await t.test('D. region geometry positive and in-bounds', () => {
+          const vw = snap.viewportWidth;
+          const checkVisibleRegion = (name, r) => {
+            assert.ok(r, `${name} rect exists`);
+            assert.equal(r.visible, true, `${name} visible`);
+            assert.ok(r.w > 0 && r.h > 0, `${name} positive geometry`);
+            assert.ok(r.x >= -1, `${name} left >= -1 (x=${r.x})`);
+            assert.ok(r.right <= vw + 1, `${name} right within viewport (right=${r.right}, vw=${vw})`);
+          };
+          checkVisibleRegion('shared header', snap.regions.sharedHeader);
+          checkVisibleRegion('search panel header', snap.regions.panelHeader);
+          checkVisibleRegion('search input', snap.regions.searchInput);
+          checkVisibleRegion('filter row', snap.regions.filterRow);
+          for (const chip of snap.chips) {
+            assert.equal(chip.visible, true, `chip ${chip.category} visible`);
+            assert.ok(chip.r.w > 0 && chip.r.h > 0, `chip ${chip.category} positive geometry`);
+            assert.ok(chip.r.x >= -1 && chip.r.right <= vw + 1, `chip ${chip.category} in horizontal bounds`);
+          }
+          checkVisibleRegion('results header', snap.regions.resultsHead);
+          checkVisibleRegion('sort controls', snap.regions.sortControls);
+          checkVisibleRegion('view-mode controls', snap.regions.viewModeMount);
+          checkVisibleRegion('results list', snap.regions.resultsList);
+          for (const card of snap.cards) {
+            assert.equal(card.visible, true, `card ${card.id} visible`);
+            assert.ok(card.r.w > 0 && card.r.h > 0, `card ${card.id} positive geometry`);
+            assert.ok(card.r.x >= -1 && card.r.right <= vw + 1, `card ${card.id} in horizontal bounds`);
+          }
+          // Right rail geometry applies only where the rail is actually visible.
+          if (snap.regions.rightRail && snap.regions.rightRail.visible) {
+            checkVisibleRegion('right rail', snap.regions.rightRail);
+          }
+          assert.ok(snap.regions.loadingStatus, 'loading status region present (hidden after successful load)');
+        });
+
+        await t.test('E. focus and accessible names', () => {
+          const assertControl = (label, info) => {
+            assert.equal(info.ok, true, `${label} focus() succeeds and becomes activeElement`);
+            assert.ok(info.name.length > 0, `${label} accessible name non-empty`);
+            assert.ok(info.left >= -1, `${label} left >= -1 (x=${info.left})`);
+            assert.ok(info.right <= info.vw + 1, `${label} right within viewport (right=${info.right}, vw=${info.vw})`);
+          };
+          assertControl('search input (#searchInput)', focus.searchInput);
+          assertControl('sort control (#browseSortSelect)', focus.sortSelect);
+          assertControl('view-mode control', focus.viewModeBtn);
+          assertControl('filter chip', focus.chip);
+          assert.ok(snap.searchInputName.length > 0, 'search input accessible name from page snapshot non-empty');
+          assert.equal(snap.sortSelectInfo.label, '정렬 기준', 'sort select aria-label preserved');
+        });
+
+        await t.test('F. result/card structure', () => {
+          assert.equal(snap.regions.resultsList.visible, true, '#resultsList visible');
+          assert.ok(snap.cards.length >= 1, `at least 1 visible real .tree-card, got ${snap.cards.length}`);
+          for (const card of snap.cards) {
+            assert.ok(card.r.w > 0 && card.r.h > 0, `card ${card.id} width/height positive (${card.r.w}x${card.r.h})`);
+            assert.ok(card.r.x >= -1 && card.r.right <= snap.viewportWidth + 1, `card ${card.id} inside horizontal bounds`);
+          }
+          assert.ok(snap.regions.resultsHead.visible && snap.regions.resultsHead.w > 0 && snap.regions.resultsHead.h > 0, 'results header positive geometry');
+          assert.ok(snap.regions.resultsList.w > 0 && snap.regions.resultsList.h > 0, 'results list positive geometry');
+        });
+
+        await t.test('G. reading order and overlap', () => {
+          const o = snap.order;
+          if (vp.name === 'desktop') {
+            assert.ok(o.panel < o.utility, `search panel header < utility controls (${o.panel} < ${o.utility})`);
+            assert.ok(o.utility < o.resultsHead, `utility controls < results header (${o.utility} < ${o.resultsHead})`);
+            assert.ok(o.resultsHead < o.list, `results header < results list (${o.resultsHead} < ${o.list})`);
+            assert.ok(snap.overlaps.listRail <= 1, `main results / visible right rail material overlap ~0, got ${snap.overlaps.listRail}`);
+            assert.ok(snap.overlaps.mainRail <= 1, `main column / right rail overlap ~0, got ${snap.overlaps.mainRail}`);
+            assert.ok(snap.overlaps.headFirstCard <= 1, `results header / first card overlap ~0, got ${snap.overlaps.headFirstCard}`);
+          } else {
+            assert.ok(o.header < o.panel, `header < title (${o.header} < ${o.panel})`);
+            assert.ok(o.panel < o.utility, `title < search input / filter controls (${o.panel} < ${o.utility})`);
+            assert.ok(o.utility < o.resultsHead, `search input / filter controls < results header (${o.utility} < ${o.resultsHead})`);
+            assert.ok(o.resultsHead < o.list, `results header < results list (${o.resultsHead} < ${o.list})`);
+            const badOverlap = snap.overlaps.controlsFirstCard.filter((c) => c.area > 1);
+            assert.deepEqual(badOverlap, [], `visible controls vs first card overlap ~0, got ${JSON.stringify(badOverlap)}`);
+            const rail = snap.regions.rightRail;
+            if (rail && rail.visible) {
+              assert.ok(snap.overlaps.listRail <= 1, `mobile right rail must not cover main results, got ${snap.overlaps.listRail}`);
+            } else {
+              assert.equal(rail.visible, false, 'mobile right rail is collapsed (hidden)');
+              assert.equal(snap.overlaps.listRail, 0, 'collapsed mobile right rail cannot cover main results');
+            }
+          }
+        });
+
+        await t.test('H. overflow and browser health', () => {
+          assert.ok(snap.overflow.html <= 1, `documentElement horizontal overflow ~0, got ${snap.overflow.html}`);
+          assert.ok(snap.overflow.body <= 1, `body horizontal overflow ~0, got ${snap.overflow.body}`);
+          assert.strictEqual(pageErrors.length, 0, `pageerror zero, got: ${pageErrors.join(', ')}`);
+          assert.strictEqual(consoleErrors.length, 0, `unexpected console error zero, got: ${consoleErrors.join(', ')}`);
+          assert.strictEqual(sameOriginFailures.length, 0, `same-origin request failure zero, got: ${sameOriginFailures.join(', ')}`);
+          assert.strictEqual(http4xx.length, 0, `same-origin HTTP>=400 zero, got: ${http4xx.join(', ')}`);
+          // Deterministic data boundary: the synthetic public trees feed was
+          // used. Stubbed traffic is aggregated separately and is never
+          // presented as real network success.
+          assert.ok(stubbed.apiTrees >= 1, `deterministic /api/community/trees stub used (${stubbed.apiTrees} fulfillment)`);
+          assert.ok(stubbed.external >= 1, `external requests all stubbed (${stubbed.external} fulfilled, 0 real external network)`);
+        });
+      } finally {
+        await teardownRealBrowse(env);
+      }
+    });
+  }
+});
