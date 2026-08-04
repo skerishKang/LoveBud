@@ -156,6 +156,57 @@
     return false;
   }
 
+  // Fixed internal key used only to probe a hostile getOwnPropertyDescriptor
+  // trap on a non-standard deps prototype (see assertExactEmptyPrototypeChain).
+  var PROTOTYPE_PROBE_KEY = '__lovebud_prototype_ownkey_probe__';
+
+  // Descriptor-safe exact-empty prototype-chain proof for injected deps. The
+  // only accepted deps postures are `{}`, `Object.create(null)`, and a null-root
+  // exact object with one own enumerable data property `invokeTransport` — all
+  // backed by either the standard Object.prototype or a null terminal root.
+  // ANY caller-controlled own key on any non-standard prototype (inherited
+  // private/unknown keys, an inherited invokeTransport) is rejected with a
+  // fixed sanitized code. A hostile getPrototypeOf / ownKeys /
+  // getOwnPropertyDescriptor trap anywhere in the chain fails closed WITHOUT
+  // ever reading the thrown object. No inherited value is ever read.
+  function assertExactEmptyPrototypeChain(object) {
+    var cursor;
+    try {
+      cursor = Object.getPrototypeOf(object);
+    } catch (e) {
+      throw proxyOrAccessorInput();
+    }
+    while (cursor !== null) {
+      if (cursor === Object.prototype) {
+        // Standard terminal prototype: its fixed standard keys are not
+        // caller-controlled private/unknown payload.
+        return;
+      }
+      var keys;
+      try {
+        keys = Reflect.ownKeys(cursor);
+      } catch (e) {
+        throw proxyOrAccessorInput();
+      }
+      if (keys.length > 0) {
+        throw internalError(ERROR_CODES.UNKNOWN_FIELD);
+      }
+      // Probe one fixed internal key so a hostile getOwnPropertyDescriptor trap
+      // cannot slip through an empty ownKeys result. The descriptor result is
+      // discarded; only a thrown trap fails closed.
+      try {
+        Object.getOwnPropertyDescriptor(cursor, PROTOTYPE_PROBE_KEY);
+      } catch (e) {
+        throw proxyOrAccessorInput();
+      }
+      try {
+        cursor = Object.getPrototypeOf(cursor);
+      } catch (e) {
+        throw proxyOrAccessorInput();
+      }
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Fixed sanitized error codes. These are bounded, frozen and carry NO
   // caller-controlled key/value, no raw exception, and no stack.
@@ -519,6 +570,12 @@
         if (!isPlainRecord(deps)) {
           throw internalError(ERROR_CODES.PROXY_OR_ACCESSOR_INPUT);
         }
+        // Descriptor-safe exact-empty prototype-chain proof: no caller-
+        // controlled own key may exist on any non-standard prototype (inherited
+        // private/unknown keys, an inherited invokeTransport). A hostile
+        // getPrototypeOf / ownKeys / getOwnPropertyDescriptor trap fails
+        // closed without ever reading the thrown object.
+        assertExactEmptyPrototypeChain(deps);
         // Exact own-key schema: either an exact empty plain object (with no
         // inherited invokeTransport) or exactly one own enumerable data
         // property named 'invokeTransport' (callable). Unknown, extra,

@@ -30,6 +30,10 @@
 //   deps exact own-key schema (T27) + inherited/non-enumerable/accessor/Proxy
 //     rejection with 0 getter/trap calls (T28)
 //   envelope contract_version must be exactly '1' (T29)
+//   deps prototype-chain exact-empty proof: null-root inherited private/
+//     unknown keys, inherited accessors, and hostile prototype ownKeys /
+//     getOwnPropertyDescriptor traps reject with 0 getter/trap-value reads
+//     (T30-T35)
 //
 // The synthetic effect seam must NOT be usable through the default
 // provider-unselected production posture.
@@ -595,4 +599,112 @@ test('T29 invalid envelope contract version -> effect 0', async () => {
     assert.equal(r.outcome, 'TRANSPORT_NOT_ATTEMPTED_INVALID_INPUT', 'contract_version must be exactly "1"');
   }
   assert.equal(effectCalls, 0, 'invalid contract version never invokes the effect');
+});
+
+test('T30 null-root inherited private keys rejected at deps boundary', () => {
+  const A = loadAdapter();
+  const privateKeys = ['token', 'endpoint', 'metadata', 'provider_id'];
+  for (const key of privateKeys) {
+    const root = Object.create(null);
+    Object.defineProperty(root, key, {
+      enumerable: true,
+      configurable: true,
+      value: 'PRIVATE',
+    });
+    const deps = Object.create(root);
+    let caught = null;
+    try {
+      A.createAlertTransportAdapter(deps);
+    } catch (e) {
+      caught = e;
+    }
+    assert.ok(caught, 'inherited private key "' + key + '" must be rejected at creation');
+    assert.match(String(caught.message), /UNKNOWN_FIELD/, 'fixed sanitized code for inherited ' + key);
+    assert.ok(!String(caught.message).includes('PRIVATE'), 'raw private value must never leak (' + key + ')');
+    assert.ok(!String(caught.message).includes(key), 'caller-controlled key name must never leak (' + key + ')');
+  }
+});
+
+test('T31 null-root inherited unknown key rejected', () => {
+  const A = loadAdapter();
+  const root = Object.create(null);
+  root.unknown_key = true;
+  const deps = Object.create(root);
+  assert.throws(() => A.createAlertTransportAdapter(deps), /UNKNOWN_FIELD/);
+});
+
+test('T32 inherited accessor on null-root prototype -> 0 getter calls, rejected', () => {
+  const A = loadAdapter();
+  let getterCalls = 0;
+  const root = Object.create(null);
+  Object.defineProperty(root, 'token', {
+    enumerable: true,
+    get() { getterCalls += 1; return 'PRIVATE'; },
+  });
+  const deps = Object.create(root);
+  assert.throws(() => A.createAlertTransportAdapter(deps), /UNKNOWN_FIELD/);
+  assert.equal(getterCalls, 0, 'inherited accessor getter must never be invoked');
+});
+
+test('T33 prototype ownKeys trap -> reject, trap executes, 0 thrown-object reads', () => {
+  const A = loadAdapter();
+  let trapCalls = 0;
+  let messageReads = 0;
+  const hostileThrown = {
+    get message() { messageReads += 1; return 'SENTINEL_TRAP'; },
+    get stack() { return 'SENTINEL_STACK'; },
+  };
+  const hostilePrototype = new Proxy(Object.create(null), {
+    ownKeys() { trapCalls += 1; throw hostileThrown; },
+  });
+  const deps = Object.create(hostilePrototype);
+  let caught = null;
+  try {
+    A.createAlertTransportAdapter(deps);
+  } catch (e) {
+    caught = e;
+  }
+  assert.ok(caught, 'prototype ownKeys trap must fail closed');
+  assert.match(String(caught.message), /PROXY_OR_ACCESSOR_INPUT/);
+  assert.ok(trapCalls >= 1, 'prototype ownKeys trap must execute during validation');
+  assert.equal(messageReads, 0, 'thrown-object message getter must never be read');
+  assert.ok(!String(caught.message).includes('SENTINEL_TRAP'), 'trap value must never leak');
+});
+
+test('T34 prototype getOwnPropertyDescriptor trap -> reject, trap executes, 0 thrown-object reads', () => {
+  const A = loadAdapter();
+  let trapCalls = 0;
+  let messageReads = 0;
+  const hostileThrown = {
+    get message() { messageReads += 1; return 'SENTINEL_TRAP'; },
+    get stack() { return 'SENTINEL_STACK'; },
+  };
+  const hostilePrototype = new Proxy(Object.create(null), {
+    getOwnPropertyDescriptor() { trapCalls += 1; throw hostileThrown; },
+  });
+  const deps = Object.create(hostilePrototype);
+  let caught = null;
+  try {
+    A.createAlertTransportAdapter(deps);
+  } catch (e) {
+    caught = e;
+  }
+  assert.ok(caught, 'prototype getOwnPropertyDescriptor trap must fail closed');
+  assert.match(String(caught.message), /PROXY_OR_ACCESSOR_INPUT/);
+  assert.ok(trapCalls >= 1, 'prototype getOwnPropertyDescriptor trap must execute during validation');
+  assert.equal(messageReads, 0, 'thrown-object message getter must never be read');
+  assert.ok(!String(caught.message).includes('SENTINEL_TRAP'), 'trap value must never leak');
+});
+
+test('T35 accepted deps postures preserved after prototype boundary', () => {
+  const A = loadAdapter();
+  const fn = async () => 'ACCEPTED';
+  assert.doesNotThrow(() => A.createAlertTransportAdapter(undefined));
+  assert.doesNotThrow(() => A.createAlertTransportAdapter(null));
+  assert.doesNotThrow(() => A.createAlertTransportAdapter({}));
+  assert.doesNotThrow(() => A.createAlertTransportAdapter(Object.create(null)));
+  assert.doesNotThrow(() => A.createAlertTransportAdapter({ invokeTransport: fn }));
+  const nullRootEffect = Object.create(null);
+  nullRootEffect.invokeTransport = fn;
+  assert.doesNotThrow(() => A.createAlertTransportAdapter(nullRootEffect));
 });
