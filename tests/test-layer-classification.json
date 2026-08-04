@@ -551,6 +551,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/reliability-alert-transport-adapter-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads the real provider-unselected alert transport adapter source (js/observability/reliability-alert-transport-adapter.js) and executes it in a local process with an injected fake transport effect, proving the bounded provider-unselected transport boundary: default provider-unselected posture effect count 0, transport disabled effect 0, operator disabled effect 0, invalid/missing/mismatched release SHA effect 0, unknown/private field rejection effect 0, malformed canonical envelope rejection effect 0, invalid secret state effect 0, invalid dedupe state effect 0, explicit synthetic ACCEPTED/REJECTED/TIMEOUT/UNAVAILABLE exact mapping with effect exactly 1, injected throw/rejection sanitized failure with effect 1, maximum effect count exactly 1, nested accessor/Proxy hostile input getter/trap count 0, raw provider/secret/error leakage 0, deeply frozen/detached input/result/export, byte-stable awaited results, all capability flags false (provider_selected/runtime_bound/secret_read/network_performed/persistence_performed/queue_performed/preview_effect_performed/production_effect_performed), and zero network/env/filesystem/storage/queue/provider SDK capability (#3874, Child 4B boundary after accepted audit #3873). No real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/cloudflare-write-auth-guard-dedicated.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
