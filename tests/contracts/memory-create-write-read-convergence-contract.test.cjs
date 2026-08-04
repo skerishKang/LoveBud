@@ -1257,15 +1257,24 @@ test('#3886 source-static: #3887 i18n dictionary inline block remains out of sco
 test('#3886 source-static: _headers is byte-identical to origin/main with no script unsafe-inline', () => {
   // Exact-main comparison: _headers must not have been modified by this branch.
   const headersContent = read('_headers');
-  const { execSync } = require('node:child_process');
-  // origin/main may be unavailable in shallow CI checkouts; when present,
-  // assert byte-identical equality, otherwise verify CSP on the local file.
-  try {
+  const { execSync, spawnSync } = require('node:child_process');
+  // Detect whether origin/main is available (absent in shallow CI checkouts).
+  // Only the baseline-equality check is conditional on the ref existing; the
+  // CSP assertions below always run on the local _headers file.
+  const refCheck = spawnSync(
+    'git',
+    ['rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main'],
+    { cwd: ROOT, encoding: 'utf8' }
+  );
+  if (refCheck.status === 0) {
     const baseline = execSync('git show origin/main:_headers', { cwd: ROOT, encoding: 'utf8' });
     assert.equal(headersContent, baseline, '_headers must be byte-identical to origin/main');
-  } catch (e) {
-    // origin/main ref unavailable (CI shallow checkout) — CSP assertions below
-    // still run on the local _headers file.
+  } else {
+    assert.equal(
+      refCheck.status,
+      1,
+      'origin/main baseline check may be skipped only when the ref is genuinely absent'
+    );
   }
 
   const cspLine = headersContent.split('\n').find((l) => l.indexOf('Content-Security-Policy') >= 0);
