@@ -1687,3 +1687,910 @@ test('Browse real-page structural baseline', { timeout: 120000 }, async (t) => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Group: My Trees real-page structural baseline (#3888) + mobile view-mode
+// bounds (#3892)
+//
+// Loads the ACTUAL repository /pages/my-trees.html (never /fixture-mytrees.html)
+// through the same local server, so every same-origin repository asset
+// (CSS/JS) is fetched over the real server chain. Firebase SDK transport is
+// replaced with a controlled local fixture so a token-less synthetic
+// authenticated identity renders the owner page without any real network:
+//   * external origins (Google Fonts, Firebase SDK on gstatic) receive
+//     fulfilled stub responses, so there is no real external network
+//     dependency and no authenticated session is ever created;
+//   * the same-origin /api/trees feed is fulfilled with a fixed synthetic
+//     owner tree, /api/trees/mt-tree-3888-1 with its detail, and
+//     /api/memories with its moments; every other /api/* request is
+//     fulfilled with an empty JSON array.
+// The synthetic user exposes token methods that resolve to null so the real
+// auth/bootstrap boundary resolves a confirmed session without ever attaching
+// an Authorization header or writing a token record.
+// ---------------------------------------------------------------------------
+const MY_TREES_SYNTHETIC_USER_BASE = {
+  uid: 'mt-owner-3888',
+  displayName: 'Synthetic My Trees Owner',
+  email: 'synthetic-owner-3888@local.invalid'
+};
+
+const MY_TREES_SYNTHETIC_TREE = {
+  id: 'mt-tree-3888-1',
+  title: '기준 러브트리 하나',
+  visibility: 'public',
+  stage: '입덕',
+  memoryCount: 1,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-02T00:00:00Z',
+  memories: [
+    {
+      id: 'mt-memory-3888-1',
+      title: '첫 순간',
+      memo: '기준 첫 순간 기록',
+      createdAt: '2026-01-01T00:00:00Z',
+      thumbnail: '',
+      sourceUrl: ''
+    }
+  ]
+};
+
+const MY_TREES_TREE_DETAIL = Object.assign({}, MY_TREES_SYNTHETIC_TREE, {
+  memories: MY_TREES_SYNTHETIC_TREE.memories.slice()
+});
+const MY_TREES_MEMORIES = MY_TREES_SYNTHETIC_TREE.memories.slice();
+
+const MY_TREES_VIEWPORTS = [
+  { name: 'mobile-375', width: 375, height: 844, isMobile: true },
+  { name: 'mobile-390', width: 390, height: 844, isMobile: true },
+  { name: 'mobile-414', width: 414, height: 896, isMobile: true },
+  { name: 'desktop', width: 1440, height: 900, isMobile: false },
+];
+
+function myTreesAuthFixtureScript(payload) {
+  const baseUser = payload.user;
+  // Token methods resolve to null: the real auth/bootstrap boundary marks the
+  // confirmed session ready without ever producing a usable Authorization
+  // header or persisting a token record.
+  const fixtureUser = Object.assign({}, baseUser, {
+    photoURL: null,
+    providerData: [],
+    getIdToken: function () {
+      return Promise.resolve(null);
+    },
+    getIdTokenResult: function () {
+      return Promise.resolve({ token: null, expirationTime: Date.now() });
+    }
+  });
+  localStorage.setItem('lovebud_lang', payload.lang);
+  localStorage.setItem('lovebud_auth_confirmed', 'true');
+  localStorage.setItem('lovebud_auth_cache', JSON.stringify(baseUser));
+
+  const authInstance = {
+    currentUser: fixtureUser,
+    onAuthStateChanged: function (callback) {
+      Promise.resolve().then(function () {
+        callback(fixtureUser);
+      });
+      return function () {};
+    },
+    signOut: function () {
+      return Promise.resolve();
+    },
+    setPersistence: function () {
+      return Promise.resolve();
+    },
+    getRedirectResult: function () {
+      return Promise.resolve({ user: null });
+    }
+  };
+  function auth() {
+    return authInstance;
+  }
+  auth.Auth = { Persistence: { LOCAL: 'local' } };
+  window.firebase = {
+    apps: [{}],
+    auth: auth,
+    initializeApp: function () {
+      return {};
+    }
+  };
+
+  window.LoveBudProtectedRoute = {
+    getAuthState: function () {
+      return { ready: true, user: fixtureUser };
+    },
+    getAuthenticatedUser: function () {
+      return fixtureUser;
+    },
+    requireAuthenticatedPage: function (options) {
+      if (options && typeof options.onAuthenticated === 'function') {
+        options.onAuthenticated(fixtureUser);
+      }
+    }
+  };
+}
+
+async function newRealMyTreesPage(browser, vp, baseUrl) {
+  const context = await browser.newContext({
+    viewport: { width: vp.width, height: vp.height },
+    reducedMotion: 'no-preference',
+    isMobile: vp.isMobile,
+    hasTouch: vp.isMobile,
+  });
+  const page = await context.newPage();
+  const pageErrors = [];
+  const consoleErrors = [];
+  const sameOriginFailures = [];
+  const http4xx = [];
+  const stubbed = { apiTrees: 0, apiDetail: 0, apiMemories: 0, apiOther: 0, external: 0 };
+  const sameOriginApiRequests = [];
+  const sameOriginRequests = [];
+  page.on('request', (request) => {
+    let u;
+    try {
+      u = new URL(request.url());
+    } catch (e) {
+      return;
+    }
+    if (u.hostname !== '127.0.0.1') return;
+    const headers = request.headers() || {};
+    const hasAuthorization = Object.keys(headers).some((k) => String(k).toLowerCase() === 'authorization');
+    const queryParams = Array.from(new URLSearchParams(u.search).entries())
+      .map(([k, v]) => `${k}=${v}`)
+      .sort()
+      .join('&');
+    const entry = {
+      method: request.method(),
+      pathname: u.pathname,
+      query: queryParams,
+      hasAuthorization,
+    };
+    sameOriginRequests.push(entry);
+    if (u.pathname.startsWith('/api/')) {
+      sameOriginApiRequests.push(entry);
+    }
+  });
+  page.on('pageerror', (err) => pageErrors.push(String(err && err.message ? err.message : err)));
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      consoleErrors.push(message.text());
+    }
+  });
+  page.on('requestfailed', (req) => {
+    try {
+      const u = new URL(req.url());
+      if (u.hostname === '127.0.0.1') {
+        sameOriginFailures.push(req.url() + ' :: ' + ((req.failure() && req.failure().errorText) || 'unknown'));
+      }
+    } catch (e) { /* ignore */ }
+  });
+  page.on('response', (r) => {
+    try {
+      const u = new URL(r.url());
+      if (u.hostname === '127.0.0.1' && r.status() >= 400) {
+        http4xx.push(r.status() + ' ' + r.url());
+      }
+    } catch (e) { /* ignore */ }
+  });
+  await page.route('**/*', async (route) => {
+    const url = route.request().url();
+    let host = '';
+    let pathname = '';
+    try {
+      const u = new URL(url);
+      host = u.hostname;
+      pathname = u.pathname;
+    } catch (e) {
+      await route.continue();
+      return;
+    }
+    if (host !== '127.0.0.1') {
+      // Zero real external network: every external request is stubbed.
+      if (host.includes('gstatic') || host.includes('firebase')) {
+        await route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* firebase stub */' });
+      } else if (host.includes('fonts')) {
+        await route.fulfill({ status: 200, contentType: 'text/css', body: '/* font stub */' });
+      } else {
+        await route.fulfill({ status: 200, contentType: 'application/octet-stream', body: '' });
+      }
+      stubbed.external += 1;
+      return;
+    }
+    if (pathname === '/api/trees') {
+      stubbed.apiTrees += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([MY_TREES_SYNTHETIC_TREE]) });
+      return;
+    }
+    if (pathname === '/api/trees/mt-tree-3888-1') {
+      stubbed.apiDetail += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MY_TREES_TREE_DETAIL) });
+      return;
+    }
+    if (pathname === '/api/memories') {
+      stubbed.apiMemories += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MY_TREES_MEMORIES) });
+      return;
+    }
+    if (pathname.startsWith('/api/')) {
+      stubbed.apiOther += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+      return;
+    }
+    await route.continue();
+  });
+  await page.addInitScript(myTreesAuthFixtureScript, { user: MY_TREES_SYNTHETIC_USER_BASE, lang: 'ko' });
+  await page.goto(baseUrl + '/pages/my-trees.html', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('domcontentloaded');
+  return { context, page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests };
+}
+
+async function teardownRealMyTrees(env) {
+  try {
+    await env.context.close();
+  } catch (e) { /* ignore */ }
+}
+
+async function waitForMyTreesApiRequests(env, expectedCounts, maxMs) {
+  const started = Date.now();
+  const keyOf = (entry) => entry.method + ' ' + entry.pathname + (entry.query ? '?' + entry.query : '');
+  for (;;) {
+    const counts = {};
+    env.sameOriginApiRequests.forEach((entry) => {
+      const key = keyOf(entry);
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    const matches = Object.keys(expectedCounts).every((key) => counts[key] === expectedCounts[key]);
+    if (matches) return counts;
+    if (Date.now() - started > maxMs) {
+      throw new Error(
+        'My Trees API request set did not settle within ' + maxMs + 'ms. Got: ' + JSON.stringify(counts)
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+async function captureMyTreesBaseline(page) {
+  return page.evaluate(() => {
+    const rectOf = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const visible = r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0;
+      return { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom, top: r.top, visible, display: cs.display, hiddenAttr: el.hasAttribute('hidden') };
+    };
+    const region = (sel) => rectOf(document.querySelector(sel));
+    const overlapArea = (a, b) => {
+      if (!a || !b) return 0;
+      const w = Math.min(a.right, b.right) - Math.max(a.x, b.x);
+      const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      return w > 0 && h > 0 ? w * h : 0;
+    };
+    const accessibleName = (el) => {
+      if (!el) return '';
+      if (el.getAttribute('aria-label')) return el.getAttribute('aria-label').trim();
+      const labelledby = el.getAttribute('aria-labelledby');
+      if (labelledby) {
+        const ref = document.getElementById(labelledby);
+        if (ref) return (ref.textContent || '').trim();
+      }
+      if (el.labels && el.labels.length) return (el.labels[0].textContent || '').trim();
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        if (el.getAttribute('placeholder')) return el.getAttribute('placeholder').trim();
+      }
+      if (el.getAttribute('title')) return el.getAttribute('title').trim();
+      return (el.textContent || '').trim();
+    };
+    const chips = Array.from(document.querySelectorAll('#myTreesFilterChips .my-trees-filter-chip')).map((c) => {
+      const r = c.getBoundingClientRect();
+      return {
+        filter: c.getAttribute('data-filter'),
+        text: (c.textContent || '').trim(),
+        r: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom, top: r.top },
+        visible: r.width > 0 && r.height > 0,
+      };
+    });
+    const cards = Array.from(document.querySelectorAll('#trees-grid .tree-card'))
+      .filter((c) => c.getAttribute('data-tree-id'))
+      .map((c) => {
+        const r = c.getBoundingClientRect();
+        return {
+          id: c.getAttribute('data-tree-id'),
+          title: ((c.querySelector('.tree-title') || {}).textContent || '').trim(),
+          r: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom },
+          visible: r.width > 0 && r.height > 0,
+        };
+      });
+    const viewButtons = Array.from(document.querySelectorAll('#myTreesViewModeMount .tree-view-mode-btn')).map((b) => {
+      const r = b.getBoundingClientRect();
+      const cs = getComputedStyle(b);
+      return {
+        mode: b.getAttribute('data-mode'),
+        label: b.getAttribute('aria-label'),
+        checked: b.getAttribute('aria-checked'),
+        r: { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom, top: r.top },
+        visible: r.width > 0 && r.height > 0 && cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0,
+        pointerEvents: cs.pointerEvents,
+      };
+    });
+    const treesContainer = document.getElementById('treesContainer');
+    const hubPanel = document.getElementById('myTreesHubPanel');
+    const hubContent = document.getElementById('myTreesHubContent');
+    const hubSummary = document.getElementById('myTreesHubSummary');
+    const hubTreeTitle = document.getElementById('myTreesHubTreeTitle');
+    const mountEl = document.getElementById('myTreesViewModeMount');
+    const controlEl = mountEl ? mountEl.querySelector('.tree-view-mode-control') : null;
+    const sortEl = document.getElementById('sortTreesSelect');
+    const createEl = document.getElementById('headerCreateTreeBtn');
+    const mountRect = rectOf(mountEl);
+    const controlRect = rectOf(controlEl);
+    let clippedByAncestor = false;
+    let clipAncestor = null;
+    if (mountRect) {
+      let el = mountEl.parentElement;
+      while (el && el !== document.body) {
+        const cs = getComputedStyle(el);
+        if (['auto', 'scroll', 'hidden', 'clip'].includes(cs.overflowX)) {
+          const er = el.getBoundingClientRect();
+          if (mountRect.right > er.right + 0.5 || mountRect.x < er.left - 0.5) {
+            clippedByAncestor = true;
+            clipAncestor = el.tagName + '.' + (el.className || '').split(' ').join('.') + ' overflowX=' + cs.overflowX;
+          }
+          break;
+        }
+        el = el.parentElement;
+      }
+    }
+    const firstCard = cards.length ? cards[0] : null;
+    const mainCol = region('.lovetree-calm-main-column');
+    const controls = [
+      { name: 'searchInput', r: rectOf(document.getElementById('myTreesSearchInput')) },
+      { name: 'sortSelect', r: rectOf(sortEl) },
+      ...viewButtons.map((b, i) => ({ name: 'viewModeBtn' + i, r: b.r })),
+      ...chips.map((c, i) => ({ name: 'chip' + i, r: c.r })),
+    ];
+    const hubComputedStyle = hubPanel ? getComputedStyle(hubPanel) : null;
+    return {
+      identity: {
+        title: document.title,
+        pathname: window.location.pathname,
+        lang: document.documentElement.lang,
+        eyebrowText: ((document.getElementById('myTreesPageEyebrow') || {}).textContent || '').trim(),
+        titleText: ((document.getElementById('myTreesPageTitle') || {}).textContent || '').trim(),
+        descText: ((document.getElementById('myTreesPageDesc') || {}).textContent || '').trim(),
+        bodyText: (document.body.textContent || ''),
+      },
+      regions: {
+        sharedHeader: region('#shared-header'),
+        panelHeader: region('.search-panel-header'),
+        eyebrow: region('#myTreesPageEyebrow'),
+        title: region('#myTreesPageTitle'),
+        desc: region('#myTreesPageDesc'),
+        finder: region('#myTreesFinder'),
+        searchInput: rectOf(document.getElementById('myTreesSearchInput')),
+        filterChips: region('#myTreesFilterChips'),
+        resultsHead: region('.my-trees-results-head'),
+        headerCreateBtn: rectOf(createEl),
+        sortSelect: rectOf(sortEl),
+        viewModeMount: mountRect,
+        viewModeControl: controlRect,
+        treesContainer: region('#treesContainer'),
+        treesGrid: region('#trees-grid'),
+        stateLoading: region('#state-loading'),
+        stateEmpty: region('#state-empty'),
+        stateError: region('#state-error'),
+        stateLoaded: region('#state-loaded'),
+        hubPanel: rectOf(hubPanel),
+        hubContent: rectOf(hubContent),
+        hubTreeTitle: rectOf(hubTreeTitle),
+        hubFlow: region('#myTreesHubFlow'),
+        hubFlowList: region('#myTreesHubFlowList'),
+        hubSummary: rectOf(hubSummary),
+        hubClose: rectOf(document.getElementById('myTreesHubClose')),
+      },
+      state: {
+        ariaBusyCleared: !!(treesContainer && !treesContainer.hasAttribute('aria-busy')),
+        stateLoadedHidden: !!(document.getElementById('state-loaded') && document.getElementById('state-loaded').hidden),
+        stateErrorHidden: !!(document.getElementById('state-error') && document.getElementById('state-error').hidden),
+        stateEmptyHidden: !!(document.getElementById('state-empty') && document.getElementById('state-empty').hidden),
+        stateLoadingHidden: !!(document.getElementById('state-loading') && document.getElementById('state-loading').hidden),
+      },
+      chips,
+      cards,
+      viewButtons,
+      viewMode: {
+        controlWrap: controlEl ? getComputedStyle(controlEl).flexWrap : '',
+        clippedByAncestor,
+        clipAncestor,
+        overlapSortControl: overlapArea(mountRect, rectOf(sortEl)),
+        overlapCreate: overlapArea(mountRect, rectOf(createEl)),
+      },
+      sortSelectInfo: (() => {
+        const sel = document.getElementById('sortTreesSelect');
+        return sel
+          ? { tag: sel.tagName, id: sel.id, label: sel.getAttribute('aria-label'), name: accessibleName(sel), value: sel.value }
+          : null;
+      })(),
+      searchInputName: accessibleName(document.getElementById('myTreesSearchInput')),
+      firstViewButtonName: viewButtons.length
+        ? accessibleName(document.querySelector('#myTreesViewModeMount .tree-view-mode-btn'))
+        : '',
+      firstChipName: chips.length ? accessibleName(document.querySelector('#myTreesFilterChips .my-trees-filter-chip')) : '',
+      hub: {
+        treeTitleText: hubTreeTitle ? (hubTreeTitle.textContent || '').trim() : '',
+        summaryText: hubSummary ? (hubSummary.textContent || '').trim() : '',
+        flowStageCount: document.querySelectorAll('#myTreesHubFlowList .my-trees-hub-flow-stage, #myTreesHubFlowList .preview-flow-stage').length,
+        panelLoaded: !!(hubPanel && hubPanel.classList.contains('is-loaded')),
+        panelEmpty: !!(hubPanel && hubPanel.classList.contains('is-empty')),
+        panelOpen: !!(hubPanel && hubPanel.classList.contains('is-open')),
+        contentVisible: !!(hubContent && !hubContent.hidden),
+        flowVisible: !!document.getElementById('myTreesHubFlow') && !document.getElementById('myTreesHubFlow').hidden,
+        summaryVisible: !!(hubSummary && !hubSummary.hidden && hubSummary.getBoundingClientRect().width > 0),
+        position: hubComputedStyle ? hubComputedStyle.position : '',
+        maxHeight: hubComputedStyle ? hubComputedStyle.maxHeight : '',
+        display: hubComputedStyle ? hubComputedStyle.display : '',
+      },
+      sheet: {
+        overlayPresent: !!document.querySelector('.preview-sheet-overlay'),
+        bodySheetOpen: document.body.classList.contains('preview-sheet-open'),
+        bodyTop: document.body.style.top,
+      },
+      order: {
+        header: region('#shared-header') && region('#shared-header').y,
+        panel: region('.search-panel-header') && region('.search-panel-header').y,
+        finder: region('#myTreesFinder') && region('#myTreesFinder').y,
+        resultsHead: region('.my-trees-results-head') && region('.my-trees-results-head').y,
+        trees: region('#treesContainer') && region('#treesContainer').y,
+        hub: rectOf(hubPanel) && rectOf(hubPanel).y,
+      },
+      domOrder: (() => {
+        const precedes = (first, second) => {
+          if (!first || !second) return false;
+          return Boolean(
+            first.compareDocumentPosition(second) &
+              Node.DOCUMENT_POSITION_FOLLOWING
+          );
+        };
+        const header = document.querySelector('#shared-header');
+        const panel = document.querySelector('.search-panel-header');
+        const finder = document.querySelector('#myTreesFinder');
+        const resultsHead = document.querySelector('.my-trees-results-head');
+        const trees = document.querySelector('#treesContainer');
+        const hub = document.querySelector('#myTreesHubPanel');
+        return {
+          headerPrecedesPanel: precedes(header, panel),
+          panelPrecedesFinder: precedes(panel, finder),
+          finderPrecedesResultsHead: precedes(finder, resultsHead),
+          panelPrecedesResultsHead: precedes(panel, resultsHead),
+          resultsHeadPrecedesTrees: precedes(resultsHead, trees),
+          panelPrecedesTrees: precedes(panel, trees),
+          treesPrecedesHub: precedes(trees, hub),
+        };
+      })(),
+      overlaps: {
+        mainRail: overlapArea(mainCol, rectOf(hubPanel)),
+        treesHub: overlapArea(region('#treesContainer'), rectOf(hubPanel)),
+        headFirstCard: firstCard ? overlapArea(region('.my-trees-results-head'), firstCard.r) : 0,
+        controlsFirstCard: firstCard ? controls.map((c) => ({ name: c.name, area: overlapArea(c.r, firstCard.r) })) : [],
+      },
+      overflow: {
+        html: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        body: document.body.scrollWidth - document.body.clientWidth,
+      },
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      storageKeys: Object.keys(localStorage),
+      sessionKeys: Object.keys(sessionStorage),
+    };
+  });
+}
+
+async function captureMyTreesFocus(page) {
+  return page.evaluate(() => {
+    const accessibleName = (el) => {
+      if (!el) return '';
+      if (el.getAttribute('aria-label')) return el.getAttribute('aria-label').trim();
+      const labelledby = el.getAttribute('aria-labelledby');
+      if (labelledby) {
+        const ref = document.getElementById(labelledby);
+        if (ref) return (ref.textContent || '').trim();
+      }
+      if (el.labels && el.labels.length) return (el.labels[0].textContent || '').trim();
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+        if (el.getAttribute('placeholder')) return el.getAttribute('placeholder').trim();
+      }
+      if (el.getAttribute('title')) return el.getAttribute('title').trim();
+      return (el.textContent || '').trim();
+    };
+    const probe = (el) => {
+      if (!el) return { ok: false, name: '', left: 0, right: 0, vw: window.innerWidth };
+      let ok = false;
+      try {
+        el.focus({ preventScroll: true });
+        ok = document.activeElement === el;
+      } catch (e) { /* not focusable */ }
+      const r = el.getBoundingClientRect();
+      return { ok, name: accessibleName(el), left: r.left, right: r.right, vw: window.innerWidth };
+    };
+    const buttons = {};
+    Array.from(document.querySelectorAll('#myTreesViewModeMount .tree-view-mode-btn')).forEach((b) => {
+      buttons[b.getAttribute('data-mode')] = probe(b);
+    });
+    return {
+      searchInput: probe(document.querySelector('#myTreesSearchInput')),
+      sortSelect: probe(document.querySelector('#sortTreesSelect')),
+      viewModeButtons: buttons,
+      chip: probe(document.querySelector('#myTreesFilterChips .my-trees-filter-chip')),
+      headerCreateBtn: probe(document.querySelector('#headerCreateTreeBtn')),
+      hubClose: probe(document.querySelector('#myTreesHubClose')),
+    };
+  });
+}
+
+test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) => {
+  const { server, port } = await startServer();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  t.after(async () => {
+    await closeServer(server);
+  });
+
+  for (const vp of MY_TREES_VIEWPORTS) {
+    await t.test(`viewport ${vp.name} (${vp.width}x${vp.height})`, async (t) => {
+      const browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+      t.after(async () => {
+        await browser.close();
+      });
+
+      const env = await newRealMyTreesPage(browser, vp, baseUrl);
+      try {
+        const { page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests } = env;
+
+        // Deterministic readiness: the real owner API feed is stubbed and the
+        // page has rendered at least one real (non-skeleton) tree card while
+        // the auto-selected first tree populated the continuation hub.
+        await page.waitForFunction(() => {
+          const cards = Array.from(document.querySelectorAll('#trees-grid .tree-card'))
+            .filter((c) => c.getAttribute('data-tree-id'));
+          const hubContent = document.getElementById('myTreesHubContent');
+          const hubPanel = document.getElementById('myTreesHubPanel');
+          return cards.length >= 1
+            && hubContent && hubContent.hidden === false
+            && hubPanel && hubPanel.classList.contains('is-loaded');
+        }, null, { timeout: 30000 });
+
+        // Deterministic data boundary: wait until the owner list, first-tree
+        // detail, and both memory reads (preview-media hydrate + preload)
+        // have all settled through the stubbed same-origin API.
+        const apiCounts = await waitForMyTreesApiRequests(env, {
+          'GET /api/trees': 1,
+          'GET /api/trees/mt-tree-3888-1': 1,
+          'GET /api/memories?treeId=mt-tree-3888-1': 2,
+        }, 15000);
+
+        const snap = await captureMyTreesBaseline(page);
+        const focus = await captureMyTreesFocus(page);
+
+        await t.test('A. real-page identity', () => {
+          assert.equal(snap.identity.pathname, '/pages/my-trees.html', 'must inspect the real repository /pages/my-trees.html, not the fixture');
+          assert.equal(snap.identity.title, '내 러브트리 | LoveTree', 'real My Trees document title');
+          assert.equal(snap.identity.lang, 'ko', 'real My Trees document lang');
+          assert.ok(snap.identity.eyebrowText.length > 0, 'visible eyebrow text non-empty');
+          assert.ok(snap.identity.titleText.length > 0, 'visible title text non-empty');
+          assert.ok(snap.identity.descText.length > 0, 'visible description text non-empty');
+          assert.ok(!snap.identity.bodyText.includes('Browse Compact Tree'), 'fixture-only browse card copy absent');
+          assert.ok(!snap.identity.bodyText.includes('Home Modal Test Fixture'), 'fixture-only home copy absent');
+        });
+
+        await t.test('B. authenticated owner boundary', () => {
+          assert.equal(snap.identity.pathname, '/pages/my-trees.html', 'no login/navigation redirect from My Trees');
+          assert.equal(snap.state.ariaBusyCleared, true, '#treesContainer aria-busy cleared after successful load');
+          const authLike = (k) => /auth|firebase|token|session|user/i.test(k);
+          assert.deepEqual(
+            snap.storageKeys.filter(authLike).sort(),
+            ['lovebud_auth_cache', 'lovebud_auth_confirmed'],
+            'only the confirmed-session cache keys are present in localStorage (no token record)'
+          );
+          assert.equal(snap.storageKeys.includes('lovebud_auth_token'), false, 'lovebud_auth_token absent from localStorage');
+          assert.deepEqual(snap.sessionKeys.filter(authLike), [], 'no authenticated fixture/session in sessionStorage');
+          const apiEntriesWithAuth = sameOriginApiRequests.filter((r) => r.hasAuthorization === true);
+          assert.deepEqual(apiEntriesWithAuth, [], 'no API request carries an Authorization header');
+        });
+
+        await t.test('C. required regions present', () => {
+          const required = [
+            'sharedHeader', 'panelHeader', 'eyebrow', 'title', 'desc', 'finder',
+            'searchInput', 'filterChips', 'resultsHead', 'headerCreateBtn', 'sortSelect',
+            'viewModeMount', 'viewModeControl', 'treesContainer', 'treesGrid', 'stateLoading', 'stateLoaded',
+            'hubPanel', 'hubContent', 'hubSummary',
+          ];
+          for (const name of required) {
+            assert.ok(snap.regions[name], `required region ${name} present`);
+          }
+          assert.ok(snap.chips.length >= 1, `at least 1 visible filter chip, got ${snap.chips.length}`);
+          assert.ok(snap.cards.length >= 1, `at least 1 real tree card, got ${snap.cards.length}`);
+          assert.ok(snap.viewButtons.length >= 1, 'view-mode control buttons present');
+          assert.ok(snap.sortSelectInfo, 'my trees sort select present');
+        });
+
+        await t.test('D. region geometry positive and in-bounds', () => {
+          const vw = snap.viewportWidth;
+          const checkVisibleRegion = (name, r) => {
+            assert.ok(r, `${name} rect exists`);
+            assert.equal(r.visible, true, `${name} visible`);
+            assert.ok(r.w > 0 && r.h > 0, `${name} positive geometry`);
+            assert.ok(r.x >= -1, `${name} left >= -1 (x=${r.x})`);
+            assert.ok(r.right <= vw + 1, `${name} right within viewport (right=${r.right}, vw=${vw})`);
+          };
+          checkVisibleRegion('shared header', snap.regions.sharedHeader);
+          checkVisibleRegion('search panel header', snap.regions.panelHeader);
+          checkVisibleRegion('search input', snap.regions.searchInput);
+          checkVisibleRegion('filter chips', snap.regions.filterChips);
+          for (const chip of snap.chips) {
+            assert.equal(chip.visible, true, `chip ${chip.filter} visible`);
+            assert.ok(chip.r.w > 0 && chip.r.h > 0, `chip ${chip.filter} positive geometry`);
+            assert.ok(chip.r.x >= -1 && chip.r.right <= vw + 1, `chip ${chip.filter} in horizontal bounds`);
+          }
+          checkVisibleRegion('results header', snap.regions.resultsHead);
+          checkVisibleRegion('sort control', snap.regions.sortSelect);
+          checkVisibleRegion('view-mode mount', snap.regions.viewModeMount);
+          checkVisibleRegion('view-mode control', snap.regions.viewModeControl);
+          checkVisibleRegion('trees container', snap.regions.treesContainer);
+          checkVisibleRegion('trees grid', snap.regions.treesGrid);
+          for (const card of snap.cards) {
+            assert.equal(card.visible, true, `card ${card.id} visible`);
+            assert.ok(card.r.w > 0 && card.r.h > 0, `card ${card.id} positive geometry`);
+            assert.ok(card.r.x >= -1 && card.r.right <= vw + 1, `card ${card.id} in horizontal bounds`);
+          }
+          checkVisibleRegion('hub panel', snap.regions.hubPanel);
+          assert.ok(snap.regions.stateLoaded.visible === true, 'state-loaded section visible');
+          assert.ok(snap.regions.stateLoading.visible === false, 'state-loading hidden after successful load');
+          assert.ok(snap.regions.stateError.visible === false, 'state-error hidden after successful load');
+          assert.ok(snap.regions.stateEmpty.visible === false, 'state-empty hidden after successful load');
+        });
+
+        await t.test('E. view-mode control: all four buttons in-bounds and operable', () => {
+          const vw = snap.viewportWidth;
+          assert.equal(snap.viewMode.controlWrap, 'wrap', 'My Trees mobile/bounded segmented control may wrap but never clips (control wrap enabled)');
+          assert.equal(snap.viewMode.clippedByAncestor, false, `no ancestor clips the view-mode control (${snap.viewMode.clipAncestor || 'none'})`);
+          const modes = snap.viewButtons.map((b) => b.mode);
+          for (const expected of ['large', 'compact', 'list', 'story']) {
+            assert.ok(modes.includes(expected), `view-mode mode ${expected} present`);
+          }
+          assert.equal(snap.viewButtons.length, 4, `exactly 4 view-mode buttons rendered, got ${snap.viewButtons.length}`);
+          for (const b of snap.viewButtons) {
+            assert.equal(b.visible, true, `view-mode button ${b.mode} visible`);
+            assert.ok(b.r.w > 0, `view-mode button ${b.mode} width > 0 (${b.r.w})`);
+            assert.ok(b.r.h > 0, `view-mode button ${b.mode} height > 0 (${b.r.h})`);
+            assert.ok(b.r.x >= -1, `view-mode button ${b.mode} left >= -1 (x=${b.r.x})`);
+            assert.ok(b.r.right <= vw + 1, `view-mode button ${b.mode} right within viewport (right=${b.r.right}, vw=${vw})`);
+            assert.ok(b.pointerEvents !== 'none', `view-mode button ${b.mode} is pointer-interactive`);
+          }
+          assert.ok(snap.regions.viewModeControl.x >= -1 && snap.regions.viewModeControl.right <= vw + 1, 'control bounding box inside the viewport');
+          if (vp.name !== 'desktop') {
+            const tops = snap.viewButtons.map((b) => b.r.top);
+            const maxTop = Math.max.apply(null, tops);
+            const minTop = Math.min.apply(null, tops);
+            assert.ok(maxTop - minTop > 1, `mobile bounded wrap produces a second row (row tops differ by ${maxTop - minTop}px)`);
+          } else {
+            const tops = snap.viewButtons.map((b) => b.r.top);
+            const maxTop = Math.max.apply(null, tops);
+            const minTop = Math.min.apply(null, tops);
+            assert.ok(maxTop - minTop <= 1, `desktop keeps a single row (row tops within ${maxTop - minTop}px)`);
+          }
+        });
+
+        await t.test('F. focus and accessible names', () => {
+          const assertControl = (label, info) => {
+            assert.equal(info.ok, true, `${label} focus() succeeds and becomes activeElement`);
+            assert.ok(info.name.length > 0, `${label} accessible name non-empty`);
+            assert.ok(info.left >= -1, `${label} left >= -1 (x=${info.left})`);
+            assert.ok(info.right <= info.vw + 1, `${label} right within viewport (right=${info.right}, vw=${info.vw})`);
+          };
+          assertControl('search input (#myTreesSearchInput)', focus.searchInput);
+          assertControl('sort control (#sortTreesSelect)', focus.sortSelect);
+          assertControl('filter chip', focus.chip);
+          assertControl('header create button (#headerCreateTreeBtn)', focus.headerCreateBtn);
+          for (const expected of ['large', 'compact', 'list', 'story']) {
+            assert.ok(focus.viewModeButtons[expected], `view-mode button ${expected} focus probed`);
+            assertControl(`view-mode button ${expected}`, focus.viewModeButtons[expected]);
+          }
+          assert.ok(snap.searchInputName.length > 0, 'search input accessible name from page snapshot non-empty');
+          assert.equal(snap.sortSelectInfo.label, '정렬 기준', 'sort select aria-label preserved');
+          assert.equal(snap.sortSelectInfo.value, 'recent', 'sort select defaults to 최신순 (recent)');
+        });
+
+        await t.test('G. result/card structure', () => {
+          assert.equal(snap.regions.treesGrid.visible, true, '#trees-grid visible');
+          assert.ok(snap.cards.length >= 1, `at least 1 visible real .tree-card, got ${snap.cards.length}`);
+          for (const card of snap.cards) {
+            assert.ok(card.r.w > 0 && card.r.h > 0, `card ${card.id} width/height positive (${card.r.w}x${card.r.h})`);
+            assert.ok(card.r.x >= -1 && card.r.right <= snap.viewportWidth + 1, `card ${card.id} inside horizontal bounds`);
+          }
+          assert.ok(snap.regions.treesContainer.w > 0 && snap.regions.treesContainer.h > 0, 'trees container positive geometry');
+          assert.equal(snap.state.stateLoadedHidden, false, '#state-loaded not hidden');
+          assert.equal(snap.state.stateErrorHidden, true, '#state-error hidden');
+          assert.equal(snap.state.stateEmptyHidden, true, '#state-empty hidden');
+          assert.equal(snap.state.stateLoadingHidden, true, '#state-loading hidden');
+        });
+
+        await t.test('H. reading order and overlap', () => {
+          const o = snap.order;
+          const dom = snap.domOrder;
+          assert.equal(dom.headerPrecedesPanel, true, '#shared-header must precede .search-panel-header in DOM order');
+          assert.equal(dom.panelPrecedesFinder, true, '.search-panel-header must precede #myTreesFinder in DOM order');
+          assert.equal(dom.finderPrecedesResultsHead, true, '#myTreesFinder must precede .my-trees-results-head in DOM order');
+          assert.equal(dom.resultsHeadPrecedesTrees, true, '.my-trees-results-head must precede #treesContainer in DOM order');
+          assert.equal(dom.treesPrecedesHub, true, '#treesContainer must precede #myTreesHubPanel in DOM order');
+          if (vp.name === 'desktop') {
+            assert.ok(o.panel < o.finder, `panel header < finder (${o.panel} < ${o.finder})`);
+            assert.ok(o.finder < o.resultsHead, `finder < results header (${o.finder} < ${o.resultsHead})`);
+            assert.ok(o.resultsHead < o.trees, `results header < trees container (${o.resultsHead} < ${o.trees})`);
+            assert.equal(dom.panelPrecedesTrees, true, '.search-panel-header must precede #treesContainer in DOM order');
+            assert.ok(snap.overlaps.mainRail <= 1, `main column / hub rail overlap ~0, got ${snap.overlaps.mainRail}`);
+            assert.ok(snap.overlaps.treesHub <= 1, `trees container / hub panel overlap ~0, got ${snap.overlaps.treesHub}`);
+            assert.ok(snap.overlaps.headFirstCard <= 1, `results header / first card overlap ~0, got ${snap.overlaps.headFirstCard}`);
+          } else {
+            assert.ok(o.header < o.panel, `header < title (${o.header} < ${o.panel})`);
+            assert.ok(o.panel < o.finder, `title < search input / filter controls (${o.panel} < ${o.finder})`);
+            assert.ok(o.finder < o.resultsHead, `search input / filter controls < results header (${o.finder} < ${o.resultsHead})`);
+            assert.ok(o.resultsHead < o.trees, `results header < trees container (${o.resultsHead} < ${o.trees})`);
+            const badOverlap = snap.overlaps.controlsFirstCard.filter((c) => c.area > 1);
+            assert.deepEqual(badOverlap, [], `visible controls vs first card overlap ~0, got ${JSON.stringify(badOverlap)}`);
+          }
+          assert.ok(snap.viewMode.overlapSortControl <= 1, `view-mode control / sort select overlap ~0, got ${snap.viewMode.overlapSortControl}`);
+          assert.ok(snap.viewMode.overlapCreate <= 1, `view-mode control / create CTA overlap ~0, got ${snap.viewMode.overlapCreate}`);
+        });
+
+        await t.test('I. continuation hub', () => {
+          assert.equal(snap.hub.panelLoaded, true, '#myTreesHubPanel reached is-loaded');
+          assert.equal(snap.hub.panelEmpty, false, '#myTreesHubPanel not in empty state');
+          assert.equal(snap.hub.contentVisible, true, '#myTreesHubContent visible after auto-selecting the first tree');
+          assert.ok(snap.hub.treeTitleText.length > 0, 'hub tree title non-empty');
+          assert.ok(snap.hub.flowVisible, '#myTreesHubFlow visible');
+          assert.ok(snap.hub.flowStageCount >= 1, `hub flow renders at least 1 stage, got ${snap.hub.flowStageCount}`);
+          assert.ok(snap.hub.summaryVisible, '#myTreesHubSummary visible');
+          assert.ok(snap.hub.summaryText.length > 0, 'hub summary text non-empty');
+        });
+
+        await t.test('J. overflow and browser health', () => {
+          assert.ok(snap.overflow.html <= 1, `documentElement horizontal overflow ~0, got ${snap.overflow.html}`);
+          assert.ok(snap.overflow.body <= 1, `body horizontal overflow ~0, got ${snap.overflow.body}`);
+          assert.strictEqual(pageErrors.length, 0, `pageerror zero, got: ${pageErrors.join(', ')}`);
+          assert.strictEqual(consoleErrors.length, 0, `unexpected console error zero, got: ${consoleErrors.join(', ')}`);
+          assert.strictEqual(sameOriginFailures.length, 0, `same-origin request failure zero, got: ${sameOriginFailures.join(', ')}`);
+          assert.strictEqual(http4xx.length, 0, `same-origin HTTP>=400 zero, got: ${http4xx.join(', ')}`);
+          // Deterministic data boundary: the synthetic owner feed was used.
+          assert.ok(stubbed.apiTrees >= 1, `deterministic /api/trees stub used (${stubbed.apiTrees} fulfillment)`);
+          assert.ok(stubbed.external >= 1, `external requests all stubbed (${stubbed.external} fulfilled, 0 real external network)`);
+        });
+
+        await t.test('K. authenticated-owner API request allowlist', () => {
+          // Exact positive allowlist: the owner page may call only the owner
+          // list, first-tree detail, and memories over the same-origin API.
+          const requestSet = Array.from(
+            new Set(sameOriginApiRequests.map(({ method, pathname, query }) => method + ' ' + pathname + (query ? '?' + query : '')))
+          ).sort();
+          assert.deepEqual(
+            requestSet,
+            [
+              'GET /api/memories?treeId=mt-tree-3888-1',
+              'GET /api/trees',
+              'GET /api/trees/mt-tree-3888-1',
+            ],
+            `same-origin API request set must be exactly the owner allowlist, got: ${JSON.stringify(requestSet)}`
+          );
+          assert.deepEqual(
+            apiCounts,
+            {
+              'GET /api/trees': 1,
+              'GET /api/trees/mt-tree-3888-1': 1,
+              'GET /api/memories?treeId=mt-tree-3888-1': 2,
+            },
+            'exact per-endpoint request counts (list 1, detail 1, memories 2)'
+          );
+          assert.equal(stubbed.apiOther, 0, `non-allowlisted /api/* stub fulfillments must be 0, got ${stubbed.apiOther}`);
+          const writeRequests = sameOriginRequests.filter((r) => !['GET', 'HEAD', 'OPTIONS'].includes(r.method));
+          assert.deepEqual(writeRequests, [], `no write method (POST/PUT/PATCH/DELETE) same-origin request, got: ${JSON.stringify(writeRequests)}`);
+          const forbiddenPathname = (pathname) => {
+            const forbiddenPrefixes = ['/api/auth', '/api/login', '/api/session', '/api/user', '/modal/private'];
+            return forbiddenPrefixes.some(
+              (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+            );
+          };
+          const forbiddenRequests = sameOriginRequests.filter(({ pathname }) => forbiddenPathname(pathname));
+          assert.deepEqual(
+            forbiddenRequests,
+            [],
+            `no auth/login/session/private/owner-profile same-origin request, got: ${JSON.stringify(forbiddenRequests)}`
+          );
+        });
+
+        if (vp.name !== 'desktop') {
+          await t.test('L. mobile bottom-sheet', async () => {
+            assert.equal(snap.hub.panelOpen, true, '#myTreesHubPanel is-open on mobile after auto-select');
+            assert.equal(snap.sheet.overlayPresent, true, '.preview-sheet-overlay present while sheet open');
+            assert.equal(snap.sheet.bodySheetOpen, true, 'body.preview-sheet-open applied while sheet open');
+            assert.equal(snap.hub.position, 'fixed', `mobile hub panel is position:fixed, got ${snap.hub.position}`);
+            const maxHeight = parseFloat(snap.hub.maxHeight);
+            assert.ok(Number.isFinite(maxHeight) && maxHeight > 0, `mobile hub max-height set, got ${snap.hub.maxHeight}`);
+            assert.ok(snap.regions.hubPanel.bottom >= snap.viewportHeight - 1, `sheet bottom pinned to viewport bottom (bottom=${snap.regions.hubPanel.bottom}, vh=${snap.viewportHeight})`);
+            assert.ok(snap.hub.flowVisible, 'sheet content shows the flow list');
+            assert.ok(snap.hub.summaryVisible, 'sheet content shows the hub summary');
+            assert.ok(focus.hubClose.ok, 'hub close button focusable in the open sheet');
+            assert.equal(focus.hubClose.name, '닫기', 'hub close button accessible name preserved');
+
+            await page.keyboard.press('Escape');
+            await page.waitForFunction(() => {
+              const panel = document.getElementById('myTreesHubPanel');
+              return panel
+                && !panel.classList.contains('is-open')
+                && !document.querySelector('.preview-sheet-overlay')
+                && !document.body.classList.contains('preview-sheet-open');
+            }, null, { timeout: 10000 });
+            const closed = await page.evaluate(() => {
+              const panel = document.getElementById('myTreesHubPanel');
+              return {
+                isOpen: !!(panel && panel.classList.contains('is-open')),
+                overlayPresent: !!document.querySelector('.preview-sheet-overlay'),
+                bodySheetOpen: document.body.classList.contains('preview-sheet-open'),
+              };
+            });
+            assert.deepEqual(closed, { isOpen: false, overlayPresent: false, bodySheetOpen: false }, 'Escape closes the mobile sheet');
+          });
+        }
+
+        await t.test('M. view-mode pointer interaction', async () => {
+          const beforeErrorCount = pageErrors.length;
+          const modes = ['large', 'compact', 'list', 'story'];
+          const findReachablePoint = async (mode) => {
+            return page.evaluate((m) => {
+              const btn = document.querySelector(`#myTreesViewModeMount .tree-view-mode-btn[data-mode="${m}"]`);
+              if (!btn) return null;
+              const r = btn.getBoundingClientRect();
+              const cy = r.top + r.height / 2;
+              const samples = 16;
+              for (let i = 1; i <= samples; i += 1) {
+                const x = r.left + (r.width * i) / (samples + 1);
+                const el = document.elementFromPoint(x, cy);
+                if (el && btn.contains(el)) {
+                  return { x, y: cy };
+                }
+              }
+              return null;
+            }, mode);
+          };
+          for (const mode of modes) {
+            const point = await findReachablePoint(mode);
+            assert.ok(point, `view-mode button ${mode} has a reachable pointer point (not fully covered)`);
+            await page.mouse.click(point.x, point.y);
+            await page.waitForFunction((m) => {
+              const b = document.querySelector(`#myTreesViewModeMount .tree-view-mode-btn[data-mode="${m}"]`);
+              return b && b.classList.contains('is-active');
+            }, mode, { timeout: 10000 });
+            const activeMode = await page.evaluate(() => {
+              const active = document.querySelector('#myTreesViewModeMount .tree-view-mode-btn.is-active');
+              return active ? active.getAttribute('data-mode') : null;
+            });
+            assert.equal(activeMode, mode, `pointer click on ${mode} activates the ${mode} mode button`);
+          }
+          // Restore the canonical compact baseline state (non-mutating view preference).
+          const compactPoint = await findReachablePoint('compact');
+          assert.ok(compactPoint, 'compact button still reachable for restore');
+          await page.mouse.click(compactPoint.x, compactPoint.y);
+          await page.waitForFunction(() => {
+            const b = document.querySelector('#myTreesViewModeMount .tree-view-mode-btn[data-mode="compact"]');
+            return b && b.classList.contains('is-active');
+          }, null, { timeout: 10000 });
+          const gridMode = await page.evaluate(() => {
+            const grid = document.getElementById('trees-grid');
+            return grid ? grid.getAttribute('data-tree-view-mode') : null;
+          });
+          assert.equal(gridMode, 'compact', 'grid restored to compact after pointer interaction');
+          assert.strictEqual(pageErrors.length, beforeErrorCount, 'pointer interaction introduced no new pageerror');
+        });
+      } finally {
+        await teardownRealMyTrees(env);
+      }
+    });
+  }
+});
