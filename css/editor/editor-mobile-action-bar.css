@@ -154,6 +154,49 @@
         background: var(--primary-vibrant, #b85c66);
     }
 
+    /* #3907: compact secondary Scout control (link-to-moment entry).
+       Shares the mobile owner/edit authority of the primary authoring action:
+       hidden/disabled outside edit mode, never shown on desktop. */
+    .editor-mobile-scout-action {
+        width: 100%;
+        max-width: none;
+        min-height: 40px;
+        padding: 8px 16px;
+        border-radius: var(--radius-full, 9999px);
+        background: transparent;
+        color: var(--primary, #904951);
+        border: 1px solid rgba(144, 73, 81, 0.28);
+        font-family: var(--font-body, 'Noto Sans KR', sans-serif);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        user-select: none;
+        transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .editor-mobile-scout-action .material-symbols-outlined {
+        font-size: 16px;
+        flex: 0 0 auto;
+    }
+
+    .editor-mobile-scout-action.is-authoring-hidden {
+        display: none !important;
+    }
+
+    .editor-mobile-scout-action:active {
+        transform: scale(0.97);
+        background: rgba(144, 73, 81, 0.08);
+    }
+
     /* iOS safe-area: account for home indicator */
     @supports (padding-bottom: env(safe-area-inset-bottom)) {
         .editor-mobile-bottom-bar {

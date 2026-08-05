@@ -149,6 +149,7 @@
         "tests/contracts/modal-a11y-core-dialogs-browser-contract.test.cjs",
         "tests/contracts/my-trees-story-view-foundation-browser-contract.test.cjs",
         "tests/contracts/public-viewer-loading-3688-browser-contract.test.cjs",
+        "tests/contracts/scout-real-page-link-to-draft-activation-browser-contract.test.cjs",
         "tests/contracts/settings-display-name-edit-3617-browser-contract.test.cjs",
         "tests/contracts/settings-password-reset-3635-browser-contract.test.cjs",
         "tests/contracts/settings-readonly-account-3583-browser-contract.test.cjs",

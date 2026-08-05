@@ -184,7 +184,63 @@ console.log('🧪 Scout Draft Suggestion UI Contracts\n');
     console.log(' ✅ Safe fallback when provider unavailable');
 }
 
-// Test 10: Suggestion feedback area in DOM
+// Test 10: Provider is resolved lazily at interaction time (no eval-time capture)
+{
+    const ui = readFileSafe(EDITOR_UI_PATH);
+
+    // The evaluation-time capture was the real-page blocker: it froze the
+    // provider to undefined because scout-suggestion-provider.js loads after
+    // scout-draft-ui.js on the actual Editor page (issue #3907 B1).
+    assert.ok(
+        !/const ScoutDraft = window\.LoveBudScoutDraft;\s*\n\s*const ScoutSuggestionProvider = window\.LoveBudScoutSuggestionProvider;/.test(ui),
+        'UI must NOT capture the provider at module evaluation time'
+    );
+    assert.ok(
+        ui.includes('const ScoutSuggestionProvider = window.LoveBudScoutSuggestionProvider;'),
+        'UI must lazily resolve the provider inside handleSuggest'
+    );
+    // The lazy lookup must live inside the handler scope, not the module body.
+    const handleSuggestMatch = ui.match(/async\s*function\s*handleSuggest\s*\([\s\S]*?const ScoutSuggestionProvider = window\.LoveBudScoutSuggestionProvider;[\s\S]*?\}\s*}/);
+    assert.ok(handleSuggestMatch, 'Lazy provider lookup must be scoped to handleSuggest');
+
+    console.log(' ✅ Provider resolved lazily at interaction time (no eval-time capture)');
+}
+
+// Test 11: Modal carries dialog semantics and a stable accessible title binding
+{
+    const ui = readFileSafe(EDITOR_UI_PATH);
+
+    assert.ok(ui.includes("setAttribute('role', 'dialog')"), 'Modal must declare role=dialog');
+    assert.ok(ui.includes("setAttribute('aria-modal', 'true')"), 'Modal must declare aria-modal=true');
+    assert.ok(ui.includes("setAttribute('aria-labelledby', 'scoutDraftTitle')"), 'Modal must bind aria-labelledby to the stable title id');
+    assert.ok(ui.includes("h2.id = 'scoutDraftTitle'"), 'Modal title <h2> must carry the stable id scoutDraftTitle');
+
+    console.log(' ✅ Modal dialog semantics (role/aria-modal/aria-labelledby) present');
+}
+
+// Test 12: Shared LoveBudModalA11y lifecycle is used; no competing custom Escape listener
+{
+    const ui = readFileSafe(EDITOR_UI_PATH);
+
+    assert.ok(ui.includes('LoveBudModalA11y'), 'UI must use the shared modal accessibility lifecycle');
+    assert.ok(ui.includes('modalA11y.open()'), 'Lifecycle must own initial focus and bind on open');
+    assert.ok(ui.includes('modalA11y.close()'), 'Lifecycle must unbind on close');
+    assert.ok(ui.includes('modalA11y.restoreFocus()'), 'Lifecycle must restore focus on close');
+    assert.ok(ui.includes('onFallbackFocus'), 'Lifecycle must have a guarded desktop fallback focus');
+
+    // The shared lifecycle owns Escape. The only remaining custom document
+    // Escape listener must be the helper-absent fallback, gated inside the
+    // `else` branch of `if (modalA11y) { ... }` — never on the primary path.
+    assert.ok(
+        ui.indexOf("document.addEventListener('keydown', escHandler)") === -1 ||
+        ui.indexOf("} else {") < ui.indexOf("document.addEventListener('keydown', escHandler)"),
+        'Custom Escape listener must be the helper-absent fallback only (inside the modalA11y else branch)'
+    );
+
+    console.log(' ✅ Shared LoveBudModalA11y lifecycle integrated without a competing custom Escape listener');
+}
+
+// Test 13: Suggestion feedback area in DOM
 {
     const ui = readFileSafe(EDITOR_UI_PATH);
     const css = readFileSafe(path.join(__dirname, '../../css/scout/scout-draft.css'));

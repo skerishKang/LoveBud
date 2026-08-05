@@ -25,7 +25,6 @@
     }
 
     const ScoutDraft = window.LoveBudScoutDraft;
-    const ScoutSuggestionProvider = window.LoveBudScoutSuggestionProvider;
     const i18n = window.t || function(key) { return key; };
 
     // Track suggestion state for UI
@@ -51,6 +50,33 @@
         let isOpen = false;
         let escHandler = null;
         let outsideClickHandler = null;
+        let openingTrigger = null;
+
+        // Shared accessibility lifecycle (js/shared/modal-a11y.js). Owns Tab
+        // containment, Escape (exactly one close request), initial focus, and
+        // guarded focus restoration to the real desktop/mobile trigger. The
+        // controller keeps page-owned behavior: backdrop close and draft state.
+        const modalA11y = (window.LoveBudModalA11y && typeof window.LoveBudModalA11y.createLifecycle === 'function')
+            ? window.LoveBudModalA11y.createLifecycle({
+                getModal: () => refs.modal,
+                isOpen: () => isOpen,
+                onRequestClose: () => closeModal(),
+                canClose: () => true,
+                getInitialFocus: () => refs.sourceUrlInput,
+                getRestoreFocus: () => openingTrigger,
+                onFallbackFocus: () => {
+                    // Desktop trigger (#ftbScoutAction) lives inside the floating
+                    // toolbar dropdown and is hidden after the modal opens; land
+                    // focus on the visible floating-toolbar opener instead of BODY.
+                    const more = document.getElementById('ftbMoreBtn');
+                    if (more && more.isConnected && more.disabled !== true && more.hidden !== true) {
+                        try { more.focus(); } catch (err) { /* no-op */ }
+                    }
+                },
+                escapeStopPropagation: true,
+                bindTarget: 'document'
+            })
+            : null;
 
         function getRefs() {
             return {
@@ -120,6 +146,9 @@
             const overlay = document.createElement('div');
             overlay.className = 'scout-draft-modal-overlay';
             overlay.id = 'scoutDraftModal';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.setAttribute('aria-labelledby', 'scoutDraftTitle');
 
             // Modal
             const modal = document.createElement('div');
@@ -129,6 +158,7 @@
             const header = document.createElement('div');
             header.className = 'scout-draft-header';
             const h2 = document.createElement('h2');
+            h2.id = 'scoutDraftTitle';
             h2.textContent = t('scout_draft_title') || 'Scout 순간 저장';
             header.appendChild(h2);
             const closeBtn = document.createElement('button');
@@ -271,7 +301,7 @@
             scoutUIDebugLog('[ScoutDraftUI] Modal rendered dynamically');
         }
 
-        function openModal() {
+        function openModal(trigger) {
             refs = getRefs();
             if (!refs.modal) {
                 createModalInDOM();
@@ -279,31 +309,53 @@
                 scoutUIDebugLog('[ScoutDraftUI] Modal created dynamically');
             }
             resetForm();
+
+            // Store the real desktop/mobile opening trigger before focus moves.
+            // Desktop invokes through #ftbScoutAction; mobile through #mobileScoutAction.
+            const active = document.activeElement;
+            openingTrigger = (trigger && trigger.nodeType === 1) ? trigger
+                : (active && active !== document.body && active !== document.documentElement) ? active
+                : null;
+
             refs.modal.style.display = 'flex';
             refs.modal.classList.add('is-open');
             isOpen = true;
 
-            // Focus first input
-            setTimeout(() => {
-                if (refs.sourceUrlInput) refs.sourceUrlInput.focus();
-            }, 50);
+            // Shared lifecycle owns Escape (exactly once), Tab containment, and
+            // initial focus after visibility. No second custom Escape listener.
+            if (modalA11y) {
+                modalA11y.open();
+            } else {
+                // Helper-absent fallback: keep the previous minimal behavior.
+                setTimeout(() => {
+                    if (refs.sourceUrlInput) refs.sourceUrlInput.focus();
+                }, 50);
+                escHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        e.stopPropagation();
+                        closeModal();
+                    }
+                };
+                document.addEventListener('keydown', escHandler);
+            }
 
-            // ESC handler
-            escHandler = (e) => {
-                if (e.key === 'Escape') {
-                    e.stopPropagation();
-                    closeModal();
-                }
-            };
-            document.addEventListener('keydown', escHandler);
-
-            // Outside click handler
+            // Outside click handler (backdrop close) stays controller-owned.
+            // refs.modal is the full overlay; clicks on the dimmed overlay itself
+            // (outside the inner panel) close the dialog, clicks inside the panel
+            // are left to the form controls.
+            //
+            // Registered synchronously (not via setTimeout) so a backdrop click
+            // immediately after opening is never missed. The opening trigger click
+            // is safe: its capture phase already completed before openModal ran, and
+            // the desktop dropdown additionally stops propagation.
             outsideClickHandler = (e) => {
-                if (refs.modal.contains(e.target)) return;
+                if (!isOpen) return;
+                const panel = refs.modal ? refs.modal.querySelector('.scout-draft-modal') : null;
+                if (panel && panel.contains(e.target)) return;
                 if (e.target.closest('[data-scout-draft-trigger]')) return;
                 closeModal();
             };
-            setTimeout(() => document.addEventListener('click', outsideClickHandler, true), 0);
+            document.addEventListener('click', outsideClickHandler, true);
 
             // Bind save
             if (refs.saveBtn) {
@@ -343,7 +395,9 @@
             refs.modal.classList.remove('is-open');
             isOpen = false;
 
-            if (escHandler) {
+            if (modalA11y) {
+                modalA11y.close();
+            } else if (escHandler) {
                 document.removeEventListener('keydown', escHandler);
                 escHandler = null;
             }
@@ -351,6 +405,14 @@
                 document.removeEventListener('click', outsideClickHandler, true);
                 outsideClickHandler = null;
             }
+
+            // Guarded focus restoration to the real opening trigger.
+            if (modalA11y) {
+                modalA11y.restoreFocus();
+            } else if (openingTrigger && typeof openingTrigger.focus === 'function') {
+                try { openingTrigger.focus(); } catch (err) { /* no-op */ }
+            }
+            openingTrigger = null;
 
             if (onDraftCancel) onDraftCancel();
 
@@ -409,6 +471,10 @@
         }
 
         async function handleSuggest() {
+            // Lazy lookup at interaction time: the provider module loads after
+            // this UI module, so the current global must be resolved per click.
+            const ScoutSuggestionProvider = window.LoveBudScoutSuggestionProvider;
+
             // Check availability first
             if (!ScoutSuggestionProvider || !ScoutSuggestionProvider.getScoutSuggestionAvailability) {
                 setSuggestionState('unavailable', t('scout_suggest_unavailable') || 'AI 제안을 사용할 수 없습니다. 직접 입력 후 저장할 수 있습니다.');
