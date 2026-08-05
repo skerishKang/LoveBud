@@ -1246,11 +1246,20 @@ test('#3886 source-static: targeted release-manifest inline block is absent from
   );
 });
 
-test('#3886 source-static: #3887 i18n dictionary inline block remains out of scope', () => {
+test('#3886 source-static: #3887 i18n dictionary extension is externalized (separate issue)', () => {
   const html = read('pages/editor.html');
+  assert.equal(
+    html.indexOf('window.i18nEditor = Object.assign(window.i18nEditor || {}, {'),
+    -1,
+    '#3887 i18n dictionary must no longer be an executable inline block in editor.html'
+  );
   assert.ok(
-    html.indexOf('window.i18nEditor') >= 0,
-    '#3887 i18n dictionary inline block is a separate issue and must remain'
+    html.indexOf('js/i18n/i18n-editor-extension.js') >= 0,
+    'the external i18n extension script reference must exist'
+  );
+  assert.ok(
+    read('js/i18n/i18n-editor-extension.js').indexOf('window.i18nEditor') >= 0,
+    'the external i18n extension must carry the dictionary registration'
   );
 });
 
@@ -1876,4 +1885,176 @@ test('cross-save stale: no observer injected -> generation guard active, saves u
   assert.equal(resultA.useApi, true);
   assert.equal(resultA.createdMemory.id, 'api-mem-1');
   assert.equal(createCalls, 2, 'no second write per save without an observer');
+});
+
+/* ── #3887 Editor i18n CSP externalization (real external source) ─────────── */
+
+const I18N_EXTENSION_EXPECTED = {
+  editor_sidebar_public_tree: { ko: '공개', en: 'Public' },
+  editor_sidebar_private_tree: { ko: '비공개', en: 'Private' },
+  detail_empty_title: { ko: '아직 선택한 순간이 없어요', en: 'No moment selected yet.' },
+  detail_empty_desc: { ko: '첫 순간은 가운데에서 시작하세요.', en: 'Start the first moment from the canvas.' },
+  editor_current_moment_empty_title: { ko: '아직 선택한 순간이 없어요', en: 'No moment selected yet.' },
+  editor_current_moment_empty_hint: { ko: '첫 순간은 가운데 캔버스에서 시작하세요.', en: 'Start the first moment from the center canvas.' }
+};
+
+function extractI18nExtensionSource() {
+  const source = read('js/i18n/i18n-editor-extension.js');
+  assert.ok(
+    source.indexOf('window.i18nEditor = Object.assign(window.i18nEditor || {}, {') >= 0,
+    'external i18n extension must register via Object.assign on window.i18nEditor'
+  );
+  return source;
+}
+
+function loadI18nExtensionSandbox(extraGlobals) {
+  const sandbox = createSandbox(extraGlobals || {});
+  vm.runInContext(extractI18nExtensionSource(), sandbox);
+  return sandbox;
+}
+
+test('#3887 source-static: editor.html no longer carries the executable i18n inline dictionary', () => {
+  const html = read('pages/editor.html');
+  const inlineI18n = html.match(/window\.i18nEditor\s*=\s*Object\.assign\(window\.i18nEditor \|\| \{\}, \{/);
+  assert.equal(inlineI18n, null, 'the i18n dictionary must not remain as an inline block in editor.html');
+});
+
+test('#3887 source-static: external extension script is same-origin and sits in the i18n directory', () => {
+  const html = read('pages/editor.html');
+  const ref = html.match(/<script[^>]*src=["']([^"']*i18n-editor-extension\.js[^"']*)["'][^>]*><\/script>/);
+  assert.ok(ref, 'external i18n extension script reference must exist in editor.html');
+  const src = ref[1];
+  assert.equal(src.indexOf('http://'), -1, 'extension must not be an absolute http URL');
+  assert.equal(src.indexOf('https://'), -1, 'extension must not be an absolute https URL');
+  assert.ok(src.indexOf('js/i18n/i18n-editor-extension.js') >= 0, 'extension must be the same-origin js/i18n path');
+  assert.ok(fs.existsSync(path.join(ROOT, 'js/i18n/i18n-editor-extension.js')), 'extension file must exist on disk');
+});
+
+test('#3887 source-static: exactly the six targeted keys appear exactly once in the extension', () => {
+  const source = extractI18nExtensionSource();
+  const keys = Object.keys(I18N_EXTENSION_EXPECTED);
+  assert.equal(keys.length, 6, 'exactly six targeted keys');
+  const allKeyOccurrences = source.match(/editor_sidebar_public_tree|editor_sidebar_private_tree|detail_empty_title|detail_empty_desc|editor_current_moment_empty_title|editor_current_moment_empty_hint/g) || [];
+  assert.equal(allKeyOccurrences.length, 6, 'each of the six keys must appear exactly once in the extension source');
+  for (const key of keys) {
+    assert.equal(
+      (source.match(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length,
+      1,
+      key + ' must appear exactly once'
+    );
+  }
+  assert.equal(
+    (source.match(/[a-z_]+:\s*\{\s*ko:/g) || []).length,
+    6,
+    'no extra dictionary keys beyond the six targeted keys'
+  );
+});
+
+test('#3887 source-static: Korean and English values are preserved byte-for-byte', () => {
+  const source = extractI18nExtensionSource();
+  for (const key of Object.keys(I18N_EXTENSION_EXPECTED)) {
+    const expected = I18N_EXTENSION_EXPECTED[key];
+    assert.ok(
+      source.indexOf(key + ': { ko: "' + expected.ko + '", en: "' + expected.en + '" }') >= 0 ||
+        source.indexOf(key + ': {\n    ko: "' + expected.ko + '",\n    en: "' + expected.en + '",\n  }') >= 0 ||
+        source.indexOf('ko: "' + expected.ko + '"') >= 0,
+      key + ' must keep the exact Korean value'
+    );
+    assert.ok(source.indexOf('en: "' + expected.en + '"') >= 0, key + ' must keep the exact English value');
+  }
+});
+
+test('#3887 source-static: shared js/i18n/i18n-editor.js is untouched and keeps its conflicting values', () => {
+  const shared = read('js/i18n/i18n-editor.js');
+  assert.ok(shared.indexOf("'detail_empty_title':{ko:'첫 순간이 트리를 깨워요'") >= 0, 'shared detail_empty_title value must be unchanged');
+  assert.ok(shared.indexOf("'detail_empty_desc':{ko:'첫 순간을 남기면 여기에 열려요.'") >= 0, 'shared detail_empty_desc value must be unchanged');
+  assert.ok(shared.indexOf("editor_current_moment_empty_title: { ko: '순간 감상', en: 'Moment view' }") >= 0, 'shared current-moment title value must be unchanged');
+  assert.ok(shared.indexOf("editor_current_moment_empty_hint: { ko: '선택한 순간을 여기서 감상할 수 있어요.'") >= 0, 'shared current-moment hint value must be unchanged');
+});
+
+test('#3887 source-static: script order is i18n-editor.js -> extension -> consumers', () => {
+  const html = read('pages/editor.html');
+  const editorIdx = html.indexOf('js/i18n/i18n-editor.js');
+  const extIdx = html.indexOf('js/i18n/i18n-editor-extension.js');
+  const scoutIdx = html.indexOf('js/i18n/i18n-scout.js');
+  const myTreesIdx = html.indexOf('js/i18n/i18n-my-trees.js');
+  const indexIdx = html.indexOf('js/i18n/i18n-index.js');
+  const i18nIdx = html.indexOf('js/i18n.js');
+  assert.ok(editorIdx >= 0, 'i18n-editor.js must be referenced');
+  assert.ok(extIdx >= 0, 'i18n-editor-extension.js must be referenced');
+  assert.ok(myTreesIdx >= 0, 'i18n-my-trees.js must be referenced');
+  assert.ok(indexIdx >= 0, 'i18n-index.js must be referenced');
+  assert.ok(i18nIdx >= 0, 'i18n.js must be referenced');
+  assert.ok(editorIdx < extIdx, 'i18n-editor.js must load before the extension');
+  assert.ok(extIdx < myTreesIdx, 'extension must load before i18n-my-trees.js');
+  assert.ok(extIdx < indexIdx, 'extension must load before i18n-index.js');
+  assert.ok(extIdx < i18nIdx, 'extension must load before i18n.js');
+  assert.ok(scoutIdx >= 0 && scoutIdx !== editorIdx, 'i18n-scout.js order is not disturbed by the swap');
+});
+
+function assertI18nValueMatches(actual, expected, label) {
+  assert.deepEqual(Object.keys(actual).sort(), Object.keys(expected).sort(), label + ' must expose exactly ko/en keys');
+  assert.equal(actual.ko, expected.ko, label + ' ko value');
+  assert.equal(actual.en, expected.en, label + ' en value');
+}
+
+test('#3887 runtime: extension creates window.i18nEditor when absent with exact six values', () => {
+  const sandbox = loadI18nExtensionSandbox();
+  assert.ok(sandbox.window.i18nEditor, 'window.i18nEditor must be created when absent');
+  for (const key of Object.keys(I18N_EXTENSION_EXPECTED)) {
+    assertI18nValueMatches(sandbox.window.i18nEditor[key], I18N_EXTENSION_EXPECTED[key], key);
+  }
+});
+
+test('#3887 runtime: extension overrides existing conflicting keys and preserves unrelated keys', () => {
+  const existing = {
+    editor_sidebar_public_tree: { ko: 'OLD 공개', en: 'OLD Public' },
+    some_unrelated_key: { ko: '유지', en: 'kept' },
+    another_key: 'plain-value'
+  };
+  const sandbox = createSandbox();
+  sandbox.window.i18nEditor = existing;
+  vm.runInContext(extractI18nExtensionSource(), sandbox);
+  const result = sandbox.window.i18nEditor;
+  assert.equal(result.some_unrelated_key, existing.some_unrelated_key, 'unrelated object key must be preserved');
+  assert.equal(result.another_key, 'plain-value', 'unrelated non-object value must be preserved');
+  assertI18nValueMatches(result.editor_sidebar_public_tree, I18N_EXTENSION_EXPECTED.editor_sidebar_public_tree, 'conflicting key must be overridden');
+  for (const key of Object.keys(I18N_EXTENSION_EXPECTED)) {
+    assertI18nValueMatches(result[key], I18N_EXTENSION_EXPECTED[key], key);
+  }
+});
+
+test('#3887 runtime: extension has zero side effects (no fetch, storage, timers, logging)', () => {
+  const fetchCalls = [];
+  const storageWrites = [];
+  const consoleOut = [];
+  let timerCalls = 0;
+  const storageProxy = new Proxy({}, {
+    set(target, key, value) {
+      storageWrites.push(String(key));
+      target[key] = value;
+      return true;
+    }
+  });
+  const sandbox = createSandbox({
+    fetch: (url) => { fetchCalls.push(url); return Promise.resolve({}); },
+    setTimeout: () => { timerCalls += 1; return 0; },
+    setInterval: () => { timerCalls += 1; return 0; },
+    localStorage: storageProxy,
+    sessionStorage: storageProxy
+  });
+  sandbox.console = {
+    warn: (...args) => { consoleOut.push(args.join(' ')); },
+    error: (...args) => { consoleOut.push(args.join(' ')); },
+    log: (...args) => { consoleOut.push(args.join(' ')); }
+  };
+  vm.runInContext(extractI18nExtensionSource(), sandbox);
+  assert.deepEqual(fetchCalls, [], 'extension must issue zero fetches');
+  assert.equal(timerCalls, 0, 'extension must schedule zero timers');
+  assert.deepEqual(storageWrites, [], 'extension must write zero storage keys');
+  assert.equal(consoleOut.length, 0, 'extension must emit zero console output');
+  const source = read('js/i18n/i18n-editor-extension.js');
+  for (const forbidden of ['fetch', 'localStorage', 'sessionStorage', 'indexedDB', 'document.cookie', 'setTimeout', 'setInterval', 'console']) {
+    assert.equal(source.includes(forbidden), false, 'extension source must not reference ' + forbidden);
+  }
 });
