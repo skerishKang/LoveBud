@@ -142,6 +142,7 @@
         "tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs",
         "tests/contracts/editor-floating-toolbar-dropdown-a11y-contract.test.cjs",
         "tests/contracts/editor-loading-3688-browser-contract.test.cjs",
+        "tests/contracts/editor-real-page-structural-baseline-3896-browser-contract.test.cjs",
         "tests/contracts/home-thumbnail-loading-browser-contract.test.cjs",
         "tests/contracts/home-video-modal-loading-3707-browser-contract.test.cjs",
         "tests/contracts/legacy-tree-entity-repair-package-contract.test.cjs",
