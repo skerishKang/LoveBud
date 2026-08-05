@@ -1387,6 +1387,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-real-page-structural-baseline-3896-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Loads real pages/editor.html with full CSS/JS chains in Playwright Chromium via a local 127.0.0.1 HTTP server. Synthetic auth via page.addInitScript (localStorage + window.firebase mock + LoveBudAuthBootstrap). Asserts desktop 1440x900 and mobile 390x844 structural baseline: shared-header, canvasArea, editorSidebarPanel, detailPanel visibility and geometry, sidebar/canvas non-overlap, horizontal overflow <= 1px, edit mode body attribute toggle, view/edit mode display toggling, browser health (zero pageerror, zero console error, zero same-origin HTTP failure, zero write requests). No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/editor-required-global-waiter-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
