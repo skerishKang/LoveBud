@@ -861,14 +861,24 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
     } finally { await closeFixture(fx); }
   }
 
-  // NC4 - exitEditMode connection removed but cancelEditBtn binding kept: after
-  // the REAL cancel click the view must NOT return (edit form stays).
+  // NC4 - cancelEditBtn binding PRESERVED but the exitEditMode callback wiring
+  // disconnected via an instrumented no-op callback: the real click must run the
+  // preserved binding callback exactly once, yet never exit edit mode. This
+  // differs from NC3 (which removes the whole binding).
   {
     const fx = await newEditorPage(DESKTOP_VIEWPORT, {
       mutateBindings: function(src) {
-        const marker = '/* NC4 disconnect */';
-        const mutated = src.replace("bindButtonOnce(cancelEditBtn, 'cancelBound', exitEditMode);", marker);
-        assert.ok(mutated.indexOf(marker) !== -1, 'NC4: cancelExitEditMode wiring replaced');
+        const target = "bindButtonOnce(cancelEditBtn, 'cancelBound', exitEditMode);";
+        const occurrences = src.split(target).length - 1;
+        assert.equal(occurrences, 1, 'NC4: exact cancel binding authority must occur once');
+        const replacement =
+          "bindButtonOnce(cancelEditBtn, 'cancelBound', function() {" +
+          " window.__LOVEBUD_NC4_CANCEL_HANDLER_CALLS__ =" +
+          " (window.__LOVEBUD_NC4_CANCEL_HANDLER_CALLS__ || 0) + 1;" +
+          " });";
+        const mutated = src.replace(target, replacement);
+        assert.ok(mutated.indexOf(replacement) !== -1, 'NC4: instrumented cancel callback must replace the exitEditMode wiring');
+        assert.ok(mutated.indexOf("bindButtonOnce(cancelEditBtn, 'cancelBound', function") !== -1, 'NC4: cancel binding must be preserved');
         return mutated;
       }
     });
@@ -880,8 +890,19 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
       assert.equal(opened, true, 'NC4: edit form must open (setup for cancel control)');
       assert.equal(await isEditFormVisible(page), true, 'NC4: detailEditMode must be visible before cancel');
       assert.equal(await isViewFormVisible(page), false, 'NC4: detailViewMode must be hidden before cancel');
+      assert.equal(
+        await page.evaluate(function() { return window.__LOVEBUD_NC4_CANCEL_HANDLER_CALLS__ || 0; }),
+        0,
+        'NC4: instrumented cancel callback must not have run before the click'
+      );
 
       await page.click('#cancelEditBtn');
+
+      assert.equal(
+        await page.evaluate(function() { return window.__LOVEBUD_NC4_CANCEL_HANDLER_CALLS__ || 0; }),
+        1,
+        'NC4: preserved cancel binding callback must run exactly once'
+      );
 
       let returnedToView = true;
       try {
@@ -895,13 +916,14 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
         }, null, { timeout: 1500 });
       } catch (_) { returnedToView = false; }
       assert.equal(returnedToView, false, 'NC4: actual cancelEditBtn click must not restore view when exitEditMode is disconnected');
-      assert.equal(await isEditFormVisible(page), true, 'NC4: detailEditMode must remain visible after cancel click');
+      assert.equal(await isEditFormVisible(page), true, 'NC4: detailEditMode must remain visible because exitEditMode is disconnected');
+      assert.equal(await isViewFormVisible(page), false, 'NC4: view form must remain hidden because exitEditMode is disconnected');
       assert.equal(
         await page.evaluate(function() { return document.body.getAttribute('data-editor-interaction-mode'); }),
         'edit',
-        'NC4: body interaction mode must remain edit after cancel click'
+        'NC4: body interaction mode must remain edit'
       );
-      assert.equal(fx.health.writeRequests, 0, 'NC4: write requests must remain 0');
+      assert.equal(fx.health.writeRequests, 0, 'NC4: cancel callback probe must not perform a write');
     } finally { await closeFixture(fx); }
   }
 
