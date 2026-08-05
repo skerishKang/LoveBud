@@ -214,6 +214,7 @@ function isAuthPrivateUrl(url) {
 function attachNetworkObserver(page, health) {
   health.writeRequests = 0;
   health.unexpectedApi = [];
+  health.allowedApiRequests = [];
   health.authorizationHeaders = 0;
   health.authPrivateRequests = [];
   health.externalRequests = [];
@@ -227,12 +228,15 @@ function attachNetworkObserver(page, health) {
       health.writeRequests += 1;
     }
 
-    // Unexpected same-origin API requests (any /api/* not in the exact allowlist).
+    // Same-origin API requests: record allowlisted GETs actually observed and
+    // flag any unexpected request (any /api/* not in the exact allowlist).
     try {
       const parsed = new URL(url);
       if (parsed.hostname === '127.0.0.1' && parsed.pathname.startsWith('/api/')) {
         const key = normalizedApiKey(req);
-        if (!ALLOWED_API_KEYS.has(key)) {
+        if (ALLOWED_API_KEYS.has(key)) {
+          health.allowedApiRequests.push(key);
+        } else {
           health.unexpectedApi.push(req.method() + ' ' + url);
         }
         if (isAuthPrivateUrl(url)) {
@@ -291,6 +295,41 @@ function getBoundingClientRect(page, id) {
     var r = el.getBoundingClientRect();
     return { left: r.left, top: r.top, right: r.right, width: r.width, height: r.height };
   }, id);
+}
+
+// Required same-origin GETs the editor MUST have actually issued on the happy path.
+const REQUIRED_ALLOWED_GETS = [
+  'GET /api/trees/' + FIXTURE_TREE_ID,
+  'GET /api/memories?treeId=' + FIXTURE_TREE_ID,
+  'GET /api/memories/editor-memory-3896-1/reactions',
+  'GET /api/memories/editor-memory-3896-1/comments'
+];
+
+function assertAllowedGetsObserved(health, label) {
+  const observed = new Set(health.allowedApiRequests || []);
+  for (const required of REQUIRED_ALLOWED_GETS) {
+    assert.ok(observed.has(required), label + ' must have actually issued ' + required + ' (observed: ' + Array.from(observed).join(', ') + ')');
+  }
+}
+
+function getSelectedMemoryId(page) {
+  return page.evaluate(function() {
+    const selectedEl = document.querySelector('.memory-node.selected');
+    return selectedEl ? selectedEl.dataset.memoryId : null;
+  });
+}
+
+function getDetailViewTitle(page) {
+  return page.evaluate(function() {
+    const el = document.getElementById('detailCurrentMomentTitle');
+    return el ? el.textContent.trim() : null;
+  });
+}
+
+function getLocationState(page) {
+  return page.evaluate(function() {
+    return { pathname: window.location.pathname, search: window.location.search };
+  });
 }
 
 function getHorizontalOverflow(page) {
@@ -525,6 +564,15 @@ test('Editor real-page structural baseline - desktop and mobile real user flow',
     assert.ok(!(await isVisible(page, 'detailEditMode')), 'desktop edit mode detail must be hidden in view');
 
     assertCleanHealth(health, 'desktop view mode');
+    assertAllowedGetsObserved(health, 'desktop view mode');
+
+    const desktopLocationBefore = await getLocationState(page);
+    assert.equal(desktopLocationBefore.pathname, '/pages/editor.html', 'desktop location pathname must be stable');
+    assert.ok(desktopLocationBefore.search.indexOf('treeId=' + FIXTURE_TREE_ID) !== -1, 'desktop location must keep treeId query');
+
+    const selectedIdBeforeEdit = await getSelectedMemoryId(page);
+    const selectedTitleBeforeEdit = await getDetailViewTitle(page);
+    assert.equal(selectedTitleBeforeEdit, FIXTURE_MEMORIES[0].title, 'desktop view mode must render the first fixture memory title');
 
     // Real user path into edit (real mode-control button → body 'edit'; then real editMemoryBtn → edit form).
     await enterEditModeViaRealControl(page, DESKTOP_VIEWPORT);
@@ -568,6 +616,22 @@ test('Editor real-page structural baseline - desktop and mobile real user flow',
       'desktop body interaction mode must remain edit after cancel (only detail sub-panel returns to view)'
     );
 
+    // Selected memory identity, tree identity, and route must be preserved after cancel.
+    const selectedIdAfterCancel = await getSelectedMemoryId(page);
+    assert.equal(selectedIdAfterCancel, selectedIdBeforeEdit, 'desktop selected memory identity must be preserved after cancel');
+    const selectedTitleAfterCancel = await getDetailViewTitle(page);
+    assert.equal(selectedTitleAfterCancel, selectedTitleBeforeEdit, 'desktop selected memory title must be preserved after cancel');
+    assert.equal(
+      await page.evaluate(function() { return (window.currentTreeData && window.currentTreeData.id) || null; }),
+      FIXTURE_TREE_ID,
+      'desktop tree identity must be preserved after cancel'
+    );
+    const desktopLocationAfter = await getLocationState(page);
+    assert.equal(desktopLocationAfter.pathname, desktopLocationBefore.pathname, 'desktop URL pathname must not change through the flow');
+    assert.ok(desktopLocationAfter.search.indexOf('treeId=' + FIXTURE_TREE_ID) !== -1, 'desktop URL must keep treeId query through the flow');
+    assert.ok(desktopLocationAfter.search.indexOf('lang=ko') !== -1, 'desktop URL must keep lang query through the flow');
+    assert.equal(health.writeRequests, 0, 'desktop write requests must remain 0 through the flow');
+
     assertCleanHealth(health, 'desktop cancel to view');
   } finally { await closeFixture(desktop); }
 
@@ -590,6 +654,10 @@ test('Editor real-page structural baseline - desktop and mobile real user flow',
     const overflow = await getHorizontalOverflow(page);
     assert.ok(overflow <= 1, 'mobile horizontal overflow must be <= 1px, got ' + overflow);
 
+    const mobileLocationBefore = await getLocationState(page);
+    assert.equal(mobileLocationBefore.pathname, '/pages/editor.html', 'mobile location pathname must be stable');
+    assert.ok(mobileLocationBefore.search.indexOf('treeId=' + FIXTURE_TREE_ID) !== -1, 'mobile location must keep treeId query');
+
     // Select the first rendered canvas node through the real product path (enables detail toggle).
     await page.waitForFunction(function() {
       const nodes = document.querySelectorAll('#canvasArea .memory-node');
@@ -599,6 +667,10 @@ test('Editor real-page structural baseline - desktop and mobile real user flow',
     await page.waitForFunction(function() {
       return !!document.querySelector('#canvasArea .memory-node.selected');
     }, null, { timeout: 5000 });
+
+    const selectedIdBeforeEdit = await getSelectedMemoryId(page);
+    const selectedTitleBeforeEdit = await getDetailViewTitle(page);
+    assert.equal(selectedTitleBeforeEdit, FIXTURE_MEMORIES[0].title, 'mobile selected memory title must match the clicked fixture memory');
 
     // Real mobile mode toggle must flip interaction mode before opening the detail panel,
     // because the bottom bar is hidden while the panel is open.
@@ -640,7 +712,24 @@ test('Editor real-page structural baseline - desktop and mobile real user flow',
     assert.ok(await isVisible(page, 'detailViewMode'), 'mobile detailViewMode must be visible after cancel');
     assert.ok(!(await isVisible(page, 'detailEditMode')), 'mobile detailEditMode must be hidden after cancel');
 
+    // Selected memory identity, tree identity, and route must be preserved after cancel.
+    const selectedIdAfterCancel = await getSelectedMemoryId(page);
+    assert.equal(selectedIdAfterCancel, selectedIdBeforeEdit, 'mobile selected memory identity must be preserved after cancel');
+    const selectedTitleAfterCancel = await getDetailViewTitle(page);
+    assert.equal(selectedTitleAfterCancel, selectedTitleBeforeEdit, 'mobile selected memory title must be preserved after cancel');
+    assert.equal(
+      await page.evaluate(function() { return (window.currentTreeData && window.currentTreeData.id) || null; }),
+      FIXTURE_TREE_ID,
+      'mobile tree identity must be preserved after cancel'
+    );
+    const mobileLocationAfter = await getLocationState(page);
+    assert.equal(mobileLocationAfter.pathname, mobileLocationBefore.pathname, 'mobile URL pathname must not change through the flow');
+    assert.ok(mobileLocationAfter.search.indexOf('treeId=' + FIXTURE_TREE_ID) !== -1, 'mobile URL must keep treeId query through the flow');
+    assert.ok(mobileLocationAfter.search.indexOf('lang=ko') !== -1, 'mobile URL must keep lang query through the flow');
+    assert.equal(health.writeRequests, 0, 'mobile write requests must remain 0 through the flow');
+
     assertCleanHealth(health, 'mobile cancel to view');
+    assertAllowedGetsObserved(health, 'mobile cancel to view');
   } finally { await closeFixture(mobile); }
 });
 
@@ -733,7 +822,8 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
     } finally { await closeFixture(fx); }
   }
 
-  // NC3 - cancelEditBtn binding removed: cancel must NOT return to view.
+  // NC3 - cancelEditBtn binding removed: after the REAL cancel click the view
+  // must NOT return. Proves the positive flow depends on the real binding.
   {
     const fx = await newEditorPage(DESKTOP_VIEWPORT, {
       mutateBindings: function(src) {
@@ -751,15 +841,12 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
       await enterEditModeViaRealControl(page, DESKTOP_VIEWPORT);
       const opened = await clickEditMemoryBtnAndAwaitForm(page);
       assert.equal(opened, true, 'NC3: edit form must open (setup for cancel control)');
-      await page.waitForFunction(function() {
-        const viewMode = document.getElementById('detailViewMode');
-        const editMode = document.getElementById('detailEditMode');
-        if (!viewMode || !editMode) return false;
-        const vs = window.getComputedStyle(viewMode);
-        const es = window.getComputedStyle(editMode);
-        return (vs.display === 'none' || vs.display === '') && es.display !== 'none' && es.display !== '';
-      }, null, { timeout: 5000 });
-      let cancelled = true;
+      assert.equal(await isEditFormVisible(page), true, 'NC3: detailEditMode must be visible before cancel');
+      assert.equal(await isViewFormVisible(page), false, 'NC3: detailViewMode must be hidden before cancel');
+
+      await page.click('#cancelEditBtn');
+
+      let returnedToView = true;
       try {
         await page.waitForFunction(function() {
           const viewMode = document.getElementById('detailViewMode');
@@ -768,13 +855,14 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
           const vs = window.getComputedStyle(viewMode);
           const es = window.getComputedStyle(editMode);
           return vs.display !== 'none' && vs.display !== '' && (es.display === 'none' || es.display === '');
-        }, null, { timeout: 4000 });
-      } catch (_) { cancelled = false; }
-      assert.equal(cancelled, false, 'NC3: cancel must NOT return to view with cancelEditBtn binding removed');
+        }, null, { timeout: 1500 });
+      } catch (_) { returnedToView = false; }
+      assert.equal(returnedToView, false, 'NC3: actual cancelEditBtn click must not restore view when its binding is removed');
     } finally { await closeFixture(fx); }
   }
 
-  // NC4 - exitEditMode connection removed: clicking cancelEditBtn must not exit edit.
+  // NC4 - exitEditMode connection removed but cancelEditBtn binding kept: after
+  // the REAL cancel click the view must NOT return (edit form stays).
   {
     const fx = await newEditorPage(DESKTOP_VIEWPORT, {
       mutateBindings: function(src) {
@@ -788,16 +876,14 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
       const page = fx.page;
       await waitForEditorData(page);
       await enterEditModeViaRealControl(page, DESKTOP_VIEWPORT);
-      await clickEditMemoryBtnAndAwaitForm(page);
-      await page.waitForFunction(function() {
-        const viewMode = document.getElementById('detailViewMode');
-        const editMode = document.getElementById('detailEditMode');
-        if (!viewMode || !editMode) return false;
-        const vs = window.getComputedStyle(viewMode);
-        const es = window.getComputedStyle(editMode);
-        return (vs.display === 'none' || vs.display === '') && es.display !== 'none' && es.display !== '';
-      }, null, { timeout: 5000 });
-      let cancelled = true;
+      const opened = await clickEditMemoryBtnAndAwaitForm(page);
+      assert.equal(opened, true, 'NC4: edit form must open (setup for cancel control)');
+      assert.equal(await isEditFormVisible(page), true, 'NC4: detailEditMode must be visible before cancel');
+      assert.equal(await isViewFormVisible(page), false, 'NC4: detailViewMode must be hidden before cancel');
+
+      await page.click('#cancelEditBtn');
+
+      let returnedToView = true;
       try {
         await page.waitForFunction(function() {
           const viewMode = document.getElementById('detailViewMode');
@@ -806,45 +892,76 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
           const vs = window.getComputedStyle(viewMode);
           const es = window.getComputedStyle(editMode);
           return vs.display !== 'none' && vs.display !== '' && (es.display === 'none' || es.display === '');
-        }, null, { timeout: 4000 });
-      } catch (_) { cancelled = false; }
-      assert.equal(cancelled, false, 'NC4: cancel must NOT return to view with exitEditMode disconnected');
+        }, null, { timeout: 1500 });
+      } catch (_) { returnedToView = false; }
+      assert.equal(returnedToView, false, 'NC4: actual cancelEditBtn click must not restore view when exitEditMode is disconnected');
+      assert.equal(await isEditFormVisible(page), true, 'NC4: detailEditMode must remain visible after cancel click');
+      assert.equal(
+        await page.evaluate(function() { return document.body.getAttribute('data-editor-interaction-mode'); }),
+        'edit',
+        'NC4: body interaction mode must remain edit after cancel click'
+      );
+      assert.equal(fx.health.writeRequests, 0, 'NC4: write requests must remain 0');
     } finally { await closeFixture(fx); }
   }
 
-  // NC5 - tree GET forced to 404: editor data load must fail (currentTreeData stays null).
+  // NC5 - tree GET forced to 404: the tree error/degraded state must render and
+  // currentTreeData must never become authoritative. Completion is source-observable
+  // via the product's own tree-load-error UI (#retryOpenTreeBtn), not a fixed sleep.
   {
     const fx = await newEditorPage(DESKTOP_VIEWPORT, { treeStatus: 404 });
     try {
       const page = fx.page;
-      await page.waitForTimeout(1500);
+      await page.waitForFunction(function() {
+        return !!document.getElementById('retryOpenTreeBtn');
+      }, null, { timeout: 10000 });
       assert.equal(await getCurrentTreeId(page), null, 'NC5: tree must NOT load on forced 404');
+      assert.equal(await getCanvasNodeCount(page), 0, 'NC5: no canvas nodes must render on tree 404');
       assert.ok(fx.health.httpFailures.length >= 1, 'NC5: forced tree 404 must be recorded as an HTTP failure');
     } finally { await closeFixture(fx); }
   }
 
-  // NC6 - memories GET forced to 404: canvas nodes must not render.
+  // NC6 - memories GET forced to 404: tree loads but memory loading settles to an
+  // empty tree and canvas nodes never render. Completion is source-observable via
+  // the editor's own settled memory-load state (window.currentTreeMemories array).
   {
     const fx = await newEditorPage(DESKTOP_VIEWPORT, { memoryStatus: 404 });
     try {
       const page = fx.page;
-      await page.waitForTimeout(1500);
+      await page.waitForFunction(function() {
+        return Array.isArray(window.currentTreeMemories) && (window.currentTreeData && window.currentTreeData.id === 'editor-tree-3896');
+      }, null, { timeout: 10000 });
+      assert.equal(await getCurrentTreeId(page), FIXTURE_TREE_ID, 'NC6: tree must load normally when only memories fail');
       assert.equal(await getCanvasNodeCount(page), 0, 'NC6: canvas nodes must NOT render on forced memories 404');
       assert.ok(fx.health.httpFailures.length >= 1, 'NC6: forced memories 404 must be recorded as an HTTP failure');
     } finally { await closeFixture(fx); }
   }
 
-  // NC7 - a same-origin write must trip the contract's write guard.
+  // NC7 - an actual same-origin POST must trip the contract's write guard. The POST
+  // is a real browser request routed only to a disposable probe path (never a product
+  // API endpoint, never the real backend), so the write detector observes a genuine
+  // network event instead of a manually incremented counter.
   {
     const fx = await newEditorPage(DESKTOP_VIEWPORT);
     try {
       const page = fx.page;
       await waitForEditorData(page);
-      const cleanHealth = { ...fx.health, writeRequests: 0 };
-      assert.equal(cleanHealth.writeRequests, 0, 'NC7: happy path must emit zero writes');
-      fx.health.writeRequests = 1;
-      assert.throws(function() { assertCleanHealth(fx.health, 'NC7 write'); }, undefined, 'NC7: write guard must trip on a same-origin write');
-      fx.health.writeRequests = 0;
+      assert.equal(fx.health.writeRequests, 0, 'NC7: happy path must emit zero writes');
+
+      await page.route('**/__nc7-write-probe', async function(route) {
+        await route.fulfill({ status: 204, body: '' });
+      });
+
+      await page.evaluate(async function() {
+        await fetch('/__nc7-write-probe', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ probe: true })
+        });
+      });
+
+      assert.equal(fx.health.writeRequests, 1, 'NC7: actual same-origin POST must be observed exactly once');
+      assert.throws(function() { assertCleanHealth(fx.health, 'NC7 actual write'); }, undefined, 'NC7: write guard must trip on the actual POST');
     } finally { await closeFixture(fx); }
   }
 
