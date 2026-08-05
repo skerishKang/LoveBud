@@ -2035,6 +2035,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/lovetree-import-beginner-tutorial-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads docs/product/LOVETREE_IMPORT_BEGINNER_TUTORIAL_CONTRACT.md and asserts the required sections, exact current-main baseline SHA, two-route entry model (YouTube playlist and browser bookmark), YouTube and bookmark tutorial step/copy contracts, normalized preview-state vocabulary, accessibility/focus requirements, privacy/retention/consent copy, error/recovery matrix, owner real-use acceptance checklist separation from automated tests, bounded ordered implementation children, explicit non-actions, hard prohibitions, and keep-open issue language. Does not execute runtime, launch a browser, call a provider API, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/media-fallback-unification-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
