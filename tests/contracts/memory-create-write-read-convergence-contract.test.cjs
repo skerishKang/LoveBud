@@ -1989,7 +1989,8 @@ test('#3887 source-static: script order is i18n-editor.js -> extension -> consum
   assert.ok(extIdx < myTreesIdx, 'extension must load before i18n-my-trees.js');
   assert.ok(extIdx < indexIdx, 'extension must load before i18n-index.js');
   assert.ok(extIdx < i18nIdx, 'extension must load before i18n.js');
-  assert.ok(scoutIdx >= 0 && scoutIdx !== editorIdx, 'i18n-scout.js order is not disturbed by the swap');
+  assert.ok(scoutIdx >= 0, 'i18n-scout.js must be referenced');
+  assert.ok(extIdx < scoutIdx, 'extension must load before i18n-scout.js');
 });
 
 function assertI18nValueMatches(actual, expected, label) {
