@@ -2041,6 +2041,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/lovetree-public-youtube-playlist-preview-authority-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads docs/product/LOVETREE_PUBLIC_YOUTUBE_PLAYLIST_PREVIEW_AUTHORITY.md and asserts the current-main baseline and prerequisite closure, active same-origin route ownership and auth-policy public prefix rule, exact proposed preview route and runtime owner, bounded request fields and accepted playlist URL/ID forms, normalized tutorial-vocabulary preview response (writes 0, playback order only), pagination/ceiling/timeout/truncation/retry/partial-result policy, bounded YouTube provider adapter seam with injected-fetch mock boundary, host allowlist/arbitrary-fetch prevention/privacy/logging/quota controls, merged tutorial integration point, implementation paths/scope/tests/negative controls/stop conditions, single allowed verdict, hard prohibitions, and keep-open issue language. Does not execute runtime, launch a browser, call a provider API, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/media-fallback-unification-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
