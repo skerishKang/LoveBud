@@ -148,6 +148,56 @@ test('item state model uses corrected vocabulary', () => {
   assertContains(doc, 'never silently dropped', 'no silent drop');
 });
 
+test('stale item-state enum values do not appear as response state', () => {
+  const doc = readDoc();
+  // Remove NC16 line from the check — NC16 itself mentions the stale values to prohibit them
+  const nc16Idx = doc.indexOf('| NC16 |');
+  const docWithoutNC16 = nc16Idx >= 0
+    ? doc.slice(0, nc16Idx) + doc.slice(doc.indexOf('\n', nc16Idx))
+    : doc;
+  // Also remove NC17 line to avoid false positive on "deleted/private/region"
+  const nc17Idx = docWithoutNC16.indexOf('| NC17 |');
+  const docClean = nc17Idx >= 0
+    ? docWithoutNC16.slice(0, nc17Idx) + docWithoutNC16.slice(docWithoutNC16.indexOf('\n', nc17Idx))
+    : docWithoutNC16;
+
+  assert.doesNotMatch(
+    docClean,
+    /"state"\s*:\s*"AVAILABLE"/,
+    'Response state must not use stale enum "AVAILABLE" (outside NC16 prohibition rule)'
+  );
+  assert.doesNotMatch(
+    docClean,
+    /"state"\s*:\s*"UNAVAILABLE"/,
+    'Response state must not use stale enum "UNAVAILABLE" (outside NC16 prohibition rule)'
+  );
+});
+
+test('success response example uses AVAILABLE_METADATA', () => {
+  const doc = readDoc();
+  assertContains(doc, '"state": "AVAILABLE_METADATA"', 'success example uses canonical state');
+});
+
+test('partial-result matrix uses PRIVATE_OR_UNAVAILABLE', () => {
+  const doc = readDoc();
+  assertContains(doc, 'state: "PRIVATE_OR_UNAVAILABLE"', 'partial result uses canonical state');
+});
+
+test('NC7 uses PRIVATE_OR_UNAVAILABLE', () => {
+  const doc = readDoc();
+  const nc7Line = doc.match(/\| NC7 \|.*\n/);
+  assert.ok(nc7Line, 'NC7 must exist');
+  assert.ok(
+    nc7Line[0].indexOf('PRIVATE_OR_UNAVAILABLE') !== -1,
+    'NC7 must use PRIVATE_OR_UNAVAILABLE, not stale UNAVAILABLE'
+  );
+});
+
+test('thumbnail-null rule uses only canonical enum names', () => {
+  const doc = readDoc();
+  assertContains(doc, 'METADATA_PARTIAL` or `PRIVATE_OR_UNAVAILABLE', 'thumbnail-null uses canonical states');
+});
+
 test('privacyStatus does not claim embeddability', () => {
   const doc = readDoc();
   assertContains(doc, 'does NOT prove', 'privacyStatus limitation');
@@ -168,6 +218,14 @@ test('thumbnail unavailable policy exists', () => {
   assertContains(doc, 'thumbnailUrl', 'thumbnail URL field');
   assertContains(doc, 'deterministic LoveBud placeholder', 'placeholder fallback');
   assertContains(doc, 'multi-host retry', 'no multi-host retry');
+});
+
+test('Production 404 evidence does not fabricate underlying video availability cause', () => {
+  const doc = readDoc();
+  // The #3912 evidence section must state that the underlying cause was NOT established
+  assertContains(doc, 'underlying video-availability cause was not established', 'evidence boundedness');
+  // Must NOT claim the 404s occur because videos are deleted/private/region-blocked
+  assertNotContains(doc, 'occur because the videos are deleted/private/region-blocked', 'fabricated root cause');
 });
 
 test('quota policy exists with corrected wording', () => {
@@ -234,12 +292,24 @@ test('tutorial integration is referenced', () => {
 
 test('negative controls are present', () => {
   const doc = readDoc();
-  const ncs = ['NC1', 'NC2', 'NC3', 'NC4', 'NC5', 'NC6', 'NC7', 'NC8', 'NC9', 'NC10', 'NC11', 'NC12', 'NC13', 'NC14', 'NC15'];
+  const ncs = ['NC1', 'NC2', 'NC3', 'NC4', 'NC5', 'NC6', 'NC7', 'NC8', 'NC9', 'NC10', 'NC11', 'NC12', 'NC13', 'NC14', 'NC15', 'NC16', 'NC17'];
   for (const nc of ncs) {
     assertContains(doc, nc, `negative control ${nc}`);
   }
   assertContains(doc, 'Tree write 0', 'NC10 tree write zero');
   assertContains(doc, 'Moment write 0', 'NC11 moment write zero');
+});
+
+test('NC16 prohibits stale item-state enum', () => {
+  const doc = readDoc();
+  assertContains(doc, 'NC16', 'NC16 exists');
+  assertContains(doc, 'Stale item-state enum prohibited', 'NC16 stale enum prohibition');
+});
+
+test('NC17 bounds Production 404 evidence', () => {
+  const doc = readDoc();
+  assertContains(doc, 'NC17', 'NC17 exists');
+  assertContains(doc, 'does not fabricate underlying video availability cause', 'NC17 evidence bounding');
 });
 
 test('verdict markers are present', () => {

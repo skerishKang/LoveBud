@@ -400,7 +400,7 @@ Alternative (bare playlist ID):
       "description": "Truncated description...",
       "channelTitle": "Channel Name",
       "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg",
-      "state": "AVAILABLE",
+      "state": "AVAILABLE_METADATA",
       "sourceUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     }
   ],
@@ -476,12 +476,12 @@ https://img.youtube.com/vi/CVnE-GLpz1U/mqdefault.jpg → 404
 https://img.youtube.com/vi/j7Y2Z8r4Z9w/mqdefault.jpg → 404
 ```
 
-These are unavailable YouTube thumbnails for specific video IDs. The current product code (`js/utils/media.js` `getThumbnailUrl`) builds `https://i.ytimg.com/vi/{id}/{quality}.jpg` — a single canonical host. The 404s occur because the videos are deleted/private/region-blocked, not because the host is wrong.
+These are unavailable YouTube thumbnails for specific video IDs. The current product code (`js/utils/media.js` `getThumbnailUrl`) builds `https://i.ytimg.com/vi/{id}/{quality}.jpg` — a single canonical host. The thumbnail resources were unavailable/missing for the observed video IDs. The underlying video-availability cause was not established in that Production session.
 
 Contract:
 
 - The preview response provides `thumbnailUrl` from the YouTube API `snippet.thumbnails` (preferred: `medium` quality, fallback to `default`).
-- If the API returns no thumbnail for an item, `thumbnailUrl` is `null` and `state` is `METADATA_PARTIAL` or `UNAVAILABLE`.
+- If the API returns no thumbnail for an item, `thumbnailUrl` is `null` and `state` is `METADATA_PARTIAL` or `PRIVATE_OR_UNAVAILABLE`.
 - The client must implement a single deterministic fallback: if `<img>` `onerror` fires, replace with a LoveBud placeholder. No multi-host retry chain.
 - This 404 issue is NOT fixed in this audit. It is documented as a known client-side rendering concern for the future implementation child.
 
@@ -518,7 +518,7 @@ Rationale for ceiling of 50:
 | Playlist itself missing | 404 | `{ ok: false, error: { code: "PLAYLIST_NOT_FOUND", message: "..." } }` |
 | Playlist private/inaccessible | 403 | `{ ok: false, error: { code: "PLAYLIST_NOT_ACCESSIBLE", message: "..." } }` |
 | Playlist unsupported type (watch later, etc.) | 400 | `{ ok: false, error: { code: "PLAYLIST_UNSUPPORTED", message: "..." } }` |
-| One video unavailable | 200 | Item included with `state: "UNAVAILABLE"` |
+| One video unavailable | 200 | Item included with `state: "PRIVATE_OR_UNAVAILABLE"` |
 | One video metadata partial | 200 | Item included with `state: "METADATA_PARTIAL"` |
 | Quota exhausted | 429 | `{ ok: false, error: { code: "PROVIDER_QUOTA_EXCEEDED", message: "..." } }` |
 | Provider timeout | 504 | `{ ok: false, error: { code: "PROVIDER_TIMEOUT", message: "..." } }` |
@@ -787,7 +787,7 @@ Maximum runtime implementation scope: 3 new runtime files + 1 modified Modal end
 | NC4 | Playlist missing → bounded not-found state (`PLAYLIST_NOT_FOUND`, 404) |
 | NC5 | Private/inaccessible playlist → bounded inaccessible state (`PLAYLIST_NOT_ACCESSIBLE`, 403) |
 | NC6 | Pagination cannot exceed LoveBud ceiling — max 1 page, 50 items; `truncated` flag if more |
-| NC7 | Unavailable item does not fabricate metadata — `state: "UNAVAILABLE"` with YouTube-provided title only |
+| NC7 | Unavailable item does not fabricate metadata — `state: "PRIVATE_OR_UNAVAILABLE"` with YouTube-provided title only |
 | NC8 | Thumbnail absence does not produce fabricated thumbnail — `thumbnailUrl: null` or YouTube-provided URL only |
 | NC9 | Playlist adjacency does not create Connection — no `parentId`, `connectionId`, or relationship field in response |
 | NC10 | Preview produces Tree write 0 — no `POST /api/trees` or equivalent |
@@ -796,6 +796,8 @@ Maximum runtime implementation scope: 3 new runtime files + 1 modified Modal end
 | NC13 | Raw user URL/title is not telemetry — only category-based metrics logged |
 | NC14 | Provider secret never reaches browser — YouTube Data API key is a Modal-side secret only, never in Cloudflare env or browser bundle |
 | NC15 | Generic arbitrary URL fetch path does not exist — parser extracts ID from string, no `fetch(userUrl)` |
+| NC16 | Stale item-state enum prohibited — response and NCs use only canonical states (`AVAILABLE_METADATA`, `PRIVATE_OR_UNAVAILABLE`, `METADATA_PARTIAL`, `THUMBNAIL_UNAVAILABLE`, `UNKNOWN`); `"state": "AVAILABLE"` and `"state": "UNAVAILABLE"` must not appear |
+| NC17 | #3912 thumbnail 404 evidence does not fabricate underlying video availability cause — the observed 404s confirm only that thumbnail resources were unavailable/missing; the underlying video state (deleted, private, region-blocked) was not established in that Production session |
 
 ---
 
