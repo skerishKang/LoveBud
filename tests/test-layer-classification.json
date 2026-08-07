@@ -2041,6 +2041,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/lovetree-public-youtube-playlist-preview-authority-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the #3906 public YouTube playlist preview authority document and asserts repository-owned section structure, canonical state vocabulary, route/auth/write-zero/security/privacy/provider/tutorial/negative-control markers, and Production-evidence wording without executing target runtime behavior, network, provider requests, database, browser, Production/Preview, or filesystem writes.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/media-fallback-unification-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
