@@ -367,3 +367,36 @@ test('browser: error is shown and user can edit + retry', async () => {
     await browser.close();
   }
 });
+
+test('browser (mobile 375): preview flow works in a narrow viewport', { timeout: 60000 }, async () => {
+  let browser;
+  try {
+    browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+  } catch (err) {
+    throw new Error(`PLAYWRIGHT_BROWSER_BINARY_UNAVAILABLE: ${err && err.message ? err.message : err}`);
+  }
+  const { server, port } = await startServer();
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 375, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${port}/fixture-preview.html`);
+    await page.click('#youtubePlaylistPreviewOpenBtn');
+    await page.waitForFunction(() => document.getElementById('youtubePlaylistPreviewPopover').hidden === false);
+    await page.waitForTimeout(120);
+    await page.fill('#youtubePlaylistPreviewInput', 'https://www.youtube.com/playlist?list=PLtest1234567890');
+    await clickStable(page, '#youtubePlaylistPreviewSubmitBtn');
+    await page.waitForSelector('.ypp-list', { timeout: 10000 });
+    const ok = await page.evaluate(() => {
+      const items = Array.from(document.querySelectorAll('.ypp-row'));
+      return items.length > 0 && !document.querySelector('#youtubePlaylistPreviewPopover [hidden]');
+    });
+    assert.equal(ok, true, 'mobile preview must render ordered items without overlap errors');
+  } finally {
+    await closeServer(server);
+    await browser.close();
+  }
+});
