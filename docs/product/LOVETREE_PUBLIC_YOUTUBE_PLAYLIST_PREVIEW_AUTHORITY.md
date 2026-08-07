@@ -76,7 +76,7 @@ browser → same-origin /api/* → Cloudflare Pages Functions → Modal compute 
 
 ### Auth forwarding pattern
 
-Cloudflare edge forwards `Authorization: Bearer <token>` header to Modal. No server-side Firebase token verification at the edge (except Scout's mock-disabled `live-auth-verifier-adapter.js`).
+Cloudflare edge forwards `Authorization: Bearer <token>` header to Modal without edge-side verification. Modal's `modal_compute/auth.py` line 173 (`require_firebase_user(authorization)`) is the **sole production-ready verified auth boundary**, used by all 24 private routes in `modal_compute/app.py`. The Cloudflare edge has no production-ready Firebase verifier — `functions/api/scout/live-auth-verifier-adapter.js` is a mock-disabled skeleton that safe-fails (denies) by default.
 
 ### Error conventions
 
@@ -163,7 +163,8 @@ Verified against official documentation (developers.google.com/youtube/v3, last 
 | maxResults | 0–50 (default 5) |
 | Pagination | `nextPageToken` / `prevPageToken` |
 | Required filter | `playlistId` or `id` |
-| Useful parts | `snippet` (title, description, position, resourceId.videoId, thumbnails, channelTitle, publishedAt), `contentDetails` (videoId, startAt, endAt), `status` (privacyStatus) |
+| Useful parts | `snippet` (title, description, position, resourceId.videoId, thumbnails, channelTitle, publishedAt), `contentDetails` (videoId), `status` (privacyStatus) |
+| Deprecated fields | `contentDetails.startAt` and `contentDetails.endAt` are **deprecated** by YouTube — values are ignored even if set. LoveTree must NOT use these as interval/clip authority. Future LoveTree interval contracts (`startSeconds`, `endSeconds`) require a separate canonical source. |
 | Error: playlistNotFound (404) | playlist not found |
 | Error: playlistItemsNotAccessible (403) | not authorized to retrieve playlist |
 | Error: watchHistoryNotAccessible (403) | watch history not retrievable |
@@ -265,13 +266,21 @@ Playlist ID shape: alphanumeric, hyphens, underscores. Typical length 18–34 ch
 |----------|-------|
 | Method | `POST` |
 | Path | `/api/import/youtube/playlist/preview` |
-| Auth requirement | `AUTH_REQUIRED` (see §8) |
+| Auth requirement | `AUTH_REQUIRED` — verified Firebase principal via Modal (see §8) |
 | Request content type | `application/json` |
 | Max request size | 4 KB |
-| Runtime owner | Cloudflare Pages Functions (`functions/api/import/youtube/playlist/preview.js`) |
-| Provider adapter | server-side module within the route file or a sibling module under `functions/api/import/youtube/` |
-| Timeout owner | Cloudflare edge (route-level `AbortController` or `Promise.race` with timeout) |
-| Error normalization owner | route handler (Scout envelope convention) |
+| Runtime owner | Cloudflare Pages Function (same-origin proxy) → Modal private endpoint (authenticated provider) |
+| Provider adapter | Modal-side Python module (calls YouTube Data API with server-side key) |
+| Timeout owner | Cloudflare edge (proxy timeout) + Modal (provider request timeout) |
+| Error normalization owner | Modal endpoint (Scout envelope convention `{ ok, error: { code, message } }`) |
+
+### Architecture decision
+
+The preview route follows the **existing same-origin proxy pattern**: Cloudflare forwards the request (including `Authorization` header) to a new Modal private endpoint. Modal calls `require_firebase_user(authorization)` to verify the Firebase ID token, then calls the YouTube Data API with a Modal-side secret.
+
+This is consistent with all existing private routes in `modal_compute/app.py` (24 routes, each starting with `require_firebase_user(authorization)`).
+
+The Cloudflare route file (`functions/api/import/youtube/playlist/preview.js`) acts as a thin proxy — it forwards the request to Modal, same as `functions/api/[[path]].js` does for `/api/trees`, `/api/memories`, etc. The Cloudflare route does NOT call the YouTube Data API directly and does NOT hold the API key.
 
 Route naming rationale: follows existing `functions/api/` convention (`/api/youtube/oembed` exists). The `import/youtube/playlist/preview` path is descriptive and does not collide with existing routes. No existing `import/` directory exists — this is a new namespace.
 
@@ -279,17 +288,56 @@ Route naming rationale: follows existing `functions/api/` convention (`/api/yout
 
 ## 8. Authentication decision
 
-**Decision: `AUTH_REQUIRED`**
+**Decision: `AUTH_REQUIRED` — verified Firebase principal via Modal**
 
-Rationale:
+### Architecture
 
-- The tutorial entry point is the logged-in My Trees / Editor area (per #3903 merged tutorial contract §4: "YouTube 재생목록 가져오기" is a logged-in import flow).
-- Anonymous access would allow quota exhaustion abuse without accountability.
-- The existing same-origin API pattern forwards `Authorization: Bearer <token>` to the backend.
-- The preview route does not need to verify the token at the edge (consistent with existing proxy pattern), but must require its presence.
-- Future import (child issue 3 in tutorial §12) connects to Tree creation, which is owner-scoped.
+```text
+browser
+→ same-origin Cloudflare Pages Function
+→ Authorization header forwarded (same as existing proxy pattern)
+→ Modal private preview endpoint
+→ require_firebase_user(authorization)
+→ verified user only
+→ YouTube Data API (server-side, Modal-owned key)
+→ normalized preview response
+```
 
-The route must reject requests without an `Authorization` header with `401` and error code `UNAUTHORIZED`.
+| Layer | Role |
+|-------|------|
+| Cloudflare Pages Function | same-origin gateway/proxy — forwards `Authorization` header to Modal, same as `functions/api/[[path]].js` pattern |
+| Modal endpoint | authenticated preview/backend/provider owner — calls `require_firebase_user(authorization)` to verify the Firebase ID token before any provider call |
+| YouTube Data API key | Modal-side secret (`modal.Secret.from_name`), never exposed to Cloudflare or browser |
+
+### Why not Cloudflare-edge auth
+
+The Cloudflare edge has **no production-ready Firebase token verifier**. The `functions/api/scout/live-auth-verifier-adapter.js` is a mock-disabled skeleton that safe-fails (denies) by default. It never verifies a real token in production.
+
+The existing same-origin proxy pattern (`functions/api/[[path]].js`) forwards the `Authorization: Bearer <token>` header to Modal without edge-side verification. Modal's `modal_compute/auth.py` line 173 (`require_firebase_user(authorization)`) is the **sole production-ready verified auth boundary**, used by all 24 private routes in `modal_compute/app.py`.
+
+### Why header-presence-only is rejected
+
+```text
+Authorization: Bearer anything
+→ header presence passes
+→ server-side YouTube Data API key consumed
+→ attacker exhausts LoveBud quota
+```
+
+Header presence alone is NOT authentication. The preview route must verify the Firebase ID token before any YouTube Data API call.
+
+### Auth negative controls
+
+| Control | Behavior |
+|---------|---------|
+| Missing Authorization header | 401 `UNAUTHORIZED` |
+| Malformed Bearer scheme | 401 `UNAUTHORIZED` |
+| Syntactically valid but invalid Firebase token | provider call 0; 401/403 bounded auth failure |
+| Expired/revoked token | provider call 0; 401/403 |
+| Auth verifier unavailable | fail closed; provider call 0 |
+| Provider API key used before authenticated principal established | forbidden — `require_firebase_user` runs first |
+
+**Contract: `Authorization` header presence alone is NOT sufficient. The provider call must NEVER occur before `require_firebase_user` establishes a verified principal.**
 
 ---
 
@@ -313,7 +361,7 @@ Alternative (bare playlist ID):
 
 | Input | Behavior |
 |-------|---------|
-| Both `source` and `playlistId` provided | `source` takes precedence; `playlistId` is ignored |
+| Both `source` and `playlistId` provided | `400 INVALID_PLAYLIST_SOURCE` — ambiguous input rejected; client must provide exactly one |
 | Only `source` provided | parse URL → extract playlist ID |
 | Only `playlistId` provided | validate shape directly |
 | Neither provided | `400 INVALID_PLAYLIST_SOURCE` |
@@ -383,11 +431,21 @@ Alternative (bare playlist ID):
 
 | State | Meaning | Source |
 |-------|---------|--------|
-| `AVAILABLE` | Video is public and embeddable | `playlistItems.list` status.privacyStatus === `public` or `unlisted` (playlist is accessible) |
-| `UNAVAILABLE` | Video is private, deleted, or region-blocked | `playlistItems.list` status.privacyStatus === `private`; or video not found in enrichment |
-| `METADATA_PARTIAL` | Playlist item exists but video metadata is incomplete | `playlistItems.list` returns item but `videoId` is empty or title is "Private video" / "Deleted video" |
+| `AVAILABLE_METADATA` | Playlist item metadata is accessible; video appears public in playlist context | `playlistItems.list` returns item with `status.privacyStatus` of `public` or `unlisted` (playlist is accessible) |
+| `PRIVATE_OR_UNAVAILABLE` | Video is private, deleted, or otherwise not publicly accessible | `playlistItems.list` returns item with `status.privacyStatus` of `private`; or `snippet.title` is "Private video" / "Deleted video" |
+| `METADATA_PARTIAL` | Playlist item exists but video metadata is incomplete or anomalous | `playlistItems.list` returns item but `videoId` is empty or metadata is sparse |
 | `THUMBNAIL_UNAVAILABLE` | Thumbnail URL exists but image is not loadable | Determined by client-side image load failure, not server-side |
 | `UNKNOWN` | State cannot be determined | Provider error, malformed response, or unexpected state |
+
+### Important: what `privacyStatus` does NOT prove
+
+`playlistItems.list` `status.privacyStatus` indicates the **playlist item's privacy status** only. It does NOT prove:
+
+- **embeddability** — requires `videos.list` `status.embeddable` field
+- **region availability** — requires `videos.list` `contentDetails.regionRestriction` field
+- **actual playback possibility** — depends on YouTube player, embedding policy, and region
+
+The preview response state names reflect only what `playlistItems.list` can prove. If embeddability or region availability is needed in the future, `videos.list` enrichment is required as a separate signal — it is NOT inferred from `privacyStatus`.
 
 ### Policy
 
@@ -522,8 +580,7 @@ normalizeYouTubePlaylistPreview(playlistMeta, items) → { ok, playlist, items, 
 - `snippet.position` — playlist position
 - `snippet.publishedAt` — item publish date
 - `contentDetails.videoId` — the video ID
-- `contentDetails.startAt` / `endAt` — clip boundaries (if set)
-- `status.privacyStatus` — `public`, `private`, `unlisted`
+- `status.privacyStatus` — `public`, `private`, `unlisted` (playlist item privacy status only; does NOT prove embeddability or region availability)
 
 **Decision: `videos.list` is NOT required for the first preview slice.**
 
@@ -543,22 +600,26 @@ Rationale:
 
 ```text
 Client submits playlist URL or ID
-→ LoveBud parser extracts/validates playlist identity (no network fetch of user URL)
-→ server talks only to fixed official YouTube Data API endpoint
-→ response normalized and returned
+→ Cloudflare Pages Function forwards request to Modal
+→ Modal calls require_firebase_user(authorization) — verified principal
+→ Modal parser extracts/validates playlist identity (no network fetch of user URL)
+→ Modal calls fixed official YouTube Data API endpoint with server-side key
+→ Modal normalizes response and returns to Cloudflare
+→ Cloudflare returns normalized response to client
 ```
 
 ### Controls
 
 | Control | Implementation |
 |---------|---------------|
-| No `fetch(userSuppliedUrl)` | The parser extracts the playlist ID from the URL string; it does NOT fetch the URL |
-| Fixed API endpoint | Server fetches only `https://www.googleapis.com/youtube/v3/playlistItems` and `https://www.googleapis.com/youtube/v3/playlists` |
+| No `fetch(userSuppliedUrl)` | The Modal parser extracts the playlist ID from the URL string; it does NOT fetch the URL |
+| Fixed API endpoint | Modal fetches only `https://www.googleapis.com/youtube/v3/playlistItems` and `https://www.googleapis.com/youtube/v3/playlists` |
 | No redirect following | `fetch` to YouTube API with `redirect: 'error'` or no redirect handling |
 | No localhost/private IP | Not applicable — YouTube API hostname is hardcoded |
 | No `file:`, `ftp:`, `data:`, `javascript:` | Rejected by URL scheme validation |
-| No arbitrary hostname | Only `www.googleapis.com` is contacted |
+| No arbitrary hostname | Only `www.googleapis.com` is contacted (by Modal) |
 | No HTML scraping | API returns JSON only |
+| Verified auth before provider call | `require_firebase_user` runs before any YouTube API call |
 
 ### Forbidden
 
@@ -618,7 +679,7 @@ No user content is logged. No raw URLs or titles are logged.
 
 The YouTube Data API v3 requires an API key for all requests. The key must be:
 
-- Server-side only (never in browser bundle).
+- Server-side only (Modal secret, never in browser bundle, never in Cloudflare env).
 - Never committed to the repository.
 - Never logged.
 - Never exposed in error messages.
@@ -633,8 +694,8 @@ The repository does not currently contain a YouTube Data API key configuration. 
 
 1. Create a Google Cloud project with YouTube Data API v3 enabled.
 2. Generate an API key.
-3. Configure the key as a Cloudflare Pages environment variable (e.g., `YOUTUBE_DATA_API_KEY`).
-4. The route reads the key from `env.YOUTUBE_DATA_API_KEY` (Cloudflare Pages Functions `context.env`).
+3. Configure the key as a **Modal secret** (e.g., `modal.Secret.from_name("lovebud-youtube-data-api")`), following the existing pattern (`modal.Secret.from_name("lovebud-db")`, `modal.Secret.from_name("lovebud-firebase-admin")` in `modal_compute/app.py`).
+4. The Modal endpoint reads the key from the Modal secret environment.
 
 No actual key creation, Google Cloud project change, or secret injection is performed in this audit.
 
@@ -647,7 +708,27 @@ No actual key creation, Google Cloud project change, or secret injection is perf
 | `videos.list` | 0 | 0 units (not required) |
 | **Total per preview** | 2 | **2 units** |
 
-With 10,000 units/day default quota, this supports 5,000 previews/day.
+The default daily quota of 10,000 units is a **theoretical upper bound only if this preview route is the sole consumer** of the quota bucket. In practice, the 10,000-unit bucket is shared across all YouTube Data API endpoints used by the project. The 5,000 previews/day figure assumes no other API consumption.
+
+### Enforceable abuse controls
+
+| Control | Mechanism |
+|---------|-----------|
+| Verified authenticated user required | `require_firebase_user(authorization)` — no provider call before verified principal |
+| Per-request maximum provider calls | 2 (1 `playlists.list` + 1 `playlistItems.list`) |
+| No automatic retry loop | single attempt per provider call |
+| No page 2 | max 1 page, 50 items |
+| Provider timeout bounded | 10 seconds per call |
+| Quota exhaustion fail closed | `PROVIDER_QUOTA_EXCEEDED` (429) |
+| Provider call before auth | forbidden — `require_firebase_user` runs first |
+
+### Rate-limit dependency assessment
+
+The current Modal backend has a rate-limit implementation for social writes (`modal_compute/social_rate_limit.py` — DB-backed, per-actor, per-scope). This is scoped to social write operations (comments, reactions), not general API calls.
+
+A per-user rate limit for the preview route is **not currently available** in the existing infrastructure. The Cloudflare edge rate-limit scaffolds (`functions/api/scout/live-auth-rate-limit-*.js`) are mock-disabled and not production-ready.
+
+**Assessment:** A per-user preview rate limit is desirable but not a blocker for the first implementation slice. The verified-auth requirement + bounded provider calls (2 per preview) + no retry loop provide baseline abuse protection. A dedicated rate limit can be added as a follow-up if abuse is observed.
 
 ---
 
@@ -678,17 +759,21 @@ UI file changed count in this audit: **0**.
 
 | File | Purpose | New/Modified |
 |------|---------|-------------|
-| `functions/api/import/youtube/playlist/preview.js` | Cloudflare Pages Function route handler | New |
-| `functions/api/import/youtube/playlist/preview-provider.js` (optional sibling) | YouTube Data API adapter (parse, fetch, normalize) | New (or inline in route) |
+| `functions/api/import/youtube/playlist/preview.js` | Cloudflare Pages Function — thin proxy to Modal (forwards auth header, same as `[[path]].js` pattern) | New |
+| `modal_compute/app.py` (or new `modal_compute/youtube_playlist_preview.py`) | Modal private endpoint — `require_firebase_user` + YouTube Data API calls + normalization | New endpoint/module |
 | `js/api/import-youtube-playlist-preview.js` | Client-side API wrapper | New |
 | `js/import/youtube-playlist-preview-ui.js` (or similar) | Preview UI surface | New |
 | `tests/contracts/youtube-playlist-preview-route-contract.test.cjs` | Route contract test | New |
 | `tests/contracts/youtube-playlist-preview-provider-contract.test.cjs` | Provider adapter contract test | New |
 | `tests/contracts/youtube-playlist-preview-browser-contract.test.cjs` | Browser preview contract test | New |
 
-Maximum runtime implementation scope: 4 new runtime files + 3 test files = 7 files.
+### Existing files that may need modification
 
-No existing runtime files should need modification for the preview slice (the route is a new namespace, the client wrapper is new, and the UI is a new surface).
+- `functions/api/[[path]].js` — may need a new route mapping entry for `/api/import/youtube/playlist/preview` → Modal endpoint, OR the new `functions/api/import/youtube/playlist/preview.js` file handles routing independently (like `functions/api/youtube/oembed.js` does). This must be determined during implementation.
+- `modal_compute/app.py` — a new `@web_app.post("/modal/private/import/youtube/playlist/preview")` endpoint must be added, following the existing pattern (line 321: `@web_app.post("/modal/private/trees")`).
+- `js/` entry point files (e.g., `js/my-trees.js`, `js/editor.js`, or a new import modal) — wiring the preview UI entry point into the existing My Trees or Editor surface may require modifying existing files. This must be assessed during implementation.
+
+Maximum runtime implementation scope: 3 new runtime files + 1 modified Modal endpoint + 3 test files = 7 files. Existing file modifications depend on the wiring approach chosen during implementation.
 
 ---
 
@@ -709,7 +794,7 @@ No existing runtime files should need modification for the preview slice (the ro
 | NC11 | Preview produces Moment write 0 — no `POST /api/memories` or equivalent |
 | NC12 | Raw provider error/body never reaches client — all errors normalized to vocabulary |
 | NC13 | Raw user URL/title is not telemetry — only category-based metrics logged |
-| NC14 | Provider secret never reaches browser — `YOUTUBE_DATA_API_KEY` is server-side `env` only |
+| NC14 | Provider secret never reaches browser — YouTube Data API key is a Modal-side secret only, never in Cloudflare env or browser bundle |
 | NC15 | Generic arbitrary URL fetch path does not exist — parser extracts ID from string, no `fetch(userUrl)` |
 
 ---
@@ -738,11 +823,11 @@ As of this audit, **none of these stop conditions are triggered**.
 PUBLIC_YOUTUBE_PLAYLIST_PREVIEW_IMPLEMENTATION_READY
 ```
 
-The source implementation can begin. The only external dependency is `CONFIGURATION_REQUIRED` (YouTube Data API key), which is an operational configuration step, not a source code blocker. The implementation child should:
+The source implementation can begin. The verified auth boundary (`modal_compute/auth.py` `require_firebase_user`) exists and is production-ready. The provider call owner (Modal) and secret owner (Modal secret) are confirmed. The only external dependency is `CONFIGURATION_REQUIRED` (YouTube Data API key as a Modal secret), which is an operational configuration step, not a source code blocker. The implementation child should:
 
-1. Create the route file `functions/api/import/youtube/playlist/preview.js`.
-2. Implement the parser, provider adapter, and normalizer.
-3. Configure `YOUTUBE_DATA_API_KEY` as a Cloudflare Pages environment variable.
+1. Create the Cloudflare proxy route file `functions/api/import/youtube/playlist/preview.js` (thin proxy to Modal, same as existing pattern).
+2. Create the Modal private endpoint in `modal_compute/app.py` (or a new `modal_compute/youtube_playlist_preview.py` module) with `require_firebase_user(authorization)` + YouTube Data API calls.
+3. Configure the YouTube Data API key as a Modal secret (`modal.Secret.from_name("lovebud-youtube-data-api")`).
 4. Add focused contract tests.
 5. Add the client-side API wrapper and preview UI in a subsequent child.
 
@@ -756,6 +841,6 @@ PUBLIC_YOUTUBE_PLAYLIST_PREVIEW_AUTHORITY_AUDIT_COMPLETE
 
 - Keep **#3906 OPEN** (this audit does not close the issue).
 - Keep **#3897 OPEN**.
-- Keep **#3903 OPEN**.
+- Refs **#3903** — completed prerequisite (CLOSED completed, PR #3905 merged).
 - Keep **#1882 OPEN** — use only `Refs #1882`.
 - No `Closes`, `Fixes`, or `Resolves` for any of the above.

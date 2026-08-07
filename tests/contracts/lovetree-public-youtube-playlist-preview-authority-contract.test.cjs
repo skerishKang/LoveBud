@@ -36,6 +36,13 @@ function assertContains(haystack, needle, label) {
   );
 }
 
+function assertNotContains(haystack, needle, label) {
+  assert.ok(
+    haystack.indexOf(needle) === -1,
+    `Authority document must NOT contain: ${label || needle}`
+  );
+}
+
 function assertSection(doc, heading) {
   assert.ok(
     doc.indexOf(heading) !== -1,
@@ -88,6 +95,17 @@ test('route decision is explicit', () => {
   assertContains(doc, 'AUTH_REQUIRED', 'auth decision');
 });
 
+test('verified Firebase auth is required, not header-presence-only', () => {
+  const doc = readDoc();
+  assertContains(doc, 'require_firebase_user', 'verified firebase auth boundary');
+  assertContains(doc, 'verified Firebase principal', 'verified principal');
+  assertContains(doc, 'header presence alone is NOT sufficient', 'header presence rejected');
+  assertContains(doc, 'provider call must NEVER occur before', 'provider call ordering');
+  assertContains(doc, 'modal_compute/auth.py', 'modal auth module reference');
+  assertContains(doc, 'Modal private preview endpoint', 'modal endpoint');
+  assertContains(doc, 'Cloudflare Pages Function', 'cloudflare proxy role');
+});
+
 test('write-zero guarantee is explicit', () => {
   const doc = readDoc();
   assertContains(doc, 'Tree write: **0**', 'tree write zero');
@@ -120,14 +138,29 @@ test('pagination ceiling exists', () => {
   assertContains(doc, 'truncated', 'truncation flag');
 });
 
-test('unavailable item policy exists', () => {
+test('item state model uses corrected vocabulary', () => {
   const doc = readDoc();
-  assertContains(doc, 'AVAILABLE', 'available state');
-  assertContains(doc, 'UNAVAILABLE', 'unavailable state');
+  assertContains(doc, 'AVAILABLE_METADATA', 'available metadata state');
+  assertContains(doc, 'PRIVATE_OR_UNAVAILABLE', 'private or unavailable state');
   assertContains(doc, 'METADATA_PARTIAL', 'metadata partial state');
   assertContains(doc, 'THUMBNAIL_UNAVAILABLE', 'thumbnail unavailable state');
   assertContains(doc, 'BOUNDED_PARTIAL_WITH_EXPLICIT_STATE', 'partial result policy');
   assertContains(doc, 'never silently dropped', 'no silent drop');
+});
+
+test('privacyStatus does not claim embeddability', () => {
+  const doc = readDoc();
+  assertContains(doc, 'does NOT prove', 'privacyStatus limitation');
+  assertContains(doc, 'embeddability', 'embeddability not inferred');
+  assertContains(doc, 'region availability', 'region availability not inferred');
+});
+
+test('deprecated startAt/endAt are excluded', () => {
+  const doc = readDoc();
+  assertContains(doc, 'Deprecated', 'deprecated fields marked');
+  assertContains(doc, 'startAt', 'startAt mentioned as deprecated');
+  assertContains(doc, 'endAt', 'endAt mentioned as deprecated');
+  assertContains(doc, 'NOT use these as interval', 'deprecated fields not used as authority');
 });
 
 test('thumbnail unavailable policy exists', () => {
@@ -137,11 +170,31 @@ test('thumbnail unavailable policy exists', () => {
   assertContains(doc, 'multi-host retry', 'no multi-host retry');
 });
 
-test('quota policy exists', () => {
+test('quota policy exists with corrected wording', () => {
   const doc = readDoc();
   assertContains(doc, 'Quota cost', 'quota cost');
   assertContains(doc, '10,000 units', 'default daily quota');
   assertContains(doc, '2 units', 'per-preview cost');
+  assertContains(doc, 'theoretical upper bound', 'theoretical maximum wording');
+  assertContains(doc, 'sole consumer', 'shared quota bucket caveat');
+});
+
+test('enforceable abuse controls are defined', () => {
+  const doc = readDoc();
+  assertContains(doc, 'Verified authenticated user required', 'verified auth control');
+  assertContains(doc, 'Per-request maximum provider calls', 'max provider calls');
+  assertContains(doc, 'No automatic retry loop', 'no retry');
+  assertContains(doc, 'No page 2', 'no page 2');
+  assertContains(doc, 'Provider timeout bounded', 'timeout bounded');
+  assertContains(doc, 'Quota exhaustion fail closed', 'quota fail closed');
+  assertContains(doc, 'Provider call before auth', 'provider call before auth forbidden');
+});
+
+test('rate-limit dependency is assessed', () => {
+  const doc = readDoc();
+  assertContains(doc, 'rate-limit', 'rate limit assessment');
+  assertContains(doc, 'not a blocker', 'rate limit not a blocker');
+  assertContains(doc, 'social_rate_limit', 'existing rate limit reference');
 });
 
 test('privacy and logging prohibitions exist', () => {
@@ -156,12 +209,20 @@ test('privacy and logging prohibitions exist', () => {
   assertContains(doc, 'item_count_bucket', 'bucket telemetry');
 });
 
-test('provider secret browser exposure is prohibited', () => {
+test('provider secret is Modal-side, not Cloudflare env', () => {
   const doc = readDoc();
-  assertContains(doc, 'Server-side only', 'server-side only');
+  assertContains(doc, 'Modal secret', 'modal secret');
   assertContains(doc, 'never in browser bundle', 'browser bundle prohibition');
-  assertContains(doc, 'YOUTUBE_DATA_API_KEY', 'config variable name');
+  assertContains(doc, 'modal.Secret.from_name', 'modal secret pattern');
   assertContains(doc, 'CONFIGURATION_REQUIRED', 'configuration status');
+  assertNotContains(doc, 'Cloudflare Pages environment variable', 'cloudflare env must not be used for key');
+});
+
+test('request conflict rule rejects ambiguous input', () => {
+  const doc = readDoc();
+  assertContains(doc, 'Both `source` and `playlistId` provided', 'conflict rule');
+  assertContains(doc, 'INVALID_PLAYLIST_SOURCE', 'conflict rejection');
+  assertContains(doc, 'ambiguous input rejected', 'ambiguous rejection');
 });
 
 test('tutorial integration is referenced', () => {
@@ -191,9 +252,11 @@ test('keep-open references are correct', () => {
   const doc = readDoc();
   assertContains(doc, 'Keep **#3906 OPEN**', '3906 keep open');
   assertContains(doc, 'Keep **#3897 OPEN**', '3897 keep open');
-  assertContains(doc, 'Keep **#3903 OPEN**', '3903 keep open');
+  assertContains(doc, '#3903** — completed prerequisite', '3903 completed');
   assertContains(doc, 'Keep **#1882 OPEN**', '1882 keep open');
   assertContains(doc, 'Refs #1882', '1882 refs only');
+  // Ensure #3903 is NOT marked as keep-open
+  assertNotContains(doc, 'Keep **#3903 OPEN**', '3903 must not be keep-open');
   // Ensure no Closes/Fixes/Resolves for keep-open issues
   const keepOpenSection = doc.slice(doc.indexOf('## Keep-open references'));
   assert.ok(
@@ -244,6 +307,8 @@ test('current-main authority map references actual files', () => {
   assertContains(doc, 'Modal compute', 'modal backend');
   assertContains(doc, 'Neon', 'neon persistence');
   assertContains(doc, 'Netlify', 'netlify legacy exclusion');
+  assertContains(doc, 'modal_compute/auth.py', 'modal auth module');
+  assertContains(doc, 'require_firebase_user', 'modal auth function');
 });
 
 test('existing schema fields are audited', () => {
@@ -276,4 +341,12 @@ test('stop conditions are documented', () => {
   assertContains(doc, 'arbitrary URL fetch required', 'stop condition: arbitrary fetch');
   assertContains(doc, 'provider credential boundary unclear', 'stop condition: credentials');
   assertContains(doc, 'none of these stop conditions are triggered', 'no stop condition triggered');
+});
+
+test('future implementation paths reference Modal endpoint', () => {
+  const doc = readDoc();
+  assertContains(doc, 'modal_compute/app.py', 'modal app endpoint');
+  assertContains(doc, 'modal_compute/youtube_playlist_preview.py', 'modal provider module');
+  assertContains(doc, 'functions/api/import/youtube/playlist/preview.js', 'cloudflare proxy route');
+  assertContains(doc, 'require_firebase_user', 'modal auth in implementation');
 });
