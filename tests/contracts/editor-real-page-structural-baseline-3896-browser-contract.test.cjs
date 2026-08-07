@@ -312,6 +312,31 @@ function assertAllowedGetsObserved(health, label) {
   }
 }
 
+// Bounded Node-side wait for the required same-origin GETs to be observed in
+// health.allowedApiRequests. The editor detail UI dispatches reactions/comments
+// fetches asynchronously during detail rendering; waitForEditorData() only waits
+// for visible DOM state, so the requests may not yet have been recorded by the
+// network observer when the assertion runs. This polls the observed set with a
+// bounded timeout and then delegates to the exact assertion (preserving the
+// original detailed failure message) if the requests never arrive.
+async function waitForAllowedGetsObserved(health, label, options) {
+  const opts = options || {};
+  const timeoutMs = opts.timeoutMs || 5000;
+  const pollMs = opts.pollMs || 25;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const observed = new Set(health.allowedApiRequests || []);
+    const allObserved = REQUIRED_ALLOWED_GETS.every(function(required) {
+      return observed.has(required);
+    });
+    if (allObserved) return;
+    await new Promise(function(resolve) { setTimeout(resolve, pollMs); });
+  }
+
+  assertAllowedGetsObserved(health, label);
+}
+
 function getSelectedMemoryId(page) {
   return page.evaluate(function() {
     const selectedEl = document.querySelector('.memory-node.selected');
@@ -564,6 +589,7 @@ test('Editor real-page structural baseline - desktop and mobile real user flow',
     assert.ok(!(await isVisible(page, 'detailEditMode')), 'desktop edit mode detail must be hidden in view');
 
     assertCleanHealth(health, 'desktop view mode');
+    await waitForAllowedGetsObserved(health, 'desktop view mode');
     assertAllowedGetsObserved(health, 'desktop view mode');
 
     const desktopLocationBefore = await getLocationState(page);
@@ -729,6 +755,7 @@ test('Editor real-page structural baseline - desktop and mobile real user flow',
     assert.equal(health.writeRequests, 0, 'mobile write requests must remain 0 through the flow');
 
     assertCleanHealth(health, 'mobile cancel to view');
+    await waitForAllowedGetsObserved(health, 'mobile cancel to view');
     assertAllowedGetsObserved(health, 'mobile cancel to view');
   } finally { await closeFixture(mobile); }
 });
