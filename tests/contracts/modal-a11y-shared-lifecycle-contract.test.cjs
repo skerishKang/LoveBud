@@ -9,7 +9,9 @@
 //    approved lifecycle responsibilities to the shared helper while page-owned
 //    media/inert/submit/Auth/backdrop logic remains in the controller, retired
 //    duplicate lifecycle blocks are absent where replaced, excluded surfaces
-//    are not migrated, and no native <dialog> is introduced.
+//    are not migrated, the Scout delegated surface (Issue #3907) adopts the
+//    shared lifecycle for focus/Tab/Escape/restore while keeping draft and
+//    suggestion logic controller-owned, and no native <dialog> is introduced.
 
 const fs = require('fs');
 const path = require('path');
@@ -497,14 +499,23 @@ const CONTROLLERS = {
   auth: 'js/auth/auth-login-page.js'
 };
 
+// Scout (js/scout/scout-draft-ui.js) is a delegated surface, not an excluded
+// one: Issue #3907 promoted it to the shared modal lifecycle. It is registered
+// in DELEGATED_SURFACES below and must not appear in EXCLUDED_SURFACES.
 const EXCLUDED_SURFACES = [
   'js/settings.js',
-  'js/scout/scout-draft-ui.js',
   'js/ai/lovebud-ai-panel.js',
   'js/editor/editor-mobile-panel-hierarchy.js',
   'js/search/search-mobile-preview-sheet.js',
   'js/my-trees/my-trees-mobile-preview-sheet.js'
 ];
+
+// Surfaces that intentionally delegate modal accessibility to the shared
+// LoveBudModalA11y lifecycle. Each entry is asserted for full delegation
+// semantics in the dedicated test below.
+const DELEGATED_SURFACES = {
+  scout: 'js/scout/scout-draft-ui.js'
+};
 
 test('all six core modal controllers delegate to the shared helper', () => {
   for (const [name, rel] of Object.entries(CONTROLLERS)) {
@@ -564,8 +575,69 @@ test('excluded surfaces are not silently migrated to the helper', () => {
   }
 });
 
+// ── Scout delegated surface (Issue #3907) ───────────────────────────────────
+// Scout was promoted from an excluded surface to a delegated surface. It must
+// adopt the shared LoveBudModalA11y lifecycle for focus/Tab/Escape/restore
+// while the controller keeps page-owned draft, suggestion, and backdrop logic.
+
+test('Scout delegates modal accessibility to the shared lifecycle', () => {
+  const src = read(DELEGATED_SURFACES.scout);
+
+  // Delegation: the shared helper is adopted, not duplicated.
+  assert.ok(src.includes('LoveBudModalA11y'), 'Scout references LoveBudModalA11y');
+  assert.ok(src.includes('LoveBudModalA11y.createLifecycle'), 'Scout creates a shared lifecycle');
+  assert.ok(src.includes('modalA11y.open()'), 'Scout opens through the shared lifecycle');
+  assert.ok(src.includes('modalA11y.close()'), 'Scout closes through the shared lifecycle');
+  assert.ok(src.includes('modalA11y.restoreFocus()'), 'Scout restores focus through the shared lifecycle');
+
+  // Dialog semantics on the dynamically created #scoutDraftModal.
+  assert.ok(src.includes("'role', 'dialog'"), 'Scout modal has role="dialog"');
+  assert.ok(src.includes("'aria-modal', 'true'"), 'Scout modal has aria-modal="true"');
+  assert.ok(src.includes("'aria-labelledby', 'scoutDraftTitle'"), 'Scout modal is labelled by scoutDraftTitle');
+  assert.ok(src.includes("scoutDraftTitle"), 'Scout has a stable title id scoutDraftTitle');
+
+  // No native <dialog> or showModal — the shared lifecycle owns focus trapping.
+  assert.ok(!src.includes('showModal('), 'Scout does not use showModal');
+  assert.ok(!/<dialog/.test(src), 'Scout does not use native <dialog> markup');
+
+  // Initial focus authority: #scoutSourceUrlInput.
+  assert.ok(src.includes('getInitialFocus'), 'Scout delegates initial focus to the helper');
+  assert.ok(src.includes('scoutSourceUrlInput'), 'Scout initial focus target is #scoutSourceUrlInput');
+
+  // Focus restoration authority: the real opening trigger, with a desktop
+  // guarded fallback to #ftbMoreBtn when the trigger is hidden after open.
+  assert.ok(src.includes('getRestoreFocus'), 'Scout delegates focus restoration to the helper');
+  assert.ok(src.includes('openingTrigger'), 'Scout stores the real opening trigger for restoration');
+  assert.ok(src.includes('ftbMoreBtn'), 'Scout desktop fallback restore target is #ftbMoreBtn');
+
+  // Escape authority: the shared helper owns Escape. A custom Escape listener
+  // may exist only in the helper-absent fallback, never alongside the helper.
+  assert.ok(src.includes('if (modalA11y)'), 'Scout gates helper-absent fallback on modalA11y presence');
+  assert.ok(src.includes('modalA11y.open()'), 'Scout Escape is delegated via modalA11y.open()');
+  // The custom escHandler lives only inside the helper-absent else branch.
+  const elseIdx = src.indexOf('} else {', src.indexOf('if (modalA11y)'));
+  const escIdx = src.indexOf('escHandler', elseIdx >= 0 ? elseIdx : 0);
+  assert.ok(elseIdx >= 0 && escIdx >= 0 && escIdx > elseIdx,
+    'Scout custom Escape listener is only in the helper-absent fallback');
+
+  // Controller-owned responsibilities remain in scout-draft-ui.js, not the helper.
+  assert.ok(src.includes('createModalInDOM'), 'Scout controller owns modal DOM creation');
+  assert.ok(src.includes('isOpen'), 'Scout controller owns visible/open state');
+  assert.ok(src.includes('outsideClickHandler'), 'Scout controller owns backdrop click');
+  assert.ok(src.includes('resetForm'), 'Scout controller owns draft reset');
+  assert.ok(src.includes('validateSourceUrl'), 'Scout controller owns source URL validation');
+  assert.ok(src.includes('handleSuggest'), 'Scout controller owns local_stub suggestion');
+  assert.ok(src.includes('handlePreview'), 'Scout controller owns preview state');
+  assert.ok(src.includes('showPreview'), 'Scout controller owns preview rendering');
+  assert.ok(src.includes('onDraftSave'), 'Scout controller owns manual save delegation');
+  assert.ok(src.includes('onDraftCancel'), 'Scout controller owns cancel callback');
+  assert.ok(src.includes('suggestionState'), 'Scout controller owns suggestion state');
+});
+
 test('no native <dialog> or showModal introduced', () => {
-  const files = [HELPER_SRC].concat(Object.values(CONTROLLERS).map(read));
+  const files = [HELPER_SRC]
+    .concat(Object.values(CONTROLLERS).map(read))
+    .concat(Object.values(DELEGATED_SURFACES).map(read));
   for (const src of files) {
     assert.ok(!src.includes('showModal('), 'no showModal usage');
     assert.ok(!/<dialog/.test(src), 'no native <dialog> markup');
