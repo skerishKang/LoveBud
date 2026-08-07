@@ -87,7 +87,7 @@ Two conventions coexist:
 | Proxy simple | `{ error: "message" }` + status | `[[path]].js`, `trees.js`, `memories.js`, `oembed.js` |
 | Scout envelope | `{ ok: false, error: { code, message } }` | `scout/suggest.js`, `scout/save-memory.js` |
 
-The preview route should adopt the **Scout envelope** convention (`{ ok, error: { code, message } }`) because it is a new self-contained route, not a Modal proxy.
+The preview route should use the **Scout-style bounded error envelope** convention (`{ ok, error: { code, message } }`) because the Modal preview endpoint owns provider/error normalization, while the Cloudflare Pages Function remains a thin same-origin proxy.
 
 ---
 

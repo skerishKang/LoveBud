@@ -95,6 +95,17 @@ test('route decision is explicit', () => {
   assertContains(doc, 'AUTH_REQUIRED', 'auth decision');
 });
 
+test('route authority uses thin same-origin proxy, not a non-proxy claim', () => {
+  const doc = readDoc();
+  // Canonical architecture: Cloudflare thin proxy → Modal private endpoint owns normalization.
+  assertContains(doc, 'thin proxy', 'cloudflare acts as a thin same-origin proxy');
+  assertContains(doc, 'Modal private preview endpoint', 'modal endpoint owner');
+  assertContains(doc, 'Error normalization owner', 'modal owns error normalization');
+  assertContains(doc, 'thin same-origin proxy', 'thin same-origin proxy wording');
+  // Reject stale non-proxy architecture wording (contradicts canonical §7–8).
+  assertNotContains(doc, 'not a Modal proxy', 'stale non-proxy architecture wording');
+});
+
 test('verified Firebase auth is required, not header-presence-only', () => {
   const doc = readDoc();
   assertContains(doc, 'require_firebase_user', 'verified firebase auth boundary');
