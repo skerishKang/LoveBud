@@ -71,6 +71,14 @@ from modal_compute.hub_layouts import (
     fetch_hub_layout,
 )
 from modal_compute.social_errors import SocialWriteError, SOCIAL_ERROR_CODES
+from modal_compute.youtube_playlist_preview import (
+    PlaylistPreviewError,
+    fetch_playlist_items,
+    fetch_playlist_metadata,
+    normalize_playlist_preview,
+    parse_playlist_source,
+    resolve_provider_api_key,
+)
 
 
 def _allowed_origins() -> list[str]:
@@ -124,6 +132,14 @@ async def social_write_error_handler(request: Request, exc: SocialWriteError) ->
         status_code=exc.status_code,
         content=content,
         headers=headers if headers else None,
+    )
+
+
+@web_app.exception_handler(PlaylistPreviewError)
+async def playlist_preview_error_handler(request: Request, exc: PlaylistPreviewError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"ok": False, "error": {"code": exc.code, "message": exc.message}},
     )
 
 
@@ -613,6 +629,48 @@ def get_hub_layout(
     return fetch_hub_layout(tree_id, user["uid"])
 
 
+@web_app.post("/modal/private/import/youtube/playlist/preview")
+async def post_youtube_playlist_preview(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    """Authenticated read-only public playlist preview (first child slice).
+
+    Verified auth is required BEFORE any provider call. The Authorization
+    header presence alone is never treated as authentication. Provider API
+    key is consumed only after `require_firebase_user` succeeds.
+    """
+    user = require_firebase_user(authorization)
+
+    payload = await parse_json_body(request)
+    source_field = payload.get("source")
+    playlist_id_field = payload.get("playlistId")
+
+    neither = (
+        source_field is None and playlist_id_field is None
+    ) or (
+        isinstance(source_field, str) and not source_field.strip()
+        and isinstance(playlist_id_field, str) and not playlist_id_field.strip()
+    )
+    both = (
+        isinstance(source_field, str) and source_field.strip()
+        and isinstance(playlist_id_field, str) and playlist_id_field.strip()
+    )
+    if neither or both:
+        raise PlaylistPreviewError(
+            "INVALID_PLAYLIST_SOURCE",
+            "Provide exactly one of source or playlistId.",
+        )
+
+    source = playlist_id_field if playlist_id_field else source_field
+    playlist_id = parse_playlist_source(source)
+
+    api_key = resolve_provider_api_key()
+    metadata = fetch_playlist_metadata(playlist_id, api_key)
+    items_result = fetch_playlist_items(playlist_id, api_key)
+    return normalize_playlist_preview(metadata, items_result)
+
+
 # ── Public (guest-safe) moment social read endpoints ──────────────────────────
 
 @web_app.get("/modal/public/trees/{tree_id}/memories/{memory_id}/reactions")
@@ -675,6 +733,7 @@ def get_public_memory_comments(
     secrets=[
         modal.Secret.from_name("lovebud-db"),
         modal.Secret.from_name("lovebud-firebase-admin"),
+        modal.Secret.from_name("lovebud-youtube-data-api"),
     ],
 )
 @modal.asgi_app()

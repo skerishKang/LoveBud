@@ -33,3 +33,169 @@
 .preview-sidebar.preview-state-media #myTreesHubVideoContainer {
   display: block;
 }
+
+/* ─── YouTube playlist preview — fixed FAB + bounded popover (#3914) ─────────
+ * The FAB is position: fixed so it never participates in the My Trees flex
+ * results-header layout (preserving existing geometry/parity). The popover is
+ * rendered in the page flow only while open and is not a generic HTML slot.
+ */
+.ypp-fab-root {
+  position: fixed;
+  right: 20px;
+  bottom: 28px;
+  z-index: 120;
+  display: inline-block;
+}
+.ypp-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 28px;
+  border: none;
+  background: var(--primary, #8b5cf6);
+  color: var(--on-primary, #fff);
+  box-shadow: 0 4px 12px rgba(144, 73, 81, 0.28);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+.ypp-fab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(144, 73, 81, 0.34);
+}
+.ypp-fab:active {
+  transform: translateY(0);
+}
+.ypp-fab .material-symbols-outlined {
+  font-size: 22px;
+}
+.youtube-playlist-preview-popover {
+  position: absolute;
+  right: 0;
+  bottom: 64px;
+  width: min(420px, calc(100vw - 28px));
+  max-height: calc(100vh - 120px);
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 16px;
+  background: var(--surface-container-low, #fffdf8);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+}
+.ypp-popover-arrow {
+  position: absolute;
+  bottom: -7px;
+  right: 22px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 7px solid var(--outline-variant, #e4e1ec);
+}
+.ypp-help {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  line-height: 1.5;
+}
+.ypp-field {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ypp-input {
+  flex: 1 1 260px;
+  min-width: 200px;
+}
+.ypp-result {
+  margin-top: 12px;
+}
+.ypp-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--on-surface-variant);
+}
+.ypp-empty {
+  color: var(--on-surface-variant);
+}
+.ypp-truncated {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+.ypp-error {
+  color: var(--error, #b3261e);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ypp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.ypp-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--surface-container-low);
+}
+.ypp-thumb {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-container-high);
+}
+.ypp-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ypp-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ypp-order {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+}
+.ypp-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ypp-state {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 999px;
+  width: fit-content;
+}
+.ypp-state-available {
+  color: var(--on-tertiary-container);
+  background: var(--tertiary-container);
+}
+.ypp-state-partial {
+  color: var(--on-secondary-container);
+  background: var(--secondary-container);
+}
+.ypp-state-unavailable,
+.ypp-state-unknown {
+  color: var(--on-surface-variant);
+  background: var(--surface-container-high);
+}

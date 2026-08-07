@@ -4171,6 +4171,30 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/youtube-playlist-preview-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the real production preview UI and client wrapper (js/import/youtube-playlist-preview-ui.js, js/api/import-youtube-playlist-preview.js, css/global.css, css/my-trees.css) in Playwright Chromium (desktop + mobile) against a local HTTP server with the preview provider route mocked via a stubbed fetch. Asserts #3914 preview flow: open button/aria-expanded, input, submit, loading, ordered success preview, explicit unavailable/partial state, position preservation, deterministic thumbnail placeholder, bounded error, and edit+retry. No real Google API call, no network beyond the in-process static server, no DB, no Production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-client-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production client wrapper (js/api/import-youtube-playlist-preview.js, a browser IIFE) inside a vm sandbox with mocked fetch, timer, and a stubbed auth pipeline. Verifies same-origin route targeting (never a Google endpoint), Authorization acquisition, bounded JSON body, AbortController signal, normalized success/envelope-error handling, PROVIDER_TIMEOUT on abort, and validateSourceIdentity only-one semantics. No network, no DB, no Production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-provider-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/youtube_playlist_preview.py and modal_compute/app.py and asserts on structure/regex/syntax markers without executing the asserted runtime. Verifies fixed official YouTube Data API endpoints only, verified-auth-before-provider ordering in app.py, provider ceilings (1 playlists.list + 1 playlistItems.list = 2, page size 50, item ceiling 50, max 1 page, no retry, no videos.list), canonical item-state vocabulary (no stale AVAILABLE/UNAVAILABLE), no fabricated Connection/parentId/relationship, no startAt/endAt, no embeddability/region inference, thumbnail null rule, Modal secret binding (lovebud-youtube-data-api) alongside existing secrets, bounded error envelope, and zero Tree/Moment/Connection/DB writes. No execution, no network, no DB.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-route-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Imports the production Cloudflare Pages Function (functions/api/import/youtube/playlist/preview.js, ESM) and executes it with real Request objects and a mocked global fetch to a fake Modal endpoint. Verifies the route is a thin same-origin proxy: exactly-one source/playlistId edge identity rule (no silent precedence), 4KB body bound, content-type/method validation, Authorization header forwarding verbatim, fixed Modal preview endpoint targeting, bounded CONFIGURATION_REQUIRED (no provider call) / PROVIDER_UNAVAILABLE / PROVIDER_TIMEOUT failures, normalized error pass-through, and no provider endpoint/secret on the edge. No network, no DB, no Production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/routes/detail-alias-consistency.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

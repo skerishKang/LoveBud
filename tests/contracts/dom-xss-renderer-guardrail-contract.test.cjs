@@ -176,6 +176,12 @@ const FILE_ALLOWLIST = {
     reason: 'card.innerHTML from buildTreeCard — approved template renderer with escapeHtml; 2 clear-container'
   },
 
+  // ── Import (YouTube playlist preview) ──────────────────────────────
+  'js/import/youtube-playlist-preview-ui.js': {
+    count: 4, classification: 'safe',
+    reason: 'resultEl.innerHTML bound to approved template renderers (renderLoading, renderPlaylist, renderError) that escapeHtml() every user-controlled field (title, channelTitle, item titles/descriptions/states, order index); plus one clear-container reset (innerHTML = empty string). No unescaped user content.'
+  },
+
   // ── Search ─────────────────────────────────────────────────────────
   'js/search/search-card-renderer.js': {
     count: 1, classification: 'safe',
