@@ -164,6 +164,8 @@ dirty worktree
 
 Keep screenshots, reports, backups, and artifacts outside the repository unless committed fixtures are explicitly required.
 
+Before push, check `git status --short` and the changed-file list. Unexpected files require scope review, not destructive cleanup.
+
 ## Completion standard
 
 Reports must separate:

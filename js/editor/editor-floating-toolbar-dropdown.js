@@ -305,9 +305,12 @@
         if (isEditorReadOnly()) {
           return;
         }
+        // Focus the canonical trigger before opening so the modal lifecycle
+        // stores #ftbMoreBtn (not a stale activeElement) as the restore target.
+        if (moreBtn && typeof moreBtn.focus === 'function') {
+          moreBtn.focus();
+        }
         if (window.LoveBudScoutDraftUI && window.LoveBudScoutDraftUI.open) {
-          // Get the currently selected node ID from the context
-          // ctx.selectedNode might be a function (getSelectedNodeEl) or an element
           var selectedNodeEl = ctx.selectedNode;
           if (typeof selectedNodeEl === 'function') {
             selectedNodeEl = selectedNodeEl();

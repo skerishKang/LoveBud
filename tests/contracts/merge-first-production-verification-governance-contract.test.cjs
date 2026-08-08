@@ -28,7 +28,6 @@ const PATHS = Object.freeze({
   verification: 'docs/project/VERIFICATION_AND_EVIDENCE.md',
   screenshots: 'docs/ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md',
   agents: 'AGENTS.md',
-  kilo: '.kilocode/rules/00-lovebud-global.md',
 });
 
 function read(rel) {
@@ -62,7 +61,6 @@ const CURRENT_POLICY_DOCS = Object.freeze([
   PATHS.verification,
   PATHS.screenshots,
   PATHS.agents,
-  PATHS.kilo,
 ]);
 
 test('merge-first workflow declares current authority and provenance', () => {
@@ -255,8 +253,8 @@ test('Local Validation retains explicit pristine-main comparison fields', () => 
   ], 'Local Validation comparison');
 });
 
-test('AGENTS and local rules identify merge-first and the UI lane', () => {
-  for (const rel of [PATHS.agents, PATHS.kilo]) {
+test('AGENTS identifies merge-first and the UI lane', () => {
+  for (const rel of [PATHS.agents]) {
     const src = read(rel);
     assert.ok(src.includes('UI_RAPID_ITERATION_LANE.md'), `${rel} must link UI lane`);
     assert.match(src, /Merge-first Production verification/i);

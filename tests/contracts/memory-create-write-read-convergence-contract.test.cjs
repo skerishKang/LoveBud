@@ -1141,17 +1141,18 @@ test('real Editor wiring: no raw error, memory id, tree id, or user content leak
   assert.ok(!consoleJoined.includes('secret provider error'), 'raw error must not appear in console');
 });
 
-/* ── #3852 release manifest authority (real pages/editor.html source) ────── */
+/* ── #3852/#3886 release manifest authority (real external source) ────────── */
 
 function extractReleaseManifestAuthoritySource() {
-  const html = read('pages/editor.html');
-  const marker = 'window.LoveBudReleaseManifestAuthority';
-  const start = html.indexOf(marker);
-  assert.ok(start >= 0, 'editor.html must register window.LoveBudReleaseManifestAuthority');
-  const scriptStart = html.lastIndexOf('<script>', start);
-  const scriptEnd = html.indexOf('</script>', start);
-  assert.ok(scriptStart >= 0 && scriptEnd > scriptStart, 'release authority must live in an inline script');
-  return html.slice(scriptStart + '<script>'.length, scriptEnd);
+  // #3886 — the release-manifest authority moved from the inline <script> block
+  // to the external same-origin file js/observability/editor-release-manifest-authority.js
+  // so the Editor HTML no longer carries an executable inline release authority.
+  const source = read('js/observability/editor-release-manifest-authority.js');
+  assert.ok(
+    source.indexOf('window.LoveBudReleaseManifestAuthority') >= 0,
+    'external authority must register window.LoveBudReleaseManifestAuthority'
+  );
+  return source;
 }
 
 test('release manifest authority (real editor.html source): single same-origin no-store fetch -> READY', async () => {
@@ -1214,13 +1215,273 @@ test('release manifest authority: fetch rejection -> UNAVAILABLE without raw err
   assert.equal(consoleOut.join('\n').includes('manifest secret failure'), false, 'no raw error output');
 });
 
-test('release manifest authority registered before the form-save runtime in editor.html', () => {
+test('release manifest authority external script loads before convergence core and form-save runtime in editor.html', () => {
   const html = read('pages/editor.html');
-  const authIdx = html.indexOf('window.LoveBudReleaseManifestAuthority');
-  const saveIdx = html.indexOf('editor-memory-form-save.js');
-  assert.ok(authIdx >= 0, 'release authority must be registered');
+  const authSrc = 'editor-release-manifest-authority.js';
+  const convergenceSrc = 'reliability-write-read-convergence-core.js';
+  const saveSrc = 'editor-memory-form-save.js';
+  const authIdx = html.indexOf(authSrc);
+  const convergenceIdx = html.indexOf(convergenceSrc);
+  const saveIdx = html.indexOf(saveSrc);
+  assert.ok(authIdx >= 0, 'external release authority script reference must exist');
+  assert.ok(convergenceIdx >= 0, 'convergence core script must exist');
   assert.ok(saveIdx >= 0, 'form-save script must exist');
-  assert.ok(authIdx < saveIdx, 'release authority must register before the form-save runtime');
+  assert.ok(authIdx < convergenceIdx, 'release authority must load before the convergence core');
+  assert.ok(authIdx < saveIdx, 'release authority must load before the form-save runtime');
+});
+
+/* ── #3886 CSP extraction: source-static boundary ─────────────────────────── */
+
+test('#3886 source-static: targeted release-manifest inline block is absent from editor.html', () => {
+  const html = read('pages/editor.html');
+  assert.equal(
+    html.indexOf('window.LoveBudReleaseManifestAuthority'),
+    -1,
+    'the release-manifest authority must no longer be an inline block in editor.html'
+  );
+  // The authority body may still be referenced by a bounded external script tag only.
+  assert.ok(
+    html.indexOf('editor-release-manifest-authority.js') >= 0,
+    'external release authority script reference must exist'
+  );
+});
+
+test('#3886 source-static: #3887 i18n dictionary extension is externalized (separate issue)', () => {
+  const html = read('pages/editor.html');
+  assert.equal(
+    html.indexOf('window.i18nEditor = Object.assign(window.i18nEditor || {}, {'),
+    -1,
+    '#3887 i18n dictionary must no longer be an executable inline block in editor.html'
+  );
+  assert.ok(
+    html.indexOf('js/i18n/i18n-editor-extension.js') >= 0,
+    'the external i18n extension script reference must exist'
+  );
+  assert.ok(
+    read('js/i18n/i18n-editor-extension.js').indexOf('window.i18nEditor') >= 0,
+    'the external i18n extension must carry the dictionary registration'
+  );
+});
+
+test('#3886 source-static: _headers is byte-identical to origin/main with no script unsafe-inline', () => {
+  // Exact-main comparison: _headers must not have been modified by this branch.
+  const headersContent = read('_headers');
+  const { execSync, spawnSync } = require('node:child_process');
+  // Detect whether origin/main is available (absent in shallow CI checkouts).
+  // Only the baseline-equality check is conditional on the ref existing; the
+  // CSP assertions below always run on the local _headers file.
+  const refCheck = spawnSync(
+    'git',
+    ['rev-parse', '--verify', '--quiet', 'refs/remotes/origin/main'],
+    { cwd: ROOT, encoding: 'utf8' }
+  );
+  if (refCheck.status === 0) {
+    const baseline = execSync('git show origin/main:_headers', { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(headersContent, baseline, '_headers must be byte-identical to origin/main');
+  } else {
+    assert.equal(
+      refCheck.status,
+      1,
+      'origin/main baseline check may be skipped only when the ref is genuinely absent'
+    );
+  }
+
+  const cspLine = headersContent.split('\n').find((l) => l.indexOf('Content-Security-Policy') >= 0);
+  assert.ok(cspLine, '_headers must define a Content-Security-Policy');
+  // Only script-src is the authority seam for inline execution: style-src
+  // legitimately carries a pre-existing 'unsafe-inline' and must stay untouched.
+  const scriptSrc = cspLine.match(/script-src ([^;]+)/);
+  assert.ok(scriptSrc, 'script-src directive must exist');
+  assert.equal(
+    scriptSrc[1].indexOf("'unsafe-inline'"),
+    -1,
+    'no unsafe-inline in script-src'
+  );
+  assert.equal(
+    scriptSrc[1].trim(),
+    "'self' https://www.gstatic.com https://apis.google.com",
+    'script-src policy must be unchanged (no unsafe-inline, no nonce, no hash)'
+  );
+});
+
+/* ── #3886 runtime executed-fake on the real external authority ──────────── */
+
+function loadReleaseAuthoritySandbox(fetchImpl, extraGlobals) {
+  const sandbox = createSandbox(Object.assign({ fetch: fetchImpl }, extraGlobals || {}));
+  vm.runInContext(extractReleaseManifestAuthoritySource(), sandbox);
+  return sandbox;
+}
+
+test('#3886 runtime: module load issues 0 fetches and stays PENDING', async () => {
+  const fetchCalls = [];
+  const sandbox = loadReleaseAuthoritySandbox((url, opts) => {
+    fetchCalls.push({ url, opts });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ contract_version: '1', release_sha: validReleaseSha() }) });
+  });
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  assert.equal(authority.getState(), 'PENDING', 'state is PENDING right after load');
+  assert.equal(fetchCalls.length, 0, 'page load must issue zero fetches');
+});
+
+test('#3886 runtime: first read triggers exactly one no-store same-origin fetch to /release.json', async () => {
+  const sha = validReleaseSha();
+  const fetchCalls = [];
+  const sandbox = loadReleaseAuthoritySandbox((url, opts) => {
+    fetchCalls.push({ url, opts });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ contract_version: '1', release_sha: sha }) });
+  });
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  authority.getCurrent(); // first read
+  assert.equal(fetchCalls.length, 1, 'first read triggers exactly one fetch');
+  assert.equal(fetchCalls[0].url, '/.well-known/release.json', 'endpoint is exactly /.well-known/release.json');
+  assert.equal(fetchCalls[0].opts.cache, 'no-store', 'cache mode is no-store');
+  assert.equal(fetchCalls[0].opts.credentials, 'same-origin', 'credentials are same-origin');
+  await settleAsync();
+  assert.equal(authority.getState(), 'READY');
+  const ready = authority.getCurrent();
+  assert.deepEqual(Object.keys(ready), ['ok', 'releaseSha']);
+  assert.equal(ready.ok, true);
+  assert.equal(ready.releaseSha, sha);
+  assert.equal(authority.getCurrent().releaseSha, sha, 'repeated reads reuse the same result');
+  assert.equal(fetchCalls.length, 1, 'still exactly one fetch after repeated reads');
+});
+
+test('#3886 runtime: concurrent reads share a single in-flight request', async () => {
+  const fetchCalls = [];
+  let resolveFetch;
+  const gate = new Promise((res) => { resolveFetch = res; });
+  const sandbox = loadReleaseAuthoritySandbox(() => {
+    fetchCalls.push(1);
+    return gate.then(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ contract_version: '1', release_sha: validReleaseSha() }) }));
+  });
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  const p1 = authority.whenReady();
+  const p2 = authority.whenReady();
+  const p3 = authority.whenReady();
+  assert.equal(fetchCalls.length, 1, 'three concurrent reads still issue exactly one fetch');
+  resolveFetch();
+  const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
+  assert.equal(r1.ok && r2.ok && r3.ok, true, 'all concurrent readers resolve to the same ready result');
+  assert.equal(fetchCalls.length, 1, 'single in-flight request shared by all readers');
+});
+
+test('#3886 runtime: whenReady resolves immediately after terminal state without a new fetch', async () => {
+  const fetchCalls = [];
+  const sandbox = loadReleaseAuthoritySandbox((url, opts) => {
+    fetchCalls.push(1);
+    return Promise.reject(new Error('rejected'));
+  });
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  authority.getCurrent(); // triggers the lazy fetch -> rejection -> UNAVAILABLE
+  await settleAsync();
+  assert.equal(authority.getState(), 'UNAVAILABLE');
+  const r = await authority.whenReady();
+  assert.equal(r.ok, false, 'whenReady terminal result is bounded failure');
+  assert.equal(r.code, 'RELEASE_SHA_UNAVAILABLE');
+  assert.deepEqual(Object.keys(r), ['ok', 'code']);
+  assert.equal(fetchCalls.length, 1, 'whenReady after terminal state issues no new fetch');
+});
+
+test('#3886 runtime: malformed, missing-field, and extra-field manifests all fail closed to UNAVAILABLE', async () => {
+  const manifestCases = [
+    { name: 'malformed json', body: () => Promise.reject(new SyntaxError('bad json')) },
+    { name: 'missing release_sha', body: () => Promise.resolve({ contract_version: '1' }) },
+    { name: 'missing contract_version', body: () => Promise.resolve({ release_sha: validReleaseSha() }) },
+    { name: 'extra field', body: () => Promise.resolve({ contract_version: '1', release_sha: validReleaseSha(), extra: 'x' }) },
+    { name: 'wrong contract version', body: () => Promise.resolve({ contract_version: '2', release_sha: validReleaseSha() }) },
+    { name: 'invalid sha', body: () => Promise.resolve({ contract_version: '1', release_sha: 'not-a-40-hex' }) },
+    { name: 'non-ok response', body: () => Promise.resolve({ ok: false, json: () => Promise.resolve({ contract_version: '1', release_sha: validReleaseSha() }) }) },
+    { name: 'missing response.json', body: () => Promise.resolve({ ok: true }) }
+  ];
+  for (const c of manifestCases) {
+    const consoleOut = [];
+    const sandbox = loadReleaseAuthoritySandbox(() => Promise.resolve({ ok: true, json: c.body }));
+    sandbox.console = {
+      warn: (...args) => consoleOut.push(args.join(' ')),
+      error: (...args) => consoleOut.push(args.join(' ')),
+      log: (...args) => consoleOut.push(args.join(' '))
+    };
+    const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+    authority.getCurrent();
+    await settleAsync();
+    assert.equal(authority.getState(), 'UNAVAILABLE', c.name + ': state must be UNAVAILABLE');
+    const malformedResult = authority.getCurrent();
+    assert.equal(malformedResult.ok, false, c.name + ': bounded failure result');
+    assert.equal(malformedResult.code, 'RELEASE_SHA_UNAVAILABLE', c.name + ': fixed failure code');
+    assert.deepEqual(Object.keys(malformedResult), ['ok', 'code'], c.name + ': bounded result shape');
+    assert.equal(consoleOut.join('\\n').length, 0, c.name + ': no dynamic console output');
+  }
+});
+
+test('#3886 runtime: fetch rejection yields UNAVAILABLE with zero raw error leakage', async () => {
+  const consoleOut = [];
+  const sandbox = loadReleaseAuthoritySandbox(() => Promise.reject(new Error('PRIVATE-TOKEN-LEAK-123')));
+  sandbox.console = {
+    warn: (...args) => consoleOut.push(args.join(' ')),
+    error: (...args) => consoleOut.push(args.join(' ')),
+    log: (...args) => consoleOut.push(args.join(' '))
+  };
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  authority.getCurrent();
+  await settleAsync();
+  assert.equal(authority.getState(), 'UNAVAILABLE');
+  assert.equal(consoleOut.join('\\n').includes('PRIVATE-TOKEN-LEAK-123'), false, 'raw error value never reaches console');
+  assert.equal(JSON.stringify(authority.getCurrent()).includes('PRIVATE-TOKEN-LEAK-123'), false, 'raw error never in result');
+});
+
+test('#3886 runtime: no retry loop, no timers, and no storage persistence capability', async () => {
+  const fetchCalls = [];
+  let timerCalls = 0;
+  const storageWrites = [];
+  const storageProxy = new Proxy({}, {
+    set(target, key, value) {
+      storageWrites.push(String(key));
+      target[key] = value;
+      return true;
+    }
+  });
+  const sandbox = loadReleaseAuthoritySandbox(() => {
+    fetchCalls.push(1);
+    return Promise.reject(new Error('down'));
+  }, {
+    setTimeout: () => { timerCalls += 1; return 0; },
+    setInterval: () => { timerCalls += 1; return 0; },
+    localStorage: storageProxy,
+    sessionStorage: storageProxy
+  });
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  authority.getCurrent(); // fetch -> rejected -> UNAVAILABLE
+  await settleAsync();
+  await settleAsync();
+  assert.equal(authority.getState(), 'UNAVAILABLE');
+  assert.equal(fetchCalls.length, 1, 'no automatic retry after rejection');
+  assert.equal(timerCalls, 0, 'no setTimeout/setInterval capability used');
+  assert.deepEqual(storageWrites, [], 'no localStorage/sessionStorage writes');
+
+  // Source-static: the external file must not reference storage or timers at all.
+  const source = read('js/observability/editor-release-manifest-authority.js');
+  for (const forbidden of ['localStorage', 'sessionStorage', 'indexedDB', 'document.cookie', 'setTimeout', 'setInterval']) {
+    assert.equal(source.includes(forbidden), false, 'source must not reference ' + forbidden);
+  }
+});
+
+test('#3886 runtime: no external/private URL seam and no query/credential logging', async () => {
+  const fetchCalls = [];
+  const sandbox = loadReleaseAuthoritySandbox((url, opts) => {
+    fetchCalls.push({ url, opts });
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ contract_version: '1', release_sha: validReleaseSha() }) });
+  });
+  // Give the sandbox a hostile location with a private query string: the
+  // authority must never read or log it (endpoint is hard-bound to the manifest).
+  sandbox.window.location = { href: 'https://lovebud.pages.dev/pages/editor?token=PRIVATE-QUERY-VALUE#frag' };
+  const authority = sandbox.window.LoveBudReleaseManifestAuthority;
+  authority.getCurrent();
+  await settleAsync();
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(fetchCalls[0].url, '/.well-known/release.json', 'endpoint is hard-bound same-origin; no arbitrary URL seam');
+  const source = read('js/observability/editor-release-manifest-authority.js');
+  assert.equal(source.includes('location.href'), false, 'source must not read window.location.href');
+  assert.equal(JSON.stringify(authority.getCurrent()).includes('PRIVATE-QUERY-VALUE'), false, 'no query value in results');
 });
 
 /* ── #3852 first-save boundary (real editor.html authority + real runtime) ── */
@@ -1624,4 +1885,177 @@ test('cross-save stale: no observer injected -> generation guard active, saves u
   assert.equal(resultA.useApi, true);
   assert.equal(resultA.createdMemory.id, 'api-mem-1');
   assert.equal(createCalls, 2, 'no second write per save without an observer');
+});
+
+/* ── #3887 Editor i18n CSP externalization (real external source) ─────────── */
+
+const I18N_EXTENSION_EXPECTED = {
+  editor_sidebar_public_tree: { ko: '공개', en: 'Public' },
+  editor_sidebar_private_tree: { ko: '비공개', en: 'Private' },
+  detail_empty_title: { ko: '아직 선택한 순간이 없어요', en: 'No moment selected yet.' },
+  detail_empty_desc: { ko: '첫 순간은 가운데에서 시작하세요.', en: 'Start the first moment from the canvas.' },
+  editor_current_moment_empty_title: { ko: '아직 선택한 순간이 없어요', en: 'No moment selected yet.' },
+  editor_current_moment_empty_hint: { ko: '첫 순간은 가운데 캔버스에서 시작하세요.', en: 'Start the first moment from the center canvas.' }
+};
+
+function extractI18nExtensionSource() {
+  const source = read('js/i18n/i18n-editor-extension.js');
+  assert.ok(
+    source.indexOf('window.i18nEditor = Object.assign(window.i18nEditor || {}, {') >= 0,
+    'external i18n extension must register via Object.assign on window.i18nEditor'
+  );
+  return source;
+}
+
+function loadI18nExtensionSandbox(extraGlobals) {
+  const sandbox = createSandbox(extraGlobals || {});
+  vm.runInContext(extractI18nExtensionSource(), sandbox);
+  return sandbox;
+}
+
+test('#3887 source-static: editor.html no longer carries the executable i18n inline dictionary', () => {
+  const html = read('pages/editor.html');
+  const inlineI18n = html.match(/window\.i18nEditor\s*=\s*Object\.assign\(window\.i18nEditor \|\| \{\}, \{/);
+  assert.equal(inlineI18n, null, 'the i18n dictionary must not remain as an inline block in editor.html');
+});
+
+test('#3887 source-static: external extension script is same-origin and sits in the i18n directory', () => {
+  const html = read('pages/editor.html');
+  const ref = html.match(/<script[^>]*src=["']([^"']*i18n-editor-extension\.js[^"']*)["'][^>]*><\/script>/);
+  assert.ok(ref, 'external i18n extension script reference must exist in editor.html');
+  const src = ref[1];
+  assert.equal(src.indexOf('http://'), -1, 'extension must not be an absolute http URL');
+  assert.equal(src.indexOf('https://'), -1, 'extension must not be an absolute https URL');
+  assert.ok(src.indexOf('js/i18n/i18n-editor-extension.js') >= 0, 'extension must be the same-origin js/i18n path');
+  assert.ok(fs.existsSync(path.join(ROOT, 'js/i18n/i18n-editor-extension.js')), 'extension file must exist on disk');
+});
+
+test('#3887 source-static: exactly the six targeted keys appear exactly once in the extension', () => {
+  const source = extractI18nExtensionSource();
+  const keys = Object.keys(I18N_EXTENSION_EXPECTED);
+  assert.equal(keys.length, 6, 'exactly six targeted keys');
+  const allKeyOccurrences = source.match(/editor_sidebar_public_tree|editor_sidebar_private_tree|detail_empty_title|detail_empty_desc|editor_current_moment_empty_title|editor_current_moment_empty_hint/g) || [];
+  assert.equal(allKeyOccurrences.length, 6, 'each of the six keys must appear exactly once in the extension source');
+  for (const key of keys) {
+    assert.equal(
+      (source.match(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length,
+      1,
+      key + ' must appear exactly once'
+    );
+  }
+  assert.equal(
+    (source.match(/[a-z_]+:\s*\{\s*ko:/g) || []).length,
+    6,
+    'no extra dictionary keys beyond the six targeted keys'
+  );
+});
+
+test('#3887 source-static: Korean and English values are preserved byte-for-byte', () => {
+  const source = extractI18nExtensionSource();
+  for (const key of Object.keys(I18N_EXTENSION_EXPECTED)) {
+    const expected = I18N_EXTENSION_EXPECTED[key];
+    assert.ok(
+      source.indexOf(key + ': { ko: "' + expected.ko + '", en: "' + expected.en + '" }') >= 0 ||
+        source.indexOf(key + ': {\n    ko: "' + expected.ko + '",\n    en: "' + expected.en + '",\n  }') >= 0 ||
+        source.indexOf('ko: "' + expected.ko + '"') >= 0,
+      key + ' must keep the exact Korean value'
+    );
+    assert.ok(source.indexOf('en: "' + expected.en + '"') >= 0, key + ' must keep the exact English value');
+  }
+});
+
+test('#3887 source-static: shared js/i18n/i18n-editor.js is untouched and keeps its conflicting values', () => {
+  const shared = read('js/i18n/i18n-editor.js');
+  assert.ok(shared.indexOf("'detail_empty_title':{ko:'첫 순간이 트리를 깨워요'") >= 0, 'shared detail_empty_title value must be unchanged');
+  assert.ok(shared.indexOf("'detail_empty_desc':{ko:'첫 순간을 남기면 여기에 열려요.'") >= 0, 'shared detail_empty_desc value must be unchanged');
+  assert.ok(shared.indexOf("editor_current_moment_empty_title: { ko: '순간 감상', en: 'Moment view' }") >= 0, 'shared current-moment title value must be unchanged');
+  assert.ok(shared.indexOf("editor_current_moment_empty_hint: { ko: '선택한 순간을 여기서 감상할 수 있어요.'") >= 0, 'shared current-moment hint value must be unchanged');
+});
+
+test('#3887 source-static: script order is i18n-editor.js -> extension -> consumers', () => {
+  const html = read('pages/editor.html');
+  const editorIdx = html.indexOf('js/i18n/i18n-editor.js');
+  const extIdx = html.indexOf('js/i18n/i18n-editor-extension.js');
+  const scoutIdx = html.indexOf('js/i18n/i18n-scout.js');
+  const myTreesIdx = html.indexOf('js/i18n/i18n-my-trees.js');
+  const indexIdx = html.indexOf('js/i18n/i18n-index.js');
+  const i18nIdx = html.indexOf('js/i18n.js');
+  assert.ok(editorIdx >= 0, 'i18n-editor.js must be referenced');
+  assert.ok(extIdx >= 0, 'i18n-editor-extension.js must be referenced');
+  assert.ok(myTreesIdx >= 0, 'i18n-my-trees.js must be referenced');
+  assert.ok(indexIdx >= 0, 'i18n-index.js must be referenced');
+  assert.ok(i18nIdx >= 0, 'i18n.js must be referenced');
+  assert.ok(editorIdx < extIdx, 'i18n-editor.js must load before the extension');
+  assert.ok(extIdx < myTreesIdx, 'extension must load before i18n-my-trees.js');
+  assert.ok(extIdx < indexIdx, 'extension must load before i18n-index.js');
+  assert.ok(extIdx < i18nIdx, 'extension must load before i18n.js');
+  assert.ok(scoutIdx >= 0, 'i18n-scout.js must be referenced');
+  assert.ok(extIdx < scoutIdx, 'extension must load before i18n-scout.js');
+});
+
+function assertI18nValueMatches(actual, expected, label) {
+  assert.deepEqual(Object.keys(actual).sort(), Object.keys(expected).sort(), label + ' must expose exactly ko/en keys');
+  assert.equal(actual.ko, expected.ko, label + ' ko value');
+  assert.equal(actual.en, expected.en, label + ' en value');
+}
+
+test('#3887 runtime: extension creates window.i18nEditor when absent with exact six values', () => {
+  const sandbox = loadI18nExtensionSandbox();
+  assert.ok(sandbox.window.i18nEditor, 'window.i18nEditor must be created when absent');
+  for (const key of Object.keys(I18N_EXTENSION_EXPECTED)) {
+    assertI18nValueMatches(sandbox.window.i18nEditor[key], I18N_EXTENSION_EXPECTED[key], key);
+  }
+});
+
+test('#3887 runtime: extension overrides existing conflicting keys and preserves unrelated keys', () => {
+  const existing = {
+    editor_sidebar_public_tree: { ko: 'OLD 공개', en: 'OLD Public' },
+    some_unrelated_key: { ko: '유지', en: 'kept' },
+    another_key: 'plain-value'
+  };
+  const sandbox = createSandbox();
+  sandbox.window.i18nEditor = existing;
+  vm.runInContext(extractI18nExtensionSource(), sandbox);
+  const result = sandbox.window.i18nEditor;
+  assert.equal(result.some_unrelated_key, existing.some_unrelated_key, 'unrelated object key must be preserved');
+  assert.equal(result.another_key, 'plain-value', 'unrelated non-object value must be preserved');
+  assertI18nValueMatches(result.editor_sidebar_public_tree, I18N_EXTENSION_EXPECTED.editor_sidebar_public_tree, 'conflicting key must be overridden');
+  for (const key of Object.keys(I18N_EXTENSION_EXPECTED)) {
+    assertI18nValueMatches(result[key], I18N_EXTENSION_EXPECTED[key], key);
+  }
+});
+
+test('#3887 runtime: extension has zero side effects (no fetch, storage, timers, logging)', () => {
+  const fetchCalls = [];
+  const storageWrites = [];
+  const consoleOut = [];
+  let timerCalls = 0;
+  const storageProxy = new Proxy({}, {
+    set(target, key, value) {
+      storageWrites.push(String(key));
+      target[key] = value;
+      return true;
+    }
+  });
+  const sandbox = createSandbox({
+    fetch: (url) => { fetchCalls.push(url); return Promise.resolve({}); },
+    setTimeout: () => { timerCalls += 1; return 0; },
+    setInterval: () => { timerCalls += 1; return 0; },
+    localStorage: storageProxy,
+    sessionStorage: storageProxy
+  });
+  sandbox.console = {
+    warn: (...args) => { consoleOut.push(args.join(' ')); },
+    error: (...args) => { consoleOut.push(args.join(' ')); },
+    log: (...args) => { consoleOut.push(args.join(' ')); }
+  };
+  vm.runInContext(extractI18nExtensionSource(), sandbox);
+  assert.deepEqual(fetchCalls, [], 'extension must issue zero fetches');
+  assert.equal(timerCalls, 0, 'extension must schedule zero timers');
+  assert.deepEqual(storageWrites, [], 'extension must write zero storage keys');
+  assert.equal(consoleOut.length, 0, 'extension must emit zero console output');
+  const source = read('js/i18n/i18n-editor-extension.js');
+  for (const forbidden of ['fetch', 'localStorage', 'sessionStorage', 'indexedDB', 'document.cookie', 'setTimeout', 'setInterval', 'console']) {
+    assert.equal(source.includes(forbidden), false, 'extension source must not reference ' + forbidden);
+  }
 });

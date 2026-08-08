@@ -72,6 +72,17 @@
             >
             <span id="mobileBottomActionLabel">새 순간 만들기</span>
           </button>
+          <button
+            type="button"
+            id="mobileScoutAction"
+            class="editor-mobile-scout-action"
+            aria-label="링크로 순간 만들기"
+          >
+            <span class="material-symbols-outlined" aria-hidden="true"
+              >link</span
+            >
+            <span id="mobileScoutActionLabel">링크로 순간 만들기</span>
+          </button>
         </div>
 
         <div id="editorEmptyGuideTemplateMount"></div>
@@ -144,7 +155,7 @@
     <script src="../js/editor/editor-floating-toolbar-elements.js?v=20260519-1275"></script>
     <script src="../js/editor/editor-floating-toolbar.js?v=20260712-editor-ui-followup-1"></script>
     <!-- [Editor-3327-Boundary] Reconnect mobile bottom bar -->
-    <script src="../js/editor/editor-mobile-bottom-bar.js?v=49b838eaad53"></script>
+    <script src="../js/editor/editor-mobile-bottom-bar.js?v=8b238095569a"></script>
     <script src="../js/editor/editor-url-drop.js?v=20260518-1"></script>
     <script src="../js/editor/editor-utils.js?v=20260522-1276"></script>
     <script src="../js/editor/editor-save-status-ui.js?v=f090f396e2de"></script>
@@ -182,143 +193,7 @@
     <script src="../js/editor/editor-memory-form-preview.js?v=20260510-1003"></script>
     <script src="../js/editor/editor-memory-form-time.js?v=20260510-1004"></script>
     <script src="../js/editor/editor-memory-form-payload.js?v=20260510-1004"></script>
-    <script>
-      // #3852 — bounded same-origin release manifest authority. Registered before
-      // the memory form-save runtime. At most one no-store same-origin fetch per
-      // page, initiated lazily on the first read so page load never issues a
-      // network request (environments without the manifest never surface a 404
-      // console error). The manifest contract is enforced exactly: only the own
-      // keys release_sha (40-char lowercase hex data property) and
-      // contract_version ("1") are accepted; extra keys, missing keys, accessor
-      // keys, inherited keys, non-"1" contract versions, invalid SHAs, non-ok
-      // HTTP responses, missing response.json, and malformed JSON all map to
-      // UNAVAILABLE. State distinguishes PENDING / READY / UNAVAILABLE.
-      // getCurrent() is synchronous; getState() exposes the state; whenReady()
-      // is the bounded async readiness seam that monitoring awaits, sharing the
-      // single in-flight fetch promise. Never persists to storage, never
-      // retries, never schedules timers, and never emits dynamic console output.
-      window.LoveBudReleaseManifestAuthority = (function () {
-        var state = 'PENDING';
-        var releaseSha = null;
-        var requestPromise = null;
-
-        function isValidReleaseSha(value) {
-          return typeof value === 'string' && /^[0-9a-f]{40}$/.test(value);
-        }
-
-        // Exact own-key contract. Object.keys never invokes getters, and every
-        // own key must be an enumerable DATA property (accessor and inherited
-        // keys are rejected so no getter can ever run during a read).
-        function hasExactManifestKeys(data) {
-          var keys;
-          try {
-            keys = Object.keys(data).sort();
-          } catch (e) {
-            return false;
-          }
-          if (keys.length !== 2) return false;
-          if (keys[0] !== 'contract_version' || keys[1] !== 'release_sha') return false;
-          for (var i = 0; i < keys.length; i++) {
-            var descriptor;
-            try {
-              descriptor = Object.getOwnPropertyDescriptor(data, keys[i]);
-            } catch (e) {
-              return false;
-            }
-            if (!descriptor || !('value' in descriptor)) return false;
-          }
-          return true;
-        }
-
-        function applyManifest(data) {
-          if (!data || typeof data !== 'object' || data === null) {
-            state = 'UNAVAILABLE';
-            return;
-          }
-          if (!hasExactManifestKeys(data)) {
-            state = 'UNAVAILABLE';
-            return;
-          }
-          if (data.contract_version !== '1') {
-            state = 'UNAVAILABLE';
-            return;
-          }
-          if (!isValidReleaseSha(data.release_sha)) {
-            state = 'UNAVAILABLE';
-            return;
-          }
-          releaseSha = data.release_sha;
-          state = 'READY';
-        }
-
-        function boundedResult() {
-          if (state === 'READY' && releaseSha !== null) {
-            return Object.freeze({ ok: true, releaseSha: releaseSha });
-          }
-          return Object.freeze({ ok: false, code: 'RELEASE_SHA_UNAVAILABLE' });
-        }
-
-        // Returns the single in-flight request promise (or resolves the terminal
-        // state). Starts the lazy fetch on first use; never a second fetch, and
-        // never retries.
-        function readBoundedManifest() {
-          if (requestPromise) return requestPromise;
-          requestPromise = new Promise(function (resolve) {
-            function settleUnavailable() {
-              state = 'UNAVAILABLE';
-              resolve(boundedResult());
-            }
-            try {
-              if (typeof window.fetch !== 'function') {
-                settleUnavailable();
-                return;
-              }
-              window
-                .fetch('/.well-known/release.json', {
-                  cache: 'no-store',
-                  credentials: 'same-origin',
-                  headers: { Accept: 'application/json' }
-                })
-                .then(function (response) {
-                  if (!response || response.ok !== true || typeof response.json !== 'function') {
-                    settleUnavailable();
-                    return null;
-                  }
-                  return response.json();
-                })
-                .then(function (data) {
-                  applyManifest(data);
-                  resolve(boundedResult());
-                })
-                .catch(function () {
-                  settleUnavailable();
-                });
-            } catch (e) {
-              settleUnavailable();
-            }
-          });
-          return requestPromise;
-        }
-
-        return Object.freeze({
-          getCurrent: function () {
-            if (state === 'PENDING') {
-              readBoundedManifest();
-            }
-            return boundedResult();
-          },
-          getState: function () {
-            return state;
-          },
-          whenReady: function () {
-            if (state !== 'PENDING') {
-              return Promise.resolve(boundedResult());
-            }
-            return readBoundedManifest();
-          }
-        });
-      })();
-    </script>
+    <script src="../js/observability/editor-release-manifest-authority.js?v=20260804-3886-1"></script>
     <script src="../js/observability/reliability-write-read-convergence-core.js?v=20260803-3852"></script>
     <script src="../js/editor/editor-memory-form-save.js?v=20260701-1"></script>
     <script src="../js/editor/editor-memory-form.js?v=20260713-3483-1"></script>
@@ -360,8 +235,8 @@
     <!-- Scout Draft (Manual Entry) -->
     <link rel="stylesheet" href="../css/scout/scout-draft.css?v=20260605-1" />
     <script src="../js/scout/scout-draft.js?v=20260605-1"></script>
-    <script src="../js/scout/scout-draft-ui.js?v=20260605-1"></script>
     <script src="../js/scout/scout-suggestion-provider.js?v=20260605-1"></script>
+    <script src="../js/scout/scout-draft-ui.js?v=e2e799866637"></script>
     <script src="../js/scout/scout-suggestion-endpoint-client.js?v=20260606-4"></script>
     <script src="../js/scout/scout-suggestion-source-selector.js?v=20260606-1"></script>
 
@@ -386,29 +261,8 @@
     <script src="../js/i18n/i18n-search.js?v=20260421-1"></script>
     <script src="../js/i18n/i18n-detail.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-editor.js?v=c3b57d551fc7"></script>
+    <script src="../js/i18n/i18n-editor-extension.js?v=20260805-3887-1"></script>
     <script src="../js/i18n/i18n-scout.js?v=20260605-1"></script>
-    <script>
-      window.i18nEditor = Object.assign(window.i18nEditor || {}, {
-        editor_sidebar_public_tree: { ko: "공개", en: "Public" },
-        editor_sidebar_private_tree: { ko: "비공개", en: "Private" },
-        detail_empty_title: {
-          ko: "아직 선택한 순간이 없어요",
-          en: "No moment selected yet.",
-        },
-        detail_empty_desc: {
-          ko: "첫 순간은 가운데에서 시작하세요.",
-          en: "Start the first moment from the canvas.",
-        },
-        editor_current_moment_empty_title: {
-          ko: "아직 선택한 순간이 없어요",
-          en: "No moment selected yet.",
-        },
-        editor_current_moment_empty_hint: {
-          ko: "첫 순간은 가운데 캔버스에서 시작하세요.",
-          en: "Start the first moment from the center canvas.",
-        },
-      });
-    </script>
     <script src="../js/i18n/i18n-my-trees.js?v=20260421-5"></script>
     <script src="../js/i18n/i18n-index.js?v=20260421-1"></script>
     <script src="../js/i18n.js?v=20260419-2"></script>

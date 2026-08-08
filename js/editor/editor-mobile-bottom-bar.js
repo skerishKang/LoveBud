@@ -19,6 +19,8 @@
   var BOTTOM_BAR_ID = 'mobileBottomBar';
   var ACTION_BTN_ID = 'mobileBottomAction';
   var ACTION_LABEL_ID = 'mobileBottomActionLabel';
+  var SCOUT_BTN_ID = 'mobileScoutAction';
+  var SCOUT_LABEL_ID = 'mobileScoutActionLabel';
   var MODE_CLUSTER_ID = 'mobileModeCluster';
   var MODE_STATUS_ID = 'mobileModeStatus';
   var MODE_TOGGLE_ID = 'mobileModeToggle';
@@ -31,6 +33,8 @@
     var bar = document.getElementById(BOTTOM_BAR_ID);
     var actionBtn = document.getElementById(ACTION_BTN_ID);
     var actionLabel = document.getElementById(ACTION_LABEL_ID);
+    var scoutAction = document.getElementById(SCOUT_BTN_ID);
+    var scoutLabel = document.getElementById(SCOUT_LABEL_ID);
     if (!bar || !actionBtn || !actionLabel) return;
 
     // Prevent double-init
@@ -222,6 +226,23 @@
         }
       }
 
+      // #3907: compact secondary Scout entry shares the authoring authority.
+      // Hidden/disabled in view, read-only, and form-open states; never shown
+      // on desktop (the bar itself is hidden >=480px).
+      if (scoutAction) {
+        if (!isEdit) {
+          scoutAction.classList.add(AUTHORING_HIDDEN_CLASS);
+          scoutAction.setAttribute('aria-hidden', 'true');
+          scoutAction.disabled = true;
+          scoutAction.tabIndex = -1;
+        } else {
+          scoutAction.classList.remove(AUTHORING_HIDDEN_CLASS);
+          scoutAction.setAttribute('aria-hidden', 'false');
+          scoutAction.disabled = false;
+          scoutAction.tabIndex = 0;
+        }
+      }
+
       bar.classList.remove(IS_HIDDEN_CLASS);
       bar.dataset.modeSurface = isEdit ? 'edit' : 'view';
     }
@@ -259,9 +280,42 @@
       }
     }
 
+    /**
+     * Handle click on the mobile Scout control (#3907).
+     * Delegates to the same window.LoveBudScoutDraftUI.open authority as the
+     * desktop #ftbScoutAction. Focus is moved to this trigger first so the modal
+     * lifecycle can restore focus back to the actual mobile trigger on close.
+     */
+    function onScoutClick(e) {
+      e.preventDefault();
+
+      var mode = window.LoveBudEditorInteractionMode;
+      if (!mode || !mode.isEditMode()) return;
+
+      // Dual guard §2 (mirrors desktop): never open Scout in read-only trees.
+      var editorNamespace = (typeof window !== 'undefined' && window.LoveBudEditor) || {};
+      if (editorNamespace.canEdit === false) return;
+
+      if (scoutAction) scoutAction.focus();
+
+      var selected = document.querySelector('.memory-node.selected');
+      // Canvas nodes carry data-memory-id; the floating-toolbar context uses
+      // data-id. Accept either so the real selected Moment id is forwarded.
+      var selectedId = selected
+        ? (selected.dataset.memoryId || selected.dataset.id || selected.getAttribute('data-id') || null)
+        : null;
+
+      if (window.LoveBudScoutDraftUI && typeof window.LoveBudScoutDraftUI.open === 'function') {
+        window.LoveBudScoutDraftUI.open(selectedId);
+      }
+    }
+
     // ── Bind events ──────────────────────────────────────
 
     actionBtn.addEventListener('click', onActionClick);
+    if (scoutAction) {
+      scoutAction.addEventListener('click', onScoutClick);
+    }
 
     // Debounced update to avoid rapid reflows
     var updateTimer = null;

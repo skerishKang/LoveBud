@@ -1387,6 +1387,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-real-page-structural-baseline-3896-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Loads real pages/editor.html with the full production CSS/JS chains (js/editor/*.js including js/editor/editor-bindings.js, js/editor/editor-detail-ui.js, js/editor/editor-canvas.js, js/shared/canonical-appreciation-detail-presentation.js, js/editor/editor-mobile-bottom-bar.js, js/editor/editor-mobile-panel-hierarchy.js) in Playwright Chromium via a local 127.0.0.1 HTTP server. Synthetic auth via page.addInitScript (localStorage + window.firebase mock + LoveBudAuthBootstrap); synthetic authenticated reads only (GET exact allowlist: /api/trees/editor-tree-3896, /api/memories?treeId=, and per-memory /reactions + /comments) routed with zero Authorization headers, zero writes, zero unexpected same-origin API, and zero real external network. The allowlisted GETs actually issued are recorded (health.allowedApiRequests) and the required minimum set is asserted. Asserts the real user flows on desktop 1440x900 and mobile 390x844: data load (canvas memory-node selection, detailViewMode visible), view mode baseline (shared-header/canvasArea/editorSidebarPanel/detailPanel visibility and geometry, sidebar-canvas non-overlap, horizontal overflow <= 1px), desktop real path into the edit form (real #editorModeTransitionBtn mode control toggling body data-editor-interaction-mode to edit, then real #editMemoryBtn opening detailEditMode, verifying editTitleInput/editMemoInput/editSourceUrlInput/editTagsInput, saveEditBtn presence, cancelEditBtn), cancel back to view with selected-memory identity (#detailCurrentMomentTitle + .memory-node.selected dataset), tree identity, and route (pathname + treeId/lang query) preserved and zero writes, and the mobile real path (canvas node selection, real #mobileModeToggle to edit mode, #mobileDetailPanelToggle opening the .is-mobile-panel-open detail sheet, #editMemoryBtn form inside the scrollable sheet with the primary field in viewport, #cancelEditBtn returning to view with the same preservation checks). NC1-NC8 negative controls exercise real product events through disposable route-intercepted copies of the real js/editor/editor-bindings.js (no product file mutation): NC1 real edit click with editMemoryBtn binding removed -> form not opened; NC2 real edit click with enterEditMode disconnected -> form not opened; NC3 real #cancelEditBtn click with cancelEditBtn binding removed -> view not restored; NC4 real #cancelEditBtn click with exitEditMode wiring disconnected (cancel binding preserved via an instrumented no-op replacement callback that runs exactly once, proving the binding fires while exitEditMode is never invoked) -> view not restored and edit form stays; NC5 forced tree GET 404 -> product tree-load-error UI (#retryOpenTreeBtn) rendered and currentTreeData null; NC6 forced memories GET 404 -> memory load settled to empty and no canvas nodes; NC7 actual same-origin POST to a disposable probe path -> write guard observes exactly one write and trips; NC8 mobile edit field forced out of viewport -> in-viewport contract fails. Browser health zero pageerror, zero console error, zero request-failed/HTTP >=400, zero writes, zero Authorization headers. No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/editor-required-global-waiter-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -2029,6 +2035,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/lovetree-import-beginner-tutorial-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads docs/product/LOVETREE_IMPORT_BEGINNER_TUTORIAL_CONTRACT.md and asserts the required sections, exact current-main baseline SHA, two-route entry model (YouTube playlist and browser bookmark), YouTube and bookmark tutorial step/copy contracts, normalized preview-state vocabulary, accessibility/focus requirements, privacy/retention/consent copy, error/recovery matrix, owner real-use acceptance checklist separation from automated tests, bounded ordered implementation children, explicit non-actions, hard prohibitions, and keep-open issue language. Does not execute runtime, launch a browser, call a provider API, connect to a database or network, deploy, or mutate production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/lovetree-public-youtube-playlist-preview-authority-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the #3906 public YouTube playlist preview authority document and asserts repository-owned section structure, canonical state vocabulary, route/auth/write-zero/security/privacy/provider/tutorial/negative-control markers, and Production-evidence wording without executing target runtime behavior, network, provider requests, database, browser, Production/Preview, or filesystem writes.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/media-fallback-unification-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -2079,7 +2097,7 @@
     {
       "path": "tests/contracts/merge-first-production-verification-governance-contract.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Reads the canonical MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md, AGENTS.md, and .kilocode rules; asserts on string existence, section presence, and policy language. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
+      "rationale": "Reads the canonical MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md, AGENTS.md, and governance docs; asserts on string existence, section presence, and policy language. Does not execute runtime code, launch a browser, connect to a database or network, deploy, or mutate production.",
       "capabilities": []
     },
     {
@@ -3232,6 +3250,12 @@
       "path": "tests/contracts/scout-real-kv-adapter-interface-scaffold-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/scout-real-page-link-to-draft-activation-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Loads the real pages/editor.html with the full production CSS/JS chains (js/scout/scout-draft.js, js/scout/scout-suggestion-provider.js, js/scout/scout-draft-ui.js, js/scout/scout-suggestion-endpoint-client.js, js/scout/scout-suggestion-source-selector.js, js/editor/editor-floating-toolbar.js, js/editor/editor-floating-toolbar-dropdown.js, js/editor/editor-mobile-bottom-bar.js, js/shared/modal-a11y.js) in Playwright Chromium via a local 127.0.0.1 HTTP server (issue #3907). Synthetic credential-free owner via page.addInitScript (localStorage + window.firebase mock); synthetic Tree/Moment fixtures with an exact same-origin API GET allowlist (/api/trees/scout-tree-3907, /api/memories?treeId=, per-memory /reactions + /comments) and one intercepted POST /api/memories save. Asserts the real local_stub journey at 1440x900 and 390x844: desktop actual #ftbScoutAction (floating-toolbar dropdown) and mobile actual #mobileScoutAction (bottom-bar secondary) open the same dialog; dialog role=dialog/aria-modal/aria-labelledby=scoutDraftTitle with an <h2 id=scoutDraftTitle>; initial focus enters #scoutSourceUrlInput; actual #scoutDraftSuggestBtn applies deterministic local_stub content (excerpt/memo/emotion tags) with endpoint request 0 and write 0; excerpt/memo/tags/source attribution remain editable; repeat open/suggest keeps exactly one #scoutDraftModal and exactly one modal keydown listener (document listener count instrumented) with no duplicate output; manual save stays user-triggered and delegates exactly once to the existing Moment save boundary via an intercepted synthetic POST /api/memories (health.writeRequests === 1); cancel/close/backdrop/Escape each restore focus to the opening desktop (#ftbMoreBtn fallback) or mobile (#mobileScoutAction) trigger; mobile primary + Scout controls fit 390px with horizontal overflow <= 1px; read-only/view mode exposes no enabled Scout entry. NC1-NC12 negative controls exercise real product events through disposable route-intercepted copies (editor.html order, scout-draft-ui.js, scout-suggestion-provider.js, scout-suggestion-source-selector.js — never touching product files): NC1 provider script moved after UI + lazy lookup removed -> suggestion unavailable; NC2 provider global absent at click time -> actionable unavailable, no crash/write; NC3 source selector forced to endpoint/live -> no stub content and a Scout endpoint request observed; NC4 actual Scout endpoint POST probe -> unexpected-API guard trips; NC5 #mobileScoutAction removed -> mobile journey cannot open; NC6 forced-visible entry in view mode -> no-enabled-entry contract violated; NC7 role/aria removed -> semantics assertion fails; NC8 initial focus removed -> focus assertion fails; NC9 restoreFocus removed -> desktop and mobile focus-restore assertions fail; NC10 injected duplicate keydown listener -> exact-count assertion trips; NC11 auto-writing suggestion -> write=0 guard trips; NC12 forced 600px element -> overflow >1px geometry assertion trips. Browser health zero pageerror, zero console error, zero same-origin failure, zero unexpected API, zero Scout endpoint in local_stub, zero external, zero Authorization, zero suggestion write. No production write/auth/API/DB mutation.",
       "capabilities": []
     },
     {
