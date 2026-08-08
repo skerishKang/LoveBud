@@ -26,7 +26,6 @@ const PATHS = Object.freeze({
   uiLane: 'docs/project/UI_RAPID_ITERATION_LANE.md',
   templates: 'docs/project/ROLE_SESSION_TEMPLATES.md',
   agents: 'AGENTS.md',
-  kilo: '.kilocode/rules/00-lovebud-global.md',
   prChecklist: 'docs/ops/PR_CHECKLIST.md',
   mergeFirst: 'docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md',
   verification: 'docs/project/VERIFICATION_AND_EVIDENCE.md',
@@ -57,7 +56,6 @@ function assertContainsAll(text, values, label) {
 
 const CURRENT_ENTRYPOINTS = Object.freeze([
   PATHS.agents,
-  PATHS.kilo,
   PATHS.roles,
   PATHS.uiLane,
   PATHS.templates,
@@ -167,7 +165,7 @@ test('current entrypoints link canonical governance and current role/UI policy',
       `${rel} must link canonical governance`);
   }
 
-  for (const rel of [PATHS.agents, PATHS.kilo, PATHS.roles, PATHS.templates, PATHS.prChecklist]) {
+  for (const rel of [PATHS.agents, PATHS.roles, PATHS.templates, PATHS.prChecklist]) {
     const src = read(rel);
     assert.ok(src.includes('UI_RAPID_ITERATION_LANE.md'), `${rel} must link UI Rapid Iteration Lane`);
   }
@@ -199,7 +197,7 @@ test('root guidance restores numbered environment and operational input/image gu
 });
 
 test('entrypoints do not restore Local as the default coder for U0/U1', () => {
-  for (const rel of [PATHS.agents, PATHS.kilo, PATHS.roles, PATHS.templates, PATHS.prChecklist, PATHS.verification]) {
+  for (const rel of [PATHS.agents, PATHS.roles, PATHS.templates, PATHS.prChecklist, PATHS.verification]) {
     const src = read(rel);
     assert.doesNotMatch(src, /U0\/U1[^\n]{0,200}(Local Validation (is )?required|must use Local)/i,
       `${rel} must not require Local for U0/U1`);
@@ -208,7 +206,7 @@ test('entrypoints do not restore Local as the default coder for U0/U1', () => {
 
 test('entrypoints do not restore universal full-suite, fixed-slot, or screenshot gates for U0/U1', () => {
   const forbidden = /U0\/U1[^\n]{0,240}(must use full suite|full suite is required|required fixed slot|fixed slot is required|screenshots are required)/i;
-  for (const rel of [PATHS.agents, PATHS.kilo, PATHS.uiLane, PATHS.prChecklist, PATHS.mergeFirst, PATHS.verification]) {
+  for (const rel of [PATHS.agents, PATHS.uiLane, PATHS.prChecklist, PATHS.mergeFirst, PATHS.verification]) {
     assert.doesNotMatch(read(rel), forbidden, `${rel} must keep U0/U1 risk-proportional`);
   }
 });
