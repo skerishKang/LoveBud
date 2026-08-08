@@ -22,6 +22,7 @@ from modal_compute.validation import (
     normalize_group_name,
     normalize_keywords,
     normalize_tree_row,
+    validate_explicit_visibility,
     validate_optional_string,
     validate_required_uuid,
     validate_visibility,
@@ -100,7 +101,7 @@ def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> d
         params.append(validate_optional_string(payload.get("title"), 200))
 
     if "visibility" in payload:
-        visibility = validate_visibility(payload.get("visibility"), "public")
+        visibility = validate_explicit_visibility(payload.get("visibility"))
         require_plus_for_private_storage(owner_id, visibility)
         updates.append("visibility = %s")
         params.append(visibility)
