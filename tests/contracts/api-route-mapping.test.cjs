@@ -135,17 +135,30 @@ test('cloudflare api catch-all routes public tree GET without auth to modal/tree
   );
 });
 
-test('production public tree detail cache boundary resides in route-specific trees/[id].js', () => {
+test('production public tree detail is not persisted in an explicit cache (Issue #3933)', () => {
   const content = readFileContent(TREE_DETAIL_JS);
 
-  // Must verify that the cache implementation is handled in trees/[id].js (route-specific priority)
+  // The privacy-revocable Tree detail must not use explicit Cache API persistence:
+  // a POP-local entry could keep serving a stale public body after revocation.
   assert.ok(
-    hasString(content, 'x-lovebud-public-tree-cache'),
-    'trees/[id].js must implement x-lovebud-public-tree-cache headers and policy'
+    !hasString(content, 'caches.default'),
+    'trees/[id].js must not access the Cache API'
   );
   assert.ok(
-    hasString(content, 'max-age=30'),
-    'trees/[id].js must specify cache max-age=30'
+    !hasString(content, '__cache/public/trees'),
+    'trees/[id].js must not persist a Tree-detail cache key'
+  );
+  assert.ok(
+    !hasString(content, 'max-age=30'),
+    'trees/[id].js must not set a 30-second cache lifetime'
+  );
+  assert.ok(
+    !hasString(content, 'x-lovebud-public-tree-cache-expires-at'),
+    'trees/[id].js must not set the retired expiry header'
+  );
+  assert.ok(
+    hasString(content, "headers.set('Cache-Control', 'no-store')"),
+    'anonymous Tree detail responses must be no-store'
   );
 });
 
