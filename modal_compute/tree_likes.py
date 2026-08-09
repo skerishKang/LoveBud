@@ -40,6 +40,30 @@ def require_public_tree_for_like(tree_id: str) -> dict[str, Any]:
     return tree
 
 
+def require_public_tree_cursor(cur: Any, tree_id: str) -> dict[str, Any]:
+    """Authorize a Tree social write inside its mutation transaction.
+
+    FOR SHARE conflicts with the owner's non-key visibility UPDATE, so a
+    successful explicit-public authorization remains authoritative until this
+    transaction completes. Ordinary read paths intentionally keep using the
+    lock-free require_public_tree_for_like() helper above.
+    """
+    cur.execute(
+        """
+        SELECT id, visibility
+        FROM trees
+        WHERE id = %s
+          AND visibility = 'public'
+        FOR SHARE
+        """,
+        (tree_id,),
+    )
+    tree = cur.fetchone()
+    if not tree:
+        raise HTTPException(status_code=404, detail="Tree not found")
+    return tree
+
+
 def _table_exists(cur, table_name: str) -> bool:
     cur.execute(
         """
@@ -229,8 +253,6 @@ def toggle_tree_like(tree_id: str, owner_id: str, idempotency_key: str | None = 
 
     validate_idempotency_key_format(idempotency_key)
 
-    require_public_tree_for_like(safe_tree_id)
-
     operation = "tree.like.toggle"
     body: dict[str, Any] = {}
 
@@ -239,6 +261,7 @@ def toggle_tree_like(tree_id: str, owner_id: str, idempotency_key: str | None = 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             try:
+                require_public_tree_cursor(cur, safe_tree_id)
                 cur.execute("SELECT pg_advisory_xact_lock(%s)", (lock_key,))
 
                 _ensure_tree_social_counts(cur, safe_tree_id)
