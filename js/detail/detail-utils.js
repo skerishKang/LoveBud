@@ -62,32 +62,73 @@
             return tText(raw, prettifyTagLabel(raw));
         };
 
+        const TRUSTED_YOUTUBE_HOSTS = new Set([
+            'youtube.com',
+            'www.youtube.com',
+            'm.youtube.com',
+            'music.youtube.com',
+            'youtube-nocookie.com',
+            'www.youtube-nocookie.com'
+        ]);
+        const YOUTUBE_SHORT_HOST = 'youtu.be';
+        const YOUTUBE_VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
+        const emptyVideoSource = () => ({ embedUrl: '', watchUrl: '' });
+
+        const sanitizeVideoHttpUrl = (value) => {
+            const security = window.LoveBudSecurity;
+            if (security && typeof security.sanitizeUrl === 'function') {
+                return security.sanitizeUrl(value);
+            }
+
+            const raw = String(value ?? '').trim();
+            if (!/^https?:\/\//i.test(raw)) return '';
+            try {
+                const parsed = new URL(raw);
+                return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+                    ? parsed.href
+                    : '';
+            } catch (error) {
+                return '';
+            }
+        };
+
         const normalizeVideoSourceUrl = (url) => {
             if (typeof url !== 'string') return '';
             const trimmed = url.trim();
             if (!trimmed) return '';
 
+            const safeUrl = sanitizeVideoHttpUrl(trimmed);
+            if (!safeUrl) return emptyVideoSource();
+
             try {
-                const parsed = new URL(trimmed, window.location.origin);
+                const parsed = new URL(safeUrl);
+                if (parsed.username || parsed.password) return emptyVideoSource();
+
                 const host = parsed.hostname.toLowerCase();
-                const isYouTubeHost = host.includes('youtube.com') || host.includes('youtu.be');
+                const isShortYouTubeHost = host === YOUTUBE_SHORT_HOST;
+                const isTrustedYouTubeHost = isShortYouTubeHost || TRUSTED_YOUTUBE_HOSTS.has(host);
 
-                if (isYouTubeHost) {
-                    const videoId = parsed.searchParams.get('v')
-                        || (parsed.pathname.startsWith('/embed/') ? parsed.pathname.split('/embed/')[1].split('/')[0] : '')
-                        || (host.includes('youtu.be') ? parsed.pathname.replace(/^\//, '').split('/')[0] : '');
-
-                    if (videoId) {
-                        return {
-                            embedUrl: `https://www.youtube.com/embed/${videoId}`,
-                            watchUrl: `https://www.youtube.com/watch?v=${videoId}`
-                        };
-                    }
+                if (!isTrustedYouTubeHost) {
+                    return { embedUrl: '', watchUrl: parsed.href };
                 }
 
-                return { embedUrl: trimmed, watchUrl: trimmed };
+                let videoId = '';
+                if (isShortYouTubeHost) {
+                    videoId = parsed.pathname.split('/').filter(Boolean)[0] || '';
+                } else if (parsed.pathname.startsWith('/embed/') || parsed.pathname.startsWith('/shorts/')) {
+                    videoId = parsed.pathname.split('/').filter(Boolean)[1] || '';
+                } else {
+                    videoId = parsed.searchParams.get('v') || '';
+                }
+
+                if (!YOUTUBE_VIDEO_ID_PATTERN.test(videoId)) return emptyVideoSource();
+
+                return {
+                    embedUrl: `https://www.youtube.com/embed/${videoId}`,
+                    watchUrl: `https://www.youtube.com/watch?v=${videoId}`
+                };
             } catch (error) {
-                return { embedUrl: trimmed, watchUrl: trimmed };
+                return emptyVideoSource();
             }
         };
 

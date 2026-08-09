@@ -54,7 +54,7 @@
         const buildIframeEmbedMarkup = ({ iframeSrc, watchUrl, title }) => `
             <div style="position:relative;width:100%;height:100%;">
                 <iframe width="100%" height="100%"
-                    src="${iframeSrc}"
+                    src="${escapeHtml(iframeSrc)}"
                     title="${escapeHtml(title || '')}" frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     referrerpolicy="strict-origin-when-cross-origin"
