@@ -27,6 +27,7 @@ def _build_reaction_counts(counts: dict[str, int]) -> dict[str, int]:
 
 _TABLE_EXISTS_CACHE: dict[str, bool] = {}
 _TABLE_HAS_COLUMN_CACHE: dict[tuple[str, str], bool] = {}
+_MODERN_MEMORY_SCHEMA_ABSENT = object()
 
 
 def _table_exists(cur, table_name: str) -> bool:
@@ -620,10 +621,10 @@ def require_public_memory_membership(tree_id: str, memory_id: str) -> dict[str, 
 
 
 def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
-    """Fetch a single public memory. Falls back to legacy payload.nodes if memories table doesn't exist."""
+    """Fetch one public Memory, using legacy payload only if the modern schema is absent."""
 
-    def try_modern() -> dict[str, Any] | None:
-        """Try the modern single memory query."""
+    def try_modern() -> dict[str, Any] | None | object:
+        """Return a modern DTO/miss or the schema-absent sentinel."""
         query = """
             SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
                    m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
@@ -642,15 +643,13 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if not _table_exists(cur, "memories"):
-                        return False  # Sentinel: table doesn't exist
+                        return _MODERN_MEMORY_SCHEMA_ABSENT
                     cur.execute(query, (memory_id,))
                     return cur.fetchone()
 
         result = run_db_with_retry(operation)
-        if result is False:
-            return None  # Table doesn't exist
-        if result is None:
-            return None  # Not found in modern
+        if result is _MODERN_MEMORY_SCHEMA_ABSENT:
+            return result
         if not result:
             return None
 
@@ -662,19 +661,24 @@ def fetch_public_memory(memory_id: str) -> dict[str, Any] | None:
         return memory
 
     modern_result = try_modern()
-    if modern_result is not None:
+    if modern_result is not _MODERN_MEMORY_SCHEMA_ABSENT:
         return modern_result
 
-    # Legacy fallback: search payload.nodes for the memory_id
+    # Genuine legacy fallback: first prove every column referenced by its SELECT.
     def operation():
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                has_payload = _table_has_column(cur, "trees", "payload")
+                has_created_at = _table_has_column(cur, "trees", "created_at")
+                has_updated_at = _table_has_column(cur, "trees", "updated_at")
+                if not (has_payload and has_created_at and has_updated_at):
+                    return []
+
                 has_title = _table_has_column(cur, "trees", "title")
                 has_visibility = _table_has_column(cur, "trees", "visibility")
                 has_name = _table_has_column(cur, "trees", "name")
                 has_is_public = _table_has_column(cur, "trees", "is_public")
 
-                # Use appropriate column names based on schema
                 if has_title and has_visibility:
                     tree_cols = "id, title as name, visibility as is_public, payload, created_at, updated_at"
                     public_filter = "visibility = 'public'"
