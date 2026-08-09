@@ -19,13 +19,22 @@
  *   Case C (failure rollback): a mid-copy failure inside the fork transaction
  *     rolls back the destination tree AND the copied memories (no partial fork).
  *
+ *   Case D (memory fork-lock-first, #3956): the fork transaction reads AND
+ *     locks the selected public source memory rows with FOR SHARE; a concurrent
+ *     memory-level public -> private UPDATE blocks until the fork commits, so a
+ *     memory cannot flip private after being read and still end up in a durable
+ *     public destination copy.
+ *
+ *   Case E (memory private-first, #3956): a memory revoked before the fork's
+ *     read is excluded by the WHERE clause; remaining public memories copy fine.
+ *
  * The fork SQL below mirrors tree_writes.py::fork_public_tree exactly; keep it
  * in sync if that function changes.
  *
  * Reads only LB_TEST_PG* synthetic connection vars (loopback). Never reads
  * DATABASE_URL / Neon / secrets / production hosts.
  *
- * Refs: #3952, #3924, #3925, #1882
+ * Refs: #3956, #3952, #3924, #3925, #1882
  */
 
 const test = require('node:test');
@@ -67,7 +76,8 @@ const FETCH_SOURCE_MEMORIES_SQL = `
   WHERE tree_id = $1
     AND visibility = 'public'
   ORDER BY created_at ASC
-  LIMIT 200;
+  LIMIT 200
+  FOR SHARE;
 `;
 
 const INSERT_MEMORY_SQL = `
@@ -327,6 +337,129 @@ test('fork Case B: fork-lock-first — revocation blocks until fork commits', { 
     } finally {
       await forkConn.end().catch(() => {});
       await revokerConn.end().catch(() => {});
+    }
+  });
+});
+
+// ─── Case D (#3956): fork locks public memory rows — memory visibility UPDATE ─
+// ─── blocks until the fork commits ────────────────────────────────────────────
+
+test('fork memory Case D: fork-lock-first — memory visibility UPDATE blocks until fork commits', { timeout: 30000 }, async () => {
+  await withDisposableDb('caseD_mem_fork_first', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'owner-d';
+    const { publicIds } = await seedSource(client, sourceId, ownerId);
+    const memM = publicIds[0];
+
+    const forkConn = openPeerClient(cfg, dbName);
+    const revokerConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      await revokerConn.connect();
+
+      // Fork transaction locks the source tree and reads the public memories.
+      await forkConn.query('BEGIN');
+      await forkConn.query(LOCK_SOURCE_SQL, [sourceId]);
+      const memRows = await forkConn.query(FETCH_SOURCE_MEMORIES_SQL, [sourceId]);
+      assert.equal(memRows.rows.length, 3, 'three public memories selected');
+
+      // Concurrent memory public -> private UPDATE must block on the memory
+      // row lock held by the fork's read (FOR SHARE after the #3956 fix).
+      const revokePromise = revokerConn.query(
+        `UPDATE public.memories SET visibility = 'private' WHERE id = $1`,
+        [memM]
+      );
+      revokePromise.catch(() => {}); // bound; result awaited below
+      const blocked = await settledWithin(revokePromise, 700);
+      assert.equal(
+        blocked,
+        false,
+        'memory visibility UPDATE must block while fork holds memory FOR SHARE'
+      );
+
+      // Fork completes the copy and commits.
+      const destId = uuid();
+      await forkConn.query(INSERT_TREE_SQL, [destId, ownerId, 'Source Tree (복사본)', sourceId]);
+      for (const mem of memRows.rows) {
+        await insertMemoryCopy(forkConn, destId, null, mem);
+      }
+      await forkConn.query('COMMIT');
+
+      // After the fork commits, the blocked memory revocation proceeds.
+      const revokeOutcome = await Promise.race([
+        revokePromise.then(() => 'committed'),
+        sleep(6000).then(() => 'TIMEOUT'),
+      ]);
+      assert.equal(revokeOutcome, 'committed', 'memory revocation must complete after fork commits (no deadlock)');
+
+      // Deterministic end state: the fork durably holds the memory that was
+      // public at lock time; the source memory is now private.
+      const destMemories = await countRows(
+        client,
+        `SELECT count(*)::int AS count FROM public.memories WHERE tree_id = $1`,
+        [destId]
+      );
+      assert.equal(destMemories, 3, 'fork copied the memories public at lock time');
+      const srcMemVis = await client.query(
+        `SELECT visibility FROM public.memories WHERE id = $1`,
+        [memM]
+      );
+      assert.equal(srcMemVis.rows[0].visibility, 'private', 'source memory revoked after fork commit');
+      pass('fork memory Case D fork-lock-first');
+    } finally {
+      await forkConn.end().catch(() => {});
+      await revokerConn.end().catch(() => {});
+    }
+  });
+});
+
+// ─── Case E (#3956): memory private-first — revoked memory excluded, others copied ─
+
+test('fork memory Case E: memory-private-first — revoked memory excluded, other public memories copied', { timeout: 30000 }, async () => {
+  await withDisposableDb('caseE_mem_revoke_first', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'owner-e';
+    const { publicIds } = await seedSource(client, sourceId, ownerId);
+    const memM = publicIds[0];
+
+    const revokerConn = openPeerClient(cfg, dbName);
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await revokerConn.connect();
+      await forkConn.connect();
+
+      // Memory revocation commits before the fork reads memories.
+      await revokerConn.query(
+        `UPDATE public.memories SET visibility = 'private' WHERE id = $1`,
+        [memM]
+      );
+
+      await forkConn.query('BEGIN');
+      await forkConn.query(LOCK_SOURCE_SQL, [sourceId]);
+      const memRows = await forkConn.query(FETCH_SOURCE_MEMORIES_SQL, [sourceId]);
+      assert.equal(memRows.rows.length, 2, 'revoked memory is excluded at read time');
+      const destId = uuid();
+      await forkConn.query(INSERT_TREE_SQL, [destId, ownerId, 'Source Tree (복사본)', sourceId]);
+      for (const mem of memRows.rows) {
+        await insertMemoryCopy(forkConn, destId, null, mem);
+      }
+      await forkConn.query('COMMIT');
+
+      const destMemories = await countRows(
+        client,
+        `SELECT count(*)::int AS count FROM public.memories WHERE tree_id = $1`,
+        [destId]
+      );
+      assert.equal(destMemories, 2, 'only the remaining public memories are copied');
+      const srcMemVis = await client.query(
+        `SELECT visibility FROM public.memories WHERE id = $1`,
+        [memM]
+      );
+      assert.equal(srcMemVis.rows[0].visibility, 'private');
+      pass('fork memory Case E memory-private-first');
+    } finally {
+      await revokerConn.end().catch(() => {});
+      await forkConn.end().catch(() => {});
     }
   });
 });

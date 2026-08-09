@@ -209,6 +209,11 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """
 
     # Fetch public memories from source tree (inside the authorized transaction).
+    # The selected public rows are locked FOR SHARE so a concurrent memory
+    # public -> private revocation blocks until the fork commits (#3956). A
+    # memory can therefore never flip private after being read here and still
+    # end up in the durable public destination copy. FOR KEY SHARE would NOT
+    # conflict with the non-key visibility UPDATE and is deliberately not used.
     # Private memories are never copied.
     fetch_source_memories_query = """
         SELECT id, parent_id, title, memo, artist, source, source_url, source_type,
@@ -217,7 +222,8 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
         WHERE tree_id = %s
           AND visibility = 'public'
         ORDER BY created_at ASC
-        LIMIT 200;
+        LIMIT 200
+        FOR SHARE;
     """
 
     insert_memory_query = """
