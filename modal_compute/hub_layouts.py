@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import uuid
@@ -131,8 +132,14 @@ def _validate_layout_mode(mode: Any) -> str:
     return mode
 
 
+def _hub_layout_lock_key(tree_id: str) -> int:
+    """Return a stable, domain-separated signed bigint for PostgreSQL advisory locking."""
+    digest = hashlib.sha256(f"hub-layout:{tree_id}".encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=True)
+
+
 def _fetch_latest_revision(tree_id: str) -> int | None:
-    """Fetch the latest revision number for a tree's hub layout."""
+    """Fetch the latest revision number for a tree's hub layout (read-only callers)."""
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -154,20 +161,15 @@ def save_hub_layout(
     owner_id: str,
     payload: dict[str, Any],
 ) -> dict[str, Any]:
-    """Save a new revision of hub layout.
+    """Save a new revision of hub layout atomically per Tree.
 
-    Steps:
-    1. Validate tree ownership via ``require_tree_owner``
-    2. Validate ``baseRevision``: must match the latest revision or 409
-    3. Validate ``layoutMode`` and ``manualPositions``
-    4. Insert a new row with ``revision = latest + 1``
-
-    Returns ``{ revision, updated_at, positions }``.
+    Payload/ownership validation occurs before the transaction. Revision authority
+    and the insert share one transaction guarded by a Tree-scoped advisory lock,
+    so concurrent writers from the same base revision serialize deterministically.
     """
-    # 1. Tree ownership
+    # Validate ownership and request shape before taking the transaction lock.
     require_tree_owner(tree_id, owner_id)
 
-    # 2. baseRevision validation
     base_revision = payload.get("baseRevision")
     if base_revision is None:
         raise HTTPException(status_code=400, detail="baseRevision is required")
@@ -177,39 +179,52 @@ def save_hub_layout(
             detail="baseRevision must be a non-negative integer",
         )
 
-    latest_revision = _fetch_latest_revision(tree_id) or 0
-
-    if base_revision != latest_revision:
-        raise HTTPException(
-            status_code=409,
-            detail="Conflict: baseRevision does not match the latest revision",
-        )
-
-    # 3. Validate layout_mode and manual_positions
     layout_mode = _validate_layout_mode(payload.get("layoutMode"))
     manual_positions = _validate_manual_positions(payload.get("manualPositions", []))
 
-    # 4. Insert new revision
-    new_revision = latest_revision + 1
-
     with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO tree_hub_layouts (id, tree_id, revision, layout_mode, manual_positions, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s::jsonb, NOW(), NOW())
-                RETURNING revision, updated_at
-                """,
-                (
-                    str(uuid.uuid4()),
-                    tree_id,
-                    new_revision,
-                    layout_mode,
-                    json.dumps(manual_positions),
-                ),
-            )
-            row = cur.fetchone()
-        conn.commit()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT pg_advisory_xact_lock(%s)", (_hub_layout_lock_key(tree_id),))
+                cur.execute(
+                    """
+                    SELECT revision
+                    FROM tree_hub_layouts
+                    WHERE tree_id = %s
+                    ORDER BY revision DESC
+                    LIMIT 1
+                    """,
+                    (tree_id,),
+                )
+                latest_row = cur.fetchone()
+                latest_revision = latest_row["revision"] if latest_row else 0
+
+                if base_revision != latest_revision:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Conflict: baseRevision does not match the latest revision",
+                    )
+
+                new_revision = latest_revision + 1
+                cur.execute(
+                    """
+                    INSERT INTO tree_hub_layouts (id, tree_id, revision, layout_mode, manual_positions, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s::jsonb, NOW(), NOW())
+                    RETURNING revision, updated_at
+                    """,
+                    (
+                        str(uuid.uuid4()),
+                        tree_id,
+                        new_revision,
+                        layout_mode,
+                        json.dumps(manual_positions),
+                    ),
+                )
+                row = cur.fetchone()
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
     return {
         "revision": row["revision"],
