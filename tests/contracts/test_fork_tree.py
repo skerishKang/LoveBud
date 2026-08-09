@@ -8,6 +8,10 @@ Tests verify:
 - Original source tree is unchanged after fork
 - Duplicate fork guard returns existing copy with duplicate=true
 
+Privacy (#3952): the source authorization now happens inside the fork
+transaction (SELECT ... FOR SHARE), so these tests drive the mocked
+transaction cursor directly instead of a pre-transaction DTO fetch.
+
 These are contract-level tests. They mock db and auth layers.
 """
 from __future__ import annotations
@@ -94,6 +98,21 @@ def _make_new_tree_row(new_id: str, owner_id: str, title: str, source_id: str) -
     }
 
 
+def _fork_conn_context(cursor: MagicMock) -> MagicMock:
+    """Build a patch context for modal_compute.tree_writes.get_db_connection.
+
+    Returns (context, conn) where `with get_db_connection() as conn:` yields the
+    same mock connection and `with conn.cursor() as cur:` yields `cursor`.
+    """
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__ = lambda s: cursor
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    context = MagicMock()
+    context.return_value.__enter__ = lambda s: conn
+    context.return_value.__exit__ = MagicMock(return_value=False)
+    return context
+
+
 # --- Auth Required ---
 
 def test_fork_tree_requires_auth():
@@ -102,12 +121,17 @@ def test_fork_tree_requires_auth():
     assert response.status_code == 401, f"Expected 401, got {response.status_code}"
 
 
-# --- Missing Source ---
+# --- Missing Source (transaction-local FOR SHARE read returns no row) ---
 
 @patch("modal_compute.app.require_firebase_user", return_value={"uid": AUTH_USER_ID})
-@patch("modal_compute.app.fetch_tree_for_owner_check", return_value=None)
-def test_fork_tree_missing_source(mock_fetch, mock_auth):
+@patch("modal_compute.tree_writes.ensure_owner_user_exists")
+@patch("modal_compute.tree_writes.get_db_connection")
+def test_fork_tree_missing_source(mock_conn_ctx, mock_user, mock_auth):
     """POST /api/trees/:id/fork with non-existent source tree must return 404."""
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = None  # FOR SHARE source read -> no row
+    mock_conn_ctx.side_effect = _fork_conn_context(mock_cursor)
+
     response = client.post(
         f"/modal/private/trees/{MISSING_TREE_ID}/fork",
         headers={"authorization": "Bearer fake-token"},
@@ -117,12 +141,17 @@ def test_fork_tree_missing_source(mock_fetch, mock_auth):
     assert "not found" in body.get("detail", "").lower()
 
 
-# --- Private Source Rejection ---
+# --- Private Source Rejection (transaction-local visibility check) ---
 
 @patch("modal_compute.app.require_firebase_user", return_value={"uid": AUTH_USER_ID})
-@patch("modal_compute.app.fetch_tree_for_owner_check", return_value=MOCK_PRIVATE_TREE_ROW)
-def test_fork_tree_private_source_denied(mock_fetch, mock_auth):
+@patch("modal_compute.tree_writes.ensure_owner_user_exists")
+@patch("modal_compute.tree_writes.get_db_connection")
+def test_fork_tree_private_source_denied(mock_conn_ctx, mock_user, mock_auth):
     """POST /api/trees/:id/fork with private source tree must return 403."""
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.return_value = MOCK_PRIVATE_TREE_ROW  # FOR SHARE -> private
+    mock_conn_ctx.side_effect = _fork_conn_context(mock_cursor)
+
     response = client.post(
         f"/modal/private/trees/{PRIVATE_TREE_ID}/fork",
         headers={"authorization": "Bearer fake-token"},
@@ -135,43 +164,31 @@ def test_fork_tree_private_source_denied(mock_fetch, mock_auth):
 # --- Public Source Copy Success ---
 
 @patch("modal_compute.app.require_firebase_user", return_value={"uid": AUTH_USER_ID})
-@patch("modal_compute.app.run_db_with_retry")
-@patch("modal_compute.app.get_db_connection")
-def test_fork_tree_public_source_success(mock_conn_ctx, mock_retry, mock_auth):
+@patch("modal_compute.tree_writes.ensure_owner_user_exists")
+@patch("modal_compute.tree_writes.get_db_connection")
+def test_fork_tree_public_source_success(mock_conn_ctx, mock_user, mock_auth):
     """POST /api/trees/:id/fork with public source must create new tree owned by authed user."""
     new_tree_id = str(uuid.uuid4())
     new_tree_row = _make_new_tree_row(
         new_tree_id, AUTH_USER_ID, "My Public LoveTree (복사본)", PUBLIC_TREE_ID
     )
 
-    # run_db_with_retry: first call = no existing fork, subsequent = used in fork_public_tree
-    call_count = 0
-
-    def retry_side_effect(fn):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            # check_existing → no prior fork
-            return None
-        return fn()
-
-    mock_retry.side_effect = retry_side_effect
-
-    # Mock DB connection for insert operations
+    # fetchone order: FOR SHARE source -> public row, duplicate check -> none,
+    # destination tree INSERT -> new row, then memory INSERTs (no fetchone).
     mock_cursor = MagicMock()
-    mock_cursor.fetchone.side_effect = [new_tree_row, *[None] * 10]
+    mock_cursor.fetchone.side_effect = [
+        MOCK_PUBLIC_TREE_ROW,
+        None,
+        new_tree_row,
+        *[None] * 10,
+    ]
     mock_cursor.fetchall.return_value = MOCK_SOURCE_MEMORIES
-    mock_conn = MagicMock()
-    mock_conn.cursor.return_value.__enter__ = lambda s: mock_cursor
-    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
-    mock_conn_ctx.return_value.__enter__ = lambda s: mock_conn
-    mock_conn_ctx.return_value.__exit__ = MagicMock(return_value=False)
+    mock_conn_ctx.side_effect = _fork_conn_context(mock_cursor)
 
-    with patch("modal_compute.app.fetch_tree_for_owner_check", return_value=MOCK_PUBLIC_TREE_ROW):
-        response = client.post(
-            f"/modal/private/trees/{PUBLIC_TREE_ID}/fork",
-            headers={"authorization": "Bearer fake-token"},
-        )
+    response = client.post(
+        f"/modal/private/trees/{PUBLIC_TREE_ID}/fork",
+        headers={"authorization": "Bearer fake-token"},
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -186,40 +203,29 @@ def test_fork_tree_public_source_success(mock_conn_ctx, mock_retry, mock_auth):
 # --- Original Tree Unchanged ---
 
 @patch("modal_compute.app.require_firebase_user", return_value={"uid": AUTH_USER_ID})
-@patch("modal_compute.app.run_db_with_retry")
-@patch("modal_compute.app.get_db_connection")
-def test_fork_tree_original_unchanged(mock_conn_ctx, mock_retry, mock_auth):
+@patch("modal_compute.tree_writes.ensure_owner_user_exists")
+@patch("modal_compute.tree_writes.get_db_connection")
+def test_fork_tree_original_unchanged(mock_conn_ctx, mock_user, mock_auth):
     """After fork, source tree must not be modified."""
     new_tree_id = str(uuid.uuid4())
     new_tree_row = _make_new_tree_row(
         new_tree_id, AUTH_USER_ID, "My Public LoveTree (복사본)", PUBLIC_TREE_ID
     )
 
-    call_count = 0
-
-    def retry_side_effect(fn):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            return None
-        return fn()
-
-    mock_retry.side_effect = retry_side_effect
-
     mock_cursor = MagicMock()
-    mock_cursor.fetchone.side_effect = [new_tree_row, *[None] * 10]
+    mock_cursor.fetchone.side_effect = [
+        MOCK_PUBLIC_TREE_ROW,
+        None,
+        new_tree_row,
+        *[None] * 10,
+    ]
     mock_cursor.fetchall.return_value = MOCK_SOURCE_MEMORIES
-    mock_conn = MagicMock()
-    mock_conn.cursor.return_value.__enter__ = lambda s: mock_cursor
-    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
-    mock_conn_ctx.return_value.__enter__ = lambda s: mock_conn
-    mock_conn_ctx.return_value.__exit__ = MagicMock(return_value=False)
+    mock_conn_ctx.side_effect = _fork_conn_context(mock_cursor)
 
-    with patch("modal_compute.app.fetch_tree_for_owner_check", return_value=MOCK_PUBLIC_TREE_ROW):
-        client.post(
-            f"/modal/private/trees/{PUBLIC_TREE_ID}/fork",
-            headers={"authorization": "Bearer fake-token"},
-        )
+    client.post(
+        f"/modal/private/trees/{PUBLIC_TREE_ID}/fork",
+        headers={"authorization": "Bearer fake-token"},
+    )
 
     # Verify no UPDATE or DELETE was issued against the source tree
     all_execute_calls = [
@@ -232,16 +238,23 @@ def test_fork_tree_original_unchanged(mock_conn_ctx, mock_retry, mock_auth):
     assert len(source_mutations) == 0, f"Source tree was mutated: {source_mutations}"
 
 
-# --- Duplicate Fork Guard ---
+# --- Duplicate Fork Guard (inside the fork transaction) ---
 
 @patch("modal_compute.app.require_firebase_user", return_value={"uid": AUTH_USER_ID})
-@patch("modal_compute.app.fetch_tree_for_owner_check", return_value=MOCK_PUBLIC_TREE_ROW)
-@patch("modal_compute.app.fetch_owner_tree")
-@patch("modal_compute.app.run_db_with_retry")
-def test_fork_tree_duplicate_guard(mock_retry, mock_owner_tree, mock_fetch, mock_auth):
+@patch("modal_compute.tree_writes.ensure_owner_user_exists")
+@patch("modal_compute.tree_writes.fetch_owner_tree")
+@patch("modal_compute.tree_writes.get_db_connection")
+def test_fork_tree_duplicate_guard(mock_conn_ctx, mock_owner_tree, mock_user, mock_auth):
     """If user already forked this tree, return existing copy with duplicate=true."""
     existing_id = str(uuid.uuid4())
-    mock_retry.return_value = {"id": existing_id}  # existing fork found
+
+    # fetchone order: FOR SHARE source -> public row, duplicate check -> found.
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.side_effect = [
+        MOCK_PUBLIC_TREE_ROW,
+        {"id": existing_id},
+    ]
+    mock_conn_ctx.side_effect = _fork_conn_context(mock_cursor)
     mock_owner_tree.return_value = {
         "id": existing_id,
         "owner_id": AUTH_USER_ID,

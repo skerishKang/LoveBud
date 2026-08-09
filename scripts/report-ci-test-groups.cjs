@@ -80,6 +80,7 @@ const CANONICAL_GROUP_FIELDS = [
 
 const EXPECTED_DB_ENGINE_SCRIPTS = [
   { script: 'test:db-engine:tree-comments',          target: 'tests/db-engine/tree-comments-reconcile-postgres.test.cjs' },
+  { script: 'test:db-engine:fork-public-tree-visibility-concurrency', target: 'tests/db-engine/fork-public-tree-visibility-concurrency-postgres.test.cjs' },
   { script: 'test:db-engine:trees-schema',            target: 'tests/db-engine/trees-schema-foothold-postgres.test.cjs' },
   { script: 'test:db-engine:generic-social-a-guard',  target: 'tests/db-engine/generic-social-a-guard-postgres.test.cjs' },
   { script: 'test:db-engine:generic-social-a',        target: 'tests/db-engine/generic-social-a-postgres.test.cjs' },

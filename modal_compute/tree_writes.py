@@ -8,14 +8,12 @@ from fastapi import HTTPException
 from modal_compute.auth import require_plus_for_private_storage
 from modal_compute.db import (
     get_db_connection,
-    run_db_with_retry,
 )
 from modal_compute.owner_reads import (
     fetch_owner_tree,
 )
 from modal_compute.owner_users import ensure_owner_user_exists
 from modal_compute.write_validation import (
-    fetch_tree_for_owner_check,
     require_tree_owner,
 )
 from modal_compute.validation import (
@@ -167,21 +165,35 @@ def delete_owner_tree(owner_id: str, tree_id: str) -> dict[str, Any]:
 
 
 def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
-    """Copy a public LoveTree and its public memories into a new tree owned by owner_id."""
+    """Copy a public LoveTree and its public memories into a new tree owned by owner_id.
+
+    Privacy invariant (#3952): the fork is atomic with source visibility
+    authorization. The source tree row is read with SELECT ... FOR SHARE inside
+    the same transaction that performs the duplicate check, the destination tree
+    insert, and the public-memory copy. A concurrent public -> private
+    revocation can therefore never commit between the authorization read and the
+    durable copy: it either commits first (the fork observes `private` and
+    aborts with no destination rows) or it blocks on the FOR SHARE lock until
+    the fork transaction commits.
+    """
     ensure_owner_user_exists(owner_id)
     safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
 
-    # Fetch source tree — must exist and be public
-    source_tree = fetch_tree_for_owner_check(safe_source_id)
-    if not source_tree:
-        raise HTTPException(status_code=404, detail="Source tree not found")
-    if str(source_tree.get("visibility") or "") != "public":
-        raise HTTPException(
-            status_code=403,
-            detail="Only public trees can be forked",
-        )
+    new_tree_id = str(uuid.uuid4())
 
-    # Idempotency guard: if authenticated user already forked this tree, return existing copy
+    # Authoritative source read. FOR SHARE conflicts with the row lock taken by
+    # a visibility UPDATE, so it serializes a concurrent revocation against the
+    # copy below. FOR KEY SHARE would NOT conflict with a non-key UPDATE and is
+    # deliberately not used.
+    lock_source_query = """
+        SELECT id, title, visibility
+        FROM trees
+        WHERE id = %s
+        FOR SHARE;
+    """
+
+    # Idempotency guard: if authenticated user already forked this tree, return existing copy.
+    # Runs inside the same transaction, after the source row is authorized.
     existing_fork_query = """
         SELECT id FROM trees
         WHERE owner_id = %s
@@ -190,33 +202,14 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
         LIMIT 1;
     """
 
-    def check_existing():
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(existing_fork_query, (owner_id, safe_source_id))
-                return cur.fetchone()
-
-    existing = run_db_with_retry(check_existing)
-    if existing:
-        existing_id = str(existing["id"])
-        forked_tree = fetch_owner_tree(existing_id, owner_id)
-        if forked_tree:
-            return {**forked_tree, "forked": False, "duplicate": True}
-
-    # Build new tree title with suffix
-    source_title = str(source_tree.get("title") or "LoveTree")
-    new_title_raw = f"{source_title} (복사본)"
-    new_title = new_title_raw[:200]
-
-    new_tree_id = str(uuid.uuid4())
-
     insert_tree_query = """
         INSERT INTO trees (id, owner_id, title, visibility, forked_from_tree_id, created_at, updated_at)
         VALUES (%s, %s, %s, 'public', %s, NOW(), NOW())
         RETURNING id, owner_id, title, visibility, forked_from_tree_id, created_at, updated_at;
     """
 
-    # Fetch public memories from source tree
+    # Fetch public memories from source tree (inside the authorized transaction).
+    # Private memories are never copied.
     fetch_source_memories_query = """
         SELECT id, parent_id, title, memo, artist, source, source_url, source_type,
                thumbnail, emotion_tags, timestamp, channel_id, channel_name, channel_url
@@ -237,47 +230,102 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'public', %s, %s, %s, NOW(), NOW());
     """
 
+    existing_fork_id: str | None = None
+    new_tree_row: dict[str, Any] | None = None
+    source_memories: list[dict[str, Any]] = []
+
     with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            # Insert new tree
-            cur.execute(insert_tree_query, (new_tree_id, owner_id, new_title, safe_source_id))
-            new_tree_row = cur.fetchone()
+        try:
+            with conn.cursor() as cur:
+                # 1. Authoritative, transaction-local source read (FOR SHARE).
+                cur.execute(lock_source_query, (safe_source_id,))
+                source_tree = cur.fetchone()
 
-            # Fetch source memories
-            cur.execute(fetch_source_memories_query, (safe_source_id,))
-            source_memories = cur.fetchall()
+                # 2. Explicit public authorization inside the fork transaction.
+                if not source_tree:
+                    raise HTTPException(status_code=404, detail="Source tree not found")
+                if str(source_tree.get("visibility") or "") != "public":
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Only public trees can be forked",
+                    )
 
-            # Build old->new memory id map for parent_id rewriting
-            id_map: dict[str, str] = {}
-            for mem in source_memories:
-                id_map[str(mem["id"])] = str(uuid.uuid4())
+                # 3. Duplicate fork guard inside the same transaction.
+                cur.execute(existing_fork_query, (owner_id, safe_source_id))
+                existing = cur.fetchone()
+                if existing:
+                    existing_fork_id = str(existing["id"])
+                else:
+                    # 4. Source title comes from the authorized transaction row.
+                    source_title = str(source_tree.get("title") or "LoveTree")
+                    new_title_raw = f"{source_title} (복사본)"
+                    new_title = new_title_raw[:200]
 
-            # Insert copied memories with rewritten tree_id and parent_id
-            for mem in source_memories:
-                new_mem_id = id_map[str(mem["id"])]
-                old_parent_id = str(mem["parent_id"]) if mem["parent_id"] else None
-                new_parent_id = id_map.get(old_parent_id) if old_parent_id else None
-                cur.execute(
-                    insert_memory_query,
-                    (
-                        new_mem_id,
-                        new_tree_id,
-                        new_parent_id,
-                        mem["title"],
-                        mem["memo"],
-                        mem["artist"],
-                        mem["source"],
-                        mem["source_url"],
-                        mem["source_type"],
-                        mem["thumbnail"],
-                        mem["emotion_tags"],
-                        mem["timestamp"],
-                        mem.get("channel_id") or None,
-                        mem.get("channel_name") or None,
-                        mem.get("channel_url") or None,
-                    ),
-                )
-        conn.commit()
+                    # 5. Destination tree insert happens only after authorization.
+                    cur.execute(
+                        insert_tree_query,
+                        (new_tree_id, owner_id, new_title, safe_source_id),
+                    )
+                    new_tree_row = cur.fetchone()
+
+                    # 6. Public source memories read inside the same transaction.
+                    cur.execute(fetch_source_memories_query, (safe_source_id,))
+                    source_memories = cur.fetchall()
+
+                    # Build old->new memory id map for parent_id rewriting
+                    id_map: dict[str, str] = {}
+                    for mem in source_memories:
+                        id_map[str(mem["id"])] = str(uuid.uuid4())
+
+                    # 7. Insert copied memories with rewritten tree_id and parent_id.
+                    for mem in source_memories:
+                        new_mem_id = id_map[str(mem["id"])]
+                        old_parent_id = str(mem["parent_id"]) if mem["parent_id"] else None
+                        new_parent_id = id_map.get(old_parent_id) if old_parent_id else None
+                        cur.execute(
+                            insert_memory_query,
+                            (
+                                new_mem_id,
+                                new_tree_id,
+                                new_parent_id,
+                                mem["title"],
+                                mem["memo"],
+                                mem["artist"],
+                                mem["source"],
+                                mem["source_url"],
+                                mem["source_type"],
+                                mem["thumbnail"],
+                                mem["emotion_tags"],
+                                mem["timestamp"],
+                                mem.get("channel_id") or None,
+                                mem.get("channel_name") or None,
+                                mem.get("channel_url") or None,
+                            ),
+                        )
+
+            conn.commit()
+        except HTTPException:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            raise
+
+    if existing_fork_id is not None:
+        forked_tree = fetch_owner_tree(existing_fork_id, owner_id)
+        if forked_tree:
+            return {**forked_tree, "forked": False, "duplicate": True}
+
+    # Fail closed: a fork that was neither a duplicate nor materialized must never
+    # reach the success path with an undefined destination row.
+    if new_tree_row is None:
+        raise HTTPException(status_code=500, detail="Fork creation failed")
 
     memory_count = len(source_memories)
     new_tree = normalize_tree_row(new_tree_row, memory_count)
