@@ -20,15 +20,26 @@ from modal_compute.write_validation import (
 )
 
 
-def normalize_comment_row(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+def normalize_comment_row(row: dict[str, Any], requester_uid: str | None = None) -> dict[str, Any]:
+    """Normalize a comment DB row into the authenticated DTO.
+
+    The authenticated DTO intentionally excludes the raw stable account
+    identifier (owner_id). Instead it exposes ``isOwn``, a server-computed
+    boolean that is True only when the authenticated requester_uid matches the
+    row's owner_id.
+
+    Public/guest DTOs use ``normalize_public_comment_row`` instead.
+    """
+    result = {
         "id": str(row["id"]),
         "memoryId": str(row["memory_id"]),
-        "ownerId": str(row["owner_id"]),
         "body": str(row["body"]),
         "createdAt": _to_isoformat(row.get("created_at")),
         "updatedAt": _to_isoformat(row.get("updated_at")),
     }
+    if requester_uid is not None:
+        result["isOwn"] = str(row["owner_id"]) == str(requester_uid)
+    return result
 
 
 def create_comment(
@@ -100,7 +111,7 @@ def create_comment(
                                     code="IDEMPOTENCY_RESULT_UNAVAILABLE",
                                     message="The original comment is no longer available",
                                 )
-                            return normalize_comment_row(comment_row)
+                            return normalize_comment_row(comment_row, owner_id)
 
                     raise SocialWriteError(
                         status_code=410,
@@ -133,7 +144,7 @@ def create_comment(
                 )
                 conn.commit()
 
-                return normalize_comment_row(row)
+                return normalize_comment_row(row, owner_id)
 
             except Exception:
                 conn.rollback()
@@ -202,7 +213,7 @@ def fetch_comments(memory_id: str, requester_uid: str, limit: int = 50) -> list[
                 return cur.fetchall()
 
     rows = run_db_with_retry(operation)
-    return [normalize_comment_row(row) for row in rows]
+    return [normalize_comment_row(row, requester_uid) for row in rows]
 
 
 def soft_delete_own_comment(comment_id: str, actor_id: str) -> dict[str, Any]:
