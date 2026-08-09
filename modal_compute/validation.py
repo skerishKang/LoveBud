@@ -184,6 +184,19 @@ def validate_visibility(value: Any, default: str = "private") -> str:
     return value
 
 
+def validate_explicit_visibility(value: Any) -> str:
+    """Validate an explicitly-provided visibility value on UPDATE.
+
+    #3936: an update that carries a visibility key must supply the literal
+    string "public" or "private". None, empty/whitespace strings, numbers,
+    booleans, lists, dicts or any other non-string value is rejected with
+    HTTP 400 instead of silently falling back to a default.
+    """
+    if not isinstance(value, str) or value not in {"public", "private"}:
+        raise HTTPException(status_code=400, detail="visibility: public, private")
+    return value
+
+
 def validate_optional_string(value: Any, max_length: int = 5000) -> str:
     if value is None:
         return ""

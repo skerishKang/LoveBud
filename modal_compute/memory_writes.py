@@ -14,6 +14,7 @@ from modal_compute.write_validation import (
 )
 from modal_compute.validation import (
     normalize_memory_row,
+    validate_explicit_visibility,
     validate_optional_memory_string,
     validate_optional_string,
     validate_required_uuid,
@@ -221,7 +222,7 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         params.append(emotion_tags)
 
     if "visibility" in payload:
-        visibility = validate_visibility(payload.get("visibility"), "public")
+        visibility = validate_explicit_visibility(payload.get("visibility"))
         require_plus_for_private_storage(owner_id, visibility)
         updates.append("visibility = %s")
         params.append(visibility)

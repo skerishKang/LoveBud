@@ -354,15 +354,21 @@ test('update_owner_tree only allows title and visibility updates', () => {
   );
 });
 
-test('update_owner_tree validates visibility changes and calls require_plus_for_private_storage', () => {
+test('update_owner_tree validates the strict visibility update contract (3936)', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_tree');
   const normalized = compact(body);
 
   assert.match(
     normalized,
+    /validate_explicit_visibility.*visibility/i,
+    'update_owner_tree must validate visibility via the strict explicit validator'
+  );
+
+  assert.doesNotMatch(
+    normalized,
     /validate_visibility.*visibility.*public/i,
-    'update_owner_tree must validate visibility changes'
+    'update_owner_tree must not fall back to validate_visibility(..., "public")'
   );
 
   assert.match(
@@ -644,15 +650,21 @@ test('update_owner_memory guards emotionTags max 20 items', () => {
   );
 });
 
-test('update_owner_memory validates visibility changes and calls require_plus_for_private_storage', () => {
+test('update_owner_memory validates visibility changes via strict update contract (3936)', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
   assert.match(
     normalized,
+    /validate_explicit_visibility.*visibility/i,
+    'update_owner_memory must validate visibility via the strict explicit validator'
+  );
+
+  assert.doesNotMatch(
+    normalized,
     /validate_visibility.*visibility.*public/i,
-    'update_owner_memory must validate visibility changes'
+    'update_owner_memory must not fall back to validate_visibility(..., "public")'
   );
 
   assert.match(
