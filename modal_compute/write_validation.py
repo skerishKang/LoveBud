@@ -7,6 +7,15 @@ from fastapi import HTTPException
 from modal_compute.db import get_db_connection
 
 
+def is_explicit_public(value: Any) -> bool:
+    """Return True only for a persisted exact literal `'public'` visibility token.
+
+    NULL/missing/empty/malformed values are NOT treated as public. This is the
+    canonical fail-closed predicate for non-owner social access (Refs #3926).
+    """
+    return isinstance(value, str) and value == "public"
+
+
 def fetch_tree_for_owner_check(tree_id: str) -> dict[str, Any] | None:
     query = """
         SELECT id, owner_id, title, visibility, created_at, updated_at
@@ -69,8 +78,8 @@ def require_memory_visible_or_owner(
       - tree exists
       - memory exists
       - memory belongs to tree
-      - tree.visibility = 'public'
-      - memory.visibility = 'public'
+      - tree.visibility = 'public' (exact persisted token)
+      - memory.visibility = 'public' (exact persisted token)
 
     If any condition fails, 404 is returned (leak-safe for private/inaccessible targets).
 
@@ -80,14 +89,14 @@ def require_memory_visible_or_owner(
     if not memory:
         raise HTTPException(status_code=404, detail="Memory not found")
 
-    memory_visibility = str(memory.get("visibility") or "public")
-    tree_visibility = str(memory.get("tree_visibility") or "public")
     is_owner = str(memory.get("tree_owner_id") or "") == requester_uid
 
     if is_owner:
         return memory
 
-    if memory_visibility != "public" or tree_visibility != "public":
+    if not is_explicit_public(memory.get("visibility")) or not is_explicit_public(
+        memory.get("tree_visibility")
+    ):
         raise HTTPException(status_code=404, detail="Memory not found")
 
     return memory
@@ -122,14 +131,14 @@ def require_memory_visible_or_owner_cursor(
     if not row:
         raise HTTPException(status_code=404, detail="Memory not found")
 
-    mem_visibility = str(row["mem_visibility"])
-    tree_visibility = str(row["tree_visibility"])
     is_owner = str(row["tree_owner_id"]) == requester_uid
 
     if is_owner:
         return row
 
-    if mem_visibility != "public" or tree_visibility != "public":
+    if not is_explicit_public(row["mem_visibility"]) or not is_explicit_public(
+        row["tree_visibility"]
+    ):
         raise HTTPException(status_code=404, detail="Memory not found")
 
     return row

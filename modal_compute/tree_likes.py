@@ -16,6 +16,7 @@ from modal_compute.social_idempotency import (
     validate_idempotency_key_format,
 )
 from modal_compute.social_write_audit import record_audit_target
+from modal_compute.write_validation import is_explicit_public
 
 
 def require_public_tree_for_like(tree_id: str) -> dict[str, Any]:
@@ -34,7 +35,7 @@ def require_public_tree_for_like(tree_id: str) -> dict[str, Any]:
                 return cur.fetchone()
 
     tree = run_db_with_retry(operation)
-    if not tree or str(tree.get("visibility") or "public") != "public":
+    if not tree or not is_explicit_public(tree.get("visibility")):
         raise HTTPException(status_code=404, detail="Tree not found")
     return tree
 

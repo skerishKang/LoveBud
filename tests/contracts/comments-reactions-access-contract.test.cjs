@@ -79,12 +79,113 @@ test('require_memory_visible_or_owner returns 404 for private non-owner access',
   const content = readFileContent(WRITE_VALIDATION_PY);
 
   assert.ok(
-    hasRegex(content, /visibility.*!=.*"public"/),
-    'require_memory_visible_or_owner should reject non-public visibility for non-owners'
+    hasRegex(content, /is_explicit_public\([\s\S]*?"visibility"\)\s*\)/),
+    'require_memory_visible_or_owner should reject non-public memory visibility for non-owners'
+  );
+  assert.ok(
+    hasRegex(content, /is_explicit_public\([\s\S]*?"tree_visibility"\)\s*\)/),
+    'require_memory_visible_or_owner should reject non-public tree visibility for non-owners'
   );
   assert.ok(
     hasRegex(content, /status_code=404.*Memory not found|Memory not found.*status_code=404/),
     'require_memory_visible_or_owner should return 404 for private non-owner access'
+  );
+});
+
+test('is_explicit_public is the canonical fail-closed visibility predicate', () => {
+  const content = readFileContent(WRITE_VALIDATION_PY);
+
+  assert.ok(
+    hasString(content, 'def is_explicit_public('),
+    'write_validation.py should define the shared is_explicit_public predicate'
+  );
+  assert.ok(
+    hasString(content, 'isinstance(value, str) and value == "public"'),
+    'is_explicit_public must require the exact persisted literal "public"'
+  );
+  assert.equal(
+    hasRegex(content, /is_explicit_public[\s\S]*\.strip\(\)/),
+    false,
+    'is_explicit_public must not normalize whitespace'
+  );
+  assert.equal(
+    hasRegex(content, /is_explicit_public[\s\S]*\.lower\(\)/),
+    false,
+    'is_explicit_public must not case-fold'
+  );
+});
+
+test('no default-public fallback remains in the non-cursor memory guard', () => {
+  const content = readFileContent(WRITE_VALIDATION_PY);
+  const guardStart = content.indexOf('def require_memory_visible_or_owner(');
+  const guardEnd = content.indexOf('def', guardStart + 10);
+  const guardBody = content.slice(guardStart, guardEnd);
+
+  assert.equal(
+    hasRegex(guardBody, /visibility.*or\s+"public"/),
+    false,
+    'guard must not promote NULL/missing visibility to public'
+  );
+  assert.equal(
+    hasString(guardBody, 'str(memory.get("visibility")'),
+    false,
+    'guard must not coerce visibility to string'
+  );
+});
+
+test('no default-public fallback remains in the cursor memory guard', () => {
+  const content = readFileContent(WRITE_VALIDATION_PY);
+  const guardStart = content.indexOf('def require_memory_visible_or_owner_cursor(');
+  const guardEnd = content.indexOf('def', guardStart + 10);
+  const guardBody = content.slice(guardStart, guardEnd);
+
+  assert.equal(
+    hasRegex(guardBody, /visibility.*or\s+"public"/),
+    false,
+    'cursor guard must not promote NULL/missing visibility to public'
+  );
+  assert.equal(
+    hasString(guardBody, 'str(row["mem_visibility"])'),
+    false,
+    'cursor guard must not coerce visibility to string'
+  );
+});
+
+test('both memory guards use the shared is_explicit_public predicate', () => {
+  const content = readFileContent(WRITE_VALIDATION_PY);
+
+  assert.ok(
+    hasRegex(content, /is_explicit_public\([\s\S]*?"visibility"\)/),
+    'non-cursor guard must use the shared predicate for memory visibility'
+  );
+  assert.ok(
+    hasRegex(content, /is_explicit_public\([\s\S]*?"tree_visibility"\)/),
+    'non-cursor guard must use the shared predicate for tree visibility'
+  );
+  assert.ok(
+    hasRegex(content, /is_explicit_public\(row\["mem_visibility"\]\)/),
+    'cursor guard must use the shared predicate for memory visibility'
+  );
+  assert.ok(
+    hasRegex(content, /is_explicit_public\([\s\S]*?"tree_visibility"\)/),
+    'cursor guard must use the shared predicate for tree visibility'
+  );
+});
+
+test('owner access is checked before the non-owner public visibility gate', () => {
+  const content = readFileContent(WRITE_VALIDATION_PY);
+  const guardStart = content.indexOf('def require_memory_visible_or_owner(');
+  const guardEnd = content.indexOf('def', guardStart + 10);
+  const guardBody = content.slice(guardStart, guardEnd);
+
+  const ownerIdx = guardBody.indexOf('is_owner');
+  const ownerReturnIdx = guardBody.indexOf('return memory');
+  const visibilityIdx = guardBody.indexOf('is_explicit_public');
+  assert.ok(ownerIdx !== -1, 'guard must compute owner status');
+  assert.ok(ownerReturnIdx !== -1, 'guard must allow owner early return');
+  assert.ok(
+    ownerReturnIdx < visibilityIdx,
+    'owner return must precede the non-owner public visibility gate'
   );
 });
 
@@ -439,11 +540,11 @@ test('require_memory_visible_or_owner rejects non-owner write on private tree + 
 
   // Must check both memory and tree visibility for non-owners
   assert.ok(
-    hasString(guardBody, 'memory_visibility'),
+    hasRegex(guardBody, /is_explicit_public\([\s\S]*?"visibility"\)/),
     'guard must check memory visibility'
   );
   assert.ok(
-    hasString(guardBody, 'tree_visibility'),
+    hasRegex(guardBody, /is_explicit_public\([\s\S]*?"tree_visibility"\)/),
     'guard must check tree visibility'
   );
   // Must return early for owner before checking visibility
@@ -477,10 +578,10 @@ test('require_memory_visible_or_owner preserves owner-local private access', () 
     hasString(guardBody, 'return memory'),
     'owner must be able to return early'
   );
-  // Owner return block should precede the visibility CONDITION (line 86),
-  // though memory_visibility and tree_visibility variables are assigned earlier.
+  // Owner return block should precede the visibility predicate (line 97),
+  // though is_explicit_public calls are always evaluated after the owner gate.
   const returnIdx = guardBody.indexOf('return memory');
-  const visibilityConditionIdx = guardBody.indexOf('memory_visibility != "public"');
+  const visibilityConditionIdx = guardBody.indexOf('is_explicit_public(memory.get("visibility"))');
   assert.ok(
     returnIdx < visibilityConditionIdx,
     'owner return must precede visibility condition check'

@@ -96,11 +96,11 @@ test('Harden: fetch_memory_for_owner_check includes tree_visibility', () => {
 test('Harden: require_memory_visible_or_owner checks tree_visibility for non-owners', () => {
   const content = readFileContent(WRITE_VALIDATION_PY);
   assert.ok(
-    hasRegex(content, /tree_visibility.*!=/),
+    hasRegex(content, /is_explicit_public\([\s\S]*?"tree_visibility"\)/),
     'guard should check tree_visibility for non-owner access'
   );
   assert.ok(
-    hasString(content, 'memory_visibility'),
+    hasRegex(content, /is_explicit_public\([\s\S]*?"visibility"\)/),
     'guard should still check memory visibility'
   );
 });

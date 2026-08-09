@@ -71,8 +71,8 @@ test('Public tree detail boundary: private trees must not leak viewCount', () =>
   assert.match(publicReads, /t\.visibility\s*=\s*'public'/);
   assert.match(publicReads, /visibility\s*=\s*'public'/);
 
-  // Tree likes also enforces public tree boundary (checks visibility != 'public')
-  assert.match(treeLikes, /!= "public"/);
+  // Tree likes also enforces public tree boundary (exact public predicate only)
+  assert.match(treeLikes, /is_explicit_public\(tree\.get\("visibility"\)\)/);
   assert.match(treeLikes, /HTTPException\(status_code=404,\s*detail="Tree not found"\)/);
 
   // Tree views enforces public tree boundary
