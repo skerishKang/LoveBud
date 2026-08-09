@@ -504,10 +504,32 @@ test('normalize_comment_row returns expected fields', () => {
 
   assert.ok(hasString(content, '"id"'), 'normalize_comment_row should include id');
   assert.ok(hasString(content, '"memoryId"'), 'normalize_comment_row should include memoryId');
-  assert.ok(hasString(content, '"ownerId"'), 'normalize_comment_row should include ownerId');
   assert.ok(hasString(content, '"body"'), 'normalize_comment_row should include body');
   assert.ok(hasString(content, '"createdAt"'), 'normalize_comment_row should include createdAt');
   assert.ok(hasString(content, '"updatedAt"'), 'normalize_comment_row should include updatedAt');
+  assert.ok(hasString(content, '"isOwn"'), 'normalize_comment_row should include isOwn (server-computed, not ownerId)');
+  assert.equal(hasString(content, '"ownerId"'), false, 'normalize_comment_row must NOT expose raw ownerId');
+});
+
+test('normalize_comment_row accepts requester_uid and computes isOwn server-side', () => {
+  const content = readFileContent(COMMENTS_PY);
+
+  // Signature must accept requester_uid parameter
+  assert.ok(
+    hasRegex(content, /def normalize_comment_row\(.*requester_uid/),
+    'normalize_comment_row must accept requester_uid parameter'
+  );
+  // isOwn must be computed from DB owner_id vs requester_uid comparison
+  assert.ok(
+    hasRegex(content, /str\(row\[.owner_id.\]\)\s*==\s*str\(requester_uid\)/),
+    'isOwn must be computed by comparing row owner_id with requester_uid'
+  );
+  // owner_id must NOT be exposed in the response dict
+  assert.equal(
+    hasRegex(content, /"ownerId"\s*:\s*str\(row\[.owner_id.\]\)/),
+    false,
+    'normalize_comment_row must not expose ownerId in response'
+  );
 });
 
 test('_make_reaction_dto returns minimal safe DTO', () => {
