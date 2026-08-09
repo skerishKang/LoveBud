@@ -5,6 +5,15 @@
 (function () {
   if (window.LoveBudAuthCache) return;
 
+  var PRIVATE_OWNER_UID_KEY = "lovebud_private_cache_owner_uid";
+  var PRIVATE_EXACT_KEYS = [
+    "lovebud_my_trees_list_cache",
+    "lovebud_trees_cache",
+  ];
+  var PRIVATE_PREFIXES = ["tree_detail_", "tree_memories_"];
+  var privateOwnerUid = null;
+  var privateOwnerEpoch = 0;
+
   function isInvalidAuthSessionError(error) {
     var message = String((error && (error.code || error.message)) || "");
     return /USER_NOT_FOUND|user-not-found|invalid-user-token|token.*expired|user token/i.test(
@@ -64,6 +73,150 @@
     } catch (e) {}
   }
 
+  function isOwnedPrivateCacheKey(key) {
+    if (!key) return false;
+    if (PRIVATE_EXACT_KEYS.indexOf(key) !== -1) return true;
+    return PRIVATE_PREFIXES.some(function (prefix) {
+      return key.indexOf(prefix) === 0;
+    });
+  }
+
+  function clearPrivateMemoryCaches() {
+    try {
+      if (window.LoveBudCache && typeof window.LoveBudCache.clear === "function") {
+        window.LoveBudCache.clear("my_trees_list");
+      } else {
+        if (window.loveBudCache) delete window.loveBudCache.lb_my_trees_list;
+        if (window.sessionStorage) window.sessionStorage.removeItem("lb_my_trees_list");
+      }
+    } catch (e) {}
+  }
+
+  function clearPrivateCaches() {
+    privateOwnerEpoch += 1;
+    privateOwnerUid = null;
+
+    try {
+      var storage = window.localStorage;
+      if (storage) {
+        var keys = [];
+        for (var i = 0; i < storage.length; i++) {
+          var key = storage.key(i);
+          if (key && isOwnedPrivateCacheKey(key)) keys.push(key);
+        }
+        keys.forEach(function (key) {
+          try {
+            storage.removeItem(key);
+          } catch (e) {}
+        });
+        storage.removeItem(PRIVATE_OWNER_UID_KEY);
+      }
+    } catch (e) {}
+
+    clearPrivateMemoryCaches();
+  }
+
+  function syncConfirmedPrivateOwner(uid) {
+    var nextUid = uid ? String(uid) : "";
+    if (!nextUid) {
+      clearPrivateCaches();
+      return null;
+    }
+
+    var persistedUid = null;
+    try {
+      persistedUid = localStorage.getItem(PRIVATE_OWNER_UID_KEY);
+    } catch (e) {}
+
+    var knownUid = privateOwnerUid || persistedUid;
+    if (knownUid !== nextUid) {
+      clearPrivateCaches();
+    }
+
+    privateOwnerUid = nextUid;
+    try {
+      localStorage.setItem(PRIVATE_OWNER_UID_KEY, nextUid);
+    } catch (e) {}
+
+    return {
+      uid: privateOwnerUid,
+      epoch: privateOwnerEpoch,
+    };
+  }
+
+  function getPrivateCacheOwnerUid() {
+    return privateOwnerUid;
+  }
+
+  function capturePrivateCacheAuthority(expectedUid) {
+    var uid = expectedUid ? String(expectedUid) : "";
+    if (!uid || uid !== privateOwnerUid) return null;
+    return {
+      uid: uid,
+      epoch: privateOwnerEpoch,
+    };
+  }
+
+  function isPrivateCacheAuthorityCurrent(authority) {
+    return !!(
+      authority &&
+      authority.uid &&
+      authority.uid === privateOwnerUid &&
+      Number(authority.epoch) === Number(privateOwnerEpoch)
+    );
+  }
+
+  function removeOwnedPrivateCacheKey(key) {
+    if (!isOwnedPrivateCacheKey(key)) return;
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {}
+  }
+
+  function readPrivateCacheRecord(key, expectedUid) {
+    var uid = expectedUid ? String(expectedUid) : "";
+    if (!isOwnedPrivateCacheKey(key) || !uid || uid !== privateOwnerUid) {
+      return null;
+    }
+
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || parsed.uid !== uid) {
+        removeOwnedPrivateCacheKey(key);
+        return null;
+      }
+      return parsed;
+    } catch (e) {
+      removeOwnedPrivateCacheKey(key);
+      return null;
+    }
+  }
+
+  function writePrivateCacheRecord(key, expectedUid, record, authority) {
+    var uid = expectedUid ? String(expectedUid) : "";
+    if (
+      !isOwnedPrivateCacheKey(key) ||
+      !uid ||
+      uid !== privateOwnerUid ||
+      !isPrivateCacheAuthorityCurrent(authority) ||
+      !record ||
+      typeof record !== "object" ||
+      Array.isArray(record)
+    ) {
+      return false;
+    }
+
+    var scopedRecord = Object.assign({}, record, { uid: uid });
+    try {
+      localStorage.setItem(key, JSON.stringify(scopedRecord));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function getCachedAuthUser(cacheKey, confirmedKey) {
     try {
       if (localStorage.getItem(confirmedKey) !== "true") return null;
@@ -78,6 +231,7 @@
   }
 
   function clearConfirmedAuthCache(cacheKey, confirmedKey, tokenKey) {
+    clearPrivateCaches();
     try {
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(confirmedKey);
@@ -88,6 +242,7 @@
   function setConfirmedAuthCache(user, cacheKey, confirmedKey, tokenKey) {
     try {
       if (user && user.uid) {
+        syncConfirmedPrivateOwner(user.uid);
         var cacheData = {
           uid: user.uid,
           displayName: user.displayName || "",
@@ -135,6 +290,7 @@
         return;
       }
 
+      syncConfirmedPrivateOwner(user.uid);
       var cacheData = {
         uid: user.uid,
         displayName: user.displayName || "",
@@ -194,7 +350,9 @@
     };
   }
 
+  window.clearPrivateCaches = clearPrivateCaches;
   window.LoveBudAuthCache = {
+    PRIVATE_OWNER_UID_KEY: PRIVATE_OWNER_UID_KEY,
     isInvalidAuthSessionError: isInvalidAuthSessionError,
     clearStaleFirebaseAuthState: clearStaleFirebaseAuthState,
     getTokenStorage: getTokenStorage,
@@ -205,5 +363,13 @@
     getCachedAuthToken: getCachedAuthToken,
     persistConfirmedAuthSession: persistConfirmedAuthSession,
     createConfirmedAuthCacheBridge: createConfirmedAuthCacheBridge,
+    isOwnedPrivateCacheKey: isOwnedPrivateCacheKey,
+    clearPrivateCaches: clearPrivateCaches,
+    syncConfirmedPrivateOwner: syncConfirmedPrivateOwner,
+    getPrivateCacheOwnerUid: getPrivateCacheOwnerUid,
+    capturePrivateCacheAuthority: capturePrivateCacheAuthority,
+    isPrivateCacheAuthorityCurrent: isPrivateCacheAuthorityCurrent,
+    readPrivateCacheRecord: readPrivateCacheRecord,
+    writePrivateCacheRecord: writePrivateCacheRecord,
   };
 })();
