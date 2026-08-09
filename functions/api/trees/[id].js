@@ -86,43 +86,6 @@ async function readBoundedWriteBody(request) {
   return { tooLarge: false, body: encoded };
 }
 
-// ─── Cache Helpers ───────────────────────────────────────────────────────────
-
-function buildPublicTreeReadCacheRequest(url, treeId) {
-  const parsedUrl = new URL(url);
-  const canonicalTreeId = encodeURIComponent(decodeURIComponent(treeId));
-  const cacheUrl = new URL(parsedUrl.origin);
-  cacheUrl.pathname = `/__cache/public/trees/${canonicalTreeId}`;
-  return new Request(cacheUrl.toString(), { method: 'GET' });
-}
-
-function isFreshPublicTreeCacheResponse(response) {
-  if (!response) return false;
-  const expiresAtHeader = response.headers.get('x-lovebud-public-tree-cache-expires-at');
-  if (!expiresAtHeader) return false;
-  const expiresAt = Number(expiresAtHeader);
-  if (!Number.isFinite(expiresAt)) return false;
-  return Date.now() < expiresAt;
-}
-
-async function isVerifiedPublicTreeCacheCandidate(response) {
-  if (!response) return false;
-  if (response.status !== 200) return false;
-
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) return false;
-
-  if (response.headers.has('set-cookie') || response.headers.has('Set-Cookie')) return false;
-
-  try {
-    const cloned = response.clone();
-    const data = await cloned.json();
-    return data && data.visibility === 'public';
-  } catch (e) {
-    return false;
-  }
-}
-
 function withPublicTreeCacheStatus(response, status) {
   const headers = new Headers(response.headers);
   headers.set('x-lovebud-public-tree-cache', status);
@@ -132,8 +95,6 @@ function withPublicTreeCacheStatus(response, status) {
     headers
   });
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function onRequestGet(context) {
   const { request, env } = context;
@@ -151,7 +112,7 @@ export async function onRequestGet(context) {
   const treeId = context.params?.id;
   const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
 
-  // Authenticated requests: bypass cache entirely
+  // Authenticated requests: route through owner/private authority, cache-independent
   if (authHeader) {
     const primaryTarget = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
     let response;
@@ -180,33 +141,9 @@ export async function onRequestGet(context) {
     return await withUpstreamHeaderAndId(finalResp, 'modal', requestId);
   }
 
-  // Anonymous requests: check cache first
-  const cache = (typeof globalThis !== 'undefined' && globalThis.caches) ? globalThis.caches.default : (typeof caches !== 'undefined' ? caches.default : null);
-  const cacheKey = buildPublicTreeReadCacheRequest(request.url, treeId);
-
-  if (cache) {
-    let cachedResponse = null;
-    try {
-      cachedResponse = await cache.match(cacheKey);
-    } catch (e) {
-      console.warn('[LoveBudCloudflareProxy] Cache match throw, bypassing to hit upstream', e);
-    }
-
-    if (cachedResponse) {
-      if (isFreshPublicTreeCacheResponse(cachedResponse)) {
-        const hitResp = withPublicTreeCacheStatus(cachedResponse, 'hit');
-        return await withUpstreamHeaderAndId(hitResp, 'modal', requestId);
-      } else {
-        try {
-          await cache.delete(cacheKey);
-        } catch (e) {
-          console.warn('[LoveBudCloudflareProxy] Cache delete throw', e);
-        }
-      }
-    }
-  }
-
-  // Fetch fresh response
+  // Anonymous requests: reach the current public Modal authority on every request.
+  // No explicit Cache API persistence: a Tree's visibility may be revoked at any
+  // time, and a POP-local cache entry could keep serving a stale public body.
   const targetUrl = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
   let modalResponse;
   try {
@@ -220,37 +157,15 @@ export async function onRequestGet(context) {
     return await withUpstreamHeaderAndId(errResp, 'modal', requestId);
   }
 
-  // Process eligibility and caching
-  const isCandidate = await isVerifiedPublicTreeCacheCandidate(modalResponse);
-  if (isCandidate) {
-    const cacheableResponse = new Response(modalResponse.clone().body, {
-      status: modalResponse.status,
-      statusText: modalResponse.statusText,
-      headers: modalResponse.headers
-    });
-
-    cacheableResponse.headers.set('Cache-Control', 'public, max-age=30, must-revalidate');
-    const expiresAt = Date.now() + 30000;
-    cacheableResponse.headers.set('x-lovebud-public-tree-cache-expires-at', String(expiresAt));
-
-    let putStatus = 'miss';
-    if (cache) {
-      try {
-        await cache.put(cacheKey, cacheableResponse.clone());
-      } catch (e) {
-        console.warn('[LoveBudCloudflareProxy] Cache put failed', e);
-        putStatus = 'store-failed';
-      }
-    } else {
-      putStatus = 'store-failed';
-    }
-
-    const freshResp = withPublicTreeCacheStatus(cacheableResponse, putStatus);
-    return await withUpstreamHeaderAndId(freshResp, 'modal', requestId);
-  } else {
-    const skipResp = withPublicTreeCacheStatus(modalResponse, 'skip-noncacheable');
-    return await withUpstreamHeaderAndId(skipResp, 'modal', requestId);
-  }
+  // Forward status/body unchanged (404/403/5xx pass through); never cache.
+  const headers = new Headers(modalResponse.headers);
+  headers.set('Cache-Control', 'no-store');
+  const freshResp = new Response(modalResponse.body, {
+    status: modalResponse.status,
+    statusText: modalResponse.statusText,
+    headers
+  });
+  return await withUpstreamHeaderAndId(freshResp, 'modal', requestId);
 }
 
 function hasAuthorizationHeader(request) {
