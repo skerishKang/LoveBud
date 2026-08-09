@@ -61,6 +61,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         buildSoftPanelMarkup: video.buildSoftPanelMarkup
     });
 
+    const renderMemoryBase = (memory) => {
+        render.renderMemoryBase(memory);
+        video.bindYouTubeThumbnailFallbacks(refs.videoMain);
+    };
+
+    const renderConnectedFragments = (params) => {
+        connected.renderConnectedFragments(params);
+        video.bindYouTubeThumbnailFallbacks(refs.connectedFragments);
+    };
+
     const copy = window.LoveBudDetailCopy.createCopyHelpers({
         refs,
         tText: utils.tText
@@ -85,9 +95,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         inferTreeContext: utils.inferTreeContext,
         resolveTreeMomentCount: utils.resolveTreeMomentCount,
         getConnectedFlowMoments: connected.getConnectedFlowMoments,
-        renderMemoryBase: render.renderMemoryBase,
+        renderMemoryBase,
         renderTreeContext: render.renderTreeContext,
-        renderConnectedFragments: connected.renderConnectedFragments,
+        renderConnectedFragments,
         renderMissingMemoryState: loadingErrorBoundary.renderMissingMemoryState,
         applyViewingPageCopy: copy.applyViewingPageCopy
     });

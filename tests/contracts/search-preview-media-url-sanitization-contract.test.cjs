@@ -291,3 +291,246 @@ test('detail media #3916: iframe src quote payload is escaped at the final attri
   assert.doesNotMatch(markup, /src="[^"]*"\s+onload=/i);
   assert.ok(markup.includes('title="Title &lt;unsafe&gt;"'));
 });
+
+// ── Detail CSP-safe thumbnail fallback (#3943) ───────────────────────────────
+const DETAIL_CONNECTED_JS_3943 = path.join(ROOT, 'js/detail/detail-connected.js');
+const DETAIL_BOOTSTRAP_JS_3943 = path.join(ROOT, 'js/detail.js');
+const HEADERS_3943 = path.join(ROOT, '_headers');
+const detailConnectedSrc3943 = fs.readFileSync(DETAIL_CONNECTED_JS_3943, 'utf8');
+const detailBootstrapSrc3943 = fs.readFileSync(DETAIL_BOOTSTRAP_JS_3943, 'utf8');
+const headersSrc3943 = fs.readFileSync(HEADERS_3943, 'utf8');
+
+function createDetailFallbackFakeImage3943(src) {
+  const listeners = new Map();
+  let currentSrc = src;
+  let writeCount = 0;
+
+  return {
+    dataset: {},
+    get src() { return currentSrc; },
+    set src(value) { currentSrc = String(value); writeCount += 1; },
+    get currentSrc() { return currentSrc; },
+    getAttribute(name) { return name === 'src' ? currentSrc : null; },
+    setAttribute(name, value) {
+      if (name === 'src') {
+        currentSrc = String(value);
+        writeCount += 1;
+      }
+    },
+    addEventListener(type, handler) {
+      const existing = listeners.get(type) || [];
+      existing.push(handler);
+      listeners.set(type, existing);
+    },
+    dispatchError() {
+      for (const handler of [...(listeners.get('error') || [])]) {
+        handler.call(this, { type: 'error' });
+      }
+    },
+    listenerCount(type) { return (listeners.get(type) || []).length; },
+    writeCount() { return writeCount; }
+  };
+}
+
+function createDetailFallbackRoot3943(images) {
+  return {
+    querySelectorAll(selector) {
+      return selector === '[data-detail-thumbnail-fallback="youtube"]' ? images : [];
+    }
+  };
+}
+
+function loadDetailConnected3943() {
+  const mockWindow = { location: { href: 'https://lovebud.pages.dev/pages/detail.html' } };
+  mockWindow.window = mockWindow;
+  vm.runInNewContext(detailConnectedSrc3943, { window: mockWindow, console });
+  return mockWindow.LoveBudDetailConnected;
+}
+
+async function loadDetailBootstrapLifecycle3943() {
+  let onReady = null;
+  let loaderArgs = null;
+  const events = [];
+  const refs = {
+    videoMain: { id: 'videoMain' },
+    connectedFragments: { id: 'connectedFragments' }
+  };
+
+  const mockDocument = {
+    addEventListener(type, handler) {
+      if (type === 'DOMContentLoaded') onReady = handler;
+    },
+    getElementById(id) {
+      return refs[id] || null;
+    }
+  };
+
+  const noop = () => {};
+  const utils = {
+    createDetailNavigationHrefs: () => ({
+      homeHref: '/',
+      searchHref: '/search',
+      myTreesHref: '/my-trees',
+      buildPageHref: () => '/detail'
+    }),
+    tText: (key, fallback) => fallback || key,
+    escapeHtml: (value) => String(value ?? ''),
+    getLocalizedTagLabel: (value) => value,
+    normalizeVideoSourceUrl: () => ({ embedUrl: '', watchUrl: '' }),
+    resolveTreeMomentCount: () => 0,
+    sortTreeMemories: (value) => value || [],
+    isStructuralRootMemory: () => false,
+    inferTreeContext: () => null
+  };
+  const video = {
+    buildSoftPanelMarkup: () => '',
+    buildVideoMainMarkup: () => '',
+    bindYouTubeThumbnailFallbacks(root) {
+      events.push(`bind:${root && root.id}`);
+    }
+  };
+  const render = {
+    renderMemoryBase() { events.push('render:main'); },
+    renderTreeContext: noop
+  };
+  const connected = {
+    getConnectedFlowMoments: () => [],
+    renderConnectedFragments() { events.push('render:connected'); }
+  };
+  const mockWindow = {
+    location: { pathname: '/pages/detail.html' },
+    LoveBudDetailUtils: { createUtils: () => utils },
+    LoveBudDetailVideo: { createVideoHelpers: () => video },
+    LoveBudDetailRender: { createRenderers: () => render },
+    LoveBudDetailConnected: { createConnectedRenderer: () => connected },
+    LoveBudDetailCopy: { createCopyHelpers: () => ({ applyViewingPageCopy: noop }) },
+    createDetailLoadingErrorBoundary: () => ({ renderMissingMemoryState: noop }),
+    LoveBudDetailLoader: {
+      createDetailLoader(args) {
+        loaderArgs = args;
+        return { loadCurrentDetail: async () => {} };
+      }
+    }
+  };
+  mockWindow.window = mockWindow;
+
+  vm.runInNewContext(detailBootstrapSrc3943, {
+    window: mockWindow,
+    document: mockDocument,
+    console
+  });
+
+  assert.ok(onReady, 'Detail must register a DOMContentLoaded lifecycle');
+  await onReady();
+  return { loaderArgs, events };
+}
+
+test('detail CSP #3943: image-only markup has marker, no inline executable handler, and preserves escaping', () => {
+  const { video } = loadDetailMedia();
+  const markup = video.buildImageOnlyMomentMarkup({
+    thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg?x="<tag>',
+    title: '<b>Title & "quoted"</b>',
+    memo: '<script>caption()</script>'
+  });
+
+  assert.match(markup, /data-detail-thumbnail-fallback="youtube"/);
+  assert.doesNotMatch(markup, /\son[a-z]+\s*=/i);
+  assert.ok(markup.includes('x=&quot;&lt;tag&gt;'), 'thumbnail attribute must remain escaped');
+  assert.ok(markup.includes('&lt;b&gt;Title &amp; &quot;quoted&quot;&lt;/b&gt;'), 'title must remain escaped');
+  assert.ok(markup.includes('&lt;script&gt;caption()&lt;/script&gt;'), 'caption must remain escaped');
+});
+
+test('detail CSP #3943: hqdefault failure rewrites to mqdefault exactly once and duplicate bind is prevented', () => {
+  const { video } = loadDetailMedia();
+  const img = createDetailFallbackFakeImage3943('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+  const root = createDetailFallbackRoot3943([img]);
+
+  video.bindYouTubeThumbnailFallbacks(root);
+  video.bindYouTubeThumbnailFallbacks(root);
+  assert.equal(img.listenerCount('error'), 1, 'duplicate binder calls must not add duplicate listeners');
+
+  img.dispatchError();
+  assert.equal(img.src, 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg');
+  assert.equal(img.dataset.ytFallback, '1');
+  assert.equal(img.writeCount(), 1, 'first hq failure must perform exactly one rewrite');
+
+  img.dispatchError();
+  assert.equal(img.src, 'https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg');
+  assert.equal(img.writeCount(), 1, 'mqdefault failure must not loop or rewrite again');
+});
+
+test('detail CSP #3943: non-hq image failure never rewrites an arbitrary URL', () => {
+  const { video } = loadDetailMedia();
+  const img = createDetailFallbackFakeImage3943('https://cdn.example.com/images/cover.jpg');
+
+  video.bindYouTubeThumbnailFallbacks(createDetailFallbackRoot3943([img]));
+  img.dispatchError();
+
+  assert.equal(img.src, 'https://cdn.example.com/images/cover.jpg');
+  assert.equal(img.writeCount(), 0);
+  assert.equal(img.dataset.ytFallback, undefined);
+});
+
+test('detail CSP #3943: connected-card markup uses the same non-executable marker', () => {
+  const module = loadDetailConnected3943();
+  let html = '';
+  const classList = { remove() {}, add() {} };
+  const connectedFragments = {
+    closest() { return { classList }; },
+    get innerHTML() { return html; },
+    set innerHTML(value) { html = String(value); },
+    querySelectorAll() { return []; }
+  };
+
+  const renderer = module.createConnectedRenderer({
+    refs: { connectedFragments },
+    tText: (key, fallback) => fallback || key,
+    escapeHtml: (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;'),
+    buildPageHref: () => '/pages/detail.html?id=other',
+    sortTreeMemories: (memories, current) => [current, ...(memories || [])],
+    isStructuralRootMemory: () => false,
+    buildSoftPanelMarkup: () => ''
+  });
+
+  renderer.renderConnectedFragments({
+    memory: { id: 'current' },
+    memories: [{
+      id: 'other',
+      thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+      title: '<unsafe>'
+    }],
+    treeId: 'tree',
+    sourceContext: 'browse',
+    degradedReason: null,
+    treeMomentCount: 2
+  });
+
+  assert.match(html, /data-detail-thumbnail-fallback="youtube"/);
+  assert.doesNotMatch(html, /\son[a-z]+\s*=/i);
+  assert.ok(html.includes('&lt;unsafe&gt;'), 'connected title must remain escaped');
+});
+
+test('detail CSP #3943: bootstrap binds fallback after both Detail render insertions', async () => {
+  const { loaderArgs, events } = await loadDetailBootstrapLifecycle3943();
+  assert.ok(loaderArgs, 'Detail loader must receive wrapped render callbacks');
+
+  loaderArgs.renderMemoryBase({ id: 'm1' });
+  assert.deepEqual(events.slice(0, 2), ['render:main', 'bind:videoMain']);
+
+  loaderArgs.renderConnectedFragments({ memory: { id: 'm1' } });
+  assert.deepEqual(events.slice(2, 4), ['render:connected', 'bind:connectedFragments']);
+});
+
+test('detail CSP #3943: root script-src remains strict without unsafe-inline', () => {
+  const cspLine = headersSrc3943.split(/\r?\n/)
+    .find((line) => line.includes('Content-Security-Policy:')) || '';
+  const scriptSrc = cspLine.match(/script-src[^;]*/)?.[0] || '';
+
+  assert.match(scriptSrc, /script-src 'self'/);
+  assert.doesNotMatch(scriptSrc, /'unsafe-inline'/);
+});
