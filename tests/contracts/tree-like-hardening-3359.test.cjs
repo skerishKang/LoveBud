@@ -208,6 +208,28 @@ test('Tree-like writer hides missing/private trees as not found (no existence le
   );
 });
 
+test('#3926 require_public_tree_for_like reuses the shared explicit-public predicate', () => {
+  const wv = read(path.join(ROOT, 'modal_compute', 'write_validation.py'));
+  const src = read(TREE_LIKES_PATH);
+  assert.ok(
+    wv.includes('def is_explicit_public('),
+    'write_validation.py must define the shared explicit-public predicate'
+  );
+  assert.ok(
+    src.includes('from modal_compute.write_validation import is_explicit_public'),
+    'tree_likes.py must import the shared predicate'
+  );
+  assert.ok(
+    src.includes('is_explicit_public(tree.get("visibility"))'),
+    'require_public_tree_for_like must use the shared explicit-public predicate'
+  );
+  assert.equal(
+    src.includes('str(tree.get("visibility") or "public")'),
+    false,
+    'require_public_tree_for_like must not default unknown visibility to public'
+  );
+});
+
 test('Tree-like writer does not mutate without idempotency reservation in the same transaction', () => {
   const src = read(TREE_LIKES_PATH);
   // reservation + mutation + audit must share one connection/transaction
