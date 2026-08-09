@@ -12,6 +12,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+const {
+  createSameOriginNavigationFailureTracker,
+} = require('../helpers/same-origin-navigation-failure-tracker.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -874,14 +877,13 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       const context = await browser.newContext({ viewport: vp.viewport, isMobile: vp.isMobile, hasTouch: vp.isMobile });
       const page = await context.newPage();
       const health = { pageErrors: [], consoleErrors: [], sameOriginFailures: [], http4xx: [], stubbedApi: [], external: 0 };
+      const navigationFailureTracker = createSameOriginNavigationFailureTracker(
+        page,
+        `http://127.0.0.1:${port}`,
+        health.sameOriginFailures
+      );
       page.on('pageerror', (err) => health.pageErrors.push(String((err && err.message) || err)));
       page.on('console', (msg) => { if (msg.type() === 'error') health.consoleErrors.push(msg.text()); });
-      page.on('requestfailed', (request) => {
-        const url = request.url();
-        if (url.startsWith(`http://127.0.0.1:${port}`) && request.failure()) {
-          health.sameOriginFailures.push(`${url} - ${request.failure().errorText}`);
-        }
-      });
       page.on('response', (response) => {
         const url = response.url();
         if (url.startsWith(`http://127.0.0.1:${port}`) && response.status() >= 400) {
@@ -1091,17 +1093,22 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       health.http4xx.length = 0;
       health.stubbedApi.length = 0;
       health.external = 0;
-      await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction(() => {
-        const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
-        const act = chips.filter(c => c.classList.contains('active'));
-        let category = null;
-        try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
-        return document.querySelectorAll('#resultsList .tree-card').length >= 6
-          && act.length === 1
-          && act[0].getAttribute('data-category') === '전체'
-          && category === null;
-      }, null, { timeout: 20000 });
+      navigationFailureTracker.beginIntentionalNavigation();
+      try {
+        await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => {
+          const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
+          const act = chips.filter(c => c.classList.contains('active'));
+          let category = null;
+          try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
+          return document.querySelectorAll('#resultsList .tree-card').length >= 6
+            && act.length === 1
+            && act[0].getAttribute('data-category') === '전체'
+            && category === null;
+        }, null, { timeout: 20000 });
+      } finally {
+        navigationFailureTracker.endIntentionalNavigation();
+      }
       const sL = await read();
       assert.deepEqual(sL.active, ['전체'], `${vp.name}: L initial-invalid active`);
       assert.deepEqual(sL.checked, ['전체'], `${vp.name}: L initial-invalid checked`);
@@ -1150,6 +1157,7 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: M same-origin failures ${health.sameOriginFailures.join(' | ')}`);
       assert.equal(health.http4xx.length, 0, `${vp.name}: M HTTP>=400 ${health.http4xx.join(' | ')}`);
 
+      navigationFailureTracker.dispose();
       await context.close();
     }
   } finally {
