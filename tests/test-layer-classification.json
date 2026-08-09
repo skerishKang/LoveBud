@@ -23,6 +23,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/fork-visibility-atomic-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree authorizes the source row inside its transaction with SELECT ... FOR SHARE (not the pre-transaction fetch_tree_for_owner_check DTO), forbids FOR KEY SHARE / LOCK TABLE, orders public authorization before the destination INSERT, and keeps public-memory-only copy; static source-read only, no execution.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/test-suite-count-authority-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads fixed repository-owned classification/registry/package sources and executes the pure canonical test-suite count authority with synthetic fixtures and negative controls; derives deterministic frozen default-CI counts and supplemental totals without network, child process, filesystem write, database, browser, or Production access (#3838).",
@@ -4968,6 +4974,13 @@
       "defaultCi": false,
       "layer": "SUPPLEMENTAL_PYTHON",
       "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/db-engine/fork-public-tree-visibility-concurrency-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections to prove fork_public_tree FOR SHARE serialization: revocation-first (fork observes private, zero destination rows), fork-lock-first (visibility UPDATE blocks until fork commit), and mid-copy rollback (no partial destination). Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
       "capabilities": []
     },
     {
