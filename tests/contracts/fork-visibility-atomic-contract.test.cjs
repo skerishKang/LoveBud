@@ -73,3 +73,15 @@ test('fork authorizes before any destination write and keeps public-only copy', 
   assert.match(block, /parent_id/, 'parent_id rewriting must be preserved');
   assert.match(block, /conn\.rollback/, 'failed forks must roll back (no partial destination)');
 });
+
+test('fork locks the copied public memory rows with FOR SHARE (#3956)', () => {
+  const block = forkBlock();
+  // Isolate the source-memory SELECT query (declared between the destination
+  // tree INSERT and the memory INSERT) and require a row lock on the selected
+  // public rows.
+  const memBlock = block.split('FROM memories')[1].split('INSERT INTO memories')[0];
+  assert.ok(memBlock, 'source memory SELECT must exist in the fork');
+  assert.match(memBlock, /AND visibility = 'public'/, 'private memories must remain excluded');
+  assert.match(memBlock, /LIMIT 200/, '#3924 200-row boundary must remain untouched');
+  assert.match(memBlock, /FOR SHARE;/, 'selected public memory rows must be locked FOR SHARE');
+});
