@@ -64,10 +64,15 @@ function createSameOriginNavigationFailureTracker(page, origin, failures) {
     },
 
     endIntentionalNavigation() {
-      navigationAbortCandidates.clear();
+      // Keep unresolved pre-navigation request objects until Playwright emits
+      // their terminal requestfinished/requestfailed event. A navigation-abort
+      // event can arrive after page.goto() resolves. Exact request identity and
+      // exact net::ERR_ABORTED matching keep this allowance tightly bounded.
     },
 
     dispose() {
+      pendingFetchLike.clear();
+      navigationAbortCandidates.clear();
       if (typeof page.off !== 'function') return;
       page.off('request', onRequest);
       page.off('requestfinished', onRequestFinished);
