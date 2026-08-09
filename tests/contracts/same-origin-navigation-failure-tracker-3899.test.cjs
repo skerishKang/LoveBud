@@ -34,7 +34,7 @@ function createFakeRequest(url, resourceType) {
   };
 }
 
-test('#3899 ignores only pre-navigation fetch/xhr ERR_ABORTED candidates', () => {
+test('#3899 ignores a delayed pre-navigation fetch/xhr ERR_ABORTED candidate', () => {
   const page = createFakePage();
   const failures = [];
   const tracker = createSameOriginNavigationFailureTracker(
@@ -49,11 +49,14 @@ test('#3899 ignores only pre-navigation fetch/xhr ERR_ABORTED candidates', () =>
   );
   page.emit('request', preNavigationFetch);
   tracker.beginIntentionalNavigation();
+
+  // Reproduce the CI lifecycle: page.goto()/the intentional navigation can
+  // complete before Playwright emits requestfailed for the cancelled fetch.
+  tracker.endIntentionalNavigation();
   preNavigationFetch.failWith('net::ERR_ABORTED');
   page.emit('requestfailed', preNavigationFetch);
-  assert.deepEqual(failures, [], 'the snapshotted navigation abort is excluded');
+  assert.deepEqual(failures, [], 'the delayed snapshotted navigation abort is excluded');
 
-  tracker.endIntentionalNavigation();
   tracker.dispose();
 });
 
@@ -72,6 +75,7 @@ test('#3899 records genuine or out-of-boundary same-origin failures', () => {
   );
   page.emit('request', genuineFailure);
   tracker.beginIntentionalNavigation();
+  tracker.endIntentionalNavigation();
   genuineFailure.failWith('net::ERR_FAILED');
   page.emit('requestfailed', genuineFailure);
   assert.deepEqual(
@@ -95,7 +99,6 @@ test('#3899 records genuine or out-of-boundary same-origin failures', () => {
   );
 
   failures.length = 0;
-  tracker.endIntentionalNavigation();
   const unexpectedAbort = createFakeRequest(
     'http://127.0.0.1:4321/api/community/trees',
     'fetch'
@@ -106,7 +109,7 @@ test('#3899 records genuine or out-of-boundary same-origin failures', () => {
   assert.deepEqual(
     failures,
     ['http://127.0.0.1:4321/api/community/trees - net::ERR_ABORTED'],
-    'ERR_ABORTED outside an intentional navigation boundary still fails'
+    'ERR_ABORTED outside an intentional navigation snapshot still fails'
   );
 
   tracker.dispose();
@@ -127,6 +130,7 @@ test('#3899 does not classify document requests as expected fetch/xhr aborts', (
   );
   page.emit('request', documentRequest);
   tracker.beginIntentionalNavigation();
+  tracker.endIntentionalNavigation();
   documentRequest.failWith('net::ERR_ABORTED');
   page.emit('requestfailed', documentRequest);
   assert.deepEqual(
@@ -135,6 +139,5 @@ test('#3899 does not classify document requests as expected fetch/xhr aborts', (
     'a navigation/document abort remains observable'
   );
 
-  tracker.endIntentionalNavigation();
   tracker.dispose();
 });
