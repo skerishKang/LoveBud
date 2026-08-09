@@ -73,6 +73,33 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
+            # --- Parent membership validation (same transaction as INSERT) ---
+            # Issue #3918: verify parent exists and belongs to the same tree
+            # before inserting. FOR KEY SHARE is sufficient:
+            #   - blocks concurrent DELETE of the parent row (prevents dangling child)
+            #   - blocks concurrent UPDATE of the parent PK (id)
+            #   - does NOT block concurrent reads or unrelated column updates
+            # A stronger FOR UPDATE is unnecessary because we never modify the
+            # parent row here; we only need it to survive until our INSERT commits.
+            if parent_id is not None:
+                cur.execute(
+                    """
+                    SELECT id, tree_id
+                    FROM memories
+                    WHERE id = %s
+                    LIMIT 1
+                    FOR KEY SHARE
+                    """,
+                    (parent_id,),
+                )
+                parent_row = cur.fetchone()
+                if not parent_row or str(parent_row["tree_id"]) != str(tree_id):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={"code": "INVALID_PARENT_ID"},
+                    )
+
+            # --- INSERT ---
             cur.execute(query, params)
             row = cur.fetchone()
         conn.commit()
