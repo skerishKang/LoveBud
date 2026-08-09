@@ -9,52 +9,96 @@
    * New code outside this adapter must not directly read snake_case fields.
    */
 
-  function sanitizeUrl(url) {
-    if (!url) return '';
+  const TRUSTED_YOUTUBE_SOURCE_HOSTS = new Set([
+    'youtube.com',
+    'www.youtube.com',
+    'm.youtube.com',
+    'music.youtube.com',
+    'youtu.be'
+  ]);
+  const TRUSTED_YOUTUBE_THUMBNAIL_HOSTS = new Set([
+    'img.youtube.com',
+    'i.ytimg.com'
+  ]);
+
+  function parseHttpUrl(url) {
+    if (!url) return null;
+    const raw = String(url).trim();
+    if (!raw) return null;
+
+    const schemeMatch = raw.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+    if (schemeMatch && !/^https?:$/i.test(schemeMatch[0])) return null;
+
     try {
-      const u = new URL(url.startsWith('http') ? url : `https://${url}`);
-      return u.toString();
+      const parsed = new URL(schemeMatch ? raw : `https://${raw}`);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+      return parsed;
     } catch (e) {
-      return '';
+      return null;
     }
+  }
+
+  function sanitizeUrl(url) {
+    const parsed = parseHttpUrl(url);
+    return parsed ? parsed.toString() : '';
   }
 
   function isValidYouTubeVideoId(id) {
     return typeof id === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(id);
   }
 
+  function normalizeHost(host) {
+    return String(host || '').trim().toLowerCase();
+  }
+
+  function isTrustedYouTubeSourceHost(host) {
+    return TRUSTED_YOUTUBE_SOURCE_HOSTS.has(normalizeHost(host));
+  }
+
+  function isTrustedYouTubeThumbnailHost(host) {
+    return TRUSTED_YOUTUBE_THUMBNAIL_HOSTS.has(normalizeHost(host));
+  }
+
   function isYouTubeHost(url) {
-    if (!url) return false;
-    try {
-      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
-      const host = parsed.hostname.toLowerCase();
-      return host.includes('youtube.com') || host.includes('youtu.be') || host.includes('ytimg.com');
-    } catch (e) {
-      return false;
+    const parsed = parseHttpUrl(url);
+    if (!parsed) return false;
+    return isTrustedYouTubeSourceHost(parsed.hostname) || isTrustedYouTubeThumbnailHost(parsed.hostname);
+  }
+
+  function extractYouTubeVideoIdFromParsedSource(parsed) {
+    if (!parsed || !isTrustedYouTubeSourceHost(parsed.hostname)) return null;
+
+    const host = normalizeHost(parsed.hostname);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    let videoId = '';
+
+    if (host === 'youtu.be') {
+      videoId = segments[0] || '';
+    } else if (['embed', 'v', 'shorts', 'live'].includes(segments[0])) {
+      videoId = segments[1] || '';
+    } else {
+      videoId = parsed.searchParams.get('v') || '';
     }
+
+    return isValidYouTubeVideoId(videoId) ? videoId : null;
   }
 
   function extractYouTubeVideoId(url) {
-    if (!url) return null;
-    const s = String(url);
-    
-    // Standard watch URL or any URL with v= parameter
-    const vMatch = s.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-    if (vMatch) return vMatch[1];
-    
-    // youtu.be/ID, shorts/ID, embed/ID, live/ID, v/ID
-    const pathMatch = s.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|shorts\/|live\/))([a-zA-Z0-9_-]{11})/);
-    if (pathMatch) return pathMatch[1];
+    const parsed = parseHttpUrl(url);
+    return extractYouTubeVideoIdFromParsedSource(parsed);
+  }
 
-    return null;
+  function extractYouTubeVideoIdFromParsedThumbnail(parsed) {
+    if (!parsed || !isTrustedYouTubeThumbnailHost(parsed.hostname)) return null;
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    if (segments[0] !== 'vi') return null;
+    const videoId = segments[1] || '';
+    return isValidYouTubeVideoId(videoId) ? videoId : null;
   }
 
   function extractYouTubeVideoIdFromThumbnail(url) {
-    if (!url) return null;
-    const s = String(url);
-    // img.youtube.com/vi/ID/..., i.ytimg.com/vi/ID/...
-    const match = s.match(/(?:img\.youtube\.com|i\.ytimg\.com)\/vi\/([a-zA-Z0-9_-]{11})/);
-    return match ? match[1] : null;
+    const parsed = parseHttpUrl(url);
+    return extractYouTubeVideoIdFromParsedThumbnail(parsed);
   }
 
   function buildCanonicalYouTubeThumbnailUrl(videoId) {
@@ -68,25 +112,30 @@
   }
 
   function canonicalizeYouTubeSourceUrl(url) {
-    const videoId = extractYouTubeVideoId(url);
-    if (videoId) return buildCanonicalYouTubeEmbedUrl(videoId);
-    return sanitizeUrl(url);
+    const parsed = parseHttpUrl(url);
+    if (!parsed) return '';
+
+    const safeUrl = parsed.toString();
+    if (!isTrustedYouTubeSourceHost(parsed.hostname)) return safeUrl;
+
+    const videoId = extractYouTubeVideoIdFromParsedSource(parsed);
+    return videoId ? buildCanonicalYouTubeEmbedUrl(videoId) : safeUrl;
   }
 
   function canonicalizeYouTubeThumbnailUrl(url, fallbackSourceUrl) {
-    const safeUrl = sanitizeUrl(url);
-    const safeFallbackSourceUrl = sanitizeUrl(fallbackSourceUrl);
+    const parsedUrl = parseHttpUrl(url);
+    const parsedFallbackSourceUrl = parseHttpUrl(fallbackSourceUrl);
+    const safeUrl = parsedUrl ? parsedUrl.toString() : '';
 
-    let videoId = extractYouTubeVideoIdFromThumbnail(safeUrl);
-    if (!videoId) {
-      videoId = extractYouTubeVideoId(safeUrl) || extractYouTubeVideoId(safeFallbackSourceUrl);
-    }
-    
-    if (videoId && isValidYouTubeVideoId(videoId)) {
+    let videoId = extractYouTubeVideoIdFromParsedThumbnail(parsedUrl);
+    if (!videoId) videoId = extractYouTubeVideoIdFromParsedSource(parsedUrl);
+    if (!videoId) videoId = extractYouTubeVideoIdFromParsedSource(parsedFallbackSourceUrl);
+
+    if (videoId) {
       return buildCanonicalYouTubeThumbnailUrl(videoId);
     }
 
-    if (safeUrl && !isYouTubeHost(safeUrl)) {
+    if (safeUrl && !isTrustedYouTubeSourceHost(parsedUrl.hostname) && !isTrustedYouTubeThumbnailHost(parsedUrl.hostname)) {
       return safeUrl;
     }
 
@@ -248,6 +297,8 @@
     sanitizeUrl,
     isValidYouTubeVideoId,
     isYouTubeHost,
+    isTrustedYouTubeSourceHost,
+    isTrustedYouTubeThumbnailHost,
     extractYouTubeVideoId,
     extractYouTubeVideoIdFromThumbnail,
     buildCanonicalYouTubeThumbnailUrl,
