@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from typing import Any
 
@@ -164,6 +165,14 @@ def delete_owner_tree(owner_id: str, tree_id: str) -> dict[str, Any]:
     return {"deleted": True, "id": str(row["id"])}
 
 
+def _tree_fork_lock_key(source_tree_id: str, owner_id: str) -> int:
+    """Return a stable, domain-separated signed bigint fork lock key."""
+    digest = hashlib.sha256(
+        f"tree-fork:v1:{source_tree_id}\x1f{owner_id}".encode("utf-8")
+    ).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=True)
+
+
 def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """Copy a public LoveTree and its public memories into a new tree owned by owner_id.
 
@@ -175,6 +184,11 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     durable copy: it either commits first (the fork observes `private` and
     aborts with no destination rows) or it blocks on the FOR SHARE lock until
     the fork transaction commits.
+
+    Idempotency invariant (#3925): after source authorization, concurrent forks
+    for the same (source_tree_id, owner_id) serialize on a transaction-scoped
+    advisory lock before the duplicate lookup. The loser then observes and
+    reuses the winner instead of materializing a second active fork.
     """
     ensure_owner_user_exists(owner_id)
     safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
@@ -193,7 +207,8 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """
 
     # Idempotency guard: if authenticated user already forked this tree, return existing copy.
-    # Runs inside the same transaction, after the source row is authorized.
+    # Runs inside the same transaction, after the source row is authorized and
+    # the source/owner advisory lock has serialized competing creators.
     existing_fork_query = """
         SELECT id FROM trees
         WHERE owner_id = %s
@@ -256,25 +271,32 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
                         detail="Only public trees can be forked",
                     )
 
-                # 3. Duplicate fork guard inside the same transaction.
+                # 3. Serialize competing creators for the same source/owner pair
+                # without widening source-row locking or requiring a schema change.
+                cur.execute(
+                    "SELECT pg_advisory_xact_lock(%s)",
+                    (_tree_fork_lock_key(safe_source_id, owner_id),),
+                )
+
+                # 4. Duplicate fork guard inside the same transaction.
                 cur.execute(existing_fork_query, (owner_id, safe_source_id))
                 existing = cur.fetchone()
                 if existing:
                     existing_fork_id = str(existing["id"])
                 else:
-                    # 4. Source title comes from the authorized transaction row.
+                    # 5. Source title comes from the authorized transaction row.
                     source_title = str(source_tree.get("title") or "LoveTree")
                     new_title_raw = f"{source_title} (복사본)"
                     new_title = new_title_raw[:200]
 
-                    # 5. Destination tree insert happens only after authorization.
+                    # 6. Destination tree insert happens only after authorization.
                     cur.execute(
                         insert_tree_query,
                         (new_tree_id, owner_id, new_title, safe_source_id),
                     )
                     new_tree_row = cur.fetchone()
 
-                    # 6. Public source memories read inside the same transaction.
+                    # 7. Public source memories read inside the same transaction.
                     cur.execute(fetch_source_memories_query, (safe_source_id,))
                     source_memories = cur.fetchall()
 
@@ -283,7 +305,7 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
                     for mem in source_memories:
                         id_map[str(mem["id"])] = str(uuid.uuid4())
 
-                    # 7. Insert copied memories with rewritten tree_id and parent_id.
+                    # 8. Insert copied memories with rewritten tree_id and parent_id.
                     for mem in source_memories:
                         new_mem_id = id_map[str(mem["id"])]
                         old_parent_id = str(mem["parent_id"]) if mem["parent_id"] else None
