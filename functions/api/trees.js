@@ -3,6 +3,7 @@ import { validateWritePayload } from '../_shared/legacy-key-guard.js';
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
 const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const MODAL_FETCH_TIMEOUT_MS = 25000;
 
 function generateRequestId() {
   return 'req-' + crypto.randomUUID();
@@ -100,6 +101,39 @@ function buildModalUnavailableResponse(requestId = null) {
   });
 }
 
+function buildModalTimeoutResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-route-status': 'modal-timeout'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), {
+    status: 504,
+    headers
+  });
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = MODAL_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function modalFailureResponse(error, requestId = null) {
+  if (error && error.name === 'AbortError') {
+    return buildModalTimeoutResponse(requestId);
+  }
+  return buildModalUnavailableResponse(requestId);
+}
+
 export async function onRequestGet(context) {
   const request = context.request;
   const requestId = getOrCreateRequestId(request);
@@ -131,11 +165,11 @@ export async function onRequestGet(context) {
 
   let response;
   try {
-    response = await fetch(target.toString(), {
+    response = await fetchWithTimeout(target.toString(), {
       headers: modalRequestHeaders
     });
   } catch (error) {
-    return buildModalUnavailableResponse(requestId);
+    return modalFailureResponse(error, requestId);
   }
 
   return await withModalHeaderAndId(response, requestId);
@@ -185,7 +219,7 @@ export async function onRequestPost(context) {
 
   let response;
   try {
-    response = await fetch(new URL('/modal/private/trees', modalBaseUrl).toString(), {
+    response = await fetchWithTimeout(new URL('/modal/private/trees', modalBaseUrl).toString(), {
       method: 'POST',
       headers: {
         accept: 'application/json',
@@ -197,7 +231,7 @@ export async function onRequestPost(context) {
       body: bodyResult.body
     });
   } catch (error) {
-    return buildModalUnavailableResponse();
+    return modalFailureResponse(error);
   }
 
   return withModalHeader(response);
