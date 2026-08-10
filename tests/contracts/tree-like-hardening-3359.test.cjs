@@ -31,19 +31,26 @@ function read(filePath) {
 
 // ─── Modal tree-like writer requires and validates Idempotency-Key ────────────
 
-test('Tree-like writer validates Idempotency-Key before any visibility/DB lookup', () => {
+test('Tree-like writer validates Idempotency-Key before transaction-local visibility lookup', () => {
   const src = read(TREE_LIKES_PATH);
   const start = src.indexOf('def toggle_tree_like(');
   const nextDef = src.indexOf('\ndef ', start + 10);
   const block = nextDef === -1 ? src.slice(start) : src.slice(start, nextDef);
   const missingIdx = block.indexOf('if not idempotency_key:');
   const formatIdx = block.indexOf('validate_idempotency_key_format(idempotency_key)');
-  const visibilityIdx = block.indexOf('require_public_tree_for_like(safe_tree_id)');
+  const visibilityIdx = block.indexOf('require_public_tree_cursor(cur, safe_tree_id)');
+  const transactionIdx = block.indexOf('with get_db_connection() as conn:');
   assert.ok(missingIdx > 0, 'missing-key check must be present');
   assert.ok(formatIdx > missingIdx, 'format validation must follow missing-key check');
+  assert.ok(transactionIdx > formatIdx, 'transaction must start after key validation');
   assert.ok(
-    missingIdx < visibilityIdx && formatIdx < visibilityIdx,
-    'idempotency key validation must precede the public-tree visibility lookup'
+    visibilityIdx > transactionIdx,
+    'public-tree visibility lookup must run inside the mutation transaction'
+  );
+  assert.equal(
+    block.includes('require_public_tree_for_like(safe_tree_id)'),
+    false,
+    'mutation path must not reintroduce the legacy pre-transaction visibility lookup'
   );
 });
 
