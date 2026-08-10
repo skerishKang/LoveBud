@@ -84,10 +84,16 @@ describe('2. Six audit layers', () => {
             assert.match(src, /128\s*KB|131072|MAX_BODY|SIZE/i);
         });
 
-        it('Authorization forwarded only when present', () => {
+        it('Authorization is required at the edge and forwarded after the guard', () => {
             const src = readSrc('functions/api/memories/[id]/comments.js');
-            // Authorization is conditionally forwarded: ...(authHeader ? { authorization } : {})
-            assert.match(src, /headers\.get\('authorization'\)\s*\?\s*\{.*?authorization.*?\}\s*:\s*\{\}/i);
+            assert.match(
+                src,
+                /const authorization = getAuthorization\(request\);[\s\S]*?if \(!authorization\) return buildMissingAuthorizationResponse\(\);/,
+            );
+            assert.match(
+                src,
+                /headers:\s*\{[\s\S]*?'Idempotency-Key': idempotencyKey,[\s\S]*?authorization[\s\S]*?\}/,
+            );
         });
 
         it('routes to Modal private comments endpoint', () => {
