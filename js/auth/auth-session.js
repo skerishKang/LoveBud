@@ -99,6 +99,39 @@
     var getRedirectTargetFn = options && options.getRedirectTarget;
     var apiClient = options && options.apiClient;
     var logger = (options && options.logger) || console;
+    var privateCache = window.LoveBudAuthCache || null;
+    var ownerUid = privateCache && typeof privateCache.getPrivateCacheOwnerUid === 'function'
+      ? privateCache.getPrivateCacheOwnerUid()
+      : null;
+    var authority = privateCache && typeof privateCache.capturePrivateCacheAuthority === 'function'
+      ? privateCache.capturePrivateCacheAuthority(ownerUid)
+      : null;
+
+    function isAuthorityCurrent() {
+      return !!(
+        privateCache &&
+        authority &&
+        typeof privateCache.isPrivateCacheAuthorityCurrent === 'function' &&
+        privateCache.isPrivateCacheAuthorityCurrent(authority)
+      );
+    }
+
+    function writePrivateRecord(key, record) {
+      if (
+        !privateCache ||
+        !ownerUid ||
+        !authority ||
+        typeof privateCache.writePrivateCacheRecord !== 'function'
+      ) {
+        return false;
+      }
+      return privateCache.writePrivateCacheRecord(key, ownerUid, record, authority) === true;
+    }
+
+    if (!ownerUid || !authority) {
+      logger.warn('[auth] Private preload skipped: confirmed owner cache authority unavailable');
+      return;
+    }
 
     var redirectTarget = typeof getRedirectTargetFn === 'function' ? getRedirectTargetFn() : '';
 
@@ -115,11 +148,14 @@
     try {
       if (apiClient && apiClient.getTrees) {
         apiClient.getTrees().then(function (trees) {
+          if (!isAuthorityCurrent()) return;
           if (trees && trees.length > 0) {
-            localStorage.setItem('lovebud_trees_cache', JSON.stringify({
+            if (!writePrivateRecord('lovebud_trees_cache', {
               data: trees,
               timestamp: Date.now()
-            }));
+            })) {
+              return;
+            }
             logger.log('[auth] Preloaded my-trees cache:', trees.length, 'trees');
 
             // Optimization: Only preload detail for editor target.
@@ -128,13 +164,13 @@
               var firstTreeId = trees[0].id || trees[0];
               if (firstTreeId) {
                 // 1. Fetch tree detail immediately (smaller payload, higher priority for editor)
-                if (apiClient.getTree) {
+                if (apiClient.getTree && isAuthorityCurrent()) {
                   apiClient.getTree(firstTreeId).then(function (treeDetail) {
                     if (treeDetail) {
-                      localStorage.setItem('tree_detail_' + firstTreeId, JSON.stringify({
+                      writePrivateRecord('tree_detail_' + firstTreeId, {
                         data: treeDetail,
                         timestamp: Date.now()
-                      }));
+                      });
                     }
                   }).catch(function () {});
                 }
@@ -149,14 +185,16 @@
                 };
 
                 runWhenIdle(function () {
+                  if (!isAuthorityCurrent()) return;
                   if (apiClient.getMemoriesByTree) {
                     apiClient.getMemoriesByTree(firstTreeId).then(function (memories) {
                       if (memories && Array.isArray(memories)) {
-                        localStorage.setItem('tree_memories_' + firstTreeId, JSON.stringify({
+                        if (writePrivateRecord('tree_memories_' + firstTreeId, {
                           data: memories,
                           timestamp: Date.now()
-                        }));
-                        logger.log('[auth] Background preloaded memories:', firstTreeId, memories.length);
+                        })) {
+                          logger.log('[auth] Background preloaded memories:', firstTreeId, memories.length);
+                        }
                       }
                     }).catch(function () {});
                   }
