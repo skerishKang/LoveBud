@@ -247,6 +247,7 @@
   }
 
   function writePersistentTreesCache(trees, scope) {
+    scope = scope || capturePrivateCacheScope();
     if (!canUsePrivateCache(scope)) return false;
     try {
       return writePrivateCacheRecord(PERSISTENT_TREES_CACHE_KEY, {
@@ -776,7 +777,7 @@
           if (cache && canUsePrivateCache(privateCacheScope)) {
             cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
           }
-          writePersistentTreesCache(trees, privateCacheScope);
+          writePersistentTreesCache(trees);
 
           if (typeof renderTrees === 'function') {
             renderTrees(trees);
