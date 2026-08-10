@@ -189,6 +189,23 @@ test('app.py normalizes auth failures into the bounded UNAUTHORIZED envelope', (
   assert.match(endpointBlock, /except RuntimeError as error:/);
 });
 
+test('app.py preserves the HTTP 503 dependency-outage taxonomy (never collapses to 401)', () => {
+  const appSource = readAppSource();
+  const endpointBlock = sliceBetween(
+    appSource,
+    /def post_youtube_playlist_preview/,
+    /# ── Public \(guest-safe\) moment social read endpoints ──/
+  );
+  // #3972 raises HTTPException(503) on trusted Firebase cert dependency
+  // outage; the route must preserve 503 with a safe message.
+  assert.match(endpointBlock, /error\.status_code >= 500/);
+  assert.match(endpointBlock, /status_code=503/);
+  assert.match(endpointBlock, /status_code=401/);
+  assert.match(endpointBlock, /Authentication service is temporarily unavailable/);
+  // Raw auth detail must never be forwarded verbatim.
+  assert.doesNotMatch(endpointBlock, /error\.detail/);
+});
+
 test('app.py registers PlaylistPreviewError as bounded envelope', () => {
   const appSource = readAppSource();
   assert.match(appSource, /playlist_preview_error_handler/);

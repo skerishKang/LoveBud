@@ -652,11 +652,22 @@ async def post_youtube_playlist_preview(
         try:
             user = require_firebase_user(authorization)
         except HTTPException as error:
+            # Preserve the sanitized auth dependency taxonomy: #3972 raises
+            # HTTPException(503) when the trusted Firebase cert dependency is
+            # unavailable. Never collapse that 503 back to 401 and never
+            # surface the raw auth detail (network/cert internals) verbatim.
+            if error.status_code >= 500:
+                raise PlaylistPreviewError(
+                    "UNAUTHORIZED",
+                    "Authentication service is temporarily unavailable.",
+                    status_code=503,
+                ) from error
             raise PlaylistPreviewError(
                 "UNAUTHORIZED", "Authentication is required.", status_code=401
             ) from error
         except RuntimeError as error:
-            # Firebase verifier unavailable: fail closed, provider calls stay 0.
+            # Legacy fail-closed fallback (verifier dependency unavailable):
+            # provider key resolution and provider calls stay 0.
             raise PlaylistPreviewError(
                 "UNAUTHORIZED",
                 "Authentication service is temporarily unavailable.",

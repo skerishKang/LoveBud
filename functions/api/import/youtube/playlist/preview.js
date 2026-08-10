@@ -19,7 +19,7 @@
  */
 
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
-const MAX_REQUEST_BODY_BYTES = 4 * 1024;
+const MAX_REQUEST_BODY_BYTES = 4096;
 const MODAL_PROXY_TIMEOUT_MS = 15000;
 const PREVIEW_MODAL_PATH = '/modal/private/import/youtube/playlist/preview';
 
@@ -59,23 +59,99 @@ function buildEnvelopeResponse(body, status, requestId, routeStatus) {
   return jsonResponse(body, status, headers);
 }
 
-async function readBoundedBody(request) {
-  let bodyText;
+function parseContentLength(raw) {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  if (!/^[0-9]+$/.test(raw.trim())) return null;
+  const parsed = Number(raw.trim());
+  if (!Number.isSafeInteger(parsed) || parsed < 0) return null;
+  return parsed;
+}
+
+async function cancelReaderBestEffort(reader) {
   try {
-    bodyText = await request.text();
+    if (reader && typeof reader.cancel === 'function') {
+      await reader.cancel();
+    }
   } catch (e) {
-    return { tooLarge: true, body: null };
+    // best effort — cancellation failure must never mask the real outcome
+  }
+  try {
+    if (reader && typeof reader.releaseLock === 'function') {
+      reader.releaseLock();
+    }
+  } catch (e) {
+    // best effort
+  }
+}
+
+/**
+ * readBoundedBody — true 4KB streamed byte bound (per #3914 / #3920).
+ *
+ * The actual authority is `request.body.getReader()`: chunks are accumulated
+ * and the moment the cumulative UTF-8 BYTE length exceeds 4096 the reader is
+ * cancelled (best effort) and no more of the body is materialized. UTF-8 byte
+ * count is the authority, never the character count and never a pre-read
+ * `request.text()` / `request.json()`.
+ *
+ * Content-Length is ONLY an early-rejection optimization: a valid positive
+ * integer > 4096 may short-circuit to 413 without reading, but a missing,
+ * invalid, or understated Content-Length is never trusted — the streamed
+ * reader still enforces the true bound.
+ *
+ * A stream read failure is NOT a payload-size failure: it is reported as a
+ * bounded readFailure so the caller can return a fixed 500 without exposing
+ * the raw stream exception and without mislabeling it payload-too-large.
+ */
+async function readBoundedBody(request) {
+  const contentLength = parseContentLength(request.headers.get('content-length'));
+  if (contentLength !== null && contentLength > MAX_REQUEST_BODY_BYTES) {
+    return { tooLarge: true, readFailure: false, body: null };
   }
 
-  if (!bodyText) {
-    return { tooLarge: false, body: '' };
+  const stream = request.body;
+  if (!stream || typeof stream.getReader !== 'function') {
+    return { tooLarge: false, readFailure: false, body: '' };
   }
 
-  const encoded = new TextEncoder().encode(bodyText);
-  if (encoded.byteLength > MAX_REQUEST_BODY_BYTES) {
-    return { tooLarge: true, body: null };
+  let reader;
+  try {
+    reader = stream.getReader();
+  } catch (e) {
+    return { tooLarge: false, readFailure: true, body: null };
   }
-  return { tooLarge: false, body: bodyText };
+
+  const chunks = [];
+  let totalBytes = 0;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value || !value.byteLength) continue;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+        await cancelReaderBestEffort(reader);
+        return { tooLarge: true, readFailure: false, body: null };
+      }
+      chunks.push(value);
+    }
+  } catch (e) {
+    await cancelReaderBestEffort(reader);
+    return { tooLarge: false, readFailure: true, body: null };
+  }
+
+  if (chunks.length === 0) {
+    return { tooLarge: false, readFailure: false, body: '' };
+  }
+
+  const joined = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    joined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const bodyText = new TextDecoder().decode(joined);
+  return { tooLarge: false, readFailure: false, body: bodyText };
 }
 
 async function fetchModalWithTimeout(modalUrl, options) {
@@ -159,6 +235,14 @@ export async function onRequestPost(context) {
       413,
       requestId,
       'payload-too-large'
+    );
+  }
+  if (bodyResult.readFailure) {
+    return buildEnvelopeResponse(
+      { ok: false, error: { code: 'VALIDATION_ERROR', message: 'Request body could not be read.' } },
+      500,
+      requestId,
+      'body-read-failure'
     );
   }
 

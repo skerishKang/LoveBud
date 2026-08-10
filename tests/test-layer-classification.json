@@ -5006,6 +5006,13 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/test_youtube_playlist_preview_route_3914.py",
+      "defaultCi": false,
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script. Drives the Modal preview endpoint (modal_compute/app.py post_youtube_playlist_preview) through the real FastAPI TestClient with auth/provider seams patched (same canonical pattern as tests/contracts/test_fork_tree.py) to prove bounded 401/503 auth envelopes with zero provider key/metadata/items calls, preserved 503 dependency-outage taxonomy (#3972), raw auth detail absence, and verified-auth progression to provider seams. No real Firebase, no real YouTube network call.",
+      "capabilities": []
+    },
+    {
       "path": "tests/db-engine/fork-public-tree-visibility-concurrency-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",

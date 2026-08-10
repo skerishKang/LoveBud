@@ -148,6 +148,182 @@ test('4KB body limit is enforced', async () => {
   assert.equal(result.body.error.code, 'INVALID_PLAYLIST_SOURCE');
 });
 
+// ── True 4KB streamed byte bound (#3914 correction / #3920) ─────────────────
+// The authority is request.body.getReader() with cumulative UTF-8 BYTE length;
+// request.text() is never called first, Content-Length is only an early-reject
+// optimization, and a stream read failure is a bounded 500 (never 413).
+
+const ENCODER = new TextEncoder();
+
+function buildJsonBody(value) {
+  return JSON.stringify({ playlistId: value });
+}
+
+function buildRequestBody({ body, headers = {}, duplex = false }) {
+  const init = {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...headers },
+  };
+  if (typeof body === 'string') {
+    init.body = body;
+  } else if (body && typeof body.getReader === 'function') {
+    init.body = body;
+    init.duplex = 'half';
+  }
+  return new Request(`https://lovebud.pages.dev${PREVIEW_PATH}`, init);
+}
+
+async function callPreviewWithRequest(buildRequestFn, options = {}) {
+  const mod = await import('../../functions/api/import/youtube/playlist/preview.js');
+  const { onRequestPost } = mod;
+  const request = buildRequestFn();
+  const env = options.env || { MODAL_BASE_URL: MODAL_BASE };
+  let upstreamCalls = 0;
+  const userHandler = options.fetchHandler || null;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (...args) => {
+    upstreamCalls += 1;
+    if (userHandler) return userHandler(...args);
+    return jsonResponse(200, { ok: true, playlist: {}, items: [], totalItems: 0, previewedItems: 0 });
+  };
+  try {
+    const response = await onRequestPost({ request, env });
+    const text = await response.text();
+    return {
+      status: response.status,
+      body: text ? JSON.parse(text) : null,
+      upstreamCalls,
+    };
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+function chunkedStream(chunks) {
+  return new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(ENCODER.encode(chunk));
+      }
+      controller.close();
+    },
+  });
+}
+
+test('4KB streamed bound: exactly 4096 bytes is accepted and forwarded', async () => {
+  // JSON wrapper is 15 prefix + 2 suffix = 17; value 2 + 4077 = 4079; total 4096.
+  const body = buildJsonBody('PL' + 'x'.repeat(4077));
+  assert.equal(ENCODER.encode(body).byteLength, 4096);
+  const result = await callPreviewWithRequest(() => buildRequestBody({ body }));
+  assert.equal(result.status, 200);
+  assert.equal(result.upstreamCalls, 1, 'valid request must reach Modal');
+});
+
+test('4KB streamed bound: 4097 bytes is rejected 413 with zero upstream calls', async () => {
+  const body = buildJsonBody('PL' + 'x'.repeat(4078)); // value 4080 + 17 = 4097 bytes
+  assert.equal(ENCODER.encode(body).byteLength, 4097);
+  const result = await callPreviewWithRequest(() => buildRequestBody({ body }));
+  assert.equal(result.status, 413);
+  assert.equal(result.body.error.code, 'INVALID_PLAYLIST_SOURCE');
+  assert.equal(result.upstreamCalls, 0, 'overflow must never reach Modal');
+});
+
+test('4KB streamed bound: Content-Length > 4096 yields early 413 with zero upstream calls', async () => {
+  // Content-Length is only an optimization: a small actual body with a large
+  // declared length is rejected before any read and before any upstream call.
+  const result = await callPreviewWithRequest(() =>
+    buildRequestBody({ body: '{}', headers: { 'content-length': '5000' } })
+  );
+  assert.equal(result.status, 413);
+  assert.equal(result.upstreamCalls, 0);
+});
+
+test('4KB streamed bound: no Content-Length + streamed <= 4096 is accepted', async () => {
+  const body = buildJsonBody('PL' + 'x'.repeat(300));
+  const stream = chunkedStream([body.slice(0, 100), body.slice(100)]);
+  const result = await callPreviewWithRequest(() => buildRequestBody({ body: stream }));
+  assert.equal(result.upstreamCalls, 1, 'no-content-length small body must reach Modal');
+  assert.equal(result.status, 200);
+});
+
+test('4KB streamed bound: no Content-Length + streamed > 4096 is 413 with zero upstream calls', async () => {
+  const body = buildJsonBody('PL' + 'x'.repeat(4078)); // 4097 bytes
+  const stream = chunkedStream([body.slice(0, 1000), body.slice(1000, 2500), body.slice(2500)]);
+  const result = await callPreviewWithRequest(() => buildRequestBody({ body: stream }));
+  assert.equal(result.status, 413);
+  assert.equal(result.upstreamCalls, 0, 'streamed overflow must never reach Modal');
+});
+
+test('4KB streamed bound: understated Content-Length with actual > 4096 is 413', async () => {
+  // An attacker-controlled understated Content-Length must not be trusted:
+  // the streamed reader still measures the actual byte length.
+  const body = buildJsonBody('PL' + 'x'.repeat(4078)); // 4097 bytes
+  const stream = chunkedStream([body]);
+  const result = await callPreviewWithRequest(() =>
+    buildRequestBody({ body: stream, headers: { 'content-length': '5' } })
+  );
+  assert.equal(result.status, 413);
+  assert.equal(result.upstreamCalls, 0);
+});
+
+test('4KB streamed bound: UTF-8 multibyte input is counted by bytes, not characters', async () => {
+  // '가' is 3 UTF-8 bytes; JSON wrapper overhead is 11 prefix + 2 suffix = 13.
+  // 1361 chars = 4083 bytes (+13 = 4096, exactly at the limit) accepted;
+  // 1362 chars = 4086 bytes (+13 = 4099) rejected. Character count alone
+  // would accept both, so this proves byte authority.
+  const acceptedBody = JSON.stringify({ source: '가'.repeat(1361) }); // 4096 bytes
+  const rejectedBody = JSON.stringify({ source: '가'.repeat(1362) }); // 4099 bytes
+  assert.equal(ENCODER.encode(acceptedBody).byteLength, 4096);
+  assert.equal(ENCODER.encode(rejectedBody).byteLength, 4099);
+  const accepted = await callPreviewWithRequest(() => buildRequestBody({ body: acceptedBody }));
+  assert.equal(accepted.status, 200, '4096-byte multibyte body must be accepted');
+  const rejected = await callPreviewWithRequest(() => buildRequestBody({ body: rejectedBody }));
+  assert.equal(rejected.status, 413, '4099-byte multibyte body must be rejected');
+  assert.equal(rejected.upstreamCalls, 0);
+});
+
+test('4KB streamed bound: overflow guarantees Modal fetch count is exactly 0', async () => {
+  const body = buildJsonBody('PL' + 'x'.repeat(5000));
+  const result = await callPreviewWithRequest(() => buildRequestBody({ body }), {
+    fetchHandler: async () => {
+      throw new Error('must never be called');
+    },
+  });
+  assert.equal(result.status, 413);
+  assert.equal(result.upstreamCalls, 0);
+});
+
+test('4KB streamed bound: valid existing request continues to forward the body', async () => {
+  let capturedBody = null;
+  const result = await callPreviewWithRequest(
+    () => buildRequestBody({ body: JSON.stringify({ playlistId: 'PLtest1234567890' }) }),
+    {
+      fetchHandler: async (url, options) => {
+        capturedBody = options.body;
+        return jsonResponse(200, { ok: true, playlist: {}, items: [], totalItems: 0, previewedItems: 0 });
+      },
+    }
+  );
+  assert.equal(result.status, 200);
+  const parsed = JSON.parse(capturedBody);
+  assert.equal(parsed.playlistId, 'PLtest1234567890');
+});
+
+test('4KB streamed bound: stream read failure is a bounded 500, not payload-too-large', async () => {
+  const errorStream = new ReadableStream({
+    start(controller) {
+      controller.error(new Error('stream exploded'));
+    },
+  });
+  const result = await callPreviewWithRequest(() => buildRequestBody({ body: errorStream }));
+  assert.equal(result.status, 500, 'read failure must not be mislabeled as 413');
+  assert.notEqual(result.status, 413);
+  assert.equal(result.body.ok, false);
+  assert.equal(result.body.error.code, 'VALIDATION_ERROR');
+  assert.ok(!/exploded/.test(JSON.stringify(result.body)), 'raw stream exception must not leak');
+  assert.equal(result.upstreamCalls, 0);
+});
+
 test('non-JSON content type is rejected', async () => {
   const mod = await import('../../functions/api/import/youtube/playlist/preview.js');
   const request = new Request(`https://lovebud.pages.dev${PREVIEW_PATH}`, {
