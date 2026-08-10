@@ -5,6 +5,7 @@ function stripTrailingSlash(value) {
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
 const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const MODAL_FETCH_TIMEOUT_MS = 25000;
 
 function generateRequestId() {
   return 'req-' + crypto.randomUUID();
@@ -96,6 +97,45 @@ function withPublicTreeCacheStatus(response, status) {
   });
 }
 
+function buildModalUnavailableResponse() {
+  return new Response(JSON.stringify({ error: 'Modal backend unavailable' }), {
+    status: 503,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'modal',
+      'x-lovebud-degraded': 'modal-unavailable'
+    }
+  });
+}
+
+function buildModalTimeoutResponse() {
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), {
+    status: 504,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'modal',
+      'x-lovebud-route-status': 'modal-timeout'
+    }
+  });
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = MODAL_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function modalFailureResponse(error) {
+  if (error && error.name === 'AbortError') {
+    return buildModalTimeoutResponse();
+  }
+  return buildModalUnavailableResponse();
+}
+
 export async function onRequestGet(context) {
   const { request, env } = context;
   const requestId = getOrCreateRequestId(request);
@@ -117,7 +157,7 @@ export async function onRequestGet(context) {
     const primaryTarget = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
     let response;
     try {
-      response = await fetch(primaryTarget.toString(), {
+      response = await fetchWithTimeout(primaryTarget.toString(), {
         headers: {
           accept: 'application/json',
           authorization: authHeader
@@ -126,14 +166,14 @@ export async function onRequestGet(context) {
 
       if (response.status === 404) {
         const publicTarget = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
-        response = await fetch(publicTarget.toString(), {
+        response = await fetchWithTimeout(publicTarget.toString(), {
           headers: {
             accept: 'application/json'
           }
         });
       }
     } catch (e) {
-      const errResp = new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers: { 'content-type': 'application/json' } });
+      const errResp = modalFailureResponse(e);
       return await withUpstreamHeaderAndId(errResp, 'modal', requestId);
     }
 
@@ -147,13 +187,13 @@ export async function onRequestGet(context) {
   const targetUrl = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
   let modalResponse;
   try {
-    modalResponse = await fetch(targetUrl.toString(), {
+    modalResponse = await fetchWithTimeout(targetUrl.toString(), {
       headers: {
         accept: 'application/json'
       }
     });
   } catch (e) {
-    const errResp = new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers: { 'content-type': 'application/json' } });
+    const errResp = modalFailureResponse(e);
     return await withUpstreamHeaderAndId(errResp, 'modal', requestId);
   }
 
@@ -203,17 +243,22 @@ export async function onRequestPut(context) {
 
   const treeId = context.params?.id;
   const target = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
-  const response = await fetch(target.toString(), {
-    method: 'PUT',
-    headers: {
-      accept: 'application/json',
-      'content-type': request.headers.get('content-type') || 'application/json',
-      ...(request.headers.get('authorization')
-        ? { authorization: request.headers.get('authorization') }
-        : {})
-    },
-    body: bodyResult.body
-  });
+  let response;
+  try {
+    response = await fetchWithTimeout(target.toString(), {
+      method: 'PUT',
+      headers: {
+        accept: 'application/json',
+        'content-type': request.headers.get('content-type') || 'application/json',
+        ...(request.headers.get('authorization')
+          ? { authorization: request.headers.get('authorization') }
+          : {})
+      },
+      body: bodyResult.body
+    });
+  } catch (error) {
+    return modalFailureResponse(error);
+  }
 
   return withModalHeader(response);
 }
@@ -233,15 +278,20 @@ export async function onRequestDelete(context) {
 
   const treeId = context.params?.id;
   const target = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
-  const response = await fetch(target.toString(), {
-    method: 'DELETE',
-    headers: {
-      accept: 'application/json',
-      ...(context.request.headers.get('authorization')
-        ? { authorization: context.request.headers.get('authorization') }
-        : {})
-    }
-  });
+  let response;
+  try {
+    response = await fetchWithTimeout(target.toString(), {
+      method: 'DELETE',
+      headers: {
+        accept: 'application/json',
+        ...(context.request.headers.get('authorization')
+          ? { authorization: context.request.headers.get('authorization') }
+          : {})
+      }
+    });
+  } catch (error) {
+    return modalFailureResponse(error);
+  }
 
   return withModalHeader(response);
 }
