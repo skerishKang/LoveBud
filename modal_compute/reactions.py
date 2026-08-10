@@ -43,6 +43,41 @@ def _compute_reaction_counts(cur: Any, memory_id: str) -> dict[str, int]:
     return {str(row["type"]): int(row["count"]) for row in rows}
 
 
+def _compute_reaction_summary(
+    cur: Any,
+    memory_id: str,
+    requester_uid: str,
+) -> dict[str, Any]:
+    """Return bounded aggregate counts plus requester-specific active state."""
+    cur.execute(
+        """
+        SELECT
+            type,
+            COUNT(*)::int AS count,
+            BOOL_OR(owner_id = %s) AS requester_active
+        FROM reactions
+        WHERE memory_id = %s
+        GROUP BY type
+        ORDER BY type
+        """,
+        (requester_uid, memory_id),
+    )
+    rows = cur.fetchall()
+
+    counts: dict[str, int] = {}
+    user_reactions: dict[str, bool] = {}
+    for row in rows:
+        reaction_type = str(row["type"])
+        counts[reaction_type] = int(row["count"])
+        if bool(row["requester_active"]):
+            user_reactions[reaction_type] = True
+
+    return {
+        "counts": counts,
+        "userReactions": user_reactions,
+    }
+
+
 def _make_reaction_dto(
     active: bool,
     reaction_type: str,
@@ -213,33 +248,10 @@ def fetch_reaction_summary(memory_id: str, owner_id: str) -> dict[str, Any]:
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
     require_memory_visible_or_owner(safe_memory_id, owner_id)
 
-    def operation() -> list[dict[str, Any]]:
+    def operation() -> dict[str, Any]:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT id, memory_id, owner_id, type, created_at
-                    FROM reactions
-                    WHERE memory_id = %s
-                    ORDER BY created_at ASC
-                    """,
-                    (safe_memory_id,),
-                )
-                return cur.fetchall()
+                return _compute_reaction_summary(cur, safe_memory_id, owner_id)
 
     from modal_compute.db import run_db_with_retry
-    rows = run_db_with_retry(operation)
-
-    counts: dict[str, int] = {}
-    user_reactions: dict[str, bool] = {}
-
-    for r in rows:
-        r_type = str(r["type"])
-        counts[r_type] = counts.get(r_type, 0) + 1
-        if str(r["owner_id"]) == owner_id:
-            user_reactions[r_type] = True
-
-    return {
-        "counts": counts,
-        "userReactions": user_reactions,
-    }
+    return run_db_with_retry(operation)
