@@ -1,18 +1,10 @@
+import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../_shared/request-id.js';
+
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
 
-const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MODAL_FETCH_TIMEOUT_MS = 25000;
-
-function generateRequestId() {
-  return 'req-' + crypto.randomUUID();
-}
-
-function getOrCreateRequestId(request) {
-  const existing = request.headers.get(REQUEST_ID_HEADER);
-  return existing || generateRequestId();
-}
 
 function hasAuthorizationHeader(request) {
   return !!(request.headers.get('authorization') || request.headers.get('Authorization'));
