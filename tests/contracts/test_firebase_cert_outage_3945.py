@@ -1,10 +1,15 @@
+import ast
 import json
+from pathlib import Path
 import time
 from unittest.mock import patch
 
 from fastapi import HTTPException
 
 import modal_compute.auth as auth
+
+
+APP_PATH = Path(__file__).resolve().parents[2] / "modal_compute" / "app.py"
 
 
 class FakeResponse:
@@ -68,6 +73,72 @@ def expect_http(fn, status, detail):
     raise AssertionError("expected HTTPException")
 
 
+def _load_private_tree_list_handler():
+    source = APP_PATH.read_text(encoding="utf-8")
+    module = ast.parse(source, filename=str(APP_PATH))
+    function = next(
+        node
+        for node in module.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "get_private_trees"
+    )
+    function.decorator_list = []
+
+    class StubOwnerTreeListError(Exception):
+        error_category = "STUB"
+        failure_phase = "query"
+
+    namespace = {
+        "Query": lambda **kwargs: kwargs.get("default"),
+        "Header": lambda **kwargs: kwargs.get("default"),
+        "HTTPException": HTTPException,
+        "RequestLogger": object,
+        "require_firebase_user": lambda _authorization: {"uid": "unused"},
+        "fetch_user_trees": lambda _uid, limit=100: [],
+        "OwnerTreeListError": StubOwnerTreeListError,
+    }
+    ast.fix_missing_locations(function)
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(APP_PATH), "exec"), namespace)
+    return namespace["get_private_trees"], namespace
+
+
+def _run_private_tree_auth_failure(status_code):
+    logs = []
+
+    class FakeLogger:
+        def __init__(self, **_kwargs):
+            pass
+
+        def log_error(self, **kwargs):
+            logs.append(kwargs)
+
+        def log_success(self, **_kwargs):
+            raise AssertionError("auth failure must not log success")
+
+    def fail_auth(_authorization):
+        raise HTTPException(status_code=status_code, detail="synthetic auth failure")
+
+    def forbidden_fetch(*_args, **_kwargs):
+        raise AssertionError("owner Tree query must not run after auth failure")
+
+    handler, namespace = _load_private_tree_list_handler()
+    namespace["RequestLogger"] = FakeLogger
+    namespace["require_firebase_user"] = fail_auth
+    namespace["fetch_user_trees"] = forbidden_fetch
+
+    try:
+        handler(
+            limit=100,
+            authorization="Bearer synthetic-token",
+            x_lovebud_request_id="req-3945",
+        )
+    except HTTPException as exc:
+        assert exc.status_code == status_code
+    else:
+        raise AssertionError("auth HTTPException must be preserved")
+
+    return logs
+
+
 def test_fresh_cache_avoids_network():
     reset_cache({"kid-1": "CERT"}, time.time() + 60)
     with patch.object(auth.urllib.request, "urlopen", side_effect=AssertionError("network must not run")):
@@ -125,6 +196,28 @@ def test_header_and_verification_failures_remain_401():
         with patch.object(auth, "_get_jwt_module", return_value=FakeJwt(decode_error=error)), \
              patch.object(auth, "_get_cryptography_x509", return_value=FakeX509()):
             expect_http(lambda: auth.require_firebase_user("Bearer token-value"), 401, "Invalid ID token")
+
+
+def test_private_tree_list_logs_auth_dependency_503_without_user_fault_taxonomy():
+    logs = _run_private_tree_auth_failure(503)
+    assert logs == [
+        {
+            "status_code": 503,
+            "error_category": "AUTH_DEPENDENCY_UNAVAILABLE",
+            "failure_phase": "auth",
+        }
+    ]
+
+
+def test_private_tree_list_keeps_invalid_token_401_taxonomy():
+    logs = _run_private_tree_auth_failure(401)
+    assert logs == [
+        {
+            "status_code": 401,
+            "error_category": "AUTH_FAILED",
+            "failure_phase": "auth",
+        }
+    ]
 
 
 def run():
