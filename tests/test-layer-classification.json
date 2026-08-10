@@ -2524,6 +2524,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/private-owner-cache-lifecycle-3928-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes production js/auth/auth-cache.js, js/auth/auth-session.js, js/auth.js, and js/my-trees/my-trees-data.js in a local node:vm fake-storage environment: asserts #3928 owner-transition regressions (A -> logout/switch -> B negative, no transient A cache paint for B, same-UID cache hit, logout coverage for all private key families, stale async A result invalidation, canonical preload cannot repopulate after UID transition) with no network, DB, Production, secrets, or external integration.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/production-readonly-catalog-boundary-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Source-static contract for the Production-readonly catalog connection boundary: dedicated secret key only, remote TLS URL validation, major-17 version policy, frozen adoption allowlist, abstract role mapping, disposable adapter regression, and no Production DB session (#3570).",
