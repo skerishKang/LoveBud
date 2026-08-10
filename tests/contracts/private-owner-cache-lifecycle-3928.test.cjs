@@ -71,7 +71,9 @@ function createContext() {
       search: '',
       pathname: '/pages/my-trees',
     },
-    requestIdleCallback() {},
+    requestIdleCallback(callback) {
+      callback();
+    },
   };
 
   const context = vm.createContext({
