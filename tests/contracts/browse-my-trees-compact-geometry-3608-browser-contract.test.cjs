@@ -1093,6 +1093,19 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       health.http4xx.length = 0;
       health.stubbedApi.length = 0;
       health.external = 0;
+      // Issue #3899: Space-key activation earlier in this test sets the
+      // scroll-load intent, and the scroll-load sentinel sits inside the
+      // viewport, so loadMorePublicTrees keeps starting limit=16 fetches.
+      // One of those can fire in the gap between beginIntentionalNavigation()
+      // and page.goto() and be cancelled by the intentional navigation. That
+      // is a legitimate post-snapshot abort per the tracker contract, so the
+      // harness disables the scroll-load sentinel gate for the navigation
+      // window. Keyboard accessibility assertions are unaffected.
+      await page.evaluate(() => {
+        if (window.LoveBudSearchScrollLoad && typeof window.LoveBudSearchScrollLoad.isSentinelNearViewport === 'function') {
+          window.LoveBudSearchScrollLoad.isSentinelNearViewport = function () { return false; };
+        }
+      });
       navigationFailureTracker.beginIntentionalNavigation();
       try {
         await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
