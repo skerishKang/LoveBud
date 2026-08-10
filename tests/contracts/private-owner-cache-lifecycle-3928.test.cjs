@@ -130,6 +130,10 @@ function privateKeys(storage) {
   return out.sort();
 }
 
+function titlesOf(trees) {
+  return Array.from(trees || [], (tree) => tree.title);
+}
+
 test('#3928 bounded purge preserves same-UID reuse and unrelated/public storage', () => {
   const env = createContext();
   runScript(env.context, AUTH_CACHE_PATH);
@@ -164,7 +168,7 @@ test('#3928 bounded purge preserves same-UID reuse and unrelated/public storage'
   cache.syncConfirmedPrivateOwner('user-a');
   assert.equal(cache.isPrivateCacheAuthorityCurrent(authorityA), true, 'same UID keeps the epoch valid');
   assert.deepEqual(
-    cache.readPrivateCacheRecord('lovebud_my_trees_list_cache', 'user-a').data.map((tree) => tree.title),
+    titlesOf(cache.readPrivateCacheRecord('lovebud_my_trees_list_cache', 'user-a').data),
     ['A private tree'],
     'same UID can reuse the private cache'
   );
@@ -284,7 +288,7 @@ test('#3928 My Trees cache-first paint is same-UID only and late A list results 
   const firstLoad = env.window.LoveBudMyTreesData.loadTrees({
     setState() {},
     stateEnum: { LOADING: 'loading', ERROR: 'error' },
-    renderTrees(trees) { renders.push(trees.map((tree) => tree.title)); },
+    renderTrees(trees) { renders.push(titlesOf(trees)); },
     acknowledgeUi() { return true; },
     showToast() {},
   });
@@ -304,7 +308,7 @@ test('#3928 My Trees cache-first paint is same-UID only and late A list results 
   const secondLoad = env.window.LoveBudMyTreesData.loadTrees({
     setState() {},
     stateEnum: { LOADING: 'loading', ERROR: 'error' },
-    renderTrees(trees) { secondRenders.push(trees.map((tree) => tree.title)); },
+    renderTrees(trees) { secondRenders.push(titlesOf(trees)); },
     acknowledgeUi() { return true; },
     showToast() {},
   });
