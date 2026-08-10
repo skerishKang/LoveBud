@@ -303,8 +303,19 @@ def get_private_trees(
     )
     try:
         user = require_firebase_user(authorization)
-    except HTTPException:
-        logger.log_error(status_code=401, error_category="AUTH_FAILED", failure_phase="auth")
+    except HTTPException as e:
+        if e.status_code >= 500:
+            logger.log_error(
+                status_code=e.status_code,
+                error_category="AUTH_DEPENDENCY_UNAVAILABLE",
+                failure_phase="auth",
+            )
+        else:
+            logger.log_error(
+                status_code=e.status_code,
+                error_category="AUTH_FAILED",
+                failure_phase="auth",
+            )
         raise
     try:
         result = fetch_user_trees(user["uid"], limit=limit)
