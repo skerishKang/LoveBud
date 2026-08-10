@@ -1,4 +1,5 @@
 import { validateWritePayload } from './legacy-key-guard.js';
+import { fetchModalWithTimeout, isModalTimeoutError } from './modal-fetch.js';
 
 export const MAX_MEMORY_WRITE_BODY_BYTES = 128 * 1024;
 export const MEMORY_ROUTE_REQUEST_ID_HEADER = 'x-lovebud-request-id';
@@ -143,6 +144,26 @@ export function buildMemoryMissingAuthorizationResponse(requestId = null) {
   return new Response(JSON.stringify({ error: 'Authorization required' }), { status: 401, headers });
 }
 
+export function buildMemoryModalUnavailableResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-degraded': 'modal-unavailable'
+  };
+  if (requestId) headers[MEMORY_ROUTE_REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers });
+}
+
+export function buildMemoryModalTimeoutResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-route-status': 'modal-timeout'
+  };
+  if (requestId) headers[MEMORY_ROUTE_REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), { status: 504, headers });
+}
+
 export async function readBoundedMemoryWriteBody(request) {
   if (isWriteContentLengthTooLarge(request)) {
     return { tooLarge: true, body: null };
@@ -258,20 +279,33 @@ export async function prepareMemoryWriteProxyRequest(request, env = {}, options 
   };
 }
 
+async function fetchMemoryModal(target, fetchOptions, options = {}) {
+  try {
+    return await fetchModalWithTimeout(target.toString(), fetchOptions, {
+      fetcher: options.fetcher,
+      timeoutMs: options.timeoutMs
+    });
+  } catch (error) {
+    if (isModalTimeoutError(error)) {
+      return buildMemoryModalTimeoutResponse(options.requestId || null);
+    }
+    return buildMemoryModalUnavailableResponse(options.requestId || null);
+  }
+}
+
 export async function proxyMemoryRouteRequest(context, options = {}) {
   const { request, env } = context;
   const requestId = options.requestId || null;
   const method = request.method.toUpperCase();
-  const fetcher = options.fetcher || fetch;
 
   if (method === 'GET') {
     const target = buildMemoryModalUrl(request, env || {}, options);
     if (!target) {
       return buildMemoryMissingModalConfigResponse(requestId);
     }
-    const response = await fetcher(target.toString(), {
+    const response = await fetchMemoryModal(target, {
       headers: buildMemoryReadHeaders(request, requestId)
-    });
+    }, { ...options, requestId });
     return withMemoryModalHeader(response, requestId);
   }
 
@@ -279,7 +313,7 @@ export async function proxyMemoryRouteRequest(context, options = {}) {
     const prepared = await prepareMemoryWriteProxyRequest(request, env || {}, options);
     if (prepared.response) return prepared.response;
 
-    const response = await fetcher(prepared.target.toString(), prepared.fetchOptions);
+    const response = await fetchMemoryModal(prepared.target, prepared.fetchOptions, { ...options, requestId });
     return withMemoryModalHeader(response, requestId);
   }
 
