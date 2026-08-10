@@ -55,4 +55,4 @@ jobs:
           test "${VER}" = "170004"
 
       - name: Run hub-layout revision concurrency regression
-        run: python tests/db-engine/hub-layout-revision-concurrency-3923.py
+        run: PYTHONPATH=. python tests/db-engine/hub-layout-revision-concurrency-3923.py
