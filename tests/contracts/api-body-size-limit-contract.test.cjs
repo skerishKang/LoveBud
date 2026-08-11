@@ -6,6 +6,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
 const MODAL_HELPERS_PY = path.join(ROOT, 'modal_compute/api_response_helpers.py');
+const TREE_COMMENT_JS = path.join(ROOT, 'functions/api/trees/[tree_id]/comments.js');
 
 function readFile(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -189,6 +190,94 @@ test('runtime: Cloudflare write proxy passes normal-sized POST to Modal', { time
     assert.equal(response.status, 200, 'normal-sized POST must return 200');
     assert.ok(modalFetchCalled, 'Modal fetch must be called for normal-sized body');
     assert.ok(modalFetchUrl.includes('/modal/private/trees'), 'Modal fetch must target private trees');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('tree-comment POST uses a streaming 128 KiB edge bound and never request.text()', () => {
+  const source = readFile(TREE_COMMENT_JS);
+  assert.match(source, /const\s+MAX_WRITE_BODY_BYTES\s*=\s*128\s*\*\s*1024/);
+  assert.match(source, /request\.body\.getReader\(\)/);
+  assert.match(source, /totalBytes\s*\+=\s*chunk\.byteLength/);
+  assert.match(source, /totalBytes\s*>\s*MAX_WRITE_BODY_BYTES/);
+  assert.doesNotMatch(source, /await\s+request\.text\(\)/);
+  assert.match(source, /status:\s*413/);
+  assert.match(source, /payload-too-large/);
+});
+
+test('runtime: tree-comment POST rejects missing/invalid/understated Content-Length oversized bodies before Modal', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const oversizedBody = JSON.stringify({ body: 'z'.repeat(129 * 1024) });
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+
+  const variants = [
+    {},
+    { 'content-length': 'not-a-number' },
+    { 'content-length': '1' },
+  ];
+
+  try {
+    for (const extraHeaders of variants) {
+      const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer test-token',
+          'Idempotency-Key': 'comment-key-3920',
+          ...extraHeaders,
+        },
+        body: oversizedBody,
+      });
+      const response = await onRequestPost({ request, env });
+      assert.equal(response.status, 413);
+      assert.equal(response.headers.get('x-lovebud-route-status'), 'payload-too-large');
+      assert.equal(response.headers.get('x-lovebud-upstream'), 'cloudflare');
+    }
+    assert.equal(modalFetchCalls, 0, 'oversized comment bodies must never reach Modal');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment POST preserves Authorization, Idempotency-Key, Modal target, and valid body bytes', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  let captured = null;
+  globalThis.fetch = async (url, options) => {
+    captured = { url: String(url), options };
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const body = JSON.stringify({ body: 'valid comment' });
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-3920',
+      },
+      body,
+    });
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 200);
+    assert.ok(captured, 'valid comment must reach Modal');
+    assert.equal(captured.url, 'https://example.modal.run/modal/private/trees/tree-3920/comments');
+    assert.equal(captured.options.headers.authorization, 'Bearer test-token');
+    assert.equal(captured.options.headers['Idempotency-Key'], 'comment-key-3920');
+    const forwarded = captured.options.body instanceof Uint8Array
+      ? new TextDecoder().decode(captured.options.body)
+      : String(captured.options.body);
+    assert.equal(forwarded, body);
   } finally {
     globalThis.fetch = originalFetch;
   }
