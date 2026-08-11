@@ -19,21 +19,21 @@ function forkLockKey(sourceTreeId, ownerId) {
   return digest.readBigInt64BE(0);
 }
 
-test('#3925 fork creator lock is acquired after visibility authority and before duplicate lookup', () => {
+test('#3925 fork identity lock is acquired before source visibility lock and duplicate lookup', () => {
   const start = SOURCE.indexOf('def fork_public_tree(');
   assert.notEqual(start, -1, 'fork_public_tree must exist');
   const fn = SOURCE.slice(start);
 
+  const advisory = fn.indexOf('pg_advisory_xact_lock');
   const sourceLock = fn.indexOf('cur.execute(lock_source_query');
   const publicCheck = fn.indexOf('if str(source_tree.get("visibility") or "") != "public"');
-  const advisory = fn.indexOf('pg_advisory_xact_lock');
   const duplicateLookup = fn.indexOf('cur.execute(existing_fork_query');
   const destinationInsert = fn.indexOf('cur.execute(\n                        insert_tree_query');
 
-  assert.ok(sourceLock >= 0, 'source FOR SHARE read must remain present');
+  assert.ok(advisory >= 0, 'fork advisory lock must remain present');
+  assert.ok(sourceLock > advisory, 'source FOR SHARE read must follow fork identity serialization');
   assert.ok(publicCheck > sourceLock, 'explicit-public check must follow source lock');
-  assert.ok(advisory > publicCheck, 'fork advisory lock must follow visibility authority');
-  assert.ok(duplicateLookup > advisory, 'duplicate lookup must run under the fork lock');
+  assert.ok(duplicateLookup > publicCheck, 'duplicate lookup must follow both serialization and authorization');
   assert.ok(destinationInsert > duplicateLookup, 'destination insert must follow duplicate lookup');
 });
 
@@ -56,6 +56,8 @@ test('#3925 negative control: process-local hashing or unlocked duplicate check 
   const start = SOURCE.indexOf('def fork_public_tree(');
   const fn = SOURCE.slice(start);
   const advisory = fn.indexOf('pg_advisory_xact_lock');
+  const sourceLock = fn.indexOf('cur.execute(lock_source_query');
   const duplicateLookup = fn.indexOf('cur.execute(existing_fork_query');
-  assert.ok(advisory >= 0 && advisory < duplicateLookup, 'duplicate check may not escape the advisory lock');
+  assert.ok(advisory >= 0 && advisory < sourceLock, 'source lock may not precede fork identity serialization');
+  assert.ok(sourceLock < duplicateLookup, 'duplicate check must stay after source authorization boundary');
 });
