@@ -45,6 +45,16 @@ class FirebaseCertFetchUnavailableError(Exception):
     """Trusted Firebase signing-certificate metadata could not be refreshed."""
 
 
+class EntitlementCheckUnavailableError(Exception):
+    """Plus-entitlement Firestore lookup could not be completed.
+
+    Raised when the entitlement read cannot be performed due to Firestore
+    client initialization, configuration, credential, network, timeout, RPC,
+    runtime, or read failure. This is an availability error: callers must
+    fail closed and must NOT treat it as "missing Plus access".
+    """
+
+
 _firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
 _firebase_admin_app: Any = None
 _firestore_client: Any = None
@@ -122,11 +132,15 @@ def is_entitlement_truthy(value: Any) -> bool:
 def user_has_plus_entitlement(uid: str) -> bool:
     try:
         snapshot = get_firestore_client().collection("users").document(uid).get()
-        if not snapshot.exists:
-            return False
-        profile = snapshot.to_dict() or {}
-    except Exception:
+    except Exception as error:
+        # Firestore client init/config/credential/network/timeout/RPC/read
+        # failure is an availability problem, not "no Plus access". Never
+        # collapse it to False — let callers fail closed.
+        raise EntitlementCheckUnavailableError() from error
+
+    if not snapshot.exists:
         return False
+    profile = snapshot.to_dict() or {}
 
     if is_entitlement_truthy(profile.get("privateStorageEnabled")):
         return True
