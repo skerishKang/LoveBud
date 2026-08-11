@@ -346,13 +346,17 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
     """
 
     with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, tuple(params + [safe_memory_id, owner_id]))
-            row = cur.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Memory not found")
-            _enforce_source_ack_convergence(payload, row)
-        conn.commit()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(query, tuple(params + [safe_memory_id, owner_id]))
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Memory not found")
+                _enforce_source_ack_convergence(payload, row)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
     return normalize_memory_row(row)
 

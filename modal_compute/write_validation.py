@@ -110,8 +110,10 @@ def require_memory_visible_or_owner_cursor(
     """Transaction-local authorization guard for social writes.
 
     Same semantics as require_memory_visible_or_owner() but uses the active
-    write cursor so the authorization query participates in the same transaction
-    as idempotency reservation, rate-limit update, and mutation.
+    write cursor so authorization and mutation share one transaction. The query
+    takes SHARE locks on both the Memory and parent Tree visibility rows so a
+    concurrent non-key visibility UPDATE cannot commit between authorization
+    and the social mutation.
 
     Returns the memory+tree row on success.
     Raises HTTPException 404 on failure (leak-safe).
@@ -124,6 +126,7 @@ def require_memory_visible_or_owner_cursor(
         INNER JOIN trees t ON t.id = m.tree_id
         WHERE m.id = %s
         LIMIT 1
+        FOR SHARE OF m, t
         """,
         (memory_id,),
     )
