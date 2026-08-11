@@ -1,0 +1,58 @@
+name: Moment social visibility concurrency
+
+on:
+  pull_request:
+    paths:
+      - 'modal_compute/write_validation.py'
+      - 'modal_compute/comments.py'
+      - 'modal_compute/reactions.py'
+      - 'tests/db-engine/moment-social-visibility-concurrency-postgres.test.cjs'
+      - '.github/workflows/moment-social-visibility-concurrency-3954.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  db-engine-moment-social-visibility-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.4-alpine
+        env:
+          POSTGRES_USER: lovebud_ci
+          POSTGRES_PASSWORD: lovebud_ci_password
+          POSTGRES_DB: lovebud_ci_admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lovebud_ci -d lovebud_ci_admin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      LB_TEST_PGHOST: 127.0.0.1
+      LB_TEST_PGPORT: '5432'
+      LB_TEST_PGUSER: lovebud_ci
+      LB_TEST_PGPASSWORD: lovebud_ci_password
+      LB_TEST_PGADMIN_DB: lovebud_ci_admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Assert PostgreSQL server version 17.4
+        env:
+          PGPASSWORD: lovebud_ci_password
+        run: |
+          version="$(psql -h 127.0.0.1 -U lovebud_ci -d lovebud_ci_admin -Atc 'SHOW server_version')"
+          echo "server_version=${version}"
+          test "${version}" = "17.4"
+      - name: Run Moment social visibility concurrency regression
+        run: node --test tests/db-engine/moment-social-visibility-concurrency-postgres.test.cjs

@@ -596,19 +596,37 @@ test('Forbidden file: Scout, Browse, My Trees files are not modified', () => {
 
 // ─── REQUEST CORRELATION AND TIMEOUT SEMANTICS (#3185) ───────────────────────
 
-test('CF reactions proxy defines REQUEST_ID_HEADER constant', () => {
+test('CF reactions proxy imports REQUEST_ID_HEADER from shared request-id boundary', () => {
   const content = readFileContent(CF_REACTIONS_PROXY);
   assert.ok(
+    hasString(content, "import { REQUEST_ID_HEADER, getOrCreateRequestId } from"),
+    'reactions proxy must import REQUEST_ID_HEADER from the shared request-id module'
+  );
+  assert.ok(
+    hasString(content, '_shared/request-id.js'),
+    'reactions proxy must import from the shared request-id boundary'
+  );
+  assert.equal(
     hasString(content, "const REQUEST_ID_HEADER = 'x-lovebud-request-id'"),
-    'reactions proxy must define REQUEST_ID_HEADER'
+    false,
+    'reactions proxy must not redefine a route-local REQUEST_ID_HEADER constant'
   );
 });
 
-test('CF comments proxy defines REQUEST_ID_HEADER constant', () => {
+test('CF comments proxy imports REQUEST_ID_HEADER from shared request-id boundary', () => {
   const content = readFileContent(CF_COMMENTS_PROXY);
   assert.ok(
+    hasString(content, "import { REQUEST_ID_HEADER, getOrCreateRequestId } from"),
+    'comments proxy must import REQUEST_ID_HEADER from the shared request-id module'
+  );
+  assert.ok(
+    hasString(content, '_shared/request-id.js'),
+    'comments proxy must import from the shared request-id boundary'
+  );
+  assert.equal(
     hasString(content, "const REQUEST_ID_HEADER = 'x-lovebud-request-id'"),
-    'comments proxy must define REQUEST_ID_HEADER'
+    false,
+    'comments proxy must not redefine a route-local REQUEST_ID_HEADER constant'
   );
 });
 
@@ -636,27 +654,29 @@ test('CF comments proxy defines bounded MODAL_FETCH_TIMEOUT_MS', () => {
   );
 });
 
-test('CF reactions proxy generates or reuses request ID', () => {
+test('CF reactions proxy uses shared getOrCreateRequestId at route boundary', () => {
   const content = readFileContent(CF_REACTIONS_PROXY);
   assert.ok(
-    hasString(content, 'getOrCreateRequestId'),
-    'reactions proxy must define getOrCreateRequestId'
+    hasString(content, 'getOrCreateRequestId(context.request)'),
+    'reactions proxy must call getOrCreateRequestId(context.request) at the route boundary'
   );
-  assert.ok(
+  assert.equal(
     hasString(content, 'generateRequestId'),
-    'reactions proxy must define generateRequestId'
+    false,
+    'reactions proxy must not reintroduce a route-local generateRequestId authority'
   );
 });
 
-test('CF comments proxy generates or reuses request ID', () => {
+test('CF comments proxy uses shared getOrCreateRequestId at route boundary', () => {
   const content = readFileContent(CF_COMMENTS_PROXY);
   assert.ok(
-    hasString(content, 'getOrCreateRequestId'),
-    'comments proxy must define getOrCreateRequestId'
+    hasString(content, 'getOrCreateRequestId(context.request)'),
+    'comments proxy must call getOrCreateRequestId(context.request) at the route boundary'
   );
-  assert.ok(
+  assert.equal(
     hasString(content, 'generateRequestId'),
-    'comments proxy must define generateRequestId'
+    false,
+    'comments proxy must not reintroduce a route-local generateRequestId authority'
   );
 });
 

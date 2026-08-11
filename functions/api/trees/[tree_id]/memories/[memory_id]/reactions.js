@@ -1,20 +1,9 @@
-const REQUEST_ID_HEADER = 'x-lovebud-request-id';
+import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../../../_shared/request-id.js';
+
 const MODAL_FETCH_TIMEOUT_MS = 25000;
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
-}
-
-function generateRequestId() {
-  return 'req-' + crypto.randomUUID();
-}
-
-function getOrCreateRequestId(request) {
-  const existing = request.headers.get(REQUEST_ID_HEADER);
-  if (existing && typeof existing === 'string' && existing.trim()) {
-    return existing.trim();
-  }
-  return generateRequestId();
 }
 
 async function fetchWithTimeout(url, options = {}) {
