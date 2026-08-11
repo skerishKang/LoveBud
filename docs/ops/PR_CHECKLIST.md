@@ -2,6 +2,7 @@
 
 > **Hard governance:** `MVP_AGENT_GOVERNANCE.md`
 > **Role model:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+> **Test execution:** `IMPACT_BASED_TEST_EXECUTION_POLICY.md`
 > **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`
 
 ## 1. Every PR
@@ -11,6 +12,7 @@
 - [ ] current `main`, PR base, merge base, and exact head verified;
 - [ ] related open PRs/Issues and active writer checked;
 - [ ] changed files are within scope;
+- [ ] affected behavior and plausible regression area identified;
 - [ ] no secrets/private payloads or unrelated artifacts;
 - [ ] protected Issue wording is correct;
 - [ ] #1882 uses `Refs #1882` only.
@@ -25,9 +27,11 @@ Risk or UI class
 Classification reason
 Changed files
 Behavior explicitly unchanged
+Affected behavior / blast radius
 Focused tests and counts
 CI classification
 Local Validation: REQUIRED / NOT_REQUIRED / COMPLETED / PENDING
+Local trigger code(s), when applicable
 Browser evidence: USED / NOT_USED / NOT_REQUIRED
 Production verification remaining
 Known limitations
@@ -40,6 +44,8 @@ Exact head SHA
 - [ ] changed files reviewed;
 - [ ] relevant CI state classified correctly;
 - [ ] required evidence for the change class is present;
+- [ ] Local Validation, if used, has a declared trigger and exact tested head;
+- [ ] no local lane was rerun merely to duplicate already-green exact-head CI without an additional evidence reason;
 - [ ] exact expected head re-checked;
 - [ ] squash merge selected.
 
@@ -103,14 +109,16 @@ Examples: JavaScript interaction, auth, API/data loading, cache/storage, routing
 Checklist:
 
 - [ ] focused unit/contract/integration tests;
-- [ ] relevant regression/build checks;
-- [ ] Local Validation exact-head evidence when required;
+- [ ] relevant regression/build checks selected by affected behavior;
+- [ ] Local Validation trigger explicitly recorded when environment/runtime evidence is needed;
 - [ ] auth/API/cache/storage/router/console/network checks as applicable;
 - [ ] Production runtime verification planned.
 
 ## 3. Non-UI risk classes
 
-Backend, database, migration, auth, security, privacy, persistence, and provider changes use the full strict contract defined by the Web CTO. The UI fast lane does not reduce their evidence.
+Backend, database, migration, auth, security, privacy, persistence, and provider changes use the strict affected-behavior contract defined by the Web CTO. The UI fast lane does not reduce their evidence.
+
+Strict evidence does **not** mean an unrelated local full-suite run by default. Use focused tests, the relevant GitHub CI lanes, and Local Validation only under `IMPACT_BASED_TEST_EXECUTION_POLICY.md` trigger rules.
 
 ## 4. Test selection
 
@@ -120,7 +128,8 @@ Select tests by affected behavior and blast radius.
 
 ```text
 node --check or parser check
-focused contract test
+focused unit/contract/integration test
+changed-module or route-specific test
 page-specific static/CSS test
 relevant build/typecheck/lint step
 git diff --check
@@ -133,9 +142,23 @@ remote changed-file/diff review
 - runtime orchestration changes;
 - multiple surfaces depend on the changed contract;
 - persistence/auth/security/data boundaries change;
-- the focused tests do not cover the plausible regression area.
+- test discovery, CI workflow, package scripts, harnesses, or runtime matrices change;
+- the focused tests and normal CI lanes do not cover the plausible regression area.
 
-Do not run or require unrelated full-suite commands solely because an HTML/CSS file changed.
+### Repository-wide execution authority
+
+The normal sequence is:
+
+```text
+focused developer checks
+→ push exact head
+→ GitHub Actions relevant/full matrix
+→ Local Validation only for declared trigger-qualified evidence
+```
+
+If exact-head GitHub CI already passed a lane, do not require Local to rerun the same lane solely for duplicate evidence.
+
+Do not run or require unrelated full-suite commands solely because source code changed, multiple files changed, a PR exists, or a merge-forward occurred without relevant overlap.
 
 ## 5. CI
 
@@ -150,6 +173,8 @@ CI_UNAVAILABLE_INFRA
 
 A relevant executed failure blocks merge. Infrastructure-unavailable shells use the canonical alternative-evidence path. Red workflow appearance alone is not a code-failure classification.
 
+For an executed failure, isolate the exact failing step/subtest first. Do not repeatedly rerun broad suites until green. Use the smallest reproducer and pristine-main comparison when classification requires it.
+
 ## 6. Browser and screenshot routing
 
 - Preview/fixed slot is optional evidence unless assigned.
@@ -162,24 +187,65 @@ A relevant executed failure blocks merge. Infrastructure-unavailable shells use 
 
 ## 7. Local Validation routing
 
+Default routing:
+
 ```text
-U0: NOT_REQUIRED by default
-U1: NOT_REQUIRED by default
+U0: NOT_REQUIRED
+U1: NOT_REQUIRED
 U2: CONDITIONAL
-U3: normally REQUIRED when environment/runtime evidence is needed
+U3: CONDITIONAL/REQUIRED only when a Local trigger applies
+non-UI: based on affected behavior and Local trigger, not file type alone
+```
+
+Valid Local trigger codes are defined in `IMPACT_BASED_TEST_EXECUTION_POLICY.md`:
+
+```text
+L1_ENVIRONMENT_REQUIRED
+L2_CI_FAILURE_REPRODUCTION
+L3_CI_COVERAGE_GAP
+L4_PRISTINE_MAIN_COMPARISON
+L5_RUNTIME_BROWSER_REQUIRED
+L6_BROAD_SHARED_REGRESSION
+L7_CI_OR_TEST_INFRA_CHANGE
+```
+
+Every Local handoff must state:
+
+```text
+exact PR head
+trigger code(s)
+exact commands/flows
+why focused Web checks + GitHub CI are insufficient
+expected result
+stop condition
 ```
 
 When Local is not required, Web Developer evidence goes directly to Web CTO.
 
-If source/test changes after Local tested an older head, revalidate only the behavior affected by the new commit; do not blindly rerun unrelated work.
+If source/test changes after Local tested an older head, inspect the new delta and revalidate only newly affected behavior. Do not blindly rerun unrelated work.
 
-## 8. Issue overhead
+After merge-forward/current-main alignment, inspect path and semantic overlap first. Run focused alignment checks, then let exact-head GitHub CI execute the normal matrix unless a Local trigger requires additional evidence.
+
+## 8. Parallel work and validation load
+
+Prefer parallelism for read-only remote analysis and independent branches, not for duplicating the same validation.
+
+```text
+Web CTO coordinator
++ parallel read-only forensic/review workers when useful
++ one active writer per branch
++ Local Validation only for trigger-qualified work
+```
+
+Two implementation/Local workers may run concurrently only when branches and affected contracts are independent. Serialize shared modules, common test registries, package/CI infrastructure, auth/security boundaries, schema work, and other shared contracts unless explicitly partitioned.
+
+## 9. Issue overhead
 
 A new child Issue is not required for every U0/U1 correction. The PR may reference an active parent/product/UI objective.
 
 Create a separate Issue for a distinct product goal, cross-page contract, policy decision, structural/runtime change, privacy/security concern, or substantial follow-up.
 
-## 9. Production correction
+## 10. Production correction
 
 For an unsuccessful U0/U1 visual result:
 
@@ -193,7 +259,7 @@ Production observation
 
 Do not reset or force-push `main`. Use a dedicated revert PR when a micro correction is not safe.
 
-## 10. Final status vocabulary
+## 11. Final status vocabulary
 
 ```text
 READY_FOR_CTO_FINAL_REVIEW
