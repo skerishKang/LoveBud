@@ -132,15 +132,17 @@ def is_entitlement_truthy(value: Any) -> bool:
 def user_has_plus_entitlement(uid: str) -> bool:
     try:
         snapshot = get_firestore_client().collection("users").document(uid).get()
+
+        if not snapshot.exists:
+            return False
+
+        profile = snapshot.to_dict() or {}
     except Exception as error:
         # Firestore client init/config/credential/network/timeout/RPC/read
-        # failure is an availability problem, not "no Plus access". Never
-        # collapse it to False — let callers fail closed.
+        # failure — and any snapshot existence/materialization runtime failure —
+        # is an availability problem, not "no Plus access". Never collapse it to
+        # False and never let it leak to a generic 500; let callers fail closed.
         raise EntitlementCheckUnavailableError() from error
-
-    if not snapshot.exists:
-        return False
-    profile = snapshot.to_dict() or {}
 
     if is_entitlement_truthy(profile.get("privateStorageEnabled")):
         return True

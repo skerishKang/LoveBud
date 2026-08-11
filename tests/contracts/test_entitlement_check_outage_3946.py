@@ -52,6 +52,23 @@ class FakeClient:
         return _OkCollection(self._snapshot)
 
 
+class FakeSnapshotToDictError:
+    def __init__(self, exists=True):
+        self.exists = exists
+
+    def to_dict(self):
+        raise RuntimeError("snapshot materialization failed")
+
+
+class FakeSnapshotExistsError:
+    @property
+    def exists(self):
+        raise RuntimeError("snapshot exists check failed")
+
+    def to_dict(self):
+        return {}
+
+
 class _RaiseOnGetDoc:
     def __init__(self, error):
         self._error = error
@@ -154,6 +171,34 @@ def test_firestore_init_failure_raises_availability_error():
         raise AssertionError("expected EntitlementCheckUnavailableError")
 
 
+def test_snapshot_to_dict_failure_raises_availability_error():
+    client = FakeClient(FakeSnapshotToDictError(exists=True))
+    with mock.patch.object(auth, "get_firestore_client", lambda: client):
+        try:
+            user_has_plus_entitlement("uid-mat")
+        except EntitlementCheckUnavailableError:
+            return
+        except RuntimeError as exc:
+            raise AssertionError(f"raw RuntimeError leaked (not sanitized): {exc}")
+        except Exception as exc:
+            raise AssertionError(f"unexpected exception type: {type(exc).__name__}")
+        raise AssertionError("expected EntitlementCheckUnavailableError")
+
+
+def test_snapshot_exists_failure_raises_availability_error():
+    client = FakeClient(FakeSnapshotExistsError())
+    with mock.patch.object(auth, "get_firestore_client", lambda: client):
+        try:
+            user_has_plus_entitlement("uid-exists")
+        except EntitlementCheckUnavailableError:
+            return
+        except RuntimeError as exc:
+            raise AssertionError(f"raw RuntimeError leaked (not sanitized): {exc}")
+        except Exception as exc:
+            raise AssertionError(f"unexpected exception type: {type(exc).__name__}")
+        raise AssertionError("expected EntitlementCheckUnavailableError")
+
+
 def test_private_guard_propagates_availability_error_not_plus_required():
     client = RaiseOnGetClient(TimeoutError("rpc unavailable"))
     with mock.patch.object(auth, "get_firestore_client", lambda: client):
@@ -233,6 +278,8 @@ def main():
         test_entitlements_private_storage_returns_true,
         test_firestore_get_timeout_raises_availability_error,
         test_firestore_init_failure_raises_availability_error,
+        test_snapshot_to_dict_failure_raises_availability_error,
+        test_snapshot_exists_failure_raises_availability_error,
         test_private_guard_propagates_availability_error_not_plus_required,
         test_public_guard_skips_entitlement_lookup,
         test_plus_required_handler_is_403,
