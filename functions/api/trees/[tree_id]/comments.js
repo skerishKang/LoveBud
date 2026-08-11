@@ -5,6 +5,7 @@ function stripTrailingSlash(value) {
 }
 
 const MODAL_FETCH_TIMEOUT_MS = 25000;
+const MAX_WRITE_BODY_BYTES = 128 * 1024;
 
 function hasAuthorizationHeader(request) {
   return !!(request.headers.get('authorization') || request.headers.get('Authorization'));
@@ -102,6 +103,66 @@ function buildIdempotencyKeyInvalidResponse(requestId) {
   });
 }
 
+function getContentLengthBytes(request) {
+  const raw = request.headers.get('content-length');
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return parsed;
+}
+
+function buildPayloadTooLargeResponse(requestId) {
+  return new Response(JSON.stringify({ error: 'Request body too large' }), {
+    status: 413,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'payload-too-large',
+      [REQUEST_ID_HEADER]: requestId
+    }
+  });
+}
+
+async function readBoundedWriteBody(request) {
+  if (!request.body) return { tooLarge: false, body: null, readError: false };
+
+  const reader = request.body.getReader();
+  const chunks = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+      totalBytes += chunk.byteLength;
+      if (totalBytes > MAX_WRITE_BODY_BYTES) {
+        try {
+          await reader.cancel();
+        } catch (_) {
+          // Best-effort cancellation only; the 413 boundary remains authoritative.
+        }
+        return { tooLarge: true, body: null, readError: false };
+      }
+      chunks.push(chunk);
+    }
+  } catch (_) {
+    return { tooLarge: false, body: null, readError: true };
+  }
+
+  if (totalBytes === 0) return { tooLarge: false, body: null, readError: false };
+
+  const body = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { tooLarge: false, body, readError: false };
+}
+
 function buildModalUrl(request, env, query = '') {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
@@ -145,20 +206,21 @@ async function proxyTreeCommentCreate(request, env) {
   if (!KEY_PATTERN.test(idempotencyKey)) return buildIdempotencyKeyInvalidResponse(requestId);
   headers['Idempotency-Key'] = idempotencyKey;
 
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (error) {
-    return buildModalUnavailableResponse(requestId);
+  const contentLengthBytes = getContentLengthBytes(request);
+  if (contentLengthBytes !== null && contentLengthBytes > MAX_WRITE_BODY_BYTES) {
+    return buildPayloadTooLargeResponse(requestId);
   }
-  const hasBody = typeof bodyText === 'string' && bodyText.length > 0;
+
+  const bodyCheck = await readBoundedWriteBody(request);
+  if (bodyCheck.tooLarge) return buildPayloadTooLargeResponse(requestId);
+  if (bodyCheck.readError) return buildModalUnavailableResponse(requestId);
   headers['content-type'] = 'application/json; charset=utf-8';
 
   try {
     const response = await fetchWithTimeout(modalUrl.toString(), {
       method,
       headers,
-      body: hasBody ? bodyText : '{}'
+      body: bodyCheck.body || '{}'
     });
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set('x-lovebud-upstream', 'modal');
