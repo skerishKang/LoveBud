@@ -176,19 +176,17 @@ def _tree_fork_lock_key(source_tree_id: str, owner_id: str) -> int:
 def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """Copy a public LoveTree and its public memories into a new tree owned by owner_id.
 
-    Privacy invariant (#3952): the fork is atomic with source visibility
-    authorization. The source tree row is read with SELECT ... FOR SHARE inside
-    the same transaction that performs the duplicate check, the destination tree
-    insert, and the public-memory copy. A concurrent public -> private
-    revocation can therefore never commit between the authorization read and the
-    durable copy: it either commits first (the fork observes `private` and
-    aborts with no destination rows) or it blocks on the FOR SHARE lock until
-    the fork transaction commits.
+    Privacy invariant (#3952): source visibility authorization and the durable
+    copy share one transaction. The source Tree is read with SELECT ... FOR
+    SHARE so a concurrent public -> private transition cannot commit between
+    authorization and copy.
 
-    Idempotency invariant (#3925): after source authorization, concurrent forks
-    for the same (source_tree_id, owner_id) serialize on a transaction-scoped
-    advisory lock before the duplicate lookup. The loser then observes and
-    reuses the winner instead of materializing a second active fork.
+    Idempotency invariant (#3925): the transaction first serializes the
+    semantic fork identity (source_tree_id, owner_id) with an advisory lock.
+    Only after that fork-local lock is acquired does it take the source Tree
+    FOR SHARE lock, authorize explicit public visibility, and run the duplicate
+    lookup. A duplicate waiter therefore never holds the source SHARE lock
+    while waiting for fork-identity serialization.
     """
     ensure_owner_user_exists(owner_id)
     safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
@@ -207,8 +205,8 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """
 
     # Idempotency guard: if authenticated user already forked this tree, return existing copy.
-    # Runs inside the same transaction, after the source row is authorized and
-    # the source/owner advisory lock has serialized competing creators.
+    # Runs inside the same transaction, after the advisory lock and source
+    # explicit-public authorization have established the authoritative boundary.
     existing_fork_query = """
         SELECT id FROM trees
         WHERE owner_id = %s
@@ -258,11 +256,19 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                # 1. Authoritative, transaction-local source read (FOR SHARE).
+                # 1. Serialize competing creators for the same source/owner pair
+                # before taking the source row lock. A duplicate waiter therefore
+                # cannot delay visibility revocation while waiting on this lock.
+                cur.execute(
+                    "SELECT pg_advisory_xact_lock(%s)",
+                    (_tree_fork_lock_key(safe_source_id, owner_id),),
+                )
+
+                # 2. Authoritative, transaction-local source read (FOR SHARE).
                 cur.execute(lock_source_query, (safe_source_id,))
                 source_tree = cur.fetchone()
 
-                # 2. Explicit public authorization inside the fork transaction.
+                # 3. Explicit public authorization inside the fork transaction.
                 if not source_tree:
                     raise HTTPException(status_code=404, detail="Source tree not found")
                 if str(source_tree.get("visibility") or "") != "public":
@@ -271,14 +277,7 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
                         detail="Only public trees can be forked",
                     )
 
-                # 3. Serialize competing creators for the same source/owner pair
-                # without widening source-row locking or requiring a schema change.
-                cur.execute(
-                    "SELECT pg_advisory_xact_lock(%s)",
-                    (_tree_fork_lock_key(safe_source_id, owner_id),),
-                )
-
-                # 4. Duplicate fork guard inside the same transaction.
+                # 4. Duplicate fork guard inside the same serialized transaction.
                 cur.execute(existing_fork_query, (owner_id, safe_source_id))
                 existing = cur.fetchone()
                 if existing:
