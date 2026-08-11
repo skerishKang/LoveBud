@@ -5076,6 +5076,13 @@
       ]
     },
     {
+      "path": "tests/db-engine/tree-social-visibility-concurrency-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Creates a disposable loopback PostgreSQL 17.4 database and drives two real pg.Client connections to prove Tree Like/Comment visibility locking: private-first write denies leak-safe (zero mutation), social-first write blocks concurrent public->private visibility UPDATE behind a FOR SHARE row lock until commit, mid-transaction rollback leaves no partial rows, and NULL visibility stays fail-closed. Static source assertions verify modal_compute/tree_likes.py and tree_comments.py require explicit public visibility before mutation locks. Reads only LB_TEST_PG* synthetic env; never DATABASE_URL (#3947).",
+      "capabilities": []
+    },
+    {
       "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
