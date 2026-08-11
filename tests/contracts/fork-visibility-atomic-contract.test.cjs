@@ -57,11 +57,11 @@ test('fork never weakens the lock or uses a table-level LOCK', () => {
 
 test('fork authorizes before any destination write and keeps public-only copy', () => {
   const block = forkBlock();
-  // SQL query constants are declared above the control flow, so the ordering
-  // gate uses the execution site (the destination INSERT call), which must
-  // follow the leak-safe 403 authorization branch.
+  // Query constants are declared above control flow, so anchor ordering to the
+  // actual destination INSERT execution rather than a numbered source comment.
+  // This keeps the contract stable when a new transactional guard is inserted.
   const authIdx = block.indexOf('Only public trees can be forked');
-  const destExecIdx = block.indexOf('# 5. Destination tree insert happens only after authorization.');
+  const destExecIdx = block.indexOf('cur.execute(\n                        insert_tree_query');
   assert.ok(authIdx >= 0, 'leak-safe 403 detail must remain');
   assert.ok(destExecIdx >= 0, 'destination tree INSERT execution site must exist');
   assert.match(block, /insert_tree_query/, 'destination tree INSERT must exist');
