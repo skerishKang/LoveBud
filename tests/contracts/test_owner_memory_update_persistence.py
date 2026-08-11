@@ -53,6 +53,7 @@ class MockConnection:
     def __init__(self, cursor_factory=None):
         self.cursor_factory = cursor_factory or (lambda *a, **k: MockCursor())
         self.commit_calls = 0
+        self.rollback_calls = 0
         self.close_called = False
 
     def __enter__(self):
@@ -66,6 +67,9 @@ class MockConnection:
 
     def commit(self):
         self.commit_calls += 1
+
+    def rollback(self):
+        self.rollback_calls += 1
 
     def close(self):
         self.close_called = True

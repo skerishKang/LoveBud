@@ -56,8 +56,8 @@ class MockConnection:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None:
-            self.rollback_calls += 1
+        # Explicit conn.rollback() in update_owner_memory() is the single
+        # rollback authority (#3922); the context manager does not double-count.
         return False
 
     def cursor(self, *args, **kwargs):
@@ -65,6 +65,9 @@ class MockConnection:
 
     def commit(self):
         self.commit_calls += 1
+
+    def rollback(self):
+        self.rollback_calls += 1
 
 
 def make_memory_row(
@@ -171,6 +174,7 @@ def test_divergent_source_url_commits_nothing():
 
     # CRITICAL: commit must NOT have been called — the transaction was rolled back
     assert conn.commit_calls == 0, f"Expected 0 commits for divergent write, got {conn.commit_calls}"
+    assert conn.rollback_calls == 1, f"Expected 1 explicit rollback for divergent write, got {conn.rollback_calls}"
     assert cursor.commit_calls == 0, f"Expected 0 cursor commits, got {cursor.commit_calls}"
 
 
@@ -233,6 +237,7 @@ def test_convergent_source_url_commits_once():
             )
 
     assert conn.commit_calls == 1, f"Expected 1 commit for convergent write, got {conn.commit_calls}"
+    assert conn.rollback_calls == 0, f"Expected 0 rollbacks for convergent write, got {conn.rollback_calls}"
 
 
 # ============================================================================
@@ -288,6 +293,7 @@ def test_non_source_update_commits_once():
             result = update_owner_memory(owner_id, memory_id, {"title": "Updated Title"})
 
     assert conn.commit_calls == 1, f"Expected 1 commit for non-source update, got {conn.commit_calls}"
+    assert conn.rollback_calls == 0, f"Expected 0 rollbacks for non-source update, got {conn.rollback_calls}"
 
 
 # ============================================================================
@@ -327,10 +333,12 @@ def test_convergence_check_runs_inside_transaction():
 # ============================================================================
 
 def test_divergence_triggers_rollback_not_commit():
-    """Divergent write: conn.commit() is NOT called; context manager handles rollback.
+    """Divergent write: conn.commit() is NOT called; explicit conn.rollback() runs.
 
-    The with-block context manager (__exit__ with exception) will trigger
-    rollback. We verify that commit is never called and the exception propagates.
+    update_owner_memory() explicitly calls conn.rollback() in its exception
+    handler before re-raising, so the 409 propagates and the transaction is
+    rolled back. We verify commit is never called, rollback runs exactly once,
+    and the exception propagates.
     """
     memory_id = str(uuid.uuid4())
     owner_id = "owner-123"
@@ -379,8 +387,9 @@ def test_divergence_triggers_rollback_not_commit():
             except HTTPException as e:
                 assert e.status_code == 409
 
-    # Both connection and cursor must have 0 commits
+    # Connection must have 0 commits and exactly 1 explicit rollback
     assert conn.commit_calls == 0, f"Connection commit_calls={conn.commit_calls}"
+    assert conn.rollback_calls == 1, f"Connection rollback_calls={conn.rollback_calls}"
     assert cursor.commit_calls == 0, f"Cursor commit_calls={cursor.commit_calls}"
 
 
