@@ -257,27 +257,34 @@ test('create_owner_memory calls require_plus_for_private_storage', () => {
   );
 });
 
-test('create_owner_memory guards emotionTags max 20 items', () => {
+test('create_owner_memory guards emotionTags via strict helper', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /emotiontags.*isinstance.*list/i,
-    'create_owner_memory must check emotionTags is list'
+    /emotion_tags=validate_emotion_tags\(payload\["emotiontags"\]\)if"emotiontags"inpayloadelse\[\]/,
+    'create_owner_memory must validate emotionTags through validate_emotion_tags with empty default'
   );
 
+  // The strict validation contract lives in the shared helper (#3937).
+  const helper = getFunctionBody(source, 'validate_emotion_tags');
+  const helperNorm = compact(helper);
   assert.match(
-    normalized,
-    /len.*emotiontags.*20/i,
-    'create_owner_memory must guard emotionTags max 20 items'
+    helperNorm,
+    /isinstance\(value,list\)/,
+    'validate_emotion_tags must check emotionTags is list'
   );
-
   assert.match(
-    normalized,
-    /httpexception.*400.*emotiontags.*exceeds.*maximum.*20/i,
-    'create_owner_memory must raise 400 for too many emotionTags'
+    helperNorm,
+    /len\(value\)>20/,
+    'validate_emotion_tags must guard emotionTags max 20 items'
+  );
+  assert.match(
+    helperNorm,
+    /httpexception\(status_code=400,detail="emotiontagsexceedsmaximumof20items"\)/,
+    'validate_emotion_tags must raise 400 for too many emotionTags'
   );
 });
 
@@ -626,27 +633,39 @@ test('update_owner_memory maps source URL payload fields to DB columns', () => {
   );
 });
 
-test('update_owner_memory guards emotionTags max 20 items', () => {
+test('update_owner_memory guards emotionTags via strict helper', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /emotiontags.*isinstance.*list/i,
-    'update_owner_memory must check emotionTags is list'
+    /validate_emotion_tags\(payload\["emotiontags"\]\)/,
+    'update_owner_memory must validate emotionTags through validate_emotion_tags'
   );
-
   assert.match(
     normalized,
-    /len.*emotiontags.*20/i,
-    'update_owner_memory must guard emotionTags max 20 items'
+    /emotion_tags=%s/,
+    'update_owner_memory must persist emotion_tags only when supplied'
   );
 
+  // The strict validation contract lives in the shared helper (#3937).
+  const helper = getFunctionBody(source, 'validate_emotion_tags');
+  const helperNorm = compact(helper);
   assert.match(
-    normalized,
-    /httpexception.*400.*emotiontags.*exceeds.*maximum.*20/i,
-    'update_owner_memory must raise 400 for too many emotionTags'
+    helperNorm,
+    /isinstance\(value,list\)/,
+    'validate_emotion_tags must check emotionTags is list'
+  );
+  assert.match(
+    helperNorm,
+    /len\(value\)>20/,
+    'validate_emotion_tags must guard emotionTags max 20 items'
+  );
+  assert.match(
+    helperNorm,
+    /httpexception\(status_code=400,detail="emotiontagsexceedsmaximumof20items"\)/,
+    'validate_emotion_tags must raise 400 for too many emotionTags'
   );
 });
 
