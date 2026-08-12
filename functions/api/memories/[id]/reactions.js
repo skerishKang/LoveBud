@@ -1,3 +1,5 @@
+import { fetchModalWithTimeout, isModalTimeoutError } from '../../../_shared/modal-fetch.js';
+
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
@@ -13,8 +15,18 @@ function withModalHeader(response) {
 }
 
 const KEY_PATTERN = /^[A-Za-z0-9._:\-]{8,128}$/;
-
 const MAX_BODY_SIZE = 131072; // 128KB
+
+function buildMissingAuthorizationResponse() {
+  return new Response(JSON.stringify({ error: 'Authorization required' }), {
+    status: 401,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'missing-authorization'
+    }
+  });
+}
 
 function buildPayloadTooLargeResponse() {
   return new Response(JSON.stringify({ error: 'Payload too large' }), {
@@ -51,16 +63,9 @@ async function readBoundedWriteBody(request) {
     return { tooLarge: true, body: null };
   }
 
-  if (!bodyText) {
-    return { tooLarge: false, body: null };
-  }
-
-  const encoder = new TextEncoder();
-  const encoded = encoder.encode(bodyText);
-  if (encoded.byteLength > MAX_BODY_SIZE) {
-    return { tooLarge: true, body: null };
-  }
-
+  if (!bodyText) return { tooLarge: false, body: null };
+  const encoded = new TextEncoder().encode(bodyText);
+  if (encoded.byteLength > MAX_BODY_SIZE) return { tooLarge: true, body: null };
   return { tooLarge: false, body: encoded };
 }
 
@@ -75,79 +80,82 @@ function buildModalUnavailableResponse() {
   });
 }
 
-export async function onRequestGet(context) {
-  const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
-  if (!modalBaseUrl) {
-    return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
-      status: 503,
-      headers: { 'content-type': 'application/json; charset=utf-8' }
-    });
+function buildModalTimeoutResponse() {
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), {
+    status: 504,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'modal',
+      'x-lovebud-route-status': 'modal-timeout'
+    }
+  });
+}
+
+function buildModalConfigUnavailableResponse() {
+  return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
+    status: 503,
+    headers: { 'content-type': 'application/json; charset=utf-8' }
+  });
+}
+
+function getAuthorization(request) {
+  return request.headers.get('authorization') || request.headers.get('Authorization');
+}
+
+async function fetchModal(target, options) {
+  try {
+    return await fetchModalWithTimeout(target, options);
+  } catch (error) {
+    if (isModalTimeoutError(error)) return buildModalTimeoutResponse();
+    return buildModalUnavailableResponse();
   }
+}
+
+export async function onRequestGet(context) {
+  const authorization = getAuthorization(context.request);
+  if (!authorization) return buildMissingAuthorizationResponse();
+
+  const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
+  if (!modalBaseUrl) return buildModalConfigUnavailableResponse();
 
   const memoryId = context.params?.id;
   const target = new URL(`/modal/private/memories/${memoryId}/reactions`, modalBaseUrl);
-
-  let response;
-  try {
-    response = await fetch(target.toString(), {
-      headers: {
-        accept: 'application/json',
-        ...(context.request.headers.get('authorization')
-          ? { authorization: context.request.headers.get('authorization') }
-          : {})
-      }
-    });
-  } catch (error) {
-    return buildModalUnavailableResponse();
-  }
-
-  return withModalHeader(response);
+  const response = await fetchModal(target.toString(), {
+    headers: { accept: 'application/json', authorization }
+  });
+  return response.status >= 500 && response.headers.get('x-lovebud-upstream') === 'modal'
+    ? response
+    : withModalHeader(response);
 }
 
 export async function onRequestPost(context) {
   const { request } = context;
+  const authorization = getAuthorization(request);
+  if (!authorization) return buildMissingAuthorizationResponse();
 
   const idempotencyKey = request.headers.get('Idempotency-Key');
-  if (!idempotencyKey) {
-    return buildIdempotencyKeyRequiredResponse();
-  }
-  if (!KEY_PATTERN.test(idempotencyKey)) {
-    return buildIdempotencyKeyInvalidResponse();
-  }
+  if (!idempotencyKey) return buildIdempotencyKeyRequiredResponse();
+  if (!KEY_PATTERN.test(idempotencyKey)) return buildIdempotencyKeyInvalidResponse();
 
   const bodyResult = await readBoundedWriteBody(request);
-  if (bodyResult.tooLarge) {
-    return buildPayloadTooLargeResponse();
-  }
+  if (bodyResult.tooLarge) return buildPayloadTooLargeResponse();
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
-  if (!modalBaseUrl) {
-    return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
-      status: 503,
-      headers: { 'content-type': 'application/json; charset=utf-8' }
-    });
-  }
+  if (!modalBaseUrl) return buildModalConfigUnavailableResponse();
 
   const memoryId = context.params?.id;
   const target = new URL(`/modal/private/memories/${memoryId}/reactions`, modalBaseUrl);
-
-  let response;
-  try {
-    response = await fetch(target.toString(), {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'content-type': request.headers.get('content-type') || 'application/json',
-        'Idempotency-Key': idempotencyKey,
-        ...(request.headers.get('authorization')
-          ? { authorization: request.headers.get('authorization') }
-          : {})
-      },
-      body: bodyResult.body
-    });
-  } catch (error) {
-    return buildModalUnavailableResponse();
-  }
-
-  return withModalHeader(response);
+  const response = await fetchModal(target.toString(), {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': request.headers.get('content-type') || 'application/json',
+      'Idempotency-Key': idempotencyKey,
+      authorization
+    },
+    body: bodyResult.body
+  });
+  return response.status >= 500 && response.headers.get('x-lovebud-upstream') === 'modal'
+    ? response
+    : withModalHeader(response);
 }

@@ -410,6 +410,39 @@ test('signInWithGoogle success popup sets canonical href and activates editor pr
 
   async function runSignInFlow(search) {
     const store = {};
+    // #3928: the owner-private cache module (js/auth/auth-cache.js) is the
+    // confirmed-owner authority for preload writes. This sandbox loads only
+    // auth-session/auth-firebase, so a minimal authority mock is injected that
+    // behaves like the production module for the confirmed popup user.
+    const privateCache = {
+      getPrivateCacheOwnerUid() { return 'test-uid'; },
+      capturePrivateCacheAuthority(expectedUid) {
+        if (!expectedUid || String(expectedUid) !== 'test-uid') return null;
+        return { uid: 'test-uid', epoch: 0 };
+      },
+      isPrivateCacheAuthorityCurrent(authority) {
+        return !!(authority && authority.uid === 'test-uid' && Number(authority.epoch) === 0);
+      },
+      writePrivateCacheRecord(key, uid, record, authority) {
+        if (!uid || String(uid) !== 'test-uid' || !authority) return false;
+        try {
+          store[String(key)] = JSON.stringify(record);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      },
+      readPrivateCacheRecord(key, uid) {
+        if (!uid || String(uid) !== 'test-uid') return null;
+        try {
+          const raw = store[String(key)];
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
+        }
+      },
+      clearPrivateCaches() {},
+    };
     const sandbox = {
       Object, Array, String, Number, Boolean, Promise, JSON, Math, Date, RegExp,
       Error, TypeError, RangeError, parseInt, parseFloat, isNaN,
@@ -426,6 +459,7 @@ test('signInWithGoogle success popup sets canonical href and activates editor pr
         location: { search: search || '', origin: 'http://localhost', href: '' },
         self: null,
         top: null,
+        LoveBudAuthCache: privateCache,
       },
       firebase: {
         apps: ['mock-app'],

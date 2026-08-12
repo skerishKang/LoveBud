@@ -5,6 +5,14 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
+const REQUEST_ID_HELPER_JS = path.join(ROOT, 'functions/_shared/request-id.js');
+const DEDICATED_SOCIAL_ROUTES = [
+  'functions/api/trees/[tree_id]/comments.js',
+  'functions/api/trees/[tree_id]/likes.js',
+  'functions/api/trees/[tree_id]/views.js',
+  'functions/api/trees/[tree_id]/memories/[memory_id]/comments.js',
+  'functions/api/trees/[tree_id]/memories/[memory_id]/reactions.js',
+];
 
 function readCatchallSource() {
   return fs.readFileSync(CATCHALL_JS, 'utf8');
@@ -68,4 +76,28 @@ test('sanitized/generated request id is the only value forwarded to Modal and re
   assert.match(upstreamBlock, /headers\.set\(REQUEST_ID_HEADER,\s*requestId\)/, 'response should expose sanitized/generated request id');
   assert.doesNotMatch(readBlock, /request\.headers\.get\('x-lovebud-request-id'\)/, 'read proxy must not re-read raw request id');
   assert.doesNotMatch(writeBlock, /request\.headers\.get\('x-lovebud-request-id'\)/, 'write proxy must not re-read raw request id');
+});
+
+test('#3949 shared request-id helper mirrors the canonical bounded policy', () => {
+  const content = fs.readFileSync(REQUEST_ID_HELPER_JS, 'utf8');
+
+  assert.match(content, /REQUEST_ID_HEADER\s*=\s*'x-lovebud-request-id'/);
+  assert.match(content, /MAX_REQUEST_ID_LENGTH\s*=\s*80/);
+  assert.match(content, /SAFE_REQUEST_ID_PATTERN\s*=\s*\/\^\[A-Za-z0-9\._:-\]\+\$\//);
+  assert.match(content, /const\s+trimmed\s*=\s*value\.trim\(\)/);
+  assert.match(content, /trimmed\.length\s*>\s*MAX_REQUEST_ID_LENGTH/);
+  assert.match(content, /!SAFE_REQUEST_ID_PATTERN\.test\(trimmed\)/);
+  assert.match(content, /normalizeRequestId\(request\.headers\.get\(REQUEST_ID_HEADER\)\)/);
+  assert.match(content, /return\s+'req-'\s*\+\s*crypto\.randomUUID\(\)/);
+});
+
+test('#3949 dedicated social routes consume the shared request-id boundary', () => {
+  for (const relativePath of DEDICATED_SOCIAL_ROUTES) {
+    const content = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+    assert.match(content, /import\s*\{[^}]*REQUEST_ID_HEADER[^}]*getOrCreateRequestId[^}]*\}\s*from\s*['"][^'"]*_shared\/request-id\.js['"]/, `${relativePath}: must import shared request-id policy`);
+    assert.match(content, /getOrCreateRequestId\(/, `${relativePath}: must normalize/generate once at route boundary`);
+    assert.doesNotMatch(content, /function\s+generateRequestId\s*\(/, `${relativePath}: local generator must be removed`);
+    assert.doesNotMatch(content, /function\s+getOrCreateRequestId\s*\(/, `${relativePath}: local raw policy must be removed`);
+    assert.doesNotMatch(content, /const\s+existing\s*=\s*request\.headers\.get\(REQUEST_ID_HEADER\)/, `${relativePath}: raw caller ID must not bypass shared normalization`);
+  }
 });

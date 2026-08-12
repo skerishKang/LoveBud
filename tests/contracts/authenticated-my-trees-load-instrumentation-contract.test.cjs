@@ -98,6 +98,44 @@ function deferred() {
   return { promise, resolve, reject, isSettled: () => settled };
 }
 
+// #3928: the owner-private cache module (js/auth/auth-cache.js) is the
+// confirmed-owner authority for private cache read/write. This harness runs
+// the my-trees modules without loading the full auth chain, so a minimal
+// authority mock is injected that behaves like the production module for a
+// single confirmed owner ('test-uid') backed by the harness localStorage.
+function createPrivateCacheAuthorityMock(storage) {
+  const OWNER_UID = 'test-uid';
+  return {
+    getPrivateCacheOwnerUid() { return OWNER_UID; },
+    capturePrivateCacheAuthority(expectedUid) {
+      if (!expectedUid || String(expectedUid) !== OWNER_UID) return null;
+      return { uid: OWNER_UID, epoch: 0 };
+    },
+    isPrivateCacheAuthorityCurrent(authority) {
+      return !!(authority && authority.uid === OWNER_UID && Number(authority.epoch) === 0);
+    },
+    writePrivateCacheRecord(key, uid, record, authority) {
+      if (!uid || String(uid) !== OWNER_UID || !authority) return false;
+      try {
+        storage.setItem(String(key), JSON.stringify(record));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    readPrivateCacheRecord(key, uid) {
+      if (!uid || String(uid) !== OWNER_UID) return null;
+      try {
+        const raw = storage.getItem(String(key));
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    clearPrivateCaches() {},
+  };
+}
+
 function createHarness(options = {}) {
   const domNodes = {};
   const winListeners = {};
@@ -127,15 +165,17 @@ function createHarness(options = {}) {
     querySelectorAll() { return []; }
   };
 
+  const windowLocalStorage = {
+    store: storageStore,
+    getItem(k) { return Object.prototype.hasOwnProperty.call(this.store, k) ? this.store[k] : null; },
+    setItem(k, v) { this.store[k] = String(v); },
+    removeItem(k) { delete this.store[k]; }
+  };
+
   const window = {
     document,
     location: { replace() {}, pathname: '/pages/my-trees.html', href: '' },
-    localStorage: {
-      store: storageStore,
-      getItem(k) { return Object.prototype.hasOwnProperty.call(this.store, k) ? this.store[k] : null; },
-      setItem(k, v) { this.store[k] = String(v); },
-      removeItem(k) { delete this.store[k]; }
-    },
+    localStorage: windowLocalStorage,
     addEventListener(evt, fn) {
       if (!winListeners[evt]) winListeners[evt] = [];
       winListeners[evt].push(fn);
@@ -151,7 +191,8 @@ function createHarness(options = {}) {
     Date: FakeDate,
     console: { log() {}, warn() {}, error() {} },
     t: (k) => k,
-    LoveBudCache: options.cache || null
+    LoveBudCache: options.cache || null,
+    LoveBudAuthCache: createPrivateCacheAuthorityMock(windowLocalStorage)
   };
   window.window = window;
 
