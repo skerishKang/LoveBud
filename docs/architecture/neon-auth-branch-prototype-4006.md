@@ -9,7 +9,7 @@ LoveBud main baseline: `cc6cb26854e4cc692d3109debe05b0de1ab23a89`
 
 Validate, without changing production authentication, whether Neon Auth can coexist with the current LoveBud production-data lineage on an isolated Neon branch and provide the basis for a future shared LoveBud/LoveTree identity authority.
 
-This document records only evidence actually obtained in the branch prototype. It does **not** claim that Firebase migration, password migration, browser SSO, or production cutover is complete.
+This document records only evidence actually obtained in the branch prototype and the later read-only #4006 architecture decisions derived from that evidence. It does **not** claim that Firebase migration, managed-endpoint account linking, browser OAuth E2E, or production cutover is complete.
 
 ## 2. Safety boundary
 
@@ -175,6 +175,32 @@ Neon Auth subject ┘
 
 This avoids a second ownership rewrite if the authentication provider changes again in the future and permits a bounded Firebase→Neon migration.
 
+### 8.1 Identity namespace gate
+
+The current prototype key shape `(provider, provider_subject)` is acceptable only while each provider name identifies exactly one trusted authority. Current repository evidence converges on the same Firebase project namespace for both products:
+
+```text
+CURRENT_FIREBASE_NAMESPACE = relovetree
+SINGLE_FIREBASE_AUTHORITY_REQUIRED = YES
+RUNTIME_ISSUER_PROJECT_MATCH_BEFORE_SEEDING = REQUIRED
+```
+
+Repository configuration is not sufficient proof for a future cutover because deployed configuration may drift. Before any production identity seeding or dual-provider acceptance, verify the runtime Firebase issuer/project actually matches the intended authority.
+
+If the platform later accepts more than one Firebase project/tenant, or more than one independent Neon Auth authority, promote the identity key before accepting that second authority:
+
+```text
+(provider, provider_subject)
+```
+
+becomes an issuer-scoped form such as:
+
+```text
+(provider, provider_issuer, provider_subject)
+```
+
+Do not use email to reconcile issuer/namespace collisions.
+
 ## 9. Why direct ID replacement is unsafe
 
 Current canonical data already has active ownership keyed by existing user IDs. #4005 confirmed that the LoveBud lineage has real account/product data and that current non-null Tree owners resolve against `public.users`.
@@ -200,7 +226,7 @@ On a temporary schema branch first, design additive account/identity mapping tab
 Requirements:
 
 - stable platform account ID;
-- unique `(provider, provider_subject)` identity mapping;
+- unique `(provider, provider_subject)` identity mapping under the single-authority gate above;
 - explicit link status/audit metadata;
 - no linking solely on an unverified email;
 - deterministic idempotent linking;
@@ -221,41 +247,79 @@ Domain authorization consumes the stable account, not raw provider identity.
 
 ### Stage C — account linking
 
-Existing users must prove control of both sides through a secure migration/link flow or another evidence-based migration path.
-
-Google/OAuth users and Email/Password users may require different flows.
+Existing users must prove control through a secure migration/link flow or another evidence-based migration path. Google/OAuth users and Email/Password users may require different flows.
 
 ### Stage D — provider retirement
 
 Only after account coverage, ownership parity, Login/redirect/logout parity, and rollback evidence are complete can Firebase acceptance be disabled.
 
-## 11. Password migration remains unresolved
+## 11. Password migration decision narrowed
 
-This prototype did not export Firebase credential hashes and did not test password-hash import into Neon Auth.
+The prototype did not export Firebase credential hashes and did not test password-hash import into managed Neon Auth. Later read-only #4006 evidence establishes that the existence of a credential field in the managed Auth schema is **not** proof that Firebase modified-scrypt hashes can be imported or verified.
 
-Therefore none of the following can yet be claimed:
+Current gate:
 
 ```text
-PASSWORD_HASH_IMPORT_SUPPORTED_AND_TESTED
-FORCED_PASSWORD_RESET_REQUIRED
-JUST_IN_TIME_ACCOUNT_LINK_REQUIRED
+PASSWORD_HASH_IMPORT_SUPPORTED_AND_TESTED: NO
+HOLD_FIREBASE_HASH_EXPORT_FOR_MIGRATION: YES
+PREFERRED_NONPROD_TEST_PATH: JUST_IN_TIME_ACCOUNT_LINK_REQUIRED
+FALLBACK_PATH: FORCED_PASSWORD_RESET_REQUIRED
+JIT_MANAGED_ENDPOINT_E2E: PENDING
+PRODUCTION_AUTH_CUTOVER: HOLD
 ```
 
-#4006 must obtain explicit evidence before choosing one.
+The preferred staged candidate is therefore `JUST_IN_TIME_ACCOUNT_LINK_REQUIRED`, not direct hash conversion. The future non-production proof must require:
 
-No password/hash conversion should be invented from schema similarity.
+1. successful existing Firebase authentication to prove control;
+2. deterministic resolution of the verified Firebase subject to exactly one `app_account`;
+3. fail-closed handling for ambiguous or unmapped subjects;
+4. Neon credential/session establishment only for that resolved account;
+5. idempotent, auditable linking;
+6. no link based only on email, especially unverified email.
 
-## 12. OAuth/shared-login work remains unresolved
+If managed Neon Auth cannot support a safe JIT flow, the fallback is `FORCED_PASSWORD_RESET_REQUIRED`, also bound to a deterministically resolved existing `app_account` rather than email matching.
 
-This prototype proves Neon Auth can be provisioned on the canonical database lineage without touching production. It does **not** yet prove:
+This decision remains pending managed-endpoint E2E. No password/hash conversion should be invented from schema similarity, and sensitive Firebase hash material should not be exported merely to test an undocumented path.
 
-- Google OAuth configuration for LoveBud/LoveTree;
-- production redirect/trusted-origin behavior;
-- one-login browser SSO across final domains;
-- logout propagation across apps;
-- session exchange through the proposed shared API/service-binding topology.
+## 12. Shared-app SSO topology selected; runtime proof pending
 
-Those remain the next runtime prototype.
+The architecture decision portion is no longer open-ended. Current LoveBud and LoveTree production origins are separate hosts under unrelated suffixes, so the migration must not depend on direct cross-application cookie sharing.
+
+Selected topology:
+
+```text
+SSO_TOPOLOGY: SEPARATE_APP_ORIGINS_USING_CENTRAL_AUTH_REDIRECT_SESSION_EXCHANGE
+SHARED_APP_ACCOUNT_AUTHORITY: REQUIRED
+DIRECT_CROSS_APP_COOKIE_SHARING: NOT_REQUIRED
+NONPROD_TRUSTED_ORIGIN_E2E: PENDING
+GOOGLE_OAUTH_BRANCH_E2E: PENDING
+PRODUCTION_TRUSTED_ORIGIN_CHANGE: HOLD
+PRODUCTION_AUTH_CUTOVER: HOLD
+```
+
+Target logical flow:
+
+```text
+LoveBud origin ─┐
+                ├─> shared platform auth authority ─> verified provider subject
+LoveTree origin ┘                                  └─> app_auth_identity
+                                                       └─> stable app_account
+```
+
+Each app keeps only session/token material appropriate to its own origin/runtime. Both applications resolve the verified provider identity through the same stable account authority.
+
+Future branch E2E must prove at least:
+
+- both fixed non-production origins are explicitly trusted;
+- return targets are allowlisted per app and cannot become open redirects;
+- state/return-target integrity is protected;
+- sessions from either app resolve to the same `app_account`;
+- logout/session-expiry behavior is defined for both apps;
+- no client-supplied `app_account` is trusted;
+- ambiguous/unmapped identities fail closed;
+- wildcard PR-preview origins are not assumed safe or supported.
+
+The current child has `trusted origins = 0`, so browser OAuth remains HOLD until fixed non-production origins/callbacks are configured through the supported management surface.
 
 ## 13. Interaction with LovePortal/LoveTree shared architecture
 
@@ -273,6 +337,8 @@ LovePortal / LoveBud / LoveTree
 
 The auth service can branch with the canonical Neon lineage, while LoveBud/LoveTree remain clients of one shared account authority.
 
+Fresh cross-app audit also confirms current LoveTree product auth is Firebase, not Supabase, and both applications currently use Firebase subjects directly as business owner/actor IDs. Do not add a `supabase` provider based on stale evidence.
+
 It also reinforces the LoveTree #152 guardrail: do not independently provision a permanent LoveTree Neon Auth authority.
 
 ## 14. Interaction with Modal migration
@@ -285,21 +351,34 @@ Modal remains orthogonal specialized compute and should not become the identity 
 
 ## 15. Next experiments
 
-The safe next #4006 steps are:
+The safe next #4006 steps are now:
 
-1. inventory Firebase provider counts and ownership coverage read-only;
-2. design `app_account` / `app_auth_identity` on a temporary Neon branch;
-3. create synthetic **non-production** Neon Auth users and test sign-in/session/JWKS validation;
-4. verify token validation from a Cloudflare Worker test seam;
-5. test Google OAuth only against approved test origins;
-6. determine Email/Password migration strategy from supported credential-import evidence;
-7. define shared LoveBud/LoveTree login/redirect topology;
-8. only then propose a staged production migration PR.
+1. run synthetic Neon Auth sign-up/sign-in/sign-out against the existing non-production child Auth endpoint from a network-capable runner;
+2. test the preferred JIT existing-account link flow without exporting Firebase password hashes;
+3. verify provider-specific token/session/JWKS validation and logout/revocation behavior;
+4. configure and validate fixed non-production trusted origins/callbacks for both LoveBud and LoveTree;
+5. prove central redirect/session exchange maps both applications to the same stable `app_account` without cross-origin cookie assumptions;
+6. verify the actual runtime Firebase issuer/project namespace before any production identity seeding;
+7. define resolution policy for unresolved legacy social subjects;
+8. add runtime contracts before changing Product owner routes;
+9. only then propose a staged production migration PR.
 
 ## 16. Prototype verdict
 
 ```text
-ITERATE_AUTH_PROTOTYPE
+GO_STABLE_ACCOUNT_MAPPING_MODEL
+GO_AUTHENTICATED_PRINCIPAL_ABSTRACTION
+GO_EXISTING_ACCOUNT_COMPATIBILITY_RESOLVER
+GO_MAPPING_UNIQUENESS_MODEL
+GO_EMAIL_PASSWORD_BRANCH_TEST_CONFIGURATION
+PREFERRED_PASSWORD_PATH: JUST_IN_TIME_ACCOUNT_LINK_REQUIRED
+SSO_TOPOLOGY: SEPARATE_APP_ORIGINS_USING_CENTRAL_AUTH_REDIRECT_SESSION_EXCHANGE
+HOLD_NEW_NEON_ONLY_PRODUCT_WRITES
+HOLD_BROWSER_OAUTH_TRUSTED_ORIGINS
+HOLD_MULTI_ISSUER_IDENTITY_ACCEPTANCE
+HOLD_ENTITLEMENT_AUTHORITY_MIGRATION
+HOLD_STABLE_PRODUCT_OWNER_CUTOVER
+HOLD_PRODUCTION_AUTH_CUTOVER
 ```
 
 Reason:
@@ -308,15 +387,18 @@ Reason:
 PASS: branch-local Neon Auth provisioning
 PASS: canonical public data preserved on child branch
 PASS: production branch remained without neon_auth
-PASS: schema proves provider identity must be mapped, not substituted
-PENDING: Firebase provider inventory
-PENDING: account-link data model branch prototype
-PENDING: synthetic signup/login/session validation
-PENDING: password migration evidence
-PENDING: OAuth/shared-domain SSO validation
+PASS: stable account / legacy Firebase mapping prototype
+PASS: existing-account compatibility resolver and uniqueness model
+PASS: password migration path narrowed without unsupported hash import
+PASS: shared-app SSO topology selected
+PASS: current single Firebase namespace gate documented
+PENDING: managed-endpoint signup/session/JIT-link E2E
+PENDING: non-production trusted-origin + Google OAuth E2E
+PENDING: provider-neutral server/runtime acceptance
+PENDING: entitlement and stable Product-owner migration
 ```
 
-Neon Auth is a viable shared-auth candidate, but production migration is not yet authorized.
+Neon Auth remains a viable shared-auth candidate, but Production auth cutover is not authorized.
 
 Refs #4004
 Refs #4005
