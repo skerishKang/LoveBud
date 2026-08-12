@@ -111,6 +111,36 @@ The existing Login-controller transition plan remains relevant for UI/controller
 
 No production provider setting was changed during this inventory.
 
+## Managed Neon Auth configuration evidence
+
+Only non-secret configuration shape/flags were read from the child branch. No OAuth credential or endpoint secret was emitted or committed.
+
+Observed child-branch configuration:
+
+```text
+email/password enabled:             true
+signup disabled:                    false
+require email verification:         false
+auto-sign-in after verification:    true
+send verification on signup:        false
+send verification on signin:        false
+configured social providers:        1
+social provider observed:            google (shared configuration)
+allow localhost:                    true
+trusted origins configured:         0
+```
+
+Interpretation:
+
+- email/password synthetic-user testing is configuration-compatible on the child branch;
+- Google is present as the first OAuth parity candidate;
+- deployed LoveBud/LoveTree browser OAuth must remain `HOLD` until explicit trusted origins/callback configuration is added through the supported Neon Auth management surface;
+- direct SQL editing of managed Auth configuration is intentionally avoided.
+
+Neon documents the current branchable Auth implementation as Better Auth-based, with branch-scoped users/sessions/config/JWKS and branch-specific Auth endpoints. Better Auth's standard email/password lifecycle exposes sign-up, sign-in, session-cookie and sign-out flows; the intended next test is therefore an end-to-end synthetic lifecycle through the managed endpoint rather than manually inserting rows into `neon_auth` tables.
+
+The current execution container cannot resolve external DNS, so the endpoint lifecycle could not be invoked from this worker after provisioning. This is an execution-environment limitation, not a failed Auth service/database test. No direct-table imitation of signup/session state was performed.
+
 ## Identity migration rule
 
 The prototype rejects direct substitution such as:
@@ -133,11 +163,11 @@ Product authorization should progressively resolve through the stable applicatio
 
 Before any production cutover:
 
-1. create synthetic Neon Auth identities on the child branch only;
+1. run synthetic Neon Auth sign-up/sign-in/sign-out against the child Auth endpoint from a network-capable test runner;
 2. link synthetic Neon identities to dedicated test app accounts and verify uniqueness/relink rejection;
 3. validate session/JWT verification and logout/revocation behavior;
 4. determine password migration/reset strategy rather than assuming Firebase password hashes can be moved transparently;
-5. validate Google OAuth callback/trusted-origin behavior for both LoveBud and LoveTree domains;
+5. configure and validate Google OAuth callback/trusted-origin behavior for both LoveBud and LoveTree domains on non-production Auth first;
 6. inventory current Firebase provider configuration using non-mutating access where available;
 7. define resolution policy for the two unresolved legacy subjects;
 8. add application/runtime contracts before changing product routes.
@@ -146,6 +176,8 @@ Before any production cutover:
 
 ```text
 GO_STABLE_ACCOUNT_MAPPING_MODEL
+GO_EMAIL_PASSWORD_BRANCH_TEST_CONFIGURATION
+HOLD_BROWSER_OAUTH_TRUSTED_ORIGINS
 ITERATE_NEON_AUTH_SESSION_PROTOTYPE
 HOLD_PRODUCTION_AUTH_CUTOVER
 ```
@@ -157,6 +189,7 @@ HOLD_PRODUCTION_AUTH_CUTOVER
 - no Production user/session mutation
 - no existing product owner ID rewrite
 - no Firebase export/import/provider mutation
+- no direct SQL mutation of managed Neon Auth config/users/sessions
 - no Cloudflare deployment/secret/binding change
 - no LoveBud/LoveTree runtime change
 - no Modal change
