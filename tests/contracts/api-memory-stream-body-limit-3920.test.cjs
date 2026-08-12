@@ -424,3 +424,80 @@ test('N. migrated Memory boundaries use streaming read, not raw request.text()/j
   assert.match(fs.readFileSync(REACTIONS, 'utf8'), /readBoundedRequestBody\s*\(/);
   assert.match(fs.readFileSync(PROXY, 'utf8'), /readBoundedRequestBody/);
 });
+
+// ---------------------------------------------------------------------------
+// O. Canonical Content-Length syntax: only decimal digits are trusted for the
+//    early-optimization over-limit check. Number-parseable-but-invalid syntax
+//    ("1e9", "1.5", "+200000", "-1", "abc") must NOT yield a false early 413.
+// ---------------------------------------------------------------------------
+test('O. isContentLengthOverLimit trusts only canonical decimal Content-Length', async () => {
+  const { isContentLengthOverLimit } = await loadBounded();
+  const headerFor = (cl) => () => cl;
+
+  // Canonical decimal just over the limit is a valid early-optimization signal.
+  const over = makeFakeRequest({
+    headersGet: headerFor('131073'),
+    bodyReader: { getReader: () => { throw new Error('must not read'); } },
+  });
+  assert.equal(isContentLengthOverLimit(over, MAX), true, 'canonical 131073 must be over limit');
+
+  // Exactly 128 KiB (canonical) is at the limit, not over.
+  const atLimit = makeFakeRequest({
+    headersGet: headerFor(String(MAX)),
+    bodyReader: { getReader: () => { throw new Error('must not read'); } },
+  });
+  assert.equal(isContentLengthOverLimit(atLimit, MAX), false, 'exact-limit canonical value must not be over limit');
+
+  // Invalid-but-number-parseable values must never be trusted.
+  for (const bad of ['1e9', '1.5', '+200000', '-1', 'abc', '0x10', '1_000', '']) {
+    const req = makeFakeRequest({
+      headersGet: headerFor(bad),
+      bodyReader: { getReader: () => { throw new Error('must not read'); } },
+    });
+    assert.equal(
+      isContentLengthOverLimit(req, MAX),
+      false,
+      `invalid Content-Length "${bad}" must not be treated as over limit`
+    );
+  }
+
+  // Missing header is never trusted either.
+  const missing = makeFakeRequest({
+    headersGet: () => null,
+    bodyReader: { getReader: () => { throw new Error('must not read'); } },
+  });
+  assert.equal(isContentLengthOverLimit(missing, MAX), false, 'missing Content-Length must not be over limit');
+
+  // A canonical decimal that exceeds Number.MAX_SAFE_INTEGER is not trusted as a
+  // safe integer; fall back to stream enforcement rather than a wrong early 413.
+  const huge = makeFakeRequest({
+    headersGet: headerFor('9'.repeat(310)),
+    bodyReader: { getReader: () => { throw new Error('must not read'); } },
+  });
+  assert.equal(isContentLengthOverLimit(huge, MAX), false, 'decimal beyond safe-integer range must not be over limit');
+});
+
+// ---------------------------------------------------------------------------
+// P. Invalid-but-number-parseable over-limit-looking Content-Length plus a
+//    small ACCEPTABLE stream must be accepted (NOT 413): the early-optimization
+//    header is ignored and the real streamed byte count is the authority.
+// ---------------------------------------------------------------------------
+test('P. invalid-but-parseable Content-Length + small stream accepted, Modal called', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await loadComments();
+  const small = new Uint8Array(16);
+  for (const badHeader of ['1e9', '1.5', '+200000']) {
+    const request = makeFakeRequest({
+      headersGet: commentHeaderGet({ 'content-length': badHeader }),
+      bodyReader: streamingReader([small]),
+    });
+    const { result, captured } = await withMockFetch(() =>
+      onRequestPost({ request, env: { MODAL_BASE_URL: 'https://modal.test' }, params: { id: 'abc' } })
+    );
+    assert.equal(result.status, 200, `header "${badHeader}" must not cause early 413 for small stream`);
+    assert.equal(captured.calls, 1, `Modal must be called once for header "${badHeader}"`);
+    assert.ok(
+      Buffer.from(captured.options.body).equals(Buffer.from(small)),
+      `forwarded bytes must be byte-exact for header "${badHeader}"`
+    );
+  }
+});

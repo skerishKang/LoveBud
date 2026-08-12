@@ -15,8 +15,14 @@ export const MAX_REQUEST_BODY_BYTES = 128 * 1024;
 function getContentLengthBytes(request) {
   const raw = request.headers.get('content-length');
   if (!raw) return null;
+  // RFC 9110 8.6: Content-Length is ASCII decimal digits only. A value that is
+  // number-parseable but syntactically invalid for HTTP (e.g. "1e9", "1.5",
+  // "+200000", "-1", "abc") is NEVER trusted for the early-optimization check.
+  // Only canonical decimal digits are eligible; the actual streamed byte count
+  // remains the final authority.
+  if (!/^[0-9]+$/.test(raw)) return null;
   const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  if (!Number.isSafeInteger(parsed) || parsed < 0) return null;
   return parsed;
 }
 
