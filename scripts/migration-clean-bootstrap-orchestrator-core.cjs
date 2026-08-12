@@ -10,10 +10,10 @@
  * manifest.
  *
  * The module is a pure coordination factory: it reads the committed manifests
- * and the on-disk SQL file, validates the committed authority (exactly one
- * migration, exactly one expected critical object, raw-byte checksum,
- * catalog-normalizer fingerprint), and returns a frozen projection plus a `run`
- * factory. The `run` factory opens ONE pinned session, validates config and
+ * and the on-disk SQL file, validates the committed authority (bootstrap
+ * migration selected by exact ID, ledger critical object selected by exact
+ * name, raw-byte checksum, catalog-normalizer fingerprint), and returns a
+ * frozen projection plus a `run` factory. The `run` factory opens ONE pinned session, validates config and
  * clean-target evidence, executes the required sequence atomically in a single
  * transaction, and closes/rolls back on any pre-commit failure so no ledger
  * relation, ledger row, or partial object remains. Post-commit verification
@@ -212,20 +212,46 @@ function resolveSqlPath(migration) {
   return realTarget;
 }
 
-function validateCommittedAuthority() {
-  const manifest = loadManifest();
+function selectBootstrapMigration(manifest) {
+  if (!Array.isArray(manifest.migrations)) {
+    throw new Error(FACTORY_ERRORS.MIGRATION_COUNT_INVALID);
+  }
+  const matches = manifest.migrations.filter(function (entry) {
+    return isPlainRecord(entry) && entry.id === BOOTSTRAP_MIGRATION_ID;
+  });
+  if (matches.length === 0) {
+    throw new Error(FACTORY_ERRORS.MIGRATION_NOT_FOUND);
+  }
+  if (matches.length !== 1) {
+    throw new Error(FACTORY_ERRORS.MIGRATION_ID_INVALID);
+  }
+  return matches[0];
+}
+
+function selectBootstrapCriticalObject(schemaManifest) {
+  if (!Array.isArray(schemaManifest.critical_objects)) {
+    throw new Error(FACTORY_ERRORS.CRITICAL_OBJECT_COUNT_INVALID);
+  }
+  const matches = schemaManifest.critical_objects.filter(function (entry) {
+    return isPlainRecord(entry) && entry.name === EXPECTED_CRITICAL_OBJECT_NAME;
+  });
+  if (matches.length === 0) {
+    throw new Error(FACTORY_ERRORS.CRITICAL_OBJECT_NAME_INVALID);
+  }
+  if (matches.length !== 1) {
+    throw new Error(FACTORY_ERRORS.CRITICAL_OBJECT_NAME_INVALID);
+  }
+  return matches[0];
+}
+
+function validateCommittedAuthority(manifestInput, schemaManifestInput) {
+  const manifest = manifestInput || loadManifest();
   if (manifest.status !== 'ADOPTION_REQUIRED') {
     throw new Error(FACTORY_ERRORS.MANIFEST_STATUS_INVALID);
   }
-  if (!Array.isArray(manifest.migrations) || manifest.migrations.length !== 1) {
-    throw new Error(FACTORY_ERRORS.MIGRATION_COUNT_INVALID);
-  }
-  const migration = manifest.migrations[0];
+  const migration = selectBootstrapMigration(manifest);
   if (!isPlainRecord(migration)) {
     throw new Error(FACTORY_ERRORS.MIGRATION_NOT_FOUND);
-  }
-  if (migration.id !== BOOTSTRAP_MIGRATION_ID) {
-    throw new Error(FACTORY_ERRORS.MIGRATION_ID_INVALID);
   }
   if (migration.path !== BOOTSTRAP_MIGRATION_PATH) {
     throw new Error(FACTORY_ERRORS.MIGRATION_PATH_INVALID);
@@ -251,15 +277,12 @@ function validateCommittedAuthority() {
     throw new Error(FACTORY_ERRORS.CHECKSUM_MISMATCH);
   }
 
-  const schemaManifest = loadExpectedSchemaManifest();
+  const schemaManifest = schemaManifestInput || loadExpectedSchemaManifest();
   if (schemaManifest.status !== 'ADOPTION_REQUIRED') {
     throw new Error(FACTORY_ERRORS.MANIFEST_STATUS_INVALID);
   }
-  if (!Array.isArray(schemaManifest.critical_objects) || schemaManifest.critical_objects.length !== 1) {
-    throw new Error(FACTORY_ERRORS.CRITICAL_OBJECT_COUNT_INVALID);
-  }
-  const criticalObject = schemaManifest.critical_objects[0];
-  if (!isPlainRecord(criticalObject) || criticalObject.name !== EXPECTED_CRITICAL_OBJECT_NAME) {
+  const criticalObject = selectBootstrapCriticalObject(schemaManifest);
+  if (!isPlainRecord(criticalObject)) {
     throw new Error(FACTORY_ERRORS.CRITICAL_OBJECT_NAME_INVALID);
   }
   if (typeof criticalObject.fingerprint !== 'string' || !SHA256_PATTERN.test(criticalObject.fingerprint)) {
@@ -484,6 +507,8 @@ module.exports = {
   createCleanBootstrapRunner,
   loadBootstrapProjection,
   validateCommittedAuthority,
+  selectBootstrapMigration,
+  selectBootstrapCriticalObject,
   computeFileSha256,
   loadManifest,
   loadExpectedSchemaManifest,
