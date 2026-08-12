@@ -44,7 +44,11 @@ async function installFixture(client) {
     CREATE TABLE comments (
       id text PRIMARY KEY,
       memory_id text NOT NULL,
-      owner_id text NOT NULL
+      owner_id text NOT NULL,
+      body text NOT NULL DEFAULT '',
+      status text NOT NULL DEFAULT 'visible',
+      deleted_at timestamptz NULL,
+      created_at timestamptz NOT NULL DEFAULT NOW()
     );
     CREATE TABLE reactions (
       id text PRIMARY KEY,
@@ -85,6 +89,20 @@ async function lockedAuth(client, memoryId) {
 
 function explicitlyPublic(row) {
   return row && row.mem_visibility === 'public' && row.tree_visibility === 'public';
+}
+
+async function fetchRecentPublicCommentRows(client, memoryId, limit) {
+  const result = await client.query(
+    `SELECT id, body, created_at
+     FROM comments
+     WHERE memory_id = $1
+       AND status = 'visible'
+       AND deleted_at IS NULL
+     ORDER BY created_at DESC, id DESC
+     LIMIT $2`,
+    [memoryId, limit],
+  );
+  return result.rows.slice().reverse();
 }
 
 async function privateFirstNoMutation(client, targetTable, revokeKind) {
@@ -196,5 +214,65 @@ test('PostgreSQL 17.4 serializes Moment Comment/Reaction writes against Memory a
     const ids2 = await resetTarget(ctx.client, 'null-tree-negative', 'public', null);
     const nullTree = await lockedAuth(ctx.client, ids2.memoryId);
     assert.equal(explicitlyPublic(nullTree.rows[0]), false, 'NULL Tree visibility must fail closed');
+  });
+});
+
+test('PostgreSQL 17.4 public comment recent window keeps new comments reachable beyond 20', async () => {
+  await withDisposableDb('moment_public_comment_recent_window', null, async ctx => {
+    await installFixture(ctx.client);
+    const { memoryId } = await resetTarget(ctx.client, 'recent-window');
+
+    for (let index = 1; index <= 21; index += 1) {
+      const id = `comment-${String(index).padStart(2, '0')}`;
+      const createdAt = new Date(Date.UTC(2026, 0, 1, 0, 0, index));
+      await ctx.client.query(
+        `INSERT INTO comments (id, memory_id, owner_id, body, status, created_at)
+         VALUES ($1, $2, $3, $4, 'visible', $5)`,
+        [id, memoryId, 'actor', `body-${index}`, createdAt],
+      );
+    }
+
+    await ctx.client.query(
+      `INSERT INTO comments (id, memory_id, owner_id, body, status, created_at)
+       VALUES ($1, $2, $3, $4, 'hidden', $5)`,
+      ['comment-hidden-newer', memoryId, 'actor', 'hidden', new Date(Date.UTC(2026, 0, 1, 0, 0, 59))],
+    );
+    await ctx.client.query(
+      `INSERT INTO comments (id, memory_id, owner_id, body, status, deleted_at, created_at)
+       VALUES ($1, $2, $3, $4, 'visible', $5, $6)`,
+      [
+        'comment-deleted-newer',
+        memoryId,
+        'actor',
+        'deleted',
+        new Date(Date.UTC(2026, 0, 1, 0, 1, 0)),
+        new Date(Date.UTC(2026, 0, 1, 0, 0, 58)),
+      ],
+    );
+
+    const firstWindow = await fetchRecentPublicCommentRows(ctx.client, memoryId, 20);
+    assert.equal(firstWindow.length, 20, 'recent public window must stay bounded');
+    assert.deepEqual(
+      firstWindow.map(row => row.id),
+      Array.from({ length: 20 }, (_, offset) => `comment-${String(offset + 2).padStart(2, '0')}`),
+      '21 visible comments must expose comments 02..21 in chronological presentation order',
+    );
+    assert.equal(firstWindow.at(-1).id, 'comment-21', 'comment 21 must remain reachable');
+    assert.equal(firstWindow.some(row => row.id === 'comment-hidden-newer'), false, 'hidden rows stay excluded');
+    assert.equal(firstWindow.some(row => row.id === 'comment-deleted-newer'), false, 'deleted rows stay excluded');
+
+    await ctx.client.query(
+      `INSERT INTO comments (id, memory_id, owner_id, body, status, created_at)
+       VALUES ($1, $2, $3, $4, 'visible', $5)`,
+      ['comment-22', memoryId, 'actor', 'body-22', new Date(Date.UTC(2026, 0, 1, 0, 0, 22))],
+    );
+
+    const secondWindow = await fetchRecentPublicCommentRows(ctx.client, memoryId, 20);
+    assert.deepEqual(
+      secondWindow.map(row => row.id),
+      Array.from({ length: 20 }, (_, offset) => `comment-${String(offset + 3).padStart(2, '0')}`),
+      'after a newly persisted visible comment, the bounded public read advances without freezing on oldest rows',
+    );
+    assert.equal(secondWindow.at(-1).id, 'comment-22', 'newly persisted comment must be retrievable immediately');
   });
 });
