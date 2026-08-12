@@ -82,7 +82,7 @@ The row count and ordered-ID checksum are identical before and after the additiv
 
 ## Non-destructive write/uniqueness probe
 
-The child branch contains 60 Trees with at least two current Memory rows, allowing the uniqueness contract to be exercised without creating fake Product records.
+The child branch contains 45 current Tree rows. Across `public.memories`, 60 distinct `tree_id` groups have at least two current Memory rows; this count includes orphan `tree_id` groups already identified by the parent audit. This provides sufficient existing rows to exercise the uniqueness contract without creating fake Product records.
 
 A probe selected two existing Memory IDs under one Tree and temporarily assigned a sentinel value, then restored the values to NULL before completion.
 
