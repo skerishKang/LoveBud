@@ -2,7 +2,9 @@
 
 > **Status:** owner-approved operating model — Issue #3662
 > **UI acceleration amendment:** Issue #3664
+> **Parallel authority amendment:** PR #3994 / owner direction 2026-08-12
 > **Hard-governance authority:** `../ops/MVP_AGENT_GOVERNANCE.md`
+> **Parallel-work authority:** `../ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
 > **Test-execution authority:** `../ops/IMPACT_BASED_TEST_EXECUTION_POLICY.md`
 
 ## 1. Purpose
@@ -15,13 +17,15 @@ Low-risk UI changes use the risk-proportional process in `UI_RAPID_ITERATION_LAN
 
 Test execution is impact-based. Focused developer checks prove the changed behavior, GitHub Actions is the normal repository-wide CI execution layer, and Local Validation is assigned only when a declared trigger requires evidence that focused Web checks plus CI cannot supply.
 
+When multiple models/agents work concurrently, development speed is subordinate to collision safety: one writer per branch, file, and semantic authority. Read/review/CI forensic work may remain parallel where implementation cannot.
+
 ## 2. Roles and lifecycle
 
 The three execution roles are:
 
 ```text
 Web CTO
-Web Developer
+Web Developer / designated implementation owner
 Local Validation
 ```
 
@@ -29,15 +33,17 @@ The normal lifecycle has four stages because the Web CTO participates before and
 
 ```text
 User request
-→ Web CTO remote triage and contract
-→ separate Web Developer implementation + focused checks
+→ Web CTO remote triage, contract, and authority allocation
+→ separate Web Developer / implementation owner + focused checks
 → GitHub Actions relevant/full matrix
 → Local Validation only when trigger-qualified evidence is required
 → Web CTO independent final review
-→ user decision / expected-head squash merge
+→ user decision / task-authorized expected-head merge
 ```
 
 Local Validation is conditional, not ceremonial. It is omitted when the change class and available evidence do not require a local environment.
+
+Ready transition and merge are integration actions. They are not automatically granted to the implementation worker merely because implementation and CI are complete.
 
 ## 3. Web CTO
 
@@ -52,6 +58,7 @@ The Web CTO owns:
 - change-risk classification;
 - affected-behavior and plausible-regression classification;
 - acceptance criteria and required tests/evidence;
+- parallel writer/semantic-authority allocation and sequencing;
 - final remote diff, CI, evidence, and merge judgment.
 
 ### Before implementation
@@ -64,7 +71,7 @@ The Web CTO must:
 4. select focused tests based on affected behavior rather than file count;
 5. state whether Local Validation is `REQUIRED`, `CONDITIONAL`, or `NOT_REQUIRED`;
 6. when Local may be required, name the applicable trigger code from `IMPACT_BASED_TEST_EXECUTION_POLICY.md`;
-7. define safe parallel boundaries.
+7. define safe parallel boundaries, active writer, and semantic authority.
 
 Before spending a Local cycle, the Web CTO should use remote evidence to classify the work whenever possible:
 
@@ -81,6 +88,8 @@ BLOCKED_BY_DEPENDENCY
 
 The Web CTO may clarify or explicitly revise the contract, inspect remote progress, stop overlap, or split scope. It must not silently lower acceptance criteria to match the implementation.
 
+When another implementation owner holds an active semantic authority, the Web CTO may read, review, investigate CI, and leave correction findings, but should not create a competing implementation for that authority unless ownership is explicitly transferred.
+
 ### Final review
 
 The Web CTO independently checks:
@@ -95,7 +104,7 @@ The Web CTO independently checks:
 - browser/auth/API/database evidence when required;
 - security, privacy, cache, accessibility, and regression risk;
 - PR body and Issue linkage;
-- expected head immediately before squash merge.
+- expected head immediately before any task-authorized merge.
 
 Final judgment:
 
@@ -105,6 +114,8 @@ CONDITIONALLY_READY
 NOT_READY
 ```
 
+A `READY` judgment means the technical review gate is satisfied. It does not itself manufacture merge authority if the task/owner kept Ready or merge separately gated.
+
 ## 4. Web Developer
 
 The Web Developer operates in a separate web conversation/context from the Web CTO and owns implementation, implementation tests, branch commits, PR maintenance, and CI-driven correction.
@@ -112,32 +123,36 @@ The Web Developer operates in a separate web conversation/context from the Web C
 Responsibilities:
 
 - re-verify the supplied baseline and current remote state;
+- confirm active writer, path overlap, and semantic-authority overlap before writing;
 - create or use the assigned feature branch;
 - implement the smallest change satisfying the contract;
 - write focused tests/contracts required by the change class;
 - run the smallest sufficient developer checks for affected behavior;
 - create additive commits;
-- create or update the PR;
+- create or update the Draft PR;
 - inspect CI and correct executed code failures;
-- report exact SHA, diff, tests, CI, and remaining evidence needs.
+- report exact SHA, diff, tests, CI, active authority, and remaining evidence needs.
 
 The Web Developer does not:
 
 - make final product acceptance or merge decisions;
+- Ready-transition or merge its own active PR unless a task-specific owner instruction explicitly delegates that integration authority;
 - close protected parent Issues;
 - expand product, architecture, dependencies, data models, or APIs without approval;
 - treat test or CI success as final CTO approval;
 - run unrelated full local suites merely because source changed;
-- force-push, destructively reset, clean, or delete another worktree without approval.
+- create a competing implementation for another worker's active branch/file/semantic authority;
+- force-push, rebase published feature history, destructively reset, clean, or delete another worktree without approval.
 
 Direct GitHub implementation is the default when repository files are accessible and no full local authoring environment is required.
 
 ```text
 exact baseline
+→ authority collision check
 → feature branch
 → code and focused tests
 → additive commit
-→ PR
+→ Draft PR
 → GitHub CI inspection/correction
 ```
 
@@ -186,6 +201,8 @@ If exact-head GitHub CI already passed the same lane, Local Validation must not 
 
 Local Validation normally does not redesign or broadly rewrite production source. A product-source defect returns to the Web Developer unless the contract authorizes a precise minimal change.
 
+Local Validation does not gain Ready/merge authority merely by producing PASS evidence.
+
 A local report includes:
 
 ```text
@@ -210,11 +227,12 @@ reset/stash/clean used: YES/NO
 Default for most repository work.
 
 ```text
-Web CTO contract
+Web CTO contract + authority allocation
 → Web Developer direct branch implementation + focused checks
 → GitHub CI
 → Local Validation only if trigger-qualified evidence is required
 → Web CTO final review
+→ user/task-authorized integration when applicable
 ```
 
 ### Mode B — Patch package
@@ -257,7 +275,8 @@ U0/U1:
 Web CTO contract
 → Web Developer direct edit
 → focused checks
-→ Web CTO final review and merge
+→ Web CTO final review
+→ task-authorized merge when applicable
 → Production visual confirmation
 
 U2:
@@ -287,6 +306,8 @@ The Web CTO reviews evidence, not the developer's private reasoning:
 
 A Web CTO may author prototypes, design references, exact copy, state contracts, or patch drafts. A separate Web Developer must implement or independently review production changes before final CTO approval.
 
+If the Web CTO itself authors a repository correction, that same context does not claim independent final approval for the correction.
+
 ## 8. UI and design work
 
 The Web CTO owns product/visual direction. The Web Developer should not be asked to invent unspecified design.
@@ -308,21 +329,44 @@ Risk classification controls the process:
 
 ## 9. Parallel work
 
-Parallel execution requires:
+Parallel execution requires more than separate branches.
 
-- separate branches;
+```text
+ONE WRITER PER BRANCH
+ONE WRITER PER FILE
+ONE WRITER PER SEMANTIC AUTHORITY
+```
+
+Before any write, classify the intended implementation:
+
+```text
+GREEN  = branch/path/semantic authority independent
+          → parallel implementation allowed
+
+YELLOW = files differ but semantic authority is shared
+          → read/review/CI forensic may proceed; implementation is sequenced
+
+RED    = same branch/file/core semantic authority
+          → one active writer only
+```
+
+Representative semantic authorities include auth/session/account/token, DB schema/migration, DB transport, API runtime/routing, Tree write, Memory write, social write, visibility, owner/entitlement mapping, and Modal/shared-platform runtime contraction.
+
+Operational rules:
+
 - separate local worktrees when local work exists;
-- non-overlapping file ownership or explicit responsibility boundaries;
 - one active writer per remote branch;
-- no simultaneous push from two computers to one branch;
-- remote-head check before push;
-- latest-main relationship check before merge.
+- no simultaneous push from two computers/agents to one branch;
+- no competing implementation merely because files differ;
+- remote-head and active-authority check before push;
+- latest-main path + semantic relationship check after dependency merge and before integration;
+- blocking review findings return to the active writer unless ownership is explicitly transferred.
 
 Parallelize read-only remote forensic/review work aggressively when it shortens classification time. Multiple Web implementation or Local workers are useful only when branches and affected contracts are genuinely independent.
 
-Shared tokens, global CSS, common components, shared JavaScript, test registries, package/CI infrastructure, database schema, auth/security boundaries, and other shared contracts require one active writer or serialized order unless explicitly partitioned.
+Shared tokens, global CSS, common components, shared JavaScript, test registries, package/CI infrastructure, database schema, auth/security boundaries, write semantics, visibility/ownership, and platform-runtime boundaries require one active writer or serialized order unless explicitly partitioned.
 
-Adding Local workers is not a substitute for reducing duplicate test execution.
+When the owner explicitly declares a multi-model parallel lane, collision avoidance is the highest-priority coordination rule for that lane. Adding Local or Web workers is not a substitute for reducing duplicate test execution or for assigning one writer per authority.
 
 ## 10. Evidence and CI
 
@@ -382,6 +426,7 @@ exact base and target branch
 objective and user-visible outcome
 risk/UI class
 affected behavior / blast radius
+semantic authority / active writer
 non-goals
 allowed/forbidden paths
 required implementation
@@ -422,6 +467,7 @@ exact head
 changed files/diff
 risk classification
 affected behavior
+active semantic authority
 focused checks
 CI classification
 Local Validation: NOT_REQUIRED with reason
@@ -439,9 +485,12 @@ The following remain authoritative:
 - production-destructive actions require approval;
 - do not merge on `CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION`;
 - use the documented alternative-evidence path for `CI_UNAVAILABLE_INFRA`;
-- verify expected head, then squash merge;
+- enforce one writer per branch/file/semantic authority in an active multi-model lane;
+- implementation workers do not Ready-transition or merge their own active PR unless task-specific owner authorization delegates that integration authority;
+- any authorized merge requires independent review, acceptable CI/evidence, and exact expected-head verification;
 - never close #1882 and use `Refs #1882` only.
 
+Refs #3994.
 Refs #3664.
 Refs #3662.
 Refs #1882 — Keep OPEN.
