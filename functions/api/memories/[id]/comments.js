@@ -1,6 +1,7 @@
 import { fetchModalWithTimeout, isModalTimeoutError } from '../../../_shared/modal-fetch.js';
 import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
 
+// Canonical request-body size boundary: 128 KB / 128 KiB (131072 bytes), owned and enforced by the shared reader.
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
