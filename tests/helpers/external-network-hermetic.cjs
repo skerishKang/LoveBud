@@ -174,7 +174,7 @@ function makeHermeticRouteHandler(opts) {
       try {
         await fulfillExternal(route, target);
       } catch (e) {
-        await route.continue().catch(() => {});
+        await route.abort().catch(() => {});
       }
       return;
     }
