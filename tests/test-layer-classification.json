@@ -113,6 +113,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/api-memory-stream-body-limit-3920.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared streaming request-body primitive and the migrated Memory owner proxy / comment / reaction write routes in a local process with mocked fetch, proving byte-exact 128 KiB acceptance, +1 rejection, missing/invalid/understated Content-Length handling, UTF-8 multibyte byte-based counting, reader.cancel on overflow, read-failure non-413 taxonomy, header/body preservation, DELETE body-read zero, and the static raw request.text()/json() negative control (#3920). No real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/api-memory-detail-auth-routing-3288.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",

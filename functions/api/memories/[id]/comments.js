@@ -1,4 +1,5 @@
 import { fetchModalWithTimeout, isModalTimeoutError } from '../../../_shared/modal-fetch.js';
+import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -15,7 +16,6 @@ function withModalHeader(response) {
 }
 
 const KEY_PATTERN = /^[A-Za-z0-9._:\-]{8,128}$/;
-const MAX_BODY_SIZE = 131072; // 128KB
 
 function buildMissingAuthorizationResponse() {
   return new Response(JSON.stringify({ error: 'Authorization required' }), {
@@ -55,18 +55,15 @@ function buildIdempotencyKeyInvalidResponse() {
   });
 }
 
-async function readBoundedWriteBody(request) {
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (e) {
-    return { tooLarge: true, body: null };
-  }
-
-  if (!bodyText) return { tooLarge: false, body: null };
-  const encoded = new TextEncoder().encode(bodyText);
-  if (encoded.byteLength > MAX_BODY_SIZE) return { tooLarge: true, body: null };
-  return { tooLarge: false, body: encoded };
+function buildBodyReadFailureResponse() {
+  return new Response(JSON.stringify({ error: 'Request body could not be read' }), {
+    status: 503,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'body-read-failed'
+    }
+  });
 }
 
 function buildModalUnavailableResponse() {
@@ -137,8 +134,9 @@ export async function onRequestPost(context) {
   if (!idempotencyKey) return buildIdempotencyKeyRequiredResponse();
   if (!KEY_PATTERN.test(idempotencyKey)) return buildIdempotencyKeyInvalidResponse();
 
-  const bodyResult = await readBoundedWriteBody(request);
-  if (bodyResult.tooLarge) return buildPayloadTooLargeResponse();
+  const bodyResult = await readBoundedRequestBody(request);
+  if (bodyResult.status === 'tooLarge') return buildPayloadTooLargeResponse();
+  if (bodyResult.status === 'readError') return buildBodyReadFailureResponse();
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) return buildModalConfigUnavailableResponse();
