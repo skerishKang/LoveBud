@@ -353,15 +353,16 @@ Modal remains orthogonal specialized compute and should not become the identity 
 
 The safe next #4006 steps are now:
 
-1. run synthetic Neon Auth sign-up/sign-in/sign-out against the existing non-production child Auth endpoint from a network-capable runner;
-2. test the preferred JIT existing-account link flow without exporting Firebase password hashes;
-3. verify provider-specific token/session/JWKS validation and logout/revocation behavior;
-4. configure and validate fixed non-production trusted origins/callbacks for both LoveBud and LoveTree;
-5. prove central redirect/session exchange maps both applications to the same stable `app_account` without cross-origin cookie assumptions;
-6. verify the actual runtime Firebase issuer/project namespace before any production identity seeding;
-7. define resolution policy for unresolved legacy social subjects;
-8. add runtime contracts before changing Product owner routes;
-9. only then propose a staged production migration PR.
+1. complete a **read-only Firebase Auth population/provider inventory**: total auth users; Email/Password count; Google count; any other providers; disabled/unverified/duplicate-email edge cases; and deterministic coverage between active Product owners and Firebase accounts, without exposing emails, provider identifiers, hashes, tokens, or credentials;
+2. run synthetic Neon Auth sign-up/sign-in/sign-out against the existing non-production child Auth endpoint from a network-capable runner;
+3. test the preferred JIT existing-account link flow without exporting Firebase password hashes;
+4. verify provider-specific token/session/JWKS validation and logout/revocation behavior;
+5. configure and validate fixed non-production trusted origins/callbacks for both LoveBud and LoveTree;
+6. prove central redirect/session exchange maps both applications to the same stable `app_account` without cross-origin cookie assumptions;
+7. verify the actual runtime Firebase issuer/project namespace before any production identity seeding;
+8. define resolution policy for unresolved legacy social subjects;
+9. add runtime contracts before changing Product owner routes;
+10. only then propose a staged production migration PR.
 
 ## 16. Prototype verdict
 
@@ -392,6 +393,7 @@ PASS: existing-account compatibility resolver and uniqueness model
 PASS: password migration path narrowed without unsupported hash import
 PASS: shared-app SSO topology selected
 PASS: current single Firebase namespace gate documented
+PENDING: Firebase Auth population/provider/edge-case inventory
 PENDING: managed-endpoint signup/session/JIT-link E2E
 PENDING: non-production trusted-origin + Google OAuth E2E
 PENDING: provider-neutral server/runtime acceptance
