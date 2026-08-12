@@ -47,6 +47,7 @@ test('base API fetch keeps a provider-neutral principal/token seam with Firebase
   assert.match(apiSource, /getAccessToken\s*\(/, 'provider contract must expose access-token acquisition');
   assert.match(apiSource, /return\s+firebaseAuthTokenProvider/, 'invalid or absent injected providers must fall back to Firebase');
   assert.match(apiSource, /Authentication principal mismatch/, 'principal/token mismatch must fail closed');
+  assert.match(apiSource, /const\s+tokenPrincipalId\s*=\s*tokenResult\.principalId\s*!=\s*null[\s\S]*?:\s*'';/, 'provider tokens that omit principalId must fail closed instead of inheriting the current principal');
   assert.match(apiSource, /uid:\s*principalId/, 'Phase A must keep the existing uid-shaped token-cache record');
   assert.match(apiSource, /getAuthTokenProvider,/, 'provider selector must be available to focused runtime contracts');
 });

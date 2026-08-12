@@ -265,7 +265,7 @@
           if (tokenResult && tokenResult.token) {
             const tokenPrincipalId = tokenResult.principalId != null
               ? String(tokenResult.principalId).trim()
-              : principalId;
+              : '';
             if (!tokenPrincipalId || tokenPrincipalId !== principalId) {
               clearCachedTokenRecord();
               throw new Error('Authentication principal mismatch');
