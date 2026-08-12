@@ -36,3 +36,17 @@ test('confirmed auth metadata remains separate from bearer token cache', () => {
   assert.match(authCacheSource, /tokenStorage\.setItem/, 'bearer token records must be written through token storage');
   assert.match(authCacheSource, /tokenStorage\.getItem/, 'bearer token records must be read through token storage');
 });
+
+test('base API fetch keeps a provider-neutral principal/token seam with Firebase fallback', () => {
+  const apiSource = readRepoFile('js/api/base-api-fetch.js');
+
+  assert.match(apiSource, /function\s+createFirebaseAuthTokenProvider\s*\(/, 'Firebase must remain the Phase-A default provider adapter');
+  assert.match(apiSource, /window\.LoveBudAuthTokenProvider/, 'base API fetch must allow an injected provider-neutral token supplier');
+  assert.match(apiSource, /function\s+getAuthTokenProvider\s*\(/, 'provider selection must be centralized');
+  assert.match(apiSource, /getCurrentPrincipal\s*\(/, 'provider contract must expose the current principal');
+  assert.match(apiSource, /getAccessToken\s*\(/, 'provider contract must expose access-token acquisition');
+  assert.match(apiSource, /return\s+firebaseAuthTokenProvider/, 'invalid or absent injected providers must fall back to Firebase');
+  assert.match(apiSource, /Authentication principal mismatch/, 'principal/token mismatch must fail closed');
+  assert.match(apiSource, /uid:\s*principalId/, 'Phase A must keep the existing uid-shaped token-cache record');
+  assert.match(apiSource, /getAuthTokenProvider,/, 'provider selector must be available to focused runtime contracts');
+});

@@ -26,17 +26,92 @@
     } catch (e) {}
   }
 
-  function resolveExpectedAuthUid() {
-    // Prefer live Firebase currentUser; fall back to confirmed session cache.
-    // When neither is available (normal bootstrap), return null so a session
-    // token may still be used without forcing logout.
-    try {
-      if (window.firebase && firebase.auth) {
-        const user = firebase.auth().currentUser;
-        if (user && user.uid) {
-          return String(user.uid);
+  function resolvePrincipalId(principal) {
+    if (!principal || typeof principal !== 'object') return null;
+    const candidate = principal.id != null ? principal.id : principal.uid;
+    if (candidate == null) return null;
+    const normalized = String(candidate).trim();
+    return normalized || null;
+  }
+
+  function createFirebaseAuthTokenProvider() {
+    return {
+      isReady() {
+        try {
+          return !!(
+            window.__lovebudAuthReady &&
+            window.firebase &&
+            typeof window.firebase.auth === 'function'
+          );
+        } catch (e) {
+          return false;
         }
+      },
+      getCurrentPrincipal() {
+        try {
+          if (!window.firebase || typeof window.firebase.auth !== 'function') return null;
+          const user = window.firebase.auth().currentUser;
+          if (!user || !user.uid) return null;
+          return {
+            id: String(user.uid),
+            provider: 'firebase',
+          };
+        } catch (e) {
+          return null;
+        }
+      },
+      async getAccessToken() {
+        try {
+          if (!window.firebase || typeof window.firebase.auth !== 'function') return null;
+          const user = window.firebase.auth().currentUser;
+          if (!user || !user.uid) return null;
+          const tokenResult = typeof user.getIdTokenResult === 'function'
+            ? await user.getIdTokenResult()
+            : null;
+          const token = tokenResult ? tokenResult.token : await user.getIdToken();
+          if (!token) return null;
+          return {
+            principalId: String(user.uid),
+            token,
+            expiresAt: tokenResult && tokenResult.expirationTime
+              ? new Date(tokenResult.expirationTime).getTime()
+              : null,
+          };
+        } catch (e) {
+          throw e;
+        }
+      },
+    };
+  }
+
+  const firebaseAuthTokenProvider = createFirebaseAuthTokenProvider();
+
+  function isValidAuthTokenProvider(provider) {
+    return !!(
+      provider &&
+      typeof provider.isReady === 'function' &&
+      typeof provider.getCurrentPrincipal === 'function' &&
+      typeof provider.getAccessToken === 'function'
+    );
+  }
+
+  function getAuthTokenProvider() {
+    try {
+      if (isValidAuthTokenProvider(window.LoveBudAuthTokenProvider)) {
+        return window.LoveBudAuthTokenProvider;
       }
+    } catch (e) {}
+    return firebaseAuthTokenProvider;
+  }
+
+  function resolveExpectedAuthUid() {
+    // Phase A keeps the cache field name `uid` for compatibility, while the
+    // live principal source is provider-neutral. When no live principal is
+    // available (normal bootstrap), fall back to the confirmed session cache.
+    try {
+      const principal = getAuthTokenProvider().getCurrentPrincipal();
+      const principalId = resolvePrincipalId(principal);
+      if (principalId) return principalId;
     } catch (e) {}
     try {
       if (localStorage.getItem(AUTH_CONFIRMED_KEY) === 'true') {
@@ -80,16 +155,21 @@
     }
   }
 
-  function setCachedTokenRecord(user, tokenResult) {
+  function setCachedTokenRecord(principal, tokenResult) {
     removeLegacyDurableTokenRecord();
     try {
-      if (!user || !user.uid || !tokenResult || !tokenResult.token) return;
+      const principalId = resolvePrincipalId(principal);
+      if (!principalId || !tokenResult || !tokenResult.token) return;
+      const expiresAt = tokenResult.expiresAt != null
+        ? Number(tokenResult.expiresAt)
+        : new Date(tokenResult.expirationTime).getTime();
+      if (!Number.isFinite(expiresAt)) return;
       const storage = getTokenStorage();
       if (!storage) return;
       storage.setItem(AUTH_TOKEN_KEY, JSON.stringify({
-        uid: user.uid,
+        uid: principalId,
         token: tokenResult.token,
-        expiresAt: new Date(tokenResult.expirationTime).getTime()
+        expiresAt,
       }));
     } catch (e) {}
   }
@@ -172,14 +252,28 @@
         headers.Authorization = `Bearer ${nextCachedToken.token}`;
         return headers;
       }
-      if (window.__lovebudAuthReady && window.firebase && firebase.auth) {
-        const user = firebase.auth().currentUser;
-        if (user) {
-          const tokenResult = typeof user.getIdTokenResult === 'function' ? await user.getIdTokenResult() : null;
-          const token = tokenResult ? tokenResult.token : await user.getIdToken();
-          if (token) {
-            headers.Authorization = `Bearer ${token}`;
-            if (tokenResult) setCachedTokenRecord(user, tokenResult);
+      const authTokenProvider = getAuthTokenProvider();
+      let providerReady = false;
+      try {
+        providerReady = authTokenProvider.isReady() === true;
+      } catch (e) {}
+      if (providerReady) {
+        const principal = authTokenProvider.getCurrentPrincipal();
+        const principalId = resolvePrincipalId(principal);
+        if (principalId) {
+          const tokenResult = await authTokenProvider.getAccessToken({ forceRefresh: false });
+          if (tokenResult && tokenResult.token) {
+            const tokenPrincipalId = tokenResult.principalId != null
+              ? String(tokenResult.principalId).trim()
+              : principalId;
+            if (!tokenPrincipalId || tokenPrincipalId !== principalId) {
+              clearCachedTokenRecord();
+              throw new Error('Authentication principal mismatch');
+            }
+            headers.Authorization = `Bearer ${tokenResult.token}`;
+            if (tokenResult.expiresAt != null || tokenResult.expirationTime) {
+              setCachedTokenRecord({ id: principalId }, tokenResult);
+            }
             return headers;
           }
         } else if (!requireAuth || !policy.hasConfirmedAuthSession()) {
@@ -416,6 +510,7 @@
       JSON_PARSE_FAILED: 'json_parse_failed',
     },
     getTokenStorage,
+    getAuthTokenProvider,
     getCachedTokenRecord,
     setCachedTokenRecord,
     clearCachedTokenRecord,
