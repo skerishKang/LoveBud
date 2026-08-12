@@ -141,3 +141,34 @@ test('#3899 does not classify document requests as expected fetch/xhr aborts', (
 
   tracker.dispose();
 });
+
+test('#3899 pendingCount/waitForSettled track same-origin fetch/xhr lifecycle', async () => {
+  const page = createFakePage();
+  const failures = [];
+  const tracker = createSameOriginNavigationFailureTracker(
+    page,
+    'http://127.0.0.1:4321',
+    failures
+  );
+
+  const fetchA = createFakeRequest('http://127.0.0.1:4321/api/community/trees', 'fetch');
+  page.emit('request', fetchA);
+  assert.equal(tracker.pendingCount(), 1, 'in-flight same-origin fetch is counted');
+
+  const xhrB = createFakeRequest('http://127.0.0.1:4321/api/community/memories', 'xhr');
+  page.emit('request', xhrB);
+  assert.equal(tracker.pendingCount(), 2, 'both fetch-like requests counted');
+
+  page.emit('requestfinished', fetchA);
+  assert.equal(tracker.pendingCount(), 1, 'finished request is removed');
+
+  xhrB.failWith('net::ERR_FAILED');
+  page.emit('requestfailed', xhrB);
+  assert.equal(tracker.pendingCount(), 0, 'failed request is removed');
+
+  page.emit('request', fetchA);
+  const remaining = await tracker.waitForSettled(100);
+  assert.ok(remaining <= 1, 'waitForSettled is bounded and returns the pending count');
+
+  tracker.dispose();
+});

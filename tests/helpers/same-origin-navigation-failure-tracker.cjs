@@ -70,6 +70,24 @@ function createSameOriginNavigationFailureTracker(page, origin, failures) {
       // exact net::ERR_ABORTED matching keep this allowance tightly bounded.
     },
 
+    /* Number of same-origin fetch/xhr requests still in flight. Lets a test
+     * deterministically settle the page (bounded, no arbitrary sleep) before
+     * an intentional navigation snapshot, so the navigation cannot cancel a
+     * request that started inside the snapshot window. */
+    pendingCount() {
+      return pendingFetchLike.size;
+    },
+
+    /* Wait until no same-origin fetch/xhr request is in flight, or until
+     * maxMs elapses. Returns the remaining pending count. */
+    async waitForSettled(maxMs) {
+      const deadline = Date.now() + (maxMs || 5000);
+      while (pendingFetchLike.size > 0 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      return pendingFetchLike.size;
+    },
+
     dispose() {
       pendingFetchLike.clear();
       navigationAbortCandidates.clear();
