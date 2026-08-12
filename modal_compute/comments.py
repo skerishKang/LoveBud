@@ -163,6 +163,7 @@ def fetch_public_comments(
     memory_id: str,
     limit: int = 20,
 ) -> dict[str, Any]:
+    """Return the newest bounded public-comment window in chronological order."""
     safe_limit = max(1, min(limit, 50))
 
     def operation():
@@ -175,7 +176,7 @@ def fetch_public_comments(
                     WHERE memory_id = %s
                       AND status = 'visible'
                       AND deleted_at IS NULL
-                    ORDER BY created_at ASC
+                    ORDER BY created_at DESC, id DESC
                     LIMIT %s
                     """,
                     (memory_id, safe_limit),
@@ -183,7 +184,10 @@ def fetch_public_comments(
                 return cur.fetchall()
 
     rows = run_db_with_retry(operation)
-    comments_list = [normalize_public_comment_row(row) for row in rows]
+    comments_list = [
+        normalize_public_comment_row(row)
+        for row in reversed(rows)
+    ]
     return {
         "comments": comments_list,
         "nextCursor": None,

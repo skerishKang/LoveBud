@@ -6,7 +6,7 @@
  * existing soft_delete_own_comment helper, validate UUID input,
  * and never leak raw exception data.
  *
- * Refs: #3195
+ * Refs: #3195, #3939
  */
 
 const test = require('node:test');
@@ -109,7 +109,7 @@ test('11. delete_own_comment block does not log or return raw exception data', (
   assert.ok(!hasString(block, 'traceback'), 'must not contain traceback');
 });
 
-// ─── PUBLIC COMMENTS READ STILL FILTERS ───────────────────────────────────
+// ─── PUBLIC COMMENTS READ CONTRACT ────────────────────────────────────────
 
 test('12. fetch_public_comments still filters status=visible and deleted_at IS NULL', () => {
   const content = readFileContent(COMMENTS_PY);
@@ -117,9 +117,62 @@ test('12. fetch_public_comments still filters status=visible and deleted_at IS N
   assert.ok(hasString(content, 'deleted_at IS NULL'), 'public comments must filter deleted_at IS NULL');
 });
 
+test('13. fetch_public_comments selects newest bounded rows with a stable tie-breaker', () => {
+  const content = readFileContent(COMMENTS_PY);
+  const start = content.indexOf('def fetch_public_comments(');
+  const end = content.indexOf('def fetch_comments(', start);
+  const block = content.slice(start, end);
+
+  assert.notEqual(start, -1, 'fetch_public_comments must exist');
+  assert.notEqual(end, -1, 'fetch_public_comments block must be extractable');
+  assert.ok(
+    hasString(block, 'ORDER BY created_at DESC, id DESC'),
+    'public comments must select the newest rows with a deterministic id tie-breaker'
+  );
+  assert.ok(
+    hasString(block, 'for row in reversed(rows)'),
+    'selected newest rows must be restored to chronological presentation order'
+  );
+  assert.equal(
+    hasString(block, 'ORDER BY created_at ASC'),
+    false,
+    'oldest-first LIMIT must not return to the public bounded window'
+  );
+  assert.ok(
+    hasString(block, 'safe_limit = max(1, min(limit, 50))'),
+    'public comment reads must remain bounded to at most 50 rows'
+  );
+  assert.ok(
+    hasString(block, '"nextCursor": None'),
+    'recent-window contract keeps the existing response shape without inventing cursor pagination'
+  );
+});
+
+test('14. recent-window reference model keeps comment 21 reachable with limit 20', () => {
+  const rows = Array.from({ length: 21 }, (_, index) => ({
+    id: String(index + 1).padStart(2, '0'),
+    createdAt: index + 1,
+  }));
+
+  const selected = rows
+    .slice()
+    .sort((a, b) => b.createdAt - a.createdAt || b.id.localeCompare(a.id))
+    .slice(0, 20)
+    .reverse();
+
+  assert.equal(selected.length, 20, 'window remains bounded');
+  assert.equal(selected.at(-1).id, '21', 'newest comment stays visible');
+  assert.equal(selected.some((row) => row.id === '01'), false, 'oldest row falls outside the bounded recent window');
+  assert.deepEqual(
+    selected.map((row) => row.createdAt),
+    Array.from({ length: 20 }, (_, index) => index + 2),
+    'returned recent window is chronological for presentation'
+  );
+});
+
 // ─── soft_delete_own_comment helper contract ───────────────────────────────
 
-test('13. soft_delete_own_comment has cross-account authority via SocialWriteError(403)', () => {
+test('15. soft_delete_own_comment has cross-account authority via SocialWriteError(403)', () => {
   const content = readFileContent(COMMENTS_PY);
   assert.ok(hasString(content, 'def soft_delete_own_comment('), 'soft_delete_own_comment must exist');
   assert.ok(hasString(content, 'SocialWriteError'), 'must use SocialWriteError');
@@ -130,7 +183,7 @@ test('13. soft_delete_own_comment has cross-account authority via SocialWriteErr
 
 // ─── URL ROUTE FILE NAMING ───────────────────────────────────────────────
 
-test('14. Cloudflare route file follows [param].js naming convention', () => {
+test('16. Cloudflare route file follows [param].js naming convention', () => {
   const filename = path.basename(CF_COMMENTS_ID_JS);
   assert.equal(filename, '[id].js', 'route file must be named [id].js for Cloudflare param binding');
 });
