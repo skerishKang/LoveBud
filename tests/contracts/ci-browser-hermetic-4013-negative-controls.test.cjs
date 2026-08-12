@@ -13,6 +13,9 @@
  *       URL/status (same-origin 4xx checks stay strict).
  *   NC4 browser console health: a genuine console error is still captured, so
  *       the health assertions keep failing loudly — no blanket filtering.
+ *   NC5 failing external fixture: a known-external URL whose custom
+ *       fulfillExternal intentionally throws is aborted by the helper and never
+ *       falls through to route.continue() or a real external network fallback.
  *
  * Refs #4013.
  * Refs #1882 — Keep OPEN.
@@ -224,6 +227,70 @@ test('NC4: genuine console error is still captured (no blanket filtering)', { ti
       () => assert.deepEqual(consoleErrors, []),
       /NC4 genuine console error/,
       'health assertion on consoleErrors must still fail loudly (no blanket filtering)'
+    );
+    await context.close();
+  } finally {
+    if (context) await context.close();
+    await browser.close();
+    await closeServer(server);
+  }
+});
+
+test('NC5: failing external fixture fails closed (aborts, no real-network fallback)', { timeout: 60000 }, async () => {
+  const browser = await launchBrowser();
+  const { server, port } = await startServer();
+  const fixtureOrigin = `http://127.0.0.1:${port}`;
+  const FONT_URL = 'https://fonts.googleapis.com/css2?family=NC5';
+  let context;
+  try {
+    context = await browser.newContext();
+    const page = await context.newPage();
+    const unexpected = [];
+    const requestFailures = [];
+    const continuedUrls = [];
+    page.on('requestfailed', (req) => requestFailures.push(req.url()));
+    const hermeticHandler = makeHermeticRouteHandler({
+      fixtureOrigin,
+      onUnexpectedExternal: (url) => unexpected.push(url),
+      fulfillExternal: async (/* route, target */) => {
+        throw new Error('NC5 injected fixture failure');
+      },
+    });
+    // Spy on route.continue() to directly prove the failing fixture never
+    // falls through to a real external network (route.continue()) fallback.
+    await page.route('**/*', async (route) => {
+      const originalContinue = route.continue.bind(route);
+      route.continue = (...args) => {
+        continuedUrls.push(route.request().url());
+        return originalContinue(...args);
+      };
+      return hermeticHandler(route);
+    });
+    await page.goto(`${fixtureOrigin}/`, { waitUntil: 'domcontentloaded' });
+    const fetchOutcome = await page.evaluate(async (fontUrl) => {
+      try {
+        const res = await fetch(fontUrl);
+        return { ok: res.ok, status: res.status, body: await res.text() };
+      } catch (err) {
+        return { rejected: true, name: err && err.name, message: err && err.message };
+      }
+    }, FONT_URL);
+    assert.ok(
+      fetchOutcome.rejected || fetchOutcome.status == null,
+      `failing external fixture must NOT yield a successful response, got: ${JSON.stringify(fetchOutcome)}`
+    );
+    assert.ok(
+      requestFailures.some((u) => u.startsWith(FONT_URL)),
+      `failing external fixture request must be aborted, got failures: ${JSON.stringify(requestFailures)}`
+    );
+    assert.ok(
+      !continuedUrls.some((u) => u.startsWith(FONT_URL)),
+      `failing external fixture must NOT fall through to route.continue() (no real-network fallback), got: ${JSON.stringify(continuedUrls)}`
+    );
+    assert.deepEqual(
+      unexpected,
+      [],
+      'a known-external host is not an unexpected-external escape even when its fixture fails'
     );
     await context.close();
   } finally {

@@ -1104,29 +1104,7 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
         if (window.LoveBudSearchScrollLoad && typeof window.LoveBudSearchScrollLoad.isSentinelNearViewport === 'function') {
           window.LoveBudSearchScrollLoad.isSentinelNearViewport = function () { return false; };
         }
-        if (window.LoveBudSearchScrollLoad && typeof window.LoveBudSearchScrollLoad.canLoadMorePublicTrees === 'function') {
-          window.LoveBudSearchScrollLoad.canLoadMorePublicTrees = function () { return false; };
-        }
       });
-      // #4013 determinism: with both load-more gates disabled above, wait until
-      // the scroll-load sentinel is idle (no committed load-more still in
-      // flight) AND no same-origin fetch/xhr is pending, so the intentional
-      // navigation below can cancel nothing. This closes the documented
-      // Issue #3899 ERR_ABORTED race, which fired when a load-more committed
-      // during the earlier keyboard-interaction sections reached the network
-      // only after the navigation snapshot.
-      await page.evaluate(() => new Promise((resolve) => {
-        const deadline = Date.now() + 5000;
-        const check = () => {
-          const sentinel = document.getElementById('browseScrollLoadSentinel');
-          const idle = !sentinel || !sentinel.classList.contains('is-loading');
-          if (idle) return resolve(true);
-          if (Date.now() >= deadline) return resolve(false);
-          setTimeout(check, 20);
-        };
-        check();
-      }));
-      await navigationFailureTracker.waitForSettled(5000);
       navigationFailureTracker.beginIntentionalNavigation();
       try {
         await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
