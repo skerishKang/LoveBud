@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from modal_compute.auth import (
+    EntitlementCheckUnavailableError,
     PlusRequiredError,
     require_firebase_user,
 )
@@ -112,6 +113,22 @@ async def plus_required_exception_handler(request: Request, exc: PlusRequiredErr
             "error": "Private storage requires Plus.",
             "code": "PLUS_REQUIRED_PRIVATE_STORAGE",
             "upgradeRequired": True,
+        },
+    )
+
+
+@web_app.exception_handler(EntitlementCheckUnavailableError)
+async def entitlement_check_unavailable_handler(
+    request: Request, exc: EntitlementCheckUnavailableError
+) -> JSONResponse:
+    # Availability error only. Never echo the raw Firestore exception, UID,
+    # email, project ID, credentials, document path, token, or endpoint.
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "Entitlement check temporarily unavailable.",
+            "code": "ENTITLEMENT_CHECK_UNAVAILABLE",
+            "upgradeRequired": False,
         },
     )
 
