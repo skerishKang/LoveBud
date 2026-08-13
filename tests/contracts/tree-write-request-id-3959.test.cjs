@@ -38,7 +38,9 @@ test('A. trees.js imports shared request-id and modal-fetch helpers', () => {
   assert.ok(content.includes('REQUEST_ID_HEADER'));
   assert.ok(content.includes('getOrCreateRequestId'));
   assert.ok(content.includes("from '../_shared/modal-fetch.js'"));
+  assert.ok(content.includes('fetchModalWithTimeout'), 'trees.js must use shared bounded fetchModalWithTimeout');
   assert.ok(content.includes('isModalTimeoutError'));
+  assert.doesNotMatch(content, /await fetch\((?!ModalWithTimeout)/, 'trees.js must not bypass Modal timeout authority with raw fetch');
 });
 
 test('B. trees/[id].js imports shared request-id and modal-fetch helpers', () => {
@@ -47,7 +49,9 @@ test('B. trees/[id].js imports shared request-id and modal-fetch helpers', () =>
   assert.ok(content.includes('REQUEST_ID_HEADER'));
   assert.ok(content.includes('getOrCreateRequestId'));
   assert.ok(content.includes("from '../../_shared/modal-fetch.js'"));
+  assert.ok(content.includes('fetchModalWithTimeout'), 'trees/[id].js must use shared bounded fetchModalWithTimeout');
   assert.ok(content.includes('isModalTimeoutError'));
+  assert.doesNotMatch(content, /await fetch\((?!ModalWithTimeout)/, 'trees/[id].js must not bypass Modal timeout authority with raw fetch');
 });
 
 test('C. onRequestPost creates requestId at entry and propagates through all paths', () => {

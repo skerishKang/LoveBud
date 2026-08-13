@@ -2,7 +2,7 @@ import {
   REQUEST_ID_HEADER,
   getOrCreateRequestId
 } from '../../_shared/request-id.js';
-import { isModalTimeoutError } from '../../_shared/modal-fetch.js';
+import { fetchModalWithTimeout, isModalTimeoutError } from '../../_shared/modal-fetch.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -114,7 +114,7 @@ export async function onRequestGet(context) {
     const primaryTarget = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
     let response;
     try {
-      response = await fetch(primaryTarget.toString(), {
+      response = await fetchModalWithTimeout(primaryTarget.toString(), {
         headers: {
           accept: 'application/json',
           authorization: authHeader
@@ -123,7 +123,7 @@ export async function onRequestGet(context) {
 
       if (response.status === 404) {
         const publicTarget = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
-        response = await fetch(publicTarget.toString(), {
+        response = await fetchModalWithTimeout(publicTarget.toString(), {
           headers: {
             accept: 'application/json'
           }
@@ -146,7 +146,7 @@ export async function onRequestGet(context) {
   const targetUrl = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
   let modalResponse;
   try {
-    modalResponse = await fetch(targetUrl.toString(), {
+    modalResponse = await fetchModalWithTimeout(targetUrl.toString(), {
       headers: {
         accept: 'application/json'
       }
@@ -257,7 +257,7 @@ export async function onRequestPut(context) {
 
   let response;
   try {
-    response = await fetch(target.toString(), {
+    response = await fetchModalWithTimeout(target.toString(), {
       method: 'PUT',
       headers: {
         accept: 'application/json',
@@ -297,7 +297,7 @@ export async function onRequestDelete(context) {
 
   let response;
   try {
-    response = await fetch(target.toString(), {
+    response = await fetchModalWithTimeout(target.toString(), {
       method: 'DELETE',
       headers: {
         accept: 'application/json',

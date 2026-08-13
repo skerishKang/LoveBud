@@ -3,7 +3,7 @@ import {
   REQUEST_ID_HEADER,
   getOrCreateRequestId
 } from '../_shared/request-id.js';
-import { isModalTimeoutError } from '../_shared/modal-fetch.js';
+import { fetchModalWithTimeout, isModalTimeoutError } from '../_shared/modal-fetch.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -151,7 +151,7 @@ export async function onRequestGet(context) {
 
   let response;
   try {
-    response = await fetch(target.toString(), {
+    response = await fetchModalWithTimeout(target.toString(), {
       headers: modalRequestHeaders
     });
   } catch (error) {
@@ -219,7 +219,7 @@ export async function onRequestPost(context) {
 
   let response;
   try {
-    response = await fetch(new URL('/modal/private/trees', modalBaseUrl).toString(), {
+    response = await fetchModalWithTimeout(new URL('/modal/private/trees', modalBaseUrl).toString(), {
       method: 'POST',
       headers: {
         accept: 'application/json',
