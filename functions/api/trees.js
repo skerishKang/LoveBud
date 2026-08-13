@@ -1,27 +1,9 @@
 import { validateWritePayload } from '../_shared/legacy-key-guard.js';
-import { fetchModalWithTimeout, isModalTimeoutError } from '../_shared/modal-fetch.js';
-
-const REQUEST_ID_HEADER = 'x-lovebud-request-id';
-const MAX_REQUEST_ID_LENGTH = 80;
-const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
-
-function generateRequestId() {
-  return 'req-' + crypto.randomUUID();
-}
-
-function normalizeRequestId(value) {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > MAX_REQUEST_ID_LENGTH) return null;
-  if (!SAFE_REQUEST_ID_PATTERN.test(trimmed)) return null;
-  return trimmed;
-}
-
-function getOrCreateRequestId(request) {
-  const existingRequestId = normalizeRequestId(request.headers.get(REQUEST_ID_HEADER));
-  if (existingRequestId) return existingRequestId;
-  return generateRequestId();
-}
+import {
+  REQUEST_ID_HEADER,
+  getOrCreateRequestId
+} from '../_shared/request-id.js';
+import { isModalTimeoutError } from '../_shared/modal-fetch.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -57,10 +39,15 @@ async function withModalHeaderAndId(response, requestId = null) {
 
 const MAX_BODY_SIZE = 131072; // 128KB
 
-function buildPayloadTooLargeResponse() {
+function buildPayloadTooLargeResponse(requestId = null) {
+  const headers = { 'content-type': 'application/json; charset=utf-8' };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
   return new Response(JSON.stringify({ error: 'Payload too large' }), {
     status: 413,
-    headers: { 'content-type': 'application/json; charset=utf-8' }
+    headers
   });
 }
 
@@ -117,20 +104,20 @@ function buildModalTimeoutResponse(requestId = null) {
   });
 }
 
-async function fetchTreeModal(target, fetchOptions, requestId = null) {
-  try {
-    return {
-      response: await fetchModalWithTimeout(target.toString(), fetchOptions),
-      errorResponse: null
-    };
-  } catch (error) {
-    return {
-      response: null,
-      errorResponse: isModalTimeoutError(error)
-        ? buildModalTimeoutResponse(requestId)
-        : buildModalUnavailableResponse(requestId)
-    };
+function buildModalConfigMissingResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'modal-config-missing'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
   }
+  return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
+    status: 503,
+    headers
+  });
 }
 
 export async function onRequestGet(context) {
@@ -162,68 +149,94 @@ export async function onRequestGet(context) {
   }
   modalRequestHeaders[REQUEST_ID_HEADER] = requestId;
 
-  const result = await fetchTreeModal(target, {
-    headers: modalRequestHeaders
-  }, requestId);
-  if (result.errorResponse) return result.errorResponse;
+  let response;
+  try {
+    response = await fetch(target.toString(), {
+      headers: modalRequestHeaders
+    });
+  } catch (error) {
+    if (isModalTimeoutError(error)) {
+      return buildModalTimeoutResponse(requestId);
+    }
+    return buildModalUnavailableResponse(requestId);
+  }
 
-  return await withModalHeaderAndId(result.response, requestId);
+  return await withModalHeaderAndId(response, requestId);
 }
 
 function hasAuthorizationHeader(request) {
   return !!(request.headers.get('authorization') || request.headers.get('Authorization'));
 }
 
-function buildMissingAuthorizationResponse() {
+function buildMissingAuthorizationResponse(requestId = null) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
     'x-lovebud-upstream': 'cloudflare',
     'x-lovebud-route-status': 'missing-authorization'
   };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
   return new Response(JSON.stringify({ error: 'Authorization required' }), { status: 401, headers });
 }
 
 export async function onRequestPost(context) {
   const { request } = context;
+  const requestId = getOrCreateRequestId(request);
 
   if (!hasAuthorizationHeader(request)) {
-    return buildMissingAuthorizationResponse();
+    return buildMissingAuthorizationResponse(requestId);
   }
 
   const bodyResult = await readBoundedWriteBody(request);
   if (bodyResult.tooLarge) {
-    return buildPayloadTooLargeResponse();
+    return buildPayloadTooLargeResponse(requestId);
   }
 
-  // Legacy localization key write-boundary guard (#2940)
   if (bodyResult.body) {
     try {
       const payload = JSON.parse(new TextDecoder().decode(bodyResult.body));
-      const guard = validateWritePayload(payload, ['title', 'memo']);
+      let guard = validateWritePayload(payload, ['title', 'memo']);
+      if (guard) {
+        const h = new Headers(guard.headers);
+        h.set(REQUEST_ID_HEADER, requestId);
+        h.set('Access-Control-Expose-Headers', REQUEST_ID_HEADER);
+        guard = new Response(guard.body, {
+          status: guard.status,
+          statusText: guard.statusText,
+          headers: h
+        });
+      }
       if (guard) return guard;
-    } catch (_) { /* non-JSON upstream; skip guard */ }
+    } catch (_) { }
   }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) {
-    return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
-      status: 503,
-      headers: { 'content-type': 'application/json; charset=utf-8' }
-    });
+    return buildModalConfigMissingResponse(requestId);
   }
 
-  const result = await fetchTreeModal(new URL('/modal/private/trees', modalBaseUrl), {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': request.headers.get('content-type') || 'application/json',
-      ...(request.headers.get('authorization')
-        ? { authorization: request.headers.get('authorization') }
-        : {})
-    },
-    body: bodyResult.body
-  });
-  if (result.errorResponse) return result.errorResponse;
+  let response;
+  try {
+    response = await fetch(new URL('/modal/private/trees', modalBaseUrl).toString(), {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': request.headers.get('content-type') || 'application/json',
+        ...(request.headers.get('authorization')
+          ? { authorization: request.headers.get('authorization') }
+          : {}),
+        [REQUEST_ID_HEADER]: requestId
+      },
+      body: bodyResult.body
+    });
+  } catch (error) {
+    if (isModalTimeoutError(error)) {
+      return buildModalTimeoutResponse(requestId);
+    }
+    return buildModalUnavailableResponse(requestId);
+  }
 
-  return withModalHeader(result.response);
+  return await withModalHeaderAndId(response, requestId);
 }

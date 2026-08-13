@@ -4075,6 +4075,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-write-request-id-3959.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source (functions/api/trees.js, functions/api/trees/[id].js) and executes it in a local process with a mocked global fetch; static source-level checks assert shared request-id/modal-fetch imports and requestId propagation through all POST/PUT/DELETE error and success paths; runtime no-network checks assert missing-auth, success, and missing-config responses include and expose x-lovebud-request-id. #3959 focused contract test for Tree write request correlation. No real external system, network, database, browser, provider, or Production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/trees-schema-db-engine-harness-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads package.json, CI workflow, trees-schema db-engine harness source, damaged fixture markers, and classification inventory; asserts loopback guards, seven-column foothold phase markers, and supplemental DB_ENGINE_EXECUTION placement without executing PostgreSQL (#3532).",
