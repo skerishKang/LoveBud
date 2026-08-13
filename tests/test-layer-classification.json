@@ -4950,6 +4950,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/public-tree-view-edge-authority-3917-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real Cloudflare edge function functions/api/trees/[tree_id]/views.js in a local Node process with a stubbed global fetch and injected env (TREE_VIEW_AUTHORITY_SECRET, CF-Connecting-IP). Proves the #3917 security slice end-to-end at the edge: the browser sends no actor identity body; the edge derives an anonymous server-authoritative actor from CF-Connecting-IP + UTC day + secret via domain-separated HMAC-SHA256 and forwards only a signed assertion as headers (no body); the signed signature actually verifies; 100 rotated client actorKeys collapse to the same authoritative edge actor (Control C); a forged authenticated actor kind is ignored (Control D); missing secret or missing CF-Connecting-IP fails closed with no Modal call and no count (Controls I, J); raw IP never appears in forwarded headers (Control L). No real network, database, browser, auth provider, deployment, or Production resource is used.",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -5028,6 +5034,13 @@
       "defaultCi": false,
       "layer": "SUPPLEMENTAL_PYTHON",
       "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script. Drives the Modal preview endpoint (modal_compute/app.py post_youtube_playlist_preview) through the real FastAPI TestClient with auth/provider seams patched (same canonical pattern as tests/contracts/test_fork_tree.py) to prove bounded 401/503 auth envelopes with zero provider key/metadata/items calls, preserved 503 dependency-outage taxonomy (#3972), raw auth detail absence, and verified-auth progression to provider seams. No real Firebase, no real YouTube network call.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/test_public_tree_view_edge_authority_3917.py",
+      "defaultCi": false,
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script. Drives the real Modal route /modal/public/trees/{tree_id}/views through the FastAPI TestClient with record_public_tree_view patched (no DB, no network, no real secret) and asserts the #3917 fail-closed contract: a valid signed edge assertion reaches the writer once with an anonymous server-authoritative actor; missing/bad/tampered signature, treeId mismatch, tampered actorKey, stale/future countedWindow, forged authenticated actor kind, or missing secret all return HTTP 400 with zero writer (DB) calls (Controls D, E, F, G, H, I); the same signed authority yields exactly one aggregate increment at the data layer via daily ON CONFLICT dedup (Control K); missing social tables fall back to counted=False/viewCount=0 (Control M); and the Modal writer receives only the opaque actor digest, never the raw client IP (Control L).",
       "capabilities": []
     },
     {

@@ -14,12 +14,21 @@ function compact(value) {
   return value.replace(/\s+/g, '').toLowerCase();
 }
 
-test('Modal app exposes public tree view count route only for POST', () => {
+test('Modal app verifies signed edge assertion before counting public tree views', () => {
   assert.match(modalApp, /from\s+modal_compute\.tree_views\s+import\s+record_public_tree_view/);
+  assert.match(modalApp, /from\s+modal_compute\.tree_view_authority\s+import\s+\(?\s*TreeViewAuthorityError,\s*verify_tree_view_assertion\s*\)?/);
   assert.match(modalApp, /@web_app\.post\("\/modal\/public\/trees\/\{tree_id\}\/views"\)/);
   assert.match(modalApp, /async\s+def\s+post_public_tree_view\(/);
-  assert.match(modalApp, /payload\s*=\s*await\s+parse_json_body\(request\)/);
-  assert.match(modalApp, /record_public_tree_view\([\s\S]*payload\.get\("actorKey",\s*""\)[\s\S]*payload\.get\("actorKind",\s*"anonymous"\)[\s\S]*payload\.get\("source",\s*"public_tree_detail"\)/);
+  assert.match(modalApp, /verify_tree_view_assertion\(request\.headers,\s*tree_id\)/);
+  assert.match(modalApp, /authority\["actor_key"\]/);
+  assert.match(modalApp, /authority\["actor_kind"\]/);
+  assert.match(modalApp, /authority\["source"\]/);
+  assert.match(modalApp, /TREE_VIEW_AUTHORITY_REJECTED/);
+  // The browser sends no actor identity; only the signed edge assertion is used.
+  assert.doesNotMatch(modalApp, /payload\.get\("actorKey"/);
+  // Modal never reads the raw client IP; the actor is an opaque signed digest.
+  assert.doesNotMatch(modalApp, /CF-Connecting-IP/i);
+  assert.doesNotMatch(treeViews, /CF-Connecting-IP/i);
   assert.doesNotMatch(modalApp, /@web_app\.get\("\/modal\/public\/trees\/\{tree_id\}\/views"\)/);
 });
 
@@ -49,12 +58,22 @@ test('tree view repository enforces public tree boundary and allowed sources', (
   assert.match(normalized, /ifnormalizednotin_allowed_actor_kinds/);
 });
 
-test('Cloudflare tree view route proxies POST only to Modal public route without auth requirement', () => {
+test('Cloudflare tree view route proxies POST only and forwards a signed edge assertion (no client actor authority)', () => {
   assert.match(cloudflareRoute, /export\s+async\s+function\s+onRequestPost/);
   assert.match(cloudflareRoute, /method\s*!==\s*'POST'/);
   assert.match(cloudflareRoute, /allow:\s*'POST'/);
   assert.match(cloudflareRoute, /\/modal\/public\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeId\)\)\}\/views/);
-  assert.match(cloudflareRoute, /body:\s*request\.body/);
+  // Edge authority: derived from trusted context, signed, and forwarded as
+  // headers. No client actor identity is ever trusted or forwarded as a body.
+  assert.match(cloudflareRoute, /TREE_VIEW_AUTHORITY_SECRET/);
+  assert.match(cloudflareRoute, /CF-Connecting-IP/);
+  assert.match(cloudflareRoute, /x-lovebud-tree-view-signature/);
+  assert.match(cloudflareRoute, /buildSignedAssertionHeaders/);
+  assert.match(cloudflareRoute, /deriveEdgeActorKey/);
+  assert.doesNotMatch(cloudflareRoute, /body:\s*request\.body/);
+  assert.doesNotMatch(cloudflareRoute, /parse_json_body/);
+  // Fail-closed when the authority context is missing (no Modal call, no count).
+  assert.match(cloudflareRoute, /view-authority-unavailable/);
   assert.doesNotMatch(cloudflareRoute, /Authorization required/);
   assert.doesNotMatch(cloudflareRoute, /\/modal\/browse\/latest/);
   assert.doesNotMatch(cloudflareRoute, /sort=views/);
