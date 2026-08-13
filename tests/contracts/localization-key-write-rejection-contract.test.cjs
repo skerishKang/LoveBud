@@ -155,7 +155,7 @@ test('trees.js guard precedes upstream fetch call', () => {
   assert.ok(postStart > 0, 'onRequestPost handler must exist');
   const postSection = src.slice(postStart);
   const guardIdx = postSection.indexOf('if (guard) return guard');
-  const fetchIdx = postSection.indexOf('await fetch(new URL(');
+  const fetchIdx = postSection.indexOf('await fetchTreeModal(');
   assert.ok(guardIdx > 0, 'guard check must exist in POST handler');
   assert.ok(fetchIdx > 0, 'fetch call must exist in POST handler');
   assert.ok(guardIdx < fetchIdx, 'guard must precede upstream fetch in POST handler');
