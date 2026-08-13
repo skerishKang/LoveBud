@@ -195,13 +195,14 @@ test('runtime: Cloudflare write proxy passes normal-sized POST to Modal', { time
   }
 });
 
-test('tree-comment POST uses a streaming 128 KiB edge bound and never request.text()', () => {
+test('tree-comment POST uses canonical shared readBoundedRequestBody and never request.text()', () => {
   const source = readFile(TREE_COMMENT_JS);
-  assert.match(source, /const\s+MAX_WRITE_BODY_BYTES\s*=\s*128\s*\*\s*1024/);
-  assert.match(source, /request\.body\.getReader\(\)/);
-  assert.match(source, /totalBytes\s*\+=\s*chunk\.byteLength/);
-  assert.match(source, /totalBytes\s*>\s*MAX_WRITE_BODY_BYTES/);
+  assert.match(source, /import\s*\{\s*readBoundedRequestBody\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/_shared\/bounded-request-body\.js['"]/);
+  assert.match(source, /await\s+readBoundedRequestBody\(request\)/);
+  assert.doesNotMatch(source, /getContentLengthBytes/);
+  assert.doesNotMatch(source, /MAX_WRITE_BODY_BYTES/);
   assert.doesNotMatch(source, /await\s+request\.text\(\)/);
+  assert.doesNotMatch(source, /await\s+request\.json\(\)/);
   assert.match(source, /status:\s*413/);
   assert.match(source, /payload-too-large/);
 });
@@ -240,6 +241,75 @@ test('runtime: tree-comment POST rejects missing/invalid/understated Content-Len
       assert.equal(response.headers.get('x-lovebud-upstream'), 'cloudflare');
     }
     assert.equal(modalFetchCalls, 0, 'oversized comment bodies must never reach Modal');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment POST accepts small body despite invalid-but-number-parseable Content-Length header (1e9, 1.5, +200000)', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const smallBody = JSON.stringify({ body: 'valid small comment' });
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+
+  const invalidParseableHeaders = ['1e9', '1.5', '+200000', '-1'];
+
+  try {
+    for (const clValue of invalidParseableHeaders) {
+      const sanitizedKey = clValue.replace(/[^A-Za-z0-9._:-]/g, '_');
+      const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer test-token',
+          'Idempotency-Key': `comment-key-${sanitizedKey}`,
+          'content-length': clValue,
+        },
+        body: smallBody,
+      });
+      const response = await onRequestPost({ request, env });
+      assert.equal(response.status, 200, `small body with content-length ${clValue} must be accepted`);
+    }
+    assert.equal(modalFetchCalls, invalidParseableHeaders.length, 'all small bodies with un-canonical Content-Length must reach Modal');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment POST returns 503 (not 413) when stream reader throws read error', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200 });
+  };
+
+  const errorStream = new ReadableStream({
+    start(controller) {
+      controller.error(new Error('Simulated stream read failure'));
+    }
+  });
+
+  try {
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-stream-error',
+      },
+      body: errorStream,
+      duplex: 'half',
+    });
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 503, 'stream read error must return 503, not 413');
+    assert.notEqual(response.status, 413, 'read failure must never be disguised as 413 tooLarge');
+    assert.equal(modalFetchCalls, 0, 'read error must not call Modal');
   } finally {
     globalThis.fetch = originalFetch;
   }
