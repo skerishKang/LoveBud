@@ -9,6 +9,10 @@ from modal_compute.db import (
     get_db_connection,
     run_db_with_retry,
 )
+from modal_compute.schema_capabilities import (
+    table_exists as _table_exists,
+    table_has_column as _table_has_column,
+)
 from modal_compute.validation import (
     estimate_stage,
     normalize_row,
@@ -25,53 +29,7 @@ def _build_reaction_counts(counts: dict[str, int]) -> dict[str, int]:
     return result
 
 
-_TABLE_EXISTS_CACHE: dict[str, bool] = {}
-_TABLE_HAS_COLUMN_CACHE: dict[tuple[str, str], bool] = {}
 _MODERN_MEMORY_SCHEMA_ABSENT = object()
-
-
-def _table_exists(cur, table_name: str) -> bool:
-    """Check if a table exists in the public schema."""
-    if table_name in _TABLE_EXISTS_CACHE:
-        return _TABLE_EXISTS_CACHE[table_name]
-    cur.execute(
-        """
-        SELECT EXISTS (
-            SELECT 1
-            FROM information_schema.tables
-            WHERE table_schema = 'public'
-              AND table_name = %s
-        ) AS "exists"
-        """,
-        (table_name,),
-    )
-    row = cur.fetchone()
-    res = bool(row and row.get("exists"))
-    _TABLE_EXISTS_CACHE[table_name] = res
-    return res
-
-
-def _table_has_column(cur, table_name: str, column_name: str) -> bool:
-    """Check if a table has a specific column."""
-    cache_key = (table_name, column_name)
-    if cache_key in _TABLE_HAS_COLUMN_CACHE:
-        return _TABLE_HAS_COLUMN_CACHE[cache_key]
-    cur.execute(
-        """
-        SELECT EXISTS (
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = %s
-              AND column_name = %s
-        ) AS "exists"
-        """,
-        (table_name, column_name),
-    )
-    row = cur.fetchone()
-    res = bool(row and row.get("exists"))
-    _TABLE_HAS_COLUMN_CACHE[cache_key] = res
-    return res
 
 
 def _is_public_legacy_node(node: Any) -> bool:
