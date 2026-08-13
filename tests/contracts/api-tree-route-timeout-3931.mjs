@@ -164,6 +164,14 @@ async function testAuthenticatedFallbackHasIndependentBound() {
   assertTimeout(primaryTimeout, REQUEST_ID);
 
   calls = 0;
+  const primaryUnavailable = await withFetch(async () => {
+    calls += 1;
+    throw new Error('network down');
+  }, () => getTreeDetail(detailContext({ auth: true })));
+  assert.equal(calls, 1, 'primary network rejection must not start public fallback');
+  assertUnavailable(primaryUnavailable, REQUEST_ID);
+
+  calls = 0;
   const forbidden = await withFetch(async () => {
     calls += 1;
     return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 });
