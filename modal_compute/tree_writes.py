@@ -193,7 +193,7 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     FOR SHARE` read before any destination write. 200 supported rows copy in
     full; a 201st row proves the source exceeds the supported max and the fork
     is rejected with 409 before the destination Tree INSERT, so an oversized
-    source can never silently truncate into a successful partial copy.
+    source can never be partially copied into a misleading success response.
     """
     ensure_owner_user_exists(owner_id)
     safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
