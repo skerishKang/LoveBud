@@ -19,7 +19,7 @@
     {
       "path": "tests/contracts/ci-browser-hermetic-4013-negative-controls.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes the #4013 hermetic external-network negative controls in real Playwright Chromium against a local 127.0.0.1 HTTP server, exercising real local browser request routing/runtime while known external provider/font resources are deterministically intercepted and unexpected external origins fail closed. No Production, auth, provider, or DB mutation and no real external-network fallback.",
+      "rationale": "Executes the #4013 hermetic external-network negative controls via the tests/helpers/external-network-hermetic.cjs policy helper in real Playwright Chromium against a local 127.0.0.1 HTTP server. Exercises NC1 hostname-vs-pathname classification regression (fonts.googleapis.com hits the deterministic fixture, not pathname branch), NC2 unexpected external origin abort (example.invalid prevented from reaching the real network with exact URL surfaced), NC3 same-origin 4xx failing loudly, NC4 browser console error capture retained, and NC5 known-external fixture throw aborting without route.continue() or real network fallback. The hermetic helper secures all real-local browser contracts that load production js/ and css/ modules. No Production, auth, provider, DB mutation, or real external-network fallback.",
       "capabilities": []
     },
     {
