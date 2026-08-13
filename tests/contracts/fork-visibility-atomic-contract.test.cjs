@@ -82,6 +82,7 @@ test('fork locks the copied public memory rows with FOR SHARE (#3956)', () => {
   const memBlock = block.split('FROM memories')[1].split('INSERT INTO memories')[0];
   assert.ok(memBlock, 'source memory SELECT must exist in the fork');
   assert.match(memBlock, /AND visibility = 'public'/, 'private memories must remain excluded');
-  assert.match(memBlock, /LIMIT 200/, '#3924 200-row boundary must remain untouched');
+  assert.match(memBlock, /ORDER BY created_at ASC, id ASC/, '#3924 boundary must be deterministic with a created_at/id tie-breaker');
+  assert.match(memBlock, /LIMIT 201/, '#3924 bounded LIMIT 201 snapshot must remain (201st row = over-limit proof)');
   assert.match(memBlock, /FOR SHARE;/, 'selected public memory rows must be locked FOR SHARE');
 });
