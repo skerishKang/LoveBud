@@ -2,7 +2,8 @@
 
 /**
  * DB_ENGINE_EXECUTION: read-only target attribution & catalog parity preflight
- * rehearsal (Issue #3860, Step 8 Child 3).
+ * rehearsal (Issue #3860, Step 8 Child 3), plus the #3982 appreciation-order
+ * schema/persistence proof required by the current two-object canonical target.
  *
  * Executes only on fresh GitHub Actions via
  * `npm run test:db-engine:readonly-target-attribution-parity`.
@@ -18,9 +19,11 @@
  * R6: read-only query proof (every preflight statement is a fixed read-only
  *     catalog query; mutation count zero)
  * R7: no activation or residual state (manifests ADOPTION_REQUIRED; no ledger
- *     append; no migration execution; sessions released; fixture DB removed)
+ *     append; no migration execution by the preflight; sessions released;
+ *     fixture DB removed)
+ * R8: #3982 dedicated appreciation-order schema/lifecycle/catalog proof
  *
- * Refs: #3860, #3458, #1882
+ * Refs: #3860, #3982, #3921, #3458, #1882
  */
 
 const test = require('node:test');
@@ -31,6 +34,7 @@ const path = require('node:path');
 const { Client } = require('pg');
 
 const harness = require('./helpers/postgres-disposable-harness.cjs');
+const appreciation = require('./helpers/appreciation-order-schema-3982.cjs');
 const core = require('../../scripts/migration-readonly-target-attribution-parity-core.cjs');
 const {
   collectCatalogEvidence,
@@ -38,7 +42,7 @@ const {
   Q,
 } = require('../../scripts/migration-catalog-postgres-adapter-core.cjs');
 
-const { withDisposableDb, baseClientConfig } = harness;
+const { withDisposableDb } = harness;
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const BOOTSTRAP_SQL_PATH = path.join(
@@ -65,7 +69,7 @@ const LEDGER_OBJECT = {
   object_name: 'schema_migration_ledger',
   object_kind: 'TABLE',
 };
-const EXPECTED_OBJECT_NAME = 'table:public.schema_migration_ledger';
+const EXPECTED_LEDGER_OBJECT_NAME = 'table:public.schema_migration_ledger';
 
 function pass(name) {
   process.stdout.write(`${name}: PASS\n`);
@@ -90,7 +94,7 @@ function realCollectorFor(ctx) {
         password: ctx.cfg.password,
         database: ctx.dbName,
       },
-      objects: [LEDGER_OBJECT],
+      objects: [LEDGER_OBJECT, appreciation.APPRECIATION_OBJECT],
       roleMapping: { lovebud_ci: 'APPLICATION' },
       contract: loadContract(ROOT),
     });
@@ -115,12 +119,13 @@ function parityConfig(ctx, overrides) {
 
 test('R1 attributed parity confirmation on fresh disposable PostgreSQL 17.4', async () => {
   await withDisposableDb('r1_parity_confirm', BOOTSTRAP_SQL_PATH, async (ctx) => {
+    await appreciation.prepareCanonicalAppreciationTarget(ctx);
     const result = await core.runParityPreflight(parityConfig(ctx));
     assert.equal(result.outcome, 'PARITY_CONFIRMED', 'attributed preflight confirms parity');
     assert.equal(result.authorityStatus, 'ADOPTION_REQUIRED', 'no activation implied');
     assert.equal(result.collectionEffectCount, 1);
-    assert.equal(result.expectedObjectCount, 1);
-    assert.equal(result.observedObjectCount, 1);
+    assert.equal(result.expectedObjectCount, 2);
+    assert.equal(result.observedObjectCount, 2);
     assert.deepEqual(result.mismatchedObjects, []);
     assert.equal(loadManifestStatus(CANONICAL_MANIFEST_PATH), 'ADOPTION_REQUIRED');
     assert.equal(loadManifestStatus(SCHEMA_MANIFEST_PATH), 'ADOPTION_REQUIRED');
@@ -151,9 +156,10 @@ test('R2 catalog mismatch returns PARITY_MISMATCH with no raw leakage or mutatio
   );
   try {
     await withDisposableDb('r2_catalog_mismatch', differingSql, async (ctx) => {
+      await appreciation.prepareCanonicalAppreciationTarget(ctx);
       const result = await core.runParityPreflight(parityConfig(ctx));
       assert.equal(result.outcome, 'PARITY_MISMATCH', 'drifting shape mismatches committed authority');
-      assert.ok(result.mismatchedObjects.includes(EXPECTED_OBJECT_NAME), 'mismatch names the object identity');
+      assert.ok(result.mismatchedObjects.includes(EXPECTED_LEDGER_OBJECT_NAME), 'mismatch names the ledger object identity');
       assert.ok(!JSON.stringify(result).includes('drift_marker'), 'no raw catalog/DDL leakage');
       assert.ok(!JSON.stringify(result).includes('CREATE TABLE'), 'no raw SQL leakage');
       assert.equal(result.collectionEffectCount, 1);
@@ -227,7 +233,7 @@ test('R5 malformed or hostile observed evidence fails closed as INSUFFICIENT_EVI
     const malformedFingerprint = () => ({
       format_version: '1.0',
       normalizer_version: '1.0',
-      objects: [{ name: EXPECTED_OBJECT_NAME, fingerprint: 'not-a-sha256' }],
+      objects: [{ name: EXPECTED_LEDGER_OBJECT_NAME, fingerprint: 'not-a-sha256' }],
     });
     const missingObject = () => ({
       format_version: '1.0',
@@ -239,7 +245,7 @@ test('R5 malformed or hostile observed evidence fails closed as INSUFFICIENT_EVI
       normalizer_version: '1.0',
       objects: [
         {
-          name: EXPECTED_OBJECT_NAME,
+          name: EXPECTED_LEDGER_OBJECT_NAME,
           fingerprint: 'sha256:' + 'a'.repeat(64),
           owner: 'operator',
         },
@@ -269,6 +275,7 @@ test('R6 every preflight statement is a fixed read-only catalog query with zero 
   };
   try {
     await withDisposableDb('r6_readonly_proof', BOOTSTRAP_SQL_PATH, async (ctx) => {
+      await appreciation.prepareCanonicalAppreciationTarget(ctx);
       recorded.length = 0;
       const result = await core.runParityPreflight(parityConfig(ctx));
       assert.equal(result.outcome, 'PARITY_CONFIRMED');
@@ -290,6 +297,7 @@ test('R6 every preflight statement is a fixed read-only catalog query with zero 
 
 test('R7 no activation or residual state after a confirmed preflight', async () => {
   await withDisposableDb('r7_no_residual', BOOTSTRAP_SQL_PATH, async (ctx) => {
+    await appreciation.prepareCanonicalAppreciationTarget(ctx);
     const before = {
       canonical: loadManifestStatus(CANONICAL_MANIFEST_PATH),
       schema: loadManifestStatus(SCHEMA_MANIFEST_PATH),
@@ -307,11 +315,13 @@ test('R7 no activation or residual state after a confirmed preflight', async () 
     assert.equal(after.canonical, 'ADOPTION_REQUIRED', 'canonical manifest not activated');
     assert.equal(after.schema, 'ADOPTION_REQUIRED', 'expected-schema manifest not activated');
 
-    const ledgerCount = await ctx.client.query(
-      'SELECT COUNT(*)::int AS c FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2',
-      ['public', 'schema_migration_ledger']
+    const relationCount = await ctx.client.query(
+      `SELECT COUNT(*)::int AS c
+       FROM information_schema.tables
+       WHERE table_schema = 'public'
+         AND table_name IN ('schema_migration_ledger', 'tree_appreciation_orders')`
     );
-    assert.equal(Number(ledgerCount.rows[0].c), 1, 'fixture relation exists');
+    assert.equal(Number(relationCount.rows[0].c), 2, 'both canonical target relations exist in disposable fixture');
 
     const rowCount = await ctx.client.query('SELECT COUNT(*)::int AS c FROM schema_migration_ledger');
     assert.equal(Number(rowCount.rows[0].c), 0, 'no ledger append occurred during the preflight');
@@ -319,5 +329,15 @@ test('R7 no activation or residual state after a confirmed preflight', async () 
     const cleanupErrors = globalThis.__lb_db_cleanup_errors || [];
     assert.equal(cleanupErrors.length, 0, 'all disposable sessions released and fixture DB removed');
     pass('R7');
+  });
+});
+
+// ── R8: #3982 dedicated schema/lifecycle proof ──────────────────────────────
+
+test('R8 appreciation-order schema invariants and lifecycle hold on disposable PostgreSQL 17.4', async () => {
+  await withDisposableDb('r8_appreciation_order_schema', null, async (ctx) => {
+    const result = await appreciation.runAppreciationOrderSchemaProof(ctx);
+    assert.match(result.fingerprint, /^sha256:[a-f0-9]{64}$/);
+    pass('R8');
   });
 });
