@@ -58,10 +58,11 @@ async def parse_json_body(request: Request) -> dict:
     """Parse and validate JSON body from request.
 
     Raises:
-        HTTPException: 400 if JSON is invalid, 413 if the body is too large.
+        HTTPException: 400 if JSON is invalid or not a JSON object,
+            413 if the body is too large.
 
     Returns:
-        dict: Parsed JSON payload (empty dict if body is null/empty).
+        dict: Parsed JSON payload (empty dict if body is physically empty).
     """
     body = await _read_bounded_body(request)
     if not body:
@@ -72,4 +73,10 @@ async def parse_json_body(request: Request) -> dict:
     except json.JSONDecodeError as error:
         raise HTTPException(status_code=400, detail="Invalid JSON body") from error
 
-    return payload if isinstance(payload, dict) else {}
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "JSON_OBJECT_REQUIRED"},
+        )
+
+    return payload
