@@ -161,7 +161,7 @@ export async function signAssertion(secret, treeId, actorKey, actorKind, source,
  * signed assertion headers. Returns null when the secret or client IP context
  * is unavailable (fail-closed; caller must not count).
  */
-export async function buildSignedAssertionHeaders(request, env) {
+export async function buildSignedAssertionHeaders(request, env, treeId) {
   const secret = env[SECRET_ENV];
   const ip = request.headers.get('CF-Connecting-IP');
   if (!secret || !ip) {
@@ -169,10 +169,10 @@ export async function buildSignedAssertionHeaders(request, env) {
   }
   const utcDay = currentUtcDay();
   const actorKey = await deriveEdgeActorKey(secret, ip, utcDay);
-  const signature = await signAssertion(secret, request.treeId, actorKey, ACTOR_KIND_ANONYMOUS, VIEW_SOURCE, utcDay);
+  const signature = await signAssertion(secret, treeId, actorKey, ACTOR_KIND_ANONYMOUS, VIEW_SOURCE, utcDay);
   return {
     [VERSION_HEADER]: ASSERTION_VERSION,
-    [TREE_ID_HEADER]: request.treeId,
+    [TREE_ID_HEADER]: treeId,
     [ACTOR_KEY_HEADER]: actorKey,
     [ACTOR_KIND_HEADER]: ACTOR_KIND_ANONYMOUS,
     [SOURCE_HEADER]: VIEW_SOURCE,
@@ -192,11 +192,9 @@ async function proxyTreeView(request, env) {
   const modalUrl = buildModalUrl(request, env || {});
   if (!modalUrl) return buildModalUnavailableResponse(requestId);
 
-  // Derive a server-authoritative anonymous actor from trusted edge context and
-  // sign a fixed assertion. Fail closed (no Modal call, no counting) when the
-  // secret or client IP context is unavailable (Issue #3917).
-  const enrichedRequest = Object.assign(Object.create(null), request, { treeId });
-  const assertionHeaders = await buildSignedAssertionHeaders(enrichedRequest, env || {});
+  // Keep the native Request object intact. Its headers/url/method properties
+  // are prototype-backed and must not be copied with Object.assign().
+  const assertionHeaders = await buildSignedAssertionHeaders(request, env || {}, treeId);
   if (!assertionHeaders) {
     return buildViewAuthorityUnavailableResponse(requestId);
   }
