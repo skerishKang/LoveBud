@@ -1525,6 +1525,21 @@
       "notes": "public.schema_migration_ledger만 생성, canonical bootstrap migration source"
     },
     {
+      "path": "db/migrations/20260812213000_add-tree-appreciation-orders.sql",
+      "category": "sql_migration",
+      "engine": "postgres",
+      "operations": ["CREATE TABLE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": true,
+      "production_capable": false,
+      "owner_or_issue": "appreciation-order-persistence / #3982",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "gated",
+      "ledger_candidate": "yes",
+      "notes": "tree_appreciation_orders 1:1 감상 순서 테이블, FK tree_id→trees(id) ON DELETE CASCADE"
+    },
+    {
       "path": "scripts/migration-clean-bootstrap-orchestrator-core.cjs",
       "category": "provenance_tooling",
       "engine": "none",
