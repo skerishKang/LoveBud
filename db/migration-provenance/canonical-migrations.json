@@ -40,6 +40,29 @@
       "destructive_operations": [],
       "owner_domain": "migration-provenance",
       "approval_reference": "issue:3846"
+    },
+    {
+      "id": "20260812213000_add-tree-appreciation-orders",
+      "name": "add-tree-appreciation-orders",
+      "path": "db/migrations/20260812213000_add-tree-appreciation-orders.sql",
+      "checksum": "sha256:5332ce91ee1440d3c1bebd0a3b0b5ff9cab0a23612195141bebb94d340ebaad8",
+      "depends_on": [
+        "20260802094500_bootstrap-migration-ledger"
+      ],
+      "risk_class": "DESTRUCTIVE",
+      "transaction_mode": "REQUIRED",
+      "expected_preconditions": [
+        { "check": "table_exists", "target": "tree_appreciation_orders", "expected": false }
+      ],
+      "expected_postconditions": [
+        { "check": "table_exists", "target": "tree_appreciation_orders", "expected": true }
+      ],
+      "rollback_support": "DROP TABLE tree_appreciation_orders",
+      "destructive_operations": [
+        "FK_CASCADE_EXPANSION"
+      ],
+      "owner_domain": "appreciation-order-persistence",
+      "approval_reference": "issue:3982"
     }
   ],
   "activation_rule": "No existing scripts are retroactively declared applied. A separately approved adoption baseline must be attested before this manifest changes to ACTIVE.",
