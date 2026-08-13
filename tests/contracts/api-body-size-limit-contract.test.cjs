@@ -6,6 +6,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..', '..');
 const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
 const MODAL_HELPERS_PY = path.join(ROOT, 'modal_compute/api_response_helpers.py');
+const TREE_COMMENT_JS = path.join(ROOT, 'functions/api/trees/[tree_id]/comments.js');
 
 function readFile(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -189,6 +190,321 @@ test('runtime: Cloudflare write proxy passes normal-sized POST to Modal', { time
     assert.equal(response.status, 200, 'normal-sized POST must return 200');
     assert.ok(modalFetchCalled, 'Modal fetch must be called for normal-sized body');
     assert.ok(modalFetchUrl.includes('/modal/private/trees'), 'Modal fetch must target private trees');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('tree-comment POST uses canonical shared readBoundedRequestBody and never request.text()', () => {
+  const source = readFile(TREE_COMMENT_JS);
+  assert.match(source, /import\s*\{\s*readBoundedRequestBody\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/_shared\/bounded-request-body\.js['"]/);
+  assert.match(source, /await\s+readBoundedRequestBody\(request\)/);
+  assert.doesNotMatch(source, /getContentLengthBytes/);
+  assert.doesNotMatch(source, /MAX_WRITE_BODY_BYTES/);
+  assert.doesNotMatch(source, /await\s+request\.text\(\)/);
+  assert.doesNotMatch(source, /await\s+request\.json\(\)/);
+  assert.match(source, /status:\s*413/);
+  assert.match(source, /payload-too-large/);
+});
+
+test('runtime: tree-comment POST rejects missing/invalid/understated Content-Length oversized bodies before Modal', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const oversizedBody = JSON.stringify({ body: 'z'.repeat(129 * 1024) });
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+
+  const variants = [
+    {},
+    { 'content-length': 'not-a-number' },
+    { 'content-length': '1' },
+  ];
+
+  try {
+    for (const extraHeaders of variants) {
+      const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer test-token',
+          'Idempotency-Key': 'comment-key-3920',
+          ...extraHeaders,
+        },
+        body: oversizedBody,
+      });
+      const response = await onRequestPost({ request, env });
+      assert.equal(response.status, 413);
+      assert.equal(response.headers.get('x-lovebud-route-status'), 'payload-too-large');
+      assert.equal(response.headers.get('x-lovebud-upstream'), 'cloudflare');
+    }
+    assert.equal(modalFetchCalls, 0, 'oversized comment bodies must never reach Modal');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment POST accepts small body despite invalid-but-number-parseable Content-Length header (1e9, 1.5, +200000)', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const smallBody = JSON.stringify({ body: 'valid small comment' });
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+
+  const invalidParseableHeaders = ['1e9', '1.5', '+200000', '-1'];
+
+  try {
+    for (const clValue of invalidParseableHeaders) {
+      const sanitizedKey = clValue.replace(/[^A-Za-z0-9._:-]/g, '_');
+      const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer test-token',
+          'Idempotency-Key': `comment-key-${sanitizedKey}`,
+          'content-length': clValue,
+        },
+        body: smallBody,
+      });
+      const response = await onRequestPost({ request, env });
+      assert.equal(response.status, 200, `small body with content-length ${clValue} must be accepted`);
+    }
+    assert.equal(modalFetchCalls, invalidParseableHeaders.length, 'all small bodies with un-canonical Content-Length must reach Modal');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment POST returns 503 (not 413) when stream reader throws read error', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200 });
+  };
+
+  const errorStream = new ReadableStream({
+    start(controller) {
+      controller.error(new Error('Simulated stream read failure'));
+    }
+  });
+
+  try {
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-stream-error',
+      },
+      body: errorStream,
+      duplex: 'half',
+    });
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 503, 'stream read error must return 503, not 413');
+    assert.notEqual(response.status, 413, 'read failure must never be disguised as 413 tooLarge');
+    assert.equal(modalFetchCalls, 0, 'read error must not call Modal');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment POST preserves Authorization, Idempotency-Key, Modal target, and valid body bytes', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  let captured = null;
+  globalThis.fetch = async (url, options) => {
+    captured = { url: String(url), options };
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const body = JSON.stringify({ body: 'valid comment' });
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-3920',
+      },
+      body,
+    });
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 200);
+    assert.ok(captured, 'valid comment must reach Modal');
+    assert.equal(captured.url, 'https://example.modal.run/modal/private/trees/tree-3920/comments');
+    assert.equal(captured.options.headers.authorization, 'Bearer test-token');
+    assert.equal(captured.options.headers['Idempotency-Key'], 'comment-key-3920');
+    const forwarded = captured.options.body instanceof Uint8Array
+      ? new TextDecoder().decode(captured.options.body)
+      : String(captured.options.body);
+    assert.equal(forwarded, body);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment accepts exactly 128 KiB and forwards the exact bytes', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  const exactBody = new Uint8Array(128 * 1024).fill(0x61);
+  let capturedBody = null;
+  globalThis.fetch = async (_url, options) => {
+    capturedBody = options.body;
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+
+  try {
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-exact-limit',
+      },
+      body: exactBody,
+    });
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 200);
+    assert.ok(capturedBody instanceof Uint8Array);
+    assert.equal(capturedBody.byteLength, exactBody.byteLength);
+    assert.deepEqual(capturedBody, exactBody);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment rejects 128 KiB + 1 byte with zero Modal fetches', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200 });
+  };
+
+  try {
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-over-limit',
+      },
+      body: new Uint8Array(128 * 1024 + 1).fill(0x61),
+    });
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 413);
+    assert.equal(modalFetchCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment counts UTF-8 multibyte payloads by bytes, not JavaScript characters', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200 });
+  };
+
+  try {
+    const text = '한'.repeat(Math.floor((128 * 1024) / 3) + 1);
+    assert.ok(text.length < 128 * 1024, 'character count must remain below byte limit');
+    assert.ok(new TextEncoder().encode(text).byteLength > 128 * 1024, 'UTF-8 bytes must exceed limit');
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-utf8-limit',
+      },
+      body: text,
+    });
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 413);
+    assert.equal(modalFetchCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment attempts stream cancellation immediately after overflow', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  let modalFetchCalls = 0;
+  let cancelCalls = 0;
+  globalThis.fetch = async () => {
+    modalFetchCalls += 1;
+    return new Response('{}', { status: 200 });
+  };
+
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new Uint8Array(128 * 1024).fill(0x61));
+      controller.enqueue(new Uint8Array([0x62]));
+    },
+    cancel() {
+      cancelCalls += 1;
+    },
+  });
+
+  try {
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-cancel-limit',
+      },
+      body: stream,
+      duplex: 'half',
+    });
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 413);
+    assert.equal(cancelCalls, 1, 'overflow should attempt reader cancellation exactly once');
+    assert.equal(modalFetchCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime: tree-comment without Content-Length forwards accepted UTF-8 bytes exactly', { timeout: 10_000 }, async () => {
+  const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/comments.js');
+  const env = { MODAL_BASE_URL: 'https://example.modal.run' };
+  const originalFetch = globalThis.fetch;
+  const expectedBody = new TextEncoder().encode('{"body":"안녕 🌱"}');
+  let capturedBody = null;
+  globalThis.fetch = async (_url, options) => {
+    capturedBody = options.body;
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+
+  try {
+    const request = new Request('https://test.example/api/trees/tree-3920/comments', {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-token',
+        'Idempotency-Key': 'comment-key-byte-exact',
+      },
+      body: expectedBody,
+    });
+    assert.equal(request.headers.get('content-length'), null);
+    const response = await onRequestPost({ request, env });
+    assert.equal(response.status, 200);
+    assert.ok(capturedBody instanceof Uint8Array);
+    assert.deepEqual(capturedBody, expectedBody);
   } finally {
     globalThis.fetch = originalFetch;
   }

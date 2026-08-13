@@ -77,8 +77,21 @@ function assertParseJsonBodyHelperContract() {
 
   assert.match(
     normalized,
-    /returnpayloadifisinstance\(payload,dict\)else{}/i,
-    'parse_json_body must return dict payloads and normalize non-dict JSON to {}'
+    /ifnotisinstance\(payload,\s*dict\)\s*:.?\s*raise.*json_object_required/i,
+    'parse_json_body must reject non-dict JSON with JSON_OBJECT_REQUIRED'
+  );
+
+  assert.match(
+    normalized,
+    /returnpayload/i,
+    'parse_json_body must return parsed dict payload'
+  );
+
+  // Physical empty body still returns {}
+  assert.match(
+    normalized,
+    /ifnotbody:.*return\{\}/i,
+    'parse_json_body must return {} for physically empty body'
   );
 }
 
