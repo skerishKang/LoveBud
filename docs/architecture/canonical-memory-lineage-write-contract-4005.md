@@ -14,15 +14,15 @@ This document is source/contract only. It deliberately does not modify `modal_co
 
 ## 2. Collision / sequencing decision
 
-Runtime implementation is intentionally deferred because current open work overlaps the authoritative Memory write boundary.
+Runtime implementation of `clientKey` / `sortOrder` is intentionally deferred because the authoritative Memory write path (`modal_compute/memory_writes.py`) still has overlapping open corrections that must land first.
 
-Observed open PRs include:
+Current PR state against `main`:
 
-- #3992 — directly modifies `modal_compute/memory_writes.py` for strict Memory emotion-tag validation;
-- #3969 — requires a current-main correction in `modal_compute/memory_writes.py` for unresolved parent visibility;
-- #3999 — modifies the Memory Cloudflare proxy request-body boundary.
+- #3999 — **MERGED**. The Memory Cloudflare proxy request-body boundary is closed and is no longer an open blocker. Resolving it only closed the boundary; it did **not** implement `clientKey` / `sortOrder` runtime support.
+- #3992 — **current-main aligned and CI GREEN, but NOT YET MERGED** (Draft). It refactors `modal_compute/memory_writes.py` onto a shared strict `validate_emotion_tags()` helper, but that change is **not yet in `main`**. Current `main` still carries the prior inline `emotionTags` handling, so the write path remains a moving target until #3992 lands.
+- #3969 — **OPEN / STALE**. It still owns an unresolved parent Tree visibility fail-closed correction in `modal_compute/memory_writes.py`.
 
-Therefore #4005 must not introduce concurrent edits to those paths until the active security/correctness slices are reconciled.
+Therefore #4005 must not introduce concurrent edits to `memory_writes.py` until the active correctness slices (#3992 landing plus the #3969 visibility correction) are reconciled.
 
 Verdict:
 
