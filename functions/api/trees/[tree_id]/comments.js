@@ -1,4 +1,5 @@
 import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../_shared/request-id.js';
+import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -102,6 +103,18 @@ function buildIdempotencyKeyInvalidResponse(requestId) {
   });
 }
 
+function buildPayloadTooLargeResponse(requestId) {
+  return new Response(JSON.stringify({ error: 'Request body too large' }), {
+    status: 413,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'payload-too-large',
+      [REQUEST_ID_HEADER]: requestId
+    }
+  });
+}
+
 function buildModalUrl(request, env, query = '') {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
@@ -145,20 +158,16 @@ async function proxyTreeCommentCreate(request, env) {
   if (!KEY_PATTERN.test(idempotencyKey)) return buildIdempotencyKeyInvalidResponse(requestId);
   headers['Idempotency-Key'] = idempotencyKey;
 
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (error) {
-    return buildModalUnavailableResponse(requestId);
-  }
-  const hasBody = typeof bodyText === 'string' && bodyText.length > 0;
+  const bodyResult = await readBoundedRequestBody(request);
+  if (bodyResult.status === 'tooLarge') return buildPayloadTooLargeResponse(requestId);
+  if (bodyResult.status === 'readError') return buildModalUnavailableResponse(requestId);
   headers['content-type'] = 'application/json; charset=utf-8';
 
   try {
     const response = await fetchWithTimeout(modalUrl.toString(), {
       method,
       headers,
-      body: hasBody ? bodyText : '{}'
+      body: bodyResult.body || '{}'
     });
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set('x-lovebud-upstream', 'modal');

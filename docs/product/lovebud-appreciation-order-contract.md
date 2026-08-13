@@ -20,13 +20,17 @@ v20260702-guided-path-architecture-1
 ## 3. 데이터 모델 (Data Model)
 
 ### 3.1 서버 저장 구조 (Neon/DB)
-감상 순서는 `tree_appreciation_orders` (가칭) 테이블 또는 트리의 메타데이터 필드에 저장된다.
+감상 순서는 Tree 본문 metadata가 아니라 전용 1:1 테이블 `tree_appreciation_orders`가 소유한다. 현재 LoveBud의 canonical Tree 식별자 권한은 `trees.id = TEXT`이므로 이 테이블도 UUID를 도입하지 않고 `TEXT` FK를 사용한다.
 
 | 필드명 | 타입 | 설명 | 비고 |
 | :--- | :--- | :--- | :--- |
-| `tree_id` | UUID (PK) | 트리의 고유 식별자 | 1:1 관계 |
-| `ordered_ids` | JSONB (Array) | `["memId_1", "memId_2", "memId_3", ...]` | 감상 순서대로 나열된 ID 리스트 |
-| `updated_at` | Timestamp | 마지막 수정 일시 | 버전 관리용 |
+| `tree_id` | TEXT (PK/FK) | 트리의 고유 식별자 | `trees(id)` 참조, `ON DELETE CASCADE`, 1:1 관계 |
+| `ordered_ids` | JSONB NOT NULL | `["memId_1", "memId_2", "memId_3", ...]` | DB CHECK로 JSON array만 허용, implicit default 없음 |
+| `updated_at` | TIMESTAMP WITH TIME ZONE NOT NULL | 마지막 수정 일시 | 기본값 `NOW()` |
+
+`ordered_ids`에 DB 기본 배열을 두지 않는다. 행이 없다는 것은 **명시적 감상 순서가 아직 저장되지 않았다**는 뜻이며, 이후 runtime writer가 검증된 canonical sequence를 명시적으로 저장한다.
+
+이 문서의 저장 구조 결정은 #3982 schema/persistence foundation에 한정된다. Modal POST/GET의 실제 저장 helper, Memory membership 검증, UPSERT, same-origin Cloudflare route와 Editor/Viewer 동작은 별도 runtime child에서 구현한다.
 
 ### 3.2 로직 계층 (Logic Layer)
 시스템은 다음과 같은 우선순위로 감상 순서를 결정한다.

@@ -20,6 +20,10 @@ const path = require('node:path');
 const http = require('node:http');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const {
+  makeHermeticRouteHandler,
+  defaultFulfillExternal,
+} = require('../helpers/external-network-hermetic.cjs');
 
 let playwright;
 try {
@@ -149,15 +153,28 @@ const FIREBASE_AUTH_STUB = `
 `;
 
 function newHealth() {
-  return { pageerrors: [], consoleErrors: [], requestFailures: [], responseErrors: [] };
+  return {
+    pageerrors: [],
+    consoleErrors: [],
+    requestFailures: [],
+    responseErrors: [],
+    unexpectedExternal: [],
+    resourceFailures: [],
+  };
 }
 
 function captureHealth(page, fixtureOrigin) {
   const health = newHealth();
   page.on('pageerror', (error) => health.pageerrors.push(String(error)));
   page.on('console', (msg) => { if (msg.type() === 'error') health.consoleErrors.push(msg.text()); });
+  /* #4013 diagnostics: any network failure is recorded with its exact URL
+   * (and failure text when Playwright exposes it), so a future browser
+   * console "Failed to load resource" is attributable to a specific request. */
   page.on('requestfailed', (req) => {
     const url = req.url();
+    const failure = typeof req.failure === 'function' ? req.failure() : null;
+    const detail = failure && failure.errorText ? `${url} :: ${failure.errorText}` : url;
+    health.resourceFailures.push(detail);
     try {
       if (new URL(url).origin === fixtureOrigin) health.requestFailures.push(url);
     } catch (e) { /* non-http */ }
@@ -173,25 +190,12 @@ function captureHealth(page, fixtureOrigin) {
   return health;
 }
 
-function installRoutes(page, fixtureOrigin, apiTrees) {
-  return page.route('**/*', async (route) => {
-    const req = route.request();
-    const url = req.url();
-    let pathname = '';
-    try { pathname = new URL(url).pathname; } catch (e) { pathname = url; }
-    try {
-      if (pathname.includes('www.gstatic.com/firebasejs/firebase-app.js') || pathname.endsWith('/firebase-app.js')) {
-        await route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: FIREBASE_APP_STUB });
-        return;
-      }
-      if (pathname.includes('www.gstatic.com/firebasejs/firebase-auth.js') || pathname.endsWith('/firebase-auth.js')) {
-        await route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: FIREBASE_AUTH_STUB });
-        return;
-      }
-      if (pathname.includes('fonts.googleapis.com') || pathname.includes('fonts.gstatic.com')) {
-        await route.fulfill({ status: 200, contentType: 'text/css', body: '/* fixture */' });
-        return;
-      }
+function installRoutes(page, fixtureOrigin, apiTrees, unexpectedExternal) {
+  const handler = makeHermeticRouteHandler({
+    fixtureOrigin,
+    onUnexpectedExternal: (url) => unexpectedExternal.push(url),
+    onSameOrigin: async (route, target) => {
+      const pathname = target.pathname;
       if (pathname === '/api/trees' || pathname === '/api/trees?') {
         if (apiTrees && apiTrees.status >= 400) {
           await route.fulfill({ status: apiTrees.status, contentType: 'application/json', body: JSON.stringify({ error: 'fixture' }) });
@@ -200,32 +204,43 @@ function installRoutes(page, fixtureOrigin, apiTrees) {
         } else {
           await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(OWNER_TREES) });
         }
-        return;
+        return true;
       }
       if (pathname.startsWith('/api/')) {
         await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
-        return;
+        return true;
       }
       if (pathname.startsWith('/pages/view') || pathname.startsWith('/pages/editor')) {
         await route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: '<!DOCTYPE html><html><body>fixture</body></html>' });
-        return;
+        return true;
       }
       if (pathname.startsWith('/fixture-media/')) {
         await route.fulfill({ status: 200, contentType: 'image/gif', body: FIXTURE_GIF });
+        return true;
+      }
+      return false;
+    },
+    fulfillExternal: async (route, target) => {
+      const p = target.pathname;
+      if (p.endsWith('/firebase-app.js')) {
+        await route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: FIREBASE_APP_STUB });
         return;
       }
-      await route.continue();
-    } catch (e) {
-      await route.continue().catch(() => {});
-    }
+      if (p.endsWith('/firebase-auth.js')) {
+        await route.fulfill({ status: 200, contentType: 'application/javascript; charset=utf-8', body: FIREBASE_AUTH_STUB });
+        return;
+      }
+      await defaultFulfillExternal(route, target);
+    },
   });
+  return page.route('**/*', handler);
 }
 
 async function openMyTrees(context, port, page, opts) {
   opts = opts || {};
   const fixtureOrigin = `http://127.0.0.1:${port}`;
   const health = captureHealth(page, fixtureOrigin);
-  await installRoutes(page, fixtureOrigin, opts.apiTrees);
+  await installRoutes(page, fixtureOrigin, opts.apiTrees, health.unexpectedExternal);
   await page.addInitScript(() => {
     try {
       const cache = JSON.stringify({
@@ -305,6 +320,16 @@ function assertHealth(health, label) {
   assert.deepEqual(health.consoleErrors, [], label + ': console error 0');
   assert.deepEqual(health.requestFailures, [], label + ': same-origin request failure 0');
   assert.deepEqual(health.responseErrors, [], label + ': same-origin HTTP >=400 0');
+  assert.deepEqual(
+    health.unexpectedExternal,
+    [],
+    label + ': unexpected external requests 0 (' + health.unexpectedExternal.join(', ') + ')'
+  );
+  assert.deepEqual(
+    health.resourceFailures,
+    [],
+    label + ': resource failures 0 (' + health.resourceFailures.join(', ') + ')'
+  );
 }
 
 async function overflowOf(page) {
