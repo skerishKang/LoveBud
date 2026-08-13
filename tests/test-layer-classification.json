@@ -17,6 +17,12 @@
   "classificationBasis": "Content-evidence based. Each file is read; its source-read/execution/fake-env markers determine the primary layer. Filename alone is never used.",
   "entries": [
     {
+      "path": "tests/contracts/ci-browser-hermetic-4013-negative-controls.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the #4013 hermetic external-network negative controls in real Playwright Chromium against a local 127.0.0.1 HTTP server, exercising real local browser request routing/runtime while known external provider/font resources are deterministically intercepted and unexpected external origins fail closed. No Production, auth, provider, or DB mutation and no real external-network fallback.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/ci-risk-gate-policy-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
