@@ -37,7 +37,7 @@
     {
       "path": "tests/contracts/tree-fork-idempotency-lock-3925.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree serializes competing creators for the same (source_tree_id, owner_id) tuple with a transaction-scoped pg_advisory_xact_lock acquired after visibility authority and before the duplicate lookup and destination INSERT; verifies the sha256-derived signed-bigint lock key is stable and tuple-scoped with process-local hash() negative control; pure static source-read and crypto key computation, no execution, no network, no DB (#3925).",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree serializes competing creators for the same (source_tree_id, owner_id) tuple with a transaction-scoped pg_advisory_xact_lock acquired before the source visibility lock/authorization and before the duplicate lookup and destination INSERT; verifies the sha256-derived signed-bigint lock key is stable and tuple-scoped with process-local hash() negative control; pure static source-read and crypto key computation, no execution, no network, no DB (#3925).",
       "capabilities": []
     },
     {
