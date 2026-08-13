@@ -5,8 +5,9 @@
  * bootstrap rehearsal). Locks the original eleven-file primary boundary,
  * package script, CI job, PostgreSQL service image/version, loopback-only
  * LB_TEST_PG* boundary, committed-authority invariants (ADOPTION_REQUIRED
- * manifest with exactly one migration and exactly one expected critical
- * object; no synthetic ACTIVE manifest; no generic-runner success path; no
+ * manifest whose bootstrap migration is selected by exact ID and ledger
+ * critical object is selected by exact name, decoupled from total manifest
+ * cardinality; no synthetic ACTIVE manifest; no generic-runner success path; no
  * unauthorized `bootstrap` top-level field), orchestrator boundary (dedicated
  * orchestrator owns the bootstrap path; generic runner unchanged),
  * classification entries, and parent completion posture. Real DB behavior
@@ -28,7 +29,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { EXPECTED_DB_ENGINE_SCRIPTS } = require('../../scripts/report-ci-test-groups.cjs');
-const { createCleanBootstrapRunner, FACTORY_ERRORS } = require('../../scripts/migration-clean-bootstrap-orchestrator-core.cjs');
+const { createCleanBootstrapRunner, validateCommittedAuthority, selectBootstrapMigration, selectBootstrapCriticalObject, FACTORY_ERRORS } = require('../../scripts/migration-clean-bootstrap-orchestrator-core.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -222,14 +223,13 @@ test('DB-engine test enforces LB_TEST_PG* loopback boundary', () => {
 
 // ── 5. Committed authority invariants ────────────────────────────────────────
 
-test('committed canonical manifest is ADOPTION_REQUIRED with exactly one migration and no bootstrap field', () => {
+test('committed canonical manifest is ADOPTION_REQUIRED and selects bootstrap migration by exact ID', () => {
   const manifest = JSON.parse(read(MANIFEST_PATH));
   assert.equal(manifest.status, 'ADOPTION_REQUIRED', 'manifest status is ADOPTION_REQUIRED');
-  assert.equal(manifest.migrations.length, 1, 'exactly one migration');
   assert.equal(manifest.bootstrap, undefined, 'no unauthorized bootstrap field');
 
-  const migration = manifest.migrations[0];
-  assert.equal(migration.id, BOOTSTRAP_ID, 'exact migration ID');
+  const migration = selectBootstrapMigration(manifest);
+  assert.equal(migration.id, BOOTSTRAP_ID, 'bootstrap selected by exact ID');
   assert.equal(migration.path, SQL_FILE_PATH, 'exact migration path');
   const actualChecksum = sha256File(SQL_FILE_PATH);
   assert.equal(migration.checksum, actualChecksum, 'raw SQL byte checksum matches on-disk file');
@@ -261,16 +261,138 @@ test('bootstrap SQL file exists and creates only schema_migration_ledger', () =>
   assert.equal(sql.split('CREATE TABLE').length - 1, 1, 'exactly one CREATE TABLE statement');
 });
 
-test('expected-schema manifest is ADOPTION_REQUIRED with exactly one critical object and no bootstrap field', () => {
+test('expected-schema manifest is ADOPTION_REQUIRED and selects ledger object by exact name', () => {
   const schemaManifest = JSON.parse(read(SCHEMA_MANIFEST_PATH));
   assert.equal(schemaManifest.status, 'ADOPTION_REQUIRED', 'schema manifest remains ADOPTION_REQUIRED');
-  assert.equal(schemaManifest.critical_objects.length, 1, 'exactly one critical object');
   assert.equal(schemaManifest.bootstrap, undefined, 'no unauthorized bootstrap field');
 
-  const object = schemaManifest.critical_objects[0];
+  const object = selectBootstrapCriticalObject(schemaManifest);
   assert.equal(object.name, EXPECTED_OBJECT_NAME, 'exact table object name with public qualifier');
   assert.match(object.fingerprint, /^sha256:[a-f0-9]{64}$/, 'catalog fingerprint is sha256:');
   assert.notEqual(object.fingerprint, sha256File(SQL_FILE_PATH), 'catalog fingerprint is not the raw SQL byte checksum');
+});
+
+// ── 5b. Bootstrap identity-selection contract (decoupled from cardinality) ─
+
+function makeValidBootstrapEntry() {
+  return {
+    id: BOOTSTRAP_ID,
+    name: 'bootstrap-migration-ledger',
+    path: SQL_FILE_PATH,
+    checksum: sha256File(SQL_FILE_PATH),
+    depends_on: [],
+    risk_class: 'ADDITIVE',
+    transaction_mode: 'REQUIRED',
+    destructive_operations: [],
+    owner_domain: 'migration-provenance',
+    approval_reference: 'issue:3846',
+  };
+}
+
+function makeValidLedgerObject() {
+  return { name: EXPECTED_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) };
+}
+
+function makeSyntheticManifest(migrations) {
+  return { status: 'ADOPTION_REQUIRED', checksum_algorithm: 'sha256', migrations: migrations };
+}
+
+function makeSyntheticSchemaManifest(objects) {
+  return { status: 'ADOPTION_REQUIRED', fingerprint_algorithm: 'sha256', critical_objects: objects };
+}
+
+function makeLaterMigration() {
+  return {
+    id: '20270101000000_later-feature',
+    name: 'later-feature',
+    path: 'db/migrations/20270101000000_later-feature.sql',
+    checksum: 'sha256:' + 'b'.repeat(64),
+    risk_class: 'ADDITIVE',
+    transaction_mode: 'REQUIRED',
+    destructive_operations: [],
+    approval_reference: 'issue:9999',
+  };
+}
+
+function makeLaterObject() {
+  return { name: 'table:public.some_later_table', fingerprint: 'sha256:' + 'c'.repeat(64) };
+}
+
+test('A current one-entry compatibility: committed manifest selects bootstrap projection', () => {
+  const manifest = JSON.parse(read(MANIFEST_PATH));
+  const schemaManifest = JSON.parse(read(SCHEMA_MANIFEST_PATH));
+  const migration = selectBootstrapMigration(manifest);
+  const object = selectBootstrapCriticalObject(schemaManifest);
+  assert.equal(migration.id, BOOTSTRAP_ID, 'bootstrap selected by exact ID');
+  assert.equal(object.name, EXPECTED_OBJECT_NAME, 'ledger selected by exact name');
+  const projection = validateCommittedAuthority(manifest, schemaManifest);
+  assert.equal(projection.migrationId, BOOTSTRAP_ID, 'projection uses selected bootstrap');
+  assert.equal(projection.criticalObjectName, EXPECTED_OBJECT_NAME, 'projection uses selected ledger object');
+});
+
+test('B multi-entry positive control: only bootstrap identity is selected', () => {
+  const manifest = makeSyntheticManifest([makeValidBootstrapEntry(), makeLaterMigration()]);
+  const selected = selectBootstrapMigration(manifest);
+  assert.equal(selected.id, BOOTSTRAP_ID, 'bootstrap selected, not later migration');
+
+  const schemaManifest = makeSyntheticSchemaManifest([makeValidLedgerObject(), makeLaterObject()]);
+  const selectedObject = selectBootstrapCriticalObject(schemaManifest);
+  assert.equal(selectedObject.name, EXPECTED_OBJECT_NAME, 'ledger selected, not later object');
+
+  const projection = validateCommittedAuthority(manifest, schemaManifest);
+  assert.equal(projection.migrationId, BOOTSTRAP_ID, 'projection built from selected bootstrap only');
+});
+
+test('C missing bootstrap migration fails closed', () => {
+  const manifest = makeSyntheticManifest([makeLaterMigration()]);
+  assert.throws(function () { selectBootstrapMigration(manifest); }, function (e) {
+    return e.message === FACTORY_ERRORS.MIGRATION_NOT_FOUND;
+  });
+});
+
+test('D duplicate bootstrap migration fails closed', () => {
+  const manifest = makeSyntheticManifest([makeValidBootstrapEntry(), makeValidBootstrapEntry()]);
+  assert.throws(function () { selectBootstrapMigration(manifest); }, function (e) {
+    return e.message === FACTORY_ERRORS.MIGRATION_ID_INVALID;
+  });
+});
+
+test('E missing ledger critical object fails closed', () => {
+  const schemaManifest = makeSyntheticSchemaManifest([makeLaterObject()]);
+  assert.throws(function () { selectBootstrapCriticalObject(schemaManifest); }, function (e) {
+    return e.message === FACTORY_ERRORS.CRITICAL_OBJECT_NAME_INVALID;
+  });
+});
+
+test('F duplicate ledger critical object fails closed', () => {
+  const schemaManifest = makeSyntheticSchemaManifest([makeValidLedgerObject(), makeValidLedgerObject()]);
+  assert.throws(function () { selectBootstrapCriticalObject(schemaManifest); }, function (e) {
+    return e.message === FACTORY_ERRORS.CRITICAL_OBJECT_NAME_INVALID;
+  });
+});
+
+test('G later migration with sentinel bad values never becomes executable authority', () => {
+  const sentinel = {
+    id: '20270101000000_later-feature',
+    name: 'later-feature',
+    path: 'db/migrations/NONEXISTENT_sentinel.sql',
+    checksum: 'sha256:deadbeef' + '0'.repeat(56),
+    risk_class: 'DESTRUCTIVE',
+    transaction_mode: 'REQUIRED',
+    destructive_operations: ['DROP TABLE something'],
+    approval_reference: 'issue:0000',
+  };
+  const manifest = makeSyntheticManifest([makeValidBootstrapEntry(), sentinel]);
+  const selected = selectBootstrapMigration(manifest);
+  assert.equal(selected.id, BOOTSTRAP_ID, 'selection ignores the sentinel later entry');
+  assert.notEqual(selected.path, sentinel.path, 'sentinel path is never selected');
+  assert.notEqual(selected.checksum, sentinel.checksum, 'sentinel checksum is never selected');
+
+  const schemaManifest = makeSyntheticSchemaManifest([makeValidLedgerObject()]);
+  assert.doesNotThrow(function () { validateCommittedAuthority(manifest, schemaManifest); }, 'projection authority unaffected by later sentinel entry');
+  const projection = validateCommittedAuthority(manifest, schemaManifest);
+  assert.equal(projection.migrationId, BOOTSTRAP_ID, 'projection authority is the bootstrap migration');
+  assert.equal(projection.checksum, sha256File(SQL_FILE_PATH), 'projection checksum is the real bootstrap SQL checksum');
 });
 
 // ── 6. Orchestrator boundary: dedicated path, generic runner untouched ───────
@@ -532,7 +654,7 @@ test('NC15 manifest has no unauthorized bootstrap top-level field', () => {
 
 test('NC16 expected schema uses the public-qualified table name', () => {
   const schemaManifest = JSON.parse(read(SCHEMA_MANIFEST_PATH));
-  const object = schemaManifest.critical_objects[0];
+  const object = selectBootstrapCriticalObject(schemaManifest);
   assert.equal(object.name, 'table:public.schema_migration_ledger', 'exact public-qualified name');
   assert.notEqual(object.name, 'table:schema_migration_ledger', 'name is not missing the public qualifier');
 });
@@ -540,8 +662,8 @@ test('NC16 expected schema uses the public-qualified table name', () => {
 test('NC17 catalog fingerprint is derived by the normalizer, not reused from the SQL byte checksum', () => {
   const schemaManifest = JSON.parse(read(SCHEMA_MANIFEST_PATH));
   const manifest = JSON.parse(read(MANIFEST_PATH));
-  const object = schemaManifest.critical_objects[0];
-  const sqlChecksum = manifest.migrations[0].checksum;
+  const object = selectBootstrapCriticalObject(schemaManifest);
+  const sqlChecksum = selectBootstrapMigration(manifest).checksum;
   assert.notEqual(object.fingerprint, sqlChecksum, 'catalog fingerprint differs from SQL byte checksum');
   assert.match(object.fingerprint, /^sha256:[a-f0-9]{64}$/, 'catalog fingerprint is a normalizer sha256');
   assert.equal(sqlChecksum, sha256File(SQL_FILE_PATH), 'SQL checksum is the raw byte checksum');
