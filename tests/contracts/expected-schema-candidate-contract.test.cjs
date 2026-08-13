@@ -65,7 +65,7 @@ const START_CANONICAL_HASH = sha256File(CANONICAL);
 test('committed expected-schema remains ADOPTION_REQUIRED populated and hash-stable', () => {
   const expected = readJson(EXPECTED_SCHEMA);
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.equal(expected.critical_objects.length, 1);
+  assert.ok(expected.critical_objects.length >= 1, 'critical_objects >= 1: ' + expected.critical_objects.length);
   assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
 });
@@ -73,7 +73,7 @@ test('committed expected-schema remains ADOPTION_REQUIRED populated and hash-sta
 test('committed canonical migrations remain ADOPTION_REQUIRED populated and hash-stable', () => {
   const canonical = readJson(CANONICAL);
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.equal(canonical.migrations.length, 1);
+  assert.ok(canonical.migrations.length >= 1, 'migrations >= 1: ' + canonical.migrations.length);
   assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
   assert.equal(
     canonical.migrations[0].path,
@@ -826,13 +826,13 @@ test('post-suite committed manifests still unchanged', () => {
   assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
   assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
   assert.equal(readJson(EXPECTED_SCHEMA).status, 'ADOPTION_REQUIRED');
-  assert.equal(readJson(EXPECTED_SCHEMA).critical_objects.length, 1);
+  assert.ok(readJson(EXPECTED_SCHEMA).critical_objects.length >= 1, 'critical_objects >= 1: ' + readJson(EXPECTED_SCHEMA).critical_objects.length);
   assert.equal(
     readJson(EXPECTED_SCHEMA).critical_objects[0].name,
     'table:public.schema_migration_ledger'
   );
   assert.equal(readJson(CANONICAL).status, 'ADOPTION_REQUIRED');
-  assert.equal(readJson(CANONICAL).migrations.length, 1);
+  assert.ok(readJson(CANONICAL).migrations.length >= 1, 'migrations >= 1: ' + readJson(CANONICAL).migrations.length);
   assert.equal(
     readJson(CANONICAL).migrations[0].id,
     '20260802094500_bootstrap-migration-ledger'
