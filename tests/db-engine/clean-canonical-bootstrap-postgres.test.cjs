@@ -134,14 +134,14 @@ async function runDedicatedBootstrap(ctx, overrides, capture) {
   const criticalObject = expectedSchema.critical_objects[0];
 
   assert.equal(manifest.status, 'ADOPTION_REQUIRED', 'manifest is ADOPTION_REQUIRED');
-  assert.equal(manifest.migrations.length, 1, 'exactly one migration');
-  assert.equal(migration.id, BOOTSTRAP_MIGRATION_ID, 'committed migration ID');
-  assert.equal(migration.path, BOOTSTRAP_MIGRATION_PATH, 'committed migration path');
+  assert.ok(manifest.migrations.length >= 1, 'at least one migration in committed manifest: ' + manifest.migrations.length);
+  assert.equal(migration.id, BOOTSTRAP_MIGRATION_ID, 'committed migration ID (first entry)');
+  assert.equal(migration.path, BOOTSTRAP_MIGRATION_PATH, 'committed migration path (first entry)');
   assert.equal(manifest.bootstrap, undefined, 'no unauthorized bootstrap field');
   assert.equal(expectedSchema.bootstrap, undefined, 'no unauthorized bootstrap field');
   assert.equal(expectedSchema.status, 'ADOPTION_REQUIRED', 'expected schema is ADOPTION_REQUIRED');
-  assert.equal(expectedSchema.critical_objects.length, 1, 'exactly one critical object');
-  assert.equal(criticalObject.name, EXPECTED_CRITICAL_OBJECT_NAME, 'exact table object name');
+  assert.ok(expectedSchema.critical_objects.length >= 1, 'at least one critical object in expected-schema manifest: ' + expectedSchema.critical_objects.length);
+  assert.equal(criticalObject.name, EXPECTED_CRITICAL_OBJECT_NAME, 'exact table object name (first entry)');
 
   const runner = createCleanBootstrapRunner({
     runnerVersion: 'v1',

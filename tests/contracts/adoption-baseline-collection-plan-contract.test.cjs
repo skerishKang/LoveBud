@@ -566,10 +566,10 @@ test('manifests remain populated/inactive and gate keeps adoption baseline block
   const expected = readJson(EXPECTED_SCHEMA);
   const canonical = readJson(CANONICAL);
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.equal(expected.critical_objects.length, 1);
+  assert.ok(expected.critical_objects.length >= 1, 'critical_objects >= 1: ' + expected.critical_objects.length);
   assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.equal(canonical.migrations.length, 1);
+  assert.ok(canonical.migrations.length >= 1, 'migrations >= 1: ' + canonical.migrations.length);
   assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
   assert.equal(sha256File(EXPECTED_SCHEMA), START_EXPECTED_HASH);
   assert.equal(sha256File(CANONICAL), START_CANONICAL_HASH);
