@@ -12,6 +12,13 @@
  * behaviour in headless Chromium. No string-only assertions for
  * geometry/interaction. No new browser package is introduced — the
  * repository's existing Playwright pattern is reused.
+ *
+ * #4013 hermeticity audit: the fixture/asset chain here is fully same-origin
+ * (all CSS `@import` and asset links are relative; `css/global.css` contains
+ * no absolute external URL). `captureBrowserHealth()` additionally installs a
+ * fail-closed external-network boundary so any unexpected external origin is
+ * aborted and recorded with its exact URL instead of silently reaching the
+ * real network.
  */
 
 'use strict';
@@ -23,6 +30,9 @@ const path = require('node:path');
 const http = require('node:http');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const {
+  makeHermeticRouteHandler,
+} = require('../helpers/external-network-hermetic.cjs');
 
 let playwright;
 try {
@@ -712,13 +722,19 @@ function captureConsoleErrors(page) {
  * Collects: pageerror, console error, same-origin requestfailed, and
  * same-origin HTTP responses with status >= 400. `fixtureOrigin` is the
  * explicit same-origin base (e.g. http://127.0.0.1:port) so health is
- * equivalent and independent of page.url() (which may be about:blank). */
-function captureBrowserHealth(page, fixtureOrigin) {
+ * equivalent and independent of page.url() (which may be about:blank).
+ *
+ * #4013 hermeticity: installs a fail-closed external-network boundary on the
+ * page so known external provider/font hosts are fulfilled deterministically
+ * and any unexpected external origin is aborted and recorded with its exact
+ * URL. Same-origin 4xx/request-failure checks below remain strict. */
+async function captureBrowserHealth(page, fixtureOrigin) {
   const result = {
     pageerrors: [],
     consoleErrors: [],
     requestFailures: [],
     responseErrors: [],
+    unexpectedExternal: [],
   };
   page.on('pageerror', error => {
     result.pageerrors.push(String(error));
@@ -742,6 +758,10 @@ function captureBrowserHealth(page, fixtureOrigin) {
       }
     } catch (e) { /* non-HTTP response, skip */ }
   });
+  await page.route('**/*', makeHermeticRouteHandler({
+    fixtureOrigin,
+    onUnexpectedExternal: (url) => result.unexpectedExternal.push(url),
+  }));
   return result;
 }
 
@@ -2526,7 +2546,7 @@ test('#3771 browser: Story media elements preserved across mode entry and naviga
   try {
     context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const health = captureBrowserHealth(page, fixtureOrigin);
+    const health = await captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'domcontentloaded' });
     await waitForFixtureReady(page, MEDIA_FIXTURE_IDS);
@@ -2609,6 +2629,7 @@ test('#3771 browser: Story media elements preserved across mode entry and naviga
     assert.deepEqual(health.consoleErrors, [], 'no console errors during desktop media runtime');
     assert.deepEqual(health.requestFailures, [], 'no same-origin request failures (desktop)');
     assert.deepEqual(health.responseErrors, [], 'no same-origin HTTP >=400 (desktop)');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests (desktop)');
 
     /* horizontal overflow */
     const overflow = await page.evaluate(() => ({
@@ -2642,7 +2663,7 @@ test('#3771 browser: Story media elements preserved (mobile + reduced motion)', 
       hasTouch: true,
     });
     const mPage = await mContext.newPage();
-    const mHealth = captureBrowserHealth(mPage, fixtureOrigin);
+    const mHealth = await captureBrowserHealth(mPage, fixtureOrigin);
     await mPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await mPage.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'domcontentloaded' });
     await waitForFixtureReady(mPage, MEDIA_FIXTURE_IDS);
@@ -2674,6 +2695,7 @@ test('#3771 browser: Story media elements preserved (mobile + reduced motion)', 
     /* (9) browser health on mobile */
     assert.deepEqual(mHealth.pageerrors, [], 'mobile: no page errors');
     assert.deepEqual(mHealth.consoleErrors, [], 'mobile: no console errors');
+    assert.deepEqual(mHealth.unexpectedExternal, [], 'mobile: no unexpected external requests');
     assert.deepEqual(mHealth.requestFailures, [], 'mobile: no same-origin request failures');
     assert.deepEqual(mHealth.responseErrors, [], 'mobile: no same-origin HTTP >=400');
     await mContext.close();
@@ -2685,7 +2707,7 @@ test('#3771 browser: Story media elements preserved (mobile + reduced motion)', 
       reducedMotion: 'reduce',
     });
     const rmPage = await rmContext.newPage();
-    const rmHealth = captureBrowserHealth(rmPage, fixtureOrigin);
+    const rmHealth = await captureBrowserHealth(rmPage, fixtureOrigin);
     await rmPage.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await rmPage.goto(`http://127.0.0.1:${port}/fixture-browse-story-media.html`, { waitUntil: 'domcontentloaded' });
     await waitForFixtureReady(rmPage, MEDIA_FIXTURE_IDS);
@@ -2708,6 +2730,7 @@ test('#3771 browser: Story media elements preserved (mobile + reduced motion)', 
     /* (9) browser health under reduced motion */
     assert.deepEqual(rmHealth.pageerrors, [], 'reduced-motion: no page errors');
     assert.deepEqual(rmHealth.consoleErrors, [], 'reduced-motion: no console errors');
+    assert.deepEqual(rmHealth.unexpectedExternal, [], 'reduced-motion: no unexpected external requests');
     assert.deepEqual(rmHealth.requestFailures, [], 'reduced-motion: no same-origin request failures');
     assert.deepEqual(rmHealth.responseErrors, [], 'reduced-motion: no same-origin HTTP >=400');
     await rmContext.close();
@@ -2755,7 +2778,7 @@ test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens 
   try {
     context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const health = captureBrowserHealth(page, fixtureOrigin);
+    const health = await captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -2864,6 +2887,7 @@ test('#3813 browser: legacy plain init keeps group-0 entry; initialTreeId opens 
     /* health + overflow */
     assert.deepEqual(health.pageerrors, [], 'no page errors');
     assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests');
     assert.deepEqual(health.requestFailures, [], 'no same-origin request failures');
     assert.deepEqual(health.responseErrors, [], 'no same-origin HTTP >=400');
     const overflow = await page.evaluate(() => ({
@@ -2890,7 +2914,7 @@ test('#3813 browser: surface-neutral translation override applies five keys and 
   try {
     context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const health = captureBrowserHealth(page, fixtureOrigin);
+    const health = await captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
     await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -2948,6 +2972,7 @@ test('#3813 browser: surface-neutral translation override applies five keys and 
 
     assert.deepEqual(health.pageerrors, [], 'no page errors');
     assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests');
     await context.close();
     await browser.close();
     await closeServer(server);
@@ -2967,7 +2992,7 @@ test('#3813 browser: initialTreeId entry and preferredTreeId refresh fire exactl
   try {
     context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const health = captureBrowserHealth(page, fixtureOrigin);
+    const health = await captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
     await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -3027,6 +3052,7 @@ test('#3813 browser: initialTreeId entry and preferredTreeId refresh fire exactl
 
     assert.deepEqual(health.pageerrors, [], 'no page errors');
     assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests');
     await context.close();
     await browser.close();
     await closeServer(server);
@@ -3046,7 +3072,7 @@ test('#3813 browser: snapshots are frozen 4-key plain objects with frozen detach
   try {
     context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const health = captureBrowserHealth(page, fixtureOrigin);
+    const health = await captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
     await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -3131,6 +3157,7 @@ test('#3813 browser: snapshots are frozen 4-key plain objects with frozen detach
 
     assert.deepEqual(health.pageerrors, [], 'no page errors');
     assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests');
     await context.close();
     await browser.close();
     await closeServer(server);
@@ -3150,7 +3177,7 @@ test('#3813 browser: animated goTo notifies only after cleanup; blocked/same-gro
   try {
     context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const health = captureBrowserHealth(page, fixtureOrigin);
+    const health = await captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
     await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -3216,6 +3243,7 @@ test('#3813 browser: animated goTo notifies only after cleanup; blocked/same-gro
         && document.querySelector('.browse-story-indicator-current').textContent === '02 / 03';
     });
     assert.deepEqual(health.pageerrors, [], 'callback throw must not escape to pageerror');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests');
     await page.evaluate(() => { window.__throwOnGroupChange = false; });
     await page.evaluate(() => window.__snapshots.length = 0);
     await page.evaluate(() => window.__storyController.goTo(0));
@@ -3233,7 +3261,7 @@ test('#3813 browser: animated goTo notifies only after cleanup; blocked/same-gro
       reducedMotion: 'reduce',
     });
     const rmPage = await rmContext.newPage();
-    const rmHealth = captureBrowserHealth(rmPage, fixtureOrigin);
+    const rmHealth = await captureBrowserHealth(rmPage, fixtureOrigin);
     await rmPage.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
     await rmPage.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
     await rmPage.waitForTimeout(150);
@@ -3253,9 +3281,11 @@ test('#3813 browser: animated goTo notifies only after cleanup; blocked/same-gro
     assert.equal(rmImmediate.dom.wrapperCount, 0, 'reduced-motion has zero transition wrappers');
     assert.deepEqual(rmHealth.pageerrors, [], 'reduced-motion: no page errors');
     assert.deepEqual(rmHealth.consoleErrors, [], 'reduced-motion: no console errors');
+    assert.deepEqual(rmHealth.unexpectedExternal, [], 'reduced-motion: no unexpected external requests');
 
     assert.deepEqual(health.pageerrors, [], 'no page errors');
     assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests');
     await context.close();
     await rmContext.close();
     await browser.close();
@@ -3277,7 +3307,7 @@ test('#3813 browser: card activation and media lifecycle stay intact with the ad
   try {
     context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const health = captureBrowserHealth(page, fixtureOrigin);
+    const health = await captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.removeItem('lovebud:browse:viewMode'));
     await page.goto(`http://127.0.0.1:${port}/fixture-story-adapter.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -3311,6 +3341,7 @@ test('#3813 browser: card activation and media lifecycle stay intact with the ad
 
     assert.deepEqual(health.pageerrors, [], 'no page errors');
     assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests');
     assert.deepEqual(health.requestFailures, [], 'no same-origin request failures');
     assert.deepEqual(health.responseErrors, [], 'no same-origin HTTP >=400');
     await context.close();
@@ -3373,7 +3404,7 @@ test('#3845 browser: Next at the loaded end requests exactly one batch and advan
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
-    const health = captureBrowserHealth(page, fixtureOrigin);
+    const health = await captureBrowserHealth(page, fixtureOrigin);
     await page.addInitScript(() => localStorage.setItem('lovebud:browse:viewMode', 'story'));
     await page.goto(`http://127.0.0.1:${port}/fixture-browse-story.html`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(150);
@@ -3456,6 +3487,7 @@ test('#3845 browser: Next at the loaded end requests exactly one batch and advan
     assert.ok(overflow.scrollWidth <= overflow.clientWidth + 1, 'no horizontal overflow at 1440x900');
     assert.deepEqual(health.pageerrors, [], 'no page errors');
     assert.deepEqual(health.consoleErrors, [], 'no console errors');
+    assert.deepEqual(health.unexpectedExternal, [], 'no unexpected external requests');
     assert.deepEqual(health.requestFailures, [], 'no same-origin request failures');
     assert.deepEqual(health.responseErrors, [], 'no same-origin HTTP >=400');
 
