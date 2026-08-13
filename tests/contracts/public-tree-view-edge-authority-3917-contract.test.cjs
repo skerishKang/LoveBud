@@ -31,6 +31,7 @@ const { pathToFileURL } = require('node:url');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const ROUTE_PATH = path.join(ROOT, 'functions', 'api', 'trees', '[tree_id]', 'views.js');
+const ROUTE_SOURCE = fs.readFileSync(ROUTE_PATH, 'utf8');
 
 const TEST_SECRET = 'test-tree-view-authority-secret-3917';
 
@@ -100,7 +101,6 @@ test('1. successful edge POST forwards a signed anonymous assertion and NO body'
     assert.ok(/^[a-f0-9]{64}$/.test(h['x-lovebud-tree-view-actor-key']), 'actor key is opaque 64-hex digest');
     assert.ok(/^[a-f0-9]{64}$/.test(h['x-lovebud-tree-view-signature']), 'signature is 64-hex digest');
 
-    // The signature must actually verify against the same canonical form.
     const expected = await mod.signAssertion(
       TEST_SECRET,
       'tree-A',
@@ -124,7 +124,6 @@ test('2. 100 rotated client actorKeys collapse to the SAME authoritative edge ac
     const actorKeys = new Set();
     const signatures = new Set();
     for (let i = 0; i < 100; i++) {
-      // Attacker rotates the client body actorKey/actorKind on every request.
       const forgedBody = JSON.stringify({
         actorKey: 'attacker-chosen-' + i,
         actorKind: 'authenticated',
@@ -137,7 +136,6 @@ test('2. 100 rotated client actorKeys collapse to the SAME authoritative edge ac
         }),
         MODAL_ENV
       );
-      // Provide a body only to prove the route ignores it entirely.
       ctx.request.body = forgedBody;
       await mod.onRequestPost(ctx);
     }
@@ -148,7 +146,6 @@ test('2. 100 rotated client actorKeys collapse to the SAME authoritative edge ac
     }
     assert.equal(actorKeys.size, 1, 'same authoritative edge actor across 100 rotated client keys');
     assert.equal(signatures.size, 1, 'same signed assertion across 100 rotated client keys');
-    // The authoritative actor key must NOT equal any attacker-chosen value.
     assert.ok(![...actorKeys][0].startsWith('attacker-chosen-'), 'edge actor ignores client key');
   } finally {
     restore();
@@ -185,7 +182,7 @@ test('4. missing secret → fail closed: no Modal call, no count', async () => {
         url: BASE_URL,
         headers: { 'CF-Connecting-IP': '198.51.100.23' },
       }),
-      { MODAL_BASE_URL: 'https://modal.lovebud.internal' } // no TREE_VIEW_AUTHORITY_SECRET
+      { MODAL_BASE_URL: 'https://modal.lovebud.internal' }
     );
     const response = await mod.onRequestPost(ctx);
     assert.equal(response.status, 503, 'fail-closed 503');
@@ -201,7 +198,7 @@ test('5. missing CF-Connecting-IP → fail closed: no Modal call, no count', asy
   const restore = installFetchCapture(captured);
   try {
     const ctx = makeContext(
-      makeRequest({ url: BASE_URL, headers: {} }), // no CF-Connecting-IP
+      makeRequest({ url: BASE_URL, headers: {} }),
       MODAL_ENV
     );
     const response = await mod.onRequestPost(ctx);
@@ -242,9 +239,47 @@ test('7. raw IP is never present in the forwarded assertion payload', async () =
     const { options } = captured[0];
     const serialized = JSON.stringify(options.headers);
     assert.ok(!serialized.includes('203.0.113.7'), 'raw IP must not appear in forwarded headers');
-    // The actor key is an opaque digest of the IP, never the IP itself.
     assert.notEqual(options.headers['x-lovebud-tree-view-actor-key'], '203.0.113.7');
   } finally {
     restore();
   }
+});
+
+test('8. native Web Request preserves prototype-backed headers through edge authority', async () => {
+  const mod = await loadRoute();
+  const captured = [];
+  const restore = installFetchCapture(captured);
+  try {
+    const request = new Request(BASE_URL, {
+      method: 'POST',
+      headers: { 'CF-Connecting-IP': '203.0.113.7' },
+    });
+    assert.deepEqual(Object.keys(request), [], 'native Request has no enumerable own request fields');
+
+    const response = await mod.onRequestPost(makeContext(request, MODAL_ENV));
+    assert.equal(response.status, 200, 'native Request reaches Modal count proxy');
+    assert.equal(captured.length, 1, 'exactly one Modal call for native Request');
+
+    const { options } = captured[0];
+    assert.equal(options.body, undefined, 'native Request body is not forwarded');
+    assert.equal(options.headers['x-lovebud-tree-view-tree-id'], 'tree-A');
+    assert.equal(options.headers['x-lovebud-tree-view-actor-kind'], 'anonymous');
+    assert.match(options.headers['x-lovebud-tree-view-actor-key'], /^[a-f0-9]{64}$/);
+    assert.match(options.headers['x-lovebud-tree-view-signature'], /^[a-f0-9]{64}$/);
+  } finally {
+    restore();
+  }
+});
+
+test('9. route never strips native Request prototype fields with Object.assign clone', () => {
+  assert.doesNotMatch(
+    ROUTE_SOURCE,
+    /Object\.assign\s*\(\s*Object\.create\(null\)\s*,\s*request\b/,
+    'native Request must be passed intact to authority derivation'
+  );
+  assert.match(
+    ROUTE_SOURCE,
+    /buildSignedAssertionHeaders\(request,\s*env\s*\|\|\s*\{\},\s*treeId\)/,
+    'treeId must be passed separately while preserving the original Request object'
+  );
 });
