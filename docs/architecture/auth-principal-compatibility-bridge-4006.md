@@ -13,8 +13,15 @@ This document is source/contract only. It does not switch the active login provi
 
 ## 2. Current source-of-truth auth path
 
-Current exact-main flow is provider-specific end to end:
+Current exact-main auth state splits into five distinct boundaries:
 
+- **CLIENT TOKEN ACQUISITION BOUNDARY**: provider-neutral seam landed on main; default implementation remains Firebase.
+- **ACTIVE LOGIN PROVIDER**: Firebase.
+- **SERVER VERIFIER**: Firebase-only.
+- **PRODUCT OWNER AUTHORITY**: Firebase legacy subject.
+- **ENTITLEMENT AUTHORITY**: Firestore keyed by Firebase UID.
+
+The active runtime flow is Firebase end to end:
 ```text
 browser Firebase currentUser
   -> Firebase ID token
@@ -29,15 +36,17 @@ browser Firebase currentUser
 
 ### 2.1 Client token preparation
 
-`js/api/base-api-fetch.js` currently:
+`js/api/base-api-fetch.js` on current main exposes a provider-neutral client token seam:
 
-- resolves expected auth UID from live `firebase.auth().currentUser` or confirmed auth cache;
-- obtains `getIdTokenResult()` / `getIdToken()` from Firebase;
-- stores a session-scoped token record containing Firebase `uid`;
-- rejects a cached token if its stored UID differs from the currently expected Firebase UID;
+- `getAuthTokenProvider()` selects the active token provider;
+- `window.LoveBudAuthTokenProvider` is the injection seam for a non-default provider;
+- the default/active provider adapter remains `createFirebaseAuthTokenProvider()`, which resolves the principal from live `firebase.auth().currentUser`;
+- the active provider exposes `getCurrentPrincipal()` and `getAccessToken()`;
+- principal/token mismatch is fail-closed, and a missing token `principalId` is also fail-closed;
+- the session-scoped token cache record keeps a `uid` field as a Phase-A compatibility shape;
 - clears confirmed auth state on authenticated 401 behavior.
 
-This is a Firebase identity contract, not merely a generic Bearer-token transport.
+The default provider is Firebase. This is a provider-neutral transport with a Firebase default — it is **not** Neon login activation and **not** a stable account ID migration.
 
 ### 2.2 Modal verification
 
@@ -242,9 +251,9 @@ New Neon-only accounts must not receive private-storage access by inventing a Fi
 
 ## 10. Client token/cache transition
 
-The existing client token cache contains Firebase `uid` and compares it against Firebase `currentUser`.
+The provider-neutral client seam is already on current main: `getAuthTokenProvider()` / `window.LoveBudAuthTokenProvider` exist, the default Firebase provider serves the current Firebase `currentUser` as principal, and the cache record's `uid` field is retained as a Phase-A compatibility shape. The injected-provider contract fails closed on principal/token coherence and on a missing token `principalId`.
 
-A provider-neutral client layer will eventually need a confirmed principal/session abstraction instead of `resolveExpectedAuthUid()`.
+A later provider-neutral session path can replace `resolveExpectedAuthUid()` with a confirmed principal/session abstraction when Neon client activation actually lands. This is not a stable account ID migration and not Neon login activation.
 
 Target cache metadata should be provider-neutral, for example conceptually:
 
@@ -301,6 +310,8 @@ No new-account Product writes yet.
 ### Phase D — provider-neutral browser session/token path
 
 Transition the client auth/token cache without changing Product ownership or entitlement semantics in the same slice.
+
+**Landed foundation vs. target phase:** the client provider-neutral seam (Phase A of the client work, #4010) is already on current main — `getAuthTokenProvider()` / `window.LoveBudAuthTokenProvider`, Firebase default adapter, fail-closed principal/token coherence, and the `uid`-shaped compatibility cache record. That is a foundation only; Phase D as a whole (full provider-neutral session path with a Neon-capable client) is **not complete**, and Neon client provider activation remains NOT DONE.
 
 ### Phase E — entitlement authority migration
 
