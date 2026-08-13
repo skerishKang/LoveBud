@@ -1,3 +1,5 @@
+import { fetchModalWithTimeout, isModalTimeoutError } from '../../_shared/modal-fetch.js';
+
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
@@ -96,6 +98,48 @@ function withPublicTreeCacheStatus(response, status) {
   });
 }
 
+function buildModalUnavailableResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-degraded': 'modal-unavailable'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
+  return new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers });
+}
+
+function buildModalTimeoutResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-route-status': 'modal-timeout'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), { status: 504, headers });
+}
+
+async function fetchTreeModal(target, fetchOptions, requestId = null) {
+  try {
+    return {
+      response: await fetchModalWithTimeout(target.toString(), fetchOptions),
+      errorResponse: null
+    };
+  } catch (error) {
+    return {
+      response: null,
+      errorResponse: isModalTimeoutError(error)
+        ? buildModalTimeoutResponse(requestId)
+        : buildModalUnavailableResponse(requestId)
+    };
+  }
+}
+
 export async function onRequestGet(context) {
   const { request, env } = context;
   const requestId = getOrCreateRequestId(request);
@@ -115,26 +159,24 @@ export async function onRequestGet(context) {
   // Authenticated requests: route through owner/private authority, cache-independent
   if (authHeader) {
     const primaryTarget = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
-    let response;
-    try {
-      response = await fetch(primaryTarget.toString(), {
-        headers: {
-          accept: 'application/json',
-          authorization: authHeader
-        }
-      });
-
-      if (response.status === 404) {
-        const publicTarget = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
-        response = await fetch(publicTarget.toString(), {
-          headers: {
-            accept: 'application/json'
-          }
-        });
+    const primary = await fetchTreeModal(primaryTarget, {
+      headers: {
+        accept: 'application/json',
+        authorization: authHeader
       }
-    } catch (e) {
-      const errResp = new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers: { 'content-type': 'application/json' } });
-      return await withUpstreamHeaderAndId(errResp, 'modal', requestId);
+    }, requestId);
+    if (primary.errorResponse) return primary.errorResponse;
+
+    let response = primary.response;
+    if (response.status === 404) {
+      const publicTarget = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
+      const fallback = await fetchTreeModal(publicTarget, {
+        headers: {
+          accept: 'application/json'
+        }
+      }, requestId);
+      if (fallback.errorResponse) return fallback.errorResponse;
+      response = fallback.response;
     }
 
     const finalResp = withPublicTreeCacheStatus(response, 'bypass-auth');
@@ -145,24 +187,19 @@ export async function onRequestGet(context) {
   // No explicit Cache API persistence: a Tree's visibility may be revoked at any
   // time, and a POP-local cache entry could keep serving a stale public body.
   const targetUrl = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
-  let modalResponse;
-  try {
-    modalResponse = await fetch(targetUrl.toString(), {
-      headers: {
-        accept: 'application/json'
-      }
-    });
-  } catch (e) {
-    const errResp = new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers: { 'content-type': 'application/json' } });
-    return await withUpstreamHeaderAndId(errResp, 'modal', requestId);
-  }
+  const result = await fetchTreeModal(targetUrl, {
+    headers: {
+      accept: 'application/json'
+    }
+  }, requestId);
+  if (result.errorResponse) return result.errorResponse;
 
   // Forward status/body unchanged (404/403/5xx pass through); never cache.
-  const headers = new Headers(modalResponse.headers);
+  const headers = new Headers(result.response.headers);
   headers.set('Cache-Control', 'no-store');
-  const freshResp = new Response(modalResponse.body, {
-    status: modalResponse.status,
-    statusText: modalResponse.statusText,
+  const freshResp = new Response(result.response.body, {
+    status: result.response.status,
+    statusText: result.response.statusText,
     headers
   });
   return await withUpstreamHeaderAndId(freshResp, 'modal', requestId);
@@ -203,7 +240,7 @@ export async function onRequestPut(context) {
 
   const treeId = context.params?.id;
   const target = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
-  const response = await fetch(target.toString(), {
+  const result = await fetchTreeModal(target, {
     method: 'PUT',
     headers: {
       accept: 'application/json',
@@ -214,8 +251,9 @@ export async function onRequestPut(context) {
     },
     body: bodyResult.body
   });
+  if (result.errorResponse) return result.errorResponse;
 
-  return withModalHeader(response);
+  return withModalHeader(result.response);
 }
 
 export async function onRequestDelete(context) {
@@ -233,7 +271,7 @@ export async function onRequestDelete(context) {
 
   const treeId = context.params?.id;
   const target = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
-  const response = await fetch(target.toString(), {
+  const result = await fetchTreeModal(target, {
     method: 'DELETE',
     headers: {
       accept: 'application/json',
@@ -242,6 +280,7 @@ export async function onRequestDelete(context) {
         : {})
     }
   });
+  if (result.errorResponse) return result.errorResponse;
 
-  return withModalHeader(response);
+  return withModalHeader(result.response);
 }
