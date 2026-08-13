@@ -4195,6 +4195,35 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/youtube-playlist-preview-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the real production preview UI and client wrapper (js/import/youtube-playlist-preview-ui.js, js/api/import-youtube-playlist-preview.js, css/global.css, css/my-trees.css) in Playwright Chromium (desktop + mobile) against a local HTTP server with the preview provider route mocked via a stubbed fetch. Asserts #3914 preview flow: accessible non-permanently-hidden trigger with aria-expanded + focus management, accepted-source restriction (URL-looking input stays source, bare IDs become playlistId), ordered success preview with explicit unavailable/partial states and position preservation, deterministic placeholder for null thumbnails, 404-thumbnail load-failure fallback to the placeholder with explicit THUMBNAIL_UNAVAILABLE state and no multi-host retry, bounded error + edit/retry, and full 50-item reachability via bounded scrolling on desktop and mobile. No real Google API call, no network beyond the in-process static server, no DB, no Production mutation.",
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-client-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production client wrapper (js/api/import-youtube-playlist-preview.js, a browser IIFE) inside a vm sandbox with mocked fetch, timers, and a stubbed auth pipeline. Verifies same-origin route targeting (never a Google endpoint), Authorization acquisition, bounded JSON body, AbortController signal, normalized envelope errors, FAIL-CLOSED handling of non-2xx responses with and without envelopes, FAIL-CLOSED handling of non-canonical 2xx responses, PROVIDER_TIMEOUT on abort, and validateSourceIdentity exactly-one semantics. No network, no DB, no Production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-provider-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Static source assertions plus an executed fake Python behavior path: the real modal_compute/youtube_playlist_preview.py provider module is imported in a local python3 subprocess (spawnSync, no network) with the network layer monkeypatched (fake opener / fake provider responses). Covers parser acceptance/rejection (scheme/host/path/ID shape), canonical item-state derivation (UNKNOWN for unexpected privacy status, METADATA_PARTIAL for missing videoId/thumbnail), unsupported-400 playlistOperationUnsupported normalization, not-found/quota/inaccessible/timeout normalization, malformed nested provider evidence -> bounded INTERNAL_PREVIEW_ERROR, provider call ceiling = 2 with zero retry, source-order preservation, unavailable items kept, 50-item ceiling, truncated flag, and zero write behavior. No real YouTube request, no DB, no Production.",
+      "capabilities": [
+        "child_process"
+      ]
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-route-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Imports the production Cloudflare Pages Function (functions/api/import/youtube/playlist/preview.js, ESM) and executes it with real Request objects and a mocked global fetch to a fake Modal endpoint. Verifies the route is a thin same-origin proxy: exactly-one source/playlistId edge identity rule (no silent precedence), 4KB body bound, content-type/method validation, Authorization header forwarding verbatim (never verified on the edge), fixed Modal preview endpoint targeting, bounded CONFIGURATION_REQUIRED / PROVIDER_UNAVAILABLE / PROVIDER_TIMEOUT failures, and Modal envelope pass-through. Asserts the edge contains no provider endpoint/secret and never fetches the user-supplied URL. No network, no DB, no Production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/routes/detail-alias-consistency.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -4992,6 +5021,13 @@
       "defaultCi": false,
       "layer": "SUPPLEMENTAL_PYTHON",
       "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/test_youtube_playlist_preview_route_3914.py",
+      "defaultCi": false,
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script. Drives the Modal preview endpoint (modal_compute/app.py post_youtube_playlist_preview) through the real FastAPI TestClient with auth/provider seams patched (same canonical pattern as tests/contracts/test_fork_tree.py) to prove bounded 401/503 auth envelopes with zero provider key/metadata/items calls, preserved 503 dependency-outage taxonomy (#3972), raw auth detail absence, and verified-auth progression to provider seams. No real Firebase, no real YouTube network call.",
       "capabilities": []
     },
     {

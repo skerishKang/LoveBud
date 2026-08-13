@@ -72,6 +72,14 @@ from modal_compute.hub_layouts import (
     fetch_hub_layout,
 )
 from modal_compute.social_errors import SocialWriteError, SOCIAL_ERROR_CODES
+from modal_compute.youtube_playlist_preview import (
+    PlaylistPreviewError,
+    fetch_playlist_items,
+    fetch_playlist_metadata,
+    normalize_playlist_preview,
+    parse_playlist_source,
+    resolve_provider_api_key,
+)
 
 
 def _allowed_origins() -> list[str]:
@@ -141,6 +149,14 @@ async def social_write_error_handler(request: Request, exc: SocialWriteError) ->
         status_code=exc.status_code,
         content=content,
         headers=headers if headers else None,
+    )
+
+
+@web_app.exception_handler(PlaylistPreviewError)
+async def playlist_preview_error_handler(request: Request, exc: PlaylistPreviewError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"ok": False, "error": {"code": exc.code, "message": exc.message}},
     )
 
 
@@ -641,6 +657,89 @@ def get_hub_layout(
     return fetch_hub_layout(tree_id, user["uid"])
 
 
+@web_app.post("/modal/private/import/youtube/playlist/preview")
+async def post_youtube_playlist_preview(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    """Authenticated read-only public YouTube playlist preview (first slice).
+
+    Verified auth (`require_firebase_user`) MUST succeed before any provider
+    call. Header presence alone is never authentication. The provider key is
+    resolved only after a verified principal exists, so every auth failure
+    (missing / malformed / invalid / expired token, verifier unavailable)
+    keeps the provider call count at 0.
+    """
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/private/import/youtube/playlist/preview",
+        method="POST",
+    )
+    try:
+        try:
+            user = require_firebase_user(authorization)
+        except HTTPException as error:
+            # Preserve the sanitized auth dependency taxonomy: #3972 raises
+            # HTTPException(503) when the trusted Firebase cert dependency is
+            # unavailable. Never collapse that 503 back to 401 and never
+            # surface the raw auth detail (network/cert internals) verbatim.
+            if error.status_code >= 500:
+                raise PlaylistPreviewError(
+                    "UNAUTHORIZED",
+                    "Authentication service is temporarily unavailable.",
+                    status_code=503,
+                ) from error
+            raise PlaylistPreviewError(
+                "UNAUTHORIZED", "Authentication is required.", status_code=401
+            ) from error
+        except RuntimeError as error:
+            # Legacy fail-closed fallback (verifier dependency unavailable):
+            # provider key resolution and provider calls stay 0.
+            raise PlaylistPreviewError(
+                "UNAUTHORIZED",
+                "Authentication service is temporarily unavailable.",
+                status_code=503,
+            ) from error
+
+        payload = await parse_json_body(request)
+
+        source_field = payload.get("source")
+        playlist_id_field = payload.get("playlistId")
+        if (source_field is not None) == (playlist_id_field is not None):
+            raise PlaylistPreviewError(
+                "INVALID_PLAYLIST_SOURCE",
+                "Provide exactly one of source or playlistId.",
+            )
+
+        source = playlist_id_field if playlist_id_field is not None else source_field
+        playlist_id = parse_playlist_source(source)
+
+        api_key = resolve_provider_api_key()
+        metadata = fetch_playlist_metadata(playlist_id, api_key)
+        items_result = fetch_playlist_items(playlist_id, api_key)
+        result = normalize_playlist_preview(metadata, items_result)
+
+        logger.log_success(status_code=200)
+        return result
+    except HTTPException as error:
+        # parse_json_body failures become bounded source errors.
+        raise PlaylistPreviewError(
+            "INVALID_PLAYLIST_SOURCE",
+            str(getattr(error, "detail", None) or "Request body is invalid."),
+            status_code=error.status_code,
+        ) from error
+    except PlaylistPreviewError:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise PlaylistPreviewError(
+            "INTERNAL_PREVIEW_ERROR",
+            "Preview could not be completed.",
+            status_code=500,
+        ) from None
+
+
 # ── Public (guest-safe) moment social read endpoints ──────────────────────────
 
 @web_app.get("/modal/public/trees/{tree_id}/memories/{memory_id}/reactions")
@@ -703,6 +802,7 @@ def get_public_memory_comments(
     secrets=[
         modal.Secret.from_name("lovebud-db"),
         modal.Secret.from_name("lovebud-firebase-admin"),
+        modal.Secret.from_name("lovebud-youtube-data-api"),
     ],
 )
 @modal.asgi_app()
