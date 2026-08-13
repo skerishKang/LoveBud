@@ -127,7 +127,7 @@ test('canonical governance defines evidence levels and browser permission model'
 test('canonical governance defines separated Web roles with conditional Local Validation', () => {
   const src = read(PATHS.governance);
   assertContainsAll(src, ['Web CTO', 'Web Developer', 'Local Validation when required'], 'role model');
-  assert.match(src, /separate Web Developer implementation/i);
+  assert.match(src, /separate Web Developer or implementation owner/i);
   assert.match(src, /Local Validation only when required/i);
   assert.match(src, /Web CTO independent final review/i);
   assert.match(src, /same production change.*implemented and finally approved/is);
