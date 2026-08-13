@@ -41,14 +41,18 @@ const INSERT_TREE_SQL = `
   RETURNING id;
 `;
 
+// #3924: the single bounded LIMIT 201 FOR SHARE snapshot is the completeness
+// authority. created_at ties are broken by id so boundary membership is
+// deterministic; a 201st row proves the source exceeds the supported max of
+// 200 and the whole fork is rejected before any destination write.
 const FETCH_SOURCE_MEMORIES_SQL = `
   SELECT id, parent_id, title, memo, artist, source, source_url, source_type,
          thumbnail, emotion_tags, timestamp, channel_id, channel_name, channel_url
   FROM memories
   WHERE tree_id = $1
     AND visibility = 'public'
-  ORDER BY created_at ASC
-  LIMIT 200
+  ORDER BY created_at ASC, id ASC
+  LIMIT 201
   FOR SHARE;
 `;
 
@@ -125,7 +129,7 @@ function openPeerClient(cfg, dbName) {
   });
 }
 
-async function seedSource(client, sourceId, ownerId) {
+async function seedSource(client, sourceId, ownerId, publicCount = 3, privateCount = 1, opts = {}) {
   await client.query(SCHEMA_SQL);
   await client.query(
     `INSERT INTO public.trees (id, owner_id, title, visibility, created_at, updated_at)
@@ -133,21 +137,29 @@ async function seedSource(client, sourceId, ownerId) {
     [sourceId, ownerId]
   );
   const publicIds = [];
-  for (let i = 0; i < 3; i++) {
+  const baseTs = new Date('2026-01-01T00:00:00Z');
+  for (let i = 0; i < publicCount; i++) {
     const id = uuid();
     publicIds.push(id);
+    // Distinct per-row created_at (with a small cycle so ties exist), unless
+    // opts.sameCreatedAt forces an exact tie for determinism checks.
+    const created = opts.sameCreatedAt
+      ? baseTs
+      : new Date(baseTs.getTime() + (i % 60) * 1000);
     await client.query(
       `INSERT INTO public.memories (id, tree_id, visibility, title, created_at, updated_at)
-       VALUES ($1, $2, 'public', $3, NOW(), NOW())`,
-      [id, sourceId, `public-memory-${i}`]
+       VALUES ($1, $2, 'public', $3, $4, NOW())`,
+      [id, sourceId, `public-memory-${i}`, created]
     );
   }
   const privateId = uuid();
-  await client.query(
-    `INSERT INTO public.memories (id, tree_id, visibility, title, created_at, updated_at)
-     VALUES ($1, $2, 'private', 'private-memory', NOW(), NOW())`,
-    [privateId, sourceId]
-  );
+  for (let i = 0; i < privateCount; i++) {
+    await client.query(
+      `INSERT INTO public.memories (id, tree_id, visibility, title, created_at, updated_at)
+       VALUES ($1, $2, 'private', $3, NOW(), NOW())`,
+      [uuid(), sourceId, `private-memory-${i}`]
+    );
+  }
   return { publicIds, privateId };
 }
 
@@ -198,13 +210,30 @@ async function runSerializedFork(client, sourceId, ownerId, candidateDestId) {
       return { id: String(dup.rows[0].id), created: false, duplicate: true };
     }
 
+    // #3924 authority: the bounded LIMIT 201 FOR SHARE snapshot is taken
+    // BEFORE any destination write. More than 200 public Memories reject the
+    // whole fork (zero destination rows) instead of silently copying 200.
+    const memories = await client.query(FETCH_SOURCE_MEMORIES_SQL, [sourceId]);
+    if (memories.rows.length > 200) {
+      const err = new Error('FORK_SOURCE_TOO_LARGE');
+      err.code = 'FORK_SOURCE_TOO_LARGE';
+      throw err;
+    }
+
     await client.query(
       INSERT_TREE_SQL,
       [candidateDestId, ownerId, 'Source Tree (복사본)', sourceId]
     );
-    const memories = await client.query(FETCH_SOURCE_MEMORIES_SQL, [sourceId]);
+
+    // Parent rewriting: a child whose parent is inside the copied snapshot
+    // must point at the copied parent's new id.
+    const idMap = new Map();
     for (const mem of memories.rows) {
-      await insertMemoryCopy(client, candidateDestId, null, mem);
+      idMap.set(String(mem.id), uuid());
+    }
+    for (const mem of memories.rows) {
+      const parentId = mem.parent_id ? idMap.get(String(mem.parent_id)) || null : null;
+      await insertMemoryCopy(client, candidateDestId, parentId, mem, idMap.get(String(mem.id)));
     }
     await client.query('COMMIT');
     return { id: candidateDestId, created: true, duplicate: false };
@@ -461,6 +490,252 @@ test('#3925: different fork identities use distinct advisory keys and do not ser
     } finally {
       await a.end().catch(() => {});
       await b.end().catch(() => {});
+    }
+  });
+});
+
+test('#3924 Case A: 199 public Memories copy in full', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_199', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'fork-owner-199';
+    await seedSource(client, sourceId, 'source-owner', 199, 0);
+
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      const result = await runSerializedFork(forkConn, sourceId, ownerId, uuid());
+      assert.equal(result.created, true);
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.memories WHERE tree_id=$1`, [result.id]),
+        199
+      );
+      pass('#3924 Case A 199');
+    } finally {
+      await forkConn.end().catch(() => {});
+    }
+  });
+});
+
+test('#3924 Case B: exactly 200 public Memories copy in full', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_200', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'fork-owner-200';
+    await seedSource(client, sourceId, 'source-owner', 200, 0);
+
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      const result = await runSerializedFork(forkConn, sourceId, ownerId, uuid());
+      assert.equal(result.created, true);
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.memories WHERE tree_id=$1`, [result.id]),
+        200
+      );
+      pass('#3924 Case B exactly 200');
+    } finally {
+      await forkConn.end().catch(() => {});
+    }
+  });
+});
+
+test('#3924 Case C: exactly 201 public Memories reject with zero destination rows', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_201', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'fork-owner-201';
+    await seedSource(client, sourceId, 'source-owner', 201, 0);
+
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      await assert.rejects(
+        runSerializedFork(forkConn, sourceId, ownerId, uuid()),
+        /FORK_SOURCE_TOO_LARGE/
+      );
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.trees WHERE forked_from_tree_id=$1`, [sourceId]),
+        0,
+        'over-limit must leave zero destination Trees'
+      );
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.memories WHERE tree_id<>$1`, [sourceId]),
+        0,
+        'over-limit must leave zero destination Memories'
+      );
+      pass('#3924 Case C exactly 201 reject');
+    } finally {
+      await forkConn.end().catch(() => {});
+    }
+  });
+});
+
+test('#3924 Case D: >201 public Memories reject with the same bounded LIMIT 201 proof', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_over', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'fork-owner-over';
+    await seedSource(client, sourceId, 'source-owner', 205, 0);
+
+    // The snapshot itself stays bounded: a direct query returns exactly 201
+    // rows for a 205-row source, proving no unbounded fetch.
+    const snapshot = await client.query(FETCH_SOURCE_MEMORIES_SQL, [sourceId]);
+    assert.equal(snapshot.rows.length, 201, 'snapshot must remain bounded at LIMIT 201');
+
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      await assert.rejects(
+        runSerializedFork(forkConn, sourceId, ownerId, uuid()),
+        /FORK_SOURCE_TOO_LARGE/
+      );
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.trees WHERE forked_from_tree_id=$1`, [sourceId]),
+        0
+      );
+      pass('#3924 Case D >201 bounded reject');
+    } finally {
+      await forkConn.end().catch(() => {});
+    }
+  });
+});
+
+test('#3924 Case E: private Memories do not count toward the limit', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_private_not_counted', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'fork-owner-private';
+    // 200 public + 30 private must still fork successfully: only public rows count.
+    await seedSource(client, sourceId, 'source-owner', 200, 30);
+
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      const result = await runSerializedFork(forkConn, sourceId, ownerId, uuid());
+      assert.equal(result.created, true);
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.memories WHERE tree_id=$1`, [result.id]),
+        200,
+        'exactly the 200 public Memories copy; private ones never count or copy'
+      );
+      pass('#3924 Case E private excluded from count');
+    } finally {
+      await forkConn.end().catch(() => {});
+    }
+  });
+});
+
+test('#3924 Case F: 201 public + arbitrary private still rejects', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_201_with_private', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'fork-owner-201p';
+    await seedSource(client, sourceId, 'source-owner', 201, 5);
+
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      await assert.rejects(
+        runSerializedFork(forkConn, sourceId, ownerId, uuid()),
+        /FORK_SOURCE_TOO_LARGE/
+      );
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.trees WHERE forked_from_tree_id=$1`, [sourceId]),
+        0
+      );
+      pass('#3924 Case F 201 + private reject');
+    } finally {
+      await forkConn.end().catch(() => {});
+    }
+  });
+});
+
+test('#3924 Case G: same-created_at rows keep a deterministic (created_at, id) boundary', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_tie', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    await seedSource(client, sourceId, 'source-owner', 210, 0, { sameCreatedAt: true });
+
+    const snap1 = await client.query(FETCH_SOURCE_MEMORIES_SQL, [sourceId]);
+    const snap2 = await client.query(FETCH_SOURCE_MEMORIES_SQL, [sourceId]);
+    assert.equal(snap1.rows.length, 201);
+    assert.equal(snap2.rows.length, 201);
+    assert.deepEqual(
+      snap1.rows.map((r) => String(r.id)),
+      snap2.rows.map((r) => String(r.id)),
+      'identical tie set must produce an identical snapshot across runs'
+    );
+    // The full row set is ordered by (created_at, id); the snapshot must be a
+    // prefix of that deterministic order, not an arbitrary 201.
+    const all = await client.query(
+      `SELECT id FROM public.memories WHERE tree_id=$1 AND visibility='public' ORDER BY created_at ASC, id ASC`,
+      [sourceId]
+    );
+    assert.deepEqual(
+      snap1.rows.map((r) => String(r.id)),
+      all.rows.slice(0, 201).map((r) => String(r.id)),
+      'LIMIT 201 must be the deterministic (created_at, id) prefix'
+    );
+    pass('#3924 Case G deterministic tie boundary');
+  });
+});
+
+test('#3924 Case H: accepted snapshot rewrites parent ids inside the copy', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_parent_rewrite', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'fork-owner-parent';
+    const { publicIds } = await seedSource(client, sourceId, 'source-owner', 20, 0);
+    // Link memory[1] as a child of memory[0] inside the copied snapshot.
+    await client.query(
+      `UPDATE public.memories SET parent_id=$1 WHERE id=$2`,
+      [publicIds[0], publicIds[1]]
+    );
+
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      const result = await runSerializedFork(forkConn, sourceId, ownerId, uuid());
+      assert.equal(result.created, true);
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.memories WHERE tree_id=$1`, [result.id]),
+        20
+      );
+      // Exactly one parent-child relation exists in the source (memory[1] is
+      // the child of memory[0]); it must survive the copy with rewritten ids.
+      const rel = await client.query(
+        `SELECT c.parent_id AS child_parent, p.id AS parent_id
+         FROM public.memories c
+         JOIN public.memories p ON p.id = c.parent_id
+         WHERE c.tree_id=$1`,
+        [result.id]
+      );
+      assert.equal(rel.rows.length, 1, 'copied child must resolve to the copied parent');
+      assert.equal(String(rel.rows[0].child_parent), String(rel.rows[0].parent_id));
+      assert.notEqual(String(rel.rows[0].parent_id), String(publicIds[0]), 'parent id must be rewritten to a new destination id');
+      pass('#3924 Case H parent rewrite integrity');
+    } finally {
+      await forkConn.end().catch(() => {});
+    }
+  });
+});
+
+test('#3924 Case I: duplicate guard precedes the limit - canonical fork returned for an over-limit source', { timeout: 60000 }, async () => {
+  await withDisposableDb('fork_completeness_duplicate_overlimit', null, async ({ cfg, client, dbName }) => {
+    const sourceId = uuid();
+    const ownerId = 'fork-owner-dup';
+    await seedSource(client, sourceId, 'source-owner', 250, 0);
+    // A canonical destination already exists for this over-limit source.
+    const canonicalId = uuid();
+    await client.query(INSERT_TREE_SQL, [canonicalId, ownerId, 'Source Tree (복사본)', sourceId]);
+
+    const forkConn = openPeerClient(cfg, dbName);
+    try {
+      await forkConn.connect();
+      const result = await runSerializedFork(forkConn, sourceId, ownerId, uuid());
+      assert.equal(result.created, false, 'must not create a second destination');
+      assert.equal(result.duplicate, true, 'must return the canonical destination as duplicate');
+      assert.equal(result.id, canonicalId, 'duplicate must be the canonical destination');
+      assert.equal(
+        await countRows(client, `SELECT count(*)::int AS count FROM public.trees WHERE owner_id=$1 AND forked_from_tree_id=$2`, [ownerId, sourceId]),
+        1
+      );
+      pass('#3924 Case I duplicate precedes limit');
+    } finally {
+      await forkConn.end().catch(() => {});
     }
   });
 });

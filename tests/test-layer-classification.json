@@ -41,6 +41,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-fork-completeness-3924.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree snapshots public source Memories with a single bounded ORDER BY created_at ASC, id ASC LIMIT 201 FOR SHARE read before any destination write; 200 supported rows copy in full and a 201st row rejects the fork with 409 FORK_SOURCE_TOO_LARGE / supportedMax 200 BEFORE the destination Tree INSERT; forbids LIMIT 200 restoration, COUNT(*) preflight, and any second DB connection, and verifies the #3925 advisory-lock / #3952 / #3956 ordering survives the snapshot reorder; pure static source-read, no execution, no network, no DB (#3924).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/test-suite-count-authority-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads fixed repository-owned classification/registry/package sources and executes the pure canonical test-suite count authority with synthetic fixtures and negative controls; derives deterministic frozen default-CI counts and supplemental totals without network, child process, filesystem write, database, browser, or Production access (#3838).",
@@ -5004,7 +5010,7 @@
       "path": "tests/db-engine/fork-public-tree-visibility-concurrency-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections to prove fork_public_tree FOR SHARE serialization: revocation-first (fork observes private, zero destination rows), fork-lock-first (visibility UPDATE blocks until fork commit), and mid-copy rollback (no partial destination). Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
+      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections to prove fork_public_tree FOR SHARE serialization: revocation-first (fork observes private, zero destination rows), fork-lock-first (visibility UPDATE blocks until fork commit), mid-copy rollback (no partial destination), #3925 same-identity/different-identity advisory concurrency, and #3924 completeness (199/200 copy in full; exactly 201 and >201 reject with FORK_SOURCE_TOO_LARGE and zero destination rows; private rows excluded from the count; deterministic (created_at, id) tie boundary; parent-id rewrite integrity; duplicate guard still precedes the limit). Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
       "capabilities": []
     },
     {
