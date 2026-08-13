@@ -1,4 +1,5 @@
 import { validateWritePayload } from '../_shared/legacy-key-guard.js';
+import { fetchModalWithTimeout, isModalTimeoutError } from '../_shared/modal-fetch.js';
 
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
@@ -100,6 +101,38 @@ function buildModalUnavailableResponse(requestId = null) {
   });
 }
 
+function buildModalTimeoutResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-route-status': 'modal-timeout'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), {
+    status: 504,
+    headers
+  });
+}
+
+async function fetchTreeModal(target, fetchOptions, requestId = null) {
+  try {
+    return {
+      response: await fetchModalWithTimeout(target.toString(), fetchOptions),
+      errorResponse: null
+    };
+  } catch (error) {
+    return {
+      response: null,
+      errorResponse: isModalTimeoutError(error)
+        ? buildModalTimeoutResponse(requestId)
+        : buildModalUnavailableResponse(requestId)
+    };
+  }
+}
+
 export async function onRequestGet(context) {
   const request = context.request;
   const requestId = getOrCreateRequestId(request);
@@ -129,16 +162,12 @@ export async function onRequestGet(context) {
   }
   modalRequestHeaders[REQUEST_ID_HEADER] = requestId;
 
-  let response;
-  try {
-    response = await fetch(target.toString(), {
-      headers: modalRequestHeaders
-    });
-  } catch (error) {
-    return buildModalUnavailableResponse(requestId);
-  }
+  const result = await fetchTreeModal(target, {
+    headers: modalRequestHeaders
+  }, requestId);
+  if (result.errorResponse) return result.errorResponse;
 
-  return await withModalHeaderAndId(response, requestId);
+  return await withModalHeaderAndId(result.response, requestId);
 }
 
 function hasAuthorizationHeader(request) {
@@ -183,22 +212,18 @@ export async function onRequestPost(context) {
     });
   }
 
-  let response;
-  try {
-    response = await fetch(new URL('/modal/private/trees', modalBaseUrl).toString(), {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'content-type': request.headers.get('content-type') || 'application/json',
-        ...(request.headers.get('authorization')
-          ? { authorization: request.headers.get('authorization') }
-          : {})
-      },
-      body: bodyResult.body
-    });
-  } catch (error) {
-    return buildModalUnavailableResponse();
-  }
+  const result = await fetchTreeModal(new URL('/modal/private/trees', modalBaseUrl), {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': request.headers.get('content-type') || 'application/json',
+      ...(request.headers.get('authorization')
+        ? { authorization: request.headers.get('authorization') }
+        : {})
+    },
+    body: bodyResult.body
+  });
+  if (result.errorResponse) return result.errorResponse;
 
-  return withModalHeader(response);
+  return withModalHeader(result.response);
 }
