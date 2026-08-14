@@ -65,6 +65,10 @@ from modal_compute.tree_likes import (
 )
 from modal_compute.tree_comments import create_tree_comment, fetch_tree_comments
 from modal_compute.tree_views import record_public_tree_view, fetch_public_tree_view_count
+from modal_compute.tree_view_authority import (
+    TreeViewAuthorityError,
+    verify_tree_view_assertion,
+)
 from modal_compute.hub_layouts import (
     hub_layout_not_found_handler,
     HubLayoutNotFoundError,
@@ -306,13 +310,25 @@ async def post_public_tree_view(
         route="/modal/public/trees/id/views",
         method="POST",
     )
+    # Verify the signed edge assertion BEFORE any DB connection, body parsing, or
+    # count mutation. Fail closed on any invalid/missing assertion (Issue #3917):
+    # no JSON is parsed and no count occurs. The browser never supplies actor
+    # identity; the edge-derived anonymous actor is the only authority.
     try:
-        payload = await parse_json_body(request)
+        authority = verify_tree_view_assertion(request.headers, tree_id)
+    except TreeViewAuthorityError as exc:
+        logger.log_error(
+            status_code=exc.status_code,
+            error_category="TREE_VIEW_AUTHORITY_REJECTED",
+            failure_phase="view-authority",
+        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.code)
+    try:
         result = record_public_tree_view(
             tree_id,
-            payload.get("actorKey", ""),
-            payload.get("actorKind", "anonymous"),
-            payload.get("source", "public_tree_detail"),
+            authority["actor_key"],
+            authority["actor_kind"],
+            authority["source"],
         )
         logger.log_success(status_code=200)
         return result

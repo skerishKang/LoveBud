@@ -802,35 +802,47 @@ test('static: catch-all Memory write path still delegates to prepareMemoryWriteP
   assert.notEqual(source.indexOf('prepareMemoryWriteProxyRequest('), -1);
 });
 
-test('static: Tree view POST no longer forwards the raw request.body stream; uses shared bounded reader', () => {
+const TREE_VIEW_AUTH_ENV = {
+  MODAL_BASE_URL: 'https://example.modal.run',
+  TREE_VIEW_AUTHORITY_SECRET: 'test-tree-view-authority-secret-3920-3917',
+};
+
+function treeViewHeaders(extra = {}) {
+  return {
+    'content-type': 'application/json',
+    'CF-Connecting-IP': '203.0.113.91',
+    ...extra,
+  };
+}
+
+test('static: Tree view POST uses shared bounded reader and never forwards client body bytes', () => {
   const source = readFile(TREE_VIEW_JS);
   assert.match(source, /import\s*\{\s*readBoundedRequestBody\s*\}\s*from\s*['"]\.\.\/\.\.\/\.\.\/_shared\/bounded-request-body\.js['"]/);
-  assert.doesNotMatch(source, /body:\s*request\.body/);
-  assert.match(source, /body:\s*bodyResult\.body/);
   assert.match(source, /await\s+readBoundedRequestBody\(request\)/);
   assert.match(source, /'payload-too-large'/);
   assert.match(source, /'body-read-failed'/);
+  assert.match(source, /TREE_VIEW_AUTHORITY_SECRET/);
+  assert.match(source, /buildSignedAssertionHeaders/);
+  assert.doesNotMatch(source, /body:\s*(?:request\.body|bodyResult\.body)/);
 });
 
-test('runtime: Tree view POST accepts exactly 128 KiB and forwards exact bytes (shared reader)', { timeout: 10_000 }, async () => {
+test('runtime: Tree view POST accepts exactly 128 KiB at the edge, discards it, and forwards only signed authority', { timeout: 10_000 }, async () => {
   const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/views.js');
   const body = new Uint8Array(128 * 1024).fill(0x61);
   const request = new Request('https://test.example/api/trees/tree-1/views', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-lovebud-request-id': 'req-3920-view-exact',
-    },
+    headers: treeViewHeaders({ 'x-lovebud-request-id': 'req-3920-view-exact' }),
     body,
   });
   const { result, captured } = await withMockModalFetch(() =>
-    onRequestPost({ request, env: { MODAL_BASE_URL: 'https://example.modal.run' } }));
+    onRequestPost({ request, env: TREE_VIEW_AUTH_ENV }));
   assert.equal(result.status, 200);
   assert.equal(result.headers.get('x-lovebud-request-id'), 'req-3920-view-exact');
   assert.equal(captured.calls, 1);
-  assert.ok(captured.options.body instanceof Uint8Array);
-  assert.equal(captured.options.body.byteLength, 128 * 1024);
-  assert.deepEqual(captured.options.body, body);
+  assert.equal(captured.options.body, undefined, 'client body must be discarded before Modal');
+  assert.equal(captured.options.headers['x-lovebud-tree-view-actor-kind'], 'anonymous');
+  assert.match(captured.options.headers['x-lovebud-tree-view-actor-key'], /^[a-f0-9]{64}$/);
+  assert.match(captured.options.headers['x-lovebud-tree-view-signature'], /^[a-f0-9]{64}$/);
 });
 
 test('runtime: Tree view POST rejects 128 KiB + 1 with 413 and zero Modal fetches', { timeout: 10_000 }, async () => {
@@ -888,19 +900,19 @@ test('runtime: Tree view POST returns 503 (not 413) on stream reader failure wit
   assert.equal(captured.calls, 0);
 });
 
-test('runtime: Tree view POST preserves request-id and targets the canonical Modal view URL', { timeout: 10_000 }, async () => {
+test('runtime: Tree view POST preserves request-id and canonical Modal URL while discarding accepted client body', { timeout: 10_000 }, async () => {
   const { onRequestPost } = await import('../../functions/api/trees/[tree_id]/views.js');
   const request = new Request('https://test.example/api/trees/tree-1/views', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-lovebud-request-id': 'req-3920-view-normal',
-    },
-    body: JSON.stringify({ view: 'watch' }),
+    headers: treeViewHeaders({ 'x-lovebud-request-id': 'req-3920-view-normal' }),
+    body: JSON.stringify({ actorKey: 'forged-client-key', actorKind: 'authenticated' }),
   });
   const { result, captured } = await withMockModalFetch(() =>
-    onRequestPost({ request, env: { MODAL_BASE_URL: 'https://example.modal.run' } }));
+    onRequestPost({ request, env: TREE_VIEW_AUTH_ENV }));
   assert.equal(result.status, 200);
   assert.equal(result.headers.get('x-lovebud-request-id'), 'req-3920-view-normal');
   assert.equal(captured.url, 'https://example.modal.run/modal/public/trees/tree-1/views');
+  assert.equal(captured.options.body, undefined);
+  assert.equal(captured.options.headers['x-lovebud-tree-view-actor-kind'], 'anonymous');
+  assert.notEqual(captured.options.headers['x-lovebud-tree-view-actor-key'], 'forged-client-key');
 });
