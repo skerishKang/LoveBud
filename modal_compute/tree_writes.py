@@ -18,12 +18,12 @@ from modal_compute.write_validation import (
     require_tree_owner,
 )
 from modal_compute.validation import (
-    normalize_group_name,
     normalize_keywords,
     normalize_tree_row,
     validate_explicit_visibility,
-    validate_optional_string,
     validate_required_uuid,
+    validate_tree_group_name,
+    validate_tree_title,
     validate_visibility,
 )
 
@@ -40,11 +40,11 @@ def create_owner_tree(
         raise HTTPException(status_code=401, detail="Authentication required")
 
     ensure_owner_user_exists(owner_id, owner_email)
-    title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
+    title = validate_tree_title(payload.get("title"), max_length=200) or "My LoveTree"
     visibility = validate_visibility(payload.get("visibility"), "public")
     require_plus_for_private_storage(owner_id, visibility)
 
-    group_name = normalize_group_name(payload.get("groupName"))
+    group_name = validate_tree_group_name(payload.get("groupName"))
     keywords = normalize_keywords(payload.get("keywords"))
 
     query = """
@@ -97,7 +97,7 @@ def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> d
 
     if "title" in payload:
         updates.append("title = %s")
-        params.append(validate_optional_string(payload.get("title"), 200))
+        params.append(validate_tree_title(payload.get("title"), max_length=200))
 
     if "visibility" in payload:
         visibility = validate_explicit_visibility(payload.get("visibility"))
@@ -107,7 +107,7 @@ def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> d
 
     if "groupName" in payload:
         updates.append("group_name = %s")
-        params.append(normalize_group_name(payload.get("groupName")))
+        params.append(validate_tree_group_name(payload.get("groupName")))
 
     if "keywords" in payload:
         updates.append("keywords = %s")
