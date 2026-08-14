@@ -24,12 +24,29 @@ function createMockRequest(options = {}) {
       headers.set(k.toLowerCase(), v);
     }
   }
+  const bodyText = JSON.stringify(options.body || {});
+  const bodyBytes = new TextEncoder().encode(bodyText);
   return {
     method,
     headers: {
       get: (name) => headers.get(name.toLowerCase()) || null,
     },
-    text: async () => JSON.stringify(options.body || {}),
+    body: {
+      getReader() {
+        let sent = false;
+        return {
+          async read() {
+            if (sent) return { done: true, value: undefined };
+            sent = true;
+            return { done: false, value: bodyBytes };
+          },
+          async cancel() {
+            sent = true;
+          },
+        };
+      },
+    },
+    text: async () => bodyText,
   };
 }
 
