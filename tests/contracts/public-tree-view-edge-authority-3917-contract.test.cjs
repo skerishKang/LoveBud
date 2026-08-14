@@ -1,23 +1,26 @@
 'use strict';
 
 /**
- * LoveBud — Public tree view edge authority contract (Issue #3917)
+ * LoveBud — Public tree view edge authority contract (Issue #3917 / #3920)
  *
  * Executes the real Cloudflare edge function (functions/api/trees/[tree_id]/views.js)
- * in a local Node process with a stubbed global fetch. Proves the security slice:
+ * in a local Node process with a stubbed global fetch. Proves the combined boundary:
  *
- *   - The browser sends NO actor identity; the edge derives an anonymous,
- *     server-authoritative actor from CF-Connecting-IP + UTC day + secret and
- *     forwards ONLY a signed assertion as headers (no body).  (Controls A, B, D)
+ *   - Request bytes are consumed through the canonical 128 KiB bounded reader.
+ *   - The browser sends NO authoritative actor identity; accepted client bytes are
+ *     discarded after the bounded read.
+ *   - The edge derives an anonymous, server-authoritative actor from
+ *     CF-Connecting-IP + UTC day + secret and forwards ONLY a signed assertion
+ *     as headers (no body). (Controls A, B, D)
  *   - 100 attacker requests with rotated client body actorKey but the same
  *     trusted edge IP/day collapse to the SAME authoritative edge actor.
  *     (Control C)
  *   - A forged client actorKind=authenticated is ignored; the forwarded
- *     assertion is always actor-kind anonymous.  (Control D)
+ *     assertion is always actor-kind anonymous. (Control D)
  *   - Missing secret or missing CF-Connecting-IP → fail closed: no Modal call
- *     and no count.  (Controls I, J)
- *   - The raw IP is never forwarded into the assertion body/headers beyond the
- *     opaque signed digest.  (Control L)
+ *     and no count. (Controls I, J)
+ *   - The raw IP is never forwarded beyond the opaque signed digest. (Control L)
+ *   - Oversized request bodies fail at the edge before Modal.
  *
  * Reads/executes production source with injected fetch/env only; no real
  * network, database, browser, auth provider, deployment, or Production resource.
@@ -39,16 +42,12 @@ async function loadRoute() {
   return import(pathToFileURL(ROUTE_PATH).href);
 }
 
-function makeRequest({ method = 'POST', url, headers = {}, treeId } = {}) {
-  const request = {
-    method,
-    url,
-    headers: {
-      get: (k) => (Object.prototype.hasOwnProperty.call(headers, k) ? headers[k] : null),
-    },
-  };
-  if (treeId !== undefined) request.treeId = treeId;
-  return request;
+function makeRequest({ method = 'POST', url, headers = {}, body } = {}) {
+  const init = { method, headers };
+  if (body !== undefined && method !== 'GET' && method !== 'HEAD') {
+    init.body = body;
+  }
+  return new Request(url, init);
 }
 
 function makeContext(request, env) {
@@ -120,7 +119,7 @@ test('2. 100 rotated client actorKeys collapse to the SAME authoritative edge ac
   const captured = [];
   const restore = installFetchCapture(captured);
   try {
-    const baseHeaders = { 'CF-Connecting-IP': '198.51.100.23' };
+    const baseHeaders = { 'CF-Connecting-IP': '198.51.100.23', 'content-type': 'application/json' };
     const actorKeys = new Set();
     const signatures = new Set();
     for (let i = 0; i < 100; i++) {
@@ -130,17 +129,14 @@ test('2. 100 rotated client actorKeys collapse to the SAME authoritative edge ac
         source: 'public_tree_detail',
       });
       const ctx = makeContext(
-        makeRequest({
-          url: BASE_URL,
-          headers: Object.assign({}, baseHeaders, { 'content-type': 'application/json' }),
-        }),
+        makeRequest({ url: BASE_URL, headers: baseHeaders, body: forgedBody }),
         MODAL_ENV
       );
-      ctx.request.body = forgedBody;
       await mod.onRequestPost(ctx);
     }
     assert.equal(captured.length, 100, '100 Modal calls proxied');
     for (const { options } of captured) {
+      assert.equal(options.body, undefined, 'rotated client body is never forwarded');
       actorKeys.add(options.headers['x-lovebud-tree-view-actor-key']);
       signatures.add(options.headers['x-lovebud-tree-view-signature']);
     }
@@ -160,13 +156,14 @@ test('3. forged client actorKind=authenticated is ignored; assertion stays anony
     const ctx = makeContext(
       makeRequest({
         url: BASE_URL,
-        headers: { 'CF-Connecting-IP': '198.51.100.23' },
+        headers: { 'CF-Connecting-IP': '198.51.100.23', 'content-type': 'application/json' },
+        body: JSON.stringify({ actorKey: 'x', actorKind: 'authenticated' }),
       }),
       MODAL_ENV
     );
-    ctx.request.body = JSON.stringify({ actorKey: 'x', actorKind: 'authenticated' });
     await mod.onRequestPost(ctx);
     assert.equal(captured[0].options.headers['x-lovebud-tree-view-actor-kind'], 'anonymous', 'no authority upgrade');
+    assert.equal(captured[0].options.body, undefined, 'forged body is discarded');
   } finally {
     restore();
   }
@@ -271,7 +268,7 @@ test('8. native Web Request preserves prototype-backed headers through edge auth
   }
 });
 
-test('9. route never strips native Request prototype fields with Object.assign clone', () => {
+test('9. route preserves native Request and canonical bounded-read authority', () => {
   assert.doesNotMatch(
     ROUTE_SOURCE,
     /Object\.assign\s*\(\s*Object\.create\(null\)\s*,\s*request\b/,
@@ -282,4 +279,26 @@ test('9. route never strips native Request prototype fields with Object.assign c
     /buildSignedAssertionHeaders\(request,\s*env\s*\|\|\s*\{\},\s*treeId\)/,
     'treeId must be passed separately while preserving the original Request object'
   );
+  assert.match(ROUTE_SOURCE, /readBoundedRequestBody/);
+  assert.match(ROUTE_SOURCE, /await\s+readBoundedRequestBody\(request\)/);
+  assert.doesNotMatch(ROUTE_SOURCE, /body:\s*(?:request\.body|bodyResult\.body)/);
+});
+
+test('10. oversized client body is rejected before Modal and cannot bypass the authority boundary', async () => {
+  const mod = await loadRoute();
+  const captured = [];
+  const restore = installFetchCapture(captured);
+  try {
+    const request = makeRequest({
+      url: BASE_URL,
+      headers: { 'CF-Connecting-IP': '203.0.113.7', 'content-type': 'application/octet-stream' },
+      body: new Uint8Array(128 * 1024 + 1),
+    });
+    const response = await mod.onRequestPost(makeContext(request, MODAL_ENV));
+    assert.equal(response.status, 413);
+    assert.equal(response.headers.get('x-lovebud-route-status'), 'payload-too-large');
+    assert.equal(captured.length, 0, 'oversized body must never reach Modal');
+  } finally {
+    restore();
+  }
 });
