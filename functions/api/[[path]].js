@@ -173,6 +173,16 @@ export function buildModalUrl(request, env) {
     return target;
   }
 
+  // Tree hub-layout (same-origin PUT) → Modal POST /modal/private/trees/:id/hub-layout.
+  // The canonical same-origin contract is PUT (#3058); the upstream Modal endpoint
+  // is POST, so the edge gateway translates PUT → POST (see tryModalWrite).
+  const hubLayoutMatch = path.match(/^\/api\/trees\/([^/]+)\/hub-layout$/);
+  if (hubLayoutMatch) {
+    const treeId = encodeURIComponent(decodeURIComponent(hubLayoutMatch[1]));
+    target.pathname = `/modal/private/trees/${treeId}/hub-layout`;
+    return target;
+  }
+
   return null;
 }
 
@@ -223,6 +233,11 @@ function isModalOwnedWriteRoute(request, env) {
 
   const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
   if (['PUT', 'DELETE'].includes(method) && isDetail) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
+
+  // Same-origin PUT /api/trees/:id/hub-layout → Modal POST (translated in tryModalWrite).
+  if (method === 'PUT' && path.match(/^\/api\/trees\/[^/]+\/hub-layout$/)) {
     return buildModalUrl(request, env || {}) !== null;
   }
 
@@ -358,6 +373,7 @@ async function tryModalRead(request, env, requestId = null) {
 
 async function tryModalWrite(request, env, requestId = null) {
   const method = request.method.toUpperCase();
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
 
@@ -397,6 +413,11 @@ async function tryModalWrite(request, env, requestId = null) {
     boundedBody = bodyResult.body;
   }
 
+  const hubLayoutPath = path.match(/^\/api\/trees\/[^/]+\/hub-layout$/);
+  // Modal upstream only exposes POST for hub-layout; translate the canonical
+  // same-origin PUT to POST while preserving headers, body and request-id.
+  const upstreamMethod = hubLayoutPath ? 'POST' : method;
+
   const modalUrl = buildModalUrl(request, env || {});
   if (!modalUrl) return null;
 
@@ -413,9 +434,9 @@ async function tryModalWrite(request, env, requestId = null) {
 
   try {
     return await fetchWithTimeout(modalUrl.toString(), {
-      method,
+      method: upstreamMethod,
       headers,
-      body: method !== 'DELETE' ? boundedBody : null
+      body: upstreamMethod !== 'DELETE' ? boundedBody : null
     });
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -553,7 +574,8 @@ export async function onRequest(context) {
     const isCollection = ['/api/trees', '/api/memories'].includes(path);
     const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
     const isCapability = path.match(/^\/api\/private\/trees\/[^/]+\/capability$/);
-    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : 'GET')));
+    const isHubLayoutPath = path.match(/^\/api\/trees\/[^/]+\/hub-layout$/);
+    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : (isHubLayoutPath ? 'GET, PUT' : 'GET'))));
     return buildMethodNotAllowedResponse(allow, requestId);
   }
 

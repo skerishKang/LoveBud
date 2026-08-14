@@ -762,3 +762,189 @@ test('4. method non-GET on capability returns 405 Method Not Allowed with Allow:
     restore();
   }
 });
+
+// ─── HUB-LAYOUT SAME-ORIGIN GATEWAY CONTRACTS (Issue #3923) ────────────────
+//
+// Canonical same-origin method is PUT (historical #3058; gateway detail-update
+// convention). Modal upstream exposes POST only, so the edge gateway translates
+// PUT → POST. GET is also reachable (read). No direct browser→Modal.
+
+test('cloudflare api catch-all routes /api/trees/:id/hub-layout to modal private hub-layout', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  // Mapping regex for the hub-layout sub-resource path.
+  assert.ok(
+    hasString(content, "/^\\/api\\/trees\\/([^/]+)\\/hub-layout$/"),
+    'catch-all should contain regex pattern /^\\/api\\/trees\\/([^/]+)\\/hub-layout$/ for hub-layout path'
+  );
+  assert.ok(
+    hasString(content, "`/modal/private/trees/${treeId}/hub-layout`"),
+    'catch-all should build /modal/private/trees/:id/hub-layout target'
+  );
+});
+
+test('isModalOwnedWriteRoute recognises PUT /api/trees/:id/hub-layout as modal-owned write', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(content, "method === 'PUT' && path.match(/^\\/api\\/trees\\/[^/]+\\/hub-layout$/)"),
+    'isModalOwnedWriteRoute should treat PUT /api/trees/:id/hub-layout as modal-owned write'
+  );
+});
+
+test('cloudflare api catch-all translates same-origin PUT hub-layout to Modal POST', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(content, 'const upstreamMethod = hubLayoutPath ? \'POST\' : method;'),
+    'tryModalWrite should translate hub-layout PUT into upstream POST'
+  );
+});
+
+test('cloudflare api catch-all 405 Allow header allows GET, PUT for hub-layout path', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasRegex(content, /isHubLayoutPath\s*\?\s*'GET, PUT'/),
+    'catch-all 405 should set Allow: GET, PUT for hub-layout path'
+  );
+});
+
+test('hub-layout 1. unauthenticated PUT returns 401 without Modal fetch', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/hub-layout`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ layoutMode: 'manual', manualPositions: {} })
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 401);
+    assert.equal(calls.length, 0);
+    const body = await response.json();
+    assert.equal(body.error, 'Authorization required');
+  } finally {
+    restore();
+  }
+});
+
+test('hub-layout 2. authenticated PUT forwards to Modal POST with auth + request-id (translation)', async () => {
+  const { calls, restore } = mockFetch(async (call) => {
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/hub-layout`, {
+      method: 'PUT',
+      headers: {
+        'authorization': 'Bearer owner-token',
+        'content-type': 'application/json',
+        'x-lovebud-request-id': 'req-incoming-123'
+      },
+      body: JSON.stringify({ layoutMode: 'manual', manualPositions: { a: 1 } })
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].url.includes('/modal/private/trees/test-tree-123/hub-layout'));
+    // PUT on same-origin must be translated to POST upstream.
+    assert.equal(calls[0].options.method, 'POST');
+    assert.equal(calls[0].options.headers.authorization, 'Bearer owner-token');
+    // Request-id preserved (parity) and exposed.
+    assert.equal(calls[0].options.headers['x-lovebud-request-id'], 'req-incoming-123');
+    assert.equal(response.headers.get('x-lovebud-request-id'), 'req-incoming-123');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'modal');
+    const body = await response.json();
+    assert.equal(body.ok, true);
+  } finally {
+    restore();
+  }
+});
+
+test('hub-layout 3. authenticated GET forwards to Modal GET with auth', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ layoutMode: 'auto', revision: 1 }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/hub-layout`, {
+      method: 'GET',
+      headers: { 'authorization': 'Bearer owner-token' }
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].url.includes('/modal/private/trees/test-tree-123/hub-layout'));
+    // tryModalRead forwards a plain GET (fetch defaults to GET when method omitted).
+    assert.ok(calls[0].options.method === undefined || calls[0].options.method === 'GET');
+    assert.equal(calls[0].options.headers.authorization, 'Bearer owner-token');
+  } finally {
+    restore();
+  }
+});
+
+test('hub-layout 4. stale baseRevision 409 from Modal is passed through truthfully', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ error: 'stale baseRevision' }), {
+      status: 409,
+      headers: { 'content-type': 'application/json' }
+    });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/hub-layout`, {
+      method: 'PUT',
+      headers: {
+        'authorization': 'Bearer owner-token',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({ layoutMode: 'manual', baseRevision: 2, manualPositions: {} })
+    });
+    const response = await callOnRequest(request);
+
+    // No fake success: the upstream 409 conflict must be returned as-is.
+    assert.equal(response.status, 409);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].options.method, 'POST');
+    const body = await response.json();
+    assert.equal(body.error, 'stale baseRevision');
+  } finally {
+    restore();
+  }
+});
+
+test('hub-layout 5. unsupported POST method returns 405 with Allow: GET, PUT', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/hub-layout`, {
+      method: 'POST',
+      headers: { 'authorization': 'Bearer owner-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ layoutMode: 'manual' })
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 405);
+    assert.equal(calls.length, 0);
+    assert.equal(response.headers.get('allow'), 'GET, PUT');
+    const body = await response.json();
+    assert.equal(body.error, 'Method not allowed');
+  } finally {
+    restore();
+  }
+});
+
