@@ -49,7 +49,30 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
     tree = fetch_owner_tree(tree_id, owner_id)
     if not tree:
         raise HTTPException(status_code=403, detail="Access denied: not your tree")
-    visibility = validate_visibility(payload.get("visibility"), tree.get("visibility") or "public")
+    parent_visibility = tree.get("visibility")
+    explicit_visibility = payload.get("visibility")
+
+    if explicit_visibility is None:
+        # Issue #3934: caller omitted visibility. Inheriting from the parent Tree
+        # is allowed only when the parent Tree visibility is a known literal.
+        # An unresolved parent (NULL / missing / unknown / invalid) must fail
+        # closed — it is NEVER synthesized into a "public" Memory (#3934 DTO
+        # truthfulness). No DB mutation occurs on this path.
+        if parent_visibility == "public":
+            visibility = "public"
+        elif parent_visibility == "private":
+            visibility = "private"
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "TREE_VISIBILITY_UNRESOLVED"},
+            )
+    else:
+        # Explicit caller visibility: keep strict validation + entitlement
+        # authority (#3935/#3936 semantics). A non public/private value is
+        # rejected before any DB mutation.
+        visibility = validate_visibility(explicit_visibility, default="private")
+
     require_plus_for_private_storage(owner_id, visibility)
 
     parent_id = None

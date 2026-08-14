@@ -113,15 +113,15 @@ function assertRoutePassesPayload(normalized, callee, argsPattern, routeLabel) {
 }
 
 // create_owner_tree helper contracts
-test('create_owner_tree uses validate_optional_string for title with max 200', () => {
+test('create_owner_tree uses validate_tree_title for title with max 200', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /validate_optional_string.*title.*200/i,
-    'create_owner_tree must validate title with max 200 characters'
+    /validate_tree_title.*title.*200/i,
+    'create_owner_tree must validate title with max 200 characters via validate_tree_title (#3935)'
   );
 });
 
@@ -246,15 +246,30 @@ test('create_owner_memory raises 403 when tree not owned', () => {
   );
 });
 
-test('create_owner_memory uses tree visibility fallback', () => {
+test('create_owner_memory visibility resolution follows #3934 contract', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /visibility.*validate_visibility.*visibility.*tree.*visibility/i,
-    'create_owner_memory must use tree visibility as fallback'
+    /tree_visibility_unresolved/,
+    'create_owner_memory must fail closed on unresolved parent Tree visibility (#3934)'
+  );
+  assert.match(
+    normalized,
+    /parent_visibility=="public"/,
+    'create_owner_memory must inherit a literal public parent visibility'
+  );
+  assert.match(
+    normalized,
+    /parent_visibility=="private"/,
+    'create_owner_memory must inherit a literal private parent visibility'
+  );
+  assert.match(
+    normalized,
+    /validate_visibility\(explicit_visibility/,
+    'create_owner_memory must validate explicit visibility via validate_visibility (#3935/#3936)'
   );
 });
 
@@ -369,8 +384,8 @@ test('update_owner_tree only allows title and visibility updates', () => {
 
   assert.match(
     normalized,
-    /validate_optional_string.*title.*200/i,
-    'update_owner_tree must validate title when updating'
+    /validate_tree_title.*title.*200/i,
+    'update_owner_tree must validate title when updating via validate_tree_title (#3935)'
   );
 });
 

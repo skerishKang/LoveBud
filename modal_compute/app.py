@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from modal_compute.auth import (
+    EntitlementCheckUnavailableError,
     PlusRequiredError,
     require_firebase_user,
 )
@@ -37,10 +38,13 @@ from modal_compute.comments import (
     soft_delete_own_comment,
 )
 from modal_compute.owner_reads import (
+    OwnerListCursorError,
     OwnerTreeListError,
-    fetch_user_trees,
-    fetch_owner_tree,
     fetch_owner_memories,
+    page_owner_memories,
+    fetch_owner_tree,
+    fetch_user_trees,
+    page_user_trees,
 )
 from modal_compute.owner_writes import (
     create_owner_tree,
@@ -52,6 +56,10 @@ from modal_compute.owner_writes import (
     fork_public_tree,
 )
 from modal_compute.write_validation import require_memory_owner
+from modal_compute.appreciation_orders import (
+    save_appreciation_order,
+    fetch_appreciation_order,
+)
 from modal_compute.reactions import (
     toggle_reaction,
     fetch_reaction_summary,
@@ -64,6 +72,10 @@ from modal_compute.tree_likes import (
 )
 from modal_compute.tree_comments import create_tree_comment, fetch_tree_comments
 from modal_compute.tree_views import record_public_tree_view, fetch_public_tree_view_count
+from modal_compute.tree_view_authority import (
+    TreeViewAuthorityError,
+    verify_tree_view_assertion,
+)
 from modal_compute.hub_layouts import (
     hub_layout_not_found_handler,
     HubLayoutNotFoundError,
@@ -71,6 +83,14 @@ from modal_compute.hub_layouts import (
     fetch_hub_layout,
 )
 from modal_compute.social_errors import SocialWriteError, SOCIAL_ERROR_CODES
+from modal_compute.youtube_playlist_preview import (
+    PlaylistPreviewError,
+    fetch_playlist_items,
+    fetch_playlist_metadata,
+    normalize_playlist_preview,
+    parse_playlist_source,
+    resolve_provider_api_key,
+)
 
 
 def _allowed_origins() -> list[str]:
@@ -108,6 +128,22 @@ async def plus_required_exception_handler(request: Request, exc: PlusRequiredErr
     )
 
 
+@web_app.exception_handler(EntitlementCheckUnavailableError)
+async def entitlement_check_unavailable_handler(
+    request: Request, exc: EntitlementCheckUnavailableError
+) -> JSONResponse:
+    # Availability error only. Never echo the raw Firestore exception, UID,
+    # email, project ID, credentials, document path, token, or endpoint.
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "Entitlement check temporarily unavailable.",
+            "code": "ENTITLEMENT_CHECK_UNAVAILABLE",
+            "upgradeRequired": False,
+        },
+    )
+
+
 @web_app.exception_handler(HubLayoutNotFoundError)
 async def handle_hub_layout_not_found(request: Request, exc: HubLayoutNotFoundError) -> JSONResponse:
     return await hub_layout_not_found_handler(request, exc)
@@ -124,6 +160,14 @@ async def social_write_error_handler(request: Request, exc: SocialWriteError) ->
         status_code=exc.status_code,
         content=content,
         headers=headers if headers else None,
+    )
+
+
+@web_app.exception_handler(PlaylistPreviewError)
+async def playlist_preview_error_handler(request: Request, exc: PlaylistPreviewError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"ok": False, "error": {"code": exc.code, "message": exc.message}},
     )
 
 
@@ -273,13 +317,25 @@ async def post_public_tree_view(
         route="/modal/public/trees/id/views",
         method="POST",
     )
+    # Verify the signed edge assertion BEFORE any DB connection, body parsing, or
+    # count mutation. Fail closed on any invalid/missing assertion (Issue #3917):
+    # no JSON is parsed and no count occurs. The browser never supplies actor
+    # identity; the edge-derived anonymous actor is the only authority.
     try:
-        payload = await parse_json_body(request)
+        authority = verify_tree_view_assertion(request.headers, tree_id)
+    except TreeViewAuthorityError as exc:
+        logger.log_error(
+            status_code=exc.status_code,
+            error_category="TREE_VIEW_AUTHORITY_REJECTED",
+            failure_phase="view-authority",
+        )
+        raise HTTPException(status_code=exc.status_code, detail=exc.code)
+    try:
         result = record_public_tree_view(
             tree_id,
-            payload.get("actorKey", ""),
-            payload.get("actorKind", "anonymous"),
-            payload.get("source", "public_tree_detail"),
+            authority["actor_key"],
+            authority["actor_kind"],
+            authority["source"],
         )
         logger.log_success(status_code=200)
         return result
@@ -292,10 +348,12 @@ async def post_public_tree_view(
 
 @web_app.get("/modal/private/trees")
 def get_private_trees(
+    pagination: str | None = Query(default=None),
+    cursor: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=200),
     authorization: str | None = Header(default=None),
     x_lovebud_request_id: str | None = Header(default=None),
-) -> list[dict]:
+) -> list[dict] | dict:
     logger = RequestLogger(
         request_id=x_lovebud_request_id,
         route="/modal/private/trees",
@@ -318,9 +376,18 @@ def get_private_trees(
             )
         raise
     try:
+        if pagination == "cursor":
+            try:
+                items, next_cursor = page_user_trees(user["uid"], limit=limit, cursor=cursor)
+            except OwnerListCursorError:
+                raise HTTPException(status_code=400, detail="Invalid pagination cursor")
+            logger.log_success(status_code=200)
+            return {"items": items, "nextCursor": next_cursor}
         result = fetch_user_trees(user["uid"], limit=limit)
         logger.log_success(status_code=200)
         return result
+    except HTTPException:
+        raise
     except OwnerTreeListError as e:
         logger.log_error(status_code=500, error_category=e.error_category, failure_phase=e.failure_phase)
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -461,11 +528,21 @@ def get_tree_comments(
 @web_app.get("/modal/private/memories")
 def get_private_memories(
     treeId: str | None = None,
+    pagination: str | None = Query(default=None),
+    cursor: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=200),
     authorization: str | None = Header(default=None),
-) -> list[dict]:
+) -> list[dict] | dict:
     user = require_firebase_user(authorization)
     safe_tree_id = validate_optional_uuid(treeId, "treeId")
+    if pagination == "cursor":
+        try:
+            items, next_cursor = page_owner_memories(
+                user["uid"], safe_tree_id, limit=limit, cursor=cursor
+            )
+        except OwnerListCursorError:
+            raise HTTPException(status_code=400, detail="Invalid pagination cursor")
+        return {"items": items, "nextCursor": next_cursor}
     return fetch_owner_memories(user["uid"], tree_id=safe_tree_id, limit=limit)
 
 
@@ -587,8 +664,7 @@ async def post_appreciation_order(
 ) -> dict:
     user = require_firebase_user(authorization)
     payload = await parse_json_body(request)
-    update_owner_tree(user["uid"], tree_id, {"appreciationOrder": payload.get("order", [])})
-    return {"ok": True}
+    return save_appreciation_order(tree_id, user["uid"], payload)
 
 
 @web_app.get("/modal/private/trees/{tree_id}/appreciation-order")
@@ -597,11 +673,7 @@ def get_appreciation_order(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    safe_tree_id = validate_required_uuid(tree_id, "treeId")
-    tree = fetch_owner_tree(safe_tree_id, user["uid"])
-    if not tree:
-        raise HTTPException(status_code=404, detail="Tree not found")
-    return {"orderedIds": tree.get("appreciation_order", [])}
+    return fetch_appreciation_order(tree_id, user["uid"])
 
 
 @web_app.post("/modal/private/trees/{tree_id}/hub-layout")
@@ -622,6 +694,89 @@ def get_hub_layout(
 ) -> dict:
     user = require_firebase_user(authorization)
     return fetch_hub_layout(tree_id, user["uid"])
+
+
+@web_app.post("/modal/private/import/youtube/playlist/preview")
+async def post_youtube_playlist_preview(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    x_lovebud_request_id: str | None = Header(default=None),
+) -> dict:
+    """Authenticated read-only public YouTube playlist preview (first slice).
+
+    Verified auth (`require_firebase_user`) MUST succeed before any provider
+    call. Header presence alone is never authentication. The provider key is
+    resolved only after a verified principal exists, so every auth failure
+    (missing / malformed / invalid / expired token, verifier unavailable)
+    keeps the provider call count at 0.
+    """
+    logger = RequestLogger(
+        request_id=x_lovebud_request_id,
+        route="/modal/private/import/youtube/playlist/preview",
+        method="POST",
+    )
+    try:
+        try:
+            user = require_firebase_user(authorization)
+        except HTTPException as error:
+            # Preserve the sanitized auth dependency taxonomy: #3972 raises
+            # HTTPException(503) when the trusted Firebase cert dependency is
+            # unavailable. Never collapse that 503 back to 401 and never
+            # surface the raw auth detail (network/cert internals) verbatim.
+            if error.status_code >= 500:
+                raise PlaylistPreviewError(
+                    "UNAUTHORIZED",
+                    "Authentication service is temporarily unavailable.",
+                    status_code=503,
+                ) from error
+            raise PlaylistPreviewError(
+                "UNAUTHORIZED", "Authentication is required.", status_code=401
+            ) from error
+        except RuntimeError as error:
+            # Legacy fail-closed fallback (verifier dependency unavailable):
+            # provider key resolution and provider calls stay 0.
+            raise PlaylistPreviewError(
+                "UNAUTHORIZED",
+                "Authentication service is temporarily unavailable.",
+                status_code=503,
+            ) from error
+
+        payload = await parse_json_body(request)
+
+        source_field = payload.get("source")
+        playlist_id_field = payload.get("playlistId")
+        if (source_field is not None) == (playlist_id_field is not None):
+            raise PlaylistPreviewError(
+                "INVALID_PLAYLIST_SOURCE",
+                "Provide exactly one of source or playlistId.",
+            )
+
+        source = playlist_id_field if playlist_id_field is not None else source_field
+        playlist_id = parse_playlist_source(source)
+
+        api_key = resolve_provider_api_key()
+        metadata = fetch_playlist_metadata(playlist_id, api_key)
+        items_result = fetch_playlist_items(playlist_id, api_key)
+        result = normalize_playlist_preview(metadata, items_result)
+
+        logger.log_success(status_code=200)
+        return result
+    except HTTPException as error:
+        # parse_json_body failures become bounded source errors.
+        raise PlaylistPreviewError(
+            "INVALID_PLAYLIST_SOURCE",
+            str(getattr(error, "detail", None) or "Request body is invalid."),
+            status_code=error.status_code,
+        ) from error
+    except PlaylistPreviewError:
+        raise
+    except Exception:
+        logger.log_error(status_code=500, error_category="UNEXPECTED_ERROR")
+        raise PlaylistPreviewError(
+            "INTERNAL_PREVIEW_ERROR",
+            "Preview could not be completed.",
+            status_code=500,
+        ) from None
 
 
 # ── Public (guest-safe) moment social read endpoints ──────────────────────────
@@ -686,6 +841,7 @@ def get_public_memory_comments(
     secrets=[
         modal.Secret.from_name("lovebud-db"),
         modal.Secret.from_name("lovebud-firebase-admin"),
+        modal.Secret.from_name("lovebud-youtube-data-api"),
     ],
 )
 @modal.asgi_app()

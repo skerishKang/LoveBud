@@ -35,11 +35,11 @@ test('Cloudflare gateway checks authorization before body read in tryModalWrite'
   const source = gateway();
   const writeFn = extractFunctionBlock('tryModalWrite');
   const authCheckIndex = writeFn.indexOf('hasAuthorizationHeader');
-  const bodyReadIndex = writeFn.indexOf('readBoundedWriteBody');
+  const bodyReadIndex = writeFn.indexOf('readBoundedRequestBody');
   assert.notEqual(authCheckIndex, -1, 'tryModalWrite should call hasAuthorizationHeader');
-  assert.notEqual(bodyReadIndex, -1, 'tryModalWrite should call readBoundedWriteBody');
+  assert.notEqual(bodyReadIndex, -1, 'tryModalWrite should call readBoundedRequestBody');
   assert.ok(authCheckIndex < bodyReadIndex,
-    'hasAuthorizationHeader check should appear before readBoundedWriteBody');
+    'hasAuthorizationHeader check should appear before readBoundedRequestBody');
 });
 
 test('Cloudflare gateway early-returns missing-authorization when auth missing in tryModalWrite', () => {

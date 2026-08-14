@@ -27,8 +27,8 @@ const HELPERS_PY = path.join(ROOT, 'modal_compute/api_response_helpers.py');
 
 test('1. GET /api/trees generates, forwards, echoes, and exposes x-lovebud-request-id', () => {
   const content = readFileContent(TREES_JS);
-  assert.ok(hasString(content, 'REQUEST_ID_HEADER'), 'trees.js must define REQUEST_ID_HEADER');
-  assert.ok(hasString(content, 'x-lovebud-request-id'), 'trees.js must reference x-lovebud-request-id');
+  assert.ok(hasString(content, 'REQUEST_ID_HEADER'), 'trees.js must import REQUEST_ID_HEADER');
+  assert.ok(hasString(content, '_shared/request-id.js'), 'trees.js must consume shared request-id policy');
   assert.ok(hasString(content, 'getOrCreateRequestId'), 'trees.js must call getOrCreateRequestId');
   assert.ok(hasString(content, 'withModalHeaderAndId'), 'trees.js must call withModalHeaderAndId for GET');
   assert.ok(hasString(content, 'Access-Control-Expose-Headers'), 'trees.js must expose request ID through CORS');
