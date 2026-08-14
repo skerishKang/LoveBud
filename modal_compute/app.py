@@ -53,6 +53,10 @@ from modal_compute.owner_writes import (
     fork_public_tree,
 )
 from modal_compute.write_validation import require_memory_owner
+from modal_compute.appreciation_orders import (
+    save_appreciation_order,
+    fetch_appreciation_order,
+)
 from modal_compute.reactions import (
     toggle_reaction,
     fetch_reaction_summary,
@@ -636,8 +640,7 @@ async def post_appreciation_order(
 ) -> dict:
     user = require_firebase_user(authorization)
     payload = await parse_json_body(request)
-    update_owner_tree(user["uid"], tree_id, {"appreciationOrder": payload.get("order", [])})
-    return {"ok": True}
+    return save_appreciation_order(tree_id, user["uid"], payload)
 
 
 @web_app.get("/modal/private/trees/{tree_id}/appreciation-order")
@@ -646,11 +649,7 @@ def get_appreciation_order(
     authorization: str | None = Header(default=None),
 ) -> dict:
     user = require_firebase_user(authorization)
-    safe_tree_id = validate_required_uuid(tree_id, "treeId")
-    tree = fetch_owner_tree(safe_tree_id, user["uid"])
-    if not tree:
-        raise HTTPException(status_code=404, detail="Tree not found")
-    return {"orderedIds": tree.get("appreciation_order", [])}
+    return fetch_appreciation_order(tree_id, user["uid"])
 
 
 @web_app.post("/modal/private/trees/{tree_id}/hub-layout")
