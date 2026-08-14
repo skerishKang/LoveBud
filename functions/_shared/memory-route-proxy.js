@@ -72,6 +72,11 @@ export function buildMemoryCollectionModalUrl(request, env = {}) {
     const treeId = sourceUrl.searchParams.get('treeId');
     if (treeId) target.searchParams.set('treeId', treeId);
     target.searchParams.set('limit', String(clampCollectionLimit(sourceUrl.searchParams.get('limit'))));
+
+    const pagination = sourceUrl.searchParams.get('pagination');
+    if (pagination) target.searchParams.set('pagination', pagination);
+    const cursor = sourceUrl.searchParams.get('cursor');
+    if (cursor) target.searchParams.set('cursor', cursor);
   }
 
   return target;

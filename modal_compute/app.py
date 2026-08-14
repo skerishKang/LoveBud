@@ -38,10 +38,13 @@ from modal_compute.comments import (
     soft_delete_own_comment,
 )
 from modal_compute.owner_reads import (
+    OwnerListCursorError,
     OwnerTreeListError,
-    fetch_user_trees,
-    fetch_owner_tree,
     fetch_owner_memories,
+    page_owner_memories,
+    fetch_owner_tree,
+    fetch_user_trees,
+    page_user_trees,
 )
 from modal_compute.owner_writes import (
     create_owner_tree,
@@ -345,10 +348,12 @@ async def post_public_tree_view(
 
 @web_app.get("/modal/private/trees")
 def get_private_trees(
+    pagination: str | None = Query(default=None),
+    cursor: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=200),
     authorization: str | None = Header(default=None),
     x_lovebud_request_id: str | None = Header(default=None),
-) -> list[dict]:
+) -> list[dict] | dict:
     logger = RequestLogger(
         request_id=x_lovebud_request_id,
         route="/modal/private/trees",
@@ -371,9 +376,18 @@ def get_private_trees(
             )
         raise
     try:
+        if pagination == "cursor":
+            try:
+                items, next_cursor = page_user_trees(user["uid"], limit=limit, cursor=cursor)
+            except OwnerListCursorError:
+                raise HTTPException(status_code=400, detail="Invalid pagination cursor")
+            logger.log_success(status_code=200)
+            return {"items": items, "nextCursor": next_cursor}
         result = fetch_user_trees(user["uid"], limit=limit)
         logger.log_success(status_code=200)
         return result
+    except HTTPException:
+        raise
     except OwnerTreeListError as e:
         logger.log_error(status_code=500, error_category=e.error_category, failure_phase=e.failure_phase)
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -514,11 +528,21 @@ def get_tree_comments(
 @web_app.get("/modal/private/memories")
 def get_private_memories(
     treeId: str | None = None,
+    pagination: str | None = Query(default=None),
+    cursor: str | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=200),
     authorization: str | None = Header(default=None),
-) -> list[dict]:
+) -> list[dict] | dict:
     user = require_firebase_user(authorization)
     safe_tree_id = validate_optional_uuid(treeId, "treeId")
+    if pagination == "cursor":
+        try:
+            items, next_cursor = page_owner_memories(
+                user["uid"], safe_tree_id, limit=limit, cursor=cursor
+            )
+        except OwnerListCursorError:
+            raise HTTPException(status_code=400, detail="Invalid pagination cursor")
+        return {"items": items, "nextCursor": next_cursor}
     return fetch_owner_memories(user["uid"], tree_id=safe_tree_id, limit=limit)
 
 

@@ -23,6 +23,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/owner-list-cloudflare-forwarding.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the dedicated Cloudflare route builders (functions/api/trees.js buildPrivateTreesModalUrl and functions/_shared/memory-route-proxy.js buildMemoryCollectionModalUrl) in-process with constructed Request inputs and asserts exact same-origin forwarding of pagination/cursor/limit/treeId for cursor mode and legacy-array passthrough. No real network, browser, auth provider, database, deployment, or Production resource is used (#3944).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/ci-risk-gate-policy-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
