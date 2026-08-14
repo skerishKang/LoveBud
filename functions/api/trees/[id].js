@@ -3,6 +3,7 @@ import {
   getOrCreateRequestId
 } from '../../_shared/request-id.js';
 import { fetchModalWithTimeout, isModalTimeoutError } from '../../_shared/modal-fetch.js';
+import { readBoundedRequestBody } from '../../_shared/bounded-request-body.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -48,8 +49,6 @@ function withModalHeader(response, requestId = null) {
   });
 }
 
-const MAX_BODY_SIZE = 131072; // 128KB
-
 function buildPayloadTooLargeResponse(requestId = null) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
@@ -66,25 +65,20 @@ function buildPayloadTooLargeResponse(requestId = null) {
   });
 }
 
-async function readBoundedWriteBody(request) {
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (e) {
-    return { tooLarge: true, body: null };
+function buildBodyReadFailedResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'body-read-failed'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
   }
-
-  if (!bodyText) {
-    return { tooLarge: false, body: null };
-  }
-
-  const encoder = new TextEncoder();
-  const encoded = encoder.encode(bodyText);
-  if (encoded.byteLength > MAX_BODY_SIZE) {
-    return { tooLarge: true, body: null };
-  }
-
-  return { tooLarge: false, body: encoded };
+  return new Response(JSON.stringify({ error: 'Request body read failed' }), {
+    status: 503,
+    headers
+  });
 }
 
 function withPublicTreeCacheStatus(response, status) {
@@ -242,9 +236,12 @@ export async function onRequestPut(context) {
     return buildMissingAuthorizationResponse(requestId);
   }
 
-  const bodyResult = await readBoundedWriteBody(request);
-  if (bodyResult.tooLarge) {
+  const bodyResult = await readBoundedRequestBody(request);
+  if (bodyResult.status === 'tooLarge') {
     return buildPayloadTooLargeResponse(requestId);
+  }
+  if (bodyResult.status === 'readError') {
+    return buildBodyReadFailedResponse(requestId);
   }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);

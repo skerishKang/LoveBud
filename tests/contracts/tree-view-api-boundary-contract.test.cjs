@@ -54,7 +54,7 @@ test('Cloudflare tree view route proxies POST only to Modal public route without
   assert.match(cloudflareRoute, /method\s*!==\s*'POST'/);
   assert.match(cloudflareRoute, /allow:\s*'POST'/);
   assert.match(cloudflareRoute, /\/modal\/public\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeId\)\)\}\/views/);
-  assert.match(cloudflareRoute, /body:\s*request\.body/);
+  assert.match(cloudflareRoute, /body:\s*bodyResult\.body/);
   assert.doesNotMatch(cloudflareRoute, /Authorization required/);
   assert.doesNotMatch(cloudflareRoute, /\/modal\/browse\/latest/);
   assert.doesNotMatch(cloudflareRoute, /sort=views/);

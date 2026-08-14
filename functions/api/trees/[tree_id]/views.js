@@ -1,4 +1,5 @@
 import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../_shared/request-id.js';
+import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -43,6 +44,30 @@ function buildMethodNotAllowedResponse(requestId) {
   });
 }
 
+function buildPayloadTooLargeResponse(requestId) {
+  return new Response(JSON.stringify({ error: 'Payload too large' }), {
+    status: 413,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'payload-too-large',
+      [REQUEST_ID_HEADER]: requestId
+    }
+  });
+}
+
+function buildBodyReadFailedResponse(requestId) {
+  return new Response(JSON.stringify({ error: 'Request body read failed' }), {
+    status: 503,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'body-read-failed',
+      [REQUEST_ID_HEADER]: requestId
+    }
+  });
+}
+
 function buildModalUrl(request, env) {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
@@ -70,6 +95,14 @@ async function proxyTreeView(request, env) {
   const requestId = getOrCreateRequestId(request);
   if (method !== 'POST') return buildMethodNotAllowedResponse(requestId);
 
+  const bodyResult = await readBoundedRequestBody(request);
+  if (bodyResult.status === 'tooLarge') {
+    return buildPayloadTooLargeResponse(requestId);
+  }
+  if (bodyResult.status === 'readError') {
+    return buildBodyReadFailedResponse(requestId);
+  }
+
   const modalUrl = buildModalUrl(request, env || {});
   if (!modalUrl) return buildModalUnavailableResponse(requestId);
 
@@ -83,7 +116,7 @@ async function proxyTreeView(request, env) {
     const response = await fetchWithTimeout(modalUrl.toString(), {
       method: 'POST',
       headers,
-      body: request.body
+      body: bodyResult.body
     });
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set('x-lovebud-upstream', 'modal');
