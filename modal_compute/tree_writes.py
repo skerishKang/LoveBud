@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from typing import Any
 
@@ -164,17 +165,28 @@ def delete_owner_tree(owner_id: str, tree_id: str) -> dict[str, Any]:
     return {"deleted": True, "id": str(row["id"])}
 
 
+def _tree_fork_lock_key(source_tree_id: str, owner_id: str) -> int:
+    """Return a stable, domain-separated signed bigint fork lock key."""
+    digest = hashlib.sha256(
+        f"tree-fork:v1:{source_tree_id}\x1f{owner_id}".encode("utf-8")
+    ).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=True)
+
+
 def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """Copy a public LoveTree and its public memories into a new tree owned by owner_id.
 
-    Privacy invariant (#3952): the fork is atomic with source visibility
-    authorization. The source tree row is read with SELECT ... FOR SHARE inside
-    the same transaction that performs the duplicate check, the destination tree
-    insert, and the public-memory copy. A concurrent public -> private
-    revocation can therefore never commit between the authorization read and the
-    durable copy: it either commits first (the fork observes `private` and
-    aborts with no destination rows) or it blocks on the FOR SHARE lock until
-    the fork transaction commits.
+    Privacy invariant (#3952): source visibility authorization and the durable
+    copy share one transaction. The source Tree is read with SELECT ... FOR
+    SHARE so a concurrent public -> private transition cannot commit between
+    authorization and copy.
+
+    Idempotency invariant (#3925): the transaction first serializes the
+    semantic fork identity (source_tree_id, owner_id) with an advisory lock.
+    Only after that fork-local lock is acquired does it take the source Tree
+    FOR SHARE lock, authorize explicit public visibility, and run the duplicate
+    lookup. A duplicate waiter therefore never holds the source SHARE lock
+    while waiting for fork-identity serialization.
     """
     ensure_owner_user_exists(owner_id)
     safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
@@ -193,7 +205,8 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """
 
     # Idempotency guard: if authenticated user already forked this tree, return existing copy.
-    # Runs inside the same transaction, after the source row is authorized.
+    # Runs inside the same transaction, after the advisory lock and source
+    # explicit-public authorization have established the authoritative boundary.
     existing_fork_query = """
         SELECT id FROM trees
         WHERE owner_id = %s
@@ -243,11 +256,19 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                # 1. Authoritative, transaction-local source read (FOR SHARE).
+                # 1. Serialize competing creators for the same source/owner pair
+                # before taking the source row lock. A duplicate waiter therefore
+                # cannot delay visibility revocation while waiting on this lock.
+                cur.execute(
+                    "SELECT pg_advisory_xact_lock(%s)",
+                    (_tree_fork_lock_key(safe_source_id, owner_id),),
+                )
+
+                # 2. Authoritative, transaction-local source read (FOR SHARE).
                 cur.execute(lock_source_query, (safe_source_id,))
                 source_tree = cur.fetchone()
 
-                # 2. Explicit public authorization inside the fork transaction.
+                # 3. Explicit public authorization inside the fork transaction.
                 if not source_tree:
                     raise HTTPException(status_code=404, detail="Source tree not found")
                 if str(source_tree.get("visibility") or "") != "public":
@@ -256,25 +277,25 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
                         detail="Only public trees can be forked",
                     )
 
-                # 3. Duplicate fork guard inside the same transaction.
+                # 4. Duplicate fork guard inside the same serialized transaction.
                 cur.execute(existing_fork_query, (owner_id, safe_source_id))
                 existing = cur.fetchone()
                 if existing:
                     existing_fork_id = str(existing["id"])
                 else:
-                    # 4. Source title comes from the authorized transaction row.
+                    # 5. Source title comes from the authorized transaction row.
                     source_title = str(source_tree.get("title") or "LoveTree")
                     new_title_raw = f"{source_title} (복사본)"
                     new_title = new_title_raw[:200]
 
-                    # 5. Destination tree insert happens only after authorization.
+                    # 6. Destination tree insert happens only after authorization.
                     cur.execute(
                         insert_tree_query,
                         (new_tree_id, owner_id, new_title, safe_source_id),
                     )
                     new_tree_row = cur.fetchone()
 
-                    # 6. Public source memories read inside the same transaction.
+                    # 7. Public source memories read inside the same transaction.
                     cur.execute(fetch_source_memories_query, (safe_source_id,))
                     source_memories = cur.fetchall()
 
@@ -283,7 +304,7 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
                     for mem in source_memories:
                         id_map[str(mem["id"])] = str(uuid.uuid4())
 
-                    # 7. Insert copied memories with rewritten tree_id and parent_id.
+                    # 8. Insert copied memories with rewritten tree_id and parent_id.
                     for mem in source_memories:
                         new_mem_id = id_map[str(mem["id"])]
                         old_parent_id = str(mem["parent_id"]) if mem["parent_id"] else None
