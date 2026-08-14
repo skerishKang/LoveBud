@@ -5,7 +5,7 @@ continuation for owner Tree / Memory lists beyond the 200-row cap.
 
 Backend cursor mode is additive:
 - legacy `fetch_user_trees` / `fetch_owner_memories` keep returning a raw array;
-- `fetch_user_trees_page` / `fetch_owner_memories_page` return (items, nextCursor)
+- `page_user_trees` / `page_owner_memories` return (items, nextCursor)
   over a stable (created_at DESC, id DESC) keyset, LIMIT limit+1, owner
   predicate always from the authenticated UID.
 
@@ -222,7 +222,7 @@ def test_tree_page_terminal_when_rows_le_limit():
     base = datetime(2026, 1, 1, tzinfo=timezone.utc)
     rows = _sorted_trees([_tree_row(f"t{i}", base) for i in range(50)])
     items, nxt = _run_page(
-        owner_reads.fetch_user_trees_page, OWNER_A, 100, rows=rows, kind="trees"
+        owner_reads.page_user_trees, OWNER_A, 100, rows=rows, kind="trees"
     )
     assert len(items) == 50
     assert nxt is None
@@ -232,7 +232,7 @@ def test_tree_page_has_more_returns_limit_and_cursor():
     base = datetime(2026, 1, 1, tzinfo=timezone.utc)
     rows = _sorted_trees([_tree_row(f"t{i}", base) for i in range(150)])
     items, nxt = _run_page(
-        owner_reads.fetch_user_trees_page, OWNER_A, 100, rows=rows, kind="trees"
+        owner_reads.page_user_trees, OWNER_A, 100, rows=rows, kind="trees"
     )
     assert len(items) == 100
     assert nxt is not None
@@ -249,7 +249,7 @@ def test_tree_page_over_200_convergence_no_skip_no_dup():
     cursor = None
     for _ in range(10):
         items, nxt = _run_page(
-            owner_reads.fetch_user_trees_page, OWNER_A, 100, cursor=cursor, rows=rows, kind="trees"
+            owner_reads.page_user_trees, OWNER_A, 100, cursor=cursor, rows=rows, kind="trees"
         )
         seen.extend(it["id"] for it in items)
         cursor = nxt
@@ -268,7 +268,7 @@ def test_tree_page_equal_timestamp_tie_break_by_id():
     cursor = None
     for _ in range(10):
         items, nxt = _run_page(
-            owner_reads.fetch_user_trees_page, OWNER_A, 2, cursor=cursor, rows=rows, kind="trees"
+            owner_reads.page_user_trees, OWNER_A, 2, cursor=cursor, rows=rows, kind="trees"
         )
         seen.extend(it["id"] for it in items)
         cursor = nxt
@@ -284,7 +284,7 @@ def test_tree_page_owner_predicate_from_auth_not_cursor():
     ts = datetime(2025, 5, 5, tzinfo=timezone.utc)
     foreign_cursor = owner_reads._encode_owner_list_cursor("trees", ts, "foreign-id")
     _run_page(
-        owner_reads.fetch_user_trees_page, OWNER_A, 100, cursor=foreign_cursor, rows=rows, kind="trees"
+        owner_reads.page_user_trees, OWNER_A, 100, cursor=foreign_cursor, rows=rows, kind="trees"
     )
     # Owner predicate is taken from the authenticated UID, never from the cursor.
     assert FakeCursor.last_params[0] == OWNER_A
@@ -295,7 +295,7 @@ def test_tree_page_malformed_cursor_raises():
     rows = _sorted_trees([_tree_row(f"t{i}", base) for i in range(10)])
     try:
         _run_page(
-            owner_reads.fetch_user_trees_page, OWNER_A, 100, cursor="%%%bad%%%", rows=rows, kind="trees"
+            owner_reads.page_user_trees, OWNER_A, 100, cursor="%%%bad%%%", rows=rows, kind="trees"
         )
     except owner_reads.OwnerListCursorError:
         return
@@ -319,7 +319,7 @@ def test_memory_page_tree_scoped_full_owner_continuation():
     cursor = None
     for _ in range(10):
         items, nxt = _run_page(
-            owner_reads.fetch_owner_memories_page, OWNER_A, "tree-X", 100, cursor=cursor, rows=rows, kind="memories"
+            owner_reads.page_owner_memories, OWNER_A, "tree-X", 100, cursor=cursor, rows=rows, kind="memories"
         )
         seen.extend(it["id"] for it in items)
         cursor = nxt
@@ -334,7 +334,7 @@ def test_memory_page_cross_tree_cursor_rejected():
     ts = datetime(2025, 5, 5, tzinfo=timezone.utc)
     treeX_cursor = owner_reads._encode_owner_list_cursor("memories", ts, "m1", tree_id="tree-X")
     try:
-        owner_reads.fetch_owner_memories_page(OWNER_A, "tree-Y", 100, cursor=treeX_cursor)
+        owner_reads.page_owner_memories(OWNER_A, "tree-Y", 100, cursor=treeX_cursor)
     except owner_reads.OwnerListCursorError:
         return
     raise AssertionError("expected OwnerListCursorError for cross-tree cursor")
@@ -345,7 +345,7 @@ def test_memory_page_full_owner_cursor_with_tree_id_rejected():
     ts = datetime(2025, 5, 5, tzinfo=timezone.utc)
     treeX_cursor = owner_reads._encode_owner_list_cursor("memories", ts, "m1", tree_id="tree-X")
     try:
-        owner_reads.fetch_owner_memories_page(OWNER_A, None, 100, cursor=treeX_cursor)
+        owner_reads.page_owner_memories(OWNER_A, None, 100, cursor=treeX_cursor)
     except owner_reads.OwnerListCursorError:
         return
     raise AssertionError("expected OwnerListCursorError for tree-scoped cursor on full-owner list")
@@ -363,7 +363,7 @@ def test_memory_page_equal_timestamp_tie_break():
     cursor = None
     for _ in range(10):
         items, nxt = _run_page(
-            owner_reads.fetch_owner_memories_page, OWNER_A, "tree-X", 2, cursor=cursor, rows=rows, kind="memories"
+            owner_reads.page_owner_memories, OWNER_A, "tree-X", 2, cursor=cursor, rows=rows, kind="memories"
         )
         seen.extend(it["id"] for it in items)
         cursor = nxt
@@ -380,7 +380,7 @@ def test_memory_page_terminal_page_next_cursor_null():
         reverse=True,
     )
     items, nxt = _run_page(
-        owner_reads.fetch_owner_memories_page, OWNER_A, "tree-X", 100, cursor=None, rows=rows, kind="memories"
+        owner_reads.page_owner_memories, OWNER_A, "tree-X", 100, cursor=None, rows=rows, kind="memories"
     )
     assert len(items) == 30
     assert nxt is None

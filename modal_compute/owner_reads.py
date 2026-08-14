@@ -421,7 +421,7 @@ _TREE_PAGE_QUERY = """
 """
 
 
-def fetch_user_trees_page(owner_id: str, limit: int, cursor: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
+def page_user_trees(owner_id: str, limit: int, cursor: str | None = None) -> tuple[list[dict[str, Any]], str | None]:
     decoded = None
     if cursor is not None:
         decoded = _decode_owner_list_cursor(cursor, _TREE_CURSOR_KIND)
@@ -458,7 +458,7 @@ _MEMORY_PAGE_QUERY = """
 """
 
 
-def fetch_owner_memories_page(
+def page_owner_memories(
     owner_id: str,
     tree_id: str | None,
     limit: int,

@@ -41,10 +41,10 @@ from modal_compute.owner_reads import (
     OwnerListCursorError,
     OwnerTreeListError,
     fetch_owner_memories,
-    fetch_owner_memories_page,
+    page_owner_memories,
     fetch_owner_tree,
     fetch_user_trees,
-    fetch_user_trees_page,
+    page_user_trees,
 )
 from modal_compute.owner_writes import (
     create_owner_tree,
@@ -378,7 +378,7 @@ def get_private_trees(
     try:
         if pagination == "cursor":
             try:
-                items, next_cursor = fetch_user_trees_page(user["uid"], limit=limit, cursor=cursor)
+                items, next_cursor = page_user_trees(user["uid"], limit=limit, cursor=cursor)
             except OwnerListCursorError:
                 raise HTTPException(status_code=400, detail="Invalid pagination cursor")
             logger.log_success(status_code=200)
@@ -537,7 +537,7 @@ def get_private_memories(
     safe_tree_id = validate_optional_uuid(treeId, "treeId")
     if pagination == "cursor":
         try:
-            items, next_cursor = fetch_owner_memories_page(
+            items, next_cursor = page_owner_memories(
                 user["uid"], safe_tree_id, limit=limit, cursor=cursor
             )
         except OwnerListCursorError:
