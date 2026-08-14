@@ -70,6 +70,14 @@ def normalize_tags(raw: Any) -> list[str]:
     return []
 
 
+def _normalize_stored_visibility(value: Any) -> str | None:
+    if value == "public":
+        return "public"
+    if value == "private":
+        return "private"
+    return None
+
+
 def normalize_memory_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(row["id"]),
@@ -84,7 +92,7 @@ def normalize_memory_row(row: dict[str, Any]) -> dict[str, Any]:
         "thumbnail": row.get("thumbnail") or "",
         "emotionTags": normalize_tags(row.get("emotion_tags")),
         "timestamp": row.get("timestamp") or "",
-        "visibility": row.get("visibility") or "public",
+        "visibility": _normalize_stored_visibility(row.get("visibility")),
         "channelId": row.get("channel_id") or None,
         "channelName": row.get("channel_name") or None,
         "channelUrl": row.get("channel_url") or None,
@@ -106,7 +114,7 @@ def normalize_tree_row(
     tree = {
         "id": str(row["id"]),
         "title": row.get("title") or "",
-        "visibility": row.get("visibility") or "public",
+        "visibility": _normalize_stored_visibility(row.get("visibility")),
         "createdAt": _to_isoformat(row.get("created_at")),
         "updatedAt": _to_isoformat(row.get("updated_at")),
         "memoryCount": int(memory_count or 0),

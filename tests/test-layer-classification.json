@@ -2460,7 +2460,13 @@
     {
       "path": "tests/contracts/my-trees-visibility-display-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used as truth.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-filter-visibility-3934.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production my-trees-filter.js module source and executes it in a local vm context to assert Issue #3934 visibility bucket contracts; no real external system or production resource used.",
       "capabilities": []
     },
     {
