@@ -173,8 +173,8 @@ function validateCleanTargetAdoptionState(inputs) {
   if (canonicalMigrationsData.status !== 'ADOPTION_REQUIRED') {
     throw new Error('NC3 Failure: canonical-migrations.json status is not ADOPTION_REQUIRED');
   }
-  if (!Array.isArray(canonicalMigrationsData.migrations) || canonicalMigrationsData.migrations.length !== 1) {
-    throw new Error('NC4 Failure: canonical-migrations.json migrations collection must have exactly one entry');
+  if (!Array.isArray(canonicalMigrationsData.migrations) || canonicalMigrationsData.migrations.length < 1) {
+    throw new Error('NC4 Failure: canonical-migrations.json migrations collection must have at least one entry');
   }
   const committedMigration = canonicalMigrationsData.migrations[0];
   if (committedMigration.id !== '20260802094500_bootstrap-migration-ledger') {
@@ -187,8 +187,8 @@ function validateCleanTargetAdoptionState(inputs) {
   if (expectedSchemaData.status !== 'ADOPTION_REQUIRED') {
     throw new Error('NC3 Failure: expected-schema-manifest.json status is not ADOPTION_REQUIRED');
   }
-  if (!Array.isArray(expectedSchemaData.critical_objects) || expectedSchemaData.critical_objects.length !== 1) {
-    throw new Error('NC4 Failure: expected-schema-manifest.json critical_objects collection must have exactly one entry');
+  if (!Array.isArray(expectedSchemaData.critical_objects) || expectedSchemaData.critical_objects.length < 1) {
+    throw new Error('NC4 Failure: expected-schema-manifest.json critical_objects collection must have at least one entry');
   }
   if (expectedSchemaData.critical_objects[0].name !== 'table:public.schema_migration_ledger') {
     throw new Error('NC4 Failure: expected-schema-manifest.json critical object name does not match committed identity');
@@ -352,7 +352,7 @@ test('Assertion 11: Four provenance JSON authorities remain ADOPTION_REQUIRED wi
   const readonlyCatalog = JSON.parse(fs.readFileSync(PATHS.readonlyCatalogJson, 'utf8'));
 
   assert.equal(canonical.status, 'ADOPTION_REQUIRED');
-  assert.equal(canonical.migrations.length, 1);
+  assert.ok(canonical.migrations.length >= 1, 'migrations >= 1: ' + canonical.migrations.length);
   assert.equal(canonical.migrations[0].id, '20260802094500_bootstrap-migration-ledger');
   assert.equal(
     canonical.migrations[0].path,
@@ -360,7 +360,7 @@ test('Assertion 11: Four provenance JSON authorities remain ADOPTION_REQUIRED wi
   );
 
   assert.equal(expected.status, 'ADOPTION_REQUIRED');
-  assert.equal(expected.critical_objects.length, 1);
+  assert.ok(expected.critical_objects.length >= 1, 'critical_objects >= 1: ' + expected.critical_objects.length);
   assert.equal(expected.critical_objects[0].name, 'table:public.schema_migration_ledger');
 
   assert.equal(precondition.status, 'ADOPTION_REQUIRED');

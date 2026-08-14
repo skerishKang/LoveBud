@@ -7,6 +7,8 @@
  * No real LLM, no API keys, no external fetch, no persistence
  */
 
+import { readBoundedRequestBody } from '../../_shared/bounded-request-body.js';
+
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_BODY_SIZE = 131072; // 128KB
 
@@ -131,24 +133,18 @@ function resolveScoutSuggestProviderMode(env) {
 }
 
 async function readBoundedBody(request) {
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (e) {
-    return { tooLarge: true, body: null };
+  const result = await readBoundedRequestBody(request, MAX_BODY_SIZE);
+  if (result.status === 'tooLarge') {
+    return { tooLarge: true, readError: false, body: null };
   }
-
-  if (!bodyText) {
-    return { tooLarge: false, body: null };
+  if (result.status === 'readError') {
+    return { tooLarge: false, readError: true, body: null };
   }
-
-  const encoder = new TextEncoder();
-  const encoded = encoder.encode(bodyText);
-  if (encoded.byteLength > MAX_BODY_SIZE) {
-    return { tooLarge: true, body: null };
-  }
-
-  return { tooLarge: false, body: bodyText };
+  return {
+    tooLarge: false,
+    readError: false,
+    body: result.body ? new TextDecoder().decode(result.body) : null,
+  };
 }
 
 function buildErrorResponse(code, message, requestId, status = 400) {
@@ -278,6 +274,9 @@ export async function onRequestPost(context) {
   const bodyResult = await readBoundedBody(request);
   if (bodyResult.tooLarge) {
     return buildErrorResponse('VALIDATION_ERROR', 'Request body too large', requestId, 413);
+  }
+  if (bodyResult.readError) {
+    return buildErrorResponse('VALIDATION_ERROR', 'Unable to read request body', requestId, 400);
   }
 
   try {

@@ -18,6 +18,44 @@ function createStorageMock(initialState = {}) {
   };
 }
 
+// #3928: the owner-private cache module (js/auth/auth-cache.js) is the
+// confirmed-owner authority for private cache read/write. These contract
+// fixtures run the my-trees-data module in a sandbox without loading the
+// full auth chain, so a minimal authority mock is injected that behaves like
+// the production module for a single confirmed owner ('test-uid').
+function createPrivateCacheAuthorityMock(localStorageMock) {
+  const OWNER_UID = 'test-uid';
+  return {
+    getPrivateCacheOwnerUid() { return OWNER_UID; },
+    capturePrivateCacheAuthority(expectedUid) {
+      if (!expectedUid || String(expectedUid) !== OWNER_UID) return null;
+      return { uid: OWNER_UID, epoch: 0 };
+    },
+    isPrivateCacheAuthorityCurrent(authority) {
+      return !!(authority && authority.uid === OWNER_UID && Number(authority.epoch) === 0);
+    },
+    writePrivateCacheRecord(key, uid, record, authority) {
+      if (!uid || String(uid) !== OWNER_UID || !authority) return false;
+      try {
+        localStorageMock.setItem(String(key), JSON.stringify(record));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    readPrivateCacheRecord(key, uid) {
+      if (!uid || String(uid) !== OWNER_UID) return null;
+      try {
+        const raw = localStorageMock.getItem(String(key));
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    clearPrivateCaches() {},
+  };
+}
+
 function createSandbox(options = {}) {
   const localStorageMock = createStorageMock(options.localStorage || {});
   const sessionStorageMock = createStorageMock(options.sessionStorage || {});
@@ -37,6 +75,7 @@ function createSandbox(options = {}) {
       LoveTreeAuthPolicy: null,
       LoveTreeBaseApiFetch: null,
       LoveBudCache: options.cache || null,
+      LoveBudAuthCache: createPrivateCacheAuthorityMock(localStorageMock),
       LoveBudNormalize: null,
       apiClient: options.apiClient || null,
       requestIdleCallback: null,

@@ -1,0 +1,58 @@
+name: Hub layout concurrency 3923
+
+on:
+  pull_request:
+    paths:
+      - "modal_compute/hub_layouts.py"
+      - "tests/db-engine/hub-layout-revision-concurrency-3923.py"
+      - ".github/workflows/hub-layout-concurrency-3923.yml"
+
+jobs:
+  db-engine-hub-layout-revision-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17.4-bookworm
+        env:
+          POSTGRES_USER: lovebud_ci
+          POSTGRES_PASSWORD: ${{ format('{0}-{1}', github.run_id, github.run_attempt) }}
+          POSTGRES_DB: lovebud_ci_admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U lovebud_ci -d lovebud_ci_admin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      LB_TEST_PGHOST: 127.0.0.1
+      LB_TEST_PGPORT: "5432"
+      LB_TEST_PGUSER: lovebud_ci
+      LB_TEST_PGPASSWORD: ${{ format('{0}-{1}', github.run_id, github.run_attempt) }}
+      LB_TEST_PGADMIN_DB: lovebud_ci_admin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Modal test dependencies
+        run: pip install -r modal_compute/requirements.txt
+
+      - name: Assert PostgreSQL server version 17.4
+        env:
+          PGPASSWORD: ${{ format('{0}-{1}', github.run_id, github.run_attempt) }}
+        run: |
+          VER=$(psql -h 127.0.0.1 -p 5432 -U lovebud_ci -d lovebud_ci_admin -tAc "SHOW server_version_num;")
+          echo "server_version_num=${VER}"
+          test "${VER}" = "170004"
+
+      - name: Run hub-layout revision concurrency regression
+        run: PYTHONPATH=. python tests/db-engine/hub-layout-revision-concurrency-3923.py

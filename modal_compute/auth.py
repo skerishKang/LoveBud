@@ -41,6 +41,20 @@ class PlusRequiredError(Exception):
     pass
 
 
+class FirebaseCertFetchUnavailableError(Exception):
+    """Trusted Firebase signing-certificate metadata could not be refreshed."""
+
+
+class EntitlementCheckUnavailableError(Exception):
+    """Plus-entitlement Firestore lookup could not be completed.
+
+    Raised when the entitlement read cannot be performed due to Firestore
+    client initialization, configuration, credential, network, timeout, RPC,
+    runtime, or read failure. This is an availability error: callers must
+    fail closed and must NOT treat it as "missing Plus access".
+    """
+
+
 _firebase_cert_cache: dict[str, Any] = {"expires_at": 0, "certs": {}}
 _firebase_admin_app: Any = None
 _firestore_client: Any = None
@@ -118,11 +132,17 @@ def is_entitlement_truthy(value: Any) -> bool:
 def user_has_plus_entitlement(uid: str) -> bool:
     try:
         snapshot = get_firestore_client().collection("users").document(uid).get()
+
         if not snapshot.exists:
             return False
+
         profile = snapshot.to_dict() or {}
-    except Exception:
-        return False
+    except Exception as error:
+        # Firestore client init/config/credential/network/timeout/RPC/read
+        # failure — and any snapshot existence/materialization runtime failure —
+        # is an availability problem, not "no Plus access". Never collapse it to
+        # False and never let it leak to a generic 500; let callers fail closed.
+        raise EntitlementCheckUnavailableError() from error
 
     if is_entitlement_truthy(profile.get("privateStorageEnabled")):
         return True
@@ -148,26 +168,35 @@ def get_firebase_certs() -> dict[str, str]:
     if _firebase_cert_cache["expires_at"] > now and _firebase_cert_cache["certs"]:
         return _firebase_cert_cache["certs"]
 
-    with urllib.request.urlopen(
-        "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
-        timeout=5,
-    ) as response:
-        raw = response.read().decode("utf-8")
-        cache_control = response.headers.get("cache-control", "")
+    try:
+        with urllib.request.urlopen(
+            "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+            timeout=5,
+        ) as response:
+            raw = response.read().decode("utf-8")
+            cache_control = response.headers.get("cache-control", "")
 
-        max_age = 300
-        for part in cache_control.split(","):
-            part = part.strip()
-            if part.startswith("max-age="):
-                try:
-                    max_age = int(part.split("=", 1)[1])
-                except ValueError:
-                    max_age = 300
+            max_age = 300
+            for part in cache_control.split(","):
+                part = part.strip()
+                if part.startswith("max-age="):
+                    try:
+                        max_age = int(part.split("=", 1)[1])
+                    except ValueError:
+                        max_age = 300
 
-        certs = json.loads(raw)
-        _firebase_cert_cache["certs"] = certs
-        _firebase_cert_cache["expires_at"] = now + max_age
-        return certs
+            certs = json.loads(raw)
+            if not isinstance(certs, dict) or not certs or not all(
+                isinstance(kid, str) and kid and isinstance(cert, str) and cert
+                for kid, cert in certs.items()
+            ):
+                raise ValueError("Unusable Firebase certificate metadata")
+    except Exception as error:
+        raise FirebaseCertFetchUnavailableError() from error
+
+    _firebase_cert_cache["certs"] = certs
+    _firebase_cert_cache["expires_at"] = now + max_age
+    return certs
 
 
 def require_firebase_user(authorization: str | None) -> dict[str, Any]:
@@ -182,7 +211,19 @@ def require_firebase_user(authorization: str | None) -> dict[str, Any]:
         jwt = _get_jwt_module()
         x509_mod = _get_cryptography_x509()
         header = jwt.get_unverified_header(token)
-        cert = get_firebase_certs().get(header.get("kid"))
+    except Exception as error:
+        raise HTTPException(status_code=401, detail="Invalid ID token") from error
+
+    try:
+        certs = get_firebase_certs()
+    except FirebaseCertFetchUnavailableError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service temporarily unavailable",
+        ) from error
+
+    try:
+        cert = certs.get(header.get("kid"))
         if not cert:
             raise HTTPException(status_code=401, detail="Invalid ID token")
 

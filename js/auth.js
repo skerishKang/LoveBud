@@ -258,6 +258,44 @@ function preloadRedirectTargetData() {
     });
     return;
   }
+
+  // Legacy/fallback path: use the same confirmed-UID/epoch authority as the
+  // canonical auth-session module. If authority is unavailable, do not persist
+  // owner-private preload data.
+  var privateCache = window.LoveBudAuthCache || null;
+  var ownerUid = privateCache && typeof privateCache.getPrivateCacheOwnerUid === 'function'
+    ? privateCache.getPrivateCacheOwnerUid()
+    : null;
+  var authority = privateCache && typeof privateCache.capturePrivateCacheAuthority === 'function'
+    ? privateCache.capturePrivateCacheAuthority(ownerUid)
+    : null;
+
+  function isPrivatePreloadCurrent() {
+    return !!(
+      privateCache &&
+      authority &&
+      typeof privateCache.isPrivateCacheAuthorityCurrent === 'function' &&
+      privateCache.isPrivateCacheAuthorityCurrent(authority)
+    );
+  }
+
+  function writePrivatePreloadRecord(key, record) {
+    if (
+      !privateCache ||
+      !ownerUid ||
+      !authority ||
+      typeof privateCache.writePrivateCacheRecord !== 'function'
+    ) {
+      return false;
+    }
+    return privateCache.writePrivateCacheRecord(key, ownerUid, record, authority) === true;
+  }
+
+  if (!ownerUid || !authority) {
+    console.warn('[auth] Private preload skipped: confirmed owner cache authority unavailable');
+    return;
+  }
+
   // Fire-and-forget: 로그인 직후 redirect 대상에 필요한 데이터 preload
   var redirectTarget = getRedirectTarget();
   var isEditorTarget = redirectTarget.indexOf('editor.html') !== -1;
@@ -265,36 +303,40 @@ function preloadRedirectTargetData() {
 
   try {
     // 1. my-trees 또는 editor 모두에 필요한 trees 목록 preload
-    if (window.apiClient && window.apiClient.getTrees) {
+    if (window.apiClient && window.apiClient.getTrees && isPrivatePreloadCurrent()) {
       window.apiClient.getTrees().then(function(trees) {
+        if (!isPrivatePreloadCurrent()) return;
         if (trees && trees.length > 0) {
-          localStorage.setItem('lovebud_trees_cache', JSON.stringify({
+          if (!writePrivatePreloadRecord('lovebud_trees_cache', {
             data: trees,
             timestamp: Date.now()
-          }));
+          })) {
+            return;
+          }
           console.log('[auth] Preloaded my-trees cache:', trees.length, 'trees');
 
           // 2. editor 진입 시 첫 번째 트리 상세도 preload
-          if ((isEditorTarget || isMyTreesTarget) && trees[0]) {
+          if ((isEditorTarget || isMyTreesTarget) && trees[0] && isPrivatePreloadCurrent()) {
             var firstTreeId = trees[0].id || trees[0];
             if (firstTreeId) {
               Promise.all([
                 window.apiClient.getTree ? window.apiClient.getTree(firstTreeId).catch(function() {}) : Promise.resolve(),
                 window.apiClient.getMemoriesByTree ? window.apiClient.getMemoriesByTree(firstTreeId).catch(function() {}) : Promise.resolve()
               ]).then(function(results) {
+                if (!isPrivatePreloadCurrent()) return;
                 var treeDetail = results[0];
                 var memories = results[1];
                 if (treeDetail) {
-                  localStorage.setItem('tree_detail_' + firstTreeId, JSON.stringify({
+                  writePrivatePreloadRecord('tree_detail_' + firstTreeId, {
                     data: treeDetail,
                     timestamp: Date.now()
-                  }));
+                  });
                 }
                 if (memories && Array.isArray(memories)) {
-                  localStorage.setItem('tree_memories_' + firstTreeId, JSON.stringify({
+                  writePrivatePreloadRecord('tree_memories_' + firstTreeId, {
                     data: memories,
                     timestamp: Date.now()
-                  }));
+                  });
                 }
                 console.log('[auth] Preloaded first tree detail for editor:', firstTreeId, 'memories:', memories ? memories.length : 0);
               }).catch(function(err) {
@@ -703,7 +745,7 @@ function setupSignupGoogleBtn() {
 function setupEmailAuthEntry() {
   callLoginPageModule('setupEmailAuthEntry', [{
     setEmailAuthMode: setEmailAuthMode,
-    getEmailAuthMode: function () { return EMAIL_AUTH_MODE; },
+    getEmailAuthMode: function() { return EMAIL_AUTH_MODE; },
     syncEmailAuthModeUi: syncEmailAuthModeUi,
     applyI18n: window.applyI18n,
     initialMode: resolveEmailAuthMode()
@@ -718,7 +760,7 @@ function setupEmailAuthForm() {
     initFirebase: initFirebase,
     getEnvironmentCheckError: getEnvironmentCheckError,
     getFriendlyErrorMessage: getFriendlyErrorMessage,
-    getEmailAuthMode: function () { return EMAIL_AUTH_MODE; },
+    getEmailAuthMode: function() { return EMAIL_AUTH_MODE; },
     setEmailAuthMode: setEmailAuthMode,
     syncEmailAuthModeUi: syncEmailAuthModeUi,
     persistConfirmedAuthSession: persistConfirmedAuthSession,

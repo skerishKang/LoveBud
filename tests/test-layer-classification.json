@@ -17,6 +17,18 @@
   "classificationBasis": "Content-evidence based. Each file is read; its source-read/execution/fake-env markers determine the primary layer. Filename alone is never used.",
   "entries": [
     {
+      "path": "tests/contracts/ci-browser-hermetic-4013-negative-controls.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the #4013 hermetic external-network negative controls via the tests/helpers/external-network-hermetic.cjs policy helper in real Playwright Chromium against a local 127.0.0.1 HTTP server. Exercises NC1 hostname-vs-pathname classification regression (fonts.googleapis.com hits the deterministic fixture, not pathname branch), NC2 unexpected external origin abort (example.invalid prevented from reaching the real network with exact URL surfaced), NC3 same-origin 4xx failing loudly, NC4 browser console error capture retained, and NC5 known-external fixture throw aborting without route.continue() or real network fallback. The hermetic helper secures all real-local browser contracts that load production js/ and css/ modules. No Production, auth, provider, DB mutation, or real external-network fallback.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/owner-list-cloudflare-forwarding.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the dedicated Cloudflare route builders (functions/api/trees.js buildPrivateTreesModalUrl and functions/_shared/memory-route-proxy.js buildMemoryCollectionModalUrl) in-process with constructed Request inputs and asserts exact same-origin forwarding of pagination/cursor/limit/treeId for cursor mode and legacy-array passthrough. No real network, browser, auth provider, database, deployment, or Production resource is used (#3944).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/ci-risk-gate-policy-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -26,6 +38,18 @@
       "path": "tests/contracts/fork-visibility-atomic-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree authorizes the source row inside its transaction with SELECT ... FOR SHARE (not the pre-transaction fetch_tree_for_owner_check DTO), forbids FOR KEY SHARE / LOCK TABLE, orders public authorization before the destination INSERT, and keeps public-memory-only copy; static source-read only, no execution.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-fork-idempotency-lock-3925.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree serializes competing creators for the same (source_tree_id, owner_id) tuple with a transaction-scoped pg_advisory_xact_lock acquired before the source visibility lock/authorization and before the duplicate lookup and destination INSERT; verifies the sha256-derived signed-bigint lock key is stable and tuple-scoped with process-local hash() negative control; pure static source-read and crypto key computation, no execution, no network, no DB (#3925).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-fork-completeness-3924.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree snapshots public source Memories with a single bounded ORDER BY created_at ASC, id ASC LIMIT 201 FOR SHARE read before any destination write; 200 supported rows copy in full and a 201st row rejects the fork with 409 FORK_SOURCE_TOO_LARGE / supportedMax 200 BEFORE the destination Tree INSERT; forbids LIMIT 200 restoration, COUNT(*) preflight, and any second DB connection, and verifies the #3925 advisory-lock / #3952 / #3956 ordering survives the snapshot reorder; pure static source-read, no execution, no network, no DB (#3924).",
       "capabilities": []
     },
     {
@@ -110,6 +134,12 @@
       "path": "tests/contracts/api-content-length-early-rejection-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/api-memory-stream-body-limit-3920.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared streaming request-body primitive and the migrated Memory owner proxy / comment / reaction write routes in a local process with mocked fetch, proving byte-exact 128 KiB acceptance, +1 rejection, missing/invalid/understated Content-Length handling, UTF-8 multibyte byte-based counting, reader.cancel on overflow, read-failure non-413 taxonomy, header/body preservation, DELETE body-read zero, and the static raw request.text()/json() negative control (#3920). No real external system or production resource used.",
       "capabilities": []
     },
     {
@@ -2524,6 +2554,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/private-owner-cache-lifecycle-3928-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes production js/auth/auth-cache.js, js/auth/auth-session.js, js/auth.js, and js/my-trees/my-trees-data.js in a local node:vm fake-storage environment: asserts #3928 owner-transition regressions (A -> logout/switch -> B negative, no transient A cache paint for B, same-UID cache hit, logout coverage for all private key families, stale async A result invalidation, canonical preload cannot repopulate after UID transition) with no network, DB, Production, secrets, or external integration.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/production-readonly-catalog-boundary-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Source-static contract for the Production-readonly catalog connection boundary: dedicated secret key only, remote TLS URL validation, major-17 version policy, frozen adoption allowlist, abstract role mapping, disposable adapter regression, and no Production DB session (#3570).",
@@ -4057,6 +4093,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-write-request-id-3959.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source (functions/api/trees.js, functions/api/trees/[id].js) and executes it in a local process with a mocked global fetch; static source-level checks assert shared request-id/modal-fetch imports and requestId propagation through all POST/PUT/DELETE error and success paths; runtime no-network checks assert missing-auth, success, and missing-config responses include and expose x-lovebud-request-id. #3959 focused contract test for Tree write request correlation. No real external system, network, database, browser, provider, or Production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/trees-schema-db-engine-harness-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads package.json, CI workflow, trees-schema db-engine harness source, damaged fixture markers, and classification inventory; asserts loopback guards, seven-column foothold phase markers, and supplemental DB_ENGINE_EXECUTION placement without executing PostgreSQL (#3532).",
@@ -4174,6 +4216,35 @@
       "path": "tests/contracts/youtube-oembed-channel-enrichment-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the real production preview UI and client wrapper (js/import/youtube-playlist-preview-ui.js, js/api/import-youtube-playlist-preview.js, css/global.css, css/my-trees.css) in Playwright Chromium (desktop + mobile) against a local HTTP server with the preview provider route mocked via a stubbed fetch. Asserts #3914 preview flow: accessible non-permanently-hidden trigger with aria-expanded + focus management, accepted-source restriction (URL-looking input stays source, bare IDs become playlistId), ordered success preview with explicit unavailable/partial states and position preservation, deterministic placeholder for null thumbnails, 404-thumbnail load-failure fallback to the placeholder with explicit THUMBNAIL_UNAVAILABLE state and no multi-host retry, bounded error + edit/retry, and full 50-item reachability via bounded scrolling on desktop and mobile. No real Google API call, no network beyond the in-process static server, no DB, no Production mutation.",
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-client-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production client wrapper (js/api/import-youtube-playlist-preview.js, a browser IIFE) inside a vm sandbox with mocked fetch, timers, and a stubbed auth pipeline. Verifies same-origin route targeting (never a Google endpoint), Authorization acquisition, bounded JSON body, AbortController signal, normalized envelope errors, FAIL-CLOSED handling of non-2xx responses with and without envelopes, FAIL-CLOSED handling of non-canonical 2xx responses, PROVIDER_TIMEOUT on abort, and validateSourceIdentity exactly-one semantics. No network, no DB, no Production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-provider-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Static source assertions plus an executed fake Python behavior path: the real modal_compute/youtube_playlist_preview.py provider module is imported in a local python3 subprocess (spawnSync, no network) with the network layer monkeypatched (fake opener / fake provider responses). Covers parser acceptance/rejection (scheme/host/path/ID shape), canonical item-state derivation (UNKNOWN for unexpected privacy status, METADATA_PARTIAL for missing videoId/thumbnail), unsupported-400 playlistOperationUnsupported normalization, not-found/quota/inaccessible/timeout normalization, malformed nested provider evidence -> bounded INTERNAL_PREVIEW_ERROR, provider call ceiling = 2 with zero retry, source-order preservation, unavailable items kept, 50-item ceiling, truncated flag, and zero write behavior. No real YouTube request, no DB, no Production.",
+      "capabilities": [
+        "child_process"
+      ]
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-preview-route-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Imports the production Cloudflare Pages Function (functions/api/import/youtube/playlist/preview.js, ESM) and executes it with real Request objects and a mocked global fetch to a fake Modal endpoint. Verifies the route is a thin same-origin proxy: exactly-one source/playlistId edge identity rule (no silent precedence), 4KB body bound, content-type/method validation, Authorization header forwarding verbatim (never verified on the edge), fixed Modal preview endpoint targeting, bounded CONFIGURATION_REQUIRED / PROVIDER_UNAVAILABLE / PROVIDER_TIMEOUT failures, and Modal envelope pass-through. Asserts the edge contains no provider endpoint/secret and never fetches the user-supplied URL. No network, no DB, no Production.",
       "capabilities": []
     },
     {
@@ -4977,10 +5048,17 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/test_youtube_playlist_preview_route_3914.py",
+      "defaultCi": false,
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script. Drives the Modal preview endpoint (modal_compute/app.py post_youtube_playlist_preview) through the real FastAPI TestClient with auth/provider seams patched (same canonical pattern as tests/contracts/test_fork_tree.py) to prove bounded 401/503 auth envelopes with zero provider key/metadata/items calls, preserved 503 dependency-outage taxonomy (#3972), raw auth detail absence, and verified-auth progression to provider seams. No real Firebase, no real YouTube network call.",
+      "capabilities": []
+    },
+    {
       "path": "tests/db-engine/fork-public-tree-visibility-concurrency-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections to prove fork_public_tree FOR SHARE serialization: revocation-first (fork observes private, zero destination rows), fork-lock-first (visibility UPDATE blocks until fork commit), and mid-copy rollback (no partial destination). Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
+      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections to prove fork_public_tree FOR SHARE serialization: revocation-first (fork observes private, zero destination rows), fork-lock-first (visibility UPDATE blocks until fork commit), mid-copy rollback (no partial destination), #3925 same-identity/different-identity advisory concurrency, and #3924 completeness (199/200 copy in full; exactly 201 and >201 reject with FORK_SOURCE_TOO_LARGE and zero destination rows; private rows excluded from the count; deterministic (created_at, id) tie boundary; parent-id rewrite integrity; duplicate guard still precedes the limit). Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
       "capabilities": []
     },
     {

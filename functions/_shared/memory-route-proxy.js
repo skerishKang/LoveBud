@@ -1,4 +1,6 @@
 import { validateWritePayload } from './legacy-key-guard.js';
+import { fetchModalWithTimeout, isModalTimeoutError } from './modal-fetch.js';
+import { readBoundedRequestBody } from './bounded-request-body.js';
 
 export const MAX_MEMORY_WRITE_BODY_BYTES = 128 * 1024;
 export const MEMORY_ROUTE_REQUEST_ID_HEADER = 'x-lovebud-request-id';
@@ -13,19 +15,6 @@ export function getAuthorizationHeader(request) {
 
 export function hasAuthorizationHeader(request) {
   return !!getAuthorizationHeader(request);
-}
-
-function getContentLengthBytes(request) {
-  const raw = request.headers.get('content-length');
-  if (!raw) return null;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  return parsed;
-}
-
-function isWriteContentLengthTooLarge(request) {
-  const contentLengthBytes = getContentLengthBytes(request);
-  return contentLengthBytes !== null && contentLengthBytes > MAX_MEMORY_WRITE_BODY_BYTES;
 }
 
 export function normalizeMemoryId(rawMemoryId) {
@@ -83,6 +72,11 @@ export function buildMemoryCollectionModalUrl(request, env = {}) {
     const treeId = sourceUrl.searchParams.get('treeId');
     if (treeId) target.searchParams.set('treeId', treeId);
     target.searchParams.set('limit', String(clampCollectionLimit(sourceUrl.searchParams.get('limit'))));
+
+    const pagination = sourceUrl.searchParams.get('pagination');
+    if (pagination) target.searchParams.set('pagination', pagination);
+    const cursor = sourceUrl.searchParams.get('cursor');
+    if (cursor) target.searchParams.set('cursor', cursor);
   }
 
   return target;
@@ -143,29 +137,52 @@ export function buildMemoryMissingAuthorizationResponse(requestId = null) {
   return new Response(JSON.stringify({ error: 'Authorization required' }), { status: 401, headers });
 }
 
+export function buildMemoryReadFailureResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'body-read-failed'
+  };
+  if (requestId) headers[MEMORY_ROUTE_REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Request body could not be read' }), { status: 503, headers });
+}
+
+export function buildMemoryModalUnavailableResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-degraded': 'modal-unavailable'
+  };
+  if (requestId) headers[MEMORY_ROUTE_REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers });
+}
+
+export function buildMemoryModalTimeoutResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-route-status': 'modal-timeout'
+  };
+  if (requestId) headers[MEMORY_ROUTE_REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), { status: 504, headers });
+}
+
+/**
+ * Bounded Memory write body reader. Delegates the true streaming byte read to
+ * the shared primitive and adapts its status DTO to the proxy's legacy shape.
+ *
+ * A stream read failure is reported as `readError` (NOT `tooLarge`), so the
+ * caller can map it to a safe unavailable/failure response instead of 413.
+ */
 export async function readBoundedMemoryWriteBody(request) {
-  if (isWriteContentLengthTooLarge(request)) {
-    return { tooLarge: true, body: null };
+  const result = await readBoundedRequestBody(request);
+  if (result.status === 'ok') {
+    return { tooLarge: false, readError: false, body: result.body };
   }
-
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (e) {
-    return { tooLarge: true, body: null };
+  if (result.status === 'tooLarge') {
+    return { tooLarge: true, readError: false, body: null };
   }
-
-  if (!bodyText) {
-    return { tooLarge: false, body: null };
-  }
-
-  const encoder = new TextEncoder();
-  const encoded = encoder.encode(bodyText);
-  if (encoded.byteLength > MAX_MEMORY_WRITE_BODY_BYTES) {
-    return { tooLarge: true, body: null };
-  }
-
-  return { tooLarge: false, body: encoded };
+  return { tooLarge: false, readError: true, body: null };
 }
 
 export function buildMemoryReadHeaders(request, requestId = null) {
@@ -237,6 +254,9 @@ export async function prepareMemoryWriteProxyRequest(request, env = {}, options 
     if (bodyResult.tooLarge) {
       return { response: buildMemoryPayloadTooLargeResponse(requestId) };
     }
+    if (bodyResult.readError) {
+      return { response: buildMemoryReadFailureResponse(requestId) };
+    }
     body = bodyResult.body;
 
     const guard = validateMemoryWriteBody(body);
@@ -258,20 +278,33 @@ export async function prepareMemoryWriteProxyRequest(request, env = {}, options 
   };
 }
 
+async function fetchMemoryModal(target, fetchOptions, options = {}) {
+  try {
+    return await fetchModalWithTimeout(target.toString(), fetchOptions, {
+      fetcher: options.fetcher,
+      timeoutMs: options.timeoutMs
+    });
+  } catch (error) {
+    if (isModalTimeoutError(error)) {
+      return buildMemoryModalTimeoutResponse(options.requestId || null);
+    }
+    return buildMemoryModalUnavailableResponse(options.requestId || null);
+  }
+}
+
 export async function proxyMemoryRouteRequest(context, options = {}) {
   const { request, env } = context;
   const requestId = options.requestId || null;
   const method = request.method.toUpperCase();
-  const fetcher = options.fetcher || fetch;
 
   if (method === 'GET') {
     const target = buildMemoryModalUrl(request, env || {}, options);
     if (!target) {
       return buildMemoryMissingModalConfigResponse(requestId);
     }
-    const response = await fetcher(target.toString(), {
+    const response = await fetchMemoryModal(target, {
       headers: buildMemoryReadHeaders(request, requestId)
-    });
+    }, { ...options, requestId });
     return withMemoryModalHeader(response, requestId);
   }
 
@@ -279,7 +312,7 @@ export async function proxyMemoryRouteRequest(context, options = {}) {
     const prepared = await prepareMemoryWriteProxyRequest(request, env || {}, options);
     if (prepared.response) return prepared.response;
 
-    const response = await fetcher(prepared.target.toString(), prepared.fetchOptions);
+    const response = await fetchMemoryModal(prepared.target, prepared.fetchOptions, { ...options, requestId });
     return withMemoryModalHeader(response, requestId);
   }
 

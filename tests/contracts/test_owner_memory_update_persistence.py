@@ -53,6 +53,7 @@ class MockConnection:
     def __init__(self, cursor_factory=None):
         self.cursor_factory = cursor_factory or (lambda *a, **k: MockCursor())
         self.commit_calls = 0
+        self.rollback_calls = 0
         self.close_called = False
 
     def __enter__(self):
@@ -66,6 +67,9 @@ class MockConnection:
 
     def commit(self):
         self.commit_calls += 1
+
+    def rollback(self):
+        self.rollback_calls += 1
 
     def close(self):
         self.close_called = True
@@ -1018,9 +1022,13 @@ def test_stale_source_returning_row_rejected_as_structured_409():
                 assert "persisted" not in detail, f"persisted must NOT be in detail (privacy boundary): {e.detail}"
 
     # The UPDATE still ran (the write was attempted); the failure is in acknowledgement.
+    # With the #3922 fix, divergence triggers rollback (commit=0), not a durable commit.
     update_calls = [c for c in cursor.execute_calls if "UPDATE memories" in c[0]]
     assert update_calls, "UPDATE must have been attempted"
-    assert conn.commit_calls == 1
+    assert conn.commit_calls == 0, (
+        f"Divergent write must NOT commit (rollback instead). "
+        f"Expected 0, got {conn.commit_calls}"
+    )
 
 
 def test_title_memo_emotiontags_persistence_unaffected_by_source_gate():

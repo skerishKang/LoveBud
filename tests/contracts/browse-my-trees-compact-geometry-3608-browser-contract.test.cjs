@@ -12,6 +12,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+const {
+  createSameOriginNavigationFailureTracker,
+} = require('../helpers/same-origin-navigation-failure-tracker.cjs');
+const {
+  makeHermeticRouteHandler,
+  defaultFulfillExternal,
+} = require('../helpers/external-network-hermetic.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -694,26 +701,22 @@ test('#3688 browser: canonical staged loading skeleton runtime', { timeout: 9000
         }
       });
 
-      await page.route('**/*', (route) => {
-        const url = route.request().url();
-        const type = route.request().resourceType();
-        let pathname = '';
-        try { pathname = new URL(url).pathname; } catch(e) {}
-
-        if (pathname === '/js/search/index.js' || pathname === '/js/my-trees/my-trees-page-bootstrap.js' || pathname === '/js/my-trees.js') {
-          route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* inert */' });
-          return;
-        }
-
-
-        if (url.includes('/api/') || url.includes('googleapis') || url.includes('firebase') || url.includes('identitytoolkit') || url.includes('firestore')) {
-          if (type === 'fetch' || type === 'xhr') {
-            route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-            return;
+      await page.route('**/*', makeHermeticRouteHandler({
+        fixtureOrigin: `http://127.0.0.1:${port}`,
+        onUnexpectedExternal: (url) => errors.push('unexpected external: ' + url),
+        onSameOrigin: async (route, target) => {
+          const pathname = target.pathname;
+          if (pathname === '/js/search/index.js' || pathname === '/js/my-trees/my-trees-page-bootstrap.js' || pathname === '/js/my-trees.js') {
+            await route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* inert */' });
+            return true;
           }
-        }
-        route.continue();
-      });
+          if (pathname.startsWith('/api/')) {
+            await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+            return true;
+          }
+          return false;
+        },
+      }));
 
       await page.goto(`http://127.0.0.1:${port}${ctx.path}`, { waitUntil: 'domcontentloaded' });
 
@@ -873,15 +876,14 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
     ]) {
       const context = await browser.newContext({ viewport: vp.viewport, isMobile: vp.isMobile, hasTouch: vp.isMobile });
       const page = await context.newPage();
-      const health = { pageErrors: [], consoleErrors: [], sameOriginFailures: [], http4xx: [], stubbedApi: [], external: 0 };
+      const health = { pageErrors: [], consoleErrors: [], sameOriginFailures: [], http4xx: [], stubbedApi: [], external: 0, unexpectedExternal: [] };
+      const navigationFailureTracker = createSameOriginNavigationFailureTracker(
+        page,
+        `http://127.0.0.1:${port}`,
+        health.sameOriginFailures
+      );
       page.on('pageerror', (err) => health.pageErrors.push(String((err && err.message) || err)));
       page.on('console', (msg) => { if (msg.type() === 'error') health.consoleErrors.push(msg.text()); });
-      page.on('requestfailed', (request) => {
-        const url = request.url();
-        if (url.startsWith(`http://127.0.0.1:${port}`) && request.failure()) {
-          health.sameOriginFailures.push(`${url} - ${request.failure().errorText}`);
-        }
-      });
       page.on('response', (response) => {
         const url = response.url();
         if (url.startsWith(`http://127.0.0.1:${port}`) && response.status() >= 400) {
@@ -889,30 +891,28 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
         }
       });
 
-      await page.route('**/*', (route) => {
-        const url = route.request().url();
-        const type = route.request().resourceType();
-        let pathname = '';
-        try { pathname = new URL(url).pathname; } catch (e) {}
-        if (pathname === '/api/community/trees') {
-          health.stubbedApi.push(pathname);
-          route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(syntheticTrees) });
-          return;
-        }
-        if (pathname.startsWith('/api/')) {
-          health.stubbedApi.push(pathname);
-          route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
-          return;
-        }
-        if (url.includes('googleapis') || url.includes('firebase') || url.includes('identitytoolkit') || url.includes('firestore') || url.includes('gstatic')) {
-          if (type === 'fetch' || type === 'xhr') {
-            route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-            return;
+      await page.route('**/*', makeHermeticRouteHandler({
+        fixtureOrigin: `http://127.0.0.1:${port}`,
+        onUnexpectedExternal: (url) => health.unexpectedExternal.push(url),
+        onSameOrigin: async (route, target) => {
+          const pathname = target.pathname;
+          if (pathname === '/api/community/trees') {
+            health.stubbedApi.push(pathname);
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(syntheticTrees) });
+            return true;
           }
+          if (pathname.startsWith('/api/')) {
+            health.stubbedApi.push(pathname);
+            await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+            return true;
+          }
+          return false;
+        },
+        fulfillExternal: async (route, target) => {
           health.external += 1;
-        }
-        route.continue();
-      });
+          await defaultFulfillExternal(route, target);
+        },
+      }));
 
       await page.goto(`http://127.0.0.1:${port}/pages/search.html`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(
@@ -1083,6 +1083,7 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       assert.equal(health.consoleErrors.length, 0, `${vp.name}: console errors ${health.consoleErrors.join(' | ')}`);
       assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: same-origin failures ${health.sameOriginFailures.join(' | ')}`);
       assert.equal(health.http4xx.length, 0, `${vp.name}: HTTP>=400 ${health.http4xx.join(' | ')}`);
+      assert.equal(health.unexpectedExternal.length, 0, `${vp.name}: unexpected external ${health.unexpectedExternal.join(' | ')}`);
 
       // ── L. Initial invalid URL fails closed to 전체 ──
       health.pageErrors.length = 0;
@@ -1091,17 +1092,35 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       health.http4xx.length = 0;
       health.stubbedApi.length = 0;
       health.external = 0;
-      await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction(() => {
-        const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
-        const act = chips.filter(c => c.classList.contains('active'));
-        let category = null;
-        try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
-        return document.querySelectorAll('#resultsList .tree-card').length >= 6
-          && act.length === 1
-          && act[0].getAttribute('data-category') === '전체'
-          && category === null;
-      }, null, { timeout: 20000 });
+      // Issue #3899: Space-key activation earlier in this test sets the
+      // scroll-load intent, and the scroll-load sentinel sits inside the
+      // viewport, so loadMorePublicTrees keeps starting limit=16 fetches.
+      // One of those can fire in the gap between beginIntentionalNavigation()
+      // and page.goto() and be cancelled by the intentional navigation. That
+      // is a legitimate post-snapshot abort per the tracker contract, so the
+      // harness disables the scroll-load sentinel gate for the navigation
+      // window. Keyboard accessibility assertions are unaffected.
+      await page.evaluate(() => {
+        if (window.LoveBudSearchScrollLoad && typeof window.LoveBudSearchScrollLoad.isSentinelNearViewport === 'function') {
+          window.LoveBudSearchScrollLoad.isSentinelNearViewport = function () { return false; };
+        }
+      });
+      navigationFailureTracker.beginIntentionalNavigation();
+      try {
+        await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => {
+          const chips = [...document.querySelectorAll('.filter-row .tag-chip')];
+          const act = chips.filter(c => c.classList.contains('active'));
+          let category = null;
+          try { category = new URLSearchParams(window.location.search).get('category'); } catch (e) {}
+          return document.querySelectorAll('#resultsList .tree-card').length >= 6
+            && act.length === 1
+            && act[0].getAttribute('data-category') === '전체'
+            && category === null;
+        }, null, { timeout: 20000 });
+      } finally {
+        navigationFailureTracker.endIntentionalNavigation();
+      }
       const sL = await read();
       assert.deepEqual(sL.active, ['전체'], `${vp.name}: L initial-invalid active`);
       assert.deepEqual(sL.checked, ['전체'], `${vp.name}: L initial-invalid checked`);
@@ -1150,6 +1169,7 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       assert.equal(health.sameOriginFailures.length, 0, `${vp.name}: M same-origin failures ${health.sameOriginFailures.join(' | ')}`);
       assert.equal(health.http4xx.length, 0, `${vp.name}: M HTTP>=400 ${health.http4xx.join(' | ')}`);
 
+      navigationFailureTracker.dispose();
       await context.close();
     }
   } finally {
@@ -1200,6 +1220,7 @@ async function newRealBrowsePage(browser, vp, baseUrl) {
   const stubbed = { apiTrees: 0, apiOther: 0, external: 0 };
   const sameOriginApiRequests = [];
   const sameOriginRequests = [];
+  const unexpectedExternal = [];
   page.on('request', (request) => {
     let u;
     try {
@@ -1236,45 +1257,32 @@ async function newRealBrowsePage(browser, vp, baseUrl) {
       }
     } catch (e) { /* ignore */ }
   });
-  await page.route('**/*', async (route) => {
-    const url = route.request().url();
-    let host = '';
-    let pathname = '';
-    try {
-      const u = new URL(url);
-      host = u.hostname;
-      pathname = u.pathname;
-    } catch (e) {
-      await route.continue();
-      return;
-    }
-    if (host !== '127.0.0.1') {
-      // Zero real external network: every external request is stubbed.
-      if (host.includes('gstatic') || host.includes('firebase')) {
-        await route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* firebase stub */' });
-      } else if (host.includes('fonts')) {
-        await route.fulfill({ status: 200, contentType: 'text/css', body: '/* font stub */' });
-      } else {
-        await route.fulfill({ status: 200, contentType: 'application/octet-stream', body: '' });
+  await page.route('**/*', makeHermeticRouteHandler({
+    fixtureOrigin: baseUrl,
+    onUnexpectedExternal: (url) => unexpectedExternal.push(url),
+    onSameOrigin: async (route, target) => {
+      const pathname = target.pathname;
+      if (pathname === '/api/community/trees') {
+        stubbed.apiTrees += 1;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(BASELINE_SYNTHETIC_TREES) });
+        return true;
       }
+      if (pathname.startsWith('/api/')) {
+        stubbed.apiOther += 1;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+        return true;
+      }
+      return false;
+    },
+    fulfillExternal: async (route, target) => {
+      // Zero real external network: every known external request is stubbed.
       stubbed.external += 1;
-      return;
-    }
-    if (pathname === '/api/community/trees') {
-      stubbed.apiTrees += 1;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(BASELINE_SYNTHETIC_TREES) });
-      return;
-    }
-    if (pathname.startsWith('/api/')) {
-      stubbed.apiOther += 1;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
-      return;
-    }
-    await route.continue();
-  });
+      await defaultFulfillExternal(route, target);
+    },
+  }));
   await page.goto(baseUrl + '/pages/search.html', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('domcontentloaded');
-  return { context, page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests };
+  return { context, page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests, unexpectedExternal };
 }
 
 async function teardownRealBrowse(env) {
@@ -1489,7 +1497,7 @@ test('Browse real-page structural baseline', { timeout: 120000 }, async (t) => {
 
       const env = await newRealBrowsePage(browser, vp, baseUrl);
       try {
-        const { page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests } = env;
+        const { page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests, unexpectedExternal } = env;
 
         // Deterministic readiness: the real API feed is stubbed and the page
         // has rendered at least one real (non-skeleton) tree card.
@@ -1650,6 +1658,7 @@ test('Browse real-page structural baseline', { timeout: 120000 }, async (t) => {
           // presented as real network success.
           assert.ok(stubbed.apiTrees >= 1, `deterministic /api/community/trees stub used (${stubbed.apiTrees} fulfillment)`);
           assert.ok(stubbed.external >= 1, `external requests all stubbed (${stubbed.external} fulfilled, 0 real external network)`);
+          assert.deepEqual(unexpectedExternal, [], `no unexpected external origin escape, got: ${JSON.stringify(unexpectedExternal)}`);
         });
 
         await t.test('I. public-route API request allowlist', () => {
@@ -1825,6 +1834,7 @@ async function newRealMyTreesPage(browser, vp, baseUrl) {
   const stubbed = { apiTrees: 0, apiDetail: 0, apiMemories: 0, apiOther: 0, external: 0 };
   const sameOriginApiRequests = [];
   const sameOriginRequests = [];
+  const unexpectedExternal = [];
   page.on('request', (request) => {
     let u;
     try {
@@ -1872,56 +1882,43 @@ async function newRealMyTreesPage(browser, vp, baseUrl) {
       }
     } catch (e) { /* ignore */ }
   });
-  await page.route('**/*', async (route) => {
-    const url = route.request().url();
-    let host = '';
-    let pathname = '';
-    try {
-      const u = new URL(url);
-      host = u.hostname;
-      pathname = u.pathname;
-    } catch (e) {
-      await route.continue();
-      return;
-    }
-    if (host !== '127.0.0.1') {
-      // Zero real external network: every external request is stubbed.
-      if (host.includes('gstatic') || host.includes('firebase')) {
-        await route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* firebase stub */' });
-      } else if (host.includes('fonts')) {
-        await route.fulfill({ status: 200, contentType: 'text/css', body: '/* font stub */' });
-      } else {
-        await route.fulfill({ status: 200, contentType: 'application/octet-stream', body: '' });
+  await page.route('**/*', makeHermeticRouteHandler({
+    fixtureOrigin: baseUrl,
+    onUnexpectedExternal: (url) => unexpectedExternal.push(url),
+    onSameOrigin: async (route, target) => {
+      const pathname = target.pathname;
+      if (pathname === '/api/trees') {
+        stubbed.apiTrees += 1;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([MY_TREES_SYNTHETIC_TREE]) });
+        return true;
       }
+      if (pathname === '/api/trees/mt-tree-3888-1') {
+        stubbed.apiDetail += 1;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MY_TREES_TREE_DETAIL) });
+        return true;
+      }
+      if (pathname === '/api/memories') {
+        stubbed.apiMemories += 1;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MY_TREES_MEMORIES) });
+        return true;
+      }
+      if (pathname.startsWith('/api/')) {
+        stubbed.apiOther += 1;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+        return true;
+      }
+      return false;
+    },
+    fulfillExternal: async (route, target) => {
+      // Zero real external network: every known external request is stubbed.
       stubbed.external += 1;
-      return;
-    }
-    if (pathname === '/api/trees') {
-      stubbed.apiTrees += 1;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([MY_TREES_SYNTHETIC_TREE]) });
-      return;
-    }
-    if (pathname === '/api/trees/mt-tree-3888-1') {
-      stubbed.apiDetail += 1;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MY_TREES_TREE_DETAIL) });
-      return;
-    }
-    if (pathname === '/api/memories') {
-      stubbed.apiMemories += 1;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MY_TREES_MEMORIES) });
-      return;
-    }
-    if (pathname.startsWith('/api/')) {
-      stubbed.apiOther += 1;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
-      return;
-    }
-    await route.continue();
-  });
+      await defaultFulfillExternal(route, target);
+    },
+  }));
   await page.addInitScript(myTreesAuthFixtureScript, { user: MY_TREES_SYNTHETIC_USER_BASE, lang: 'ko' });
   await page.goto(baseUrl + '/pages/my-trees.html', { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('domcontentloaded');
-  return { context, page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests };
+  return { context, page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests, unexpectedExternal };
 }
 
 async function teardownRealMyTrees(env) {
@@ -2243,7 +2240,7 @@ test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) =>
 
       const env = await newRealMyTreesPage(browser, vp, baseUrl);
       try {
-        const { page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests } = env;
+        const { page, pageErrors, consoleErrors, sameOriginFailures, http4xx, stubbed, sameOriginApiRequests, sameOriginRequests, unexpectedExternal } = env;
 
         // Deterministic readiness: the real owner API feed is stubbed and the
         // page has rendered at least one real (non-skeleton) tree card while
@@ -2462,6 +2459,7 @@ test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) =>
           // Deterministic data boundary: the synthetic owner feed was used.
           assert.ok(stubbed.apiTrees >= 1, `deterministic /api/trees stub used (${stubbed.apiTrees} fulfillment)`);
           assert.ok(stubbed.external >= 1, `external requests all stubbed (${stubbed.external} fulfilled, 0 real external network)`);
+          assert.deepEqual(unexpectedExternal, [], `no unexpected external origin escape, got: ${JSON.stringify(unexpectedExternal)}`);
         });
 
         await t.test('K. authenticated-owner API request allowlist', () => {

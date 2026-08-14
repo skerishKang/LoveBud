@@ -159,13 +159,81 @@
   var PERSISTENT_TREES_CACHE_KEY = 'lovebud_my_trees_list_cache';
   var PERSISTENT_TREES_CACHE_TTL_MS = 3 * 60 * 1000;
 
-  function readPersistentTreesCache() {
-    try {
-      var raw = localStorage.getItem(PERSISTENT_TREES_CACHE_KEY);
-      if (!raw) return null;
+  function capturePrivateCacheScope() {
+    var privateCache = window.LoveBudAuthCache || null;
+    if (!privateCache) {
+      return { privateCache: null, uid: null, authority: null };
+    }
 
-      var parsed = JSON.parse(raw);
-      if (!parsed || !Array.isArray(parsed.data)) return null;
+    var uid = typeof privateCache.getPrivateCacheOwnerUid === 'function'
+      ? privateCache.getPrivateCacheOwnerUid()
+      : null;
+    var authority = uid && typeof privateCache.capturePrivateCacheAuthority === 'function'
+      ? privateCache.capturePrivateCacheAuthority(uid)
+      : null;
+
+    return {
+      privateCache: privateCache,
+      uid: uid,
+      authority: authority
+    };
+  }
+
+  function isPrivateCacheScopeCurrent(scope) {
+    // Keep network-only behavior compatible when the auth cache module is not
+    // loaded, but never read/write owner-private caches without that authority.
+    if (!scope || !scope.privateCache) return true;
+    return !!(
+      scope.uid &&
+      scope.authority &&
+      typeof scope.privateCache.isPrivateCacheAuthorityCurrent === 'function' &&
+      scope.privateCache.isPrivateCacheAuthorityCurrent(scope.authority)
+    );
+  }
+
+  function canUsePrivateCache(scope) {
+    return !!(
+      scope &&
+      scope.privateCache &&
+      scope.uid &&
+      scope.authority &&
+      isPrivateCacheScopeCurrent(scope)
+    );
+  }
+
+  function readPrivateCacheRecord(key, scope) {
+    if (
+      !canUsePrivateCache(scope) ||
+      typeof scope.privateCache.readPrivateCacheRecord !== 'function'
+    ) {
+      return null;
+    }
+    return scope.privateCache.readPrivateCacheRecord(key, scope.uid);
+  }
+
+  function writePrivateCacheRecord(key, record, scope) {
+    if (
+      !canUsePrivateCache(scope) ||
+      typeof scope.privateCache.writePrivateCacheRecord !== 'function'
+    ) {
+      return false;
+    }
+    return scope.privateCache.writePrivateCacheRecord(
+      key,
+      scope.uid,
+      record,
+      scope.authority
+    ) === true;
+  }
+
+  function readPersistentTreesCache(scope) {
+    try {
+      var parsed = readPrivateCacheRecord(PERSISTENT_TREES_CACHE_KEY, scope);
+      if (!parsed) return null;
+      if (!Array.isArray(parsed.data)) {
+        localStorage.removeItem(PERSISTENT_TREES_CACHE_KEY);
+        return null;
+      }
       if (parsed.expiry && Date.now() > parsed.expiry) {
         localStorage.removeItem(PERSISTENT_TREES_CACHE_KEY);
         return null;
@@ -178,20 +246,25 @@
     }
   }
 
-  function writePersistentTreesCache(trees) {
+  function writePersistentTreesCache(trees, scope) {
+    scope = scope || capturePrivateCacheScope();
+    if (!canUsePrivateCache(scope)) return false;
     try {
-      localStorage.setItem(PERSISTENT_TREES_CACHE_KEY, JSON.stringify({
+      return writePrivateCacheRecord(PERSISTENT_TREES_CACHE_KEY, {
         data: trees,
         expiry: Date.now() + PERSISTENT_TREES_CACHE_TTL_MS,
         cachedAt: Date.now()
-      }));
+      }, scope);
     } catch (e) {
       console.warn('[my-trees-data] Failed to write persistent trees cache:', e);
+      return false;
     }
   }
 
-  function preloadFirstTreeDetail(trees) {
+  function preloadFirstTreeDetail(trees, privateCacheScope) {
     try {
+      var scope = privateCacheScope || capturePrivateCacheScope();
+      if (!canUsePrivateCache(scope)) return;
       if (!trees || !trees.length || !window.apiClient) return;
 
       var firstTree = trees[0];
@@ -202,21 +275,22 @@
         window.apiClient.getTree ? window.apiClient.getTree(treeId).catch(function() {}) : Promise.resolve(),
         window.apiClient.getMemoriesByTree ? window.apiClient.getMemoriesByTree(treeId).catch(function() {}) : Promise.resolve()
       ]).then(function(results) {
+        if (!canUsePrivateCache(scope)) return;
         var treeDetail = results[0];
         var memories = results[1];
 
         if (treeDetail) {
-          localStorage.setItem(TREE_DETAIL_CACHE_KEY + treeId, JSON.stringify({
+          writePrivateCacheRecord(TREE_DETAIL_CACHE_KEY + treeId, {
             data: treeDetail,
             timestamp: Date.now()
-          }));
+          }, scope);
         }
 
         if (memories && Array.isArray(memories)) {
-          localStorage.setItem(TREE_MEMORIES_CACHE_KEY + treeId, JSON.stringify({
+          writePrivateCacheRecord(TREE_MEMORIES_CACHE_KEY + treeId, {
             data: memories,
             timestamp: Date.now()
-          }));
+          }, scope);
         }
 
         myTreesDebugLog('[my-trees-data] Preloaded first tree detail:', 'memories:', memories ? memories.length : 0);
@@ -234,11 +308,9 @@
     });
   }
 
-  function readTreeMemoriesCache(treeId) {
+  function readTreeMemoriesCache(treeId, scope) {
     try {
-      var raw = localStorage.getItem(TREE_MEMORIES_CACHE_KEY + treeId);
-      if (!raw) return null;
-      var parsed = JSON.parse(raw);
+      var parsed = readPrivateCacheRecord(TREE_MEMORIES_CACHE_KEY + treeId, scope);
       if (!parsed || !Array.isArray(parsed.data)) return null;
       return parsed.data;
     } catch (e) {
@@ -386,28 +458,29 @@
     };
   }
 
-  async function enrichTreesWithMemoryMeta(trees) {
+  async function enrichTreesWithMemoryMeta(trees, privateCacheScope) {
     if (!Array.isArray(trees) || trees.length === 0 || !window.apiClient || !window.apiClient.getMemoriesByTree) {
       return Array.isArray(trees) ? trees.map(function(tree) {
         return Object.assign({}, normalizeTreeRecord(tree) || tree);
       }) : [];
     }
 
+    var scope = privateCacheScope || capturePrivateCacheScope();
     var enriched = await Promise.all(trees.map(async function(tree) {
       var normalizedTree = normalizeTreeRecord(tree) || tree;
       if (!normalizedTree || !normalizedTree.id) return normalizedTree;
 
-      var cachedMemories = readTreeMemoriesCache(normalizedTree.id);
+      var cachedMemories = readTreeMemoriesCache(normalizedTree.id, scope);
       var memories = cachedMemories;
 
       if (!Array.isArray(memories)) {
         try {
           memories = await window.apiClient.getMemoriesByTree(normalizedTree.id);
-          if (Array.isArray(memories)) {
-            localStorage.setItem(TREE_MEMORIES_CACHE_KEY + normalizedTree.id, JSON.stringify({
+          if (Array.isArray(memories) && canUsePrivateCache(scope)) {
+            writePrivateCacheRecord(TREE_MEMORIES_CACHE_KEY + normalizedTree.id, {
               data: memories,
               timestamp: Date.now()
-            }));
+            }, scope);
           }
         } catch (e) {
           console.warn('[my-trees-data] Failed to fetch memories for tree:', e.message);
@@ -520,6 +593,7 @@
 
     var generation = ++ownerListGeneration;
     var ctx = MyTreesJourneyTracker.createContext(generation);
+    var privateCacheScope = capturePrivateCacheScope();
 
     var runPromise = (async function runOwnerListLoad() {
       if (stillCurrent()) ctx.recordStage('ACTION_STARTED');
@@ -538,7 +612,8 @@
       };
 
       function stillCurrent() {
-        return isCurrentOwnerListGeneration(generation);
+        return isCurrentOwnerListGeneration(generation) &&
+          isPrivateCacheScopeCurrent(privateCacheScope);
       }
 
       function ignoreIfStale(phaseHint) {
@@ -641,9 +716,11 @@
         });
       }
 
-      var cachedTrees = cache ? cache.get(TREES_CACHE_KEY) : null;
-      if ((!cachedTrees || !Array.isArray(cachedTrees))) {
-        cachedTrees = readPersistentTreesCache();
+      var cachedTrees = canUsePrivateCache(privateCacheScope) && cache
+        ? cache.get(TREES_CACHE_KEY)
+        : null;
+      if ((!cachedTrees || !Array.isArray(cachedTrees)) && canUsePrivateCache(privateCacheScope)) {
+        cachedTrees = readPersistentTreesCache(privateCacheScope);
         if (cachedTrees && Array.isArray(cachedTrees) && cache && stillCurrent()) {
           cache.set(TREES_CACHE_KEY, cachedTrees, PERSISTENT_TREES_CACHE_TTL_MS);
         }
@@ -683,7 +760,7 @@
           throw new Error('apiClient.getTrees is not available');
         }
 
-        // Await returned after possible supersede — refuse stale writes.
+        // Await returned after possible supersede/account switch — refuse stale writes/UI.
         if (ignoreIfStale('stale_result_ignored')) {
           ctx.recordStage('CANCELLED');
           return;
@@ -697,7 +774,7 @@
           }
           trees = normalizeTreesForList(trees);
 
-          if (cache) {
+          if (cache && canUsePrivateCache(privateCacheScope)) {
             cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
           }
           writePersistentTreesCache(trees);
@@ -731,12 +808,12 @@
           if (window.requestIdleCallback) {
             window.requestIdleCallback(function() {
               if (!stillCurrent()) return;
-              preloadFirstTreeDetail(trees);
+              preloadFirstTreeDetail(trees, privateCacheScope);
             }, { timeout: 2000 });
           } else {
             setTimeout(function() {
               if (!stillCurrent()) return;
-              preloadFirstTreeDetail(trees);
+              preloadFirstTreeDetail(trees, privateCacheScope);
             }, 1000);
           }
         } else {
@@ -747,7 +824,7 @@
           throw invalidPayloadError;
         }
       } catch (e) {
-        // Stale generation: never surface ERROR/EMPTY/toast from pre-restore loads.
+        // Stale generation/account authority: never surface ERROR/EMPTY/toast.
         if (ignoreIfStale('stale_result_ignored')) {
           ctx.recordStage('CANCELLED');
           return;
