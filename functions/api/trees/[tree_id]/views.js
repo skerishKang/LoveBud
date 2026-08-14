@@ -1,4 +1,5 @@
 import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../_shared/request-id.js';
+import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
 
 /**
  * Public Tree view-count edge proxy (Security slice #3917).
@@ -11,6 +12,10 @@ import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../_shared/reques
  *
  * via a domain-separated HMAC-SHA256, then forwards a FIXED, SIGNED assertion as
  * request headers to Modal. No request body is ever parsed or forwarded.
+ *
+ * The request stream is still consumed through the canonical bounded reader so
+ * oversized or failed body streams cannot bypass the #3920 edge resource bound.
+ * Accepted client bytes are discarded and never influence view identity.
  *
  * Fail-closed: if the secret or client IP context is missing, no Modal call is
  * made and no count occurs. The separate public tree read path is unaffected.
@@ -71,6 +76,30 @@ function buildMethodNotAllowedResponse(requestId) {
       'x-lovebud-upstream': 'cloudflare',
       'x-lovebud-route-status': 'method-not-allowed',
       allow: 'POST',
+      [REQUEST_ID_HEADER]: requestId
+    }
+  });
+}
+
+function buildPayloadTooLargeResponse(requestId) {
+  return new Response(JSON.stringify({ error: 'Payload too large' }), {
+    status: 413,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'payload-too-large',
+      [REQUEST_ID_HEADER]: requestId
+    }
+  });
+}
+
+function buildBodyReadFailedResponse(requestId) {
+  return new Response(JSON.stringify({ error: 'Request body read failed' }), {
+    status: 503,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'x-lovebud-upstream': 'cloudflare',
+      'x-lovebud-route-status': 'body-read-failed',
       [REQUEST_ID_HEADER]: requestId
     }
   });
@@ -186,6 +215,14 @@ async function proxyTreeView(request, env) {
   const requestId = getOrCreateRequestId(request);
   if (method !== 'POST') return buildMethodNotAllowedResponse(requestId);
 
+  const bodyResult = await readBoundedRequestBody(request);
+  if (bodyResult.status === 'tooLarge') {
+    return buildPayloadTooLargeResponse(requestId);
+  }
+  if (bodyResult.status === 'readError') {
+    return buildBodyReadFailedResponse(requestId);
+  }
+
   const treeId = extractTreeId(request);
   if (!treeId) return buildModalUnavailableResponse(requestId);
 
@@ -209,8 +246,8 @@ async function proxyTreeView(request, env) {
     const response = await fetchWithTimeout(modalUrl.toString(), {
       method: 'POST',
       headers
-      // NO body: the browser sends no actor identity; only the signed edge
-      // assertion headers are forwarded to Modal (Issue #3917).
+      // NO body: accepted client bytes are discarded after the bounded read;
+      // only the signed edge assertion reaches Modal (Issues #3917 / #3920).
     });
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set('x-lovebud-upstream', 'modal');
