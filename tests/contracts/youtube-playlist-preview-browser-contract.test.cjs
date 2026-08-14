@@ -525,3 +525,27 @@ test('browser: preview flow works and item 50 is reachable on mobile viewport', 
     await browser.close();
   }
 });
+
+test('regression: #youtubePlaylistPreviewFabRoot is mounted at body-level outside page-transition-enter <main>', () => {
+  const htmlPath = path.join(ROOT, 'pages/my-trees.html');
+  const html = fs.readFileSync(htmlPath, 'utf8');
+
+  const mainOpenIdx = html.indexOf('<main');
+  const mainCloseIdx = html.indexOf('</main>');
+  const fabIdx = html.indexOf('id="youtubePlaylistPreviewFabRoot"');
+
+  assert.ok(mainOpenIdx !== -1, '<main> element must exist in pages/my-trees.html');
+  assert.ok(mainCloseIdx !== -1, '</main> closing tag must exist in pages/my-trees.html');
+  assert.ok(fabIdx !== -1, '#youtubePlaylistPreviewFabRoot must exist in pages/my-trees.html');
+
+  const isInsideMain = fabIdx > mainOpenIdx && fabIdx < mainCloseIdx;
+  assert.equal(
+    isInsideMain,
+    false,
+    '#youtubePlaylistPreviewFabRoot must NOT be placed inside transformed <main.page-transition-enter> (violates position:fixed viewport containing block)'
+  );
+  assert.ok(
+    fabIdx > mainCloseIdx,
+    '#youtubePlaylistPreviewFabRoot must be mounted after </main> as a body-level sibling'
+  );
+});
