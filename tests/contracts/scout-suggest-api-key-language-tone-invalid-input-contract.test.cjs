@@ -9,11 +9,13 @@
  */
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SUGGEST_PATH = path.join(ROOT, 'functions', 'api', 'scout', 'suggest.js');
+const SAVE_MEMORY_PATH = path.join(ROOT, 'functions', 'api', 'scout', 'save-memory.js');
 
 function createMockRequest(options = {}) {
   const method = options.method || 'POST';
@@ -54,6 +56,15 @@ async function getOnRequestPost() {
   const mod = await import('file://' + SUGGEST_PATH.replace(/\\/g, '/'));
   return mod.onRequestPost;
 }
+
+test('#3920 Scout request-body inventory uses canonical shared streaming authority', () => {
+  for (const filePath of [SUGGEST_PATH, SAVE_MEMORY_PATH]) {
+    const source = fs.readFileSync(filePath, 'utf8');
+    assert.match(source, /bounded-request-body\.js/, `${filePath} must import the canonical bounded-body helper`);
+    assert.match(source, /readBoundedRequestBody\s*\(/, `${filePath} must call readBoundedRequestBody`);
+    assert.doesNotMatch(source, /await\s+request\.(?:text|json)\s*\(/, `${filePath} must not raw-buffer the request before enforcing the limit`);
+  }
+});
 
 test('invalid requestedLanguage and desiredTone reject before provider transport', async () => {
   const onRequestPost = await getOnRequestPost();
