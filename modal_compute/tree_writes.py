@@ -28,6 +28,17 @@ from modal_compute.validation import (
 )
 
 
+ALLOWED_TREE_UPDATE_FIELDS = {
+    "title",
+    "visibility",
+    "groupName",
+    "keywords",
+}
+
+ALLOWED_TREE_UPDATE_EMPTY_CODE = "EMPTY_TREE_UPDATE"
+ALLOWED_TREE_UPDATE_UNSUPPORTED_CODE = "UNSUPPORTED_TREE_UPDATE_FIELDS"
+
+
 def create_owner_tree(
     owner_id: str,
     payload: dict[str, Any],
@@ -96,6 +107,24 @@ def create_owner_tree(
 def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     safe_tree_id = validate_required_uuid(tree_id, "treeId")
     require_tree_owner(safe_tree_id, owner_id)
+
+    unknown_fields = [
+        k for k in payload.keys() if k not in ALLOWED_TREE_UPDATE_FIELDS
+    ]
+    if unknown_fields:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": ALLOWED_TREE_UPDATE_UNSUPPORTED_CODE,
+                "fields": sorted(unknown_fields),
+            },
+        )
+
+    if not payload:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ALLOWED_TREE_UPDATE_EMPTY_CODE},
+        )
 
     updates: list[str] = []
     params: list[Any] = []
