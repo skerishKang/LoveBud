@@ -810,6 +810,39 @@ test('cloudflare api catch-all 405 Allow header allows GET, PUT for hub-layout p
   );
 });
 
+test('hub-layout 0. gateway auth-first blocks unauthenticated hub-layout GET before Modal fetch', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(content, 'isHubLayoutReadRequest'),
+    'catch-all should define isHubLayoutReadRequest helper'
+  );
+  assert.ok(
+    hasRegex(content, /isHubLayoutReadRequest\(request\)\s*&&\s*!hasAuthorizationHeader\(request\)/),
+    'catch-all should auth-first block unauthenticated hub-layout read before tryModalRead'
+  );
+});
+
+test('hub-layout 0b. unauthenticated GET /api/trees/test-tree-123/hub-layout returns 401 with zero Modal fetches', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/hub-layout`, {
+      method: 'GET'
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 401);
+    assert.equal(calls.length, 0);
+    const body = await response.json();
+    assert.equal(body.error, 'Authorization required');
+  } finally {
+    restore();
+  }
+});
+
 test('hub-layout 1. unauthenticated PUT returns 401 without Modal fetch', async () => {
   const { calls, restore } = mockFetch(async () => {
     return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });

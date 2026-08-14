@@ -72,6 +72,14 @@ function isPrivateTreeCapabilityRequest(request) {
   return /^\/api\/private\/trees\/[^/]+\/capability$/.test(path);
 }
 
+// Hub-layout is a private/owner sub-resource read. Same-origin GET must be
+// auth-first at the edge so an unauthenticated request never reaches Modal.
+function isHubLayoutReadRequest(request) {
+  if (request.method.toUpperCase() !== 'GET') return false;
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
+  return /^\/api\/trees\/[^/]+\/hub-layout$/.test(path);
+}
+
 function buildBrowseCacheRequest(request) {
   const url = new URL(request.url);
   const requestedSort = url.searchParams.get('sort');
@@ -544,6 +552,12 @@ export async function onRequest(context) {
     }
   } else {
     if (isPrivateTreeCapabilityRequest(request) && !hasAuthorizationHeader(request)) {
+      return buildMissingAuthorizationResponse(requestId);
+    }
+    // Hub-layout is a private/owner read: block unauthenticated GET at the edge
+    // (auth-first) so it never triggers a Modal fetch; rely on Modal 401 only as
+    // the downstream fallback, not the primary gate.
+    if (isHubLayoutReadRequest(request) && !hasAuthorizationHeader(request)) {
       return buildMissingAuthorizationResponse(requestId);
     }
     try {
