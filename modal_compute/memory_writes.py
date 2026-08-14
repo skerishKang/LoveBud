@@ -22,6 +22,28 @@ from modal_compute.validation import (
 )
 
 
+def validate_emotion_tags(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_EMOTION_TAGS", "reason": "array_required"},
+        )
+    if len(value) > 20:
+        raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
+
+    normalized: list[str] = []
+    for tag in value:
+        if not isinstance(tag, str):
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "INVALID_EMOTION_TAGS", "reason": "string_items_required"},
+            )
+        trimmed = tag.strip()
+        if trimmed:
+            normalized.append(trimmed)
+    return normalized
+
+
 def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     tree_id = validate_required_uuid(payload.get("treeId"), "treeId")
     tree = fetch_owner_tree(tree_id, owner_id)
@@ -57,10 +79,7 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
     if payload.get("parentId"):
         parent_id = validate_required_uuid(payload.get("parentId"), "parentId")
 
-    emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
-    if len(emotion_tags) > 20:
-        raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
-    emotion_tags = [str(tag).strip() for tag in emotion_tags if str(tag).strip()]
+    emotion_tags = validate_emotion_tags(payload["emotionTags"]) if "emotionTags" in payload else []
 
     query = """
         INSERT INTO memories (
@@ -264,10 +283,7 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         params.append(validate_optional_memory_string(payload.get("thumbnail"), "thumbnail", 500))
 
     if "emotionTags" in payload:
-        emotion_tags = payload.get("emotionTags") if isinstance(payload.get("emotionTags"), list) else []
-        if len(emotion_tags) > 20:
-            raise HTTPException(status_code=400, detail="emotionTags exceeds maximum of 20 items")
-        emotion_tags = [str(tag).strip() for tag in emotion_tags if str(tag).strip()]
+        emotion_tags = validate_emotion_tags(payload["emotionTags"])
         updates.append("emotion_tags = %s")
         params.append(emotion_tags)
 
