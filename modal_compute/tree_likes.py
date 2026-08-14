@@ -47,6 +47,11 @@ def require_public_tree_cursor(cur: Any, tree_id: str) -> dict[str, Any]:
     successful explicit-public authorization remains authoritative until this
     transaction completes. Ordinary read paths intentionally keep using the
     lock-free require_public_tree_for_like() helper above.
+
+    The SQL predicate scopes the row lock to the explicitly-public row, and the
+    returned row is re-validated through the shared is_explicit_public()
+    predicate so private/NULL/unresolved visibility stays fail-closed at the
+    Python boundary as well (Refs #3926).
     """
     cur.execute(
         """
@@ -59,7 +64,7 @@ def require_public_tree_cursor(cur: Any, tree_id: str) -> dict[str, Any]:
         (tree_id,),
     )
     tree = cur.fetchone()
-    if not tree:
+    if not tree or not is_explicit_public(tree.get("visibility")):
         raise HTTPException(status_code=404, detail="Tree not found")
     return tree
 

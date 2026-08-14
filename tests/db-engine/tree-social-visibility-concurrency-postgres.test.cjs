@@ -31,6 +31,16 @@ test('Tree social writers authorize explicit-public state inside the write curso
   assert.match(guard, /visibility\s*=\s*'public'/, 'cursor guard must require explicit public visibility');
   assert.match(guard, /FOR\s+SHARE/i, 'cursor guard must take a row lock that conflicts with visibility UPDATE');
   assert.doesNotMatch(guard, /FOR\s+KEY\s+SHARE/i, 'FOR KEY SHARE is insufficient for non-key visibility updates');
+  assert.match(
+    guard,
+    /not\s+is_explicit_public\(tree\.get\("visibility"\)\)/,
+    'cursor guard must re-validate the locked row through the shared explicit-public predicate so private/NULL visibility stays fail-closed at the Python boundary'
+  );
+  assert.match(
+    guard,
+    /HTTPException\(status_code=404, detail="Tree not found"\)/,
+    'cursor guard must fail closed as an existence-leak-safe 404'
+  );
 
   assert.doesNotMatch(toggle, /require_public_tree_for_like\(safe_tree_id\)/, 'Like write must not authorize on a released pre-transaction connection');
   assert.doesNotMatch(createComment, /require_public_tree_for_like\(safe_tree_id\)/, 'Comment write must not authorize on a released pre-transaction connection');
