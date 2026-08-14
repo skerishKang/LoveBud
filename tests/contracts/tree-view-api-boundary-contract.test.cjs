@@ -24,9 +24,7 @@ test('Modal app verifies signed edge assertion before counting public tree views
   assert.match(modalApp, /authority\["actor_kind"\]/);
   assert.match(modalApp, /authority\["source"\]/);
   assert.match(modalApp, /TREE_VIEW_AUTHORITY_REJECTED/);
-  // The browser sends no actor identity; only the signed edge assertion is used.
   assert.doesNotMatch(modalApp, /payload\.get\("actorKey"/);
-  // Modal never reads the raw client IP; the actor is an opaque signed digest.
   assert.doesNotMatch(modalApp, /CF-Connecting-IP/i);
   assert.doesNotMatch(treeViews, /CF-Connecting-IP/i);
   assert.doesNotMatch(modalApp, /@web_app\.get\("\/modal\/public\/trees\/\{tree_id\}\/views"\)/);
@@ -58,21 +56,28 @@ test('tree view repository enforces public tree boundary and allowed sources', (
   assert.match(normalized, /ifnormalizednotin_allowed_actor_kinds/);
 });
 
-test('Cloudflare tree view route proxies POST only and forwards a signed edge assertion (no client actor authority)', () => {
+test('Cloudflare tree view route preserves bounded stream enforcement and forwards only signed edge authority', () => {
   assert.match(cloudflareRoute, /export\s+async\s+function\s+onRequestPost/);
   assert.match(cloudflareRoute, /method\s*!==\s*'POST'/);
   assert.match(cloudflareRoute, /allow:\s*'POST'/);
   assert.match(cloudflareRoute, /\/modal\/public\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeId\)\)\}\/views/);
-  // Edge authority: derived from trusted context, signed, and forwarded as
-  // headers. No client actor identity is ever trusted or forwarded as a body.
+
+  // #3920 resource boundary remains authoritative even though accepted body
+  // bytes are discarded instead of forwarded.
+  assert.match(cloudflareRoute, /bounded-request-body\.js/);
+  assert.match(cloudflareRoute, /await\s+readBoundedRequestBody\(request\)/);
+  assert.match(cloudflareRoute, /payload-too-large/);
+  assert.match(cloudflareRoute, /body-read-failed/);
+
+  // #3917 identity authority: derived from trusted edge context, signed, and
+  // forwarded as headers only. Client actor bytes never reach Modal.
   assert.match(cloudflareRoute, /TREE_VIEW_AUTHORITY_SECRET/);
   assert.match(cloudflareRoute, /CF-Connecting-IP/);
   assert.match(cloudflareRoute, /x-lovebud-tree-view-signature/);
   assert.match(cloudflareRoute, /buildSignedAssertionHeaders/);
   assert.match(cloudflareRoute, /deriveEdgeActorKey/);
-  assert.doesNotMatch(cloudflareRoute, /body:\s*request\.body/);
+  assert.doesNotMatch(cloudflareRoute, /body:\s*(?:request\.body|bodyResult\.body)/);
   assert.doesNotMatch(cloudflareRoute, /parse_json_body/);
-  // Fail-closed when the authority context is missing (no Modal call, no count).
   assert.match(cloudflareRoute, /view-authority-unavailable/);
   assert.doesNotMatch(cloudflareRoute, /Authorization required/);
   assert.doesNotMatch(cloudflareRoute, /\/modal\/browse\/latest/);
@@ -80,10 +85,7 @@ test('Cloudflare tree view route proxies POST only and forwards a signed edge as
 });
 
 test('Unit B2 still does not enable sort=views or public Browse viewCount payload (sort=likes is now supported as Unit C)', () => {
-  // sort=views still forbidden (Unit B policy boundary)
   assert.doesNotMatch(catchAllRoute, /sort'\)\s*===\s*'views'/);
-  // sort=likes is now supported (Unit C runtime slice, multiline ternary)
   assert.match(catchAllRoute, /'likes'\s*\?\s*'likes'/);
-  // viewCount still forbidden in Browse summary (Unit B policy boundary)
   assert.doesNotMatch(browseSnapshot, /"viewCount"/);
 });
