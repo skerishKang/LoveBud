@@ -187,6 +187,13 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     FOR SHARE lock, authorize explicit public visibility, and run the duplicate
     lookup. A duplicate waiter therefore never holds the source SHARE lock
     while waiting for fork-identity serialization.
+
+    Completeness invariant (#3924): the transaction snapshots public source
+    Memories with a single bounded `ORDER BY created_at ASC, id ASC LIMIT 201
+    FOR SHARE` read before any destination write. 200 supported rows copy in
+    full; a 201st row proves the source exceeds the supported max and the fork
+    is rejected with 409 before the destination Tree INSERT, so an oversized
+    source can never be partially copied into a misleading success response.
     """
     ensure_owner_user_exists(owner_id)
     safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
@@ -221,7 +228,13 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
         RETURNING id, owner_id, title, visibility, forked_from_tree_id, created_at, updated_at;
     """
 
-    # Fetch public memories from source tree (inside the authorized transaction).
+    # Bounded completeness snapshot (#3924): a single LIMIT 201 read is the
+    # copy authority for the whole transaction. 200 supported rows copy in
+    # full; a 201st row is the bounded proof that the source exceeds the
+    # supported max, and the fork is rejected BEFORE any destination write
+    # (no silent truncation, no partial fork, no COUNT(*) preflight).
+    # created_at ties are broken by id so boundary membership stays
+    # deterministic when two rows share the same created_at.
     # The selected public rows are locked FOR SHARE so a concurrent memory
     # public -> private revocation blocks until the fork commits (#3956). A
     # memory can therefore never flip private after being read here and still
@@ -234,8 +247,8 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
         FROM memories
         WHERE tree_id = %s
           AND visibility = 'public'
-        ORDER BY created_at ASC
-        LIMIT 200
+        ORDER BY created_at ASC, id ASC
+        LIMIT 201
         FOR SHARE;
     """
 
@@ -288,23 +301,43 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
                     new_title_raw = f"{source_title} (복사본)"
                     new_title = new_title_raw[:200]
 
-                    # 6. Destination tree insert happens only after authorization.
+                    # 6. Bounded public source Memory snapshot inside the same
+                    # authorized transaction. This single LIMIT 201 FOR SHARE read
+                    # is the completeness authority: 200 rows copy in full, and a
+                    # 201st row proves the source exceeds the supported max.
+                    cur.execute(fetch_source_memories_query, (safe_source_id,))
+                    source_memories = cur.fetchall()
+
+                    # 7. Over-limit decision BEFORE the destination Tree INSERT:
+                    # more than 200 public Memories rejects the whole fork with
+                    # 409 and zero destination rows instead of silently copying
+                    # only the first 200 (the LIMIT 201 bound makes > 200
+                    # equivalent to exactly 201).
+                    if len(source_memories) > 200:
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "FORK_SOURCE_TOO_LARGE",
+                                "supportedMax": 200,
+                                "reason": "Public source tree exceeds the supported 200-Moment fork limit",
+                            },
+                        )
+
+                    # 8. Destination tree insert happens only after the
+                    # completeness decision and authorization.
                     cur.execute(
                         insert_tree_query,
                         (new_tree_id, owner_id, new_title, safe_source_id),
                     )
                     new_tree_row = cur.fetchone()
 
-                    # 7. Public source memories read inside the same transaction.
-                    cur.execute(fetch_source_memories_query, (safe_source_id,))
-                    source_memories = cur.fetchall()
-
+                    # 9. The locked snapshot above is the copy authority.
                     # Build old->new memory id map for parent_id rewriting
                     id_map: dict[str, str] = {}
                     for mem in source_memories:
                         id_map[str(mem["id"])] = str(uuid.uuid4())
 
-                    # 8. Insert copied memories with rewritten tree_id and parent_id.
+                    # 10. Insert copied memories with rewritten tree_id and parent_id.
                     for mem in source_memories:
                         new_mem_id = id_map[str(mem["id"])]
                         old_parent_id = str(mem["parent_id"]) if mem["parent_id"] else None
