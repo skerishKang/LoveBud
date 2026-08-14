@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from typing import Any
 
@@ -17,14 +18,25 @@ from modal_compute.write_validation import (
     require_tree_owner,
 )
 from modal_compute.validation import (
-    normalize_group_name,
     normalize_keywords,
     normalize_tree_row,
     validate_explicit_visibility,
-    validate_optional_string,
     validate_required_uuid,
+    validate_tree_group_name,
+    validate_tree_title,
     validate_visibility,
 )
+
+
+ALLOWED_TREE_UPDATE_FIELDS = {
+    "title",
+    "visibility",
+    "groupName",
+    "keywords",
+}
+
+ALLOWED_TREE_UPDATE_EMPTY_CODE = "EMPTY_TREE_UPDATE"
+ALLOWED_TREE_UPDATE_UNSUPPORTED_CODE = "UNSUPPORTED_TREE_UPDATE_FIELDS"
 
 
 def create_owner_tree(
@@ -38,12 +50,17 @@ def create_owner_tree(
     if not owner_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    # #3935 strict scalar validation MUST precede any DB side effect.
+    # ensure_owner_user_exists() performs a real owner-row upsert, so validating
+    # the supplied title/groupName first guarantees a malformed scalar is
+    # rejected with HTTP 400 before any owner row or Tree INSERT is written.
+    title = validate_tree_title(payload.get("title"), max_length=200) or "My LoveTree"
+    group_name = validate_tree_group_name(payload.get("groupName"))
+
     ensure_owner_user_exists(owner_id, owner_email)
-    title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
     visibility = validate_visibility(payload.get("visibility"), "public")
     require_plus_for_private_storage(owner_id, visibility)
 
-    group_name = normalize_group_name(payload.get("groupName"))
     keywords = normalize_keywords(payload.get("keywords"))
 
     query = """
@@ -91,12 +108,30 @@ def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> d
     safe_tree_id = validate_required_uuid(tree_id, "treeId")
     require_tree_owner(safe_tree_id, owner_id)
 
+    unknown_fields = [
+        k for k in payload.keys() if k not in ALLOWED_TREE_UPDATE_FIELDS
+    ]
+    if unknown_fields:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": ALLOWED_TREE_UPDATE_UNSUPPORTED_CODE,
+                "fields": sorted(unknown_fields),
+            },
+        )
+
+    if not payload:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ALLOWED_TREE_UPDATE_EMPTY_CODE},
+        )
+
     updates: list[str] = []
     params: list[Any] = []
 
     if "title" in payload:
         updates.append("title = %s")
-        params.append(validate_optional_string(payload.get("title"), 200))
+        params.append(validate_tree_title(payload.get("title"), max_length=200))
 
     if "visibility" in payload:
         visibility = validate_explicit_visibility(payload.get("visibility"))
@@ -106,7 +141,7 @@ def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> d
 
     if "groupName" in payload:
         updates.append("group_name = %s")
-        params.append(normalize_group_name(payload.get("groupName")))
+        params.append(validate_tree_group_name(payload.get("groupName")))
 
     if "keywords" in payload:
         updates.append("keywords = %s")
@@ -164,17 +199,35 @@ def delete_owner_tree(owner_id: str, tree_id: str) -> dict[str, Any]:
     return {"deleted": True, "id": str(row["id"])}
 
 
+def _tree_fork_lock_key(source_tree_id: str, owner_id: str) -> int:
+    """Return a stable, domain-separated signed bigint fork lock key."""
+    digest = hashlib.sha256(
+        f"tree-fork:v1:{source_tree_id}\x1f{owner_id}".encode("utf-8")
+    ).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=True)
+
+
 def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """Copy a public LoveTree and its public memories into a new tree owned by owner_id.
 
-    Privacy invariant (#3952): the fork is atomic with source visibility
-    authorization. The source tree row is read with SELECT ... FOR SHARE inside
-    the same transaction that performs the duplicate check, the destination tree
-    insert, and the public-memory copy. A concurrent public -> private
-    revocation can therefore never commit between the authorization read and the
-    durable copy: it either commits first (the fork observes `private` and
-    aborts with no destination rows) or it blocks on the FOR SHARE lock until
-    the fork transaction commits.
+    Privacy invariant (#3952): source visibility authorization and the durable
+    copy share one transaction. The source Tree is read with SELECT ... FOR
+    SHARE so a concurrent public -> private transition cannot commit between
+    authorization and copy.
+
+    Idempotency invariant (#3925): the transaction first serializes the
+    semantic fork identity (source_tree_id, owner_id) with an advisory lock.
+    Only after that fork-local lock is acquired does it take the source Tree
+    FOR SHARE lock, authorize explicit public visibility, and run the duplicate
+    lookup. A duplicate waiter therefore never holds the source SHARE lock
+    while waiting for fork-identity serialization.
+
+    Completeness invariant (#3924): the transaction snapshots public source
+    Memories with a single bounded `ORDER BY created_at ASC, id ASC LIMIT 201
+    FOR SHARE` read before any destination write. 200 supported rows copy in
+    full; a 201st row proves the source exceeds the supported max and the fork
+    is rejected with 409 before the destination Tree INSERT, so an oversized
+    source can never be partially copied into a misleading success response.
     """
     ensure_owner_user_exists(owner_id)
     safe_source_id = validate_required_uuid(source_tree_id, "sourceTreeId")
@@ -193,7 +246,8 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     """
 
     # Idempotency guard: if authenticated user already forked this tree, return existing copy.
-    # Runs inside the same transaction, after the source row is authorized.
+    # Runs inside the same transaction, after the advisory lock and source
+    # explicit-public authorization have established the authoritative boundary.
     existing_fork_query = """
         SELECT id FROM trees
         WHERE owner_id = %s
@@ -208,7 +262,13 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
         RETURNING id, owner_id, title, visibility, forked_from_tree_id, created_at, updated_at;
     """
 
-    # Fetch public memories from source tree (inside the authorized transaction).
+    # Bounded completeness snapshot (#3924): a single LIMIT 201 read is the
+    # copy authority for the whole transaction. 200 supported rows copy in
+    # full; a 201st row is the bounded proof that the source exceeds the
+    # supported max, and the fork is rejected BEFORE any destination write
+    # (no silent truncation, no partial fork, no COUNT(*) preflight).
+    # created_at ties are broken by id so boundary membership stays
+    # deterministic when two rows share the same created_at.
     # The selected public rows are locked FOR SHARE so a concurrent memory
     # public -> private revocation blocks until the fork commits (#3956). A
     # memory can therefore never flip private after being read here and still
@@ -221,8 +281,8 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
         FROM memories
         WHERE tree_id = %s
           AND visibility = 'public'
-        ORDER BY created_at ASC
-        LIMIT 200
+        ORDER BY created_at ASC, id ASC
+        LIMIT 201
         FOR SHARE;
     """
 
@@ -243,11 +303,19 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                # 1. Authoritative, transaction-local source read (FOR SHARE).
+                # 1. Serialize competing creators for the same source/owner pair
+                # before taking the source row lock. A duplicate waiter therefore
+                # cannot delay visibility revocation while waiting on this lock.
+                cur.execute(
+                    "SELECT pg_advisory_xact_lock(%s)",
+                    (_tree_fork_lock_key(safe_source_id, owner_id),),
+                )
+
+                # 2. Authoritative, transaction-local source read (FOR SHARE).
                 cur.execute(lock_source_query, (safe_source_id,))
                 source_tree = cur.fetchone()
 
-                # 2. Explicit public authorization inside the fork transaction.
+                # 3. Explicit public authorization inside the fork transaction.
                 if not source_tree:
                     raise HTTPException(status_code=404, detail="Source tree not found")
                 if str(source_tree.get("visibility") or "") != "public":
@@ -256,34 +324,54 @@ def fork_public_tree(owner_id: str, source_tree_id: str) -> dict[str, Any]:
                         detail="Only public trees can be forked",
                     )
 
-                # 3. Duplicate fork guard inside the same transaction.
+                # 4. Duplicate fork guard inside the same serialized transaction.
                 cur.execute(existing_fork_query, (owner_id, safe_source_id))
                 existing = cur.fetchone()
                 if existing:
                     existing_fork_id = str(existing["id"])
                 else:
-                    # 4. Source title comes from the authorized transaction row.
+                    # 5. Source title comes from the authorized transaction row.
                     source_title = str(source_tree.get("title") or "LoveTree")
                     new_title_raw = f"{source_title} (복사본)"
                     new_title = new_title_raw[:200]
 
-                    # 5. Destination tree insert happens only after authorization.
+                    # 6. Bounded public source Memory snapshot inside the same
+                    # authorized transaction. This single LIMIT 201 FOR SHARE read
+                    # is the completeness authority: 200 rows copy in full, and a
+                    # 201st row proves the source exceeds the supported max.
+                    cur.execute(fetch_source_memories_query, (safe_source_id,))
+                    source_memories = cur.fetchall()
+
+                    # 7. Over-limit decision BEFORE the destination Tree INSERT:
+                    # more than 200 public Memories rejects the whole fork with
+                    # 409 and zero destination rows instead of silently copying
+                    # only the first 200 (the LIMIT 201 bound makes > 200
+                    # equivalent to exactly 201).
+                    if len(source_memories) > 200:
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "FORK_SOURCE_TOO_LARGE",
+                                "supportedMax": 200,
+                                "reason": "Public source tree exceeds the supported 200-Moment fork limit",
+                            },
+                        )
+
+                    # 8. Destination tree insert happens only after the
+                    # completeness decision and authorization.
                     cur.execute(
                         insert_tree_query,
                         (new_tree_id, owner_id, new_title, safe_source_id),
                     )
                     new_tree_row = cur.fetchone()
 
-                    # 6. Public source memories read inside the same transaction.
-                    cur.execute(fetch_source_memories_query, (safe_source_id,))
-                    source_memories = cur.fetchall()
-
+                    # 9. The locked snapshot above is the copy authority.
                     # Build old->new memory id map for parent_id rewriting
                     id_map: dict[str, str] = {}
                     for mem in source_memories:
                         id_map[str(mem["id"])] = str(uuid.uuid4())
 
-                    # 7. Insert copied memories with rewritten tree_id and parent_id.
+                    # 10. Insert copied memories with rewritten tree_id and parent_id.
                     for mem in source_memories:
                         new_mem_id = id_map[str(mem["id"])]
                         old_parent_id = str(mem["parent_id"]) if mem["parent_id"] else None

@@ -7,6 +7,7 @@ import {
   isMemoryWriteRequest,
   prepareMemoryWriteProxyRequest
 } from '../_shared/memory-route-proxy.js';
+import { readBoundedRequestBody } from '../_shared/bounded-request-body.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -15,7 +16,6 @@ function stripTrailingSlash(value) {
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
 const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
-const MAX_WRITE_BODY_BYTES = 128 * 1024;
 const MODAL_FETCH_TIMEOUT_MS = 25000;
 
 function generateRequestId() {
@@ -36,38 +36,17 @@ function getOrCreateRequestId(request) {
   return generateRequestId();
 }
 
-function getContentLengthBytes(request) {
-  const raw = request.headers.get('content-length');
-  if (!raw) return null;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  return parsed;
-}
-
-function isWriteContentLengthTooLarge(request) {
-  const contentLengthBytes = getContentLengthBytes(request);
-  return contentLengthBytes !== null && contentLengthBytes > MAX_WRITE_BODY_BYTES;
-}
-
-async function readBoundedWriteBody(request) {
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (e) {
-    return { tooLarge: true, body: null };
-  }
-
-  if (!bodyText) {
-    return { tooLarge: false, body: null };
-  }
-
-  const encoder = new TextEncoder();
-  const encoded = encoder.encode(bodyText);
-  if (encoded.byteLength > MAX_WRITE_BODY_BYTES) {
-    return { tooLarge: true, body: null };
-  }
-
-  return { tooLarge: false, body: encoded };
+function buildBodyReadFailedResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'body-read-failed'
+  };
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Request body read failed' }), {
+    status: 503,
+    headers
+  });
 }
 
 function buildPayloadTooLargeResponse(requestId = null) {
@@ -91,6 +70,14 @@ function isPrivateTreeCapabilityRequest(request) {
   if (request.method.toUpperCase() !== 'GET') return false;
   const path = new URL(request.url).pathname.replace(/\/+$/, '');
   return /^\/api\/private\/trees\/[^/]+\/capability$/.test(path);
+}
+
+// Hub-layout is a private/owner sub-resource read. Same-origin GET must be
+// auth-first at the edge so an unauthenticated request never reaches Modal.
+function isHubLayoutReadRequest(request) {
+  if (request.method.toUpperCase() !== 'GET') return false;
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
+  return /^\/api\/trees\/[^/]+\/hub-layout$/.test(path);
 }
 
 function buildBrowseCacheRequest(request) {
@@ -194,6 +181,16 @@ export function buildModalUrl(request, env) {
     return target;
   }
 
+  // Tree hub-layout (same-origin PUT) → Modal POST /modal/private/trees/:id/hub-layout.
+  // The canonical same-origin contract is PUT (#3058); the upstream Modal endpoint
+  // is POST, so the edge gateway translates PUT → POST (see tryModalWrite).
+  const hubLayoutMatch = path.match(/^\/api\/trees\/([^/]+)\/hub-layout$/);
+  if (hubLayoutMatch) {
+    const treeId = encodeURIComponent(decodeURIComponent(hubLayoutMatch[1]));
+    target.pathname = `/modal/private/trees/${treeId}/hub-layout`;
+    return target;
+  }
+
   return null;
 }
 
@@ -244,6 +241,11 @@ function isModalOwnedWriteRoute(request, env) {
 
   const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
   if (['PUT', 'DELETE'].includes(method) && isDetail) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
+
+  // Same-origin PUT /api/trees/:id/hub-layout → Modal POST (translated in tryModalWrite).
+  if (method === 'PUT' && path.match(/^\/api\/trees\/[^/]+\/hub-layout$/)) {
     return buildModalUrl(request, env || {}) !== null;
   }
 
@@ -379,6 +381,7 @@ async function tryModalRead(request, env, requestId = null) {
 
 async function tryModalWrite(request, env, requestId = null) {
   const method = request.method.toUpperCase();
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
 
@@ -408,16 +411,20 @@ async function tryModalWrite(request, env, requestId = null) {
 
   let boundedBody = null;
   if (method !== 'DELETE') {
-    if (isWriteContentLengthTooLarge(request)) {
+    const bodyResult = await readBoundedRequestBody(request);
+    if (bodyResult.status === 'tooLarge') {
       return buildPayloadTooLargeResponse(requestId);
     }
-
-    const bodyCheck = await readBoundedWriteBody(request);
-    if (bodyCheck.tooLarge) {
-      return buildPayloadTooLargeResponse(requestId);
+    if (bodyResult.status === 'readError') {
+      return buildBodyReadFailedResponse(requestId);
     }
-    boundedBody = bodyCheck.body;
+    boundedBody = bodyResult.body;
   }
+
+  const hubLayoutPath = path.match(/^\/api\/trees\/[^/]+\/hub-layout$/);
+  // Modal upstream only exposes POST for hub-layout; translate the canonical
+  // same-origin PUT to POST while preserving headers, body and request-id.
+  const upstreamMethod = hubLayoutPath ? 'POST' : method;
 
   const modalUrl = buildModalUrl(request, env || {});
   if (!modalUrl) return null;
@@ -435,9 +442,9 @@ async function tryModalWrite(request, env, requestId = null) {
 
   try {
     return await fetchWithTimeout(modalUrl.toString(), {
-      method,
+      method: upstreamMethod,
       headers,
-      body: method !== 'DELETE' ? boundedBody : null
+      body: upstreamMethod !== 'DELETE' ? boundedBody : null
     });
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -547,6 +554,12 @@ export async function onRequest(context) {
     if (isPrivateTreeCapabilityRequest(request) && !hasAuthorizationHeader(request)) {
       return buildMissingAuthorizationResponse(requestId);
     }
+    // Hub-layout is a private/owner read: block unauthenticated GET at the edge
+    // (auth-first) so it never triggers a Modal fetch; rely on Modal 401 only as
+    // the downstream fallback, not the primary gate.
+    if (isHubLayoutReadRequest(request) && !hasAuthorizationHeader(request)) {
+      return buildMissingAuthorizationResponse(requestId);
+    }
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
       if (modalResponse) {
@@ -575,7 +588,8 @@ export async function onRequest(context) {
     const isCollection = ['/api/trees', '/api/memories'].includes(path);
     const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
     const isCapability = path.match(/^\/api\/private\/trees\/[^/]+\/capability$/);
-    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : 'GET')));
+    const isHubLayoutPath = path.match(/^\/api\/trees\/[^/]+\/hub-layout$/);
+    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : (isHubLayoutPath ? 'GET, PUT' : 'GET'))));
     return buildMethodNotAllowedResponse(allow, requestId);
   }
 

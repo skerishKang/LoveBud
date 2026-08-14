@@ -1,26 +1,10 @@
 import { validateWritePayload } from '../_shared/legacy-key-guard.js';
-
-const REQUEST_ID_HEADER = 'x-lovebud-request-id';
-const MAX_REQUEST_ID_LENGTH = 80;
-const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
-
-function generateRequestId() {
-  return 'req-' + crypto.randomUUID();
-}
-
-function normalizeRequestId(value) {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > MAX_REQUEST_ID_LENGTH) return null;
-  if (!SAFE_REQUEST_ID_PATTERN.test(trimmed)) return null;
-  return trimmed;
-}
-
-function getOrCreateRequestId(request) {
-  const existingRequestId = normalizeRequestId(request.headers.get(REQUEST_ID_HEADER));
-  if (existingRequestId) return existingRequestId;
-  return generateRequestId();
-}
+import {
+  REQUEST_ID_HEADER,
+  getOrCreateRequestId
+} from '../_shared/request-id.js';
+import { fetchModalWithTimeout, isModalTimeoutError } from '../_shared/modal-fetch.js';
+import { readBoundedRequestBody } from '../_shared/bounded-request-body.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -54,34 +38,32 @@ async function withModalHeaderAndId(response, requestId = null) {
   });
 }
 
-const MAX_BODY_SIZE = 131072; // 128KB
-
-function buildPayloadTooLargeResponse() {
+function buildPayloadTooLargeResponse(requestId = null) {
+  const headers = { 'content-type': 'application/json; charset=utf-8' };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
   return new Response(JSON.stringify({ error: 'Payload too large' }), {
     status: 413,
-    headers: { 'content-type': 'application/json; charset=utf-8' }
+    headers
   });
 }
 
-async function readBoundedWriteBody(request) {
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (e) {
-    return { tooLarge: true, body: null };
+function buildBodyReadFailedResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'body-read-failed'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
   }
-
-  if (!bodyText) {
-    return { tooLarge: false, body: null };
-  }
-
-  const encoder = new TextEncoder();
-  const encoded = encoder.encode(bodyText);
-  if (encoded.byteLength > MAX_BODY_SIZE) {
-    return { tooLarge: true, body: null };
-  }
-
-  return { tooLarge: false, body: encoded };
+  return new Response(JSON.stringify({ error: 'Request body read failed' }), {
+    status: 503,
+    headers
+  });
 }
 
 function buildModalUnavailableResponse(requestId = null) {
@@ -100,6 +82,58 @@ function buildModalUnavailableResponse(requestId = null) {
   });
 }
 
+function buildModalTimeoutResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'modal',
+    'x-lovebud-route-status': 'modal-timeout'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
+  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), {
+    status: 504,
+    headers
+  });
+}
+
+function buildModalConfigMissingResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'modal-config-missing'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
+  return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
+    status: 503,
+    headers
+  });
+}
+
+function clampOwnerTreesLimit(rawLimit) {
+  return Math.min(Math.max(Number(rawLimit || 100) || 100, 1), 200);
+}
+
+export function buildPrivateTreesModalUrl(request, env = {}) {
+  const modalBaseUrl = stripTrailingSlash(env?.MODAL_BASE_URL);
+  if (!modalBaseUrl) return null;
+
+  const sourceUrl = new URL(request.url);
+  const target = new URL('/modal/private/trees', modalBaseUrl);
+  target.searchParams.set('limit', String(clampOwnerTreesLimit(sourceUrl.searchParams.get('limit'))));
+
+  const pagination = sourceUrl.searchParams.get('pagination');
+  if (pagination) target.searchParams.set('pagination', pagination);
+  const cursor = sourceUrl.searchParams.get('cursor');
+  if (cursor) target.searchParams.set('cursor', cursor);
+
+  return target;
+}
+
 export async function onRequestGet(context) {
   const request = context.request;
   const requestId = getOrCreateRequestId(request);
@@ -116,10 +150,7 @@ export async function onRequestGet(context) {
     });
   }
 
-  const sourceUrl = new URL(request.url);
-  const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
-  const target = new URL('/modal/private/trees', modalBaseUrl);
-  target.searchParams.set('limit', String(limit));
+  const target = buildPrivateTreesModalUrl(request, context.env);
 
   const modalRequestHeaders = {
     accept: 'application/json',
@@ -131,10 +162,13 @@ export async function onRequestGet(context) {
 
   let response;
   try {
-    response = await fetch(target.toString(), {
+    response = await fetchModalWithTimeout(target.toString(), {
       headers: modalRequestHeaders
     });
   } catch (error) {
+    if (isModalTimeoutError(error)) {
+      return buildModalTimeoutResponse(requestId);
+    }
     return buildModalUnavailableResponse(requestId);
   }
 
@@ -145,60 +179,78 @@ function hasAuthorizationHeader(request) {
   return !!(request.headers.get('authorization') || request.headers.get('Authorization'));
 }
 
-function buildMissingAuthorizationResponse() {
+function buildMissingAuthorizationResponse(requestId = null) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
     'x-lovebud-upstream': 'cloudflare',
     'x-lovebud-route-status': 'missing-authorization'
   };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
   return new Response(JSON.stringify({ error: 'Authorization required' }), { status: 401, headers });
 }
 
 export async function onRequestPost(context) {
   const { request } = context;
+  const requestId = getOrCreateRequestId(request);
 
   if (!hasAuthorizationHeader(request)) {
-    return buildMissingAuthorizationResponse();
+    return buildMissingAuthorizationResponse(requestId);
   }
 
-  const bodyResult = await readBoundedWriteBody(request);
-  if (bodyResult.tooLarge) {
-    return buildPayloadTooLargeResponse();
+  const bodyResult = await readBoundedRequestBody(request);
+  if (bodyResult.status === 'tooLarge') {
+    return buildPayloadTooLargeResponse(requestId);
+  }
+  if (bodyResult.status === 'readError') {
+    return buildBodyReadFailedResponse(requestId);
   }
 
-  // Legacy localization key write-boundary guard (#2940)
   if (bodyResult.body) {
     try {
       const payload = JSON.parse(new TextDecoder().decode(bodyResult.body));
-      const guard = validateWritePayload(payload, ['title', 'memo']);
+      let guard = validateWritePayload(payload, ['title', 'memo']);
+      if (guard) {
+        const h = new Headers(guard.headers);
+        h.set(REQUEST_ID_HEADER, requestId);
+        h.set('Access-Control-Expose-Headers', REQUEST_ID_HEADER);
+        guard = new Response(guard.body, {
+          status: guard.status,
+          statusText: guard.statusText,
+          headers: h
+        });
+      }
       if (guard) return guard;
-    } catch (_) { /* non-JSON upstream; skip guard */ }
+    } catch (_) { }
   }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) {
-    return new Response(JSON.stringify({ error: 'MODAL_BASE_URL is not configured' }), {
-      status: 503,
-      headers: { 'content-type': 'application/json; charset=utf-8' }
-    });
+    return buildModalConfigMissingResponse(requestId);
   }
 
   let response;
   try {
-    response = await fetch(new URL('/modal/private/trees', modalBaseUrl).toString(), {
+    response = await fetchModalWithTimeout(new URL('/modal/private/trees', modalBaseUrl).toString(), {
       method: 'POST',
       headers: {
         accept: 'application/json',
         'content-type': request.headers.get('content-type') || 'application/json',
         ...(request.headers.get('authorization')
           ? { authorization: request.headers.get('authorization') }
-          : {})
+          : {}),
+        [REQUEST_ID_HEADER]: requestId
       },
       body: bodyResult.body
     });
   } catch (error) {
-    return buildModalUnavailableResponse();
+    if (isModalTimeoutError(error)) {
+      return buildModalTimeoutResponse(requestId);
+    }
+    return buildModalUnavailableResponse(requestId);
   }
 
-  return withModalHeader(response);
+  return await withModalHeaderAndId(response, requestId);
 }
