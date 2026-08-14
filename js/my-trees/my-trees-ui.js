@@ -244,14 +244,29 @@
   }
 
   function normalizeCardVisibility(tree) {
-    return tree && tree.visibility === 'public' ? 'public' : 'private';
+    if (tree && tree.visibility === 'public') return 'public';
+    if (tree && tree.visibility === 'private') return 'private';
+    // Issue #3934: anything other than a literal public/private value is
+    // unresolved. Do NOT coerce it into a public/private claim.
+    return 'unknown';
   }
 
   function buildVisibilityBadgeHtml(visibility, i18n) {
-    var visibilityLabel = visibility === 'public'
-      ? getI18nText(i18n, 'myTrees.summary_public', '공개')
-      : getI18nText(i18n, 'myTrees.summary_private', '비공개');
-    var visibilityIcon = visibility === 'public' ? 'public' : 'lock';
+    var visibilityLabel;
+    var visibilityIcon;
+    if (visibility === 'public') {
+      visibilityLabel = getI18nText(i18n, 'myTrees.summary_public', '공개');
+      visibilityIcon = 'public';
+    } else if (visibility === 'private') {
+      visibilityLabel = getI18nText(i18n, 'myTrees.summary_private', '비공개');
+      visibilityIcon = 'lock';
+    } else {
+      // Issue #3934: unknown/unresolved visibility. Never claim public or
+      // private. Show a neutral indicator only (#3934 display truthfulness).
+      visibilityLabel = getI18nText(i18n, 'myTrees.summary_unknown', '확인 불가');
+      visibilityIcon = 'help';
+      visibility = 'unknown';
+    }
     // #3587: demote to quiet icon-only indicator. No visible text label,
     // transparent background, no border/pill. aria-label + title preserved.
     return '<span class="tree-card-visibility ' + visibility + '" aria-label="' + visibilityLabel + '" title="' + visibilityLabel + '" data-visibility="' + visibility + '">' +
@@ -461,7 +476,7 @@
       normalizedTree = {
         id: tree && tree.id,
         title: (tree && tree.title) || '나의 러브트리',
-        visibility: tree && tree.visibility === 'public' ? 'public' : 'private',
+        visibility: tree && tree.visibility === 'public' ? 'public' : (tree && tree.visibility === 'private' ? 'private' : 'unknown'),
         updatedAt: (tree && (tree.updatedAt || tree.createdAt)) || null,
         memoryCount: getTreeMomentCount(tree),
         representativeThumbnail: getRepresentativeThumbnail(tree),
@@ -469,7 +484,7 @@
         representativeMemo: tree && (tree.representativeMemo || tree.representative_memo || '')
       };
     } else {
-      normalizedTree.visibility = normalizedTree.visibility === 'public' ? 'public' : 'private';
+      normalizedTree.visibility = normalizedTree.visibility === 'public' ? 'public' : (normalizedTree.visibility === 'private' ? 'private' : 'unknown');
       normalizedTree.representativeThumbnail = normalizedTree.representativeThumbnail || getRepresentativeThumbnail(tree);
       normalizedTree.memoryCount = getTreeMomentCount(tree || normalizedTree);
       normalizedTree.representativeTitle = normalizedTree.representativeTitle || (tree && (tree.representativeTitle || tree.representative_title || ''));
