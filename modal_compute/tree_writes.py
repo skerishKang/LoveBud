@@ -39,12 +39,17 @@ def create_owner_tree(
     if not owner_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    ensure_owner_user_exists(owner_id, owner_email)
+    # #3935 strict scalar validation MUST precede any DB side effect.
+    # ensure_owner_user_exists() performs a real owner-row upsert, so validating
+    # the supplied title/groupName first guarantees a malformed scalar is
+    # rejected with HTTP 400 before any owner row or Tree INSERT is written.
     title = validate_tree_title(payload.get("title"), max_length=200) or "My LoveTree"
+    group_name = validate_tree_group_name(payload.get("groupName"))
+
+    ensure_owner_user_exists(owner_id, owner_email)
     visibility = validate_visibility(payload.get("visibility"), "public")
     require_plus_for_private_storage(owner_id, visibility)
 
-    group_name = validate_tree_group_name(payload.get("groupName"))
     keywords = normalize_keywords(payload.get("keywords"))
 
     query = """

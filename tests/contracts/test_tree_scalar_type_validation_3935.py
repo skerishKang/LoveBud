@@ -13,7 +13,7 @@ Run: python3 tests/contracts/test_tree_scalar_type_validation_3935.py
 import os
 import sys
 import uuid
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from fastapi import HTTPException
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -222,39 +222,46 @@ def _assert_no_insert(mock_cursor, mock_conn):
 
 
 def _run_create(payload, owner_id="owner-1", returning=None):
+    mock_ensure = MagicMock()
     mock_cursor = MockCursor(fetchone_result=returning)
     mock_conn = MockConnection(mock_cursor)
-    with patch("modal_compute.tree_writes.ensure_owner_user_exists", return_value=None):
-        with patch("modal_compute.tree_writes.get_db_connection", return_value=mock_conn):
+    with patch("modal_compute.tree_writes.ensure_owner_user_exists", mock_ensure) as p_ensure:
+        with patch("modal_compute.tree_writes.get_db_connection", return_value=mock_conn) as p_db:
             try:
-                return create_owner_tree(owner_id, payload), mock_cursor, mock_conn
+                return create_owner_tree(owner_id, payload), mock_ensure, mock_conn, p_db
             except HTTPException as exc:
-                return exc, mock_cursor, mock_conn
-    return None, mock_cursor, mock_conn
+                return exc, mock_ensure, mock_conn, p_db
+    return None, mock_ensure, mock_conn, p_db
 
 
 def test_create_title_non_string_rejected_before_insert():
     for bad in [1, 0, -9, 3.14, True, False, [], {}, ["a"], {"k": "v"}]:
-        result, cur, conn = _run_create({"title": bad})
+        result, mock_ensure, conn, p_db = _run_create({"title": bad})
         assert isinstance(result, HTTPException), f"{bad!r} expected HTTPException"
         assert result.status_code == 400, f"{bad!r} expected 400, got {result.status_code}"
         detail = result.detail if isinstance(result.detail, dict) else {}
         assert detail.get("code") == "INVALID_TREE_SCALAR_TYPE"
         assert detail.get("field") == "title"
-        _assert_no_insert(cur, conn)
-    print("  PASSED: create title malformed -> 400, zero INSERT INTO trees, zero commit")
+        # #3935 boundary: reject BEFORE any DB side effect (owner upsert + tree INSERT).
+        assert mock_ensure.call_count == 0, "ensure_owner_user_exists must not run for malformed title"
+        assert p_db.call_count == 0, "Tree writer get_db_connection must not run for malformed title"
+        _assert_no_insert(conn._cursor, conn)
+    print("  PASSED: create title malformed -> 400; zero ensure_owner_user_exists / get_db_connection / INSERT / commit")
 
 
 def test_create_group_name_non_string_rejected_before_insert():
     for bad in [1, 0, -9, 3.14, True, False, [], {}, ["a"], {"k": "v"}]:
-        result, cur, conn = _run_create({"title": "My Tree", "groupName": bad})
+        result, mock_ensure, conn, p_db = _run_create({"title": "My Tree", "groupName": bad})
         assert isinstance(result, HTTPException), f"{bad!r} expected HTTPException"
         assert result.status_code == 400, f"{bad!r} expected 400, got {result.status_code}"
         detail = result.detail if isinstance(result.detail, dict) else {}
         assert detail.get("code") == "INVALID_TREE_SCALAR_TYPE"
         assert detail.get("field") == "groupName"
-        _assert_no_insert(cur, conn)
-    print("  PASSED: create groupName malformed -> 400, zero INSERT INTO trees, zero commit")
+        # #3935 boundary: reject BEFORE any DB side effect.
+        assert mock_ensure.call_count == 0, "ensure_owner_user_exists must not run for malformed groupName"
+        assert p_db.call_count == 0, "Tree writer get_db_connection must not run for malformed groupName"
+        _assert_no_insert(conn._cursor, conn)
+    print("  PASSED: create groupName malformed -> 400; zero ensure_owner_user_exists / get_db_connection / INSERT / commit")
 
 
 # ============================================================================
@@ -296,12 +303,14 @@ def test_update_explicit_null_group_name_accepted_and_cleared():
 
 def test_create_explicit_null_title_defaults_to_my_lovetree():
     owner_id = "owner-1"
-    result, _, _ = _run_create(
+    result, mock_ensure, _, _ = _run_create(
         {"title": None},
         owner_id=owner_id,
         returning=_create_owner_row(owner_id, "My LoveTree", None),
     )
     assert result["title"] == "My LoveTree", f"explicit null title defaults, got {result['title']!r}"
+    # explicit null is a VALID (accepted) scalar, so the owner upsert still runs.
+    assert mock_ensure.call_count == 1, "explicit null title is valid; ensure_owner_user_exists must run"
     print("  PASSED: create title:null defaults to 'My LoveTree' (distinct from malformed)")
 
 
@@ -384,28 +393,50 @@ def test_update_title_overlength_rejected_no_mutation():
 
 def test_create_group_name_overlength_rejected_before_insert():
     owner_id = "owner-1"
-    result, cur, conn = _run_create(
+    result, mock_ensure, conn, p_db = _run_create(
         {"title": "My Tree", "groupName": "x" * 81},
         owner_id=owner_id,
         returning=_create_owner_row(owner_id, "My Tree", None),
     )
     assert isinstance(result, HTTPException), "overlength groupName must raise"
     assert result.status_code == 400
-    _assert_no_insert(cur, conn)
-    print("  PASSED: create groupName over 80 chars -> 400, no INSERT")
+    assert mock_ensure.call_count == 0, "ensure_owner_user_exists must not run for overlength groupName"
+    assert p_db.call_count == 0, "Tree writer get_db_connection must not run for overlength groupName"
+    _assert_no_insert(conn._cursor, conn)
+    print("  PASSED: create groupName over 80 chars -> 400; zero ensure/INSERT before side effect")
 
 
-def test_create_valid_title_group_name_persist():
+def test_create_valid_still_calls_ensure_owner_user_exists():
+    """Positive control: a valid create still runs ensure_owner_user_exists once
+    and performs the Tree INSERT (the reorder must not suppress legit writes)."""
     owner_id = "owner-1"
-    result, cur, conn = _run_create(
+    result, mock_ensure, conn, p_db = _run_create(
         {"title": "  My Tree  ", "groupName": "  my grp  "},
         owner_id=owner_id,
         returning=_create_owner_row(owner_id, "My Tree", "my grp"),
     )
     assert result["title"] == "My Tree", f"create title trimmed, got {result['title']!r}"
     assert result["groupName"] == "my grp", f"create groupName trimmed, got {result['groupName']!r}"
-    written = [q for q, _ in cur.execute_calls]
+    assert mock_ensure.call_count == 1, "valid create must call ensure_owner_user_exists exactly once"
+    assert p_db.call_count == 1, "valid create must open the Tree writer connection once"
+    written = [q for q, _ in conn._cursor.execute_calls]
     assert any("INSERT INTO trees" in q for q in written), "valid create must INSERT"
+    assert conn.commit_calls == 1
+    print("  PASSED: valid create still calls ensure_owner_user_exists once + INSERT (positive control)")
+
+
+def test_create_valid_title_group_name_persist():
+    owner_id = "owner-1"
+    result, mock_ensure, conn, p_db = _run_create(
+        {"title": "  My Tree  ", "groupName": "  my grp  "},
+        owner_id=owner_id,
+        returning=_create_owner_row(owner_id, "My Tree", "my grp"),
+    )
+    assert result["title"] == "My Tree", f"create title trimmed, got {result['title']!r}"
+    assert result["groupName"] == "my grp", f"create groupName trimmed, got {result['groupName']!r}"
+    written = [q for q, _ in conn._cursor.execute_calls]
+    assert any("INSERT INTO trees" in q for q in written), "valid create must INSERT"
+    assert mock_ensure.call_count == 1, "valid create must call ensure_owner_user_exists"
     assert conn.commit_calls == 1
     print("  PASSED: valid create persists trimmed title/groupName via INSERT")
 
@@ -430,5 +461,6 @@ if __name__ == "__main__":
     test_update_valid_group_name_persists_trimmed()
     test_update_title_overlength_rejected_no_mutation()
     test_create_group_name_overlength_rejected_before_insert()
+    test_create_valid_still_calls_ensure_owner_user_exists()
     test_create_valid_title_group_name_persist()
     print("\nALL 3935 EXECUTABLE CHECKS PASSED")
