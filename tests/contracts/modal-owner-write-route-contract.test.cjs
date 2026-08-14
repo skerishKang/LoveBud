@@ -113,15 +113,15 @@ function assertRoutePassesPayload(normalized, callee, argsPattern, routeLabel) {
 }
 
 // create_owner_tree helper contracts
-test('create_owner_tree uses validate_optional_string for title with max 200', () => {
+test('create_owner_tree uses validate_tree_title for title with max 200', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /validate_optional_string.*title.*200/i,
-    'create_owner_tree must validate title with max 200 characters'
+    /validate_tree_title.*title.*200/i,
+    'create_owner_tree must validate title with max 200 characters via validate_tree_title (#3935)'
   );
 });
 
@@ -362,8 +362,8 @@ test('update_owner_tree only allows title and visibility updates', () => {
 
   assert.match(
     normalized,
-    /validate_optional_string.*title.*200/i,
-    'update_owner_tree must validate title when updating'
+    /validate_tree_title.*title.*200/i,
+    'update_owner_tree must validate title when updating via validate_tree_title (#3935)'
   );
 });
 

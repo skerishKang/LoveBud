@@ -271,3 +271,42 @@ def test_fork_tree_duplicate_guard(mock_conn_ctx, mock_owner_tree, mock_user, mo
     body = response.json()
     assert body.get("duplicate") is True
     assert body.get("forked") is False
+
+
+# --- Over-limit Completeness (#3924): 201+ public source Memories ---
+
+@patch("modal_compute.app.require_firebase_user", return_value={"uid": AUTH_USER_ID})
+@patch("modal_compute.tree_writes.ensure_owner_user_exists")
+@patch("modal_compute.tree_writes.get_db_connection")
+def test_fork_tree_over_limit_rejected_before_destination_insert(mock_conn_ctx, mock_user, mock_auth):
+    """POST /api/trees/:id/fork with >200 public source Memories must 409 with
+    FORK_SOURCE_TOO_LARGE and must not write any destination row."""
+    over_limit_memories = [dict(MOCK_SOURCE_MEMORIES[0], id=str(uuid.uuid4())) for _ in range(201)]
+
+    # fetchone order: FOR SHARE source -> public row, duplicate check -> none.
+    # The over-limit rejection fires from the LIMIT 201 snapshot BEFORE the
+    # destination tree INSERT, so fetchone never reaches an INSERT result.
+    mock_cursor = MagicMock()
+    mock_cursor.fetchone.side_effect = [
+        MOCK_PUBLIC_TREE_ROW,
+        None,
+    ]
+    mock_cursor.fetchall.return_value = over_limit_memories
+    mock_conn_ctx.side_effect = _fork_conn_context(mock_cursor)
+
+    response = client.post(
+        f"/modal/private/trees/{PUBLIC_TREE_ID}/fork",
+        headers={"authorization": "Bearer fake-token"},
+    )
+
+    assert response.status_code == 409, f"Expected 409, got {response.status_code}"
+    detail = response.json().get("detail", {})
+    assert detail.get("code") == "FORK_SOURCE_TOO_LARGE"
+    assert detail.get("supportedMax") == 200
+
+    # No destination Tree INSERT may have been attempted (reject before copy).
+    tree_inserts = [
+        str(call) for call in mock_cursor.execute.call_args_list
+        if "INSERT INTO trees" in str(call)
+    ]
+    assert len(tree_inserts) == 0, f"Over-limit fork must not INSERT a destination Tree: {tree_inserts}"

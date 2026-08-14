@@ -268,6 +268,81 @@ def normalize_group_name(raw: Any) -> str | None:
     return stripped
 
 
+def validate_tree_title(
+    value: Any,
+    *,
+    field: str = "title",
+    max_length: int = 200,
+) -> str:
+    """Strict Tree title validation (#3935).
+
+    Unlike validate_optional_string, a non-string supplied value (number,
+    boolean, array, object, ...) is NOT coerced to "" and must NOT silently
+    default to the create-time "My LoveTree" fallback or clear an existing
+    stored title. It raises a structured HTTP 400 before any DB mutation.
+
+    - None (omitted or explicit null) -> "" (caller decides default/omission)
+    - valid string -> trimmed, bound by max_length (overlength -> HTTP 400)
+    - non-string -> HTTPException 400 INVALID_TREE_SCALAR_TYPE
+
+    Explicit null is intentionally distinct from a malformed type: it follows
+    the current contract (None -> "") and is decided/tested separately from
+    malformed scalar types (#3935).
+    """
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_TREE_SCALAR_TYPE",
+                "field": field,
+                "expected": "string",
+            },
+        )
+    text = value.strip()
+    if len(text) > max_length:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field} exceeds max {max_length} characters",
+        )
+    return text
+
+
+def validate_tree_group_name(value: Any) -> str | None:
+    """Strict Tree groupName validation (#3935).
+
+    Unlike normalize_group_name, a non-string supplied value is NOT coerced to
+    None (which would silently clear an existing stored group name). It raises a
+    structured HTTP 400 before any DB mutation.
+
+    - None (omitted or explicit null) -> None
+    - valid string -> trimmed; empty/whitespace -> None; overlength(80) -> 400
+    - non-string (number/boolean/array/object) -> HTTPException 400
+
+    Explicit null is intentionally distinct from a malformed type: it follows
+    the current contract (None -> None) and is decided/tested separately from
+    malformed scalar types (#3935).
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_TREE_SCALAR_TYPE",
+                "field": "groupName",
+                "expected": "string",
+            },
+        )
+    stripped = value.strip()
+    if not stripped:
+        return None
+    if len(stripped) > 80:
+        raise HTTPException(status_code=400, detail="groupName exceeds max 80 characters")
+    return stripped
+
+
 def normalize_keywords(raw: Any) -> list[str]:
     """
     Normalize a keywords value:
