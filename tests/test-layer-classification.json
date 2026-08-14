@@ -35,6 +35,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-fork-idempotency-lock-3925.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree serializes competing creators for the same (source_tree_id, owner_id) tuple with a transaction-scoped pg_advisory_xact_lock acquired before the source visibility lock/authorization and before the duplicate lookup and destination INSERT; verifies the sha256-derived signed-bigint lock key is stable and tuple-scoped with process-local hash() negative control; pure static source-read and crypto key computation, no execution, no network, no DB (#3925).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-fork-completeness-3924.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree snapshots public source Memories with a single bounded ORDER BY created_at ASC, id ASC LIMIT 201 FOR SHARE read before any destination write; 200 supported rows copy in full and a 201st row rejects the fork with 409 FORK_SOURCE_TOO_LARGE / supportedMax 200 BEFORE the destination Tree INSERT; forbids LIMIT 200 restoration, COUNT(*) preflight, and any second DB connection, and verifies the #3925 advisory-lock / #3952 / #3956 ordering survives the snapshot reorder; pure static source-read, no execution, no network, no DB (#3924).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/test-suite-count-authority-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads fixed repository-owned classification/registry/package sources and executes the pure canonical test-suite count authority with synthetic fixtures and negative controls; derives deterministic frozen default-CI counts and supplemental totals without network, child process, filesystem write, database, browser, or Production access (#3838).",
@@ -4075,6 +4087,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-write-request-id-3959.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source (functions/api/trees.js, functions/api/trees/[id].js) and executes it in a local process with a mocked global fetch; static source-level checks assert shared request-id/modal-fetch imports and requestId propagation through all POST/PUT/DELETE error and success paths; runtime no-network checks assert missing-auth, success, and missing-config responses include and expose x-lovebud-request-id. #3959 focused contract test for Tree write request correlation. No real external system, network, database, browser, provider, or Production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/trees-schema-db-engine-harness-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads package.json, CI workflow, trees-schema db-engine harness source, damaged fixture markers, and classification inventory; asserts loopback guards, seven-column foothold phase markers, and supplemental DB_ENGINE_EXECUTION placement without executing PostgreSQL (#3532).",
@@ -4950,12 +4968,6 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
-    },
-    {
-      "path": "tests/contracts/public-tree-view-edge-authority-3917-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the real Cloudflare edge function functions/api/trees/[tree_id]/views.js in a local Node process with a stubbed global fetch and injected env (TREE_VIEW_AUTHORITY_SECRET, CF-Connecting-IP). Proves the #3917 security slice end-to-end at the edge: the browser sends no actor identity body; the edge derives an anonymous server-authoritative actor from CF-Connecting-IP + UTC day + secret via domain-separated HMAC-SHA256 and forwards only a signed assertion as headers (no body); the signed signature actually verifies; 100 rotated client actorKeys collapse to the same authoritative edge actor (Control C); a forged authenticated actor kind is ignored (Control D); missing secret or missing CF-Connecting-IP fails closed with no Modal call and no count (Controls I, J); raw IP never appears in forwarded headers (Control L). No real network, database, browser, auth provider, deployment, or Production resource is used.",
-      "capabilities": []
     }
   ],
   "supplemental": [
@@ -5037,17 +5049,10 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/test_public_tree_view_edge_authority_3917.py",
-      "defaultCi": false,
-      "layer": "SUPPLEMENTAL_PYTHON",
-      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script. Drives the real Modal route /modal/public/trees/{tree_id}/views through the FastAPI TestClient with record_public_tree_view patched (no DB, no network, no real secret) and asserts the #3917 fail-closed contract: a valid signed edge assertion reaches the writer once with an anonymous server-authoritative actor; missing/bad/tampered signature, treeId mismatch, tampered actorKey, stale/future countedWindow, forged authenticated actor kind, or missing secret all return HTTP 400 with zero writer (DB) calls (Controls D, E, F, G, H, I); the same signed authority yields exactly one aggregate increment at the data layer via daily ON CONFLICT dedup (Control K); missing social tables fall back to counted=False/viewCount=0 (Control M); and the Modal writer receives only the opaque actor digest, never the raw client IP (Control L).",
-      "capabilities": []
-    },
-    {
       "path": "tests/db-engine/fork-public-tree-visibility-concurrency-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections to prove fork_public_tree FOR SHARE serialization: revocation-first (fork observes private, zero destination rows), fork-lock-first (visibility UPDATE blocks until fork commit), and mid-copy rollback (no partial destination). Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
+      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections to prove fork_public_tree FOR SHARE serialization: revocation-first (fork observes private, zero destination rows), fork-lock-first (visibility UPDATE blocks until fork commit), mid-copy rollback (no partial destination), #3925 same-identity/different-identity advisory concurrency, and #3924 completeness (199/200 copy in full; exactly 201 and >201 reject with FORK_SOURCE_TOO_LARGE and zero destination rows; private rows excluded from the count; deterministic (created_at, id) tie boundary; parent-id rewrite integrity; duplicate guard still precedes the limit). Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
       "capabilities": []
     },
     {

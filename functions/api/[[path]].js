@@ -7,6 +7,7 @@ import {
   isMemoryWriteRequest,
   prepareMemoryWriteProxyRequest
 } from '../_shared/memory-route-proxy.js';
+import { readBoundedRequestBody } from '../_shared/bounded-request-body.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -15,7 +16,6 @@ function stripTrailingSlash(value) {
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
 const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
-const MAX_WRITE_BODY_BYTES = 128 * 1024;
 const MODAL_FETCH_TIMEOUT_MS = 25000;
 
 function generateRequestId() {
@@ -36,38 +36,17 @@ function getOrCreateRequestId(request) {
   return generateRequestId();
 }
 
-function getContentLengthBytes(request) {
-  const raw = request.headers.get('content-length');
-  if (!raw) return null;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  return parsed;
-}
-
-function isWriteContentLengthTooLarge(request) {
-  const contentLengthBytes = getContentLengthBytes(request);
-  return contentLengthBytes !== null && contentLengthBytes > MAX_WRITE_BODY_BYTES;
-}
-
-async function readBoundedWriteBody(request) {
-  let bodyText;
-  try {
-    bodyText = await request.text();
-  } catch (e) {
-    return { tooLarge: true, body: null };
-  }
-
-  if (!bodyText) {
-    return { tooLarge: false, body: null };
-  }
-
-  const encoder = new TextEncoder();
-  const encoded = encoder.encode(bodyText);
-  if (encoded.byteLength > MAX_WRITE_BODY_BYTES) {
-    return { tooLarge: true, body: null };
-  }
-
-  return { tooLarge: false, body: encoded };
+function buildBodyReadFailedResponse(requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'x-lovebud-upstream': 'cloudflare',
+    'x-lovebud-route-status': 'body-read-failed'
+  };
+  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
+  return new Response(JSON.stringify({ error: 'Request body read failed' }), {
+    status: 503,
+    headers
+  });
 }
 
 function buildPayloadTooLargeResponse(requestId = null) {
@@ -408,15 +387,14 @@ async function tryModalWrite(request, env, requestId = null) {
 
   let boundedBody = null;
   if (method !== 'DELETE') {
-    if (isWriteContentLengthTooLarge(request)) {
+    const bodyResult = await readBoundedRequestBody(request);
+    if (bodyResult.status === 'tooLarge') {
       return buildPayloadTooLargeResponse(requestId);
     }
-
-    const bodyCheck = await readBoundedWriteBody(request);
-    if (bodyCheck.tooLarge) {
-      return buildPayloadTooLargeResponse(requestId);
+    if (bodyResult.status === 'readError') {
+      return buildBodyReadFailedResponse(requestId);
     }
-    boundedBody = bodyCheck.body;
+    boundedBody = bodyResult.body;
   }
 
   const modalUrl = buildModalUrl(request, env || {});

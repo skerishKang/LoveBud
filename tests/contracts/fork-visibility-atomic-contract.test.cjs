@@ -57,11 +57,11 @@ test('fork never weakens the lock or uses a table-level LOCK', () => {
 
 test('fork authorizes before any destination write and keeps public-only copy', () => {
   const block = forkBlock();
-  // SQL query constants are declared above the control flow, so the ordering
-  // gate uses the execution site (the destination INSERT call), which must
-  // follow the leak-safe 403 authorization branch.
+  // Query constants are declared above control flow, so anchor ordering to the
+  // actual destination INSERT execution rather than a numbered source comment.
+  // This keeps the contract stable when a new transactional guard is inserted.
   const authIdx = block.indexOf('Only public trees can be forked');
-  const destExecIdx = block.indexOf('# 5. Destination tree insert happens only after authorization.');
+  const destExecIdx = block.indexOf('cur.execute(\n                        insert_tree_query');
   assert.ok(authIdx >= 0, 'leak-safe 403 detail must remain');
   assert.ok(destExecIdx >= 0, 'destination tree INSERT execution site must exist');
   assert.match(block, /insert_tree_query/, 'destination tree INSERT must exist');
@@ -82,6 +82,7 @@ test('fork locks the copied public memory rows with FOR SHARE (#3956)', () => {
   const memBlock = block.split('FROM memories')[1].split('INSERT INTO memories')[0];
   assert.ok(memBlock, 'source memory SELECT must exist in the fork');
   assert.match(memBlock, /AND visibility = 'public'/, 'private memories must remain excluded');
-  assert.match(memBlock, /LIMIT 200/, '#3924 200-row boundary must remain untouched');
+  assert.match(memBlock, /ORDER BY created_at ASC, id ASC/, '#3924 boundary must be deterministic with a created_at/id tie-breaker');
+  assert.match(memBlock, /LIMIT 201/, '#3924 bounded LIMIT 201 snapshot must remain (201st row = over-limit proof)');
   assert.match(memBlock, /FOR SHARE;/, 'selected public memory rows must be locked FOR SHARE');
 });
