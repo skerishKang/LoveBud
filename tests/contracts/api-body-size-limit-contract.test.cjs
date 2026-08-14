@@ -59,7 +59,9 @@ test('Cloudflare catch-all non-DELETE write forwards bounded body and rejects ov
   assert.match(writeBlock, /if\s*\(bodyResult\.status\s*===\s*'readError'\)/);
   assert.match(writeBlock, /return\s+buildBodyReadFailedResponse\(requestId\)/);
   assert.match(writeBlock, /boundedBody\s*=\s*bodyResult\.body/);
-  assert.match(writeBlock, /body:\s*method\s*!==\s*'DELETE'\s*\?\s*boundedBody\s*:\s*null/);
+  // The bounded body is forwarded for every non-DELETE write. The upstream method
+  // may be `upstreamMethod` (PUT→POST translation for hub-layout) or `method`.
+  assert.match(writeBlock, /body:\s*(?:upstreamMethod|method)\s*!==\s*'DELETE'\s*\?\s*boundedBody\s*:\s*null/);
 });
 
 test('Cloudflare oversized body response is safe JSON and does not echo request body', () => {
