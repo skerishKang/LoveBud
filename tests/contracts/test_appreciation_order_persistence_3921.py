@@ -1,27 +1,25 @@
 #!/usr/bin/env python3
-"""
-Executable contract tests for Issue #3921 — appreciation-order persistence.
+"""Executable contract tests for Issue #3921 appreciation-order persistence.
 
-Verifies the dedicated persistence module (modal_compute.appreciation_orders)
-actually persists to tree_appreciation_orders and that POST -> GET converge,
-with owner/membership/duplicate/no-mutation negative controls.
-
-Design constraints honored:
-- Does NOT modify tree_writes.py or validation.py (comp2 #3935 ownership).
-- No Production/Preview/real DB mutation (fully in-memory FakeDB).
-- No generic update_owner_tree / appreciationOrder usage.
+The tests are hermetic: no Production/Preview/real DB access. They exercise the
+real persistence helper against an in-memory SQL-aware fake so ownership,
+membership, UPSERT acknowledgement, payload strictness, TEXT ids, and
+capability-failure behavior remain explicit.
 
 Run: python3 tests/contracts/test_appreciation_order_persistence_3921.py
 """
 
+from __future__ import annotations
+
+import asyncio
 import json
 import os
 import sys
-import uuid
 from typing import Any
+from unittest.mock import MagicMock, patch
 
+import psycopg
 from fastapi import HTTPException
-from unittest.mock import patch, MagicMock
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO_ROOT)
@@ -29,25 +27,20 @@ sys.path.insert(0, REPO_ROOT)
 import modal_compute.appreciation_orders as appr  # noqa: E402
 
 
-# ============================================================================
-# In-memory FakeDB + FakeCursor
-# ============================================================================
-
 class FakeDB:
-    def __init__(self):
-        # trees: tree_id -> {"id": str, "owner_id": str}
+    def __init__(self) -> None:
         self.trees: dict[str, dict[str, str]] = {}
-        # memories: set of (tree_id, memory_id)
         self.memories: set[tuple[str, str]] = set()
-        # orders: tree_id -> list[str]
         self.orders: dict[str, list[str]] = {}
+        self.missing_orders_table = False
 
 
 class FakeCursor:
-    def __init__(self, db: FakeDB):
-        self.db = db
+    def __init__(self, conn: "FakeConnection") -> None:
+        self.conn = conn
+        self.db = conn.db
         self._row: Any = None
-        self._rows: list[dict] = []
+        self._rows: list[dict[str, Any]] = []
 
     def __enter__(self):
         return self
@@ -55,28 +48,46 @@ class FakeCursor:
     def __exit__(self, *args):
         return False
 
-    def execute(self, query: str, params=None):
+    def execute(self, query: str, params=None) -> None:
         q = query
         p = list(params or ())
-        if "FROM trees" in q and "WHERE id = %s" in q:
-            tid = p[0]
-            self._row = self.db.trees.get(tid)
-        elif "FROM memories m" in q and "ANY" in q:
-            tid = p[0]
-            ids = set(p[1]) if isinstance(p[1], (list, tuple, set)) else set()
+        self.conn.queries.append(q)
+        self._row = None
+        self._rows = []
+
+        if "FROM trees t" in q and "WHERE t.id = %s" in q:
+            tree_id = p[0]
+            self._row = self.db.trees.get(tree_id)
+            return
+
+        if "FROM memories m" in q and "ANY" in q:
+            tree_id = p[0]
+            requested = set(p[1]) if isinstance(p[1], (list, tuple, set)) else set()
             self._rows = [
-                {"id": mid} for (t, mid) in self.db.memories if t == tid and mid in ids
+                {"id": memory_id}
+                for candidate_tree, memory_id in self.db.memories
+                if candidate_tree == tree_id and memory_id in requested
             ]
-        elif "INSERT INTO tree_appreciation_orders" in q:
-            tid = p[0]
-            ordered = json.loads(p[1]) if isinstance(p[1], str) else p[1]
-            self.db.orders[tid] = ordered
-            self._row = {"tree_id": tid}
-        elif "FROM tree_appreciation_orders" in q and "ordered_ids" in q:
-            tid = p[0]
-            self._row = {"ordered_ids": self.db.orders[tid]} if tid in self.db.orders else None
-        else:
-            self._row = None
+            return
+
+        if "tree_appreciation_orders" in q and self.db.missing_orders_table:
+            raise psycopg.errors.UndefinedTable("relation does not exist")
+
+        if "INSERT INTO tree_appreciation_orders" in q:
+            tree_id = p[0]
+            ordered = json.loads(p[1]) if isinstance(p[1], str) else list(p[1])
+            self.db.orders[tree_id] = list(ordered)
+            self._row = {"ordered_ids": list(ordered)}
+            return
+
+        if "FROM tree_appreciation_orders" in q and "ordered_ids" in q:
+            tree_id = p[0]
+            self._row = (
+                {"ordered_ids": list(self.db.orders[tree_id])}
+                if tree_id in self.db.orders
+                else None
+            )
+            return
 
     def fetchone(self):
         return self._row
@@ -86,10 +97,11 @@ class FakeCursor:
 
 
 class FakeConnection:
-    def __init__(self, db: FakeDB):
+    def __init__(self, db: FakeDB) -> None:
         self.db = db
         self.commit_calls = 0
         self.rollback_calls = 0
+        self.queries: list[str] = []
 
     def __enter__(self):
         return self
@@ -98,33 +110,29 @@ class FakeConnection:
         return False
 
     def cursor(self, *args, **kwargs):
-        return FakeCursor(self.db)
+        return FakeCursor(self)
 
-    def commit(self):
+    def commit(self) -> None:
         self.commit_calls += 1
 
-    def rollback(self):
+    def rollback(self) -> None:
         self.rollback_calls += 1
 
 
-def make_fake_env():
-    """Build a FakeDB seeded with one owner tree, a foreign tree, and memories."""
+def make_fake_env(*, tree_id: str = "tree-text-3921") -> dict[str, Any]:
     db = FakeDB()
     owner = "owner-3921"
-    tree_id = str(uuid.uuid4())
-    foreign_tree = str(uuid.uuid4())
+    foreign_tree = "tree-foreign-3921"
+    own_mem = [f"memory-{index}-3921" for index in range(4)]
+    foreign_mem = "memory-foreign-3921"
 
     db.trees[tree_id] = {"id": tree_id, "owner_id": owner}
     db.trees[foreign_tree] = {"id": foreign_tree, "owner_id": "other-owner"}
-
-    own_mem = [str(uuid.uuid4()) for _ in range(4)]
-    foreign_mem = str(uuid.uuid4())
-
-    for mid in own_mem:
-        db.memories.add((tree_id, mid))
+    for memory_id in own_mem:
+        db.memories.add((tree_id, memory_id))
     db.memories.add((foreign_tree, foreign_mem))
 
-    env = {
+    return {
         "db": db,
         "owner": owner,
         "tree_id": tree_id,
@@ -132,319 +140,265 @@ def make_fake_env():
         "own_mem": own_mem,
         "foreign_mem": foreign_mem,
     }
-    return env
 
 
-def fake_require_tree_owner_factory(env):
-    """Return a require_tree_owner replacement bound to FakeDB.trees."""
+def connection_patch(db: FakeDB):
+    connections: list[FakeConnection] = []
 
-    def fake_require_tree_owner(tree_id, owner_id):
-        tree = env["db"].trees.get(tree_id)
-        if not tree:
-            raise HTTPException(status_code=404, detail="Tree not found")
-        if str(tree.get("owner_id") or "") != owner_id:
-            raise HTTPException(status_code=403, detail="Access denied: not your tree")
-        return tree
+    def factory():
+        conn = FakeConnection(db)
+        connections.append(conn)
+        return conn
 
-    return fake_require_tree_owner
+    return patch("modal_compute.appreciation_orders.get_db_connection", side_effect=factory), connections
+
+
+def assert_raises_status(expected_status: int, fn):
+    try:
+        fn()
+    except HTTPException as error:
+        assert error.status_code == expected_status, (error.status_code, error.detail)
+        return error
+    raise AssertionError(f"expected HTTP {expected_status}")
 
 
 def run_test(name, fn):
     try:
         fn()
-        print(f"  ✅ {name}")
+        print(f"  PASS: {name}")
         return True
-    except Exception as e:
-        print(f"  💥 {name}: {type(e).__name__}: {e}")
+    except Exception as error:
+        print(f"  FAIL: {name}: {type(error).__name__}: {error}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
-# ============================================================================
-# Persistence + convergence
-# ============================================================================
-
-def test_post_persists_and_converges():
+def test_post_persists_returns_canonical_and_get_converges():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        order = env["own_mem"][:3]
-        res = appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": order})
-        assert res == {"ok": True}, f"unexpected POST response: {res}"
+    patcher, connections = connection_patch(env["db"])
+    order = env["own_mem"][:3]
 
-        # No generic tree mutation path: ensure only the dedicated table changed.
+    with patcher:
+        saved = appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": order})
+        assert saved == {"orderedIds": order}
+        assert env["db"].orders[env["tree_id"]] == order
+
+        # The write uses exactly one connection for owner lock + membership + UPSERT.
+        assert len(connections) == 1
+        write_conn = connections[0]
+        assert write_conn.commit_calls == 1
+        owner_index = next(i for i, q in enumerate(write_conn.queries) if "FROM trees t" in q)
+        membership_index = next(i for i, q in enumerate(write_conn.queries) if "FROM memories m" in q)
+        upsert_index = next(i for i, q in enumerate(write_conn.queries) if "INSERT INTO tree_appreciation_orders" in q)
+        assert owner_index < membership_index < upsert_index
+        assert "FOR SHARE OF t" in write_conn.queries[owner_index]
+        assert "FOR SHARE OF m" in write_conn.queries[membership_index]
+
         got = appr.fetch_appreciation_order(env["tree_id"], env["owner"])
-        assert got == {"orderedIds": order}, f"GET did not converge: {got}"
-
-        # Persisted in the dedicated table exactly.
-        assert env["tree_id"] in db.orders, "order not persisted to dedicated table"
-        assert db.orders[env["tree_id"]] == order, "persisted order mismatch"
+        assert got == {"orderedIds": order}
 
 
-def test_partial_order_allowed():
+def test_non_uuid_text_tree_id_is_supported():
+    env = make_fake_env(tree_id="legacy-text-tree-id")
+    patcher, _ = connection_patch(env["db"])
+    with patcher:
+        saved = appr.save_appreciation_order(
+            "legacy-text-tree-id",
+            env["owner"],
+            {"order": [env["own_mem"][0]]},
+        )
+        assert saved == {"orderedIds": [env["own_mem"][0]]}
+        assert appr.fetch_appreciation_order("legacy-text-tree-id", env["owner"]) == saved
+
+
+def test_memory_ids_are_trimmed_to_canonical_strings():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        # Subset of the tree's memories is a valid partial order.
-        order = [env["own_mem"][0], env["own_mem"][2]]
-        appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": order})
-        got = appr.fetch_appreciation_order(env["tree_id"], env["owner"])
-        assert got == {"orderedIds": order}, f"partial order mismatch: {got}"
+    patcher, _ = connection_patch(env["db"])
+    memory_id = env["own_mem"][0]
+    with patcher:
+        saved = appr.save_appreciation_order(
+            env["tree_id"], env["owner"], {"order": [f"  {memory_id}  "]}
+        )
+    assert saved == {"orderedIds": [memory_id]}
+    assert env["db"].orders[env["tree_id"]] == [memory_id]
 
 
-def test_no_row_returns_empty_array():
+def test_partial_and_empty_orders_are_intentional_writes():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        # Tree with no explicit order row -> GET returns orderedIds: []
-        got = appr.fetch_appreciation_order(env["tree_id"], env["owner"])
-        assert got == {"orderedIds": []}, f"expected empty array, got {got}"
-        assert env["tree_id"] not in db.orders, "GET must not create a row"
+    patcher, _ = connection_patch(env["db"])
+    with patcher:
+        partial = [env["own_mem"][0], env["own_mem"][2]]
+        assert appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": partial}) == {
+            "orderedIds": partial
+        }
+        assert appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": []}) == {
+            "orderedIds": []
+        }
+        assert appr.fetch_appreciation_order(env["tree_id"], env["owner"]) == {"orderedIds": []}
 
 
-def test_empty_order_upserted_as_array():
+def test_no_row_returns_empty_array_without_creating_row():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": []})
-        got = appr.fetch_appreciation_order(env["tree_id"], env["owner"])
-        assert got == {"orderedIds": []}, f"empty order mismatch: {got}"
+    patcher, _ = connection_patch(env["db"])
+    with patcher:
+        assert appr.fetch_appreciation_order(env["tree_id"], env["owner"]) == {"orderedIds": []}
+    assert env["tree_id"] not in env["db"].orders
 
 
-# ============================================================================
-# Negative controls
-# ============================================================================
-
-def test_duplicate_ids_rejected_no_mutation():
+def test_missing_order_or_unknown_fields_rejected_before_db():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        before = dict(db.orders)
-        try:
-            appr.save_appreciation_order(
-                env["tree_id"], env["owner"],
-                {"order": [env["own_mem"][0], env["own_mem"][0]]},
+    db_mock = MagicMock()
+    cases = [
+        ({}, "APPRECIATION_ORDER_REQUIRED"),
+        ({"ordr": []}, "APPRECIATION_ORDER_REQUIRED"),
+        ({"order": [], "unknown": 1}, "APPRECIATION_ORDER_UNKNOWN_FIELD"),
+    ]
+    with patch("modal_compute.appreciation_orders.get_db_connection", db_mock):
+        for payload, code in cases:
+            error = assert_raises_status(
+                400,
+                lambda payload=payload: appr.save_appreciation_order(
+                    env["tree_id"], env["owner"], payload
+                ),
             )
-            assert False, "duplicate ids should raise"
-        except HTTPException as e:
-            assert e.status_code == 400, f"expected 400, got {e.status_code}"
-        # zero mutation
-        assert db.orders == before, "duplicate order must not mutate persistence"
+            assert isinstance(error.detail, dict)
+            assert error.detail.get("code") == code
+    assert db_mock.call_count == 0
+    assert env["db"].orders == {}
 
 
-def test_non_array_order_rejected():
+def test_non_array_and_bad_items_rejected_before_db():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        before = dict(db.orders)
-        try:
-            appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": "not-array"})
-            assert False, "non-array order should raise"
-        except HTTPException as e:
-            assert e.status_code == 400
-        assert db.orders == before, "non-array order must not mutate"
-
-
-def test_bounded_count_rejected():
-    env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        before = dict(db.orders)
-        big = [str(uuid.uuid4()) for _ in range(appr.MAX_ORDER_ITEMS + 1)]
-        try:
-            appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": big})
-            assert False, "oversized order should raise"
-        except HTTPException as e:
-            assert e.status_code == 400
-        assert db.orders == before, "oversized order must not mutate"
-
-
-def test_nonexistent_memory_rejected_no_mutation():
-    env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        before = dict(db.orders)
-        ghost = str(uuid.uuid4())  # not in any tree
-        try:
-            appr.save_appreciation_order(
-                env["tree_id"], env["owner"], {"order": [env["own_mem"][0], ghost]}
+    db_mock = MagicMock()
+    bad_orders = ["not-array", None, [1], [True], [{}], [[]], ["   "]]
+    with patch("modal_compute.appreciation_orders.get_db_connection", db_mock):
+        for bad_order in bad_orders:
+            assert_raises_status(
+                400,
+                lambda bad_order=bad_order: appr.save_appreciation_order(
+                    env["tree_id"], env["owner"], {"order": bad_order}
+                ),
             )
-            assert False, "ghost memory should raise"
-        except HTTPException as e:
-            assert e.status_code == 400, f"expected 400, got {e.status_code}"
-        assert db.orders == before, "ghost memory must not mutate persistence"
+    assert db_mock.call_count == 0
 
 
-def test_foreign_memory_rejected_no_mutation():
+def test_duplicate_after_trim_rejected_before_db():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        before = dict(db.orders)
-        # Memory belongs to another tree -> must reject (same-owner rule is
-        # tree-scoped, not owner-scoped).
-        try:
-            appr.save_appreciation_order(
-                env["tree_id"], env["owner"],
-                {"order": [env["own_mem"][0], env["foreign_mem"]]},
+    memory_id = env["own_mem"][0]
+    db_mock = MagicMock()
+    with patch("modal_compute.appreciation_orders.get_db_connection", db_mock):
+        assert_raises_status(
+            400,
+            lambda: appr.save_appreciation_order(
+                env["tree_id"], env["owner"], {"order": [memory_id, f" {memory_id} "]}
+            ),
+        )
+    assert db_mock.call_count == 0
+
+
+def test_oversized_order_rejected_before_db():
+    env = make_fake_env()
+    db_mock = MagicMock()
+    big = [f"memory-{index}" for index in range(appr.MAX_ORDER_ITEMS + 1)]
+    with patch("modal_compute.appreciation_orders.get_db_connection", db_mock):
+        assert_raises_status(
+            400,
+            lambda: appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": big}),
+        )
+    assert db_mock.call_count == 0
+
+
+def test_nonexistent_or_foreign_memory_rejected_no_upsert():
+    for target in ("missing-memory", "foreign"):
+        env = make_fake_env()
+        patcher, connections = connection_patch(env["db"])
+        bad_memory = "does-not-exist" if target == "missing-memory" else env["foreign_mem"]
+        before = dict(env["db"].orders)
+        with patcher:
+            assert_raises_status(
+                400,
+                lambda: appr.save_appreciation_order(
+                    env["tree_id"], env["owner"], {"order": [bad_memory]}
+                ),
             )
-            assert False, "cross-tree memory should raise"
-        except HTTPException as e:
-            assert e.status_code == 400, f"expected 400, got {e.status_code}"
-        assert db.orders == before, "cross-tree memory must not mutate persistence"
+        assert env["db"].orders == before
+        assert len(connections) == 1
+        assert connections[0].rollback_calls == 1
+        assert not any("INSERT INTO tree_appreciation_orders" in q for q in connections[0].queries)
 
 
-def test_foreign_owner_rejected_no_mutation():
+def test_foreign_owner_and_missing_tree_rejected_no_upsert():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        before = dict(db.orders)
-        try:
-            appr.save_appreciation_order(
-                env["tree_id"], "attacker-owner", {"order": env["own_mem"]}
+    patcher, connections = connection_patch(env["db"])
+    with patcher:
+        assert_raises_status(
+            403,
+            lambda: appr.save_appreciation_order(
+                env["tree_id"], "attacker", {"order": [env["own_mem"][0]]}
+            ),
+        )
+        assert_raises_status(
+            404,
+            lambda: appr.save_appreciation_order("missing-tree", env["owner"], {"order": []}),
+        )
+    assert env["db"].orders == {}
+    for conn in connections:
+        assert not any("INSERT INTO tree_appreciation_orders" in q for q in conn.queries)
+
+
+def test_required_text_tree_id_validation_rejects_empty_only():
+    env = make_fake_env()
+    db_mock = MagicMock()
+    with patch("modal_compute.appreciation_orders.get_db_connection", db_mock):
+        for bad_tree_id in ("", "   ", None, 123):
+            assert_raises_status(
+                400,
+                lambda bad_tree_id=bad_tree_id: appr.save_appreciation_order(
+                    bad_tree_id, env["owner"], {"order": []}
+                ),
             )
-            assert False, "foreign owner should raise"
-        except HTTPException as e:
-            assert e.status_code == 403, f"expected 403, got {e.status_code}"
-        assert db.orders == before, "foreign owner must not mutate persistence"
+    assert db_mock.call_count == 0
 
 
-def test_nonexistent_tree_rejected_no_mutation():
+def test_missing_storage_table_is_sanitized_503_and_no_false_success():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        before = dict(db.orders)
-        ghost_tree = str(uuid.uuid4())
-        try:
-            appr.save_appreciation_order(ghost_tree, env["owner"], {"order": []})
-            assert False, "ghost tree should raise"
-        except HTTPException as e:
-            assert e.status_code == 404, f"expected 404, got {e.status_code}"
-        assert db.orders == before, "ghost tree must not mutate persistence"
+    env["db"].missing_orders_table = True
+    patcher, connections = connection_patch(env["db"])
+    before = dict(env["db"].orders)
+    with patcher:
+        error = assert_raises_status(
+            503,
+            lambda: appr.save_appreciation_order(env["tree_id"], env["owner"], {"order": []}),
+        )
+    assert error.detail == {"code": "APPRECIATION_ORDER_STORAGE_UNAVAILABLE"}
+    assert "relation" not in str(error.detail).lower()
+    assert env["db"].orders == before
+    assert len(connections) == 1
+    assert connections[0].commit_calls == 0
 
 
-def test_malformed_tree_id_rejected():
+def test_missing_storage_table_get_is_sanitized_503():
     env = make_fake_env()
-    db = env["db"]
-    patcher_owner = patch(
-        "modal_compute.appreciation_orders.require_tree_owner",
-        fake_require_tree_owner_factory(env),
-    )
-    patcher_conn = patch(
-        "modal_compute.appreciation_orders.get_db_connection",
-        lambda: FakeConnection(db),
-    )
-    with patcher_owner, patcher_conn:
-        before = dict(db.orders)
-        try:
-            appr.save_appreciation_order("not-a-uuid", env["owner"], {"order": []})
-            assert False, "malformed tree id should raise"
-        except HTTPException as e:
-            assert e.status_code == 400, f"expected 400, got {e.status_code}"
-        assert db.orders == before, "malformed tree id must not mutate persistence"
+    env["db"].missing_orders_table = True
+    patcher, _ = connection_patch(env["db"])
+    with patcher:
+        error = assert_raises_status(
+            503,
+            lambda: appr.fetch_appreciation_order(env["tree_id"], env["owner"]),
+        )
+    assert error.detail == {"code": "APPRECIATION_ORDER_STORAGE_UNAVAILABLE"}
 
 
-# ============================================================================
-# Route wiring + source contract
-# ============================================================================
-
-def test_route_wiring_uses_dedicated_persistence():
-    import asyncio
+def test_route_wiring_uses_dedicated_persistence_and_returns_writer_response():
     import modal_compute.app as app_module
 
     owner = "owner-route"
-    tree_id = str(uuid.uuid4())
-
-    spy_save = MagicMock(return_value={"ok": True})
-    spy_fetch = MagicMock(return_value={"orderedIds": ["m1"]})
+    tree_id = "tree-route-text"
+    expected = {"orderedIds": ["m1", "m2"]}
+    spy_save = MagicMock(return_value=expected)
+    spy_fetch = MagicMock(return_value=expected)
     boom = MagicMock(side_effect=AssertionError("generic update_owner_tree must not be used"))
 
     with patch.object(app_module, "require_firebase_user", return_value={"uid": owner}), \
@@ -452,57 +406,62 @@ def test_route_wiring_uses_dedicated_persistence():
          patch.object(app_module, "save_appreciation_order", spy_save), \
          patch.object(app_module, "fetch_appreciation_order", spy_fetch), \
          patch.object(app_module, "update_owner_tree", boom):
-        from fastapi import Request
-        req = MagicMock(spec=Request)
+        request = MagicMock()
 
-        async def _run():
-            await app_module.post_appreciation_order(tree_id, req, "auth")
-            app_module.get_appreciation_order(tree_id, "auth")
+        async def run_routes():
+            posted = await app_module.post_appreciation_order(tree_id, request, "auth")
+            fetched = app_module.get_appreciation_order(tree_id, "auth")
+            return posted, fetched
 
-        asyncio.run(_run())
+        posted, fetched = asyncio.run(run_routes())
 
+    assert posted == expected
+    assert fetched == expected
     spy_save.assert_called_once_with(tree_id, owner, {"order": ["m1", "m2"]})
     spy_fetch.assert_called_once_with(tree_id, owner)
     boom.assert_not_called()
 
 
-def test_source_contract_no_generic_tree_mutation():
+def test_source_contract_uses_transaction_local_authority_and_text_ids():
     import inspect
+
     src = inspect.getsource(appr)
-    # Must use the dedicated table.
-    assert "tree_appreciation_orders" in src, "must persist to tree_appreciation_orders"
-    # Must NOT route through the generic tree writer.
-    assert "update_owner_tree" not in src, "must not use generic update_owner_tree"
-    assert "appreciationOrder" not in src, "must not stash under generic appreciationOrder field"
-    # UPSERT boundary present.
-    assert "ON CONFLICT (tree_id)" in src, "must UPSERT on the dedicated table"
-    # Membership + ownership validation present.
-    assert "require_tree_owner" in src, "must validate tree ownership"
-    assert "FROM memories m" in src and "ANY" in src, "must validate memory membership"
+    assert "tree_appreciation_orders" in src
+    assert "ON CONFLICT (tree_id)" in src
+    assert "RETURNING ordered_ids" in src
+    assert "FOR SHARE OF t" in src
+    assert "FOR SHARE OF m" in src
+    assert "validate_required_id" in src
+    assert "validate_required_uuid" not in src
+    assert "require_tree_owner(" not in src
+    assert "update_owner_tree" not in src
+    assert "appreciationOrder" not in src
+    assert "APPRECIATION_ORDER_STORAGE_UNAVAILABLE" in src
 
 
 if __name__ == "__main__":
     tests = [
-        ("POST persists to dedicated table + POST->GET convergence", test_post_persists_and_converges),
-        ("Partial order (subset of memories) allowed", test_partial_order_allowed),
-        ("No row -> GET orderedIds: [] (no row created)", test_no_row_returns_empty_array),
-        ("Empty order UPSERTs as array", test_empty_order_upserted_as_array),
-        ("Duplicate IDs -> 400, mutation 0", test_duplicate_ids_rejected_no_mutation),
-        ("Non-array order -> 400, mutation 0", test_non_array_order_rejected),
-        ("Oversized order -> 400, mutation 0", test_bounded_count_rejected),
-        ("Nonexistent Memory -> 400, mutation 0", test_nonexistent_memory_rejected_no_mutation),
-        ("Foreign-tree Memory -> 400, mutation 0", test_foreign_memory_rejected_no_mutation),
-        ("Foreign owner -> 403, mutation 0", test_foreign_owner_rejected_no_mutation),
-        ("Nonexistent Tree -> 404, mutation 0", test_nonexistent_tree_rejected_no_mutation),
-        ("Malformed tree id -> 400, mutation 0", test_malformed_tree_id_rejected),
-        ("Route wiring uses dedicated persistence (no update_owner_tree)", test_route_wiring_uses_dedicated_persistence),
-        ("Source contract: dedicated table, no generic tree mutation", test_source_contract_no_generic_tree_mutation),
+        ("POST persists + canonical response + GET convergence + one write transaction", test_post_persists_returns_canonical_and_get_converges),
+        ("TEXT/non-UUID Tree id supported", test_non_uuid_text_tree_id_is_supported),
+        ("Memory ids canonicalized by trim", test_memory_ids_are_trimmed_to_canonical_strings),
+        ("Partial and explicit empty orders persist", test_partial_and_empty_orders_are_intentional_writes),
+        ("No row -> orderedIds [] without mutation", test_no_row_returns_empty_array_without_creating_row),
+        ("Missing/unknown payload rejected before DB", test_missing_order_or_unknown_fields_rejected_before_db),
+        ("Non-array/bad item shape rejected before DB", test_non_array_and_bad_items_rejected_before_db),
+        ("Duplicate after trim rejected before DB", test_duplicate_after_trim_rejected_before_db),
+        ("Oversized order rejected before DB", test_oversized_order_rejected_before_db),
+        ("Missing/foreign Memory rejected with no UPSERT", test_nonexistent_or_foreign_memory_rejected_no_upsert),
+        ("Foreign owner/missing Tree rejected with no UPSERT", test_foreign_owner_and_missing_tree_rejected_no_upsert),
+        ("TEXT Tree id validator rejects only invalid required values", test_required_text_tree_id_validation_rejects_empty_only),
+        ("Missing storage table -> sanitized 503, no false success", test_missing_storage_table_is_sanitized_503_and_no_false_success),
+        ("Missing storage table GET -> sanitized 503", test_missing_storage_table_get_is_sanitized_503),
+        ("Route wiring returns dedicated writer response", test_route_wiring_uses_dedicated_persistence_and_returns_writer_response),
+        ("Source contract: transaction-local authority + TEXT ids", test_source_contract_uses_transaction_local_authority_and_text_ids),
     ]
 
-    print("=" * 70)
+    print("=" * 72)
     print("Running appreciation-order persistence (#3921) contract tests")
-    print("=" * 70)
-
+    print("=" * 72)
     passed = 0
     failed = 0
     for name, fn in tests:
@@ -510,10 +469,8 @@ if __name__ == "__main__":
             passed += 1
         else:
             failed += 1
-
-    print("=" * 70)
+    print("=" * 72)
     print(f"Results: {passed} passed, {failed} failed")
-    print("=" * 70)
-
-    if failed > 0:
+    print("=" * 72)
+    if failed:
         sys.exit(1)
