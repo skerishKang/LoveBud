@@ -227,10 +227,11 @@ Therefore adding another database-level cache is not automatically beneficial. T
 This is a security/privacy contract, not a performance omission.
 
 Recent platform privacy audits further reinforce this invariant:
-- **Cloudflare Edge Browse Stale-Cache Boundary (#4051 / #4052):** Public Browse summaries cached at the Cloudflare edge must invalidate or expire within strict bounded windows so visibility revocations (making a public Tree private or deleting it) promptly take effect across anonymous readers.
-- **Client/Browser Browse & Preview Cache Boundary (#4055):** Browser-side memory and preview caches must honor visibility boundaries and re-validate before presenting sensitive tree content.
+- **Visibility Revocation Safety (#4051):** Privacy correctness for visibility revocations (e.g., an owner making a public Tree private or deleting it) must never depend on TTL expiry.
+- **Edge Cache API Retirement in #4052 Draft:** The actual architectural choice in Issue #4051 / Draft PR #4052 is the retirement of persistent Browse body caching via Cloudflare's Cache API (`caches.default`) paired with `Cache-Control: no-store` to guarantee immediate revocation propagation, rather than relying on bounded expiration or invalidation windows. If future edge caching is ever introduced, it is strictly restricted to separately approved, stale-safe projections that do not expose revoked titles, thumbnails, or source details.
+- **Client/Browser Authority-First Boundary (#4055):** Browser-side memory and preview caches remain governed in a separate client/browser authority-first lane ensuring client caches honor visibility boundaries and re-validate against the current authority before presenting sensitive content.
 
-Therefore, direct-Neon migration must guarantee that visibility revocation correctness never depends on stale database or edge caches.
+Therefore, direct-Neon migration must guarantee that visibility revocation correctness never depends on stale database, edge, or client caches.
 
 ### 5.3 Hyperdrive query caching is therefore not universally safe by default
 
@@ -245,7 +246,7 @@ and cached read results are not invalidated when the application writes to the o
 
 Consequences for LoveBud:
 
-- Browse may tolerate a bounded cache policy if it matches product requirements.
+- Browse cannot rely on uncoordinated cache layers if revocation correctness is required; any future caching is restricted to separately approved stale-safe projections.
 - public Tree visibility/revocation reads must not use a stale Hyperdrive cache.
 - owner authorization/entitlement decisions must be fresh.
 - write acknowledgement/canonical rereads must be fresh.
