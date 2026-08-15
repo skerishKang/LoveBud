@@ -55,6 +55,7 @@
     "collect:production-readonly-catalog": "node scripts/run-production-readonly-catalog-collection.cjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "firebase-admin": "^12.0.0",
     "pg": "^8.12.0"
   },
