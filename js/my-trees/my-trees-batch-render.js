@@ -23,6 +23,25 @@
     return (options && options.updateManageSummary) || UI.updateManageSummary;
   }
 
+  function hasMoreServerTrees() {
+    var stateModule = window.LoveBudMyTreesState || null;
+    return !!(stateModule && typeof stateModule.hasMoreTrees === 'function' && stateModule.hasMoreTrees());
+  }
+
+  function updateLoadedCountSummary() {
+    var summary = document.getElementById('trees-manage-summary');
+    if (!summary) return;
+
+    if (hasMoreServerTrees()) {
+      summary.textContent = '현재 ' + totalTreesCount + '개 로드됨';
+      return;
+    }
+
+    var i18n = window.i18nMyTrees || {};
+    var countText = (i18n.myTrees_count || '총 {count}개').replace('{count}', String(totalTreesCount));
+    summary.textContent = countText;
+  }
+
   function updatePaginationControls(options) {
     var container = document.getElementById('state-loaded');
     if (!container) return;
@@ -36,6 +55,7 @@
       if (existingPagination) {
         existingPagination.remove();
       }
+      updateLoadedCountSummary();
       return;
     }
 
@@ -69,41 +89,34 @@
     });
 
     existingPagination.appendChild(btn);
+    updateLoadedCountSummary();
   }
 
   function appendTrees(newItems, allTrees, appendOptions) {
-    if (!Array.isArray(newItems) || newItems.length === 0) return;
     allTreesData = Array.isArray(allTrees) ? allTrees : [];
     totalTreesCount = allTreesData.length;
 
     var grid = document.getElementById('trees-grid');
     if (!grid) {
-      renderTrees(allTrees, appendOptions);
+      renderTrees(allTreesData, appendOptions);
       return;
     }
 
     var buildTreeCardFn = (appendOptions && appendOptions.buildTreeCard) || getBuildTreeCard(appendOptions);
     var onSelect = appendOptions && appendOptions.onSelect;
     var onNavigate = appendOptions && appendOptions.onNavigate;
-
-    newItems.forEach(function(tree) {
-      var card = typeof buildTreeCardFn === 'function'
-        ? buildTreeCardFn(tree, { onSelect: onSelect, onNavigate: onNavigate })
-        : null;
-      if (card instanceof Node) {
-        card.style.opacity = '0';
-        card.classList.add('tree-card-batch-pending');
-        grid.appendChild(card);
-        setTimeout(function(c) {
-          c.style.transition = 'opacity 0.2s ease-in';
-          c.style.opacity = '1';
-          c.classList.remove('tree-card-batch-pending');
-        }, 10, card);
-      }
-    });
-
     var setState = appendOptions && appendOptions.setState;
     var stateEnum = appendOptions && appendOptions.stateEnum;
+
+    // Preserve the existing local batch authority. A server-page fetch only
+    // extends the in-memory buffer; it must not clear the grid or append the
+    // entire newly fetched page at once. Continue from the exact visible
+    // boundary and let the sentinel keep rendering bounded local batches.
+    if (Array.isArray(newItems) && newItems.length > 0 && currentVisibleCount < totalTreesCount) {
+      renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: onSelect, onNavigate: onNavigate });
+    } else {
+      updateLoadedCountSummary();
+    }
 
     setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: onSelect, onNavigate: onNavigate });
     updatePaginationControls(appendOptions);
@@ -195,13 +208,7 @@
     }
 
     currentVisibleCount = endIndex;
-
-    var summary = document.getElementById('trees-manage-summary');
-    if (summary) {
-      var i18n = window.i18nMyTrees || {};
-      var countText = (i18n.myTrees_count || '총 {count}개').replace('{count}', String(totalTreesCount));
-      summary.textContent = countText;
-    }
+    updateLoadedCountSummary();
   }
 
   function setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
@@ -273,7 +280,8 @@
     setupScrollContinuation: setupScrollContinuation,
     loadMoreBatch: loadMoreBatch,
     resetBatchState: resetBatchState,
-    updatePaginationControls: updatePaginationControls
+    updatePaginationControls: updatePaginationControls,
+    updateLoadedCountSummary: updateLoadedCountSummary
   };
 
   window.LoveBudMyTreesBatchRender = api;
