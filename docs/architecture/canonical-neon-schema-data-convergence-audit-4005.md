@@ -6,11 +6,11 @@ Audit date: 2026-08-12
 LoveBud authoritative main at branch creation: `cc6cb26854e4cc692d3109debe05b0de1ab23a89`  
 LoveTree authoritative main observed during audit: `06dfb7e52a3c5a96d309142bbeb06a3445a18f96`  
 
-**FINAL RECONCILIATION BASIS (re-queried 2026-08-16):**
+**FINAL RECONCILIATION BASIS (historical provenance):**
 
-LoveBud alignment basis (current authoritative main): `4814190982655c55e72bc01d3d2b6663138ecfa6` (re-queried 2026-08-16; prior reconciliation basis `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd` retained as historical provenance, not current).
+LoveBud alignment basis at final reconciliation: `4814190982655c55e72bc01d3d2b6663138ecfa6` (retained as historical reconciliation provenance; earlier basis `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd` also historical). This document does not assert a self-pinned "current main".
 
-PR #4007: a plain merge-forward from current main completed without conflicts (historical/intermediate merge-forward commit `86ab1ba91345d14ed208ac4772cd158281281aa2`); the current PR head is authoritative from GitHub PR metadata and is intentionally not self-pinned in this document.
+PR #4007: a plain merge-forward from main completed without conflicts (historical/intermediate merge-forward commit `86ab1ba91345d14ed208ac4772cd158281281aa2`); the current PR head is authoritative from GitHub PR metadata and is intentionally not self-pinned in this document.
 Runtime-write authority: #3951 is CLOSED/completed and #4048 is MERGED (verified 2026-08-16); `modal_compute/memory_writes.py` transaction authority is therefore resolved, not an active OPEN/DRAFT overlap. #4007 remains docs-only and does not introduce any runtime write.  
 Historical overlaps #3992, #3969, #3999: all MERGED (verified 2026-08-16).
 
@@ -703,7 +703,7 @@ Key semantic distinction:
 
 ### D.1 Adoption-gate verification item (schema-drift audit 2026-08-16)
 
-Read-only drift audit (`COMP2_CANONICAL_SCHEMA_DRIFT_AUDIT_REPORT`, reconciliation basis current authoritative main `4814190982655c55e72bc01d3d2b6663138ecfa6`; prior basis `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd` retained as historical provenance) confirmed all repository-side dimensions are drift-free: both catalog checksums match the on-disk SQL byte-for-byte, both expected-schema critical objects correspond 1:1 to the two migrations' postconditions, and the runtime `tree_appreciation_orders` writer (`modal_compute/appreciation_orders.py`) matches migration #2's DDL exactly. Live-catalog dimensions are `INSUFFICIENT_LIVE_EVIDENCE` (no approved read-only connection available at audit time).
+Read-only drift audit (`COMP2_CANONICAL_SCHEMA_DRIFT_AUDIT_REPORT`, reconciliation basis `4814190982655c55e72bc01d3d2b6663138ecfa6` retained as historical provenance; earlier basis `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd`) confirmed all repository-side dimensions are drift-free: both catalog checksums match the on-disk SQL byte-for-byte, both expected-schema critical objects correspond 1:1 to the two migrations' postconditions, and the runtime `tree_appreciation_orders` writer (`modal_compute/appreciation_orders.py`) matches migration #2's DDL exactly. Live-catalog dimensions are `INSUFFICIENT_LIVE_EVIDENCE` (no approved read-only connection available at audit time).
 
 One flagged adoption-gate verification item (NOT a code change; no PR required now):
 
@@ -718,6 +718,8 @@ Therefore `ADOPTION_REQUIRED → catalog must be empty` is incorrect. The curren
 FINAL_VERDICT                             = GO_CANONICAL_SCHEMA_BRANCH_PROTOTYPE (additive branch prototype proven; see scoping below)
 CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage)
 SCHEMA_DIFF_COMPLETENESS                  = PARTIAL (exhaustive per-column/privilege matrix requires fresh live catalog; see Appendix A)
+EXACT_SCHEMA_DIFF                         = PARTIAL (Issue #4005 requires exact schema diff; no fresh live catalog evidence available, so exact diff is NOT complete)
+ISSUE4005_ACCEPTANCE                      = INCOMPLETE (exact schema diff evidence not yet satisfied; acceptance NOT claimed)
 OWNERSHIP_SUBJECT_INVENTORY_COMPLETENESS  = SUBSTANTIAL (12 tables, 12 columns; per current authority `trees.owner_id` is TEXT, not UUID→users.id; other subject columns UUID-shaped per prior inspection but NOT re-verified against fresh live catalog; no direct Firebase UID persistence claimed)
 MEMORY_LINEAGE_SCHEMA_READINESS           = BRANCH_PROVEN (go_additive)
 RUNTIME_IMPLEMENTATION_AUTHORITY          = HOLD (#4007 is docs/audit contract only; runtime implementation requires a separate child issue; sortOrder product/reorder semantics unresolved; canonical migration adoption HOLD; Production apply NOT AUTHORIZED)
