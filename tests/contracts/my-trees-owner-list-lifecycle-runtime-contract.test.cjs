@@ -56,6 +56,8 @@ function createPrivateCacheAuthorityMock(localStorageMock) {
   };
 }
 
+const MY_TREES_STATE_PATH = path.join(ROOT, 'js', 'my-trees', 'my-trees-state.js');
+
 function createSandbox(options = {}) {
   const localStorageMock = createStorageMock(options.localStorage || {});
   const sessionStorageMock = createStorageMock(options.sessionStorage || {});
@@ -77,6 +79,7 @@ function createSandbox(options = {}) {
       LoveBudCache: options.cache || null,
       LoveBudAuthCache: createPrivateCacheAuthorityMock(localStorageMock),
       LoveBudNormalize: null,
+      LoveBudMyTreesState: null,
       apiClient: options.apiClient || null,
       requestIdleCallback: null,
     },
@@ -106,6 +109,7 @@ function createSandbox(options = {}) {
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(AUTH_POLICY_PATH, 'utf8'), sandbox, { filename: AUTH_POLICY_PATH });
   vm.runInContext(fs.readFileSync(BASE_API_FETCH_PATH, 'utf8'), sandbox, { filename: BASE_API_FETCH_PATH });
+  vm.runInContext(fs.readFileSync(MY_TREES_STATE_PATH, 'utf8'), sandbox, { filename: MY_TREES_STATE_PATH });
   vm.runInContext(fs.readFileSync(MY_TREES_DATA_PATH, 'utf8'), sandbox, { filename: MY_TREES_DATA_PATH });
 
   return { sandbox, consoleMessages, localStorageMock };
@@ -1059,4 +1063,308 @@ test('loadTrees: auth_prepare_failed diagnostic event does not contain sensitive
   assert.ok(!serialized.includes('token'), 'must not contain token');
   assert.ok(!serialized.includes('uid'), 'must not contain uid');
   assert.ok(!serialized.includes('email'), 'must not contain email');
+});
+
+test('loadTrees: calls getTreesPage when available, renders first page items, and sets treeNextCursor in state (#3944)', async () => {
+  const page1Items = [
+    { id: 'tree-1', title: 'Tree 1', visibility: 'public', createdAt: '2026-08-01T10:00:00Z' },
+    { id: 'tree-2', title: 'Tree 2', visibility: 'private', createdAt: '2026-08-01T09:00:00Z' },
+  ];
+  let getTreesPageCalled = false;
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTreesPage: async (opts) => {
+        getTreesPageCalled = true;
+        return { items: page1Items, nextCursor: 'cursor-page-2' };
+      },
+    },
+  });
+
+  const rendered = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', LOADED: 'LOADED', EMPTY: 'EMPTY', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  assert.ok(getTreesPageCalled, 'must call getTreesPage');
+  assert.equal(rendered.length, 1, 'must render once');
+  assert.equal(rendered[0].length, 2, 'must render 2 trees');
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), 'cursor-page-2', 'must store nextCursor in state');
+  assert.equal(sandbox.window.LoveBudMyTreesState.hasMoreTrees(), true, 'hasMoreTrees must be true');
+});
+
+test('loadMoreTrees: calls getTreesPage with cursor, appends new unique items, and updates state nextCursor (#3944)', async () => {
+  const page1Items = [
+    { id: 'tree-1', title: 'Tree 1', visibility: 'public', createdAt: '2026-08-01T10:00:00Z' },
+  ];
+  const page2Items = [
+    { id: 'tree-2', title: 'Tree 2', visibility: 'public', createdAt: '2026-08-01T09:00:00Z' },
+  ];
+  let requestedCursor = null;
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTreesPage: async (opts) => {
+        if (!opts || !opts.cursor) {
+          return { items: page1Items, nextCursor: 'cursor-page-2' };
+        }
+        requestedCursor = opts.cursor;
+        return { items: page2Items, nextCursor: 'cursor-page-3' };
+      },
+    },
+  });
+
+  const rendered = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', LOADED: 'LOADED', EMPTY: 'EMPTY', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), 'cursor-page-2');
+
+  const result = await sandbox.window.LoveBudMyTreesData.loadMoreTrees({
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  assert.equal(requestedCursor, 'cursor-page-2', 'must request getTreesPage with cursor-page-2');
+  assert.ok(result, 'loadMoreTrees must return result object');
+  assert.equal(result.items.length, 1, 'must have 1 new item');
+  assert.equal(result.totalLoaded, 2, 'total loaded must be 2');
+  assert.equal(result.nextCursor, 'cursor-page-3', 'new cursor must be cursor-page-3');
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), 'cursor-page-3');
+
+  const lastRender = rendered[rendered.length - 1];
+  assert.equal(lastRender.length, 2, 'last render must contain both page1 and page2 trees');
+  assert.equal(lastRender[0].id, 'tree-1', 'must preserve server ordering');
+  assert.equal(lastRender[1].id, 'tree-2', 'must preserve server ordering');
+});
+
+test('loadMoreTrees: deduplicates trees by ID while preserving server order (#3944)', async () => {
+  const page1Items = [
+    { id: 'tree-1', title: 'Tree 1', visibility: 'public' },
+    { id: 'tree-2', title: 'Tree 2', visibility: 'public' },
+  ];
+  // Page 2 contains duplicate tree-2 and new tree-3
+  const page2Items = [
+    { id: 'tree-2', title: 'Tree 2 (dupe)', visibility: 'public' },
+    { id: 'tree-3', title: 'Tree 3', visibility: 'public' },
+  ];
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTreesPage: async (opts) => {
+        if (!opts || !opts.cursor) {
+          return { items: page1Items, nextCursor: 'cursor-page-2' };
+        }
+        return { items: page2Items, nextCursor: null };
+      },
+    },
+  });
+
+  const rendered = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', LOADED: 'LOADED', EMPTY: 'EMPTY', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadMoreTrees({
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  const allTrees = sandbox.window.LoveBudMyTreesState.getLastTreesData();
+  assert.equal(allTrees.length, 3, 'must contain exactly 3 unique trees');
+  assert.deepEqual(allTrees.map(t => t.id), ['tree-1', 'tree-2', 'tree-3'], 'IDs must be deduplicated in order');
+});
+
+test('loadMoreTrees: terminal response (nextCursor=null) stops further pagination requests (#3944)', async () => {
+  let callCount = 0;
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTreesPage: async (opts) => {
+        callCount++;
+        if (!opts || !opts.cursor) {
+          return { items: [{ id: 'tree-1', title: 'Tree 1' }], nextCursor: 'cursor-2' };
+        }
+        return { items: [{ id: 'tree-2', title: 'Tree 2' }], nextCursor: null };
+      },
+    },
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', LOADED: 'LOADED', EMPTY: 'EMPTY', ERROR: 'ERROR' },
+  });
+  assert.equal(callCount, 1);
+  assert.equal(sandbox.window.LoveBudMyTreesState.hasMoreTrees(), true);
+
+  await sandbox.window.LoveBudMyTreesData.loadMoreTrees();
+  assert.equal(callCount, 2);
+  assert.equal(sandbox.window.LoveBudMyTreesState.hasMoreTrees(), false);
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), null);
+
+  // Calling loadMoreTrees again on terminal state:
+  const terminalRes = await sandbox.window.LoveBudMyTreesData.loadMoreTrees();
+  assert.equal(terminalRes, null, 'terminal loadMoreTrees must return null without calling API');
+  assert.equal(callCount, 2, 'API must not be called again');
+});
+
+test('loadMoreTrees: concurrent in-flight request is ignored (duplicate suppression) (#3944)', async () => {
+  let callCount = 0;
+  let resolvePage2;
+  const page2Promise = new Promise(resolve => { resolvePage2 = resolve; });
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTreesPage: async (opts) => {
+        callCount++;
+        if (!opts || !opts.cursor) {
+          return { items: [{ id: 'tree-1', title: 'Tree 1' }], nextCursor: 'cursor-2' };
+        }
+        await page2Promise;
+        return { items: [{ id: 'tree-2', title: 'Tree 2' }], nextCursor: 'cursor-3' };
+      },
+    },
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', LOADED: 'LOADED', EMPTY: 'EMPTY', ERROR: 'ERROR' },
+  });
+  assert.equal(callCount, 1);
+
+  // Trigger two concurrent loadMoreTrees calls
+  const req1 = sandbox.window.LoveBudMyTreesData.loadMoreTrees();
+  const req2 = sandbox.window.LoveBudMyTreesData.loadMoreTrees();
+
+  // req2 should return null immediately due to active load more in flight
+  const res2 = await req2;
+  assert.equal(res2, null, 'concurrent duplicate request must be suppressed');
+
+  // Resolve req1
+  resolvePage2();
+  const res1 = await req1;
+  assert.ok(res1, 'first request must complete successfully');
+  assert.equal(callCount, 2, 'API must be called exactly once for page 2');
+});
+
+test('loadMoreTrees: error preserves existing rendered cards and retains nextCursor for retry (#3944)', async () => {
+  let failSecondPage = true;
+  let warnedMessage = null;
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTreesPage: async (opts) => {
+        if (!opts || !opts.cursor) {
+          return { items: [{ id: 'tree-1', title: 'Tree 1' }], nextCursor: 'cursor-2' };
+        }
+        if (failSecondPage) {
+          throw new Error('Network error on page 2');
+        }
+        return { items: [{ id: 'tree-2', title: 'Tree 2' }], nextCursor: null };
+      },
+    },
+  });
+
+  const rendered = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', LOADED: 'LOADED', EMPTY: 'EMPTY', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  assert.equal(rendered.length, 1);
+  assert.equal(rendered[0].length, 1);
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), 'cursor-2');
+
+  // Page 2 fails
+  const failedResult = await sandbox.window.LoveBudMyTreesData.loadMoreTrees({
+    renderTrees: (trees) => rendered.push(trees),
+    showToast: (msg, type) => { warnedMessage = { msg, type }; },
+  });
+
+  assert.equal(failedResult, null, 'failed loadMoreTrees returns null');
+  assert.ok(warnedMessage, 'toast warning must be shown');
+  assert.equal(warnedMessage.type, 'warn');
+  assert.equal(sandbox.window.LoveBudMyTreesState.getLastTreesData().length, 1, 'existing items preserved');
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), 'cursor-2', 'nextCursor retained for retry');
+
+  // Retry succeeds
+  failSecondPage = false;
+  const retryResult = await sandbox.window.LoveBudMyTreesData.loadMoreTrees({
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  assert.ok(retryResult, 'retry must succeed');
+  assert.equal(retryResult.totalLoaded, 2);
+  assert.equal(sandbox.window.LoveBudMyTreesState.getLastTreesData().length, 2);
+});
+
+test('loadMoreTrees: epoch/auth change invalidates in-flight response and prevents cross-account state contamination (#3944, #3928)', async () => {
+  let resolveSlowPage;
+  const slowPromise = new Promise(resolve => { resolveSlowPage = resolve; });
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTreesPage: async (opts) => {
+        if (!opts || !opts.cursor) {
+          return { items: [{ id: 'tree-1-userA', title: 'User A Tree' }], nextCursor: 'cursor-userA-2' };
+        }
+        await slowPromise;
+        return { items: [{ id: 'tree-2-userA', title: 'User A Page 2' }], nextCursor: null };
+      },
+    },
+  });
+
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', LOADED: 'LOADED', EMPTY: 'EMPTY', ERROR: 'ERROR' },
+  });
+
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), 'cursor-userA-2');
+
+  // Start slow loadMoreTrees for User A
+  const pendingPage2 = sandbox.window.LoveBudMyTreesData.loadMoreTrees();
+
+  // User logs out / auth changes -> markOwnerListEpochStale is called
+  sandbox.window.LoveBudMyTreesData.markOwnerListEpochStale();
+
+  // Next cursor should be reset
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), null);
+
+  // Resolve late User A page 2 response
+  resolveSlowPage();
+  const lateRes = await pendingPage2;
+
+  assert.equal(lateRes, null, 'late response from stale epoch must be discarded');
+  // State should not contain tree-2-userA
+  const currentTrees = sandbox.window.LoveBudMyTreesState.getLastTreesData();
+  assert.ok(!currentTrees.some(t => t.id === 'tree-2-userA'), 'stale page 2 must NOT be appended to state');
+});
+
+test('loadTrees: legacy raw array response sets treeNextCursor to null (#3944)', async () => {
+  const legacyTrees = [
+    { id: 'tree-1', title: 'Legacy Tree' },
+  ];
+
+  const { sandbox } = createSandbox({
+    apiClient: {
+      getTrees: async () => legacyTrees,
+    },
+  });
+
+  const rendered = [];
+  await sandbox.window.LoveBudMyTreesData.loadTrees({
+    setState: () => {},
+    stateEnum: { LOADING: 'LOADING', LOADED: 'LOADED', EMPTY: 'EMPTY', ERROR: 'ERROR' },
+    renderTrees: (trees) => rendered.push(trees),
+  });
+
+  assert.equal(rendered.length, 1);
+  assert.equal(rendered[0].length, 1);
+  assert.equal(sandbox.window.LoveBudMyTreesState.getTreeNextCursor(), null, 'legacy array response sets nextCursor to null');
+  assert.equal(sandbox.window.LoveBudMyTreesState.hasMoreTrees(), false, 'hasMoreTrees must be false');
 });
