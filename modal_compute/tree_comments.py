@@ -11,8 +11,9 @@ from modal_compute.social_idempotency import (
     reserve_and_verify_idempotency_target,
     validate_idempotency_key_format,
 )
+from modal_compute.social_rate_limit import check_tree_comment_rate_limits
 from modal_compute.social_write_audit import record_audit_target
-from modal_compute.tree_likes import require_public_tree_for_like
+from modal_compute.tree_likes import require_public_tree_cursor, require_public_tree_for_like
 from modal_compute.validation import validate_optional_string, validate_required_uuid
 
 COMMENT_BODY_MAX = 5000
@@ -110,14 +111,13 @@ def create_tree_comment(
 
     validate_idempotency_key_format(idempotency_key)
 
-    require_public_tree_for_like(safe_tree_id)
-
     operation = "tree.comment.create"
     body_dict: dict[str, Any] = {"body": safe_body}
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             try:
+                require_public_tree_cursor(cur, safe_tree_id)
                 replay = reserve_and_verify_idempotency_target(
                     cur, owner_id, operation, idempotency_key,
                     "tree", safe_tree_id, body_dict,
@@ -153,6 +153,8 @@ def create_tree_comment(
                         code="IDEMPOTENCY_RESULT_UNAVAILABLE",
                         message="The original comment is no longer available",
                     )
+
+                check_tree_comment_rate_limits(cur, owner_id)
 
                 comment_id = str(uuid.uuid4())
                 cur.execute(

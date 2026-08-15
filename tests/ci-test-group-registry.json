@@ -140,6 +140,7 @@
         "tests/contracts/browse-my-trees-large-geometry-3608-browser-contract.test.cjs",
         "tests/contracts/browse-my-trees-list-geometry-3608-browser-contract.test.cjs",
         "tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs",
+        "tests/contracts/ci-browser-hermetic-4013-negative-controls.test.cjs",
         "tests/contracts/editor-floating-toolbar-dropdown-a11y-contract.test.cjs",
         "tests/contracts/editor-loading-3688-browser-contract.test.cjs",
         "tests/contracts/editor-real-page-structural-baseline-3896-browser-contract.test.cjs",
@@ -155,7 +156,8 @@
         "tests/contracts/settings-readonly-account-3583-browser-contract.test.cjs",
         "tests/contracts/tree-card-composition-3578-browser-contract.test.cjs",
         "tests/contracts/tree-layout-mode-policy-3581-browser-contract.test.cjs",
-        "tests/contracts/tree-layout-persistence-3582-browser-contract.test.cjs"
+        "tests/contracts/tree-layout-persistence-3582-browser-contract.test.cjs",
+        "tests/contracts/youtube-playlist-preview-browser-contract.test.cjs"
       ],
       "command_reference": "npm test (via node --test tests/{smoke,routes,contracts}/*.test.cjs glob)",
       "default_pr_execution_state": "ALWAYS",
