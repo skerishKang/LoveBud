@@ -223,21 +223,13 @@
             const treeId = getPreviewTreeId(tree);
             if (!treeId) return null;
 
-            // #4055: a cached preview must not be returned just because it
-            // exists. When a fresh Browse authority has already been loaded for
-            // this session and the tree is absent from it, the cached preview
-            // may outlive a visibility revocation — treat it as stale and
-            // re-hydrate from current authority instead.
-            const freshBrowseLoaded = state.apiTreesLoaded === true;
-            const treePresentInFreshBrowse = Array.isArray(state.allTrees)
-                ? state.allTrees.some((t) => String(getPreviewTreeId(t)) === String(treeId))
-                : false;
-
-            const cachedPreview = previewCacheApi.readPreviewCache(treeId);
-            if (cachedPreview && (!freshBrowseLoaded || treePresentInFreshBrowse)) {
-                return cachedPreview;
-            }
-
+            // #4055 (Web CTO blocking review): the persisted cached preview
+            // must NEVER be returned as user-visible authority. Tree presence in
+            // fresh Browse proves only Tree visibility — it does NOT prove the
+            // representative Memory embedded in the cached preview is still
+            // public (FRESH_TREE_MEMBERSHIP != FRESH_REPRESENTATIVE_MEMORY_AUTHORITY).
+            // Every preview open therefore consults current public Memory
+            // authority via getPublicTreePreview (fresh /community/memories).
             if (pendingPreviewHydrations.has(treeId)) {
                 return pendingPreviewHydrations.get(treeId);
             }

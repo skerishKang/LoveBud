@@ -311,83 +311,232 @@ test('#4055 Case C: network failure after revocation must not restore the delete
   assert.ok(env.state.loadError, 'Case C: a truthful error state is shown instead');
 });
 
-// ── Case B: preview authority gate ───────────────────────────────────────────
+// ── Case B: Memory-only revocation while parent Tree stays public ────────────
+// Web CTO blocking review: FRESH_TREE_MEMBERSHIP != FRESH_REPRESENTATIVE_MEMORY_AUTHORITY.
+// Tree presence in fresh Browse must not authorize a persisted preview containing
+// representative Memory media. Preview revalidation MUST consult current Memory
+// authority (fresh public-Memory fetch) — none of the persisted preview cache,
+// sessionStorage copy, or publicMemoriesByTreeCache may substitute.
 
-test('#4055 Case B: cached preview with old thumbnail is not returned after fresh Browse authority excludes the Tree', async () => {
+test('#4055 Case B: Memory-only revocation — cached preview with old M media is never rendered while the Tree stays public', async () => {
+  const treeT = { id: 'tree-t', title: 'Public T' };
   const previewUpdates = [];
   const env = createSearchDataEnv({
-    getPublicTrees: () => Promise.resolve([{ id: 'tree-b', title: 'Public B' }]),
+    getPublicTrees: () => Promise.resolve([treeT]),
     previewRendererSpy: previewUpdates
   });
 
-  // Fresh Browse authority loaded — Tree A is absent (revoked).
+  // Fresh Browse authority loaded — Tree T is still public and present.
   await env.searchData.loadPublicTrees({ resetSelection: true });
   await flushAsync();
+  assert.deepEqual(env.state.allTrees.map((t) => t.id), ['tree-t'], 'Tree T present in fresh Browse');
 
-  // A stale preview with the old representative thumbnail exists in the cache.
-  env.cache.set('public_tree_preview_tree-a', {
-    id: 'tree-a',
-    title: 'Public A',
-    representativeThumbnail: 'https://cdn.test/old-a.jpg'
+  // A persisted cached preview embeds old representative Memory M media.
+  env.cache.set('public_tree_preview_tree-t', {
+    id: 'tree-t',
+    title: 'Public T',
+    representativeThumbnail: 'https://cdn.test/old-m.jpg',
+    sourceUrl: 'https://www.youtube.com/watch?v=OLD_M',
+    memories: [{ id: 'm-old', sourceUrl: 'https://www.youtube.com/watch?v=OLD_M' }]
   }, 5 * 60 * 1000);
 
-  // Select Tree A so the preview flow proceeds past its guard.
-  env.state.selectedTreeId = 'tree-a';
+  // Select Tree T.
+  env.state.selectedTreeId = 'tree-t';
   env.state.currentPreviewRequestId = 0;
 
-  let reHydrationAttempted = false;
+  // Current Memory authority: M is gone (revoked) — fresh preview has NO old M media.
+  const freshPreview = {
+    id: 'tree-t',
+    title: 'Public T',
+    representativeThumbnail: '',
+    sourceUrl: '',
+    memories: []
+  };
+  let memoryAuthorityCalls = 0;
   env.window.apiClient.getPublicTreePreview = () => {
-    reHydrationAttempted = true;
-    return Promise.resolve(null);
+    memoryAuthorityCalls += 1;
+    return Promise.resolve(freshPreview);
   };
 
-  await env.searchData.hydrateSelectedTreePreview({ id: 'tree-a' });
+  await env.searchData.hydrateSelectedTreePreview({ id: 'tree-t' });
   await flushAsync();
 
-  assert.equal(reHydrationAttempted, true,
-    'Case B: stale cached preview is bypassed; current authority is re-checked');
-  assert.deepEqual(previewUpdates, [],
-    'Case B: old thumbnail/source projection is never painted as public content');
+  assert.equal(memoryAuthorityCalls, 1,
+    'Case B: current Memory authority MUST actually be consulted despite cached preview + Tree present');
+  assert.deepEqual(
+    previewUpdates.map((p) => ({
+      thumb: p.representativeThumbnail,
+      source: p.sourceUrl,
+      memoryIds: Array.isArray(p.memories) ? p.memories.map((m) => m.id) : []
+    })),
+    [{ thumb: '', source: '', memoryIds: [] }],
+    'Case B: old M thumbnail/source is never returned/rendered as public content'
+  );
 });
 
-test('#4055 Case B2: cached preview IS served only when the fresh Browse authority still contains the Tree', async () => {
-  const treeB = { id: 'tree-b', title: 'Public B' };
+test('#4055 Case B-replacement: old M revoked → fresh authority returns M2 → preview contains M2 only', async () => {
+  const treeT = { id: 'tree-t', title: 'Public T' };
   const previewUpdates = [];
   const env = createSearchDataEnv({
-    getPublicTrees: () => Promise.resolve([treeB]),
+    getPublicTrees: () => Promise.resolve([treeT]),
     previewRendererSpy: previewUpdates
   });
 
   await env.searchData.loadPublicTrees({ resetSelection: true });
   await flushAsync();
 
-  // Cache a valid preview for Tree B (still public per fresh authority).
-  env.previewCacheApi.writePreviewCache('tree-b', {
-    id: 'tree-b',
-    title: 'Public B',
-    representativeThumbnail: 'https://cdn.test/b.jpg'
-  });
+  // Cached preview still carries old M media.
+  env.cache.set('public_tree_preview_tree-t', {
+    id: 'tree-t',
+    title: 'Public T',
+    representativeThumbnail: 'https://cdn.test/old-m.jpg',
+    memories: [{ id: 'm-old', sourceUrl: 'https://www.youtube.com/watch?v=OLD_M' }]
+  }, 5 * 60 * 1000);
 
-  // Select Tree B so hydrateSelectedTreePreview proceeds past its guard.
-  env.state.selectedTreeId = 'tree-b';
+  env.state.selectedTreeId = 'tree-t';
   env.state.currentPreviewRequestId = 0;
 
-  let networkCalled = false;
-  env.window.apiClient.getPublicTreePreview = () => {
-    networkCalled = true;
-    return Promise.resolve(null);
+  // Fresh Memory authority returns replacement M2 only.
+  const freshPreview = {
+    id: 'tree-t',
+    title: 'Public T',
+    representativeThumbnail: 'https://cdn.test/new-m2.jpg',
+    sourceUrl: 'https://www.youtube.com/watch?v=M2',
+    memories: [{ id: 'm2', sourceUrl: 'https://www.youtube.com/watch?v=M2', thumbnail: 'https://cdn.test/new-m2.jpg' }]
   };
+  env.window.apiClient.getPublicTreePreview = () => Promise.resolve(freshPreview);
 
-  await env.searchData.hydrateSelectedTreePreview({ id: 'tree-b' });
+  await env.searchData.hydrateSelectedTreePreview({ id: 'tree-t' });
   await flushAsync();
 
-  assert.equal(networkCalled, false,
-    'Case B2: valid cached preview served from cache, not the network');
   assert.deepEqual(
-    previewUpdates.map((p) => p.title),
-    ['Public B'],
-    'Case B2: cached preview painted with the current public projection'
+    previewUpdates.map((p) => ({
+      thumb: p.representativeThumbnail,
+      source: p.sourceUrl,
+      memoryIds: Array.isArray(p.memories) ? p.memories.map((m) => m.id) : []
+    })),
+    [{ thumb: 'https://cdn.test/new-m2.jpg', source: 'https://www.youtube.com/watch?v=M2', memoryIds: ['m2'] }],
+    'Case B-replacement: preview contains M2 only; old M source/thumbnail absent'
   );
+  assert.ok(
+    JSON.stringify(previewUpdates).indexOf('OLD_M') === -1 && JSON.stringify(previewUpdates).indexOf('old-m') === -1,
+    'Case B-replacement: no old M media leaks into the rendered preview'
+  );
+});
+
+test('#4055 Case B-network-failure: current Memory authority fetch fails → stale M media must NOT become fallback authority', async () => {
+  const treeT = { id: 'tree-t', title: 'Public T' };
+  const previewUpdates = [];
+  const clearCalls = [];
+  const env = createSearchDataEnv({
+    getPublicTrees: () => Promise.resolve([treeT]),
+    previewRendererSpy: previewUpdates
+  });
+
+  await env.searchData.loadPublicTrees({ resetSelection: true });
+  await flushAsync();
+
+  // Cached preview with old M media exists and the Tree is present in fresh Browse.
+  env.cache.set('public_tree_preview_tree-t', {
+    id: 'tree-t',
+    title: 'Public T',
+    representativeThumbnail: 'https://cdn.test/old-m.jpg',
+    sourceUrl: 'https://www.youtube.com/watch?v=OLD_M',
+    memories: [{ id: 'm-old', sourceUrl: 'https://www.youtube.com/watch?v=OLD_M' }]
+  }, 5 * 60 * 1000);
+  env.state.selectedTreeId = 'tree-t';
+  env.state.currentPreviewRequestId = 0;
+
+  // Current Memory authority fetch fails.
+  let authorityAttempted = false;
+  env.window.apiClient.getPublicTreePreview = () => {
+    authorityAttempted = true;
+    return Promise.reject(new Error('memory authority network down'));
+  };
+
+  await env.searchData.hydrateSelectedTreePreview({ id: 'tree-t' });
+  await flushAsync();
+
+  assert.equal(authorityAttempted, true,
+    'Case B-network-failure: current Memory authority is consulted');
+  assert.deepEqual(previewUpdates, [],
+    'Case B-network-failure: stale M thumbnail/source MUST NOT become fallback authority');
+});
+
+// ── Case B-postgres: stale publicMemoriesByTreeCache must not rehydrate ─────
+
+test('#4055 Case B-postgres: getPublicTreePreview bypasses stale publicMemoriesByTreeCache and fetches fresh public memories', async () => {
+  const adapterSrc = fs.readFileSync(path.join(ROOT, 'js', 'api', 'public-tree-adapter.js'), 'utf8');
+  const pgSrc = fs.readFileSync(path.join(ROOT, 'js', 'postgres-client.js'), 'utf8');
+
+  const calls = [];
+  let memoryResponse = [
+    { id: 'm-old', tree_id: 'tree-t', source_url: 'https://www.youtube.com/watch?v=OLD_M', thumbnail: 'https://cdn.test/old-m.jpg' }
+  ];
+
+  const sessionStorage = new FakeStorage();
+  const windowObj = {
+    sessionStorage,
+    loveBudCache: {},
+    location: { hostname: 'lovebud.test', origin: 'https://lovebud.test', pathname: '/', search: '' },
+    LoveTreeBaseApiFetch: {
+      apiFetch: async (endpoint) => {
+        calls.push(endpoint);
+        if (endpoint.startsWith('/community/memories')) return memoryResponse;
+        return null;
+      }
+    },
+    LoveTreeAuthPolicy: {},
+    console
+  };
+  const context = vm.createContext({
+    window: windowObj,
+    sessionStorage,
+    console,
+    crypto,
+    URLSearchParams,
+    URL,
+    Date,
+    JSON,
+    String,
+    Object,
+    Array,
+    Number,
+    Math,
+    Set,
+    Uint8Array,
+    setTimeout,
+    clearTimeout
+  });
+  vm.runInContext(adapterSrc, context, { filename: 'public-tree-adapter.js' });
+  vm.runInContext(pgSrc, context, { filename: 'postgres-client.js' });
+
+  const apiClient = windowObj.apiClient;
+  assert.ok(apiClient, 'apiClient exposed');
+  assert.equal(typeof apiClient.getPublicTreePreview, 'function', 'getPublicTreePreview exposed');
+
+  // Seed the module-level publicMemoriesByTreeCache with the OLD Memory M.
+  const cachedOld = await apiClient.getCachedCommunityMemories({ treeId: 'tree-t', limit: 100 });
+  assert.deepEqual(Array.from(cachedOld, (m) => String(m.id || m.memory_id)), ['m-old'],
+    'publicMemoriesByTreeCache seeded with old M');
+
+  // Revocation happens: current Memory authority now excludes M (returns M2).
+  memoryResponse = [
+    { id: 'm2', tree_id: 'tree-t', source_url: 'https://www.youtube.com/watch?v=M2', thumbnail: 'https://cdn.test/new-m2.jpg' }
+  ];
+
+  // getPublicTreePreview MUST consult current Memory authority (fresh fetch), not the stale cache.
+  const preview = await apiClient.getPublicTreePreview({ id: 'tree-t', title: 'Public T' });
+
+  const memoryFetches = calls.filter((c) => c.startsWith('/community/memories'));
+  assert.ok(memoryFetches.length >= 2,
+    'getPublicTreePreview performed a fresh /community/memories fetch (stale cache bypassed)');
+  assert.ok(
+    !JSON.stringify(preview).includes('OLD_M') && !JSON.stringify(preview).includes('old-m'),
+    'Case B-postgres: stale M media never rehydrated from publicMemoriesByTreeCache'
+  );
+  assert.ok(JSON.stringify(preview).includes('M2'),
+    'Case B-postgres: preview reflects current Memory authority (M2 only)');
 });
 
 // ── Case E: failed mutation must not falsely invalidate ──────────────────────

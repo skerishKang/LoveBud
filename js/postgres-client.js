@@ -224,7 +224,12 @@
                 if (!PublicTreeAdapter) {
                     throw new Error('LoveTreePublicTreeAdapter not loaded');
                 }
-                const apiMemories = await communityApi.getCachedCommunityMemories({ treeId: tree?.id, limit: 100 });
+                // #4055: the authoritative preview re-check must consult
+                // CURRENT public Memory authority. getCachedCommunityMemories
+                // could rehydrate an old representative Memory from
+                // publicMemoriesByTreeCache after a revocation while the parent
+                // Tree stays public — always fetch fresh public memories here.
+                const apiMemories = await communityApi.getCommunityMemories({ treeId: tree?.id, limit: 100 });
                 return PublicTreeAdapter.hydrateTreeWithPublicMemories(tree, apiMemories);
             }
         };
