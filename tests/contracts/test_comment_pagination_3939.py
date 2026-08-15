@@ -82,6 +82,13 @@ class TestSocialCursorUnit(unittest.TestCase):
             decode_comment_cursor(cursor_str, "moment_comments", expected_target_id="mem-bbb")
         self.assertEqual(ctx.exception.reason, "target_mismatch")
 
+    def test_missing_target_rejected_when_expected_target_provided(self):
+        dt = datetime.now(timezone.utc)
+        cursor_str = encode_comment_cursor("moment_comments", dt, "c-1")
+        with self.assertRaises(CommentCursorError) as ctx:
+            decode_comment_cursor(cursor_str, "moment_comments", expected_target_id="mem-456")
+        self.assertEqual(ctx.exception.reason, "target_mismatch")
+
     def test_malformed_base64_rejected(self):
         with self.assertRaises(CommentCursorError) as ctx:
             decode_comment_cursor("not-valid-base64!@#$", "moment_comments")
@@ -272,6 +279,13 @@ class TestPublicMomentCommentsPagination(unittest.TestCase):
             fetch_public_comments(self.memory_id, cursor="invalid_cursor_token")
         self.assertEqual(ctx.exception.status_code, 400)
 
+    def test_cursor_missing_target_fails_closed_with_400(self):
+        dt = datetime.now(timezone.utc)
+        cursor_without_target = encode_comment_cursor("moment_comments", dt, "c-1")
+        with self.assertRaises(HTTPException) as ctx:
+            fetch_public_comments(self.memory_id, cursor=cursor_without_target)
+        self.assertEqual(ctx.exception.status_code, 400)
+
 
 class TestTreeCommentsPagination(unittest.TestCase):
     """Executable regression tests for whole-tree comments forward cursor pagination."""
@@ -332,6 +346,23 @@ class TestTreeCommentsPagination(unittest.TestCase):
                     self.assertNotIn("ownerId", c)
                     self.assertNotIn("owner_id", c)
                     self.assertEqual(c["authorDisplayLabel"], "anonymous")
+
+    def test_tree_cursor_missing_target_fails_closed_with_400(self):
+        dt = datetime.now(timezone.utc)
+        cursor_without_target = encode_comment_cursor("tree_comments", dt, "c-1")
+        with patch("modal_compute.tree_comments.require_public_tree_for_like", return_value=None):
+            with self.assertRaises(HTTPException) as ctx:
+                fetch_tree_comments(self.tree_id, cursor=cursor_without_target)
+            self.assertEqual(ctx.exception.status_code, 400)
+
+    def test_tree_cursor_target_mismatch_fails_closed_with_400(self):
+        dt = datetime.now(timezone.utc)
+        other_tree = str(uuid.uuid4())
+        cursor_other_tree = encode_comment_cursor("tree_comments", dt, "c-1", target_id=other_tree)
+        with patch("modal_compute.tree_comments.require_public_tree_for_like", return_value=None):
+            with self.assertRaises(HTTPException) as ctx:
+                fetch_tree_comments(self.tree_id, cursor=cursor_other_tree)
+            self.assertEqual(ctx.exception.status_code, 400)
 
 
 class TestAuthenticatedMomentCommentsPagination(unittest.TestCase):

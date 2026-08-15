@@ -78,7 +78,7 @@ def decode_comment_cursor(
         raise CommentCursorError("bad_timestamp")
     target_id = payload.get("t")
     if expected_target_id is not None:
-        if target_id is not None and str(target_id) != str(expected_target_id):
+        if target_id is None or str(target_id) != str(expected_target_id):
             raise CommentCursorError("target_mismatch")
     return {
         "created_at": created_at_dt,
