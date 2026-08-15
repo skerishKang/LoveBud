@@ -140,12 +140,12 @@
                 }
             }
 
-            // Validate comments DTO: exactly { comments: Array, nextCursor: null }
+            // Validate comments DTO: { comments: Array, nextCursor: string | null }
             // Each item must be an object with own string body.
             // Any malformed item invalidates the entire payload.
             var validComments = null;
             if (commentsData && typeof commentsData === 'object' && !Array.isArray(commentsData)) {
-                if (Array.isArray(commentsData.comments) && commentsData.nextCursor === null) {
+                if (Array.isArray(commentsData.comments) && (commentsData.nextCursor === null || (typeof commentsData.nextCursor === 'string' && commentsData.nextCursor.length > 0 && commentsData.comments.length > 0))) {
                     var items = commentsData.comments;
                     var allValid = true;
                     for (var i = 0; i < items.length; i++) {

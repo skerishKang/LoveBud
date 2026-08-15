@@ -18,14 +18,14 @@ Implemented: Step 5 evaluatePrecondition adapter (THIS child)
 Not authorized: Step 6 composition root, Step 7 disposable PostgreSQL rehearsal, Step 8 environment adoption
 ```
 
-Authorities (unchanged): `db-migration-precondition-authority-contract.md`, `db-migration-precondition-authority-loader-resolver-contract.md`, `db-migration-readonly-query-catalog-contract.md`, `db-postgres-session-lock-adapter-contract.md`, `DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md`, and the fixed committed `db/migration-provenance/*` authorities (kept `ADOPTION_REQUIRED` and empty/inactive).
+Authorities (unchanged): `db-migration-precondition-authority-contract.md`, `db-migration-precondition-authority-loader-resolver-contract.md`, `db-migration-readonly-query-catalog-contract.md`, `db-postgres-session-lock-adapter-contract.md`, `DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md`, and the fixed committed `db/migration-provenance/*` authorities (kept `ADOPTION_REQUIRED` and inactive; catalog population is distinct from runner activation).
 
 ## 2. Scope and evidence limits
 
 - Scope: implement and source-test one dependency-injected adapter with the exact public surface `createMigrationPreconditionEvaluatorAdapter({ resolvePreconditionAuthority, queryLockedSession })` returning the frozen surface `{ evaluatePrecondition }`.
 - The adapter owns the registry/catalog/SQL/manifest/lock/database/orchestration in no way. It consumes only the two injected dependencies.
 - Limits: no database, Docker/PostgreSQL, network, SQL execution, Production, provider, credential, environment, package, workflow, or UI change. No modification or activation of any committed authority. Browser/Playwright validation is not required.
-- Committed authorities remain `ADOPTION_REQUIRED` and empty. The evaluator therefore cannot execute a real query in this child; its behavior is proven with synthetic fixtures.
+- Committed authorities remain `ADOPTION_REQUIRED` and inactive (two manifests are catalog-populated). The evaluator therefore cannot execute a real query in this child; its behavior is proven with synthetic fixtures.
 
 ## 3. Factory and public surface
 
