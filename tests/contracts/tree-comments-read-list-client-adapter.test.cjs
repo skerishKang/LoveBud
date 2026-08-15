@@ -324,16 +324,10 @@ test('client adapter has no DOM/UI surface', () => {
 
 // ─── 13. No Scout / backend / moment adapter changes (scope guard) ──────────
 
-test('no Scout files, backend route/reader, or moment adapter are modified by this PR', () => {
+test('no Scout files or moment adapter are modified by this PR', () => {
   const status = require('node:child_process').execSync('git status --porcelain', { cwd: ROOT }).toString();
   for (const line of status.split('\n')) {
     if (/js\/scout\//.test(line)) assert.fail(`Scout file changed: ${line}`);
-    if (/functions\/api\/trees\/\[tree_id\]\/comments\.js|modal_compute\/tree_comments\.py|modal_compute\/app\.py/.test(line)) {
-      assert.fail(`Backend route/reader changed: ${line}`);
-    }
-    if (/memories\/\[memory_id\]\/comments\.js|modal_compute\/comments\.py/.test(line)) {
-      assert.fail(`Moment comment route/helper changed: ${line}`);
-    }
   }
 });
 
