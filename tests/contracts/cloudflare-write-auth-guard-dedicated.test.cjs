@@ -100,14 +100,14 @@ function extractFunc(source, name) {
   assert.fail(`${name} body should be closed`);
 }
 
-test('trees.js onRequestPost checks auth before readBoundedWriteBody', () => {
+test('trees.js onRequestPost checks auth before readBoundedRequestBody', () => {
   const source = readRepoFile(FILES.trees);
   const body = extractFunc(source, 'onRequestPost');
   const authIdx = body.indexOf('hasAuthorizationHeader');
-  const bodyReadIdx = body.indexOf('readBoundedWriteBody');
+  const bodyReadIdx = body.indexOf('readBoundedRequestBody');
   assert.notEqual(authIdx, -1, 'onRequestPost should call hasAuthorizationHeader');
-  assert.notEqual(bodyReadIdx, -1, 'onRequestPost should call readBoundedWriteBody');
-  assert.ok(authIdx < bodyReadIdx, 'hasAuthorizationHeader should appear before readBoundedWriteBody');
+  assert.notEqual(bodyReadIdx, -1, 'onRequestPost should call readBoundedRequestBody');
+  assert.ok(authIdx < bodyReadIdx, 'hasAuthorizationHeader should appear before readBoundedRequestBody');
 });
 
 test('memories.js onRequestPost checks auth before readBoundedWriteBody', () => {
@@ -123,14 +123,14 @@ test('memories.js onRequestPost checks auth before readBoundedWriteBody', () => 
   assert.ok(authIdx < bodyReadIdx, 'hasAuthorizationHeader should appear before readBoundedWriteBody');
 });
 
-test('trees/[id].js onRequestPut checks auth before readBoundedWriteBody', () => {
+test('trees/[id].js onRequestPut checks auth before readBoundedRequestBody', () => {
   const source = readRepoFile(FILES.treeDetail);
   const body = extractFunc(source, 'onRequestPut');
   const authIdx = body.indexOf('hasAuthorizationHeader');
-  const bodyReadIdx = body.indexOf('readBoundedWriteBody');
+  const bodyReadIdx = body.indexOf('readBoundedRequestBody');
   assert.notEqual(authIdx, -1, 'onRequestPut should call hasAuthorizationHeader');
-  assert.notEqual(bodyReadIdx, -1, 'onRequestPut should call readBoundedWriteBody');
-  assert.ok(authIdx < bodyReadIdx, 'hasAuthorizationHeader should appear before readBoundedWriteBody');
+  assert.notEqual(bodyReadIdx, -1, 'onRequestPut should call readBoundedRequestBody');
+  assert.ok(authIdx < bodyReadIdx, 'hasAuthorizationHeader should appear before readBoundedRequestBody');
 });
 
 test('memories/[id].js onRequestPut checks auth before readBoundedWriteBody', () => {

@@ -25,6 +25,13 @@
                             ? options.onLifecycle
                             : undefined
                 }),
+            getTreesPage: async (options = {}) => {
+                const params = new URLSearchParams();
+                params.set('pagination', 'cursor');
+                if (options.limit) params.set('limit', String(options.limit));
+                if (options.cursor) params.set('cursor', options.cursor);
+                return BaseApiFetch.apiFetch(`/trees?${params.toString()}`);
+            },
             getTree: async (treeId) => BaseApiFetch.apiFetch(`/trees/${treeId}`),
             getPublicTree: async (treeId) => BaseApiFetch.apiFetch(`/trees/${treeId}`, { publicRead: true }),
             getFirstTree: async () => {
@@ -42,6 +49,14 @@
         return {
             getMemory: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}`),
             getMemoriesByTree: async (treeId) => BaseApiFetch.apiFetch(`/memories?treeId=${encodeURIComponent(treeId)}`),
+            getMemoriesPage: async (options = {}) => {
+                const params = new URLSearchParams();
+                params.set('pagination', 'cursor');
+                if (options.treeId) params.set('treeId', String(options.treeId));
+                if (options.limit) params.set('limit', String(options.limit));
+                if (options.cursor) params.set('cursor', options.cursor);
+                return BaseApiFetch.apiFetch(`/memories?${params.toString()}`);
+            },
             createMemory: async (payload) => BaseApiFetch.apiFetch('/memories', { method: 'POST', body: JSON.stringify(payload) }),
             updateMemory: async (memoryId, payload) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'PUT', body: JSON.stringify(payload) }),
             deleteMemory: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}`, { method: 'DELETE' }),
@@ -54,9 +69,16 @@
                 const options = { method: 'POST', body: JSON.stringify({ body }) };
                 return BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`, addIdempotencyKey(options, idempotencyKey));
             },
-            fetchComments: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`),
+            fetchComments: async (memoryId, options = {}) => {
+                const params = new URLSearchParams();
+                if (options && options.limit) params.set('limit', String(options.limit));
+                if (options && options.cursor) params.set('cursor', String(options.cursor));
+                if (options && options.pagination) params.set('pagination', String(options.pagination));
+                const query = params.toString();
+                return BaseApiFetch.apiFetch(`/memories/${memoryId}/comments` + (query ? '?' + query : ''));
+            },
             fetchPublicMomentReactionSummary: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/reactions`, { publicRead: true }),
-            fetchPublicMomentComments: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/comments`, { publicRead: true })
+            fetchPublicMomentComments: async (treeId, memoryId, options = {}) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/comments` + (options && options.cursor ? `?cursor=${encodeURIComponent(options.cursor)}` : '') + (options && options.limit ? `${options.cursor ? '&' : '?'}limit=${encodeURIComponent(options.limit)}` : ''), { publicRead: true })
         };
     }
 
