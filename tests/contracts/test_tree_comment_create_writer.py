@@ -40,6 +40,7 @@ class _Store:
         self.idempotency = {}
         self.comments = []
         self.audit = []
+        self.rate_limits = {}
 
 
 class _Cursor:
@@ -112,6 +113,22 @@ class _Cursor:
                 "action": action,
                 "outcome_code": params[5],
             })
+            self._pending = []
+            return
+        if "INSERT INTO SOCIAL_RATE_LIMITS" in up:
+            _row_id, scope, actor_id, memory_id, window_start, max_count = params
+            coalesce_mem = memory_id or "00000000-0000-0000-0000-000000000000"
+            rl_key = (scope, actor_id, coalesce_mem, window_start)
+            current = self._store.rate_limits.get(rl_key)
+            if current is None:
+                self._store.rate_limits[rl_key] = 1
+                self._pending = [{"request_count": 1}]
+                return
+            if current < max_count:
+                new_count = current + 1
+                self._store.rate_limits[rl_key] = new_count
+                self._pending = [{"request_count": new_count}]
+                return
             self._pending = []
             return
         if "UPDATE SOCIAL_IDEMPOTENCY" in up:
