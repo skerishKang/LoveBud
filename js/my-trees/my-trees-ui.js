@@ -656,7 +656,7 @@
       container.appendChild(existingPagination);
     }
 
-    existingPagination.innerHTML = '';
+    existingPagination.replaceChildren();
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.id = 'myTreesLoadMoreBtn';
@@ -679,6 +679,40 @@
     });
 
     existingPagination.appendChild(btn);
+  }
+
+  function appendTrees(newItems, allTrees, appendOptions) {
+    if (!Array.isArray(newItems) || newItems.length === 0) return;
+
+    allTreesData = Array.isArray(allTrees) ? allTrees : [];
+    totalTreesCount = allTreesData.length;
+
+    var grid = document.getElementById('trees-grid');
+    if (!grid) {
+      renderTrees(allTrees, appendOptions);
+      return;
+    }
+
+    var buildTreeCardFn = (appendOptions && appendOptions.buildTreeCard) || buildTreeCard;
+    var onSelect = appendOptions && appendOptions.onSelect;
+    var onNavigate = appendOptions && appendOptions.onNavigate;
+
+    newItems.forEach(function(tree) {
+      var card = buildTreeCardFn(tree, { onSelect: onSelect, onNavigate: onNavigate });
+      if (card instanceof Node) {
+        grid.appendChild(card);
+      }
+    });
+
+    var setState = appendOptions && appendOptions.setState;
+    var stateEnum = appendOptions && appendOptions.stateEnum;
+
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: onSelect, onNavigate: onNavigate });
+    updatePaginationControls(appendOptions);
+
+    if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
+      setState(stateEnum.LOADED);
+    }
   }
 
   function renderTrees(trees, options) {
@@ -841,6 +875,8 @@
     updateManageSummary: updateManageSummary,
     buildTreeCard: buildTreeCard,
     renderTrees: renderTrees,
+    appendTrees: appendTrees,
+    updatePaginationControls: updatePaginationControls,
     validateEntryTarget: validateEntryTarget,
     resolveSafeBasePath: resolveSafeBasePath,
     validateAndResolveEntryTargets: validateAndResolveEntryTargets

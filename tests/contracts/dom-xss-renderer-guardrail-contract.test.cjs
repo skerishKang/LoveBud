@@ -156,8 +156,8 @@ const FILE_ALLOWLIST = {
     reason: 'material-icons + i18n safeText; restoreHeaderText/EmptyText are previously captured safe innerHTML; visibilityField uses array join of safe option HTML'
   },
   'js/my-trees/my-trees-batch-render.js': {
-    count: 2, classification: 'safe',
-    reason: 'clear-container (×2): grid.innerHTML = empty string'
+    count: 3, classification: 'safe',
+    reason: 'clear-container: grid/ownership reset for initial load + resetBatchState; pagination rebuild existingPagination.innerHTML = empty string (#3944)'
   },
   'js/my-trees/my-trees-i18n-refresh.js': {
     count: 5, classification: 'safe',

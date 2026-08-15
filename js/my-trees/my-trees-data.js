@@ -376,6 +376,7 @@
       var staleContext = MyTreesJourneyTracker.getContext(staleGeneration);
       if (staleContext) staleContext.recordStage('CANCELLED');
     }
+    activeLoadMoreGeneration += 1;
     activeLoadMoreInFlight = false;
     if (window.LoveBudMyTreesState && typeof window.LoveBudMyTreesState.resetPaginationState === 'function') {
       window.LoveBudMyTreesState.resetPaginationState();
@@ -1007,6 +1008,7 @@
   }
 
   var activeLoadMoreInFlight = false;
+var activeLoadMoreGeneration = 0;
 
   function isLoadMoreInFlight() {
     return activeLoadMoreInFlight;
@@ -1032,6 +1034,7 @@
     }
 
     activeLoadMoreInFlight = true;
+    var loadMoreGen = ++activeLoadMoreGeneration;
     if (stateModule && typeof stateModule.setIsLoadingMoreTrees === 'function') {
       stateModule.setIsLoadingMoreTrees(true);
     }
@@ -1099,7 +1102,9 @@
       }
       writePersistentTreesCache(mergedTrees);
 
-      if (typeof renderTrees === 'function') {
+      if (typeof options.appendTrees === 'function') {
+        options.appendTrees(uniqueNew, mergedTrees, options);
+      } else if (typeof renderTrees === 'function') {
         renderTrees(mergedTrees);
       }
 
@@ -1123,7 +1128,9 @@
       }
       return null;
     } finally {
-      activeLoadMoreInFlight = false;
+      if (loadMoreGen === activeLoadMoreGeneration) {
+        activeLoadMoreInFlight = false;
+      }
       if (stateModule && typeof stateModule.setIsLoadingMoreTrees === 'function') {
         stateModule.setIsLoadingMoreTrees(false);
       }

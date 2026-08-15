@@ -46,7 +46,7 @@
       container.appendChild(existingPagination);
     }
 
-    existingPagination.innerHTML = '';
+    existingPagination.replaceChildren();
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.id = 'myTreesLoadMoreBtn';
@@ -69,6 +69,48 @@
     });
 
     existingPagination.appendChild(btn);
+  }
+
+  function appendTrees(newItems, allTrees, appendOptions) {
+    if (!Array.isArray(newItems) || newItems.length === 0) return;
+    allTreesData = Array.isArray(allTrees) ? allTrees : [];
+    totalTreesCount = allTreesData.length;
+
+    var grid = document.getElementById('trees-grid');
+    if (!grid) {
+      renderTrees(allTrees, appendOptions);
+      return;
+    }
+
+    var buildTreeCardFn = (appendOptions && appendOptions.buildTreeCard) || getBuildTreeCard(appendOptions);
+    var onSelect = appendOptions && appendOptions.onSelect;
+    var onNavigate = appendOptions && appendOptions.onNavigate;
+
+    newItems.forEach(function(tree) {
+      var card = typeof buildTreeCardFn === 'function'
+        ? buildTreeCardFn(tree, { onSelect: onSelect, onNavigate: onNavigate })
+        : null;
+      if (card instanceof Node) {
+        card.style.opacity = '0';
+        card.classList.add('tree-card-batch-pending');
+        grid.appendChild(card);
+        setTimeout(function(c) {
+          c.style.transition = 'opacity 0.2s ease-in';
+          c.style.opacity = '1';
+          c.classList.remove('tree-card-batch-pending');
+        }, 10, card);
+      }
+    });
+
+    var setState = appendOptions && appendOptions.setState;
+    var stateEnum = appendOptions && appendOptions.stateEnum;
+
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: onSelect, onNavigate: onNavigate });
+    updatePaginationControls(appendOptions);
+
+    if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
+      setState(stateEnum.LOADED);
+    }
   }
 
   function renderTrees(trees, options) {
@@ -226,10 +268,12 @@
 
   var api = {
     renderTrees: renderTrees,
+    appendTrees: appendTrees,
     renderNextBatch: renderNextBatch,
     setupScrollContinuation: setupScrollContinuation,
     loadMoreBatch: loadMoreBatch,
-    resetBatchState: resetBatchState
+    resetBatchState: resetBatchState,
+    updatePaginationControls: updatePaginationControls
   };
 
   window.LoveBudMyTreesBatchRender = api;
