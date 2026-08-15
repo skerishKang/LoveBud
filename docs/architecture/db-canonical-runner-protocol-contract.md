@@ -138,7 +138,7 @@ This is a pure decision contract over bounded input. It does not connect to a da
 | Ledger record written | No |
 | Production mutation | No |
 | Secrets used | No `DATABASE_URL` or secret value was used |
-| Canonical stream activated | No (`status` remains `ADOPTION_REQUIRED`, `migrations` remains `[]`) |
+| Canonical stream activated | No (`status` remains `ADOPTION_REQUIRED`; 2 catalogued migrations, no runner activation) |
 | Runner implemented | No (protocol contract only) |
 
 ## Protected Issues
