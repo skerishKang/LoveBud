@@ -1899,7 +1899,7 @@ async function newRealMyTreesPage(browser, vp, baseUrl) {
       }
       if (pathname === '/api/memories') {
         stubbed.apiMemories += 1;
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MY_TREES_MEMORIES) });
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: MY_TREES_MEMORIES, nextCursor: null }) });
         return true;
       }
       if (pathname.startsWith('/api/')) {
@@ -2256,12 +2256,14 @@ test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) =>
         }, null, { timeout: 30000 });
 
         // Deterministic data boundary: wait until the owner list, first-tree
-        // detail, and both memory reads (preview-media hydrate + preload)
-        // have all settled through the stubbed same-origin API.
+        // detail, and the memory read have all settled through the stubbed
+        // same-origin API. The #3944 bounded-page bridge single-flights the
+        // preview-media hydrate + preload pair into exactly one cursor-page
+        // request, so the memories endpoint is hit once.
         const apiCounts = await waitForMyTreesApiRequests(env, {
           'GET /api/trees?pagination=cursor': 1,
           'GET /api/trees/mt-tree-3888-1': 1,
-          'GET /api/memories?treeId=mt-tree-3888-1': 2,
+          'GET /api/memories?limit=100&pagination=cursor&treeId=mt-tree-3888-1': 1,
         }, 15000);
 
         const snap = await captureMyTreesBaseline(page);
@@ -2471,9 +2473,9 @@ test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) =>
           assert.deepEqual(
             requestSet,
             [
-              'GET /api/memories?treeId=mt-tree-3888-1',
-              'GET /api/trees?pagination=cursor',
+              'GET /api/memories?limit=100&pagination=cursor&treeId=mt-tree-3888-1',
               'GET /api/trees/mt-tree-3888-1',
+              'GET /api/trees?pagination=cursor',
             ],
             `same-origin API request set must be exactly the owner allowlist, got: ${JSON.stringify(requestSet)}`
           );
@@ -2482,9 +2484,9 @@ test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) =>
             {
               'GET /api/trees?pagination=cursor': 1,
               'GET /api/trees/mt-tree-3888-1': 1,
-              'GET /api/memories?treeId=mt-tree-3888-1': 2,
+              'GET /api/memories?limit=100&pagination=cursor&treeId=mt-tree-3888-1': 1,
             },
-            'exact per-endpoint request counts (list 1, detail 1, memories 2)'
+            'exact per-endpoint request counts (list 1, detail 1, memories 1 via single-flight bridge)'
           );
           assert.equal(stubbed.apiOther, 0, `non-allowlisted /api/* stub fulfillments must be 0, got ${stubbed.apiOther}`);
           const writeRequests = sameOriginRequests.filter((r) => !['GET', 'HEAD', 'OPTIONS'].includes(r.method));
