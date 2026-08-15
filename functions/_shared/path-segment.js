@@ -24,7 +24,7 @@ export function normalizeEncodedPathSegment(rawValue) {
 }
 
 export function isInvalidPathEncodingError(error) {
-  return error instanceof InvalidPathEncodingError || error?.code === INVALID_PATH_ENCODING_CODE;
+  return error instanceof InvalidPathEncodingError;
 }
 
 export function buildInvalidPathEncodingResponse(requestId = null, requestIdHeader = 'x-lovebud-request-id') {
