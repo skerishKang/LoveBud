@@ -699,6 +699,15 @@ Key semantic distinction:
 - **PRODUCTION APPLY AUTHORIZED**: No — requires ACTIVE manifest + runner protocol compliance.
 - **PRODUCTION MIGRATION EXECUTED**: No — no migration has been applied to Production/default-branch Neon.
 
+### D.1 Adoption-gate verification item (schema-drift audit 2026-08-16)
+
+Read-only drift audit (`COMP2_CANONICAL_SCHEMA_DRIFT_AUDIT_REPORT`, checked on `origin/main@c5de1d14`) confirmed all repository-side dimensions are drift-free: both catalog checksums match the on-disk SQL byte-for-byte, both expected-schema critical objects correspond 1:1 to the two migrations' postconditions, and the runtime `tree_appreciation_orders` writer (`modal_compute/appreciation_orders.py`) matches migration #2's DDL exactly. Live-catalog dimensions are `INSUFFICIENT_LIVE_EVIDENCE` (no approved read-only connection available at audit time).
+
+One flagged adoption-gate verification item (NOT a code change; no PR required now):
+
+- Migration `20260812213000` declares `tree_id TEXT ... REFERENCES public.trees(id)`. The db-engine proof applies it only against a synthetic TEXT parent (`appreciation-order-schema-3982.cjs` creates `trees(id TEXT PRIMARY KEY)`). This document records LoveBud PKs as uuid (`gen_random_uuid()`). If the live `public.trees.id` column is `uuid` type, the FK would be type-incompatible and the migration would fail validation.
+- Resolution: a fresh approved read-only catalog check of the live `public.trees.id` type must precede any adoption baseline. Classified `CURRENT_LIVE_DB_NOT_REVERIFIED` until then.
+
 Therefore `ADOPTION_REQUIRED → catalog must be empty` is incorrect. The current-main authority proves catalog entries can exist while the manifest stays ADOPTION_REQUIRED. The actual gate is Production/runner activation, not catalog entry addition.
 
 ## 11. Verdict
