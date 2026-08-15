@@ -7,8 +7,8 @@ LoveBud authoritative main at branch creation: `cc6cb26854e4cc692d3109debe05b0de
 LoveTree authoritative main observed during audit: `06dfb7e52a3c5a96d309142bbeb06a3445a18f96`  
 
 **CURRENT AT FINAL RECONCILIATION (checked 2026-08-16):**  
-LoveBud main: `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd`  
-PR #4007 head: `86ab1ba91345d14ed208ac4772cd158281281aa2` (plain merge-forward from current main, no conflicts, no `-X` preference)  
+LoveBud alignment basis (main): `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd`  
+PR #4007: a plain merge-forward from that main completed without conflicts (historical/intermediate merge-forward commit `86ab1ba91345d14ed208ac4772cd158281281aa2`); the current PR head is authoritative from GitHub PR metadata and is intentionally not self-pinned in this document.  
 Active writer overlap: #3951 (issue, OPEN) / #4048 (Draft, OPEN) owns `modal_compute/memory_writes.py` transaction authority and is CI-GREEN; #4007 remains docs-only.  
 Historical overlaps #3992, #3969, #3999: all MERGED (verified 2026-08-16).
 
