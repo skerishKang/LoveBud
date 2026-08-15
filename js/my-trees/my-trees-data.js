@@ -376,6 +376,10 @@
       var staleContext = MyTreesJourneyTracker.getContext(staleGeneration);
       if (staleContext) staleContext.recordStage('CANCELLED');
     }
+    activeLoadMoreInFlight = false;
+    if (window.LoveBudMyTreesState && typeof window.LoveBudMyTreesState.resetPaginationState === 'function') {
+      window.LoveBudMyTreesState.resetPaginationState();
+    }
   }
 
   function hasVisibleLoadedCards() {
@@ -744,18 +748,49 @@
 
       try {
         var trees;
+        var nextCursor = null;
 
-        if (window.apiClient && window.apiClient.getTrees) {
+        if (window.apiClient) {
           if (stillCurrent()) {
             ctx.recordStage('CLIENT_VALIDATION_PASSED');
             ctx.recordStage('REQUEST_DISPATCHED');
           }
-          trees = await window.apiClient.getTrees({
-            onLifecycle: function(meta) {
-              if (!stillCurrent()) return;
-              requestLifecycle = sanitizeRequestLifecycle(meta);
+          var pageLifecycle = function(meta) {
+            if (!stillCurrent()) return;
+            requestLifecycle = sanitizeRequestLifecycle(meta);
+          };
+
+          if (typeof window.apiClient.getTreesPage === 'function') {
+            var rawPage = await window.apiClient.getTreesPage({
+              onLifecycle: pageLifecycle
+            });
+            if (rawPage && typeof rawPage === 'object' && Array.isArray(rawPage.items)) {
+              trees = rawPage.items;
+              nextCursor = typeof rawPage.nextCursor === 'string' ? rawPage.nextCursor : null;
+            } else if (Array.isArray(rawPage)) {
+              trees = rawPage;
+              nextCursor = null;
+            } else {
+              trees = rawPage;
+              nextCursor = null;
             }
-          });
+          } else if (typeof window.apiClient.getTrees === 'function') {
+            var rawTrees = await window.apiClient.getTrees({
+              onLifecycle: pageLifecycle
+            });
+            if (rawTrees && typeof rawTrees === 'object' && Array.isArray(rawTrees.items)) {
+              trees = rawTrees.items;
+              nextCursor = typeof rawTrees.nextCursor === 'string' ? rawTrees.nextCursor : null;
+            } else if (Array.isArray(rawTrees)) {
+              trees = rawTrees;
+              nextCursor = null;
+            } else {
+              trees = rawTrees;
+              nextCursor = null;
+            }
+          } else {
+            throw new Error('apiClient.getTrees is not available');
+          }
         } else {
           throw new Error('apiClient.getTrees is not available');
         }
@@ -773,6 +808,18 @@
             });
           }
           trees = normalizeTreesForList(trees);
+
+          if (window.LoveBudMyTreesState) {
+            if (typeof window.LoveBudMyTreesState.setLastTreesData === 'function') {
+              window.LoveBudMyTreesState.setLastTreesData(trees);
+            }
+            if (typeof window.LoveBudMyTreesState.setTreeNextCursor === 'function') {
+              window.LoveBudMyTreesState.setTreeNextCursor(nextCursor);
+            }
+          }
+          if (typeof options.onNextCursor === 'function') {
+            options.onNextCursor(nextCursor);
+          }
 
           if (cache && canUsePrivateCache(privateCacheScope)) {
             cache.set(TREES_CACHE_KEY, trees, 3 * 60 * 1000);
@@ -959,6 +1006,133 @@
     }
   }
 
+  var activeLoadMoreInFlight = false;
+
+  function isLoadMoreInFlight() {
+    return activeLoadMoreInFlight;
+  }
+
+  async function loadMoreTrees(options) {
+    options = options || {};
+    var renderTrees = options.renderTrees;
+    var showToast = options.showToast;
+    var i18n = getI18n(options);
+    var stateModule = window.LoveBudMyTreesState || null;
+
+    var currentCursor = options.cursor || (stateModule && typeof stateModule.getTreeNextCursor === 'function' ? stateModule.getTreeNextCursor() : null);
+
+    if (!currentCursor) {
+      myTreesDebugLog('[my-trees-data] loadMoreTrees: no nextCursor available (terminal)');
+      return null;
+    }
+
+    if (activeLoadMoreInFlight || isOwnerListLoadInFlight()) {
+      myTreesDebugLog('[my-trees-data] loadMoreTrees: request already in flight, duplicate ignored');
+      return null;
+    }
+
+    activeLoadMoreInFlight = true;
+    if (stateModule && typeof stateModule.setIsLoadingMoreTrees === 'function') {
+      stateModule.setIsLoadingMoreTrees(true);
+    }
+
+    var privateCacheScope = capturePrivateCacheScope();
+    var generation = ownerListGeneration;
+
+    function stillCurrent() {
+      return isCurrentOwnerListGeneration(generation) && isPrivateCacheScopeCurrent(privateCacheScope);
+    }
+
+    try {
+      if (!window.apiClient || typeof window.apiClient.getTreesPage !== 'function') {
+        throw new Error('apiClient.getTreesPage is not available');
+      }
+
+      var pageResult = await window.apiClient.getTreesPage({
+        cursor: currentCursor,
+        limit: options.limit || undefined
+      });
+
+      if (!stillCurrent()) {
+        myTreesDebugLog('[my-trees-data] loadMoreTrees: discarded stale response (epoch or auth changed)');
+        return null;
+      }
+
+      if (!pageResult || typeof pageResult !== 'object' || !Array.isArray(pageResult.items)) {
+        throw new Error('Invalid owner-tree page payload');
+      }
+
+      var newItems = normalizeTreesForList(pageResult.items);
+      var nextCursor = typeof pageResult.nextCursor === 'string' ? pageResult.nextCursor : null;
+
+      var existing = stateModule && typeof stateModule.getLastTreesData === 'function'
+        ? stateModule.getLastTreesData()
+        : [];
+
+      var seenIds = Object.create(null);
+      existing.forEach(function(t) {
+        if (t && t.id) seenIds[String(t.id)] = true;
+      });
+
+      var uniqueNew = [];
+      newItems.forEach(function(t) {
+        if (t && t.id && !seenIds[String(t.id)]) {
+          seenIds[String(t.id)] = true;
+          uniqueNew.push(t);
+        }
+      });
+
+      var mergedTrees = existing.concat(uniqueNew);
+
+      if (stateModule) {
+        if (typeof stateModule.setLastTreesData === 'function') {
+          stateModule.setLastTreesData(mergedTrees);
+        }
+        if (typeof stateModule.setTreeNextCursor === 'function') {
+          stateModule.setTreeNextCursor(nextCursor);
+        }
+      }
+
+      var cache = window.LoveBudCache || null;
+      if (cache && canUsePrivateCache(privateCacheScope)) {
+        cache.set(TREES_CACHE_KEY, mergedTrees, 3 * 60 * 1000);
+      }
+      writePersistentTreesCache(mergedTrees);
+
+      if (typeof renderTrees === 'function') {
+        renderTrees(mergedTrees);
+      }
+
+      if (typeof options.onNextCursorChange === 'function') {
+        options.onNextCursorChange(nextCursor);
+      }
+
+      return {
+        items: uniqueNew,
+        totalLoaded: mergedTrees.length,
+        nextCursor: nextCursor
+      };
+    } catch (e) {
+      if (!stillCurrent()) {
+        return null;
+      }
+      console.error('[my-trees-data] loadMoreTrees error:', e);
+      var failKey = i18n('myTrees.load_more_failed') || '추가 트리를 불러오지 못했습니다. 다시 시도해 주세요.';
+      if (typeof showToast === 'function') {
+        showToast(failKey, 'warn');
+      }
+      return null;
+    } finally {
+      activeLoadMoreInFlight = false;
+      if (stateModule && typeof stateModule.setIsLoadingMoreTrees === 'function') {
+        stateModule.setIsLoadingMoreTrees(false);
+      }
+      if (typeof options.onSettled === 'function') {
+        options.onSettled();
+      }
+    }
+  }
+
   window.LoveBudMyTreesData = {
     TREES_CACHE_KEY: TREES_CACHE_KEY,
     TREE_DETAIL_CACHE_KEY: TREE_DETAIL_CACHE_KEY,
@@ -966,6 +1140,8 @@
     PERSISTENT_TREES_CACHE_KEY: PERSISTENT_TREES_CACHE_KEY,
     preloadFirstTreeDetail: preloadFirstTreeDetail,
     loadTrees: loadTrees,
+    loadMoreTrees: loadMoreTrees,
+    isLoadMoreInFlight: isLoadMoreInFlight,
     isOwnerListLoadInFlight: isOwnerListLoadInFlight,
     isCurrentOwnerListGeneration: isCurrentOwnerListGeneration,
     markOwnerListEpochStale: markOwnerListEpochStale,

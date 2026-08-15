@@ -23,6 +23,54 @@
     return (options && options.updateManageSummary) || UI.updateManageSummary;
   }
 
+  function updatePaginationControls(options) {
+    var container = document.getElementById('state-loaded');
+    if (!container) return;
+
+    var existingPagination = document.getElementById('my-trees-pagination');
+    var stateModule = window.LoveBudMyTreesState || null;
+    var hasMore = stateModule && typeof stateModule.hasMoreTrees === 'function' ? stateModule.hasMoreTrees() : false;
+    var isLoading = stateModule && typeof stateModule.getIsLoadingMoreTrees === 'function' ? stateModule.getIsLoadingMoreTrees() : false;
+
+    if (!hasMore) {
+      if (existingPagination) {
+        existingPagination.remove();
+      }
+      return;
+    }
+
+    if (!existingPagination) {
+      existingPagination = document.createElement('div');
+      existingPagination.id = 'my-trees-pagination';
+      existingPagination.className = 'my-trees-pagination';
+      container.appendChild(existingPagination);
+    }
+
+    existingPagination.innerHTML = '';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'myTreesLoadMoreBtn';
+    btn.className = 'btn-round btn-secondary my-trees-load-more-btn';
+    btn.setAttribute('data-i18n', 'myTrees.load_more');
+    btn.disabled = isLoading;
+    btn.textContent = isLoading ? '불러오는 중...' : '더 보기';
+
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = '불러오는 중...';
+
+      if (options && typeof options.onLoadMore === 'function') {
+        options.onLoadMore();
+      } else if (window.LoveBudMyTreesData && typeof window.LoveBudMyTreesData.loadMoreTrees === 'function') {
+        window.LoveBudMyTreesData.loadMoreTrees();
+      }
+    });
+
+    existingPagination.appendChild(btn);
+  }
+
   function renderTrees(trees, options) {
     var hubOnSelect = options && options.onSelect;
     var hubOnNavigate = options && options.onNavigate;
@@ -43,6 +91,10 @@
     }
 
     if (!trees || trees.length === 0) {
+      var existingPagination = document.getElementById('my-trees-pagination');
+      if (existingPagination) {
+        existingPagination.remove();
+      }
       if (typeof setState === 'function' && stateEnum && stateEnum.EMPTY) {
         setState(stateEnum.EMPTY);
       }
@@ -65,6 +117,7 @@
 
     renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
     setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
+    updatePaginationControls(options);
 
     if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
       setState(stateEnum.LOADED);
@@ -160,6 +213,10 @@
     var grid = document.getElementById('trees-grid');
     if (grid) {
       grid.innerHTML = '';
+    }
+    var existingPagination = document.getElementById('my-trees-pagination');
+    if (existingPagination) {
+      existingPagination.remove();
     }
     currentVisibleCount = 0;
     allTreesData = [];

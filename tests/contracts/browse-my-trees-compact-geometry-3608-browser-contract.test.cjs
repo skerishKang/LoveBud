@@ -2259,7 +2259,7 @@ test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) =>
         // detail, and both memory reads (preview-media hydrate + preload)
         // have all settled through the stubbed same-origin API.
         const apiCounts = await waitForMyTreesApiRequests(env, {
-          'GET /api/trees': 1,
+          'GET /api/trees?pagination=cursor': 1,
           'GET /api/trees/mt-tree-3888-1': 1,
           'GET /api/memories?treeId=mt-tree-3888-1': 2,
         }, 15000);
@@ -2472,7 +2472,7 @@ test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) =>
             requestSet,
             [
               'GET /api/memories?treeId=mt-tree-3888-1',
-              'GET /api/trees',
+              'GET /api/trees?pagination=cursor',
               'GET /api/trees/mt-tree-3888-1',
             ],
             `same-origin API request set must be exactly the owner allowlist, got: ${JSON.stringify(requestSet)}`
@@ -2480,7 +2480,7 @@ test('My Trees real-page structural baseline', { timeout: 150000 }, async (t) =>
           assert.deepEqual(
             apiCounts,
             {
-              'GET /api/trees': 1,
+              'GET /api/trees?pagination=cursor': 1,
               'GET /api/trees/mt-tree-3888-1': 1,
               'GET /api/memories?treeId=mt-tree-3888-1': 2,
             },

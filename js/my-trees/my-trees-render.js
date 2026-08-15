@@ -76,6 +76,7 @@
         onToggleVisibility: onToggleVisibility,
         onNavigate: onNavigate,
         onSelect: options && options.onSelect,
+        onLoadMore: options && options.onLoadMore,
         buildTreeCard: buildTreeCardFn,
         updateManageSummary: updateManageSummaryFn,
         getSelectedTreeId: function () { return getSelectedTreeId(stateModule); },
