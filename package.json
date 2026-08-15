@@ -9,6 +9,7 @@
     "build": "node scripts/build-static.js",
     "test": "node --test tests/smoke/*.test.cjs tests/routes/*.test.cjs tests/contracts/*.test.cjs",
     "test:db-engine:tree-comments": "node --test --test-concurrency=1 tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
+    "test:db-engine:tree-social-visibility-concurrency": "node --test --test-concurrency=1 tests/db-engine/tree-social-visibility-concurrency-postgres.test.cjs",
     "test:db-engine:trees-schema": "node --test --test-concurrency=1 tests/db-engine/trees-schema-foothold-postgres.test.cjs",
     "test:db-engine:fork-public-tree-visibility-concurrency": "node --test --test-concurrency=1 tests/db-engine/fork-public-tree-visibility-concurrency-postgres.test.cjs",
     "test:db-engine:generic-social-a-guard": "node --test --test-concurrency=1 tests/db-engine/generic-social-a-guard-postgres.test.cjs",
