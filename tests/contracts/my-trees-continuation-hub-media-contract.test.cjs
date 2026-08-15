@@ -93,7 +93,6 @@ test('My Trees hub uses localized 내 트리 미리보기 and Selected tree tags
   assert.match(hub, /showPlaceholder\(\)[\s\S]*?i18nHub\('myTrees\.hub_badge'/, 'showPlaceholder must update badge using myTrees.hub_badge key');
   assert.match(hub, /showContent\([\s\S]*?i18nHub\('myTrees\.hub_badge'/, 'showContent must update badge using myTrees.hub_badge key');
 
-  // Verify no empty string keys are used for the hub badge in runtime rendering
   const lines = hub.split('\n');
   for (const line of lines) {
     if (line.includes('els.badge.textContent') && line.includes('i18nHub')) {
@@ -108,9 +107,6 @@ test('My Trees hub visually simplifies representative blocks and differentiates 
 
   assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'representative block card decorations must be removed');
   assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*background:\s*var\(--primary\);[^}]*color:\s*white;[^}]*\}/s, '감상 열기 (openBtn) must be primary colored');
-  // #3578 Phase 1: the Edit secondary button is removed from the hub.
-  // Appreciation (openBtn) is the only external entry; verify the obsolete
-  // edit-btn secondary outline style is gone.
   assert.doesNotMatch(actions, /\.my-trees-hub-edit-btn\b/, 'obsolete edit-btn secondary style must be absent (#3578)');
 });
 
@@ -174,5 +170,11 @@ test('My Trees Memory continuation is explicit-demand, one-page-at-a-time, retry
   assert.match(render, /getOwnerListGeneration\(\) !== authority\.generation/, 'Memory page state must be bound to the owner-list epoch');
   assert.match(render, /getTreeId\(selected\) !== authority\.treeId/, 'participant continuation must reject a late response after tree selection changes');
   assert.match(render, /data-my-trees-memory-continuation/, 'expanded flow must expose a dedicated demand control when another server page exists');
-  assert.match(render, /setTimeout\(function \(\) \{\s*fetchNextMemoryPage\(selectedTree\);\s*\}, 0\);/, 'first flow expansion must request at most one additional page after the existing toggle runs');
+
+  const selectionIndex = render.indexOf('var selectedTree = hub.getSelectedTree();');
+  const deferredStart = render.indexOf('setTimeout(function () {', selectionIndex);
+  const demandIndex = render.indexOf('fetchNextMemoryPage(selectedTree);', deferredStart);
+  const deferredEnd = render.indexOf('}, 0);', demandIndex);
+  assert.ok(selectionIndex >= 0 && deferredStart > selectionIndex && demandIndex > deferredStart && deferredEnd > demandIndex,
+    'first flow expansion must schedule one selected-tree page demand after the existing toggle runs');
 });
