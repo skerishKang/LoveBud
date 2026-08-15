@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from typing import Any
 
@@ -167,6 +168,12 @@ _SOURCE_ACK_MAX_LEN = {
     "sourceType": 50,
     "thumbnail": 500,
 }
+
+
+def _memory_parent_advisory_lock(tree_id: str) -> int:
+    raw = f"memory-parent-graph:{tree_id}"
+    digest = hashlib.sha256(raw.encode("utf-8")).digest()[:8]
+    return int.from_bytes(digest, byteorder="big", signed=True)
 
 
 def _source_ack_requested_value(payload_key: str, payload: dict[str, Any]) -> str:
@@ -357,11 +364,40 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                # Validate the reparent (existence / same-tree / self / ancestor
-                # cycle) and acquire the row locks that make the check atomic
-                # with the UPDATE below — all within this single transaction.
                 if reparent_target is not None:
-                    _validate_reparent_atomic(cur, safe_memory_id, reparent_target, memory["tree_id"])
+                    # Reread source Memory + owning Tree inside the transaction
+                    # to obtain the authoritative tree_id. The pre-transaction
+                    # memory["tree_id"] read (from require_memory_owner) must
+                    # NOT be used as concurrency authority (Issue #3951).
+                    cur.execute(
+                        """
+                        SELECT m.id, m.tree_id, m.parent_id, m.visibility,
+                               t.owner_id AS tree_owner_id
+                        FROM memories m
+                        INNER JOIN trees t ON t.id = m.tree_id
+                        WHERE m.id = %s
+                        LIMIT 1
+                        """,
+                        (safe_memory_id,),
+                    )
+                    source_row = cur.fetchone()
+                    if not source_row:
+                        raise HTTPException(status_code=404, detail="Memory not found")
+                    if str(source_row["tree_owner_id"]) != owner_id:
+                        raise HTTPException(
+                            status_code=403, detail="Access denied: not your memory"
+                        )
+                    authoritative_tree_id = str(source_row["tree_id"])
+
+                    # Acquire tree-scoped transaction advisory lock.
+                    # Only one reparent transaction per Tree can proceed,
+                    # while different Trees use independent lock keys and
+                    # do not serialize (Issue #3951).
+                    lock_key = _memory_parent_advisory_lock(authoritative_tree_id)
+                    cur.execute("SELECT pg_advisory_xact_lock(%s)", (lock_key,))
+
+                    # Post-lock: reread source + target, validate graph
+                    _validate_reparent_atomic(cur, safe_memory_id, reparent_target, owner_id)
                 cur.execute(query, tuple(params + [safe_memory_id, owner_id]))
                 row = cur.fetchone()
                 if not row:
@@ -375,40 +411,24 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
     return normalize_memory_row(row)
 
 
-def _validate_reparent_atomic(cur, source_id: str, parent_id: str, tree_id: str) -> None:
-    """Validate a memory reparent and acquire the row locks that make the
-    validation atomic with the subsequent parent_id UPDATE.
+def _validate_reparent_atomic(cur, source_id: str, parent_id: str, owner_id: str) -> None:
+    """Validate a memory reparent under the tree-scoped advisory lock.
 
-    Protects the full logical unit required by Issue #3951:
+    Called after pg_advisory_xact_lock acquisition (tree-scoped key
+    "memory-parent-graph:<tree_id>"). The advisory lock guarantees that
+    only one reparent transaction per Tree is active, so no concurrent
+    reparent within the same Tree can mutate the parent graph underneath
+    this walk.
 
-        parent existence
-        + same-Tree validation
-        + self-parent validation
-        + ancestor / cycle validation
-        + parent_id UPDATE
+    Post-lock steps (all within the single authoritative transaction):
 
-    within a single PostgreSQL serialization boundary (the caller's transaction).
+        1. Reread source Memory + owning Tree (owner_id re-verified)
+        2. Reread target parent (existence + same-Tree check)
+        3. Self-parent rejection
+        4. Ancestor-chain walk + cycle detection
 
-    Locking design (deterministic, deadlock-free, minimal set):
-      * Collect the target parent's ancestor chain (read-only) to size the
-        lock set; this also rejects a pre-existing corrupted cycle and the
-        case where the source is already an ancestor of the target.
-      * Acquire FOR UPDATE on the source memory AND every node on the target's
-        ancestor chain in ONE statement. PostgreSQL locks the IN-set in index
-        (ascending id) order, so any two concurrent reparents that touch
-        overlapping sets acquire their row locks in the same order — no
-        deadlock. Issuing the lock as a single statement also removes any
-        window where a partially-acquired lock set could be contended in a
-        conflicting order.
-      * Re-validate by walking the ancestor chain from the now-locked target
-        (defends against any TOCTOU between the read-only collection and the
-        lock acquisition) and raise PARENT_CYCLE if the source reappears.
-      * Apply existence / same-tree checks against the locked rows, so a
-        concurrent reparent of an ancestor cannot slip a stale state past the
-        validation.
-
-    Any failure raises a bounded HTTPException (never a raw DB error / deadlock
-    / constraint text).
+    Any failure raises a bounded HTTPException (never a raw DB error /
+    deadlock / constraint text).
     """
     source_id = str(source_id)
     parent_id = str(parent_id)
@@ -420,62 +440,51 @@ def _validate_reparent_atomic(cur, source_id: str, parent_id: str, tree_id: str)
             detail={"code": "INVALID_PARENT_ID", "reason": "self_parent"},
         )
 
-    # --- Collect the target's ancestor chain (read-only) to size the lock set ---
-    chain: list[str] = []
-    seen: set[str] = set()
-    cursor_id = parent_id
-    while cursor_id:
-        if cursor_id in seen:
-            # Corrupted pre-existing cycle in the target's ancestry.
-            raise HTTPException(status_code=400, detail={"code": "PARENT_CYCLE"})
-        seen.add(cursor_id)
-        chain.append(cursor_id)
-        if cursor_id == source_id:
-            # Source is already an ancestor of the target -> reparent cycles.
-            raise HTTPException(status_code=400, detail={"code": "PARENT_CYCLE"})
-        cur.execute("SELECT parent_id FROM memories WHERE id = %s", (cursor_id,))
-        row = cur.fetchone()
-        if not row or not row["parent_id"]:
-            break
-        cursor_id = str(row["parent_id"])
-
-    # --- Acquire row locks on source + full ancestor chain in ONE statement ---
-    lock_ids = sorted(set([source_id]) | set(chain), key=lambda v: str(v))
+    # --- Post-lock: reread source Memory ---
     cur.execute(
-        """
-        SELECT id, tree_id, parent_id
-        FROM memories
-        WHERE id = ANY(%s::uuid[])
-        FOR UPDATE
-        """,
-        (lock_ids,),
+        "SELECT m.id, m.tree_id, m.parent_id, t.owner_id AS tree_owner_id FROM memories m INNER JOIN trees t ON t.id = m.tree_id WHERE m.id = %s",
+        (source_id,),
     )
-    locked = {str(r["id"]): r for r in cur.fetchall()}
+    source_row = cur.fetchone()
+    if not source_row:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    if str(source_row["tree_owner_id"]) != owner_id:
+        raise HTTPException(
+            status_code=403, detail="Access denied: not your memory"
+        )
 
-    # --- Re-validate against authoritative locked state (TOCTOU defense) ---
-    _assert_no_ancestor_cycle_locked(cur, source_id, parent_id)
-
-    # --- Target existence / same-tree checks on locked rows ---
-    target = locked.get(parent_id)
-    if target is None:
+    # --- Post-lock: reread target parent ---
+    cur.execute(
+        "SELECT id, tree_id, parent_id FROM memories WHERE id = %s",
+        (parent_id,),
+    )
+    target_row = cur.fetchone()
+    if not target_row:
         raise HTTPException(
             status_code=400,
             detail={"code": "INVALID_PARENT_ID", "reason": "not_found"},
         )
-    if str(target.get("tree_id")) != str(tree_id):
+
+    # --- Same-tree check ---
+    source_tree_id = str(source_row["tree_id"])
+    if str(target_row["tree_id"]) != source_tree_id:
         raise HTTPException(
             status_code=400,
             detail={"code": "PARENT_MEMORY_TREE_MISMATCH"},
         )
 
+    # --- Ancestor-chain walk + cycle check (advisory lock serializes) ---
+    _assert_no_ancestor_cycle_locked(cur, source_id, parent_id)
+
 
 def _assert_no_ancestor_cycle_locked(cur, source_id: str, parent_id: str) -> None:
-    """Walk the target's ancestor chain from the locked rows and raise
-    PARENT_CYCLE if the source is reachable.
+    """Walk the target's ancestor chain and raise PARENT_CYCLE if the
+    source is reachable.
 
-    Every node on the path is already FOR UPDATE locked by the caller, so the
-    chain cannot change underneath this walk. The visited guard also rejects a
-    corrupted pre-existing cycle without looping forever.
+    Every call is protected by the tree-scoped pg_advisory_xact_lock acquired
+    by the caller, so no concurrent reparent can mutate the chain during the
+    walk. The visited guard also rejects a corrupted pre-existing cycle without
+    looping forever.
     """
     source_id = str(source_id)
     parent_id = str(parent_id)

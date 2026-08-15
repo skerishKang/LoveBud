@@ -384,7 +384,7 @@ def test_cross_tree_parent_rejected_update_not_executed():
     source_mem_row = make_memory_row(memory_id, tree_id)
     fx = build_fixture(source_mem_row, parent_mem_row)
 
-    conn = HierarchyConnection(fx, None)
+    conn = HierarchyConnection(fx, None, owner_id=owner_id)
     with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
         with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
             with patch('modal_compute.memory_writes.require_plus_for_private_storage', return_value=None):
@@ -410,7 +410,7 @@ def test_self_parent_rejected_update_not_executed():
     source_mem_row = make_memory_row(memory_id, tree_id)
     fx = build_fixture(source_mem_row)
 
-    conn = HierarchyConnection(fx, None)
+    conn = HierarchyConnection(fx, None, owner_id=owner_id)
     with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
         with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
             with patch('modal_compute.memory_writes.require_plus_for_private_storage', return_value=None):
@@ -440,7 +440,7 @@ def test_descendant_cycle_rejected_update_not_executed():
     child_mem_row = make_memory_row(child_id, tree_id, parent_id=memory_id)
     fx = build_fixture(source_mem_row, child_mem_row)
 
-    conn = HierarchyConnection(fx, None)
+    conn = HierarchyConnection(fx, None, owner_id=owner_id)
     with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
         with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
             with patch('modal_compute.memory_writes.require_plus_for_private_storage', return_value=None):
@@ -805,7 +805,7 @@ def test_parent_not_found_semantics_preserved():
     source_mem_row = make_memory_row(memory_id, tree_id)
     fx = build_fixture(source_mem_row)  # parent_id absent
 
-    conn = HierarchyConnection(fx, None)
+    conn = HierarchyConnection(fx, None, owner_id=owner_id)
     with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
         with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
             with patch('modal_compute.memory_writes.require_plus_for_private_storage', return_value=None):

@@ -5,13 +5,13 @@ must be atomic with the parent UPDATE under PostgreSQL concurrency.
 
 Two layers of proof:
 
-1. Source-contract proof (static): the reparent validation and the parent_id
-   UPDATE execute inside ONE `get_db_connection()` transaction, and the
-   validator acquires FOR UPDATE row locks on the source memory AND every
-   node on the target parent's ancestor chain (deterministic ascending-id
-   order, single ANY statement) before allowing the write. This is the
-   structural guarantee that concurrent reparents cannot read each other's
-   stale state.
+1. Source-contract proof (static): the reparent validation executes inside a
+   single `get_db_connection()` transaction. Inside that transaction, the
+   source Memory + owning Tree are reread to obtain the authoritative tree_id,
+   a tree-scoped pg_advisory_xact_lock is acquired (domain-separated key
+   "memory-parent-graph:<tree_id>"), and then the source and target are
+   reread before graph validation. Different Trees derive different advisory
+   lock keys and do not serialize behind one global lock.
 
 2. Behavioral matrix (mocked DB, authoritative fixture): self-parent,
    cross-tree parent, missing parent, valid same-tree reparent, existing
@@ -21,7 +21,8 @@ Two layers of proof:
    error/constraint/deadlock text leaking to the caller.
 
 The real PostgreSQL concurrency regression (A<->B simultaneous reparent,
-barrier-synchronized, proving BOTH COMMIT is impossible) lives in
+barrier-synchronized, proving BOTH COMMIT is impossible, plus different-Tree
+independence) lives in
 tests/db-engine/memory-parent-cycle-concurrency-postgres.test.cjs, driven by
 a disposable loopback PostgreSQL 17.4 database.
 
@@ -41,6 +42,7 @@ sys.path.insert(0, REPO_ROOT)
 from modal_compute.memory_writes import (
     update_owner_memory,
     _assert_no_ancestor_cycle_locked,
+    _memory_parent_advisory_lock,
 )
 
 
@@ -86,16 +88,21 @@ def _norm(row):
 class HierarchyCursor:
     """Cursor backed by an in-memory parent hierarchy (fixture dict).
 
-    Models the production queries used by _validate_reparent_atomic:
-      * SELECT parent_id FROM memories WHERE id = %s  -> fixture parent
-      * SELECT ... WHERE id = ANY(...) FOR UPDATE       -> locked rows
-      * UPDATE memories ... RETURNING ...               -> configured row
+    Models the production queries used by the advisory-lock-based reparent
+    validation:
+      * SELECT m... FROM memories m INNER JOIN trees t ... -> source + tree_owner_id
+      * SELECT pg_advisory_xact_lock(%s)                     -> no-op
+      * SELECT id, tree_id, parent_id FROM memories WHERE id -> post-lock reread
+      * SELECT parent_id FROM memories WHERE id             -> ancestor walk
+      * UPDATE memories ... RETURNING ...                   -> configured row
     """
 
-    def __init__(self, fixture, updated_row):
+    def __init__(self, fixture, updated_row, owner_id=None):
         self.fx = fixture
         self.updated_row = updated_row
+        self.owner_id = owner_id
         self.execute_calls = []
+        self._pg_advisory_calls = 0
 
     def __enter__(self):
         return self
@@ -110,6 +117,24 @@ class HierarchyCursor:
 
     def fetchone(self):
         q = self._q
+        if "INNER JOIN trees t" in q:
+            pid = self._p[0]
+            row = self.fx.get(str(pid))
+            if row is None:
+                return None
+            return {
+                "id": row["id"],
+                "tree_id": row["tree_id"],
+                "parent_id": row["parent_id"],
+                "visibility": row.get("visibility", "public"),
+                "tree_owner_id": self.owner_id,
+            }
+        if "SELECT id, tree_id, parent_id FROM memories WHERE id" in q:
+            pid = self._p[0]
+            row = self.fx.get(str(pid))
+            if row is None:
+                return None
+            return {"id": row["id"], "tree_id": row["tree_id"], "parent_id": row["parent_id"]}
         if "SELECT parent_id FROM memories WHERE id" in q:
             pid = self._p[0]
             row = self.fx.get(str(pid))
@@ -121,17 +146,14 @@ class HierarchyCursor:
         return None
 
     def fetchall(self):
-        q = self._q
-        if "ANY" in q and "FOR UPDATE" in q:
-            ids = self._p[0]
-            return [self.fx[str(i)] for i in ids if str(i) in self.fx]
         return []
 
 
 class HierarchyConnection:
-    def __init__(self, fixture, updated_row=None):
+    def __init__(self, fixture, updated_row=None, owner_id=None):
         self.fx = fixture
         self.updated_row = updated_row
+        self.owner_id = owner_id
         self.commit_calls = 0
         self.rollback_calls = 0
         self.cursors = []
@@ -143,7 +165,7 @@ class HierarchyConnection:
         pass
 
     def cursor(self, *args, **kwargs):
-        cur = HierarchyCursor(self.fx, self.updated_row)
+        cur = HierarchyCursor(self.fx, self.updated_row, owner_id=self.owner_id)
         self.cursors.append(cur)
         return cur
 
@@ -171,7 +193,7 @@ def build_fixture(*rows):
 def run_update(owner_id, memory_id, payload, fixture, updated_row=None,
                owner_row=None):
     """Run update_owner_memory against a scripted hierarchy connection."""
-    conn = HierarchyConnection(fixture, updated_row)
+    conn = HierarchyConnection(fixture, updated_row, owner_id=owner_id)
     owner = owner_row if owner_row is not None else fixture.get(str(memory_id))
     with patch("modal_compute.memory_writes.get_db_connection", return_value=conn):
         with patch("modal_compute.memory_writes.require_memory_owner", return_value=owner):
@@ -191,7 +213,7 @@ def assert_bounded_detail(detail):
 
 
 # ============================================================================
-# Source-contract proof (atomic single-transaction + locking design)
+# Source-contract proof (atomic single-transaction + advisory lock design)
 # ============================================================================
 
 def test_reparent_validation_runs_in_single_transaction():
@@ -206,11 +228,11 @@ def test_reparent_validation_runs_in_single_transaction():
     )
     # The validation call must live inside that single transaction block,
     # before the UPDATE executes.
-    assert "_validate_reparent_atomic(cur, safe_memory_id, reparent_target" in src, (
+    assert "_validate_reparent_atomic(cur, safe_memory_id, reparent_target, owner_id)" in src, (
         "reparent validation must be invoked inside the main transaction"
     )
     conn_open = src.find("with get_db_connection() as conn:")
-    validate_call = src.find("_validate_reparent_atomic(cur, safe_memory_id, reparent_target")
+    validate_call = src.find("_validate_reparent_atomic(cur, safe_memory_id, reparent_target, owner_id)")
     update_exec = src.find("cur.execute(query, tuple(params + [safe_memory_id, owner_id]))")
     assert validate_call > conn_open, "validation must be inside the transaction"
     assert update_exec > validate_call, "UPDATE must run after validation (same txn)"
@@ -224,30 +246,89 @@ def test_reparent_validation_runs_in_single_transaction():
     )
 
 
-def test_reparent_validator_locks_source_and_ancestor_chain():
-    """_validate_reparent_atomic must FOR UPDATE lock source + ancestor chain."""
+def test_reparent_validator_acquires_advisory_lock_and_rereads():
+    """_validate_reparent_atomic must use tree-scoped pg_advisory_xact_lock
+    and reread source + target after lock acquisition."""
     import modal_compute.memory_writes as mw
-    src = inspect.getsource(mw._validate_reparent_atomic)
+    src = inspect.getsource(mw.update_owner_memory)
 
-    assert "FOR UPDATE" in src, "validator must acquire row locks (FOR UPDATE)"
-    assert "ANY(" in src and "FOR UPDATE" in src, (
-        "validator must lock source + ancestor chain in a single ANY(...) FOR UPDATE"
+    # Source + Tree reread inside transaction for authoritative tree_id.
+    assert "FROM memories m" in src and "INNER JOIN trees t" in src, (
+        "source Memory + owning Tree must be reread inside the transaction"
     )
-    assert "_assert_no_ancestor_cycle_locked(" in src, (
-        "validator must walk the locked ancestor chain for the cycle check"
+    assert "authoritative_tree_id" in src, (
+        "authoritative tree_id must be obtained from the in-transaction reread"
     )
-    # Deterministic ascending-id lock ordering (no deadlock between concurrent
-    # reparents that touch overlapping sets).
-    assert "sorted(" in src, "lock set must be acquired in deterministic order"
-    # Existence / same-tree / self checks must use the LOCKED rows.
-    assert "locked.get(parent_id)" in src, "existence check must use locked rows"
-    assert "PARENT_MEMORY_TREE_MISMATCH" in src, "same-tree check must run on locked rows"
+
+    # Tree-scoped advisory lock acquisition.
+    assert "pg_advisory_xact_lock" in src, (
+        "validator must acquire tree-scoped pg_advisory_xact_lock"
+    )
+    assert "_memory_parent_advisory_lock(authoritative_tree_id)" in src, (
+        "advisory lock key must be derived from authoritative tree_id"
+    )
+
+    # _validate_reparent_atomic is called WITH owner_id (post-lock authority).
+    assert "_validate_reparent_atomic(cur, safe_memory_id, reparent_target, owner_id)" in src, (
+        "validator must be called with (cur, source_id, parent_id, owner_id) — post-lock owner authority"
+    )
+
+    # No ANY(...) FOR UPDATE (old architecture removed).
+    validator = inspect.getsource(mw._validate_reparent_atomic)
+    assert "FOR UPDATE" not in validator, (
+        "validator must NOT use row-level FOR UPDATE locks (advisory lock provides serialization)"
+    )
+    assert "ANY(" not in validator or "FOR UPDATE" not in validator, (
+        "validator must NOT use ANY(...) FOR UPDATE pattern"
+    )
+
+    # Post-lock reread of source Memory includes owner_id authority.
+    assert "SELECT m.id, m.tree_id, m.parent_id, t.owner_id AS tree_owner_id FROM memories m INNER JOIN trees t ON t.id = m.tree_id WHERE m.id = %s" in validator, (
+        "validator must reread source Memory + owning Tree (with owner_id check) after lock acquisition"
+    )
+    assert "Access denied: not your memory" in validator, (
+        "post-lock source reread must re-verify owner_id authority"
+    )
+    assert "PARENT_MEMORY_TREE_MISMATCH" in validator, (
+        "same-tree check must be present in the validator"
+    )
+    assert "_assert_no_ancestor_cycle_locked(" in validator, (
+        "validator must walk the ancestor chain for the cycle check"
+    )
+    assert "INVALID_PARENT_ID" in validator, (
+        "bounded missing-parent code must be present"
+    )
+    # PARENT_CYCLE is raised by the locked ancestor walker.
+    walker = inspect.getsource(mw._assert_no_ancestor_cycle_locked)
+    assert "PARENT_CYCLE" in walker, (
+        "bounded cycle code must be present in the ancestor walker"
+    )
+
+
+def test_advisory_lock_key_is_domain_separated():
+    """_memory_parent_advisory_lock must produce different keys for different trees."""
+    tree_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    tree_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+    key_a = _memory_parent_advisory_lock(tree_a)
+    key_b = _memory_parent_advisory_lock(tree_b)
+    assert key_a != key_b, (
+        "different Trees must derive different advisory lock keys"
+    )
+    # Verify the key derivation uses SHA-256 (deterministic, domain-separated).
+    src = inspect.getsource(_memory_parent_advisory_lock)
+    assert "memory-parent-graph:" in src, (
+        "advisory lock key must be domain-separated with 'memory-parent-graph:' prefix"
+    )
+    assert "sha256" in src.lower() or "SHA256" in src, (
+        "advisory lock key must use SHA-256 derivation (project convention)"
+    )
 
 
 def test_reparent_validator_rejects_raw_db_errors():
     """Validator failures are bounded HTTPExceptions, never raw psycopg errors."""
     import modal_compute.memory_writes as mw
     src = inspect.getsource(mw._validate_reparent_atomic)
+    src += inspect.getsource(mw._assert_no_ancestor_cycle_locked)
     # Every failure path raises a bounded HTTPException with a code.
     for code in ("INVALID_PARENT_ID", "PARENT_MEMORY_TREE_MISMATCH", "PARENT_CYCLE"):
         assert f'"{code}"' in src or f"'{code}'" in src, (
@@ -417,7 +498,7 @@ def test_reject_leaves_original_relationship_intact_zero_partial_mutation():
         assert e.detail.get("code") == "INVALID_PARENT_ID"
         assert e.detail.get("reason") == "not_found"
         assert_bounded_detail(e.detail)
-    conn = HierarchyConnection(fx2, None)
+    conn = HierarchyConnection(fx2, None, owner_id=owner)
     with patch("modal_compute.memory_writes.get_db_connection", return_value=conn):
         with patch("modal_compute.memory_writes.require_memory_owner",
                    return_value=fx2.get(A)):
@@ -465,7 +546,7 @@ def test_owner_authorization_blocks_foreign_actor():
     B = "33333333-3333-3333-3333-333333333333"
     fx = build_fixture(make_memory_row(A, tree), make_memory_row(B, tree))
 
-    conn = HierarchyConnection(fx, make_memory_row(A, tree, parent_id=B))
+    conn = HierarchyConnection(fx, make_memory_row(A, tree, parent_id=B), owner_id=owner)
     with patch("modal_compute.memory_writes.get_db_connection", return_value=conn):
         with patch(
             "modal_compute.memory_writes.require_memory_owner",
@@ -477,6 +558,30 @@ def test_owner_authorization_blocks_foreign_actor():
             except HTTPException as e:
                 assert e.status_code == 403
     assert conn.commit_calls == 0, "no mutation for unauthorized actor"
+
+
+def test_post_lock_owner_mismatch_rejected():
+    """Post-lock source reread must re-verify owner_id and reject mismatch."""
+    owner = "owner-123"
+    other_owner = "owner-999"  # different from the authenticated caller
+    tree = "22222222-2222-2222-2222-222222222222"
+    A = "11111111-1111-1111-1111-111111111111"
+    B = "33333333-3333-3333-3333-333333333333"
+    fx = build_fixture(make_memory_row(A, tree), make_memory_row(B, tree))
+
+    # Connection cursor returns tree_owner_id=other_owner (≠ owner).
+    conn = HierarchyConnection(fx, make_memory_row(A, tree, parent_id=B), owner_id=other_owner)
+
+    with patch("modal_compute.memory_writes.get_db_connection", return_value=conn):
+        with patch("modal_compute.memory_writes.require_memory_owner", return_value=fx.get(A)):
+            with patch("modal_compute.memory_writes.require_plus_for_private_storage", return_value=None):
+                try:
+                    update_owner_memory(owner, A, {"parentId": B})
+                    assert False, "post-lock owner mismatch must be rejected"
+                except HTTPException as e:
+                    assert e.status_code == 403
+                    assert "Access denied: not your memory" in str(e.detail)
+    assert conn.commit_calls == 0, "no mutation for post-lock owner mismatch"
 
 
 def test_serialized_reparent_prevents_cycle():
@@ -570,8 +675,10 @@ if __name__ == "__main__":
     tests = [
         ("source: reparent validation runs in single transaction",
          test_reparent_validation_runs_in_single_transaction),
-        ("source: validator locks source + ancestor chain",
-         test_reparent_validator_locks_source_and_ancestor_chain),
+        ("source: validator acquires advisory lock + rereads",
+         test_reparent_validator_acquires_advisory_lock_and_rereads),
+        ("source: advisory lock key is domain-separated",
+         test_advisory_lock_key_is_domain_separated),
         ("source: validator rejects with bounded codes only",
          test_reparent_validator_rejects_raw_db_errors),
         ("self parent rejected, no mutation", test_self_parent_rejected_no_mutation),
@@ -586,6 +693,7 @@ if __name__ == "__main__":
          test_reject_leaves_original_relationship_intact_zero_partial_mutation),
         ("combined parent + visibility + emotionTags atomic", test_combined_parent_visibility_emotiontags_atomic),
         ("owner authorization blocks foreign actor", test_owner_authorization_blocks_foreign_actor),
+        ("post-lock owner mismatch rejected (authority re-verified)", test_post_lock_owner_mismatch_rejected),
         ("serialized reparent prevents cycle", test_serialized_reparent_prevents_cycle),
         ("locked walk detects cycle", test_locked_walk_detects_cycle),
         ("locked walk detects no cycle", test_locked_walk_detects_no_cycle),

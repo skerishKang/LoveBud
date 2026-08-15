@@ -4,27 +4,31 @@
  * Issue #3951 — Memory parent cycle validation must be atomic with the
  * parent UPDATE under real PostgreSQL concurrency.
  *
- * Two parts:
+ * Three parts:
  *
- * 1. Source-contract proof: `update_owner_memory` runs the reparent
- *    validation and the parent_id UPDATE inside ONE `get_db_connection()`
- *    transaction, and `_validate_reparent_atomic` acquires FOR UPDATE locks
- *    on the source memory AND the target parent's ancestor chain (single
- *    ANY(...) statement, deterministic ascending-id order) before the write.
+ * 1. Source-contract proof: `update_owner_memory` rereads source Memory +
+ *    owning Tree inside ONE `get_db_connection()` transaction to obtain the
+ *    authoritative tree_id, acquires a tree-scoped pg_advisory_xact_lock
+ *    (domain-separated key "memory-parent-graph:<tree_id>"), then rereads
+ *    source and target before graph validation. Different Trees derive
+ *    different advisory keys and do not serialize behind one global lock.
  *
  * 2. Real PostgreSQL concurrency regression: A and B in the same Tree start
  *    with parent_id NULL. Two independent pg.Client transactions are
  *    synchronized by a barrier so "set A.parent=B" (TX1) and "set B.parent=A"
- *    (TX2) actually overlap. The locking serializes them; exactly one commits
- *    and the other re-validates against the committed hierarchy and gets a
- *    bounded cycle rejection. BOTH COMMIT is proven impossible and the final
- *    reread is acyclic.
+ *    (TX2) actually overlap. The advisory lock serializes same-Tree writes;
+ *    exactly one commits and the other re-validates against the committed
+ *    hierarchy and gets a bounded cycle rejection. BOTH COMMIT is proven
+ *    impossible and the final reread is acyclic.
+ *
+ * 3. Different-Tree concurrency: two independent Trees derive different
+ *    advisory lock keys and do not serialize. Both reparents commit
+ *    concurrently.
  *
  * The exact SQL mirrored here is the SQL emitted by
- * modal_compute/memory_writes.py::_validate_reparent_atomic +
- * update_owner_memory (single transaction, FOR UPDATE via
- * `WHERE id = ANY(%s::uuid[]) FOR UPDATE`, locked ancestor re-walk, then the
- * UPDATE). Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.
+ * modal_compute/memory_writes.py (single transaction, source+Tree reread,
+ * pg_advisory_xact_lock, post-lock reread, ancestor walk, UPDATE). Reads
+ * only LB_TEST_PG* synthetic env; never DATABASE_URL.
  *
  * Refs: #3951, #1882
  */
@@ -33,6 +37,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { Client } = require('pg');
 const { withDisposableDb, baseClientConfig } = require('./helpers/postgres-disposable-harness.cjs');
 
@@ -47,6 +52,17 @@ function functionBody(source, name) {
   const match = source.match(new RegExp(`def\\s+${name}\\s*\\([\\s\\S]*?(?=\\n\\ndef\\s+|$)`));
   assert.ok(match, `missing ${name}`);
   return match[0];
+}
+
+/**
+ * Mirrors modal_compute/memory_writes.py::_memory_parent_advisory_lock.
+ * SHA-256 of "memory-parent-graph:<tree_id>", first 8 bytes as signed int64.
+ * Returns a BigInt so the exact int8 key (no JS Number precision loss past
+ * 2^53) is sent to pg_advisory_xact_lock — identical to the Python value.
+ */
+function memoryParentAdvisoryLock(treeId) {
+  const hash = crypto.createHash('sha256').update(`memory-parent-graph:${treeId}`).digest();
+  return hash.subarray(0, 8).readBigInt64BE();
 }
 
 test('Memory parent reparent validation shares ONE transaction with the UPDATE', () => {
@@ -67,24 +83,46 @@ test('Memory parent reparent validation shares ONE transaction with the UPDATE',
   // Validation runs inside the transaction before the UPDATE.
   assert.match(update, /with get_db_connection\(\) as conn:/);
   const connOpen = update.indexOf('with get_db_connection() as conn:');
-  const validateCall = update.indexOf('_validate_reparent_atomic(cur, safe_memory_id, reparent_target');
+  const validateCall = update.indexOf('_validate_reparent_atomic(cur, safe_memory_id, reparent_target)');
   const updateExec = update.indexOf('cur.execute(query, tuple(params + [safe_memory_id, owner_id]))');
   assert.ok(validateCall > connOpen, 'validation must be inside the transaction');
   assert.ok(updateExec > validateCall, 'UPDATE must run after validation in the same txn');
 });
 
-test('_validate_reparent_atomic locks source + ancestor chain deterministically', () => {
+test('_validate_reparent_atomic uses tree-scoped advisory lock + post-lock rereads', () => {
   const src = readSource(MEMORY_WRITES);
+  const update = functionBody(src, 'update_owner_memory');
   const validator = functionBody(src, '_validate_reparent_atomic');
 
-  assert.match(validator, /FOR UPDATE/, 'validator must acquire row locks');
-  assert.match(validator, /ANY\(%s::uuid\[\]\)/, 'lock must be a single ANY(...)::uuid[] FOR UPDATE');
-  assert.match(validator, /sorted\(/, 'lock set must be acquired in deterministic order');
-  assert.match(validator, /_assert_no_ancestor_cycle_locked\(/, 'locked ancestor re-walk must be used');
+  // Source + Tree reread inside transaction for authoritative tree_id.
+  assert.match(update, /FROM memories m/, 'source+Tree reread must exist in transaction');
+  assert.match(update, /INNER JOIN trees t/, 'Tree join must exist in transaction');
+  assert.match(update, /authoritative_tree_id/, 'authoritative tree_id must be obtained in-transaction');
+
+  // Advisory lock acquisition (not FOR UPDATE row locks).
+  assert.match(update, /pg_advisory_xact_lock/, 'advisory lock must be acquired');
+  assert.match(update, /_memory_parent_advisory_lock/, 'advisory lock key must be derived from tree_id');
+
+  // _validate_reparent_atomic called with (cur, source_id, parent_id, owner_id) — post-lock owner authority.
+  assert.match(update, /_validate_reparent_atomic\(cur, safe_memory_id, reparent_target, owner_id\)/,
+    'validator called with owner_id for post-lock owner authority');
+
+  // No FOR UPDATE or ANY(...) FOR UPDATE (old architecture removed).
+  assert.doesNotMatch(validator, /FOR UPDATE/, 'validator must NOT use row-level FOR UPDATE');
+  assert.doesNotMatch(validator, /ANY\(/, 'validator must NOT use ANY(...) pattern');
+
+  // Post-lock source reread includes owner_id authority (INNER JOIN trees).
+  assert.match(validator, /SELECT m\.id, m\.tree_id, m\.parent_id, t\.owner_id AS tree_owner_id FROM memories m INNER JOIN trees t ON t\.id = m\.tree_id WHERE m\.id = %s/,
+    'post-lock source reread must re-verify owner_id via tree join');
+  assert.match(validator, /Access denied: not your memory/,
+    'post-lock source reread must reject owner mismatch');
+
+  // Bounded error codes.
   assert.match(validator, /INVALID_PARENT_ID/, 'bounded missing-parent code must exist');
   assert.match(validator, /PARENT_MEMORY_TREE_MISMATCH/, 'bounded cross-tree code must exist');
-  assert.match(validator, /PARENT_CYCLE/, 'bounded cycle code must exist');
-  assert.doesNotMatch(validator, /40P01|55P03|2350[3-9]|25P02/,
+  const walker = functionBody(src, '_assert_no_ancestor_cycle_locked');
+  assert.match(walker, /PARENT_CYCLE/, 'bounded cycle code must exist in the ancestor walker');
+  assert.doesNotMatch(validator + walker, /40P01|55P03|2350[3-9]|25P02/,
     'raw PostgreSQL SQLSTATE / constraint codes must not be surfaced by the validator');
 });
 
@@ -121,40 +159,62 @@ async function seedTree(client, treeId, aId, bId, owner = 'owner-1') {
 }
 
 /**
- * Mirrors modal_compute/memory_writes.py::_validate_reparent_atomic +
- * update_owner_memory for a single transaction:
- *   1. collect the target's ancestor chain (read-only)
- *   2. lock source + full ancestor chain via a single ANY(...) FOR UPDATE
- *   3. re-walk the locked chain; if the source reappears -> PARENT_CYCLE
- *   4. otherwise UPDATE parent_id and COMMIT.
+ * Mirrors modal_compute/memory_writes.py reparent logic for a single
+ * transaction:
+ *   1. reread source Memory + owning Tree to get authoritative tree_id
+ *   2. acquire pg_advisory_xact_lock on tree-scoped key
+ *   3. post-lock: reread source and target
+ *   4. self-parent / existence / same-tree / ancestor-cycle validation
+ *   5. UPDATE parent_id and COMMIT
  * Returns { committed: boolean, rejection: string|null }.
  */
-async function reparentOnce(client, sourceId, targetParentId, treeId) {
+async function reparentOnce(client, sourceId, targetParentId) {
   const rejection = await (async () => {
-    const chain = [];
-    const seen = new Set();
-    let cursorId = targetParentId;
-    while (cursorId) {
-      if (seen.has(cursorId)) return 'PARENT_CYCLE';
-      seen.add(cursorId);
-      chain.push(cursorId);
-      if (cursorId === sourceId) return 'PARENT_CYCLE';
-      const { rows } = await client.query(
-        'SELECT parent_id FROM memories WHERE id = $1',
-        [cursorId],
-      );
-      if (!rows.length || !rows[0].parent_id) break;
-      cursorId = rows[0].parent_id;
-    }
+    // --- Self-parent check (no DB read needed) ---
+    if (targetParentId === sourceId) return 'INVALID_PARENT_ID';
 
-    const lockIds = [...new Set([sourceId, ...chain])].sort();
-    const { rows } = await client.query(
-      `SELECT id, tree_id, parent_id FROM memories WHERE id = ANY($1::uuid[]) FOR UPDATE`,
-      [lockIds],
+    // --- Reread source Memory + owning Tree inside transaction ---
+    const { rows: sourceRows } = await client.query(
+      `SELECT m.id, m.tree_id, m.parent_id, m.visibility,
+              t.owner_id AS tree_owner_id
+       FROM memories m
+       INNER JOIN trees t ON t.id = m.tree_id
+       WHERE m.id = $1
+       LIMIT 1`,
+      [sourceId],
     );
-    const locked = new Map(rows.map((r) => [r.id, r]));
+    if (!sourceRows.length) return 'MEMORY_NOT_FOUND';
+    const authoritativeTreeId = String(sourceRows[0].tree_id);
 
-    // Locked ancestor re-walk (TOCTOU defense): chain cannot change now.
+    // --- Acquire tree-scoped advisory lock ---
+    const lockKey = memoryParentAdvisoryLock(authoritativeTreeId);
+    await client.query('SELECT pg_advisory_xact_lock($1)', [lockKey]);
+
+    // --- Post-lock: reread source and target (re-verify owner_id) ---
+    const { rows: sourceRows2 } = await client.query(
+      `SELECT m.id, m.tree_id, m.parent_id, t.owner_id AS tree_owner_id
+       FROM memories m
+       INNER JOIN trees t ON t.id = m.tree_id
+       WHERE m.id = $1`,
+      [sourceId],
+    );
+    if (!sourceRows2.length) return 'MEMORY_NOT_FOUND';
+    // NOTE: the production code raises 403 here; for the concurrency test
+    // we trust the fixture owner so this is a safety guard, not a regression
+    // assertion. The source-contract proof validates the production path.
+    if (String(sourceRows2[0].tree_owner_id) !== 'owner-1') return 'ACCESS_DENIED';
+
+    const { rows: targetRows } = await client.query(
+      'SELECT id, tree_id, parent_id FROM memories WHERE id = $1',
+      [targetParentId],
+    );
+    if (!targetRows.length) return 'INVALID_PARENT_ID';
+
+    // --- Same-tree check ---
+    const sourceTreeId = String(sourceRows2[0].tree_id);
+    if (String(targetRows[0].tree_id) !== sourceTreeId) return 'PARENT_MEMORY_TREE_MISMATCH';
+
+    // --- Ancestor-chain walk + cycle check ---
     let cur = targetParentId;
     const walked = new Set();
     while (cur) {
@@ -169,13 +229,9 @@ async function reparentOnce(client, sourceId, targetParentId, treeId) {
       cur = nextRows[0].parent_id;
     }
 
-    const target = locked.get(targetParentId);
-    if (!target) return 'INVALID_PARENT_ID';
-    if (String(target.tree_id) !== String(treeId)) return 'PARENT_MEMORY_TREE_MISMATCH';
-
     const upd = await client.query(
       'UPDATE memories SET parent_id = $2, updated_at = NOW() WHERE id = $1 AND tree_id = $3 RETURNING id',
-      [sourceId, targetParentId, treeId],
+      [sourceId, targetParentId, sourceTreeId],
     );
     if (!upd.rowCount) return 'MEMORY_NOT_FOUND';
     return null;
@@ -247,7 +303,7 @@ test('PostgreSQL 17.4 serializes concurrent A->B and B->A reparents: BOTH COMMIT
           await client.query('BEGIN');
           await client.query("SET LOCAL lock_timeout = '3s'");
           await barrier.arrive(); // both transactions are now in-flight
-          return await reparentOnce(client, sourceId, targetId, treeId);
+          return await reparentOnce(client, sourceId, targetId);
         } finally {
           try { await client.query('ROLLBACK'); } catch { /* no-op */ }
         }
@@ -283,6 +339,70 @@ test('PostgreSQL 17.4 serializes concurrent A->B and B->A reparents: BOTH COMMIT
   });
 });
 
+test('PostgreSQL 17.4 different Trees derive different advisory keys and do not serialize', async () => {
+  await withDisposableDb('memory_parent_cycle_diff_tree', null, async (ctx) => {
+    await installFixture(ctx.client);
+
+    const tree1 = '10000000-0000-0000-0000-000000000001';
+    const tree2 = '20000000-0000-0000-0000-000000000002';
+    const a1 = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1';
+    const b1 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1';
+    const a2 = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2';
+    const b2 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2';
+
+    await seedTree(ctx.client, tree1, a1, b1);
+    await seedTree(ctx.client, tree2, a2, b2);
+
+    // Verify advisory keys are different.
+    const key1 = memoryParentAdvisoryLock(tree1);
+    const key2 = memoryParentAdvisoryLock(tree2);
+    assert.notEqual(key1, key2, 'different Trees must derive different advisory lock keys');
+
+    const t1 = new Client(baseClientConfig(ctx.cfg, ctx.dbName));
+    const t2 = new Client(baseClientConfig(ctx.cfg, ctx.dbName));
+    await t1.connect();
+    await t2.connect();
+    try {
+      const barrier = makeBarrier(2);
+
+      const run = (client, sourceId, targetId) => async () => {
+        try {
+          await client.query('BEGIN');
+          await client.query("SET LOCAL lock_timeout = '3s'");
+          await barrier.arrive();
+          return await reparentOnce(client, sourceId, targetId);
+        } finally {
+          try { await client.query('ROLLBACK'); } catch { /* no-op */ }
+        }
+      };
+
+      // TX1: a1.parent = b1 (tree1)   TX2: a2.parent = b2 (tree2) — different trees.
+      const [r1, r2] = await Promise.all([
+        run(t1, a1, b1)(),
+        run(t2, a2, b2)(),
+      ]);
+
+      assert.equal(r1.committed, true, 'Tree1 reparent must commit (different lock key)');
+      assert.equal(r2.committed, true, 'Tree2 reparent must commit concurrently (different lock key)');
+
+      // Both hierarchies must be acyclic.
+      const final1 = await readHierarchy(ctx.client, [a1, b1]);
+      const final2 = await readHierarchy(ctx.client, [a2, b2]);
+      assert.ok(isAcyclic(final1.rows), 'Tree1 final hierarchy must be acyclic');
+      assert.ok(isAcyclic(final2.rows), 'Tree2 final hierarchy must be acyclic');
+      assert.equal(String(final1.rows.find((r) => String(r.id) === a1).parent_id), b1,
+        'Tree1 a1.parent must equal b1');
+      assert.equal(String(final2.rows.find((r) => String(r.id) === a2).parent_id), b2,
+        'Tree2 a2.parent must equal b2');
+    } finally {
+      try { await t1.query('ROLLBACK'); } catch { /* no-op */ }
+      try { await t2.query('ROLLBACK'); } catch { /* no-op */ }
+      await t1.end();
+      await t2.end();
+    }
+  });
+});
+
 test('PostgreSQL 17.4 valid same-Tree reparent still commits once (no false rejection)', async () => {
   await withDisposableDb('memory_parent_cycle_valid', null, async (ctx) => {
     await installFixture(ctx.client);
@@ -294,7 +414,7 @@ test('PostgreSQL 17.4 valid same-Tree reparent still commits once (no false reje
     const t1 = new Client(baseClientConfig(ctx.cfg, ctx.dbName));
     await t1.connect();
     try {
-      const outcome = await reparentOnce(t1, aId, bId, treeId);
+      const outcome = await reparentOnce(t1, aId, bId);
       assert.equal(outcome.committed, true, 'valid same-Tree reparent must commit');
       const rows = await readHierarchy(ctx.client, [aId, bId]);
       const parentOf = new Map(rows.rows.map((r) => [String(r.id), r.parent_id ? String(r.parent_id) : null]));
