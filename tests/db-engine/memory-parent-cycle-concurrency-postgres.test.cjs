@@ -84,7 +84,8 @@ test('_validate_reparent_atomic locks source + ancestor chain deterministically'
   assert.match(validator, /INVALID_PARENT_ID/, 'bounded missing-parent code must exist');
   assert.match(validator, /PARENT_MEMORY_TREE_MISMATCH/, 'bounded cross-tree code must exist');
   assert.match(validator, /PARENT_CYCLE/, 'bounded cycle code must exist');
-  assert.doesNotMatch(validator, /deadlock/i, 'raw deadlock text must not be surfaced');
+  assert.doesNotMatch(validator, /40P01|55P03|2350[3-9]|25P02/,
+    'raw PostgreSQL SQLSTATE / constraint codes must not be surfaced by the validator');
 });
 
 // ---------------------------------------------------------------------------
