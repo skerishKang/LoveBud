@@ -647,14 +647,13 @@ def get_memory_comments(
     authorization: str | None = Header(default=None),
 ) -> list[dict] | dict:
     user = require_firebase_user(authorization)
-    safe_memory_id = validate_required_uuid(memory_id, "memoryId")
-    if pagination == "cursor" or cursor is not None:
-        try:
-            items, next_cursor = page_comments(safe_memory_id, user["uid"], limit=limit, cursor=cursor)
-        except CommentCursorError:
-            raise HTTPException(status_code=400, detail="Invalid pagination cursor")
-        return {"comments": items, "nextCursor": next_cursor}
-    return fetch_comments(safe_memory_id, user["uid"], limit=limit)
+    if pagination != "cursor" and cursor is None:
+        return fetch_comments(memory_id, user["uid"])
+    try:
+        items, next_c = page_comments(memory_id, user["uid"], limit=limit, cursor=cursor)
+    except CommentCursorError:
+        raise HTTPException(status_code=400, detail="Invalid pagination cursor")
+    return {"comments": items, "nextCursor": next_c}
 
 
 @web_app.delete("/modal/private/comments/{comment_id}")

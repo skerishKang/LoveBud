@@ -228,12 +228,7 @@ def fetch_public_comments(
     }
 
 
-def fetch_comments(
-    memory_id: str,
-    requester_uid: str,
-    limit: int = 50,
-    cursor: str | None = None,
-) -> list[dict[str, Any]]:
+def fetch_comments(memory_id: str, requester_uid: str, limit: int = 50, cursor: str | None = None) -> list[dict[str, Any]]:
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
     require_memory_visible_or_owner(safe_memory_id, requester_uid)
     try:
