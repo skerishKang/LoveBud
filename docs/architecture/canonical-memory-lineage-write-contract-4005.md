@@ -22,7 +22,7 @@ Current PR state (reconciled at 2026-08-15):
 - #3992 — **MERGED** (2026-08-14). Refactored `modal_compute/memory_writes.py` onto a shared strict `validate_emotion_tags()` helper.
 - #3969 — **MERGED** (2026-08-14). Parent Tree visibility fail-closed correction applied.
 
-These three historical overlaps are resolved. However, #3951 Memory parent-cycle atomicity / concurrency (#4048, currently OPEN/DRAFT) still owns `modal_compute/memory_writes.py` transaction authority. #4005 must not introduce concurrent edits to `memory_writes.py` until #3951 stabilizes.
+These three historical overlaps are resolved. #3951 Memory parent-cycle atomicity / concurrency is CLOSED/completed and #4048 is MERGED (verified 2026-08-16), so `modal_compute/memory_writes.py` transaction authority is no longer an active OPEN/DRAFT overlap. #4005 remains docs-only and does not introduce any concurrent edit to `memory_writes.py`.
 
 Verdict:
 
@@ -330,7 +330,7 @@ No new executable Production migration should be added through legacy `scripts/m
 GO_CLIENT_KEY_STABLE_IDENTITY_CONTRACT
 GO_NULLABLE_BACKWARD_COMPATIBILITY
 HOLD_SORT_ORDER_PRODUCT_SEMANTICS
-HOLD_MEMORY_RUNTIME_IMPLEMENTATION_FOR_ACTIVE_3951_OVERLAP
+HOLD_MEMORY_RUNTIME_IMPLEMENTATION_SEPARATE_CHILD_REQUIRED
 HOLD_CANONICAL_MANIFEST_ADOPTION
 HOLD_PRODUCTION_MIGRATION
 CANONICAL_MIGRATION_CATALOG_ENTRY_ALLOWED_WHILE_ADOPTION_REQUIRED

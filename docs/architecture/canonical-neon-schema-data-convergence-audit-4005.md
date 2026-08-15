@@ -9,7 +9,7 @@ LoveTree authoritative main observed during audit: `06dfb7e52a3c5a96d309142bbeb0
 **CURRENT AT FINAL RECONCILIATION (checked 2026-08-16):**  
 LoveBud alignment basis (main): `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd`  
 PR #4007: a plain merge-forward from that main completed without conflicts (historical/intermediate merge-forward commit `86ab1ba91345d14ed208ac4772cd158281281aa2`); the current PR head is authoritative from GitHub PR metadata and is intentionally not self-pinned in this document.  
-Active writer overlap: #3951 (issue, OPEN) / #4048 (Draft, OPEN) owns `modal_compute/memory_writes.py` transaction authority and is CI-GREEN; #4007 remains docs-only.  
+Runtime-write authority: #3951 is CLOSED/completed and #4048 is MERGED (verified 2026-08-16); `modal_compute/memory_writes.py` transaction authority is therefore resolved, not an active OPEN/DRAFT overlap. #4007 remains docs-only and does not introduce any runtime write.  
 Historical overlaps #3992, #3969, #3999: all MERGED (verified 2026-08-16).
 
 ## 1. Scope and safety
@@ -673,7 +673,7 @@ The additive schema is branch-proven on `br-bitter-shape-a1yp6iup`. No conflict 
 
 | Component | Active owner | Status | Impact on #4007 |
 |---|---|---|---|
-| modal_compute/memory_writes.py | #3951/#4048 | OPEN/DRAFT; CI GREEN | HOLD — #4007 must not touch |
+| modal_compute/memory_writes.py | #3951 (CLOSED), #4048 (MERGED) | resolved; CI GREEN | #4007 docs-only — must not touch runtime |
 | Migration manifest | #3846/#3998 | MERGED | Documented; no change needed |
 | Memory proxy boundary | #3999 | MERGED | No longer blocking |
 | Emotion tags validation | #3992 | MERGED | No longer blocking |
@@ -718,7 +718,7 @@ CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage
 SCHEMA_DIFF_COMPLETENESS                  = PARTIAL (exhaustive per-column/privilege matrix requires fresh live catalog; see Appendix A)
 OWNERSHIP_SUBJECT_INVENTORY_COMPLETENESS  = SUBSTANTIAL (12 tables, 12 columns; all UUID→users.id; no direct Firebase UID persistence)
 MEMORY_LINEAGE_SCHEMA_READINESS           = BRANCH_PROVEN (go_additive)
-RUNTIME_IMPLEMENTATION_AUTHORITY          = HOLD (active #3951/#4048 overlap)
+RUNTIME_IMPLEMENTATION_AUTHORITY          = HOLD (#4007 is docs/audit contract only; runtime implementation requires a separate child issue; sortOrder product/reorder semantics unresolved; canonical migration adoption HOLD; Production apply NOT AUTHORIZED)
 CANONICAL_MIGRATION_ADOPTION              = HOLD (status ADOPTION_REQUIRED; catalog population allowed)
 PRODUCTION_MIGRATION                      = NOT AUTHORIZED
 MEMORY_RUNTIME_IMPLEMENTATION_IN_THIS_PR  = NOT PERFORMED (docs-only scope preserved)
