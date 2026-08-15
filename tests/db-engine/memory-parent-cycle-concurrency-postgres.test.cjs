@@ -83,7 +83,7 @@ test('Memory parent reparent validation shares ONE transaction with the UPDATE',
   // Validation runs inside the transaction before the UPDATE.
   assert.match(update, /with get_db_connection\(\) as conn:/);
   const connOpen = update.indexOf('with get_db_connection() as conn:');
-  const validateCall = update.indexOf('_validate_reparent_atomic(cur, safe_memory_id, reparent_target)');
+  const validateCall = update.indexOf('_validate_reparent_atomic(cur, safe_memory_id, reparent_target, owner_id)');
   const updateExec = update.indexOf('cur.execute(query, tuple(params + [safe_memory_id, owner_id]))');
   assert.ok(validateCall > connOpen, 'validation must be inside the transaction');
   assert.ok(updateExec > validateCall, 'UPDATE must run after validation in the same txn');
