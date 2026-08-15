@@ -155,24 +155,45 @@ test('#3288 onRequestGet missing MODAL_BASE_URL yields 503 (unchanged behavior)'
 
 // ─── #4050 malformed percent-encoded dynamic path taxonomy ─────────────────
 
-const MALFORMED_SEGMENT = '%E0%A4%A';
+const MALFORMED_SEGMENTS = ['%ZZ', '%', '%E0%A4%A'];
+const MALFORMED_SEGMENT = MALFORMED_SEGMENTS[2];
+const VALID_UUID = '123e4567-e89b-12d3-a456-426614174000';
 
 async function assertInvalidPathResponse(response, label) {
   assert.equal(response.status, 400, `${label}: malformed path must return 400`);
   assert.equal(response.headers.get('x-lovebud-upstream'), 'cloudflare', `${label}: edge owns malformed-path failure`);
   assert.equal(response.headers.get('x-lovebud-route-status'), 'invalid-path-encoding', `${label}: typed route status`);
+  assert.ok(response.headers.get('x-lovebud-request-id'), `${label}: request-id must be retained`);
   const body = await response.json();
   assert.equal(body.code, INVALID_PATH_ENCODING_CODE, `${label}: typed error code`);
   assert.equal(body.error, 'Invalid path encoding', `${label}: stable safe error`);
-  assert.ok(!JSON.stringify(body).includes(MALFORMED_SEGMENT), `${label}: malformed input must not be echoed`);
+  for (const malformed of MALFORMED_SEGMENTS) {
+    assert.ok(!JSON.stringify(body).includes(malformed), `${label}: malformed input must not be echoed`);
+  }
 }
 
-test('#4050 shared path decoder catches URIError only and preserves valid encoded segments', () => {
-  assert.equal(normalizeEncodedPathSegment('%E2%9C%93'), '%E2%9C%93');
-  assert.throws(
-    () => normalizeEncodedPathSegment(MALFORMED_SEGMENT),
-    (error) => error && error.code === INVALID_PATH_ENCODING_CODE
+test('#4050 shared path decoder catches the required malformed forms, URIError only, and preserves valid IDs', () => {
+  assert.equal(normalizeEncodedPathSegment(VALID_UUID), VALID_UUID, 'plain UUID-shaped ID must remain unchanged');
+  assert.equal(normalizeEncodedPathSegment('%E2%9C%93'), '%E2%9C%93', 'valid percent-encoded segment must remain canonical');
+
+  for (const malformed of MALFORMED_SEGMENTS) {
+    assert.throws(
+      () => normalizeEncodedPathSegment(malformed),
+      (error) => error && error.code === INVALID_PATH_ENCODING_CODE,
+      `${malformed} must produce the typed malformed-path error`
+    );
+  }
+
+  const encodedTreeTarget = buildModalUrl(
+    makeRequest({ method: 'GET', path: '/api/trees/%E2%9C%93', auth: false }),
+    ENV
   );
+  assert.equal(encodedTreeTarget.pathname, '/modal/trees/%E2%9C%93', 'valid encoded route segment keeps decode/re-encode behavior');
+  const uuidTreeTarget = buildModalUrl(
+    makeRequest({ method: 'GET', path: `/api/trees/${VALID_UUID}`, auth: false }),
+    ENV
+  );
+  assert.equal(uuidTreeTarget.pathname, `/modal/trees/${VALID_UUID}`);
 
   const originalDecodeURIComponent = globalThis.decodeURIComponent;
   try {
@@ -204,7 +225,7 @@ test('#4050 catch-all returns typed 400 for malformed Tree fork/capability/hub-l
   };
   try {
     for (const item of cases) {
-      const headers = new Headers();
+      const headers = new Headers({ 'x-lovebud-request-id': 'req-4050-catchall' });
       if (item.auth) headers.set('authorization', 'Bearer test-token');
       if (item.body !== undefined) headers.set('content-type', 'application/json');
       const request = new Request(`https://api.example.com${item.path}`, {
@@ -214,6 +235,7 @@ test('#4050 catch-all returns typed 400 for malformed Tree fork/capability/hub-l
       });
       const response = await onCatchAllRequest({ request, env: ENV });
       await assertInvalidPathResponse(response, `${item.method} ${item.path}`);
+      assert.equal(response.headers.get('x-lovebud-request-id'), 'req-4050-catchall', 'existing request-id must be preserved');
     }
     assert.equal(fetchCalls, 0, 'malformed catch-all paths must fail before Modal fetch');
   } finally {
@@ -228,6 +250,7 @@ test('#4050 Memory proxy returns typed 400 for malformed GET and authorized DELE
     env: ENV
   }, { requestId: 'req-4050-memory-get' });
   await assertInvalidPathResponse(getResponse, 'Memory GET');
+  assert.equal(getResponse.headers.get('x-lovebud-request-id'), 'req-4050-memory-get');
 
   const unauthDelete = await prepareMemoryWriteProxyRequest(
     new Request(malformedUrl, { method: 'DELETE' }),
