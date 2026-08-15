@@ -1,5 +1,5 @@
 (function () {
-    function createSearchPreviewController({ refs, state, ui, previewCacheApi, dataApi, PreviewRenderer }) {
+    function createSearchPreviewController({ refs, state, ui, dataApi }) {
         const DEFAULT_CATEGORY = '전체';
 
         function getSelectedTreeFromFiltered(filteredTrees) {
@@ -106,12 +106,11 @@
                 window.updateUrlState({ historyMode: effectiveHistory });
             }
 
-            if (Array.isArray(tree.memories) && tree.memories.length > 0) {
-                previewCacheApi.writePreviewCache(tree.id, tree);
-                PreviewRenderer.updatePreview(tree);
-                return;
-            }
-
+            // #4055 (Web CTO blocking review): never paint a previously-merged
+            // tree's memories inline as current authority. A tree in
+            // state.allTrees may carry memories from an earlier hydration that
+            // outlived a Memory-only revocation while the parent Tree stayed
+            // public. Every preview open revalidates current Memory authority.
             dataApi.hydrateSelectedTreePreview(tree);
         }
 

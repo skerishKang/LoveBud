@@ -31,6 +31,6 @@ test('Search data module does not request the growing-trees endpoint', () => {
 });
 
 test('Search page cache-busts runtime modules per actual change range', () => {
-  assert.equal(searchHtml.includes('js/search/search-data.js?v=20260616-2539-1'), true);
-  assert.equal(searchHtml.includes('js/search/index.js?v=20260713-3482-2'), true);
+  assert.equal(searchHtml.includes('js/search/search-data.js?v=20260816-4055-2'), true);
+  assert.equal(searchHtml.includes('js/search/index.js?v=20260816-4055-1'), true);
 });
