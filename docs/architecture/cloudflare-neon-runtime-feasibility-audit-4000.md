@@ -6,15 +6,15 @@
 **Parent:** #4000
 **Historical LoveBud source baseline:** `cc6cb26854e4cc692d3109debe05b0de1ab23a89`
 **Historical LoveTree comparison baseline:** `06dfb7e52a3c5a96d309142bbeb06a3445a18f96`
-**Current main reference:** `fd7c77e3aaff3df04d68915323c3f46cccb887f9`
+**Current main reference:** `600b92c60cad039de93a0b3b90f8d93860454d85`
 **Audit branch:** `docs/4000-cloudflare-neon-runtime-audit`
-**Subsequent authoritative decisions:** #4004 (Shared Platform / Auth Authority), #4003 / #4045 (Direct-Neon Browse Transport Prototype)
+**Subsequent authoritative decisions:** #4004 (Shared Platform / Auth Authority), #4003 (Direct-Neon Browse Query Core Isolation — Merged PR #4012 / Prototype Draft PR #4045)
 
 ### Reconciliation & Current Platform Context (Post-#4004 / #4003 / #4045)
 
 This document preserves the original technical forensics conducted under #4001 while recording subsequent authoritative platform decisions:
 
-1. **Direct-Neon Read Feasibility:** The historical recommendation to prototype a direct Neon Serverless HTTP Browse transport (`GO_NEON_SERVERLESS_READ_PROTOTYPE`) was source-prototyped and source+CI validated in downstream prototype lane #4003 / Draft PR #4045, while live runtime parity, latency, CPU, and query-count evidence remain pending.
+1. **Direct-Neon Read Feasibility & Foundation:** The historical recommendation to prototype a direct Neon Serverless HTTP Browse transport (`GO_NEON_SERVERLESS_READ_PROTOTYPE`) had its foundation query core isolated and merged in PR #4012 (Issue #4003), followed by an experimental transport prototype attached in downstream lane #4003 / Draft PR #4045 (source-prototyped and source+CI validated, while live runtime parity, latency, CPU, and query-count evidence remain pending).
 2. **Platform & Backend Authority Supersession:** The original cross-repository verdict `BOUNDED_INTEROPERABILITY_REQUIRED` reflected the state prior to platform convergence. It is **superseded by Issue #4004**, which established that LoveBud and LoveTree share a unified platform, auth, and database authority rather than running dual independent writable backends.
 3. **Data Authority:** The LoveBud database lineage (`133-relovetree` with 36 users, 45 Trees, 287 Memories) is the candidate canonical production data authority, whereas `lovetree-limone` (7 Trees, 4 Memories, no `public.users` table) provides Cloudflare-native architectural references to be selectively converged.
 
@@ -225,6 +225,12 @@ Therefore adding another database-level cache is not automatically beneficial. T
 - cannot serve a previously-public body after visibility revocation.
 
 This is a security/privacy contract, not a performance omission.
+
+Recent platform privacy audits further reinforce this invariant:
+- **Cloudflare Edge Browse Stale-Cache Boundary (#4051 / #4052):** Public Browse summaries cached at the Cloudflare edge must invalidate or expire within strict bounded windows so visibility revocations (making a public Tree private or deleting it) promptly take effect across anonymous readers.
+- **Client/Browser Browse & Preview Cache Boundary (#4055):** Browser-side memory and preview caches must honor visibility boundaries and re-validate before presenting sensitive tree content.
+
+Therefore, direct-Neon migration must guarantee that visibility revocation correctness never depends on stale database or edge caches.
 
 ### 5.3 Hyperdrive query caching is therefore not universally safe by default
 
@@ -713,4 +719,17 @@ DIRECT_NEON_BROWSE_TRANSPORT_PROTOTYPE (#4003 / #4045)
 
 - **Shared Platform Direction:** LoveBud and LoveTree converge on a single shared backend/data/auth authority (#4004).
 - **Production Data Authority:** LoveBud database lineage (`133-relovetree`) is the candidate canonical production data authority.
-- **Transitional Implementation Prototype:** Direct-Neon Browse transport is source-prototyped under #4003 / Draft PR #4045 without dual writes or premature production cutover, pending live runtime parity, latency, CPU, and query-count verification.
+- **Transitional Implementation Prototype:** Direct-Neon Browse transport is source-prototyped under #4003 / Draft PR #4045 (with query core foundation merged in PR #4012) without dual writes or premature production cutover, pending live runtime parity, latency, CPU, and query-count verification.
+
+### 14.3 Canonical final semantics summary
+
+```text
+DIRECT_CLOUDFLARE_NEON_FEASIBILITY     = SOURCE_PROVEN
+DIRECT_NEON_BROWSE_SOURCE_PROTOTYPE   = IMPLEMENTED (#4003 / PR #4012 MERGED, PR #4045 DRAFT)
+LIVE_DIRECT_NEON_RUNTIME_PARITY       = PENDING (Preview/runtime benchmark pending owner action)
+PRODUCTION_CUTOVER                     = NOT_AUTHORIZED
+SHARED_PLATFORM_AUTHORITY              = GOVERNED_BY_#4004
+MODAL                                  = RETAIN_FOR_SPECIALIZED_COMPUTE
+NEON                                   = CANONICAL_RELATIONAL_PERSISTENCE
+REDIS                                  = NOT_REQUIRED_BY_DEFAULT
+```
