@@ -17,6 +17,12 @@
   "classificationBasis": "Content-evidence based. Each file is read; its source-read/execution/fake-env markers determine the primary layer. Filename alone is never used.",
   "entries": [
     {
+      "path": "tests/contracts/ci-failure-observability-4014-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes in-memory, synthetic subprocess, and mock stream tests for scripts/ci-smoke-runner.cjs to verify non-zero exit code preservation on test failure, parsing of TAP/Spec failure output (failing file, subtest name, assertion error message, location), Step Summary generation, stderr highlight formatting, and credential redaction. Also statically reads .github/workflows/ci.yml to verify step ordering (Lint -> Build check -> Smoke test -> Verify) and integration. No real external network, browser, database, or Production mutation (#4014).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-comment-rate-limit-3940-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads modal_compute/social_rate_limit.py, modal_compute/tree_comments.py, and companion test suite to assert bounded Tree-level comment rate limiting contract (10/min, scope tree-comment:actor, memory_id=None, 429/503 taxonomy, transaction ordering visibility -> idempotency -> rate limit -> insert); pure static source-read only, no execution (#3940).",
