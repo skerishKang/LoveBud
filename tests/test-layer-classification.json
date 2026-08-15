@@ -4992,6 +4992,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/client-browse-revocation-cache-4055-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/cache-utils.js, js/search/search-preview-cache.js, and js/search/search-data.js in an in-process fake browser environment (memory cache + fake sessionStorage) and proves the #4055 visibility-revocation sequences deterministically: per-Tree public-projection purge with unrelated-Tree preservation (Case F), sessionStorage resurrection block on reload (Case D), Browse authority-first render with the revoked Tree never painted (Case A), mutation-purge-then-reload absence (Case A2), network-failure negative control where a failed fresh fetch must not restore a deleted Tree from cache (Case C), and the preview authority gate where a cached old thumbnail/source projection is not returned once fresh Browse excludes the Tree (Case B/B2); plus a source-static assertion that mutation purge wiring in editor-tree-helpers/editor-memory-actions/my-trees-actions/editor-rename-ui runs only after confirmed success (Case E). No real network, browser, auth provider, database, deployment, or Production resource is used (#4055).",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -5008,6 +5014,22 @@
       "layer": "SUPPLEMENTAL_PYTHON",
       "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/test_memory_parent_atomicity_3951.py",
+      "defaultCi": false,
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); proves the Issue #3951 reparent source contract (single transaction, tree-scoped pg_advisory_xact_lock, post-lock source/target reread, bounded error codes) and the behavioral matrix (self/cross-tree/missing/cycle/detach/rollback/owner-auth) with a mocked hierarchy fixture. Not enumerated by package.json test script.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/db-engine/memory-parent-cycle-concurrency-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections (barrier-synchronized) to prove concurrent Memory reparents A->B and B->A cannot both commit: tree-scoped pg_advisory_xact_lock serializes same-Tree writes (different Trees derive independent lock keys), the loser re-validates the committed hierarchy and receives a bounded PARENT_CYCLE, and the final reread is acyclic. Also asserts the source contract that validation and the parent_id UPDATE share one transaction. Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
+      "capabilities": [
+        "postgresql"
+      ]
     },
     {
       "path": "tests/contracts/test_owner_tree_query_error_classification.py",

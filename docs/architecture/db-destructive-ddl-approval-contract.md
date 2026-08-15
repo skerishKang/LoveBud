@@ -145,7 +145,7 @@ The contract test creates throwaway canonical repository layouts under the OS te
 | Production mutation | No |
 | Secrets used | No `DATABASE_URL` or secret value was used |
 | Canonical migration added | No |
-| Canonical stream activated | No (`status` remains `ADOPTION_REQUIRED`, `migrations` remains `[]`) |
+| Canonical stream activated | No (`status` remains `ADOPTION_REQUIRED`; 2 catalogued migrations, no runner activation) |
 | Ledger relation DDL written | No |
 | Existing migration file modified | No |
 

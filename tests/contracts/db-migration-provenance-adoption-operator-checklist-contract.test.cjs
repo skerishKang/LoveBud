@@ -292,13 +292,13 @@ describe('DB Migration Provenance Adoption Operator Checklist Contract (#3622)',
     const doc = readDoc(CHECKLIST_PATH);
     const canonical = readJson(CANONICAL_MANIFEST);
     const expected = readJson(EXPECTED_SCHEMA);
-    it('Canonical manifest status matches source', () => {
+    it('Canonical manifest status and count match source', () => {
       assert.match(doc, new RegExp(canonical.status));
-      assert.match(doc, /migrations count:?\s*0|0\s*migrations/i);
+      assert.match(doc, new RegExp(`migrations count:?\\s*${canonical.migrations.length}`, 'i'));
     });
-    it('Expected-schema manifest status matches source', () => {
+    it('Expected-schema manifest status and count match source', () => {
       assert.match(doc, new RegExp(expected.status));
-      assert.match(doc, /critical.?objects count:?\s*0|0\s*critical.?objects/i);
+      assert.match(doc, new RegExp(`critical.?objects count:?\\s*${expected.critical_objects.length}`, 'i'));
     });
     it('Documents Production collection NOT_RUN', () => {
       assert.match(doc, /COLLECTION_NOT_RUN|NOT_RUN/);
