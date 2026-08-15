@@ -35,8 +35,10 @@ from modal_compute.comments import (
     create_comment,
     fetch_comments,
     fetch_public_comments,
+    page_comments,
     soft_delete_own_comment,
 )
+from modal_compute.social_cursor import CommentCursorError
 from modal_compute.owner_reads import (
     OwnerListCursorError,
     OwnerTreeListError,
@@ -507,6 +509,7 @@ async def post_tree_comment(
 def get_tree_comments(
     tree_id: str,
     limit: int = Query(default=20, ge=1, le=50),
+    cursor: str | None = Query(default=None),
     x_lovebud_request_id: str | None = Header(default=None),
 ) -> dict:
     logger = RequestLogger(
@@ -515,7 +518,7 @@ def get_tree_comments(
         method="GET",
     )
     try:
-        result = fetch_tree_comments(tree_id, limit=limit)
+        result = fetch_tree_comments(tree_id, limit=limit, cursor=cursor)
         logger.log_success(status_code=200)
         return result
     except HTTPException:
@@ -638,10 +641,20 @@ async def post_memory_comment(
 @web_app.get("/modal/private/memories/{memory_id}/comments")
 def get_memory_comments(
     memory_id: str,
+    limit: int = Query(default=50, ge=1, le=200),
+    cursor: str | None = Query(default=None),
+    pagination: str | None = Query(default=None),
     authorization: str | None = Header(default=None),
-) -> list[dict]:
+) -> list[dict] | dict:
     user = require_firebase_user(authorization)
-    return fetch_comments(memory_id, user["uid"])
+    safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    if pagination == "cursor" or cursor is not None:
+        try:
+            items, next_cursor = page_comments(safe_memory_id, user["uid"], limit=limit, cursor=cursor)
+        except CommentCursorError:
+            raise HTTPException(status_code=400, detail="Invalid pagination cursor")
+        return {"comments": items, "nextCursor": next_cursor}
+    return fetch_comments(safe_memory_id, user["uid"], limit=limit)
 
 
 @web_app.delete("/modal/private/comments/{comment_id}")
@@ -811,6 +824,7 @@ def get_public_memory_comments(
     tree_id: str,
     memory_id: str,
     limit: int = Query(default=20, ge=1, le=50),
+    cursor: str | None = Query(default=None),
     x_lovebud_request_id: str | None = Header(default=None),
 ) -> dict:
     logger = RequestLogger(
@@ -822,7 +836,7 @@ def get_public_memory_comments(
         safe_tree_id = validate_required_id(tree_id, "treeId")
         safe_memory_id = validate_required_id(memory_id, "memoryId")
         require_public_memory_membership(safe_tree_id, safe_memory_id)
-        result = fetch_public_comments(safe_memory_id, limit=limit)
+        result = fetch_public_comments(safe_memory_id, limit=limit, cursor=cursor)
         logger.log_success(status_code=200)
         return result
     except HTTPException:

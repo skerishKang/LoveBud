@@ -3,7 +3,14 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from fastapi import HTTPException
+
 from modal_compute.db import get_db_connection, run_db_with_retry
+from modal_compute.social_cursor import (
+    CommentCursorError,
+    decode_comment_cursor,
+    encode_comment_cursor,
+)
 from modal_compute.social_errors import SocialWriteError
 from modal_compute.social_idempotency import (
     _compute_key_hash,
@@ -162,58 +169,170 @@ def normalize_public_comment_row(row: dict[str, Any]) -> dict[str, Any]:
 def fetch_public_comments(
     memory_id: str,
     limit: int = 20,
+    cursor: str | None = None,
 ) -> dict[str, Any]:
-    safe_limit = max(1, min(limit, 50))
+    safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    try:
+        safe_limit = int(limit)
+    except (TypeError, ValueError):
+        safe_limit = 20
+    safe_limit = max(1, min(safe_limit, 50))
+
+    decoded = None
+    if cursor is not None:
+        try:
+            decoded = decode_comment_cursor(cursor, "moment_comments", expected_target_id=safe_memory_id)
+        except CommentCursorError:
+            raise HTTPException(status_code=400, detail="Invalid pagination cursor")
 
     def operation():
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                params: list[Any] = [safe_memory_id]
+                cursor_predicate = ""
+                if decoded is not None:
+                    cursor_predicate = "AND ((created_at > %s) OR (created_at = %s AND id > %s))"
+                    params.extend([decoded["created_at"], decoded["created_at"], decoded["id"]])
+                params.append(safe_limit + 1)
                 cur.execute(
-                    """
+                    f"""
                     SELECT id, body, created_at
                     FROM comments
                     WHERE memory_id = %s
                       AND status = 'visible'
                       AND deleted_at IS NULL
-                    ORDER BY created_at ASC
+                      {cursor_predicate}
+                    ORDER BY created_at ASC, id ASC
                     LIMIT %s
                     """,
-                    (memory_id, safe_limit),
+                    tuple(params),
                 )
                 return cur.fetchall()
 
     rows = run_db_with_retry(operation)
-    comments_list = [normalize_public_comment_row(row) for row in rows]
+    has_more = len(rows) > safe_limit
+    returned_rows = rows[:safe_limit]
+    comments_list = [normalize_public_comment_row(row) for row in returned_rows]
+    next_cursor = None
+    if has_more and returned_rows:
+        last_row = returned_rows[-1]
+        next_cursor = encode_comment_cursor(
+            "moment_comments",
+            last_row.get("created_at"),
+            str(last_row["id"]),
+            target_id=safe_memory_id,
+        )
     return {
         "comments": comments_list,
-        "nextCursor": None,
+        "nextCursor": next_cursor,
     }
 
 
-def fetch_comments(memory_id: str, requester_uid: str, limit: int = 50) -> list[dict[str, Any]]:
+def fetch_comments(
+    memory_id: str,
+    requester_uid: str,
+    limit: int = 50,
+    cursor: str | None = None,
+) -> list[dict[str, Any]]:
     safe_memory_id = validate_required_uuid(memory_id, "memoryId")
     require_memory_visible_or_owner(safe_memory_id, requester_uid)
-    safe_limit = max(1, min(limit, 200))
+    try:
+        safe_limit = int(limit)
+    except (TypeError, ValueError):
+        safe_limit = 50
+    safe_limit = max(1, min(safe_limit, 200))
+
+    decoded = None
+    if cursor is not None:
+        try:
+            decoded = decode_comment_cursor(cursor, "moment_comments", expected_target_id=safe_memory_id)
+        except CommentCursorError:
+            raise HTTPException(status_code=400, detail="Invalid pagination cursor")
 
     def operation():
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                params: list[Any] = [safe_memory_id]
+                cursor_predicate = ""
+                if decoded is not None:
+                    cursor_predicate = "AND ((created_at > %s) OR (created_at = %s AND id > %s))"
+                    params.extend([decoded["created_at"], decoded["created_at"], decoded["id"]])
+                params.append(safe_limit)
                 cur.execute(
-                    """
+                    f"""
                     SELECT id, memory_id, owner_id, body, created_at, updated_at
                     FROM comments
                     WHERE memory_id = %s
                       AND status = 'visible'
                       AND deleted_at IS NULL
-                    ORDER BY created_at ASC
+                      {cursor_predicate}
+                    ORDER BY created_at ASC, id ASC
                     LIMIT %s
                     """,
-                    (safe_memory_id, safe_limit),
+                    tuple(params),
                 )
                 return cur.fetchall()
 
     rows = run_db_with_retry(operation)
     return [normalize_comment_row(row, requester_uid) for row in rows]
+
+
+def page_comments(
+    memory_id: str,
+    requester_uid: str,
+    limit: int = 50,
+    cursor: str | None = None,
+) -> tuple[list[dict[str, Any]], str | None]:
+    safe_memory_id = validate_required_uuid(memory_id, "memoryId")
+    require_memory_visible_or_owner(safe_memory_id, requester_uid)
+    try:
+        safe_limit = int(limit)
+    except (TypeError, ValueError):
+        safe_limit = 50
+    safe_limit = max(1, min(safe_limit, 200))
+
+    decoded = None
+    if cursor is not None:
+        decoded = decode_comment_cursor(cursor, "moment_comments", expected_target_id=safe_memory_id)
+
+    def operation():
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                params: list[Any] = [safe_memory_id]
+                cursor_predicate = ""
+                if decoded is not None:
+                    cursor_predicate = "AND ((created_at > %s) OR (created_at = %s AND id > %s))"
+                    params.extend([decoded["created_at"], decoded["created_at"], decoded["id"]])
+                params.append(safe_limit + 1)
+                cur.execute(
+                    f"""
+                    SELECT id, memory_id, owner_id, body, created_at, updated_at
+                    FROM comments
+                    WHERE memory_id = %s
+                      AND status = 'visible'
+                      AND deleted_at IS NULL
+                      {cursor_predicate}
+                    ORDER BY created_at ASC, id ASC
+                    LIMIT %s
+                    """,
+                    tuple(params),
+                )
+                return cur.fetchall()
+
+    rows = run_db_with_retry(operation)
+    has_more = len(rows) > safe_limit
+    returned_rows = rows[:safe_limit]
+    comments_list = [normalize_comment_row(row, requester_uid) for row in returned_rows]
+    next_cursor = None
+    if has_more and returned_rows:
+        last_row = returned_rows[-1]
+        next_cursor = encode_comment_cursor(
+            "moment_comments",
+            last_row.get("created_at"),
+            str(last_row["id"]),
+            target_id=safe_memory_id,
+        )
+    return comments_list, next_cursor
 
 
 def soft_delete_own_comment(comment_id: str, actor_id: str) -> dict[str, Any]:

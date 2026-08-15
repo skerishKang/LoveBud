@@ -69,9 +69,16 @@
                 const options = { method: 'POST', body: JSON.stringify({ body }) };
                 return BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`, addIdempotencyKey(options, idempotencyKey));
             },
-            fetchComments: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`),
+            fetchComments: async (memoryId, options = {}) => {
+                const params = new URLSearchParams();
+                if (options && options.limit) params.set('limit', String(options.limit));
+                if (options && options.cursor) params.set('cursor', String(options.cursor));
+                if (options && options.pagination) params.set('pagination', String(options.pagination));
+                const query = params.toString();
+                return BaseApiFetch.apiFetch(`/memories/${memoryId}/comments` + (query ? '?' + query : ''));
+            },
             fetchPublicMomentReactionSummary: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/reactions`, { publicRead: true }),
-            fetchPublicMomentComments: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/comments`, { publicRead: true })
+            fetchPublicMomentComments: async (treeId, memoryId, options = {}) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/comments` + (options && options.cursor ? `?cursor=${encodeURIComponent(options.cursor)}` : '') + (options && options.limit ? `${options.cursor ? '&' : '?'}limit=${encodeURIComponent(options.limit)}` : ''), { publicRead: true })
         };
     }
 
