@@ -296,7 +296,7 @@ test('#3933 catch-all source guard: no Tree-detail cache persistence remains', (
   assert.ok(!code.includes('__cache/public/trees'), 'no Tree-detail cache key in catch-all');
   assert.ok(!code.includes('x-lovebud-public-tree-cache-expires-at'), 'no 30s expiry header');
   assert.ok(!code.includes('isVerifiedPublicTreeCacheCandidate'), 'no Tree-detail cache candidate logic');
-  assert.ok(code.includes('/__cache/community/trees'), 'Browse summary cache must remain');
+  assert.ok(code.includes('/__cache/community/trees'), 'legacy catch-all Browse key may remain while exact /api/community/trees route owns revocation-safe reads');
   assert.ok(code.includes("headers.set('Cache-Control', 'no-store')"), 'anonymous Tree detail is no-store');
 });
 // ─── Test 5: Existing public behavior remains unchanged ────────────────────
@@ -324,4 +324,174 @@ test('existing public access to public tree returns 200', async () => {
   } finally {
     restore();
   }
+});
+
+// ─── #4051: exact Browse summary route is revocation-safe and no-store ─────
+
+async function callBrowseSummary(request, envOverrides) {
+  const mod = await import('../../functions/api/community/trees.js');
+  const { onRequest } = mod;
+  return onRequest({
+    request,
+    env: { MODAL_BASE_URL, ...envOverrides },
+  });
+}
+
+function browseBody(items) {
+  return new Response(JSON.stringify({ items, nextCursor: null }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' }
+  });
+}
+
+function staleBrowseBody() {
+  return new Response(JSON.stringify({
+    items: [{
+      id: 'tree-revoked',
+      title: 'STALE PRE-REVOCATION TITLE',
+      visibility: 'public',
+      representativeThumbnail: 'https://stale.example/revoked-thumb.jpg',
+      representativeMemorySourceUrl: 'https://stale.example/revoked-source'
+    }],
+    nextCursor: null
+  }), {
+    status: 200,
+    headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=420' }
+  });
+}
+
+test('#4051 Browse: preloaded legacy cache body is ignored after Tree visibility revocation', async () => {
+  const mockCaches = { default: new MockCache3933() };
+  const prevCaches = globalThis.caches;
+  globalThis.caches = mockCaches;
+  await mockCaches.default.put('/__cache/community/trees?view=summary&sort=latest&limit=12', staleBrowseBody());
+  const matchCallsBefore = mockCaches.default.matchCalls;
+  const putCallsBefore = mockCaches.default.putCalls;
+
+  const { calls, restore } = mockFetch(async () => browseBody([]));
+  try {
+    const response = await callBrowseSummary(new Request(`${TEST_HOST}/api/community/trees?view=summary&sort=latest&limit=12`));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.equal(calls.length, 1, 'revocation-safe Browse must re-query Modal authority');
+    assert.equal(mockCaches.default.matchCalls, matchCallsBefore, 'exact Browse route must not read Cache API');
+    assert.equal(mockCaches.default.putCalls, putCallsBefore, 'exact Browse route must not persist Cache API bodies');
+
+    const body = await response.json();
+    assert.deepEqual(body.items, [], 'revoked Tree must disappear according to current authority');
+    assert.ok(!JSON.stringify(body).includes('STALE PRE-REVOCATION TITLE'));
+    assert.ok(!JSON.stringify(body).includes('revoked-thumb.jpg'));
+    assert.ok(!JSON.stringify(body).includes('revoked-source'));
+  } finally {
+    restore();
+    if (prevCaches === undefined) delete globalThis.caches; else globalThis.caches = prevCaches;
+  }
+});
+
+test('#4051 Browse: Memory visibility revocation cannot retain prior representative URL projection', async () => {
+  const mockCaches = { default: new MockCache3933() };
+  const prevCaches = globalThis.caches;
+  globalThis.caches = mockCaches;
+  await mockCaches.default.put('/__cache/community/trees?view=summary&sort=popular&limit=24', staleBrowseBody());
+  const matchCallsBefore = mockCaches.default.matchCalls;
+
+  const freshTree = {
+    id: 'tree-revoked',
+    title: 'Still Public Tree',
+    visibility: 'public',
+    representativeThumbnail: null,
+    representativeMemorySourceUrl: null,
+    emotionTags: []
+  };
+  const { restore } = mockFetch(async () => browseBody([freshTree]));
+  try {
+    const response = await callBrowseSummary(new Request(`${TEST_HOST}/api/community/trees?view=summary&sort=popular&limit=24`));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.equal(mockCaches.default.matchCalls, matchCallsBefore, 'stale representative Memory cache must not be consulted');
+
+    const body = await response.json();
+    assert.equal(body.items[0].id, 'tree-revoked');
+    assert.equal(body.items[0].representativeThumbnail, null);
+    assert.equal(body.items[0].representativeMemorySourceUrl, null);
+    const serialized = JSON.stringify(body);
+    assert.ok(!serialized.includes('revoked-thumb.jpg'));
+    assert.ok(!serialized.includes('revoked-source'));
+  } finally {
+    restore();
+    if (prevCaches === undefined) delete globalThis.caches; else globalThis.caches = prevCaches;
+  }
+});
+
+test('#4051 Browse: sequential authority reads converge after deletion and never become cache hits', async () => {
+  const mockCaches = { default: new MockCache3933() };
+  const prevCaches = globalThis.caches;
+  globalThis.caches = mockCaches;
+  let readCount = 0;
+  const { calls, restore } = mockFetch(async () => {
+    readCount += 1;
+    if (readCount === 1) {
+      return browseBody([{ id: 'tree-delete', title: 'Before Delete', visibility: 'public' }]);
+    }
+    return browseBody([]);
+  });
+
+  try {
+    const url = `${TEST_HOST}/api/community/trees?view=summary&sort=views&limit=18`;
+    const first = await callBrowseSummary(new Request(url));
+    const firstBody = await first.json();
+    assert.equal(firstBody.items[0].id, 'tree-delete');
+
+    const second = await callBrowseSummary(new Request(url));
+    const secondBody = await second.json();
+    assert.deepEqual(secondBody.items, [], 'deleted Tree must disappear on the next anonymous Browse read');
+    assert.equal(calls.length, 2, 'same normalized key must still hit current authority twice');
+    assert.equal(mockCaches.default.matchCalls, 0);
+    assert.equal(mockCaches.default.putCalls, 0);
+    assert.equal(second.headers.get('Cache-Control'), 'no-store');
+  } finally {
+    restore();
+    if (prevCaches === undefined) delete globalThis.caches; else globalThis.caches = prevCaches;
+  }
+});
+
+test('#4051 Browse: all supported sort modes preserve normalized forwarding without Cache API persistence', async () => {
+  const mockCaches = { default: new MockCache3933() };
+  const prevCaches = globalThis.caches;
+  globalThis.caches = mockCaches;
+  const { calls, restore } = mockFetch(async () => browseBody([]));
+
+  try {
+    for (const sort of ['latest', 'popular', 'likes', 'views']) {
+      const response = await callBrowseSummary(new Request(`${TEST_HOST}/api/community/trees?view=summary&sort=${sort}&limit=60`));
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    }
+
+    assert.equal(calls.length, 4);
+    for (const [index, sort] of ['latest', 'popular', 'likes', 'views'].entries()) {
+      const target = new URL(calls[index].url);
+      assert.equal(target.pathname, '/modal/browse/latest');
+      assert.equal(target.searchParams.get('sort'), sort);
+      assert.equal(target.searchParams.get('limit'), '60');
+    }
+    assert.equal(mockCaches.default.matchCalls, 0);
+    assert.equal(mockCaches.default.putCalls, 0);
+  } finally {
+    restore();
+    if (prevCaches === undefined) delete globalThis.caches; else globalThis.caches = prevCaches;
+  }
+});
+
+test('#4051 Browse source guard: exact route owns summary reads with no persistent Cache API', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const code = fs.readFileSync(path.resolve(__dirname, '../../functions/api/community/trees.js'), 'utf8');
+
+  assert.ok(!code.includes('caches.default'), 'exact Browse route must not access caches.default');
+  assert.ok(!code.includes('cache.match'), 'exact Browse route must not read persisted Browse bodies');
+  assert.ok(!code.includes('cache.put'), 'exact Browse route must not persist Browse bodies');
+  assert.ok(!code.includes('max-age=420'), 'retired Browse body TTL must not exist on exact route');
+  assert.ok(code.includes("headers.set('Cache-Control', 'no-store')"), 'Browse responses must be no-store');
+  assert.ok(code.includes('buildModalUrl(request, env || {})'), 'exact route must reuse canonical Browse sort/limit mapping');
 });
