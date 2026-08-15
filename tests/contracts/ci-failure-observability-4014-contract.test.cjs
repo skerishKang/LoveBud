@@ -331,6 +331,14 @@ test('runSmokeProcess preserves failing evidence occurring strictly after >10MiB
     assert.ok(f, 'Must capture the exact subtest name after >10MiB');
     assert.ok(f.errorMessage.includes('exact assertion error after 11MiB harmless stream'), 'Must capture assertion error message');
     assert.ok(f.file.includes('large-prefix-failure.test.cjs'), 'Must capture file name');
+    assert.ok(typeof f.location === 'string' && f.location.length > 0, 'Location must be a non-empty string');
+    assert.match(
+      f.location,
+      /large-prefix-failure\.test\.cjs:\d+(?::\d+)?$/,
+      'Location must contain repository-relative file and line number'
+    );
+    assert.equal(typeof f.line, 'number', 'Line must be parsed as a number');
+    assert.ok(f.line > 0, 'Line number must be a positive integer');
 
     // 3. Retained rawOutput size is strictly bounded to maxTailBytes
     assert.ok(
@@ -344,6 +352,7 @@ test('runSmokeProcess preserves failing evidence occurring strictly after >10MiB
     assert.ok(summary.includes('## ❌ Smoke Test Failed'), 'Summary must have failure header');
     assert.ok(summary.includes('intentional failing subtest strictly after 11MiB prefix boundary'), 'Summary must contain subtest');
     assert.ok(summary.includes('exact assertion error after 11MiB harmless stream'), 'Summary must contain error message');
+    assert.ok(summary.includes(f.location), `Step Summary must contain repository location evidence (${f.location})`);
 
     // 5. Stderr summary highlight
     const errContent = mockStderr.getContent();
