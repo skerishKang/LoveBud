@@ -5004,6 +5004,22 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/test_memory_parent_atomicity_3951.py",
+      "defaultCi": false,
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); proves the Issue #3951 reparent source contract (single transaction, FOR UPDATE on source + ancestor chain, bounded error codes) and the behavioral matrix (self/cross-tree/missing/cycle/detach/rollback/owner-auth) with a mocked hierarchy fixture. Not enumerated by package.json test script.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/db-engine/memory-parent-cycle-concurrency-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections (barrier-synchronized) to prove concurrent Memory reparents A->B and B->A cannot both commit: single ANY(...)::uuid[] FOR UPDATE on source + ancestor chain serializes them, the loser re-validates the committed hierarchy and receives a bounded PARENT_CYCLE, and the final reread is acyclic. Also asserts the source contract that validation and the parent_id UPDATE share one transaction. Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
+      "capabilities": [
+        "postgresql"
+      ]
+    },
+    {
       "path": "tests/contracts/test_owner_tree_query_error_classification.py",
       "defaultCi": false,
       "layer": "SUPPLEMENTAL_PYTHON",

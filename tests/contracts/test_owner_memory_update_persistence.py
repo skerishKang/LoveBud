@@ -19,7 +19,15 @@ sys.path.insert(0, REPO_ROOT)
 from modal_compute.memory_writes import (
     create_owner_memory,
     update_owner_memory,
-    _would_create_cycle,
+    _assert_no_ancestor_cycle_locked,
+)
+# Shared hierarchy-backed mock helpers (single-transaction reparent flow).
+# Issue #3951: validation + UPDATE share ONE DB connection, so the parent
+# tests now script a single cursor instead of a validation/update split.
+from test_memory_parent_atomicity_3951 import (
+    HierarchyConnection,
+    build_fixture,
+    run_update,
 )
 
 
@@ -141,30 +149,18 @@ def test_parent_connect_updates_parent_id_and_returns_normalized():
     tree_id = "22222222-2222-2222-2222-222222222222"
     parent_id = "33333333-3333-3333-3333-333333333333"
 
-    # Setup mocks
+    # Setup mocks: single connection serves validation (locks) + UPDATE.
     parent_mem_row = make_memory_row(parent_id, tree_id)
     source_mem_row = make_memory_row(memory_id, tree_id)
+    fx = build_fixture(source_mem_row, parent_mem_row)
 
-    tracker = MockConnectionTracker()
-
-    # Connection 1: parent validation (parent exists, same tree, not self, no cycle)
-    conn1 = MockConnection()
-    conn1.cursor_factory = lambda *a, **k: MockCursor(fetchone_result=parent_mem_row)
-    tracker.add_connection(conn1)
-
-    # Connection 2: UPDATE returns updated memory with parent_id
-    conn2 = MockConnection()
     updated_row = make_memory_row(memory_id, tree_id, parent_id=parent_id)
-    conn2.cursor_factory = lambda *a, **k: MockCursor(fetchone_result=updated_row)
-    tracker.add_connection(conn2)
-
-    with patch('modal_compute.memory_writes.get_db_connection', side_effect=tracker.get_next_connection):
-        with patch('modal_compute.memory_writes.require_memory_owner') as mock_req:
-            mock_req.return_value = source_mem_row
-            result = update_owner_memory(owner_id, memory_id, {"parentId": parent_id})
+    result, conn = run_update(owner_id, memory_id, {"parentId": parent_id}, fx,
+                              updated_row=updated_row, owner_row=source_mem_row)
 
     assert result["parentId"] == parent_id, f"Expected parentId={parent_id}, got {result['parentId']}"
-    assert tracker.connections[1].commit_calls == 1, "UPDATE should be executed"
+    assert conn.commit_calls == 1, "UPDATE should be executed"
+    assert conn.rollback_calls == 0, "valid reparent must not roll back"
 
 
 def test_parent_disconnect_null_sets_parent_id_null():
@@ -243,46 +239,14 @@ def test_persistence_connect_executes_final_update_memories_with_parent_uuid_in_
     parent_mem_row = make_memory_row(parent_id, tree_id)
     source_mem_row = make_memory_row(memory_id, tree_id)
     updated_row = make_memory_row(memory_id, tree_id, parent_id=parent_id)
+    fx = build_fixture(source_mem_row, parent_mem_row)
 
-    validation_cursor = MockCursor(fetchone_result=parent_mem_row)
-    update_cursor = MockCursor(fetchone_result=updated_row)
-    conn = MockConnection()
-    cursor_calls = [0]
-    def cur_factory(*a, **k):
-        cursor_calls[0] += 1
-        return update_cursor if cursor_calls[0] > 1 else validation_cursor
-    conn.cursor = cur_factory
-
-    tree_mem = {"has_cycle": False}
-    patchers = []
-    try:
-        patchers.append(patch(
-            'modal_compute.memory_writes.get_db_connection',
-            return_value=conn,
-        ))
-        patchers.append(patch(
-            'modal_compute.memory_writes.require_memory_owner',
-            return_value=source_mem_row,
-        ))
-        patchers.append(patch(
-            'modal_compute.memory_writes._would_create_cycle',
-            return_value=False,
-        ))
-        for p in patchers:
-            p.start()
-        try:
-            result = update_owner_memory(owner_id, memory_id, {"parentId": parent_id})
-        finally:
-            for p in patchers:
-                p.stop()
-    except Exception:
-        for p in patchers:
-            p.stop() if p in patchers else None
-        raise
+    result, conn = run_update(owner_id, memory_id, {"parentId": parent_id}, fx,
+                              updated_row=updated_row, owner_row=source_mem_row)
 
     assert result["parentId"] == parent_id, f"Expected parentId={parent_id}, got {result['parentId']}"
 
-    update_calls = [c for c in update_cursor.execute_calls if 'UPDATE memories' in c[0]]
+    update_calls = [c for c in conn.all_executes() if 'UPDATE memories' in c[0]]
     assert len(update_calls) == 1, f"Expected exactly 1 UPDATE memories call, got {len(update_calls)}"
     query, params = update_calls[0]
     assert 'parent_id = %s' in query, f"UPDATE query must contain parent_id = %s: {query}"
@@ -356,36 +320,15 @@ def test_persistence_connect_returning_row_is_normalized_into_response():
         title="Server Title",
         memo="Server memo",
     )
+    fx = build_fixture(source_mem_row, parent_mem_row)
 
-    validation_cursor = MockCursor(fetchone_result=parent_mem_row)
-    update_cursor = MockCursor(fetchone_result=updated_row)
-    conn = MockConnection()
-    cursor_calls = [0]
-    def cur_factory(*a, **k):
-        cursor_calls[0] += 1
-        return update_cursor if cursor_calls[0] > 1 else validation_cursor
-    conn.cursor = cur_factory
-
-    patchers = []
-    try:
-        patchers.append(patch('modal_compute.memory_writes.get_db_connection', return_value=conn))
-        patchers.append(patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row))
-        patchers.append(patch('modal_compute.memory_writes._would_create_cycle', return_value=False))
-        for p in patchers:
-            p.start()
-        try:
-            result = update_owner_memory(owner_id, memory_id, {"parentId": parent_id})
-        finally:
-            for p in patchers:
-                p.stop()
-    except Exception:
-        for p in patchers:
-            p.stop() if p in patchers else None
-        raise
+    result, conn = run_update(owner_id, memory_id, {"parentId": parent_id}, fx,
+                              updated_row=updated_row, owner_row=source_mem_row)
 
     assert result["title"] == "Server Title", f"normalized title must come from RETURNING row: {result}"
     assert result["memo"] == "Server memo", f"normalized memo must come from RETURNING row: {result}"
     assert result["parentId"] == parent_id, f"normalized parentId must reflect RETURNING row: {result}"
+    assert conn.commit_calls == 1
 
 
 def test_persistence_disconnect_returning_row_is_normalized_into_response():
@@ -439,26 +382,23 @@ def test_cross_tree_parent_rejected_update_not_executed():
 
     parent_mem_row = make_memory_row(parent_id, other_tree_id)  # Different tree!
     source_mem_row = make_memory_row(memory_id, tree_id)
+    fx = build_fixture(source_mem_row, parent_mem_row)
 
-    tracker = MockConnectionTracker()
+    conn = HierarchyConnection(fx, None)
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            with patch('modal_compute.memory_writes.require_plus_for_private_storage', return_value=None):
+                try:
+                    update_owner_memory(owner_id, memory_id, {"parentId": parent_id})
+                    assert False, "Should have raised HTTPException"
+                except HTTPException as e:
+                    assert e.status_code == 400
+                    assert e.detail.get("code") == "PARENT_MEMORY_TREE_MISMATCH"
 
-    # Connection 1: parent validation (parent exists but wrong tree)
-    conn1 = MockConnection()
-    conn1.cursor_factory = lambda *a, **k: MockCursor(fetchone_result=parent_mem_row)
-    tracker.add_connection(conn1)
-
-    with patch('modal_compute.memory_writes.get_db_connection', side_effect=tracker.get_next_connection):
-        with patch('modal_compute.memory_writes.require_memory_owner') as mock_req:
-            mock_req.return_value = source_mem_row
-            try:
-                update_owner_memory(owner_id, memory_id, {"parentId": parent_id})
-                assert False, "Should have raised HTTPException"
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert e.detail.get("code") == "PARENT_MEMORY_TREE_MISMATCH"
-
-    assert len(tracker.connections) == 1, "Only validation connection should be created"
-    assert tracker.connections[0].commit_calls == 0, "UPDATE should not be executed for cross-tree rejection"
+    assert conn.commit_calls == 0, "UPDATE should not be executed for cross-tree rejection"
+    assert conn.rollback_calls == 1, "rejection must roll back the transaction"
+    updates = [c for c in conn.all_executes() if 'UPDATE memories' in c[0]]
+    assert len(updates) == 0, "UPDATE must not run for cross-tree rejection"
 
 
 def test_self_parent_rejected_update_not_executed():
@@ -468,27 +408,23 @@ def test_self_parent_rejected_update_not_executed():
     tree_id = "22222222-2222-2222-2222-222222222222"
 
     source_mem_row = make_memory_row(memory_id, tree_id)
+    fx = build_fixture(source_mem_row)
 
-    tracker = MockConnectionTracker()
+    conn = HierarchyConnection(fx, None)
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            with patch('modal_compute.memory_writes.require_plus_for_private_storage', return_value=None):
+                try:
+                    update_owner_memory(owner_id, memory_id, {"parentId": memory_id})
+                    assert False, "Should have raised HTTPException"
+                except HTTPException as e:
+                    assert e.status_code == 400
+                    assert e.detail.get("code") == "INVALID_PARENT_ID"
+                    assert e.detail.get("reason") == "self_parent"
 
-    # Connection 1: parent validation (parent IS the same memory - self parent)
-    conn1 = MockConnection()
-    conn1.cursor_factory = lambda *a, **k: MockCursor(fetchone_result=source_mem_row)
-    tracker.add_connection(conn1)
-
-    with patch('modal_compute.memory_writes.get_db_connection', side_effect=tracker.get_next_connection):
-        with patch('modal_compute.memory_writes.require_memory_owner') as mock_req:
-            mock_req.return_value = source_mem_row
-            try:
-                update_owner_memory(owner_id, memory_id, {"parentId": memory_id})
-                assert False, "Should have raised HTTPException"
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert e.detail.get("code") == "INVALID_PARENT_ID"
-                assert e.detail.get("reason") == "self_parent"
-
-    assert len(tracker.connections) == 1, "Only validation connection should be created"
-    assert tracker.connections[0].commit_calls == 0, "UPDATE should not be executed for self-parent rejection"
+    assert conn.commit_calls == 0, "UPDATE should not be executed for self-parent rejection"
+    updates = [c for c in conn.all_executes() if 'UPDATE memories' in c[0]]
+    assert len(updates) == 0, "UPDATE must not run for self-parent rejection"
 
 
 def test_descendant_cycle_rejected_update_not_executed():
@@ -502,32 +438,22 @@ def test_descendant_cycle_rejected_update_not_executed():
     source_mem_row = make_memory_row(memory_id, tree_id)
     # Child memory (parent is source)
     child_mem_row = make_memory_row(child_id, tree_id, parent_id=memory_id)
+    fx = build_fixture(source_mem_row, child_mem_row)
 
-    tracker = MockConnectionTracker()
+    conn = HierarchyConnection(fx, None)
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
+        with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
+            with patch('modal_compute.memory_writes.require_plus_for_private_storage', return_value=None):
+                try:
+                    update_owner_memory(owner_id, memory_id, {"parentId": child_id})
+                    assert False, "Should have raised HTTPException"
+                except HTTPException as e:
+                    assert e.status_code == 400
+                    assert e.detail.get("code") == "PARENT_CYCLE"
 
-    # Connection 1: parent validation - fetches the parent (child_id) which has parent=source
-    conn1 = MockConnection()
-    conn1.cursor_factory = lambda *a, **k: MockCursor(fetchone_result=child_mem_row)
-    tracker.add_connection(conn1)
-
-    # Connection 2: cycle check - walks up from child's parent (source) - finds source
-    conn2 = MockConnection()
-    conn2.cursor_factory = lambda *a, **k: MockCursor(fetchone_result=source_mem_row)
-    tracker.add_connection(conn2)
-
-    with patch('modal_compute.memory_writes.get_db_connection', side_effect=tracker.get_next_connection):
-        with patch('modal_compute.memory_writes.require_memory_owner') as mock_req:
-            mock_req.return_value = source_mem_row
-            try:
-                update_owner_memory(owner_id, memory_id, {"parentId": child_id})
-                assert False, "Should have raised HTTPException"
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert e.detail.get("code") == "PARENT_CYCLE"
-
-    assert len(tracker.connections) >= 1, "At least validation connection should be created"
-    # The UPDATE should not be executed (no commit on the last connection used for validation)
-    assert tracker.connections[0].commit_calls == 0, "UPDATE should not be executed for cycle rejection"
+    assert conn.commit_calls == 0, "UPDATE should not be executed for cycle rejection"
+    updates = [c for c in conn.all_executes() if 'UPDATE memories' in c[0]]
+    assert len(updates) == 0, "UPDATE must not run for descendant-cycle rejection"
 
 
 def test_malformed_parent_uuid_rejected():
@@ -654,62 +580,61 @@ def test_cycle_detection_with_existing_cycle_breaks():
         {"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000002")},
         {"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000001")}
     ]
-    conn = MagicMock()
-    conn.cursor.return_value.__enter__.return_value = mock_cursor
 
     source_id = "00000000-0000-0000-0000-000000000003"
     target_parent_id = "00000000-0000-0000-0000-000000000001"
 
-    result = _would_create_cycle(conn, source_id, target_parent_id)
-    assert result is True, "Should detect cycle even with existing corrupted data"
-    assert conn.cursor.call_count == 1, f"Expected exactly 1 cursor context open, got {conn.cursor.call_count}"
+    try:
+        _assert_no_ancestor_cycle_locked(mock_cursor, source_id, target_parent_id)
+        assert False, "Should detect cycle even with existing corrupted data"
+    except HTTPException as e:
+        assert e.status_code == 400
+        assert e.detail.get("code") == "PARENT_CYCLE"
 
 
 def test_cycle_detection_no_cycle_returns_false():
-    """Cycle detection returns false when no cycle exists."""
+    """Cycle detection returns false when no cycle exists (no exception raised)."""
     mock_cursor = MagicMock()
     mock_cursor.fetchone.side_effect = [
         {"parent_id": uuid.UUID("00000000-0000-0000-0000-000000000002")},
         {"parent_id": None}
     ]
-    conn = MagicMock()
-    conn.cursor.return_value.__enter__.return_value = mock_cursor
 
     source_id = "00000000-0000-0000-0000-000000000003"
     target_parent_id = "00000000-0000-0000-0000-000000000001"
 
-    result = _would_create_cycle(conn, source_id, target_parent_id)
-    assert result is False, "Should not detect cycle when none exists"
-    assert conn.cursor.call_count == 1, f"Expected exactly 1 cursor context open, got {conn.cursor.call_count}"
+    # Should NOT raise when no cycle exists.
+    _assert_no_ancestor_cycle_locked(mock_cursor, source_id, target_parent_id)
 
 
 def test_would_create_cycle_single_cursor_reuse():
-    """_would_create_cycle creates only 1 cursor for multi-hop checks, and correctly identifies cycles and non-cycles."""
+    """Locked ancestor walker reuses the caller's cursor and identifies cycles/non-cycles."""
+    source_id = "00000000-0000-0000-0000-000000000003"
+    target_parent_id = "00000000-0000-0000-0000-000000000001"
+
+    # Non-cycle: walk goes 1 -> 2 -> None, no raise, 2 walk queries.
     mock_cursor = MagicMock()
     mock_cursor.fetchone.side_effect = [
         {"parent_id": "00000000-0000-0000-0000-000000000002"},
         {"parent_id": None}
     ]
-    conn = MagicMock()
-    conn.cursor.return_value.__enter__.return_value = mock_cursor
+    _assert_no_ancestor_cycle_locked(mock_cursor, source_id, target_parent_id)
+    assert mock_cursor.execute.call_count == 2, (
+        f"expected 2 walk queries, got {mock_cursor.execute.call_count}"
+    )
 
-    source_id = "00000000-0000-0000-0000-000000000003"
-    target_parent_id = "00000000-0000-0000-0000-000000000001"
-
-    result = _would_create_cycle(conn, source_id, target_parent_id)
-    assert result is False
-    assert conn.cursor.call_count == 1, f"Expected exactly 1 cursor context open, got {conn.cursor.call_count}"
-
-    # Cycle case
+    # Cycle case: source reappears in the chain -> PARENT_CYCLE.
     mock_cursor_cycle = MagicMock()
     mock_cursor_cycle.fetchone.side_effect = [
-        {"parent_id": "00000000-0000-0000-0000-000000000003"} # cycle source
+        {"parent_id": "00000000-0000-0000-0000-000000000003"}  # cycle source
     ]
-    conn_cycle = MagicMock()
-    conn_cycle.cursor.return_value.__enter__.return_value = mock_cursor_cycle
-    result_cycle = _would_create_cycle(conn_cycle, source_id, target_parent_id)
-    assert result_cycle is True
-    assert conn_cycle.cursor.call_count == 1
+    try:
+        _assert_no_ancestor_cycle_locked(mock_cursor_cycle, source_id, target_parent_id)
+        assert False, "cycle must be detected"
+    except HTTPException as e:
+        assert e.status_code == 400
+        assert e.detail.get("code") == "PARENT_CYCLE"
+    assert mock_cursor_cycle.execute.call_count == 1
 
 
 def test_no_update_guard_source_contract():
@@ -878,21 +803,23 @@ def test_parent_not_found_semantics_preserved():
     parent_id = "33333333-3333-3333-3333-333333333333"
 
     source_mem_row = make_memory_row(memory_id, tree_id)
+    fx = build_fixture(source_mem_row)  # parent_id absent
 
-    tracker = MockConnectionTracker()
-    conn1 = MockConnection()
-    conn1.cursor_factory = lambda *a, **k: MockCursor(fetchone_result=None) # parent not found
-    tracker.add_connection(conn1)
-
-    with patch('modal_compute.memory_writes.get_db_connection', side_effect=tracker.get_next_connection):
+    conn = HierarchyConnection(fx, None)
+    with patch('modal_compute.memory_writes.get_db_connection', return_value=conn):
         with patch('modal_compute.memory_writes.require_memory_owner', return_value=source_mem_row):
-            try:
-                update_owner_memory(owner_id, memory_id, {"parentId": parent_id})
-                assert False, "Should have failed with parent not found"
-            except HTTPException as e:
-                assert e.status_code == 400
-                assert e.detail.get("code") == "INVALID_PARENT_ID"
-                assert e.detail.get("reason") == "not_found"
+            with patch('modal_compute.memory_writes.require_plus_for_private_storage', return_value=None):
+                try:
+                    update_owner_memory(owner_id, memory_id, {"parentId": parent_id})
+                    assert False, "Should have failed with parent not found"
+                except HTTPException as e:
+                    assert e.status_code == 400
+                    assert e.detail.get("code") == "INVALID_PARENT_ID"
+                    assert e.detail.get("reason") == "not_found"
+
+    assert conn.commit_calls == 0, "no commit for missing parent"
+    updates = [c for c in conn.all_executes() if 'UPDATE memories' in c[0]]
+    assert len(updates) == 0, "UPDATE must not run for missing parent"
 
 
 # ============================================================================

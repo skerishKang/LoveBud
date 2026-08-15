@@ -316,6 +316,13 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         params.append(validate_optional_memory_string(payload.get("timestamp"), "timestamp", 100))
 
     # New: parentId update support
+    # The non-null reparent path performs parent existence / same-tree / self /
+    # ancestor-cycle validation AND the parent_id UPDATE inside ONE DB
+    # transaction (see _validate_reparent_atomic). This makes the cycle check
+    # atomic with the write so concurrent reparents cannot read each other's
+    # stale state (Issue #3951). Detach (parentId null/empty) is acyclic by
+    # construction and stays a single UPDATE in the same transaction below.
+    reparent_target = None
     if "parentId" in payload:
         parent_id_value = payload.get("parentId")
         # Normalize disconnect values: null, "", whitespace-only -> None
@@ -323,46 +330,9 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
             updates.append("parent_id = NULL")
         else:
             # Validate UUID format
-            parent_id = validate_required_uuid(parent_id_value, "parentId")
-            # Check: parent memory exists, same tree, not self, not descendant
-            # All checks must happen within the same DB connection context
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    # Check parent exists
-                    cur.execute(
-                        """
-                        SELECT id, tree_id, parent_id
-                        FROM memories
-                        WHERE id = %s
-                        """,
-                        (parent_id,),
-                    )
-                    parent_mem = cur.fetchone()
-                    if not parent_mem:
-                        raise HTTPException(
-                            status_code=400,
-                            detail={"code": "INVALID_PARENT_ID", "reason": "not_found"},
-                        )
-                # Check: same tree
-                if str(parent_mem["tree_id"]) != str(memory["tree_id"]):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"code": "PARENT_MEMORY_TREE_MISMATCH"},
-                    )
-                # Check: not self
-                if str(parent_mem["id"]) == str(safe_memory_id):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"code": "INVALID_PARENT_ID", "reason": "self_parent"},
-                    )
-                # Check: not descendant (cycle detection with visited guard)
-                if _would_create_cycle(conn, safe_memory_id, parent_id):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"code": "PARENT_CYCLE"},
-                    )
+            reparent_target = validate_required_uuid(parent_id_value, "parentId")
             updates.append("parent_id = %s")
-            params.append(parent_id)
+            params.append(reparent_target)
 
     if not updates:
         # This should not happen due to empty payload check above, but guard anyway
@@ -387,6 +357,11 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
+                # Validate the reparent (existence / same-tree / self / ancestor
+                # cycle) and acquire the row locks that make the check atomic
+                # with the UPDATE below — all within this single transaction.
+                if reparent_target is not None:
+                    _validate_reparent_atomic(cur, safe_memory_id, reparent_target, memory["tree_id"])
                 cur.execute(query, tuple(params + [safe_memory_id, owner_id]))
                 row = cur.fetchone()
                 if not row:
@@ -400,31 +375,123 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
     return normalize_memory_row(row)
 
 
-def _would_create_cycle(conn, source_id: str, target_parent_id: str) -> bool:
+def _validate_reparent_atomic(cur, source_id: str, parent_id: str, tree_id: str) -> None:
+    """Validate a memory reparent and acquire the row locks that make the
+    validation atomic with the subsequent parent_id UPDATE.
+
+    Protects the full logical unit required by Issue #3951:
+
+        parent existence
+        + same-Tree validation
+        + self-parent validation
+        + ancestor / cycle validation
+        + parent_id UPDATE
+
+    within a single PostgreSQL serialization boundary (the caller's transaction).
+
+    Locking design (deterministic, deadlock-free, minimal set):
+      * Collect the target parent's ancestor chain (read-only) to size the
+        lock set; this also rejects a pre-existing corrupted cycle and the
+        case where the source is already an ancestor of the target.
+      * Acquire FOR UPDATE on the source memory AND every node on the target's
+        ancestor chain in ONE statement. PostgreSQL locks the IN-set in index
+        (ascending id) order, so any two concurrent reparents that touch
+        overlapping sets acquire their row locks in the same order — no
+        deadlock. Issuing the lock as a single statement also removes any
+        window where a partially-acquired lock set could be contended in a
+        conflicting order.
+      * Re-validate by walking the ancestor chain from the now-locked target
+        (defends against any TOCTOU between the read-only collection and the
+        lock acquisition) and raise PARENT_CYCLE if the source reappears.
+      * Apply existence / same-tree checks against the locked rows, so a
+        concurrent reparent of an ancestor cannot slip a stale state past the
+        validation.
+
+    Any failure raises a bounded HTTPException (never a raw DB error / deadlock
+    / constraint text).
     """
-    Check if setting source_id's parent to target_parent_id would create a cycle.
-    Walks up the ancestor chain from target_parent_id looking for source_id.
-    Includes visited guard to prevent infinite loops on existing corrupted data.
+    source_id = str(source_id)
+    parent_id = str(parent_id)
+
+    # Self-parent is rejected up front with its own bounded code.
+    if parent_id == source_id:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_PARENT_ID", "reason": "self_parent"},
+        )
+
+    # --- Collect the target's ancestor chain (read-only) to size the lock set ---
+    chain: list[str] = []
+    seen: set[str] = set()
+    cursor_id = parent_id
+    while cursor_id:
+        if cursor_id in seen:
+            # Corrupted pre-existing cycle in the target's ancestry.
+            raise HTTPException(status_code=400, detail={"code": "PARENT_CYCLE"})
+        seen.add(cursor_id)
+        chain.append(cursor_id)
+        if cursor_id == source_id:
+            # Source is already an ancestor of the target -> reparent cycles.
+            raise HTTPException(status_code=400, detail={"code": "PARENT_CYCLE"})
+        cur.execute("SELECT parent_id FROM memories WHERE id = %s", (cursor_id,))
+        row = cur.fetchone()
+        if not row or not row["parent_id"]:
+            break
+        cursor_id = str(row["parent_id"])
+
+    # --- Acquire row locks on source + full ancestor chain in ONE statement ---
+    lock_ids = sorted(set([source_id]) | set(chain), key=lambda v: str(v))
+    cur.execute(
+        """
+        SELECT id, tree_id, parent_id
+        FROM memories
+        WHERE id = ANY(%s::uuid[])
+        FOR UPDATE
+        """,
+        (lock_ids,),
+    )
+    locked = {str(r["id"]): r for r in cur.fetchall()}
+
+    # --- Re-validate against authoritative locked state (TOCTOU defense) ---
+    _assert_no_ancestor_cycle_locked(cur, source_id, parent_id)
+
+    # --- Target existence / same-tree checks on locked rows ---
+    target = locked.get(parent_id)
+    if target is None:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_PARENT_ID", "reason": "not_found"},
+        )
+    if str(target.get("tree_id")) != str(tree_id):
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "PARENT_MEMORY_TREE_MISMATCH"},
+        )
+
+
+def _assert_no_ancestor_cycle_locked(cur, source_id: str, parent_id: str) -> None:
+    """Walk the target's ancestor chain from the locked rows and raise
+    PARENT_CYCLE if the source is reachable.
+
+    Every node on the path is already FOR UPDATE locked by the caller, so the
+    chain cannot change underneath this walk. The visited guard also rejects a
+    corrupted pre-existing cycle without looping forever.
     """
-    visited = set()
-    current_id = target_parent_id
-    with conn.cursor() as cur:
-        while current_id:
-            if str(current_id) == str(source_id):
-                return True
-            if str(current_id) in visited:
-                # Existing cycle in DB - break to avoid infinite loop
-                return True
-            visited.add(str(current_id))
-            cur.execute(
-                "SELECT parent_id FROM memories WHERE id = %s",
-                (current_id,),
-            )
-            row = cur.fetchone()
-            if not row or not row["parent_id"]:
-                break
-            current_id = row["parent_id"]
-    return False
+    source_id = str(source_id)
+    parent_id = str(parent_id)
+    visited: set[str] = set()
+    current = parent_id
+    while current:
+        if current in visited:
+            raise HTTPException(status_code=400, detail={"code": "PARENT_CYCLE"})
+        visited.add(current)
+        if current == source_id:
+            raise HTTPException(status_code=400, detail={"code": "PARENT_CYCLE"})
+        cur.execute("SELECT parent_id FROM memories WHERE id = %s", (current,))
+        row = cur.fetchone()
+        if not row or not row["parent_id"]:
+            break
+        current = str(row["parent_id"])
 
 
 def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:
