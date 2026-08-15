@@ -14,15 +14,15 @@ This document is source/contract only. It deliberately does not modify `modal_co
 
 ## 2. Collision / sequencing decision
 
-Runtime implementation of `clientKey` / `sortOrder` is intentionally deferred because the authoritative Memory write path (`modal_compute/memory_writes.py`) still has overlapping open corrections that must land first.
+Runtime implementation of `clientKey` / `sortOrder` is intentionally deferred because the authoritative Memory write path (`modal_compute/memory_writes.py`) has active overlapping work that must land first.
 
-Current PR state against `main`:
+Current PR state (reconciled at 2026-08-15):
 
-- #3999 — **MERGED**. The Memory Cloudflare proxy request-body boundary is closed and is no longer an open blocker. Resolving it only closed the boundary; it did **not** implement `clientKey` / `sortOrder` runtime support.
-- #3992 — **current-main aligned and CI GREEN, but NOT YET MERGED** (Draft). It refactors `modal_compute/memory_writes.py` onto a shared strict `validate_emotion_tags()` helper, but that change is **not yet in `main`**. Current `main` still carries the prior inline `emotionTags` handling, so the write path remains a moving target until #3992 lands.
-- #3969 — **OPEN / STALE**. It still owns an unresolved parent Tree visibility fail-closed correction in `modal_compute/memory_writes.py`.
+- #3999 — **MERGED** (2026-08-13). The Memory Cloudflare proxy request-body boundary is closed and is no longer an open blocker. Did **not** implement `clientKey` / `sortOrder` runtime support.
+- #3992 — **MERGED** (2026-08-14). Refactored `modal_compute/memory_writes.py` onto a shared strict `validate_emotion_tags()` helper.
+- #3969 — **MERGED** (2026-08-14). Parent Tree visibility fail-closed correction applied.
 
-Therefore #4005 must not introduce concurrent edits to `memory_writes.py` until the active correctness slices (#3992 landing plus the #3969 visibility correction) are reconciled.
+These three historical overlaps are resolved. However, #3951 Memory parent-cycle atomicity / concurrency (#4048, currently OPEN/DRAFT) still owns `modal_compute/memory_writes.py` transaction authority. #4005 must not introduce concurrent edits to `memory_writes.py` until #3951 stabilizes.
 
 Verdict:
 
@@ -313,7 +313,14 @@ DB-engine coverage is required for D/E because source-only tests cannot prove un
 
 ## 12. Migration gate
 
-The repository's canonical migration manifest remains `ADOPTION_REQUIRED` with no migration entries. The branch-proven schema and this write contract therefore remain preparatory evidence only.
+The repository's canonical migration manifest (`db/migration-provenance/canonical-migrations.json`) remains `status: ADOPTION_REQUIRED`. However, its `migrations` array is no longer empty: it currently contains two catalogued canonical migrations:
+
+1. `20260802094500_bootstrap-migration-ledger`
+2. `20260812213000_add-tree-appreciation-orders`
+
+This demonstrates that **canonical catalog population can proceed while ADOPTION_REQUIRED**. The manifest activation/runner adoption is a separate gate from catalog entry addition. No Production apply is authorized until the repository's adoption protocol and runner requirements are satisfied.
+
+The branch-proven schema and this write contract therefore remain preparatory evidence only. A forward canonical migration artifact for `client_key` / `sort_order` could be catalogued while the manifest stays ADOPTION_REQUIRED, but must not be applied to Production or default-branch Neon until the adoption gate clears.
 
 No new executable Production migration should be added through legacy `scripts/migration-*.sql` as a workaround.
 
@@ -323,9 +330,10 @@ No new executable Production migration should be added through legacy `scripts/m
 GO_CLIENT_KEY_STABLE_IDENTITY_CONTRACT
 GO_NULLABLE_BACKWARD_COMPATIBILITY
 HOLD_SORT_ORDER_PRODUCT_SEMANTICS
-HOLD_MEMORY_RUNTIME_IMPLEMENTATION_FOR_OVERLAP
+HOLD_MEMORY_RUNTIME_IMPLEMENTATION_FOR_ACTIVE_3951_OVERLAP
 HOLD_CANONICAL_MANIFEST_ADOPTION
 HOLD_PRODUCTION_MIGRATION
+CANONICAL_MIGRATION_CATALOG_ENTRY_ALLOWED_WHILE_ADOPTION_REQUIRED
 ```
 
 ## 14. Safety

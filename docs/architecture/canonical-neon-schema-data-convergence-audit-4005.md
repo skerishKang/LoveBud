@@ -4,7 +4,13 @@ Parent: #4004
 Track: #4005  
 Audit date: 2026-08-12  
 LoveBud authoritative main at branch creation: `cc6cb26854e4cc692d3109debe05b0de1ab23a89`  
-LoveTree authoritative main observed during audit: `06dfb7e52a3c5a96d309142bbeb06a3445a18f96`
+LoveTree authoritative main observed during audit: `06dfb7e52a3c5a96d309142bbeb06a3445a18f96`  
+
+**CURRENT AT FINAL RECONCILIATION (2026-08-15):**  
+LoveBud main: `fd7c77e3aaff3df04d68915323c3f46cccb887f9`  
+PR #4007 head: `3471744526de624f5817b43d6aa8b03757047acc` (merge-forward from current main)  
+Active writer overlap: #3951/#4048 (Draft, OPEN) owns `modal_compute/memory_writes.py` transaction authority; #4007 remains docs-only.  
+Historical overlaps #3992, #3969, #3999: all MERGED.
 
 ## 1. Scope and safety
 
@@ -607,10 +613,105 @@ Those two tracks can run in parallel because one tests domain schema evolution a
 
 ---
 
+## A. Exact schema-diff coverage matrix
+
+The following table documents the completeness of each #4005-required schema dimension in this audit document. `SCHEMA_AUTHORITY_CONFIRMED` means the current repository source or read-only DB inspection supports the claim; `CURRENT_LIVE_DB_NOT_REVERIFIED` means fresh live access was not available at final reconciliation.
+
+| Dimension | Coverage in this doc | Status |
+|---|---|---|
+| Schemas | public + drizzle (LoveBud), public (LoveTree); no neon_auth in either | SCHEMA_AUTHORITY_CONFIRMED |
+| Tables | users, trees, memories, tree_likes, tree_comments, social_audit_log, social_idempotency, social_rate_limits, tree_view_dedup_events, community_posts, community_comments, community_moderation_logs, ai_logs (LoveBud); trees, memories, tree_likes, tree_comments (LoveTree) | SCHEMA_AUTHORITY_CONFIRMED |
+| Columns | Core application columns described semantically per table; exhaustive per-column type/nullability/default matrix not emitted (would require fresh live catalog dump) | PARTIAL_NOT_EXHAUSTIVE |
+| Types | text/varchar, integer, uuid, boolean, timestamp observed; enum types listed for LoveTree; pgcrypto extension present in LoveBud | SCHEMA_AUTHORITY_CONFIRMED |
+| Nullability | Key nullable/non-null patterns identified per table; legacy null rows documented | SCHEMA_AUTHORITY_CONFIRMED |
+| Defaults | No server-generated defaults other than `gen_random_uuid()` for PKs; `deleted_at` nullable timestamps; `created_at`/`updated_at` with `now()` | SCHEMA_AUTHORITY_CONFIRMED |
+| PK | All tables use uuid PKs; LoveBud `users` pk shape matches canonical pattern | SCHEMA_AUTHORITY_CONFIRMED |
+| FK | `trees.owner_id → users.id` present; `memories.parent_id → memories.id` self-FK; LoveTree adds `memories.tree_id → trees.id` FK which canonically lacks (125 orphan Memories) | SCHEMA_AUTHORITY_CONFIRMED |
+| UNIQUE | `(owner_id, client_key)` on trees; soft-delete partial unique on tree_likes; LoveTree adds `(tree_id, client_key)` and partial `(tree_id, sort_order)` on memories | SCHEMA_AUTHORITY_CONFIRMED |
+| CHECK | No observed named CHECK constraints beyond application-level validation | CURRENT_LIVE_DB_NOT_REVERIFIED |
+| Indexes | trees.owner_id, memories.tree_id, memories.visibility, social audit/idempotency operational indexes; LoveTree adds visibility+created_at composite | SCHEMA_AUTHORITY_CONFIRMED |
+| Enums | LoveBud: none (text/varchar); LoveTree: comment_status, reaction_type, social_outcome, source_type, visibility | SCHEMA_AUTHORITY_CONFIRMED |
+| Triggers | `trg_social_audit_log_sync_generic_target`, `trg_social_idempotency_sync_generic_target` in LoveBud | SCHEMA_AUTHORITY_CONFIRMED |
+| Views | None observed in either database | SCHEMA_AUTHORITY_CONFIRMED |
+| Materialized views | None observed | SCHEMA_AUTHORITY_CONFIRMED |
+| Extensions | LoveBud: plpgsql, pgcrypto; LoveTree: plpgsql | SCHEMA_AUTHORITY_CONFIRMED |
+| Privileges/grants | Not exhaustively inventoried; no custom grant/revoke patterns observed in inspected catalog metadata | CURRENT_LIVE_DB_NOT_REVERIFIED |
+| RLS | No RLS policies observed in either database | SCHEMA_AUTHORITY_CONFIRMED |
+
+Dimensions marked `CURRENT_LIVE_DB_NOT_REVERIFIED` require fresh live PostgreSQL catalog queries to complete. The repository source (migration files, Drizzle schema definitions) provides partial evidence but does not reflect privilege/check-constraint drift.
+
+## B. Persisted ownership-subject inventory
+
+The following tables and columns persist provider-shaped/Firebase-like actor subjects. SCHEMA_AUTHORITY_CONFIRMED means the column exists in current source; LIVE_VALUE_POPULATION_NOT_REVERIFIED means actual value provenance (Firebase UID vs future app_account) was not re-verified at final reconciliation.
+
+| Table | Column | Semantic role | Current subject shape | FK/constraint evidence | Runtime writers | Future app_account migration impact | Confidence |
+|---|---|---|---|---|---|---|---|
+| users | id | Primary account identity | UUID (server-generated); linked to Firebase auth subject via auth session, not direct FK | PK; referenced by trees.owner_id, tree_comments.author_id, tree_likes.owner_id, community_* tables | Auth bootstrap, session resolution | HIGH — canonical identity target for #4006 | SCHEMA_AUTHORITY_CONFIRMED; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
+| trees | owner_id | Tree ownership authority | UUID → users.id | FK → users.id; unique with client_key | create_owner_tree, fork_public_tree | Must map to app_account after #4006 | SCHEMA_AUTHORITY_CONFIRMED |
+| memories | tree_id → trees.owner_id | Indirect Memory ownership authority | Transitive through trees.owner_id | No direct FK (125 orphan Memories); INNER JOIN trees in transaction | create_owner_memory, update_owner_memory | Transitive via tree ownership | SCHEMA_AUTHORITY_CONFIRMED; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
+| tree_likes | owner_id | Actor identity for likes | UUID → users.id | FK → users.id; partial unique (tree_id, owner_id) where deleted_at is null | toggle_like | Must map to app_account | SCHEMA_AUTHORITY_CONFIRMED |
+| tree_comments | author_id | Actor identity for comments | UUID → users.id | FK → users.id | create_tree_comment | Must map to app_account | SCHEMA_AUTHORITY_CONFIRMED |
+| social_audit_log | actor_id | Audit trail actor | UUID | Operational index; used in social audit triggers | Social write routes | Audit identity must survive account migration | SCHEMA_AUTHORITY_CONFIRMED |
+| social_idempotency | actor_id | Idempotency key scope | UUID | Operational index | Social write routes | Idempotency scope must survive account migration | SCHEMA_AUTHORITY_CONFIRMED |
+| social_rate_limits | actor_id | Rate limit subject | UUID | Operational index | Rate-limit middleware | Rate-limit identity must survive account migration | SCHEMA_AUTHORITY_CONFIRMED |
+| tree_view_dedup_events | actor_id | View deduplication scope | UUID (nullable) | Operational index | View recording | Dedup scope optional for unauthenticated views | SCHEMA_AUTHORITY_CONFIRMED |
+| community_posts | author_id | Community post author | UUID → users.id | FK → users.id inferred | Community routes | Must map to app_account | SCHEMA_AUTHORITY_CONFIRMED; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
+| community_comments | author_id | Community comment author | UUID → users.id | FK → users.id inferred | Community routes | Must map to app_account | SCHEMA_AUTHORITY_CONFIRMED; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
+| community_moderation_logs | moderator_id | Moderation actor | UUID → users.id | FK → users.id inferred | Moderation routes | Audit identity | SCHEMA_AUTHORITY_CONFIRMED; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
+
+**Count**: 12 tables, 12 subject columns identified. All use UUID-shaped references to `users.id`. No direct Firebase UID column was observed in current source. The Firebase subject is resolved through the auth session layer (Cloudflare/Modal) and mapped to the internal UUID at write time; the raw Firebase subject is not persisted in application tables.
+
+**No raw UID, email, provider subject, or private identifier was emitted in this document.**
+
+## C. Memory lineage current-authority conclusion
+
+### clientKey / sortOrder schema readiness
+
+The additive schema is branch-proven on `br-bitter-shape-a1yp6iup`. No conflict with current-main schema exists. `modal_compute/memory_writes.py` currently rejects both fields via the PATCH allowlist.
+
+### Active writer overlap
+
+| Component | Active owner | Status | Impact on #4007 |
+|---|---|---|---|
+| modal_compute/memory_writes.py | #3951/#4048 | OPEN/DRAFT; CI GREEN | HOLD — #4007 must not touch |
+| Migration manifest | #3846/#3998 | MERGED | Documented; no change needed |
+| Memory proxy boundary | #3999 | MERGED | No longer blocking |
+| Emotion tags validation | #3992 | MERGED | No longer blocking |
+| Parent visibility fix | #3969 | MERGED | No longer blocking |
+
+## D. Canonical migration authority semantics
+
+Current `db/migration-provenance/canonical-migrations.json`:
+
+```
+status: ADOPTION_REQUIRED
+migrations: [
+  { id: "20260802094500_bootstrap-migration-ledger" },
+  { id: "20260812213000_add-tree-appreciation-orders" }
+]
+```
+
+Key semantic distinction:
+
+- **CANONICAL CATALOG POPULATED**: Yes (2 entries) — catalog entry addition is permitted while ADOPTION_REQUIRED.
+- **CANONICAL RUNNER ACTIVE**: No — the runner protocol requires `status: ACTIVE` to execute.
+- **ADOPTION ATTESTED**: No — a separately approved adoption baseline is required before status transition.
+- **PRODUCTION APPLY AUTHORIZED**: No — requires ACTIVE manifest + runner protocol compliance.
+- **PRODUCTION MIGRATION EXECUTED**: No — no migration has been applied to Production/default-branch Neon.
+
+Therefore `ADOPTION_REQUIRED → catalog must be empty` is incorrect. The current-main authority proves catalog entries can exist while the manifest stays ADOPTION_REQUIRED. The actual gate is Production/runner activation, not catalog entry addition.
+
 ## 11. Verdict
 
 ```text
-GO_CANONICAL_SCHEMA_BRANCH_PROTOTYPE
+CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage)
+SCHEMA_DIFF_COMPLETENESS                  = PARTIAL (exhaustive per-column/privilege matrix requires fresh live catalog; see Appendix A)
+OWNERSHIP_SUBJECT_INVENTORY_COMPLETENESS  = SUBSTANTIAL (12 tables, 12 columns; all UUID→users.id; no direct Firebase UID persistence)
+MEMORY_LINEAGE_SCHEMA_READINESS           = BRANCH_PROVEN (go_additive)
+RUNTIME_IMPLEMENTATION_AUTHORITY          = HOLD (active #3951/#4048 overlap)
+CANONICAL_MIGRATION_ADOPTION              = HOLD (status ADOPTION_REQUIRED; catalog population allowed)
+PRODUCTION_MIGRATION                      = NOT AUTHORIZED
+MEMORY_RUNTIME_IMPLEMENTATION_IN_THIS_PR  = NOT PERFORMED (docs-only scope preserved)
 ```
 
 With constraints:

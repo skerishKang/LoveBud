@@ -108,15 +108,14 @@ The probe therefore confirms the intended Tree-scoped uniqueness behavior while 
 
 The current LoveBud repository does **not** authorize adding a new executable migration through the legacy `scripts/migration-*.sql` path.
 
-Repository migration provenance currently classifies those scripts as legacy compatibility/manual paths and the canonical manifest remains:
+Repository migration provenance currently classifies those scripts as legacy compatibility/manual paths. `db/migration-provenance/canonical-migrations.json` has `status: ADOPTION_REQUIRED` but its `migrations` array is no longer empty: it currently contains:
 
-```json
-{ "status": "ADOPTION_REQUIRED", "migrations": [] }
-```
+1. `20260802094500_bootstrap-migration-ledger`
+2. `20260812213000_add-tree-appreciation-orders`
 
-The canonical loader contract explicitly requires that status to remain inactive until the migration protocol's adoption/activation decision is made.
+This demonstrates **canonical catalog population is permitted while ADOPTION_REQUIRED**. The manifest activation/runner adoption is a separate gate from adding a catalog entry. No Production apply is authorized until the repository's adoption protocol and runner requirements are satisfied.
 
-Therefore this #4005 work intentionally stops before committing an executable Production migration artifact. Creating a new legacy script or silently activating `db/migrations` would bypass the repository's existing migration-governance boundary.
+Therefore this #4005 work intentionally stops before committing an executable Production migration artifact. A forward canonical migration entry for `client_key` / `sort_order` could be catalogued while the manifest stays ADOPTION_REQUIRED, but must not be applied to Production or default-branch Neon until the adoption gate clears. Creating a new legacy script or silently activating `db/migrations` would bypass the repository's existing migration-governance boundary.
 
 ## Interpretation
 
@@ -138,6 +137,7 @@ Legacy orphan Memory/Tree state identified by the parent audit remains unchanged
 ```text
 GO_ADDITIVE_MEMORY_LINEAGE_SCHEMA
 GO_BRANCH_UNIQUENESS_SEMANTICS
+CANONICAL_CATALOG_ENTRY_ALLOWED_WHILE_ADOPTION_REQUIRED
 HOLD_CANONICAL_MANIFEST_ADOPTION
 HOLD_PRODUCTION_MIGRATION
 ```
