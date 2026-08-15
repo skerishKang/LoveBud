@@ -17,6 +17,18 @@
   "classificationBasis": "Content-evidence based. Each file is read; its source-read/execution/fake-env markers determine the primary layer. Filename alone is never used.",
   "entries": [
     {
+      "path": "tests/contracts/comment-pagination-3939-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/comments.py, modal_compute/tree_comments.py, modal_compute/social_cursor.py, modal_compute/app.py, Cloudflare proxy files, postgres-client.js, and tree-comments-client.js to assert comment forward cursor pagination contract across Moment public/authenticated comments and Tree comments (created_at ASC, id ASC, LIMIT limit+1, nextCursor forwarding, privacy DTOs); pure static source-read, no execution (#3939).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-comment-rate-limit-3940-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/social_rate_limit.py, modal_compute/tree_comments.py, and companion test suite to assert bounded Tree-level comment rate limiting contract (10/min, scope tree-comment:actor, memory_id=None, 429/503 taxonomy, transaction ordering visibility -> idempotency -> rate limit -> insert); pure static source-read only, no execution (#3940).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/ci-browser-hermetic-4013-negative-controls.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes the #4013 hermetic external-network negative controls via the tests/helpers/external-network-hermetic.cjs policy helper in real Playwright Chromium against a local 127.0.0.1 HTTP server. Exercises NC1 hostname-vs-pathname classification regression (fonts.googleapis.com hits the deterministic fixture, not pathname branch), NC2 unexpected external origin abort (example.invalid prevented from reaching the real network with exact URL surfaced), NC3 same-origin 4xx failing loudly, NC4 browser console error capture retained, and NC5 known-external fixture throw aborting without route.continue() or real network fallback. The hermetic helper secures all real-local browser contracts that load production js/ and css/ modules. No Production, auth, provider, DB mutation, or real external-network fallback.",
@@ -4996,6 +5008,22 @@
       "layer": "SUPPLEMENTAL_PYTHON",
       "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/test_memory_parent_atomicity_3951.py",
+      "defaultCi": false,
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); proves the Issue #3951 reparent source contract (single transaction, tree-scoped pg_advisory_xact_lock, post-lock source/target reread, bounded error codes) and the behavioral matrix (self/cross-tree/missing/cycle/detach/rollback/owner-auth) with a mocked hierarchy fixture. Not enumerated by package.json test script.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/db-engine/memory-parent-cycle-concurrency-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections (barrier-synchronized) to prove concurrent Memory reparents A->B and B->A cannot both commit: tree-scoped pg_advisory_xact_lock serializes same-Tree writes (different Trees derive independent lock keys), the loser re-validates the committed hierarchy and receives a bounded PARENT_CYCLE, and the final reread is acyclic. Also asserts the source contract that validation and the parent_id UPDATE share one transaction. Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
+      "capabilities": [
+        "postgresql"
+      ]
     },
     {
       "path": "tests/contracts/test_owner_tree_query_error_classification.py",

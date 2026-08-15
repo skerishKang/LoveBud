@@ -12,6 +12,8 @@
 (function() {
   var lastTreesData = [];
   var selectedTreeId = null;
+  var treeNextCursor = null;
+  var isLoadingMoreTrees = false;
 
   function setLastTreesData(nextTrees) {
     lastTreesData = Array.isArray(nextTrees) ? nextTrees.slice() : [];
@@ -20,6 +22,33 @@
 
   function getLastTreesData() {
     return Array.isArray(lastTreesData) ? lastTreesData.slice() : [];
+  }
+
+  function setTreeNextCursor(nextCursor) {
+    treeNextCursor = (typeof nextCursor === 'string' && nextCursor) ? nextCursor : null;
+    return treeNextCursor;
+  }
+
+  function getTreeNextCursor() {
+    return treeNextCursor || null;
+  }
+
+  function hasMoreTrees() {
+    return !!treeNextCursor;
+  }
+
+  function setIsLoadingMoreTrees(val) {
+    isLoadingMoreTrees = !!val;
+    return isLoadingMoreTrees;
+  }
+
+  function getIsLoadingMoreTrees() {
+    return isLoadingMoreTrees;
+  }
+
+  function resetPaginationState() {
+    treeNextCursor = null;
+    isLoadingMoreTrees = false;
   }
 
   function setSelectedTreeId(nextTreeId) {
@@ -91,6 +120,12 @@
   window.LoveBudMyTreesState = {
     setLastTreesData: setLastTreesData,
     getLastTreesData: getLastTreesData,
+    setTreeNextCursor: setTreeNextCursor,
+    getTreeNextCursor: getTreeNextCursor,
+    hasMoreTrees: hasMoreTrees,
+    setIsLoadingMoreTrees: setIsLoadingMoreTrees,
+    getIsLoadingMoreTrees: getIsLoadingMoreTrees,
+    resetPaginationState: resetPaginationState,
     setSelectedTreeId: setSelectedTreeId,
     getSelectedTreeId: getSelectedTreeId,
     clearSelectedTreeId: clearSelectedTreeId,

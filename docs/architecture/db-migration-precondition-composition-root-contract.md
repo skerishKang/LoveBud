@@ -22,7 +22,7 @@ Composed authorities (unchanged): `createMigrationPreconditionAuthorityResolver`
 
 - Scope: implement and source-test one composition root that instantiates one resolver, one pinned-session lock adapter, and one evaluator, and returns the exact frozen orchestrator-facing dependency subset.
 - Limits: no database, Docker/PostgreSQL, network, SQL execution, Production, provider, credential, environment, package, workflow, or UI change. No modification of any committed authority, registry, catalog, manifest, or ledger adapter. Browser/Playwright validation is not required.
-- The committed authorities remain `ADOPTION_REQUIRED` and empty; the composition root therefore evaluates the current authority to `NOT_EVALUATED` and can never implicitly `PASS`.
+- The committed authorities remain `ADOPTION_REQUIRED` and inactive (two manifests are catalog-populated); the composition root therefore evaluates the current authority to `NOT_EVALUATED` and can never implicitly `PASS`.
 
 ## 3. Factory and public surface
 
