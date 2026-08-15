@@ -704,6 +704,7 @@ Therefore `ADOPTION_REQUIRED → catalog must be empty` is incorrect. The curren
 ## 11. Verdict
 
 ```text
+FINAL_VERDICT                             = GO_CANONICAL_SCHEMA_BRANCH_PROTOTYPE (additive branch prototype proven; see scoping below)
 CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage)
 SCHEMA_DIFF_COMPLETENESS                  = PARTIAL (exhaustive per-column/privilege matrix requires fresh live catalog; see Appendix A)
 OWNERSHIP_SUBJECT_INVENTORY_COMPLETENESS  = SUBSTANTIAL (12 tables, 12 columns; all UUID→users.id; no direct Firebase UID persistence)
@@ -713,6 +714,8 @@ CANONICAL_MIGRATION_ADOPTION              = HOLD (status ADOPTION_REQUIRED; cata
 PRODUCTION_MIGRATION                      = NOT AUTHORIZED
 MEMORY_RUNTIME_IMPLEMENTATION_IN_THIS_PR  = NOT PERFORMED (docs-only scope preserved)
 ```
+
+Scoping: `GO_CANONICAL_SCHEMA_BRANCH_PROTOTYPE` covers only the executed, verified additive Memory lineage prototype on the isolated Neon child branch (287/287 rows, identical checksums, uniqueness probe proven). It does not authorize Production convergence: `PRODUCTION_MIGRATION` remains `NOT AUTHORIZED` and `CANONICAL_MIGRATION_ADOPTION` remains `HOLD`. Branch proof is not Production authority.
 
 With constraints:
 
