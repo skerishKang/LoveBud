@@ -25,6 +25,7 @@ const RUNNER_PATH = path.join(ROOT, 'scripts', 'ci-smoke-runner.cjs');
 const WORKFLOW_PATH = path.join(ROOT, '.github', 'workflows', 'ci.yml');
 
 const {
+  StreamingTestCollector,
   parseTestOutput,
   formatMarkdownSummary,
   formatConsoleSummary,
@@ -48,6 +49,7 @@ function createMockStream() {
 
 test('scripts/ci-smoke-runner.cjs exists and exports required helper functions', () => {
   assert.ok(fs.existsSync(RUNNER_PATH), 'ci-smoke-runner.cjs must exist');
+  assert.equal(typeof StreamingTestCollector, 'function', 'StreamingTestCollector must be exported');
   assert.equal(typeof parseTestOutput, 'function', 'parseTestOutput must be exported');
   assert.equal(typeof formatMarkdownSummary, 'function', 'formatMarkdownSummary must be exported');
   assert.equal(typeof formatConsoleSummary, 'function', 'formatConsoleSummary must be exported');
@@ -271,4 +273,83 @@ test('formatMarkdownSummary creates well-formed bounded table', () => {
   assert.ok(md.includes('`foo_test`'));
   assert.ok(md.includes('`tests/contracts/foo.test.cjs:42:5`'));
   assert.ok(md.includes('Expected a to equal b'));
+});
+
+// ─── 9. >10MiB Prefix Boundary Regression Test (Issue #4014) ─────────────────
+
+test('runSmokeProcess preserves failing evidence occurring strictly after >10MiB harmless prefix', async () => {
+  const mockStdout = createMockStream();
+  const mockStderr = createMockStream();
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-smoke-large-'));
+  const stepSummaryFile = path.join(tempDir, 'step_summary.md');
+
+  // Create a synthetic test file that outputs >10 MiB of harmless TAP output first,
+  // followed by a known failing subtest.
+  const testFilePath = path.join(tempDir, 'large-prefix-failure.test.cjs');
+  fs.writeFileSync(
+    testFilePath,
+    `
+    const test = require('node:test');
+    const assert = require('node:assert/strict');
+
+    test('harmless massive passing suite emitting >11MiB logs', (t) => {
+      // 11 MiB = 11 * 1024 * 1024 = 11,534,336 bytes
+      const chunk = '# harmless padding log chunk line ................................................................\\n';
+      const iterations = Math.ceil((11 * 1024 * 1024) / chunk.length);
+      for (let i = 0; i < iterations; i++) {
+        process.stdout.write(chunk);
+      }
+      assert.equal(1, 1);
+    });
+
+    test('intentional failing subtest strictly after 11MiB prefix boundary', () => {
+      assert.equal(1, 2, 'exact assertion error after 11MiB harmless stream');
+    });
+    `,
+    'utf8'
+  );
+
+  try {
+    const maxTailBytes = 4 * 1024 * 1024; // 4 MiB bound for test verification
+    const result = await runSmokeProcess({
+      cmd: process.execPath,
+      args: ['--test', testFilePath],
+      stepSummaryFile,
+      stdout: mockStdout,
+      stderr: mockStderr,
+      cwd: tempDir,
+      maxTailBytes,
+    });
+
+    // 1. Strict non-zero exit code preservation
+    assert.notEqual(result.exitCode, 0, 'Exit code must be non-zero');
+    assert.equal(result.exitCode, 1, 'Node test runner exits with 1');
+
+    // 2. Failure extraction despite occurring after 11 MiB
+    assert.ok(result.failures.length >= 1, 'Must extract failures occurring after >10MiB prefix');
+    const f = result.failures.find(x => x.testName.includes('intentional failing subtest strictly after 11MiB prefix boundary'));
+    assert.ok(f, 'Must capture the exact subtest name after >10MiB');
+    assert.ok(f.errorMessage.includes('exact assertion error after 11MiB harmless stream'), 'Must capture assertion error message');
+    assert.ok(f.file.includes('large-prefix-failure.test.cjs'), 'Must capture file name');
+
+    // 3. Retained rawOutput size is strictly bounded to maxTailBytes
+    assert.ok(
+      result.rawOutput.length <= maxTailBytes + 65536,
+      `Retained rawOutput length (${result.rawOutput.length}) must be bounded to maxTailBytes (${maxTailBytes})`
+    );
+
+    // 4. Step Summary table verification
+    assert.ok(fs.existsSync(stepSummaryFile), 'Step summary file must exist');
+    const summary = fs.readFileSync(stepSummaryFile, 'utf8');
+    assert.ok(summary.includes('## ❌ Smoke Test Failed'), 'Summary must have failure header');
+    assert.ok(summary.includes('intentional failing subtest strictly after 11MiB prefix boundary'), 'Summary must contain subtest');
+    assert.ok(summary.includes('exact assertion error after 11MiB harmless stream'), 'Summary must contain error message');
+
+    // 5. Stderr summary highlight
+    const errContent = mockStderr.getContent();
+    assert.ok(errContent.includes('SMOKE TEST FAILURE SUMMARY'), 'Must print failure summary block to stderr');
+    assert.ok(errContent.includes('intentional failing subtest strictly after 11MiB prefix boundary'), 'Stderr must contain subtest');
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });

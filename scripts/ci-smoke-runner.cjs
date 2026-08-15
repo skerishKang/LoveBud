@@ -4,14 +4,17 @@
  * Runs `npm test` (or a supplied test command) in CI, streams real-time stdout/stderr,
  * and on any non-zero exit:
  * 1. Preserves the exact non-zero exit code (never swallows failures).
- * 2. Parses Node test runner output (TAP / spec formats) to extract:
+ * 2. Incrementally parses streaming Node test runner output (TAP / spec formats) in real time
+ *    so failures occurring at any byte offset (even after >10 MiB of prior output) are preserved:
  *    - failing test file(s)
  *    - failing test/subtest name(s)
  *    - assertion/error messages and codes
  *    - repository file and line locations
- * 3. Writes a sanitized, bounded Markdown failure table to $GITHUB_STEP_SUMMARY (if set).
- * 4. Emits a high-visibility failure summary block to stderr.
- * 5. Writes raw failure log to a local file for inspection or artifact upload.
+ * 3. Maintains a bounded rolling ring buffer of the tail raw output (default 10 MiB)
+ *    so memory remains bounded while the latest failure context is always retained.
+ * 4. Writes a sanitized, bounded Markdown failure table to $GITHUB_STEP_SUMMARY (if set).
+ * 5. Emits a high-visibility failure summary block to stderr.
+ * 6. Writes raw failure log to a local file for inspection or artifact upload.
  *
  * Refs: #4014, #3994, #1882
  */
@@ -21,6 +24,7 @@
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const { StringDecoder } = require('node:string_decoder');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
@@ -59,11 +63,312 @@ function normalizeRepoPath(filePath, root = REPO_ROOT) {
   return normalized.replace(/\\/g, '/');
 }
 
-// ─── 2. Node Test Runner Output Parser ──────────────────────────────────────
+// ─── 2. Streaming Node Test Output Parser & Ring Buffer ─────────────────────
+
+class StreamingTestCollector {
+  constructor(repoRoot = REPO_ROOT, maxTailBytes = 10 * 1024 * 1024, maxFailures = 100) {
+    this.repoRoot = repoRoot;
+    this.maxTailBytes = maxTailBytes;
+    this.maxFailures = maxFailures;
+    this.failures = [];
+    this.seenKeys = new Set();
+
+    // Bounded rolling ring buffer for raw tail output
+    this.tailChunks = [];
+    this.tailBytes = 0;
+
+    // UTF-8 Decoders and line buffers
+    this.stdoutDecoder = new StringDecoder('utf8');
+    this.stderrDecoder = new StringDecoder('utf8');
+    this.stdoutLineBuffer = '';
+    this.stderrLineBuffer = '';
+
+    // TAP parser state
+    this.inYaml = false;
+    this.currentTap = null;
+    this.yamlMultilineKey = null;
+    this.yamlMultilineLines = [];
+
+    // Spec parser state
+    this.currentSpecFile = '';
+    this.currentSpecLine = null;
+    this.currentSpec = null;
+    this.specLines = [];
+  }
+
+  addStdoutChunk(chunk) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    this._appendTail(buf);
+    const text = this.stdoutDecoder.write(buf);
+    this._consumeText(text, false);
+  }
+
+  addStderrChunk(chunk) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    this._appendTail(buf);
+    const text = this.stderrDecoder.write(buf);
+    this._consumeText(text, true);
+  }
+
+  _appendTail(buf) {
+    this.tailChunks.push(buf);
+    this.tailBytes += buf.length;
+    while (this.tailBytes > this.maxTailBytes && this.tailChunks.length > 1) {
+      const removed = this.tailChunks.shift();
+      this.tailBytes -= removed.length;
+    }
+  }
+
+  _consumeText(text, isStderr) {
+    const combined = (isStderr ? this.stderrLineBuffer : this.stdoutLineBuffer) + text;
+    const lines = combined.split(/\r?\n/);
+    const remainder = lines.pop();
+    if (isStderr) {
+      this.stderrLineBuffer = remainder;
+    } else {
+      this.stdoutLineBuffer = remainder;
+    }
+    for (const line of lines) {
+      this._processLine(line);
+    }
+  }
+
+  _processLine(line) {
+    // 1. Check for Spec "test at <file>:<line>"
+    const testAtMatch = line.match(/^test at\s+(.*?):(\d+)(?::(\d+))?$/);
+    if (testAtMatch) {
+      this._finalizeSpec();
+      this.currentSpecFile = normalizeRepoPath(testAtMatch[1], this.repoRoot);
+      this.currentSpecLine = parseInt(testAtMatch[2], 10);
+      return;
+    }
+
+    // 2. Check for Spec "✖ <testName>"
+    const specFailMatch = line.match(/^[✖x]\s+(.+?)(?:\s+\([\d.]+m?s\))?$/);
+    if (specFailMatch && !line.includes('failing tests:')) {
+      this._finalizeSpec();
+      this.currentSpec = {
+        testName: specFailMatch[1].trim(),
+        file: this.currentSpecFile,
+        line: this.currentSpecLine,
+      };
+      this.specLines = [];
+      return;
+    }
+
+    if (this.currentSpec) {
+      if (line.match(/^ℹ\s+/) || line.match(/^#/) || line.match(/^TAP version/)) {
+        this._finalizeSpec();
+      } else {
+        this.specLines.push(line);
+        if (this.specLines.length >= 20) {
+          this._finalizeSpec();
+        }
+      }
+    }
+
+    // 3. Check for TAP "not ok <num> - <name>"
+    const notOkMatch = line.match(/^(\s*)not ok\s+\d+\s+-\s+(.+)$/);
+    if (notOkMatch) {
+      this._finalizeTap();
+      this.currentTap = {
+        testName: notOkMatch[2].trim(),
+        location: '',
+        error: '',
+        code: '',
+        operator: '',
+        expected: '',
+        actual: '',
+        stack: '',
+      };
+      this.inYaml = false;
+      this.yamlMultilineKey = null;
+      this.yamlMultilineLines = [];
+      return;
+    }
+
+    if (this.currentTap) {
+      const trimmed = line.trim();
+      if (trimmed === '---') {
+        this.inYaml = true;
+        return;
+      }
+      if (trimmed === '...') {
+        this._flushYamlMultiline();
+        this.inYaml = false;
+        this._finalizeTap();
+        return;
+      }
+      if (this.inYaml) {
+        if (this.yamlMultilineKey) {
+          if (line.match(/^\s{4,}/)) {
+            this.yamlMultilineLines.push(trimmed);
+            return;
+          } else {
+            this._flushYamlMultiline();
+          }
+        }
+
+        const locMatch = line.match(/^\s*location:\s*['"]?([^'"]+)['"]?/);
+        if (locMatch) { this.currentTap.location = locMatch[1]; return; }
+
+        const codeMatch = line.match(/^\s*code:\s*['"]?([^'"]+)['"]?/);
+        if (codeMatch) { this.currentTap.code = codeMatch[1]; return; }
+
+        const opMatch = line.match(/^\s*operator:\s*['"]?([^'"]+)['"]?/);
+        if (opMatch) { this.currentTap.operator = opMatch[1]; return; }
+
+        const expMatch = line.match(/^\s*expected:\s*(.+)$/);
+        if (expMatch) { this.currentTap.expected = expMatch[1].trim(); return; }
+
+        const actMatch = line.match(/^\s*actual:\s*(.+)$/);
+        if (actMatch) { this.currentTap.actual = actMatch[1].trim(); return; }
+
+        const errMatch = line.match(/^\s*error:\s*(?:\|-)?\s*['"]?([^'"]*)['"]?/);
+        if (errMatch) {
+          if (line.includes('|-')) {
+            this.yamlMultilineKey = 'error';
+            this.yamlMultilineLines = [];
+          } else {
+            this.currentTap.error = errMatch[1];
+          }
+          return;
+        }
+
+        if (line.match(/^\s*stack:\s*\|-/)) {
+          this.yamlMultilineKey = 'stack';
+          this.yamlMultilineLines = [];
+          return;
+        }
+      }
+    }
+  }
+
+  _flushYamlMultiline() {
+    if (!this.currentTap || !this.yamlMultilineKey) return;
+    const content = this.yamlMultilineLines.join('\n');
+    if (this.yamlMultilineKey === 'error') {
+      this.currentTap.error = content;
+    } else if (this.yamlMultilineKey === 'stack') {
+      this.currentTap.stack = content;
+    }
+    this.yamlMultilineKey = null;
+    this.yamlMultilineLines = [];
+  }
+
+  _finalizeTap() {
+    if (!this.currentTap) return;
+    this._flushYamlMultiline();
+    const tap = this.currentTap;
+    this.currentTap = null;
+    this.inYaml = false;
+
+    let file = '';
+    let lineNum = null;
+    let colNum = null;
+    if (tap.location) {
+      const parts = tap.location.match(/^(.*?):(\d+)(?::(\d+))?$/);
+      if (parts) {
+        file = normalizeRepoPath(parts[1], this.repoRoot);
+        lineNum = parseInt(parts[2], 10);
+        colNum = parts[3] ? parseInt(parts[3], 10) : null;
+      } else {
+        file = normalizeRepoPath(tap.location, this.repoRoot);
+      }
+    } else if (tap.stack) {
+      const stackMatch = tap.stack.match(/at (?:.+?\s+\()?([^():\s]+):(\d+):(\d+)\)?/) || tap.stack.match(/\((.*?):(\d+):(\d+)\)/);
+      if (stackMatch) {
+        file = normalizeRepoPath(stackMatch[1], this.repoRoot);
+        lineNum = parseInt(stackMatch[2], 10);
+        colNum = parseInt(stackMatch[3], 10);
+      }
+    }
+
+    this._addFailure({
+      testName: tap.testName,
+      subtestName: tap.testName,
+      location: tap.location ? normalizeRepoPath(tap.location, this.repoRoot) : (file && lineNum ? `${file}:${lineNum}` : ''),
+      file,
+      line: lineNum,
+      column: colNum,
+      errorCode: tap.code || (tap.error && tap.error.includes('ERR_ASSERTION') ? 'ERR_ASSERTION' : ''),
+      errorMessage: sanitizeEvidence(truncateString(tap.error || tap.stack || 'Test failed')),
+      operator: tap.operator || '',
+      expected: truncateString(tap.expected, 100),
+      actual: truncateString(tap.actual, 100),
+    });
+  }
+
+  _finalizeSpec() {
+    if (!this.currentSpec) return;
+    const spec = this.currentSpec;
+    this.currentSpec = null;
+    const errSnippet = this.specLines.join('\n');
+    this.specLines = [];
+
+    let stackLoc = '';
+    for (const l of errSnippet.split('\n')) {
+      const atMatch = l.match(/at (?:.+?\s+\()?([^\s():]+):(\d+):(\d+)\)?/);
+      if (atMatch && !stackLoc && (atMatch[1].includes('tests/') || atMatch[1].includes('.test.'))) {
+        stackLoc = `${normalizeRepoPath(atMatch[1], this.repoRoot)}:${atMatch[2]}:${atMatch[3]}`;
+      }
+    }
+
+    const file = spec.file || (stackLoc ? stackLoc.split(':')[0] : '');
+    const loc = stackLoc || (spec.file && spec.line ? `${spec.file}:${spec.line}` : '');
+
+    this._addFailure({
+      testName: spec.testName,
+      subtestName: spec.testName,
+      location: loc,
+      file,
+      line: spec.line || null,
+      column: null,
+      errorCode: errSnippet.includes('ERR_ASSERTION') ? 'ERR_ASSERTION' : '',
+      errorMessage: sanitizeEvidence(truncateString(errSnippet || 'Test failed')),
+      operator: '',
+      expected: '',
+      actual: '',
+    });
+  }
+
+  _addFailure(f) {
+    if (this.failures.length >= this.maxFailures) return;
+    const key = `${f.file || ''}::${f.subtestName || f.testName || ''}::${f.line || ''}`;
+    if (this.seenKeys.has(key)) return;
+    this.seenKeys.add(key);
+    this.failures.push(f);
+  }
+
+  flush() {
+    const remOut = this.stdoutDecoder.end();
+    if (remOut) this._consumeText(remOut, false);
+    const remErr = this.stderrDecoder.end();
+    if (remErr) this._consumeText(remErr, true);
+
+    if (this.stdoutLineBuffer) {
+      this._processLine(this.stdoutLineBuffer);
+      this.stdoutLineBuffer = '';
+    }
+    if (this.stderrLineBuffer) {
+      this._processLine(this.stderrLineBuffer);
+      this.stderrLineBuffer = '';
+    }
+    this._finalizeTap();
+    this._finalizeSpec();
+  }
+
+  getFailures() {
+    return this.failures;
+  }
+
+  getTailOutput() {
+    return Buffer.concat(this.tailChunks).toString('utf8');
+  }
+}
 
 /**
- * Parses TAP or Spec output from Node.js `--test` runner.
- * Extracts structured failure objects.
+ * Parses TAP or Spec output from a string.
  *
  * @param {string} rawOutput
  * @param {string} repoRoot
@@ -71,179 +376,10 @@ function normalizeRepoPath(filePath, root = REPO_ROOT) {
  */
 function parseTestOutput(rawOutput, repoRoot = REPO_ROOT) {
   if (!rawOutput || typeof rawOutput !== 'string') return [];
-  const lines = rawOutput.split(/\r?\n/);
-  const failures = [];
-  const seenKeys = new Set();
-
-  function addFailure(f) {
-    const key = `${f.file || ''}::${f.subtestName || f.testName || ''}::${f.line || ''}`;
-    if (seenKeys.has(key)) return;
-    seenKeys.add(key);
-    failures.push(f);
-  }
-
-  // Pass 1: Parse TAP 'not ok' blocks
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    const notOkMatch = line.match(/^(\s*)not ok\s+\d+\s+-\s+(.+)$/);
-    if (notOkMatch) {
-      const indent = notOkMatch[1];
-      const testName = notOkMatch[2].trim();
-      let location = '';
-      let error = '';
-      let code = '';
-      let operator = '';
-      let expected = '';
-      let actual = '';
-      let stack = '';
-
-      i++;
-      if (i < lines.length && lines[i].trim() === '---') {
-        i++;
-        while (i < lines.length && lines[i].trim() !== '...') {
-          const subLine = lines[i];
-          const locMatch = subLine.match(/^\s*location:\s*['"]?([^'"]+)['"]?/);
-          if (locMatch) location = locMatch[1];
-
-          const errMatch = subLine.match(/^\s*error:\s*(?:\|-)?\s*['"]?([^'"]*)['"]?/);
-          if (errMatch) {
-            if (subLine.includes('|-')) {
-              i++;
-              const errLines = [];
-              while (i < lines.length && lines[i].match(/^\s{4,}/)) {
-                errLines.push(lines[i].trim());
-                i++;
-              }
-              error = errLines.join('\n');
-              continue;
-            } else {
-              error = errMatch[1];
-            }
-          }
-
-          const codeMatch = subLine.match(/^\s*code:\s*['"]?([^'"]+)['"]?/);
-          if (codeMatch) code = codeMatch[1];
-
-          const opMatch = subLine.match(/^\s*operator:\s*['"]?([^'"]+)['"]?/);
-          if (opMatch) operator = opMatch[1];
-
-          const expMatch = subLine.match(/^\s*expected:\s*(.+)$/);
-          if (expMatch) expected = expMatch[1].trim();
-
-          const actMatch = subLine.match(/^\s*actual:\s*(.+)$/);
-          if (actMatch) actual = actMatch[1].trim();
-
-          if (subLine.match(/^\s*stack:\s*\|-/)) {
-            i++;
-            const stackLines = [];
-            while (i < lines.length && lines[i].match(/^\s{4,}/)) {
-              stackLines.push(lines[i].trim());
-              i++;
-            }
-            stack = stackLines.join('\n');
-            continue;
-          }
-          i++;
-        }
-      }
-
-      // Parse file and line from location or stack
-      let file = '';
-      let lineNum = null;
-      let colNum = null;
-      if (location) {
-        const parts = location.match(/^(.*?):(\d+)(?::(\d+))?$/);
-        if (parts) {
-          file = normalizeRepoPath(parts[1], repoRoot);
-          lineNum = parseInt(parts[2], 10);
-          colNum = parts[3] ? parseInt(parts[3], 10) : null;
-        } else {
-          file = normalizeRepoPath(location, repoRoot);
-        }
-      } else if (stack) {
-        const stackMatch = stack.match(/at (?:.+?\s+\()?([^():\s]+):(\d+):(\d+)\)?/) || stack.match(/\((.*?):(\d+):(\d+)\)/);
-        if (stackMatch) {
-          file = normalizeRepoPath(stackMatch[1], repoRoot);
-          lineNum = parseInt(stackMatch[2], 10);
-          colNum = parseInt(stackMatch[3], 10);
-        }
-      }
-
-      addFailure({
-        testName,
-        subtestName: testName,
-        location: location ? normalizeRepoPath(location, repoRoot) : (file && lineNum ? `${file}:${lineNum}` : ''),
-        file,
-        line: lineNum,
-        column: colNum,
-        errorCode: code || (error.includes('ERR_ASSERTION') ? 'ERR_ASSERTION' : ''),
-        errorMessage: sanitizeEvidence(truncateString(error || stack || 'Test failed without explicit error message')),
-        operator,
-        expected: truncateString(expected, 100),
-        actual: truncateString(actual, 100),
-      });
-      continue;
-    }
-    i++;
-  }
-
-  // Pass 2: Parse Spec '✖ <test>' / 'test at <file>:<line>' blocks if TAP yielded nothing
-  if (failures.length === 0) {
-    let currentTestFile = '';
-    let currentFileLine = null;
-
-    for (let j = 0; j < lines.length; j++) {
-      const line = lines[j];
-      const testAtMatch = line.match(/^test at\s+(.*?):(\d+)(?::(\d+))?$/);
-      if (testAtMatch) {
-        currentTestFile = normalizeRepoPath(testAtMatch[1], repoRoot);
-        currentFileLine = parseInt(testAtMatch[2], 10);
-        continue;
-      }
-
-      const failMatch = line.match(/^[✖x]\s+(.+?)(?:\s+\([\d.]+m?s\))?$/);
-      if (failMatch) {
-        const testName = failMatch[1].trim();
-        let errSnippet = '';
-        let stackLoc = '';
-
-        // Read next lines for assertion message and stack
-        let k = j + 1;
-        const errLines = [];
-        while (k < lines.length && k < j + 15) {
-          const next = lines[k];
-          if (next.match(/^[✖x]\s+/) || next.match(/^test at\s+/) || next.match(/^ℹ\s+/)) break;
-          if (next.trim()) errLines.push(next.trim());
-          const atMatch = next.match(/at (?:.+?\s+\()?([^\s():]+):(\d+):(\d+)\)?/);
-          if (atMatch && !stackLoc && atMatch[1].includes('tests/')) {
-            stackLoc = `${normalizeRepoPath(atMatch[1], repoRoot)}:${atMatch[2]}:${atMatch[3]}`;
-          }
-          k++;
-        }
-        errSnippet = errLines.join('\n');
-
-        const file = currentTestFile || (stackLoc ? stackLoc.split(':')[0] : '');
-        const loc = stackLoc || (currentTestFile && currentFileLine ? `${currentTestFile}:${currentFileLine}` : '');
-
-        addFailure({
-          testName,
-          subtestName: testName,
-          location: loc,
-          file,
-          line: currentFileLine,
-          column: null,
-          errorCode: errSnippet.includes('ERR_ASSERTION') ? 'ERR_ASSERTION' : '',
-          errorMessage: sanitizeEvidence(truncateString(errSnippet || 'Test failed')),
-          operator: '',
-          expected: '',
-          actual: '',
-        });
-      }
-    }
-  }
-
-  return failures;
+  const collector = new StreamingTestCollector(repoRoot, rawOutput.length + 1024, 100);
+  collector.addStdoutChunk(Buffer.from(rawOutput, 'utf8'));
+  collector.flush();
+  return collector.getFailures();
 }
 
 // ─── 3. Formatting Failure Summaries ───────────────────────────────────────
@@ -341,6 +477,7 @@ function runSmokeProcess(opts = {}) {
   const env = opts.env || process.env;
   const customCmd = opts.cmd || null;
   const customArgs = opts.args || null;
+  const maxTailBytes = opts.maxTailBytes || 10 * 1024 * 1024;
   const stepSummaryFile = opts.stepSummaryFile || env.GITHUB_STEP_SUMMARY || null;
   const outStream = opts.stdout || process.stdout;
   const errStream = opts.stderr || process.stderr;
@@ -360,11 +497,9 @@ function runSmokeProcess(opts = {}) {
   const childEnv = { ...env };
   delete childEnv.NODE_TEST_CONTEXT;
 
-  return new Promise((resolve) => {
-    let capturedChunks = [];
-    let totalBytes = 0;
-    const MAX_CAPTURE_BYTES = 10 * 1024 * 1024; // 10 MB in-memory buffer
+  const collector = new StreamingTestCollector(cwd, maxTailBytes, 100);
 
+  return new Promise((resolve) => {
     const child = spawn(command, cmdArgs, {
       cwd,
       env: childEnv,
@@ -374,18 +509,12 @@ function runSmokeProcess(opts = {}) {
 
     child.stdout.on('data', (chunk) => {
       outStream.write(chunk);
-      if (totalBytes < MAX_CAPTURE_BYTES) {
-        capturedChunks.push(chunk);
-        totalBytes += chunk.length;
-      }
+      collector.addStdoutChunk(chunk);
     });
 
     child.stderr.on('data', (chunk) => {
       errStream.write(chunk);
-      if (totalBytes < MAX_CAPTURE_BYTES) {
-        capturedChunks.push(chunk);
-        totalBytes += chunk.length;
-      }
+      collector.addStderrChunk(chunk);
     });
 
     child.on('error', (err) => {
@@ -405,9 +534,10 @@ function runSmokeProcess(opts = {}) {
     });
 
     child.on('close', (code, signal) => {
+      collector.flush();
       const exitCode = code !== null ? code : (signal ? 128 : 1);
-      const rawOutput = Buffer.concat(capturedChunks).toString('utf8');
-      const failures = parseTestOutput(rawOutput, cwd);
+      const rawOutput = collector.getTailOutput();
+      const failures = collector.getFailures();
 
       if (exitCode !== 0) {
         // 1. Print formatted console summary to stderr
@@ -482,6 +612,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  StreamingTestCollector,
   parseTestOutput,
   formatMarkdownSummary,
   formatConsoleSummary,
