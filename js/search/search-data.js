@@ -223,8 +223,18 @@
             const treeId = getPreviewTreeId(tree);
             if (!treeId) return null;
 
+            // #4055: a cached preview must not be returned just because it
+            // exists. When a fresh Browse authority has already been loaded for
+            // this session and the tree is absent from it, the cached preview
+            // may outlive a visibility revocation — treat it as stale and
+            // re-hydrate from current authority instead.
+            const freshBrowseLoaded = state.apiTreesLoaded === true;
+            const treePresentInFreshBrowse = Array.isArray(state.allTrees)
+                ? state.allTrees.some((t) => String(getPreviewTreeId(t)) === String(treeId))
+                : false;
+
             const cachedPreview = previewCacheApi.readPreviewCache(treeId);
-            if (cachedPreview) {
+            if (cachedPreview && (!freshBrowseLoaded || treePresentInFreshBrowse)) {
                 return cachedPreview;
             }
 
@@ -311,18 +321,17 @@
                 ui.syncControlsFromState();
             }
 
-            // Serve from cache first (stale-while-revalidate)
+            // #4055: authority-first Browse. A cached public Tree projection
+            // must not be rendered as current public content before the fresh
+            // authority confirms it. The cache is used only as a non-sensitive
+            // loading hint (suppress the loading status on incremental loads);
+            // user-visible Trees always come from the fresh authority response.
             let cachedTrees = null;
             if (cache) {
                 cachedTrees = cache.get(cacheKey);
                 // On incremental load with cache hit, suppress loading status
                 if (!resetSelection && cachedTrees && browseLoadingManager) {
                     browseLoadingManager.ready(state.currentLoadGen);
-                }
-                if (cachedTrees && Array.isArray(cachedTrees) && cachedTrees.length > 0) {
-                    state.allTrees = dedupeTreesById(cachedTrees);
-                    state.isFromCache = true;
-                    callbacks.renderResults();
                 }
             }
 
@@ -368,9 +377,17 @@
                 }
                 state.loadError = error;
                 console.warn('[search/data] API 로드 실패:', error.message);
-                if (!state.allTrees || state.allTrees.length === 0) {
-                    state.allTrees = [];
+                // #4055 network-failure negative control: after a revocation, a
+                // failed fresh-authority fetch must NOT leave a stale cached
+                // public Tree on screen or in the cache. The last-known-list
+                // fallback is forbidden for visibility-sensitive content — drop
+                // the stale projection and the cached entry so neither can be
+                // resurrected; render a truthful loading/error/empty shell.
+                if (cache && typeof cache.clear === 'function') {
+                    cache.clear(cacheKey);
                 }
+                state.allTrees = [];
+                state.isFromCache = false;
                 callbacks.renderResults();
             } finally {
                 if (isCurrentRequest()) {
