@@ -2,11 +2,23 @@
 
 ## Status
 
-**Phase:** #4001 read-only architecture forensic  
-**Parent:** #4000  
-**LoveBud source baseline:** `cc6cb26854e4cc692d3109debe05b0de1ab23a89`  
-**LoveTree comparison baseline:** `06dfb7e52a3c5a96d309142bbeb06a3445a18f96`  
+**Phase:** Historical #4001 architecture forensic (Reconciled with current-main & #4004 platform authority)
+**Parent:** #4000
+**Historical LoveBud source baseline:** `cc6cb26854e4cc692d3109debe05b0de1ab23a89`
+**Historical LoveTree comparison baseline:** `06dfb7e52a3c5a96d309142bbeb06a3445a18f96`
+**Current main reference:** `fd7c77e3aaff3df04d68915323c3f46cccb887f9`
 **Audit branch:** `docs/4000-cloudflare-neon-runtime-audit`
+**Subsequent authoritative decisions:** #4004 (Shared Platform / Auth Authority), #4003 / #4045 (Direct-Neon Browse Transport Prototype)
+
+### Reconciliation & Current Platform Context (Post-#4004 / #4003 / #4045)
+
+This document preserves the original technical forensics conducted under #4001 while recording subsequent authoritative platform decisions:
+
+1. **Direct-Neon Read Feasibility:** The historical recommendation to prototype a direct Neon Serverless HTTP Browse transport (`GO_NEON_SERVERLESS_READ_PROTOTYPE`) was validated and implemented in downstream prototype lane #4003 / Draft PR #4045.
+2. **Platform & Backend Authority Supersession:** The original cross-repository verdict `BOUNDED_INTEROPERABILITY_REQUIRED` reflected the state prior to platform convergence. It is **superseded by Issue #4004**, which established that LoveBud and LoveTree share a unified platform, auth, and database authority rather than running dual independent writable backends.
+3. **Data Authority:** The LoveBud database lineage (`133-relovetree` with 36 users, 45 Trees, 287 Memories) is the candidate canonical production data authority, whereas `lovetree-limone` (7 Trees, 4 Memories, no `public.users` table) provides Cloudflare-native architectural references to be selectively converged.
+
+---
 
 This audit evaluates whether LoveBud general request/response backend work should move from:
 
@@ -49,14 +61,18 @@ However, that sibling runtime also creates the main architecture constraint: Lov
 
 For the first LoveBud implementation slice, the lowest-risk option is **Neon Serverless Driver over HTTP for one read-only Browse parity prototype**. Hyperdrive remains a serious candidate for later phases, especially if interactive/session-style PostgreSQL transactions or global connection pooling become the dominant requirement, but it adds a new Cloudflare resource/configuration and has default read-query caching semantics that require deliberate disabling on freshness/security-sensitive paths.
 
-### Audit verdicts
+### Audit verdicts & current supersession status
 
 ```text
+[HISTORICAL VERDICT — VALIDATED & PROTOTYPED IN #4003 / #4045]
 GO_NEON_SERVERLESS_READ_PROTOTYPE
+
+[HISTORICAL VERDICT — SUPERSEDED BY #4004 PLATFORM AUTHORITY]
 BOUNDED_INTEROPERABILITY_REQUIRED
 ```
 
-The first verdict applies only to a narrow read prototype. It does not authorize write migration.
+- `GO_NEON_SERVERLESS_READ_PROTOTYPE`: Preserved as the historical recommendation to prototype direct Neon access for read-only Browse. This was subsequently implemented as an experimental prototype in downstream lane #4003 / Draft PR #4045.
+- `BOUNDED_INTEROPERABILITY_REQUIRED`: Preserved as the historical baseline verdict preventing cross-repository dual writes before platform governance was established. This verdict has been **superseded by Issue #4004**, which selected a unified platform backend and authentication authority for LoveBud and LoveTree.
 
 ---
 
@@ -521,9 +537,9 @@ The connected Google Drive source `LOVEBUD_TO_V4_PRODUCT_SPINE_INTEGRATION_MATRI
 
 That document predates #4000.
 
-### 11.2 Current LoveTree source confirms the backend is no longer hypothetical
+### 11.2 Historical LoveTree comparison findings
 
-The current LoveTree repository contains:
+At the audit baseline, the LoveTree repository contained:
 
 - Cloudflare runtime/tooling;
 - `@neondatabase/serverless`;
@@ -534,7 +550,7 @@ The current LoveTree repository contains:
 - Tree and Memory persistence and visibility logic;
 - current concurrency/idempotency work.
 
-Therefore there are already **two real backend implementations** with overlapping domain responsibilities:
+Therefore at the time of the #4001 audit, there were **two real backend implementations** with overlapping domain responsibilities:
 
 ```text
 LoveBud
@@ -544,9 +560,9 @@ LoveTree
 Cloudflare runtime → Neon Serverless/Drizzle → Neon
 ```
 
-### 11.3 Immediate shared-backend takeover is not yet justified
+### 11.3 Historical baseline analysis at #4001
 
-Making LoveBud a shared backend authority immediately would require deciding:
+Making LoveBud a shared backend authority immediately at that time would have required deciding:
 
 - which database/schema becomes canonical;
 - whether existing LoveTree records migrate;
@@ -557,22 +573,34 @@ Making LoveBud a shared backend authority immediately would require deciding:
 - whether LoveBud and LoveTree should share one physical Neon database or only one API authority;
 - how deployment ownership changes without dual writes.
 
-These decisions are larger than #4001 and should not be hidden inside the Modal-removal migration.
-
-### Cross-repository verdict
+### Historical cross-repository verdict (Superseded)
 
 ```text
-BOUNDED_INTEROPERABILITY_REQUIRED
+BOUNDED_INTEROPERABILITY_REQUIRED [SUPERSEDED]
 ```
 
-Meaning:
+Historical meaning at #4001:
 
 - proceed with simplifying LoveBud's own runtime;
 - use LoveTree's direct-Neon implementation as technical reference evidence;
 - do not create cross-repository dual writes;
 - separately decide canonical Tree/Moment backend authority before pointing LoveTree at LoveBud or vice versa.
 
-A later decision may still choose LoveBud as the shared backend, but that must be a deliberate convergence migration, not an incidental result of #4000.
+### 11.4 Subsequent platform authority decision (#4004) and supersession
+
+Following this audit, the owner and platform governance established Issue #4004 (`[Architecture][Platform] Shared LoveBud / LoveTree Backend and Auth Authority Decision`), which officially resolved the cross-repository authority question:
+
+1. **One Shared Platform Backend & Auth Authority:** LoveBud and LoveTree share a single authentication and backend authority. Duplicate independently writable canonical backends are rejected.
+2. **Canonical Data Lineage:** Direct inspection of active databases established the canonical lineage:
+   - LoveBud `133-relovetree`: 36 users / 45 Trees / 287 Memories.
+   - `lovetree-limone`: 7 Trees / 4 Memories, no `public.users` table.
+   - Neither database currently contains a `neon_auth` schema.
+   Therefore, LoveBud's database lineage is established as the candidate canonical production-data authority.
+3. **Architectural Convergence:** LoveTree's Cloudflare-native implementation patterns (Workers, Drizzle, Neon serverless driver) will be selectively converged into the canonical platform rather than maintaining two competing backends.
+4. **Unified Authentication:** Neon Auth is accepted as an evaluation candidate for unified authentication across both surfaces to replace Firebase Auth.
+5. **Downstream Direct-Neon Prototype:** Downstream prototype work proceeded under Issue #4003 / Draft PR #4045, attaching an experimental direct-Neon Browse transport in Cloudflare Pages Functions.
+
+Consequently, `BOUNDED_INTEROPERABILITY_REQUIRED` is preserved only as the historical #4001 finding and is explicitly **superseded by Issue #4004**.
 
 ---
 
@@ -657,24 +685,32 @@ Neon official documentation:
 
 ---
 
-## 14. Final decision
+## 14. Final decision and reconciliation summary
 
-### Direct runtime prototype
+### 14.1 Historical #4001 audit decisions (Aug 2026)
+
+1. **Direct runtime prototype:**
+   ```text
+   GO_NEON_SERVERLESS_READ_PROTOTYPE
+   ```
+   *Historical reason:* The first Browse read is a one-shot/aggregate read that fits Neon HTTP, the integration has the smallest external configuration surface, it avoids Hyperdrive's default stale-query cache policy during the first experiment, and an active sibling repository already demonstrates the same Cloudflare + Neon Serverless architecture.
+   *Execution status:* Successfully implemented as an experimental prototype in downstream lane #4003 / Draft PR #4045.
+
+2. **Historical cross-repository verdict:**
+   ```text
+   BOUNDED_INTEROPERABILITY_REQUIRED [SUPERSEDED]
+   ```
+   *Historical reason:* LoveTree already had an active Cloudflare + Neon backend with its own schema, auth, and write contracts. Cross-repository dual writes were prohibited prior to platform governance.
+   *Supersession status:* **Superseded by Issue #4004**.
+
+### 14.2 Active platform authority (#4004)
 
 ```text
-GO_NEON_SERVERLESS_READ_PROTOTYPE
+ONE_SHARED_PLATFORM_BACKEND_AND_AUTH_AUTHORITY
+CANONICAL_DATA_LINEAGE_PRESERVATION (LoveBud 133-relovetree)
+DIRECT_NEON_BROWSE_TRANSPORT_PROTOTYPE (#4003 / #4045)
 ```
 
-Reason: the first Browse read is a one-shot/aggregate read that fits Neon HTTP, the integration has the smallest external configuration surface, it avoids Hyperdrive's default stale-query cache policy during the first experiment, and an active sibling repository already demonstrates the same Cloudflare + Neon Serverless architecture.
-
-### Cross-repository authority
-
-```text
-BOUNDED_INTEROPERABILITY_REQUIRED
-```
-
-Reason: LoveTree already has an active Cloudflare + Neon backend with its own schema, auth, and write contracts. #4000 may simplify LoveBud and may later become part of a shared backend strategy, but canonical backend convergence must be explicitly designed before either repository replaces the other's runtime authority.
-
-### Next child
-
-Create one narrow implementation issue/PR for an **isolated Browse-summary direct-Neon parity prototype**. Do not cut over Production in that PR.
+- **Shared Platform Direction:** LoveBud and LoveTree converge on a single shared backend/data/auth authority (#4004).
+- **Production Data Authority:** LoveBud database lineage (`133-relovetree`) is the candidate canonical production data authority.
+- **Transitional Implementation Prototype:** Direct-Neon Browse transport prototype is actively explored under #4003 / PR #4045 without dual writes or premature production cutover.
