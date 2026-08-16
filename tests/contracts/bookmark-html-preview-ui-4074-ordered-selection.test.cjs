@@ -471,6 +471,63 @@ test('4074 (#4072 regression): credential-bearing URL never echoed as text', asy
   assert.doesNotMatch(fullText, /@example\.com/, 'credential-bearing URL not echoed');
 });
 
+// ─── 18. preview authority invalidates on READING (blocking #4075) ───────────
+test('4075: preview authority invalidates during a never-resolving READING', async () => {
+  const { api } = loadUi();
+  const first = exportedHtml(nBookmarks(3, (i) => `https://example.com/${i}`));
+  await api.handleFileSelected(fakeFile(first.length, () => Promise.resolve(first)));
+  api.selectAllEligible();
+  assert.equal(api.getState(), 'READY');
+  assert.equal(api.getSelectedCount(), 3);
+  assert.ok(api.getPreview(), 'preview present before stale read');
+  // Begin a second read that never resolves.
+  api.handleFileSelected(fakeFile(100, () => new Promise(() => {})));
+  assert.equal(api.getState(), 'READING');
+  // Preview authority must be gone while the new file is in flight.
+  assert.equal(api.getPreview(), null, 'getPreview() is null during READING');
+});
+
+// ─── 19. select-all during READING cannot resurrect old occurrences ──────────
+test('4075: select-all during READING cannot resurrect prior occurrences', async () => {
+  const { api } = loadUi();
+  const first = exportedHtml(nBookmarks(3, (i) => `https://example.com/${i}`));
+  await api.handleFileSelected(fakeFile(first.length, () => Promise.resolve(first)));
+  api.selectAllEligible();
+  assert.equal(api.getSelectedCount(), 3);
+  api.handleFileSelected(fakeFile(100, () => new Promise(() => {})));
+  assert.equal(api.getState(), 'READING');
+  api.selectAllEligible(); // public + reads lastResult
+  assert.equal(api.getSelectedCount(), 0, 'no occurrences resurrected from previous file');
+  assert.equal(api.getPreview(), null);
+});
+
+// ─── 20. ERROR + explicit reset also drop preview authority ─────────────────
+test('4075: ERROR and explicit reset leave getPreview() null and selection empty', async () => {
+  const { api } = loadUi();
+  const good = exportedHtml(nBookmarks(2, (i) => `https://example.com/${i}`));
+  await api.handleFileSelected(fakeFile(good.length, () => Promise.resolve(good)));
+  api.selectAllEligible();
+  assert.equal(api.getSelectedCount(), 2);
+  assert.ok(api.getPreview());
+
+  const bad = '<html><body>no bookmark structure here';
+  await api.handleFileSelected(fakeFile(bad.length, () => Promise.resolve(bad)));
+  assert.equal(api.getState(), 'ERROR');
+  assert.equal(api.getPreview(), null, 'ERROR drops preview authority');
+  assert.equal(api.getSelectedCount(), 0, 'ERROR empties selection');
+
+  const again = exportedHtml(nBookmarks(2, (i) => `https://example.com/${i}`));
+  await api.handleFileSelected(fakeFile(again.length, () => Promise.resolve(again)));
+  api.selectAllEligible();
+  assert.equal(api.getSelectedCount(), 2);
+  assert.ok(api.getPreview());
+
+  api.resetSurface();
+  assert.equal(api.getState(), 'IDLE');
+  assert.equal(api.getPreview(), null, 'explicit reset drops preview authority');
+  assert.equal(api.getSelectedCount(), 0, 'explicit reset empties selection');
+});
+
 // ─── capability guardrail: still no network / storage / HTML-execution ──────
 test('4074: UI module still has no network / upload / storage / HTML-execution capability', () => {
   assert.doesNotMatch(UI_CODE, /\bfetch\s*\(/, 'no fetch');

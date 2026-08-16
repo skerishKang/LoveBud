@@ -126,6 +126,7 @@
   function failWith(message) {
     clearPreview();
     resetSelection();
+    lastResult = null; // preview authority invalidates with selection
     setError(message);
     setState('ERROR', '');
   }
@@ -447,6 +448,7 @@
   function handleFileSelected(file) {
     resetSelection();
     clearPreview(); // new file selection: previous preview + selection are stale
+    lastResult = null; // preview authority invalidates with selection (READING)
     setError('');
     if (!file) {
       failWith('파일을 선택해주세요.');
@@ -473,6 +475,7 @@
 
   function resetSurface() {
     resetSelection();
+    lastResult = null; // preview authority invalidates with selection
     var input = $id(FILE_INPUT_ID);
     if (input) input.value = '';
     clearPreview();
