@@ -178,9 +178,15 @@
   }
 
   // #4069 — canonical Tree-title bound. Server authority:
-  // modal_compute/validation.py validate_tree_title(max_length=200) (#3935);
-  // the create-tree modal input also uses maxlength="200". Reused verbatim —
-  // no new persisted limit invented.
+  // modal_compute/validation.py validate_tree_title(max_length=200) (#3935).
+  // Two distinct authorities, kept separate:
+  //   (a) backend canonical = deterministic trim + max 200 Unicode CODE
+  //       POINTS (Python len()); we count code points (Array.from) so
+  //       emoji/non-BMP titles match the backend exactly.
+  //   (b) #4069 product fail-closed requirement (NOT backend
+  //       validate_tree_title behavior): reject non-string, empty, or
+  //       whitespace-only title.
+  // No new persisted limit invented; 200 is the existing canonical bound.
   var TREE_TITLE_MAX = 200;
   var PRIVATE_VISIBILITY = 'private';
   var TITLE_INPUT_ID = 'youtubePlaylistTreeTitle';
@@ -189,15 +195,21 @@
 
   /**
    * #4069 normalizeTreeTitle — deterministic trim + bounded length.
-   * Mirrors validate_tree_title semantics (strip, overlength fails closed).
-   * Empty/whitespace-only title fails closed for import-intent review even
-   * though the create path may fall back to a default title.
+   *
+   * Two distinct authorities, kept separate:
+   *   (a) backend canonical (modal_compute/validation.py::validate_tree_title,
+   *       max_length=200): deterministic trim + reject over 200 Unicode CODE
+   *       POINTS. We count code points (Array.from) so emoji/non-BMP characters
+   *       align with Python's len().
+   *   (b) #4069 product fail-closed requirement (not part of the backend
+   *       trim+max authority): reject non-string, empty, or whitespace-only.
    */
   function normalizeTreeTitle(raw) {
     if (typeof raw !== 'string') return { ok: false, code: 'TITLE_INVALID_TYPE' };
     var text = raw.trim();
     if (text.length === 0) return { ok: false, code: 'TITLE_REQUIRED' };
-    if (text.length > TREE_TITLE_MAX) return { ok: false, code: 'TITLE_TOO_LONG' };
+    // Code-point length (not UTF-16 units) to match backend len() exactly.
+    if (Array.from(text).length > TREE_TITLE_MAX) return { ok: false, code: 'TITLE_TOO_LONG' };
     return { ok: true, value: text };
   }
 

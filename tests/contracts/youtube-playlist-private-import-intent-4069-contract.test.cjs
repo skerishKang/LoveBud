@@ -7,10 +7,14 @@
  *
  * Verifies the #4069 import-intent contract:
  *
- *  - canonical Tree-title bound reused from #3935 (validate_tree_title
- *    max_length=200) — no new persisted limit invented
- *  - deterministic trim; empty/whitespace-only and over-limit titles fail
- *    closed
+ *  - canonical Tree-title bound = 200 Unicode CODE POINTS, reused from
+ *    #3935 (modal_compute/validation.py::validate_tree_title max_length=200).
+ *    Counted via Array.from so emoji/non-BMP align with Python len(); the
+ *    HTML maxlength attribute is NOT used as the authority (it counts UTF-16
+ *    units). No new persisted limit invented.
+ *  - two authorities kept separate: backend canonical = trim + max 200 code
+ *    points; #4069 product fail-closed = reject non-string / empty /
+ *    whitespace-only (not backend validate_tree_title behavior).
  *  - prepared intent visibility is exactly 'private'; no public /
  *    import-and-publish shortcut exists (public YouTube playlist is not
  *    publication authority)
@@ -119,11 +123,13 @@ function previewData(items, truncated) {
   };
 }
 
-test('4069: canonical Tree-title bound is reused from #3935 (200)', () => {
+test('4069: canonical Tree-title bound is 200 Unicode code points (HTML maxlength is not the authority)', () => {
   const { api } = intentHarness();
   assert.equal(api.TREE_TITLE_MAX, 200, 'must match validate_tree_title max_length=200 (#3935)');
-  // The create-tree modal input uses the same bound.
-  assert.match(HTML_SOURCE, /maxlength="200"/);
+  // The #4069 title input must NOT rely on HTML maxlength as the canonical
+  // authority: HTML maxlength counts UTF-16 code units, which mismatches the
+  // backend code-point len(). JS normalizeTreeTitle is the single authority.
+  assert.doesNotMatch(HTML_SOURCE, /id="youtubePlaylistTreeTitle"[^>]*maxlength=/, 'no HTML maxlength authority on the #4069 title input');
 });
 
 test('4069: normalizeTreeTitle trims deterministically and fails closed', () => {
@@ -141,6 +147,39 @@ test('4069: normalizeTreeTitle trims deterministically and fails closed', () => 
   assert.equal(api.normalizeTreeTitle(123).ok, false);
   assert.equal(api.normalizeTreeTitle(123).code, 'TITLE_INVALID_TYPE');
   assert.equal(api.normalizeTreeTitle(null).ok, false);
+});
+
+// ─── #4069 code-point max-length semantics (mirrors backend len()) ───────────
+test('4069: title max length counts Unicode code points — 200 ASCII accepted, 201 rejected', () => {
+  const { api } = intentHarness();
+  assert.equal(api.normalizeTreeTitle('a'.repeat(200)).ok, true, '200 ASCII code points accepted');
+  assert.equal(api.normalizeTreeTitle('a'.repeat(201)).ok, false, '201 ASCII code points rejected');
+});
+
+test('4069: title max length counts Unicode code points — 200 emoji accepted, 201 rejected', () => {
+  const { api } = intentHarness();
+  // Each emoji is 1 code point but 2 UTF-16 code units. A 200-emoji title would
+  // wrongly fail under the old .length check; with code-point counting it is
+  // accepted (matching backend validate_tree_title len()), 201 is rejected.
+  const twoHundred = '🙂'.repeat(200);
+  const twoHundredOne = '🙂'.repeat(201);
+  assert.equal(Array.from(twoHundred).length, 200, '200 code points');
+  assert.equal(twoHundred.length, 400, 'UTF-16 length is 400 but still allowed');
+  assert.equal(api.normalizeTreeTitle(twoHundred).ok, true, '200 emoji accepted (code-point count)');
+  assert.equal(Array.from(twoHundredOne).length, 201, '201 code points');
+  assert.equal(api.normalizeTreeTitle(twoHundredOne).ok, false, '201 emoji rejected (over code-point max)');
+  assert.equal(api.normalizeTreeTitle(twoHundredOne).code, 'TITLE_TOO_LONG');
+});
+
+test('4069: mixed BMP + non-BMP title counts code points exactly', () => {
+  const { api } = intentHarness();
+  // 199 ASCII + 1 emoji (surrogate pair) = 200 code points.
+  const mixed = 'a'.repeat(199) + '🙂';
+  assert.equal(Array.from(mixed).length, 200, '199 + 1 emoji = 200 code points');
+  assert.equal(api.normalizeTreeTitle(mixed).ok, true, 'mixed 200 code points accepted');
+  const mixedOver = 'a'.repeat(200) + '🙂';
+  assert.equal(Array.from(mixedOver).length, 201, '200 + 1 emoji = 201 code points');
+  assert.equal(api.normalizeTreeTitle(mixedOver).ok, false, 'mixed 201 code points rejected');
 });
 
 test('4069: valid title + eligible selection -> deterministic private intent', () => {
