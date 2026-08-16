@@ -307,6 +307,31 @@ check('timestamp: transport executor returning PG-text timestamps normalizes to 
   assert.equal(rows[0].updatedAt, '2026-08-03T12:00:00.654321+00:00');
 });
 
+check('timestamp: transport executor returning a JS Date fails closed end-to-end (no fabricated precision)', async () => {
+  // End-to-end through the real transport entry point: a JS Date reaching the
+  // row normalizer must fail closed rather than being presented as strict
+  // microsecond parity. The authoritative ::text path never yields a Date.
+  const executor = makeMockExecutor(
+    { has_social_counts_table: true, has_like_count_column: true, has_view_count_column: true },
+    [{
+      id: 't', title: 'T', visibility: 'public', memory_count: 3,
+      created_at: new Date('2026-07-01T12:34:56.123Z'),
+      updated_at: '2026-07-01 12:34:56.123456+00',
+      all_tags: [], like_count: 0, raw_thumbnail: '', raw_source_url: '',
+    }],
+  );
+  let caught;
+  try {
+    await fetchBrowseSummaryViaDirectNeon({ executor, sort: 'latest', limit: 1 });
+    assert.fail('expected JS Date timestamp to fail closed end-to-end');
+  } catch (err) {
+    caught = err;
+  }
+  assert.ok(caught instanceof TypeError, 'expected TypeError');
+  assert.equal(caught.message, 'DIRECT_NEON_TIMESTAMP_PRECISION_LOST');
+  assert.doesNotMatch(caught.message, /\.\d{3,6}\+00:00/);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // H. response shape / DTO parity with canonical public Modal Browse contract
 // ─────────────────────────────────────────────────────────────────────────────

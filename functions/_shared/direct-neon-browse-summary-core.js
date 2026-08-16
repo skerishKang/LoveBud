@@ -146,6 +146,9 @@ LIMIT $1
 //
 // Rules (no fabricated precision):
 //   - null / undefined => null
+//   - a JS Date input fails closed (throws DIRECT_NEON_TIMESTAMP_PRECISION_LOST)
+//     because it has already lost sub-millisecond PostgreSQL precision and cannot
+//     be reproduced as strict microsecond parity; no raw value is echoed.
 //   - already-canonical ISO strings are returned unchanged (idempotent)
 //   - sub-second digits are padded to 6 (microsecond) to match
 //     `datetime.isoformat()`; this is canonical, not fabricated, because e.g.
@@ -156,10 +159,17 @@ LIMIT $1
 function normalizeDirectNeonTimestamp(value) {
   if (value == null) return null;
   if (value instanceof Date) {
-    // Defensive fallback only. The Browse query casts the column to text, so the
-    // driver should never hand us a Date in production; a Date has already lost
-    // sub-millisecond precision, so this path cannot preserve it.
-    return normalizeDirectNeonTimestamp(value.toISOString());
+    // A JS Date has already lost sub-millisecond PostgreSQL precision at the
+    // driver boundary (Date is millisecond-only). The original `.123456` and
+    // `.123000` both collapse to the same Date value, so any six-digit
+    // microsecond form derived from a Date would fabricate precision that cannot
+    // be proven from the source. The authoritative path is the SQL `::text` cast
+    // (see buildDirectNeonBrowseSummaryQuery), which preserves the raw Postgres
+    // textual timestamp before the driver can materialize a Date. An unexpected
+    // Date here means precision loss already occurred upstream; fail closed
+    // rather than silently manufacturing strict-parity evidence. No raw value,
+    // ID, secret, or URL is included in the message.
+    throw new TypeError('DIRECT_NEON_TIMESTAMP_PRECISION_LOST');
   }
   if (typeof value !== 'string') return String(value);
 

@@ -248,4 +248,30 @@ check('timestamp: already-canonical ISO string is idempotent (no double normaliz
   assert.equal(row.updatedAt, '2026-08-02T00:00:00+00:00');
 });
 
-console.log(`DIRECT_NEON_BROWSE_CORE_4003 PASS ${passed}/21`);
+check('timestamp: JS Date input fails closed without fabricating microsecond precision', () => {
+  // A JS Date has already lost sub-millisecond PostgreSQL precision; presenting
+  // it as a canonical six-digit microsecond timestamp would fabricate precision
+  // that cannot be proven from the source. The function must fail closed and
+  // must not emit a fabricated `.123000+00:00` form.
+  const dateValue = new Date('2026-07-01T12:34:56.123Z');
+  for (const which of ['created_at', 'updated_at']) {
+    const row = {
+      id: 't', visibility: 'public', memory_count: 3,
+      created_at: '2026-07-01 12:34:56.123456+00',
+      updated_at: '2026-07-01 12:34:56.123456+00',
+    };
+    row[which] = dateValue;
+    let caught;
+    try {
+      normalizeDirectNeonBrowseRow(row);
+      assert.fail(`expected ${which} Date input to fail closed`);
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught instanceof TypeError, 'expected TypeError');
+    assert.equal(caught.message, 'DIRECT_NEON_TIMESTAMP_PRECISION_LOST');
+    assert.doesNotMatch(caught.message, /\.\d{3,6}\+00:00/);
+  }
+});
+
+console.log(`DIRECT_NEON_BROWSE_CORE_4003 PASS ${passed}/22`);
