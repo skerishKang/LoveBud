@@ -33,7 +33,7 @@ jobs:
         run: npm run build
 
       - name: Smoke test
-        run: npm test
+        run: node scripts/ci-smoke-runner.cjs
 
       - name: Verify
         run: npm run verify

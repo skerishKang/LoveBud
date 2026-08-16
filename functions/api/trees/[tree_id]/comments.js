@@ -1,5 +1,10 @@
 import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../_shared/request-id.js';
 import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
+import {
+  buildInvalidPathEncodingResponse,
+  isInvalidPathEncodingError,
+  normalizeEncodedPathSegment
+} from '../../../_shared/path-segment.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -120,12 +125,23 @@ function buildModalUrl(request, env, query = '') {
   if (!modalBaseUrl) return null;
   const url = new URL(request.url);
   const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
-  const treeId = parts[2] || '';
+  const treeId = normalizeEncodedPathSegment(parts[2] || '');
   if (!treeId) return null;
   const target = new URL(modalBaseUrl);
-  target.pathname = `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeId))}/comments`;
+  target.pathname = `/modal/private/trees/${treeId}/comments`;
   if (query) target.search = query;
   return target;
+}
+
+function resolveModalUrl(request, env, requestId, query = '') {
+  try {
+    return { target: buildModalUrl(request, env || {}, query) };
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return { response: buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER) };
+    }
+    throw error;
+  }
 }
 
 async function fetchWithTimeout(url, options = {}) {
@@ -144,7 +160,9 @@ async function proxyTreeCommentCreate(request, env) {
   if (method !== 'POST') return buildMethodNotAllowedResponse(requestId);
   if (!hasAuthorizationHeader(request)) return buildMissingAuthorizationResponse(requestId);
 
-  const modalUrl = buildModalUrl(request, env || {});
+  const resolved = resolveModalUrl(request, env, requestId);
+  if (resolved.response) return resolved.response;
+  const modalUrl = resolved.target;
   if (!modalUrl) return buildModalUnavailableResponse(requestId);
 
   const headers = {
@@ -185,7 +203,9 @@ async function proxyTreeCommentCreate(request, env) {
 
 async function proxyTreeCommentRead(request, env) {
   const requestId = getOrCreateRequestId(request);
-  const modalUrl = buildModalUrl(request, env || {}, new URL(request.url).search);
+  const resolved = resolveModalUrl(request, env, requestId, new URL(request.url).search);
+  if (resolved.response) return resolved.response;
+  const modalUrl = resolved.target;
   if (!modalUrl) return buildModalUnavailableResponse(requestId);
 
   try {

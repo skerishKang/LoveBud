@@ -23,6 +23,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/ci-failure-observability-4014-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes in-memory, synthetic subprocess, and mock stream tests for scripts/ci-smoke-runner.cjs to verify non-zero exit code preservation on test failure, parsing of TAP/Spec failure output (failing file, subtest name, assertion error message, location), Step Summary generation, stderr highlight formatting, and credential redaction. Also statically reads .github/workflows/ci.yml to verify step ordering (Lint -> Build check -> Smoke test -> Verify) and integration. No real external network, browser, database, or Production mutation (#4014).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-comment-rate-limit-3940-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads modal_compute/social_rate_limit.py, modal_compute/tree_comments.py, and companion test suite to assert bounded Tree-level comment rate limiting contract (10/min, scope tree-comment:actor, memory_id=None, 429/503 taxonomy, transaction ordering visibility -> idempotency -> rate limit -> insert); pure static source-read only, no execution (#3940).",
@@ -4991,6 +4997,12 @@
       "path": "tests/contracts/database-recovery-gate-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/client-browse-revocation-cache-4055-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/cache-utils.js, js/search/search-preview-cache.js, and js/search/search-data.js in an in-process fake browser environment (memory cache + fake sessionStorage) and proves the #4055 visibility-revocation sequences deterministically: per-Tree public-projection purge with unrelated-Tree preservation (Case F), sessionStorage resurrection block on reload (Case D), Browse authority-first render with the revoked Tree never painted (Case A), mutation-purge-then-reload absence (Case A2), network-failure negative control where a failed fresh fetch must not restore a deleted Tree from cache (Case C), and the preview authority gate where a cached old thumbnail/source projection is not returned once fresh Browse excludes the Tree (Case B/B2); plus a source-static assertion that mutation purge wiring in editor-tree-helpers/editor-memory-actions/my-trees-actions/editor-rename-ui runs only after confirmed success (Case E). No real network, browser, auth provider, database, deployment, or Production resource is used (#4055).",
       "capabilities": []
     }
   ],

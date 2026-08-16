@@ -29,6 +29,23 @@
             }
         }
 
+        function clearPreviewCache(treeId) {
+            if (!treeId) return;
+            previewCache.delete(treeId);
+            if (cache && typeof cache.clear === 'function') {
+                cache.clear(getPreviewCacheKey(treeId));
+            }
+        }
+
+        function clearAllPreviewCaches() {
+            previewCache.clear();
+            if (cache && typeof cache.clearPattern === 'function') {
+                cache.clearPattern('public_tree_preview_');
+            } else if (cache && typeof cache.clearPublicBrowseCaches === 'function') {
+                cache.clearPublicBrowseCaches();
+            }
+        }
+
         function mergeHydratedTree(hydratedTree) {
             if (!hydratedTree || !hydratedTree.id) return;
             state.allTrees = state.allTrees.map(item => item.id === hydratedTree.id ? hydratedTree : item);
@@ -50,6 +67,8 @@
         return {
             readPreviewCache,
             writePreviewCache,
+            clearPreviewCache,
+            clearAllPreviewCaches,
             mergeHydratedTree,
             areTreesEffectivelySame
         };
