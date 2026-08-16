@@ -118,6 +118,10 @@ export async function onRequestGet(context) {
 
   const memoryId = context.params?.id;
   const target = new URL(`/modal/private/memories/${memoryId}/comments`, modalBaseUrl);
+  const incomingUrl = new URL(context.request.url);
+  if (incomingUrl.search) {
+    target.search = incomingUrl.search;
+  }
   const response = await fetchModal(target.toString(), {
     headers: { accept: 'application/json', authorization }
   });

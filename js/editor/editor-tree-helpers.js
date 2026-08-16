@@ -139,6 +139,18 @@
 
                 var updatedTree = await apiClient.updateTree(treeId, { visibility: nextVisibility });
 
+                // #4055: after a CONFIRMED visibility mutation, purge this tree's
+                // public Browse/preview projections immediately. This runs only on
+                // success — a failed/unauthorized mutation must not pretend the
+                // revocation happened.
+                if (apiClient && typeof apiClient.clearCommunityCaches === 'function') {
+                    try {
+                        apiClient.clearCommunityCaches(treeId);
+                    } catch (e) {
+                        editorDebugLog('[editor] Failed to clear community caches after visibility change');
+                    }
+                }
+
                 if (typeof applyUpdatedTreeVisibility === 'function') {
                     applyUpdatedTreeVisibility({
                         updatedTree: updatedTree,

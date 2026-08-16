@@ -120,7 +120,7 @@ Child 2 will define:
 - postcondition and expected-schema evidence boundary
 
 ### 5. `MANIFEST_ACTIVATION_NOT_AUTHORIZED`
-All four committed migration provenance authority manifests (`canonical-migrations.json`, `expected-schema-manifest.json`, `precondition-registry.json`, `readonly-query-catalog.json`) remain in status `ADOPTION_REQUIRED` with empty collections (`[]` or `{}`). No status change to `ACTIVE` is authorized by this child.
+All four committed migration provenance authority manifests (`canonical-migrations.json`, `expected-schema-manifest.json`, `precondition-registry.json`, `readonly-query-catalog.json`) remain in status `ADOPTION_REQUIRED`. `canonical-migrations.json` (2 catalogued migrations) and `expected-schema-manifest.json` (2 critical objects) are catalog-populated; `precondition-registry.json` (`[]`) and `readonly-query-catalog.json` (`{}`) remain empty. Catalog population is distinct from adoption: no status change to `ACTIVE` and no runner activation is authorized by this child.
 
 ### 6. `DATABASE_MUTATION_NOT_AUTHORIZED`
 This child confers zero database connection, SQL execution, Docker/PostgreSQL container startup, provider configuration, secret inspection, or deployment pipeline mutation authority.

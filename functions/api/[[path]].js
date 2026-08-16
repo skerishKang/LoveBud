@@ -8,6 +8,11 @@ import {
   prepareMemoryWriteProxyRequest
 } from '../_shared/memory-route-proxy.js';
 import { readBoundedRequestBody } from '../_shared/bounded-request-body.js';
+import {
+  buildInvalidPathEncodingResponse,
+  isInvalidPathEncodingError,
+  normalizeEncodedPathSegment
+} from '../_shared/path-segment.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -70,6 +75,14 @@ function isPrivateTreeCapabilityRequest(request) {
   if (request.method.toUpperCase() !== 'GET') return false;
   const path = new URL(request.url).pathname.replace(/\/+$/, '');
   return /^\/api\/private\/trees\/[^/]+\/capability$/.test(path);
+}
+
+// Hub-layout is a private/owner sub-resource read. Same-origin GET must be
+// auth-first at the edge so an unauthenticated request never reaches Modal.
+function isHubLayoutReadRequest(request) {
+  if (request.method.toUpperCase() !== 'GET') return false;
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
+  return /^\/api\/trees\/[^/]+\/hub-layout$/.test(path);
 }
 
 function buildBrowseCacheRequest(request) {
@@ -151,14 +164,14 @@ export function buildModalUrl(request, env) {
   // POST /api/trees/:id/fork → /modal/private/trees/:id/fork
   const treeForkMatch = path.match(/^\/api\/trees\/([^/]+)\/fork$/);
   if (treeForkMatch && method === 'POST') {
-    const treeId = encodeURIComponent(decodeURIComponent(treeForkMatch[1]));
+    const treeId = normalizeEncodedPathSegment(treeForkMatch[1]);
     target.pathname = `/modal/private/trees/${treeId}/fork`;
     return target;
   }
 
   const capabilityMatch = path.match(/^\/api\/private\/trees\/([^/]+)\/capability$/);
   if (capabilityMatch) {
-    const treeId = encodeURIComponent(decodeURIComponent(capabilityMatch[1]));
+    const treeId = normalizeEncodedPathSegment(capabilityMatch[1]);
     target.pathname = `/modal/private/trees/${treeId}/capability`;
     return target;
   }
@@ -167,9 +180,20 @@ export function buildModalUrl(request, env) {
   if (treeMatch) {
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
     const isWrite = ['PUT', 'DELETE'].includes(method);
+    const treeId = normalizeEncodedPathSegment(treeMatch[1]);
     target.pathname = (isWrite || authHeader)
-      ? `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`
-      : `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
+      ? `/modal/private/trees/${treeId}`
+      : `/modal/trees/${treeId}`;
+    return target;
+  }
+
+  // Tree hub-layout (same-origin PUT) → Modal POST /modal/private/trees/:id/hub-layout.
+  // The canonical same-origin contract is PUT (#3058); the upstream Modal endpoint
+  // is POST, so the edge gateway translates PUT → POST (see tryModalWrite).
+  const hubLayoutMatch = path.match(/^\/api\/trees\/([^/]+)\/hub-layout$/);
+  if (hubLayoutMatch) {
+    const treeId = normalizeEncodedPathSegment(hubLayoutMatch[1]);
+    target.pathname = `/modal/private/trees/${treeId}/hub-layout`;
     return target;
   }
 
@@ -223,6 +247,11 @@ function isModalOwnedWriteRoute(request, env) {
 
   const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
   if (['PUT', 'DELETE'].includes(method) && isDetail) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
+
+  // Same-origin PUT /api/trees/:id/hub-layout → Modal POST (translated in tryModalWrite).
+  if (method === 'PUT' && path.match(/^\/api\/trees\/[^/]+\/hub-layout$/)) {
     return buildModalUrl(request, env || {}) !== null;
   }
 
@@ -339,7 +368,7 @@ async function tryModalRead(request, env, requestId = null) {
   const treeMatch = path.match(/^\/api\/trees\/([^/]+)$/);
   if (treeMatch && response.status === 404 && request.headers.get('authorization')) {
     const publicTarget = new URL(stripTrailingSlash(env.MODAL_BASE_URL));
-    publicTarget.pathname = `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
+    publicTarget.pathname = `/modal/trees/${normalizeEncodedPathSegment(treeMatch[1])}`;
     const publicUrlLog = getSafeUrlLog(publicTarget);
     console.log(`[LoveBudCloudflareProxy] 404 Fallback GET -> ${publicUrlLog} (id=${requestId})`);
     try {
@@ -358,6 +387,7 @@ async function tryModalRead(request, env, requestId = null) {
 
 async function tryModalWrite(request, env, requestId = null) {
   const method = request.method.toUpperCase();
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
   if (!['POST', 'PUT', 'DELETE'].includes(method)) return null;
   if (!isModalOwnedWriteRoute(request, env || {})) return null;
 
@@ -397,6 +427,11 @@ async function tryModalWrite(request, env, requestId = null) {
     boundedBody = bodyResult.body;
   }
 
+  const hubLayoutPath = path.match(/^\/api\/trees\/[^/]+\/hub-layout$/);
+  // Modal upstream only exposes POST for hub-layout; translate the canonical
+  // same-origin PUT to POST while preserving headers, body and request-id.
+  const upstreamMethod = hubLayoutPath ? 'POST' : method;
+
   const modalUrl = buildModalUrl(request, env || {});
   if (!modalUrl) return null;
 
@@ -413,9 +448,9 @@ async function tryModalWrite(request, env, requestId = null) {
 
   try {
     return await fetchWithTimeout(modalUrl.toString(), {
-      method,
+      method: upstreamMethod,
       headers,
-      body: method !== 'DELETE' ? boundedBody : null
+      body: upstreamMethod !== 'DELETE' ? boundedBody : null
     });
   } catch (error) {
     if (error.name === 'AbortError') {
@@ -456,14 +491,26 @@ export async function onRequest(context) {
     return buildMemoryMissingModalConfigResponse(requestId);
   }
 
-  const isModalOwned = isModalOwnedGetRoute(request, env || {});
-  const isModalOwnedWrite = isModalOwnedWriteRoute(request, env || {});
+  let isModalOwned;
+  let isModalOwnedWrite;
+  try {
+    isModalOwned = isModalOwnedGetRoute(request, env || {});
+    isModalOwnedWrite = isModalOwnedWriteRoute(request, env || {});
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+    }
+    throw error;
+  }
 
   if (isModalOwnedWrite) {
     try {
       const modalResponse = await tryModalWrite(request, env || {}, requestId);
       if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
     } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
       console.warn('[LoveBudCloudflareProxy] Modal write failed, returning 503', error);
       return buildModalUnavailableResponse(requestId);
     }
@@ -491,6 +538,9 @@ export async function onRequest(context) {
       // Fail closed: anonymous Tree detail must always produce an answer from authority.
       return buildModalUnavailableResponse(requestId);
     } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
       console.warn('[LoveBudCloudflareProxy] Modal read failed for public tree, returning 503', error);
       return buildModalUnavailableResponse(requestId);
     }
@@ -516,6 +566,9 @@ export async function onRequest(context) {
       }
       if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
     } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
         return buildModalUnavailableResponse(requestId);
@@ -523,6 +576,12 @@ export async function onRequest(context) {
     }
   } else {
     if (isPrivateTreeCapabilityRequest(request) && !hasAuthorizationHeader(request)) {
+      return buildMissingAuthorizationResponse(requestId);
+    }
+    // Hub-layout is a private/owner read: block unauthenticated GET at the edge
+    // (auth-first) so it never triggers a Modal fetch; rely on Modal 401 only as
+    // the downstream fallback, not the primary gate.
+    if (isHubLayoutReadRequest(request) && !hasAuthorizationHeader(request)) {
       return buildMissingAuthorizationResponse(requestId);
     }
     try {
@@ -538,6 +597,9 @@ export async function onRequest(context) {
         return await withUpstreamHeader(finalResponse, 'modal', requestId);
       }
     } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
         return buildModalUnavailableResponse(requestId);
@@ -545,7 +607,15 @@ export async function onRequest(context) {
     }
   }
 
-  const modalUrl = buildModalUrl(request, env || {});
+  let modalUrl;
+  try {
+    modalUrl = buildModalUrl(request, env || {});
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+    }
+    throw error;
+  }
   if (modalUrl) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '');
@@ -553,7 +623,8 @@ export async function onRequest(context) {
     const isCollection = ['/api/trees', '/api/memories'].includes(path);
     const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
     const isCapability = path.match(/^\/api\/private\/trees\/[^/]+\/capability$/);
-    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : 'GET')));
+    const isHubLayoutPath = path.match(/^\/api\/trees\/[^/]+\/hub-layout$/);
+    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : (isHubLayoutPath ? 'GET, PUT' : 'GET'))));
     return buildMethodNotAllowedResponse(allow, requestId);
   }
 
