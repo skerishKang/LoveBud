@@ -63,10 +63,14 @@ export function readDirectNeonBrowseConfig(env = {}) {
 
 // Build a Neon serverless HTTP executor from a connection string.
 //
-// `neon()`'s returned query function uses the HTTP fetch transport by default
-// (no WebSocket pool), which is Worker-compatible. The driver is imported
-// lazily. The executor maps our `(text, values)` contract onto the driver's
-// `(queryWithPlaceholders, params)` contract and returns an array of rows.
+// `neon()`'s returned function uses the HTTP fetch transport by default
+// (no WebSocket pool), which is Worker-compatible. Since
+// `@neondatabase/serverless` v1, the returned function is a tagged-template
+// helper; conventional parameterized calls must go through its `.query`
+// method (`sql.query(text, values)`), not a direct `sql(text, values)` call.
+// The driver is imported lazily. The executor maps our `(text, values)`
+// contract onto the driver's `sql.query(text, params)` contract and returns an
+// array of rows.
 export async function createDirectNeonBrowseExecutor({ connectionString, neonOptions } = {}) {
   if (!isNeonConnectionString(connectionString)) {
     throw new TypeError('DIRECT_NEON_BROWSE_CONFIG_INVALID: connectionString is not a Neon serverless URL');
@@ -77,7 +81,7 @@ export async function createDirectNeonBrowseExecutor({ connectionString, neonOpt
     ...(neonOptions && typeof neonOptions === 'object' ? neonOptions : {}),
   });
   return async function directNeonBrowseExecutor(text, values) {
-    const rows = await sql(text, Array.isArray(values) ? values : []);
+    const rows = await sql.query(text, Array.isArray(values) ? values : []);
     return Array.isArray(rows) ? rows : [];
   };
 }

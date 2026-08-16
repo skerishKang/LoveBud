@@ -415,6 +415,60 @@ check('tag parsing deterministic and capped', () => {
   assert.deepEqual(parseBrowseEmotionTags([['z', 'a'], '["m","a"]', null, ['b', 'c', 'd']]), ['a', 'b', 'c', 'd', 'm']);
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// K. Real driver API-shape regression (no network)
+//
+// The previous live Preview benchmark (502 query-failed) proved that
+// `@neondatabase/serverless` v1 rejects direct `sql(text, values)` calls and
+// requires `sql.query(text, values)` for parameterized queries. The injected
+// mock-executor tests above cannot catch that mismatch because they never run
+// the real driver. These checks exercise the REAL installed driver with a
+// stubbed global fetch (HTTP transport boundary only, zero network) so any
+// regression to the wrong invocation shape fails here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+check('driver contract: executor invokes real driver via sql.query (fetch-stubbed, no network)', async () => {
+  const FAKE_NEON_URL = 'postgresql://bench-user:bench-pass@ep-regression-123456.us-east-1.aws.neon.tech/neondb?sslmode=require';
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opts) => {
+    calls.push({ url: String(url), body: opts && opts.body });
+    return new Response(
+      JSON.stringify({
+        rows: [[7]],
+        fields: [{ name: 'n', dataTypeID: 23, tableOID: 0, columnAttributionNumber: 0 }],
+        command: 'SELECT',
+        rowCount: 1,
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  };
+  try {
+    const executor = await createDirectNeonBrowseExecutor({ connectionString: FAKE_NEON_URL });
+    // If the transport regressed to `sql(text, values)`, the real driver
+    // throws the tagged-template error BEFORE any fetch happens.
+    const rows = await executor('SELECT $1::int AS n', [7]);
+    assert.equal(Array.isArray(rows), true);
+    assert.equal(rows.length, 1);
+    assert.equal(Number(rows[0].n), 7);
+    // Exactly one HTTP round-trip at the driver fetch boundary.
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /neon\.tech\/sql$/);
+    const payload = JSON.parse(calls[0].body);
+    assert.equal(payload.query, 'SELECT $1::int AS n');
+    assert.deepEqual(payload.params, ['7']);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+check('driver contract: transport source uses sql.query, never a direct sql(...) invocation', () => {
+  const file = path.join(process.cwd(), 'functions', '_shared', 'direct-neon-browse-transport.js');
+  const src = fs.readFileSync(file, 'utf8');
+  assert.match(src, /sql\.query\(/);
+  assert.doesNotMatch(src, /await\s+sql\s*\(/);
+});
+
 let passed = 0;
 for (const [name, fn] of checks) {
   await fn();
