@@ -68,29 +68,13 @@ const PARITY_CORE_PATH = path.join(ROOT, 'scripts', 'migration-readonly-target-a
 const VALID_RELEASE_SHA = '0123456789abcdef0123456789abcdef01234567';
 
 // ---------------------------------------------------------------------------
-// Parity-evidence fixtures. The object vocabulary matches the #3860 pattern
-// exactly (table/view/materialized_view: schema.object + sha256 fingerprint).
+// Parity-evidence fixtures. The seam consumes ONLY the already-bounded #3860
+// parity outcome string (or the bounded collection-failure marker); it never
+// receives expected/observed fingerprint records, so no such fixtures exist
+// here. Outcomes are asserted to exactly reuse the #3860 vocabulary below.
 // ---------------------------------------------------------------------------
-const FP_A = 'sha256:' + 'a'.repeat(64);
-const FP_B = 'sha256:' + 'b'.repeat(64);
-
-function validAuthority(criticalObjects) {
-  return {
-    status: 'ADOPTION_REQUIRED',
-    critical_objects: criticalObjects,
-  };
-}
-
-function validObserved(objects) {
-  return {
-    format_version: '1.0',
-    normalizer_version: '1.0',
-    objects: objects,
-  };
-}
-
-function parityEnvelope(authority, observed) {
-  return { authority, observed };
+function parityOutcome(outcome) {
+  return { outcome };
 }
 
 function loadFromSource(source, globalName) {
@@ -214,15 +198,20 @@ test('schema-drift and ledger-parity are parity-evidence descriptors (reactivate
   }
 });
 
-test('parity contracts reuse the #3860 object vocabulary and authority status', () => {
+test('parity contracts accept exactly the #3860 outcome vocabulary and no fingerprint engine', () => {
   const catalog = loadCatalog();
+  const parityCore = require(PARITY_CORE_PATH);
   const drift = catalog.getDescriptor('STRUCTURAL_SCHEMA_DRIFT_CHECK');
   const c = drift.parity_contract;
-  assert.equal(c.evidence_format_version, '1.0');
-  assert.equal(c.evidence_normalizer_version, '1.0');
-  assert.deepEqual(c.supported_authority_statuses, ['ADOPTION_REQUIRED']);
-  assert.equal(c.object_name_pattern.source, /^(?:table|view|materialized_view):[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$/.source);
-  assert.equal(c.fingerprint_pattern.source, /^sha256:[a-f0-9]{64}$/.source);
+  assert.ok(c.accepted_outcomes, 'contract must declare accepted outcomes');
+  assert.ok(Object.isFrozen(c.accepted_outcomes));
+  const expectedOutcomes = Object.keys(parityCore.PARITY_OUTCOMES).sort();
+  assert.deepEqual(c.accepted_outcomes.slice().sort(), expectedOutcomes);
+  // The sentinel is NOT a second parity engine: the contract must not carry
+  // object/fingerprint comparison machinery.
+  assert.ok(!('object_name_pattern' in c), 'no object pattern in parity contract');
+  assert.ok(!('fingerprint_pattern' in c), 'no fingerprint pattern in parity contract');
+  assert.ok(!('evidence_format_version' in c), 'no evidence format gate in parity contract');
 });
 
 test('unknown descriptor IDs are rejected', () => {
@@ -596,15 +585,10 @@ test('schema authority unavailable remains non-success (NC10)', async () => {
 
 test('PARITY_CONFIRMED maps to deterministic confirmed structural result', async () => {
   const { evaluator, taxonomy } = loadEvaluator();
-  const expected = [
-    { name: 'table:public.schema_migration_ledger', fingerprint: FP_A },
-    { name: 'table:public.tree_appreciation_orders', fingerprint: FP_B },
-  ];
-  const evidence = parityEnvelope(validAuthority(expected), validObserved(expected));
   const result = await evaluator.evaluateSignal({
     descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
     releaseSha: VALID_RELEASE_SHA,
-    parityEvidence: evidence,
+    parityEvidence: parityOutcome('PARITY_CONFIRMED'),
   });
   assert.equal(result.outcome_code, 'CONFIRMED');
   assert.equal(result.baseline_deviation, 'NONE');
@@ -614,24 +598,16 @@ test('PARITY_CONFIRMED maps to deterministic confirmed structural result', async
   assert.ok(!('count_bucket' in result), 'parity summaries must not carry a count bucket');
   const json = taxonomy.canonicalJson(result);
   assert.doesNotMatch(json, /PARITY_CONFIRMED/);
-  assert.doesNotMatch(json, /schema_migration_ledger/);
-  assert.doesNotMatch(json, /tree_appreciation_orders/);
+  assert.doesNotMatch(json, /PARITY_MISMATCH/);
+  assert.doesNotMatch(json, /AUTHORITY_ADOPTION_REQUIRED/);
 });
 
 test('PARITY_MISMATCH maps to bounded non-success STRUCTURAL_DRIFT_DETECTED', async () => {
   const { evaluator } = loadEvaluator();
-  const expected = [
-    { name: 'table:public.schema_migration_ledger', fingerprint: FP_A },
-    { name: 'table:public.tree_appreciation_orders', fingerprint: FP_B },
-  ];
-  const observed = [
-    { name: 'table:public.schema_migration_ledger', fingerprint: FP_A },
-    // tree_appreciation_orders absent live -> catalogued but NOT applied
-  ];
   const result = await evaluator.evaluateSignal({
     descriptorId: 'MIGRATION_LEDGER_CATALOG_PARITY_CHECK',
     releaseSha: VALID_RELEASE_SHA,
-    parityEvidence: parityEnvelope(validAuthority(expected), validObserved(observed)),
+    parityEvidence: parityOutcome('PARITY_MISMATCH'),
   });
   assert.equal(result.outcome_code, 'STRUCTURAL_DRIFT_DETECTED');
   assert.equal(result.baseline_deviation, 'MATERIAL_DEVIATION');
@@ -640,29 +616,34 @@ test('PARITY_MISMATCH maps to bounded non-success STRUCTURAL_DRIFT_DETECTED', as
   assert.notEqual(result.outcome_code, 'CONFIRMED');
 });
 
-test('catalogued-but-absent-live fixture is never confirmed (generic vocabulary)', async () => {
+test('only PARITY_CONFIRMED maps to CONFIRMED; all other #3860 outcomes fail closed', async () => {
   const { evaluator } = loadEvaluator();
-  const expected = [
-    { name: 'table:public.critical_alpha', fingerprint: FP_A },
-    { name: 'table:public.critical_beta', fingerprint: FP_B },
-  ];
-  const observed = [{ name: 'table:public.critical_alpha', fingerprint: FP_A }];
-  const result = await evaluator.evaluateSignal({
-    descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
-    releaseSha: VALID_RELEASE_SHA,
-    parityEvidence: parityEnvelope(validAuthority(expected), validObserved(observed)),
-  });
-  assert.equal(result.outcome_code, 'STRUCTURAL_DRIFT_DETECTED');
-  assert.notEqual(result.outcome_code, 'CONFIRMED');
+  const expectedMappings = {
+    PARITY_MISMATCH: 'STRUCTURAL_DRIFT_DETECTED',
+    AUTHORITY_ADOPTION_REQUIRED: 'SCHEMA_AUTHORITY_UNAVAILABLE',
+    CATALOG_COLLECTION_FAILED: 'MONITORING_FAILED',
+    INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
+    TARGET_ATTRIBUTION_INVALID: 'INSUFFICIENT_EVIDENCE',
+    APPROVAL_INVALID: 'INSUFFICIENT_EVIDENCE',
+    EXPECTED_SCHEMA_INVALID: 'INSUFFICIENT_EVIDENCE',
+  };
+  for (const outcome of Object.keys(expectedMappings)) {
+    const result = await evaluator.evaluateSignal({
+      descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
+      releaseSha: VALID_RELEASE_SHA,
+      parityEvidence: parityOutcome(outcome),
+    });
+    assert.equal(result.outcome_code, expectedMappings[outcome], outcome + ' must map to ' + expectedMappings[outcome]);
+    assert.notEqual(result.outcome_code, 'CONFIRMED', outcome + ' must never be CONFIRMED');
+  }
 });
 
-test('AUTHORITY_ADOPTION_REQUIRED is never live-applied success', async () => {
+test('AUTHORITY_ADOPTION_REQUIRED is bounded non-success with OWNER_DECISION_REQUIRED', async () => {
   const { evaluator } = loadEvaluator();
-  const evidence = parityEnvelope(validAuthority([]), validObserved([{ name: 'table:public.critical_alpha', fingerprint: FP_A }]));
   const result = await evaluator.evaluateSignal({
     descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
     releaseSha: VALID_RELEASE_SHA,
-    parityEvidence: evidence,
+    parityEvidence: parityOutcome('AUTHORITY_ADOPTION_REQUIRED'),
   });
   assert.equal(result.outcome_code, 'SCHEMA_AUTHORITY_UNAVAILABLE');
   assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
@@ -679,19 +660,19 @@ test('missing parity evidence is never success (fail closed)', async () => {
   assert.notEqual(result.outcome_code, 'CONFIRMED');
 });
 
-test('malformed parity evidence is never success', async () => {
+test('malformed or unknown parity evidence is never success (fail closed)', async () => {
   const { evaluator } = loadEvaluator();
-  const expected = [{ name: 'table:public.critical_alpha', fingerprint: FP_A }];
   const cases = [
     null,
     42,
     'string',
-    { authority: { status: 'NOT_A_STATUS', critical_objects: expected }, observed: validObserved(expected) },
-    { authority: validAuthority(expected), observed: { format_version: '9.9', normalizer_version: '1.0', objects: expected } },
-    { authority: validAuthority(expected), observed: validObserved([{ name: 'table:public.critical_alpha', fingerprint: 'not-a-fingerprint' }]) },
-    { authority: validAuthority(expected), observed: validObserved([{ name: 'garbage', fingerprint: FP_A }]) },
-    { authority: validAuthority([expected[0], expected[0]]), observed: validObserved(expected) },
-    { authority: validAuthority(expected), observed: validObserved([{ name: 'table:public.critical_alpha', fingerprint: FP_A, extra: true }]) },
+    {},
+    { outcome: 'NOT_A_REAL_OUTCOME' },
+    { outcome: 42 },
+    { outcome: 'PARITY_CONFIRMED', extra: true },
+    { outcome: 'PARITY_CONFIRMED', project_id: 'proud-grass-75157219' },
+    { collection_failed: 'yes' },
+    { collection_failed: true, extra: true },
   ];
   for (const bad of cases) {
     const result = await evaluator.evaluateSignal({
@@ -703,7 +684,7 @@ test('malformed parity evidence is never success', async () => {
   }
 });
 
-test('collector failure maps to sanitized MONITORING_FAILED', async () => {
+test('collector failure marker maps to sanitized MONITORING_FAILED', async () => {
   const { evaluator, taxonomy } = loadEvaluator();
   const result = await evaluator.evaluateSignal({
     descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
@@ -718,10 +699,8 @@ test('collector failure maps to sanitized MONITORING_FAILED', async () => {
 
 test('provider/database identity in parity input is fail-closed rejected and never echoed', async () => {
   const { evaluator, taxonomy } = loadEvaluator();
-  const expected = [{ name: 'table:public.critical_alpha', fingerprint: FP_A }];
   const evidence = {
-    authority: validAuthority(expected),
-    observed: validObserved(expected),
+    outcome: 'PARITY_CONFIRMED',
     project_id: 'proud-grass-75157219',
     host: 'db.example.com',
   };
@@ -738,8 +717,7 @@ test('provider/database identity in parity input is fail-closed rejected and nev
 
 test('parity results are deep frozen, detached, deterministic and byte stable', async () => {
   const { evaluator, taxonomy } = loadEvaluator();
-  const expected = [{ name: 'table:public.critical_alpha', fingerprint: FP_A }];
-  const evidence = parityEnvelope(validAuthority(expected), validObserved(expected));
+  const evidence = parityOutcome('PARITY_CONFIRMED');
   const first = await evaluator.evaluateSignal({
     descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
     releaseSha: VALID_RELEASE_SHA,
@@ -753,34 +731,53 @@ test('parity results are deep frozen, detached, deterministic and byte stable', 
   assert.ok(Object.isFrozen(first));
   assert.deepEqual(first, second);
   assert.equal(taxonomy.canonicalJson(first), taxonomy.canonicalJson(second));
-  // Detached: mutating the caller's fixture must not alter the result.
-  expected[0].fingerprint = FP_B;
-  const jsonBefore = taxonomy.canonicalJson(first);
-  assert.equal(taxonomy.canonicalJson(first), jsonBefore);
-  assert.equal(first.outcome_code, 'CONFIRMED');
 });
 
-test('parity outcome vocabulary exactly reuses #3860 outcome strings', () => {
+test('parity path never invokes the fixed count executor (count executor calls = 0)', async () => {
+  const { evaluator } = loadEvaluator();
+  let calls = 0;
+  const executor = {
+    execute() {
+      calls += 1;
+      return Promise.resolve(rows(0));
+    },
+  };
+  const result = await evaluator.evaluateSignal({
+    descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
+    releaseSha: VALID_RELEASE_SHA,
+    executor,
+    parityEvidence: parityOutcome('PARITY_CONFIRMED'),
+  });
+  assert.equal(calls, 0, 'parity path must never call the count executor');
+  assert.equal(result.outcome_code, 'CONFIRMED');
+});
+
+test('parity outcome vocabulary exactly reuses all 8 #3860 outcome strings', () => {
   const parityCore = require(PARITY_CORE_PATH);
   const catalog = loadCatalog();
-  for (const key of [
-    'PARITY_CONFIRMED',
-    'PARITY_MISMATCH',
-    'AUTHORITY_ADOPTION_REQUIRED',
-    'CATALOG_COLLECTION_FAILED',
-    'INSUFFICIENT_EVIDENCE',
-  ]) {
+  const expectedKeys = Object.keys(parityCore.PARITY_OUTCOMES);
+  assert.equal(expectedKeys.length, 8);
+  for (const key of expectedKeys) {
     assert.equal(catalog.PARITY_OUTCOMES[key], parityCore.PARITY_OUTCOMES[key], 'must reuse #3860 ' + key);
   }
 });
 
+test('sentinel core does not implement a second fingerprint/parity engine', () => {
+  const coreSrc = fs.readFileSync(CORE_PATH, 'utf8');
+  assert.doesNotMatch(coreSrc, /compareParityVocabularies/);
+  assert.doesNotMatch(coreSrc, /validateParityObjectList/);
+  assert.doesNotMatch(coreSrc, /critical_objects/);
+  assert.doesNotMatch(coreSrc, /format_version/);
+  assert.doesNotMatch(coreSrc, /object_name_pattern/);
+  assert.doesNotMatch(coreSrc, /fingerprint_pattern/);
+});
+
 test('parity input cannot smuggle raw SQL or exact counts into public output', async () => {
   const { evaluator, taxonomy } = loadEvaluator();
-  const expected = [{ name: 'table:public.critical_alpha', fingerprint: FP_A }];
   const result = await evaluator.evaluateSignal({
     descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
     releaseSha: VALID_RELEASE_SHA,
-    parityEvidence: parityEnvelope(validAuthority(expected), validObserved(expected)),
+    parityEvidence: parityOutcome('PARITY_CONFIRMED'),
   });
   const json = taxonomy.canonicalJson(result);
   assert.doesNotMatch(json, /SELECT/i);
@@ -915,17 +912,14 @@ test('catalog/core source must not embed provider, env, network, or secret logic
   }
 });
 
-test('catalog PARITY_OUTCOMES is frozen and bounded (no extra invented outcomes)', () => {
+test('catalog PARITY_OUTCOMES is frozen and exactly matches the #3860 outcome set', () => {
   const catalog = loadCatalog();
+  const parityCore = require(PARITY_CORE_PATH);
   assert.ok(Object.isFrozen(catalog.PARITY_OUTCOMES));
-  const keys = Object.keys(catalog.PARITY_OUTCOMES).sort();
-  assert.deepEqual(keys, [
-    'AUTHORITY_ADOPTION_REQUIRED',
-    'CATALOG_COLLECTION_FAILED',
-    'INSUFFICIENT_EVIDENCE',
-    'PARITY_CONFIRMED',
-    'PARITY_MISMATCH',
-  ]);
+  assert.deepEqual(
+    Object.keys(catalog.PARITY_OUTCOMES).sort(),
+    Object.keys(parityCore.PARITY_OUTCOMES).sort()
+  );
 });
 
 test('contract document exists and covers the required sections and CI wiring', () => {

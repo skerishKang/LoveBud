@@ -94,31 +94,46 @@
 
   // ---------------------------------------------------------------------------
   // Bounded parity outcome vocabulary — EXACT reuse of the #3860
-  // read-only target attribution & catalog parity core outcome strings.
-  // No new synonymous vocabulary is created here.
+  // read-only target attribution & catalog parity core outcome strings (all
+  // eight, including the preflight-validation failure outcomes). No new
+  // synonymous vocabulary is created here.
   // ---------------------------------------------------------------------------
   var PARITY_OUTCOMES = Object.freeze({
     PARITY_CONFIRMED: 'PARITY_CONFIRMED',
     PARITY_MISMATCH: 'PARITY_MISMATCH',
+    TARGET_ATTRIBUTION_INVALID: 'TARGET_ATTRIBUTION_INVALID',
+    APPROVAL_INVALID: 'APPROVAL_INVALID',
     AUTHORITY_ADOPTION_REQUIRED: 'AUTHORITY_ADOPTION_REQUIRED',
+    EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
     CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
     INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE'
   });
 
   // ---------------------------------------------------------------------------
-  // Fixed parity evidence contract for PARITY_EVIDENCE descriptors. The same
-  // bounded object vocabulary used by #3860: object name pattern, sha256
-  // fingerprint pattern, supported evidence format version, supported
-  // authority status. A parity descriptor NEVER carries SQL and NEVER carries
-  // provider/database identity; it only declares the bounded evidence shape it
-  // accepts through the source-only translation seam.
+  // Fixed parity evidence contract for PARITY_EVIDENCE descriptors.
+  //
+  // The seam does NOT implement a second schema/migration parity engine: it
+  // never compares expected vs observed fingerprints and never derives a
+  // parity outcome itself. It consumes ONLY the already-bounded parity outcome
+  // produced by the existing #3860 authority (through the source-only injected
+  // seam) and translates that fixed outcome into the #3835/#3461 public
+  // vocabulary. The contract therefore declares the fixed accepted outcome
+  // vocabulary (exactly the #3860 PARITY_OUTCOMES strings) and the bounded
+  // collection-failure marker accepted from the adapter. A parity descriptor
+  // NEVER carries SQL and NEVER carries provider/database identity.
   // ---------------------------------------------------------------------------
   var PARITY_EVIDENCE_CONTRACT = Object.freeze({
-    evidence_format_version: '1.0',
-    evidence_normalizer_version: '1.0',
-    object_name_pattern: /^(?:table|view|materialized_view):[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$/,
-    fingerprint_pattern: /^sha256:[a-f0-9]{64}$/,
-    supported_authority_statuses: Object.freeze(['ADOPTION_REQUIRED'])
+    accepted_outcomes: Object.freeze([
+      PARITY_OUTCOMES.PARITY_CONFIRMED,
+      PARITY_OUTCOMES.PARITY_MISMATCH,
+      PARITY_OUTCOMES.TARGET_ATTRIBUTION_INVALID,
+      PARITY_OUTCOMES.APPROVAL_INVALID,
+      PARITY_OUTCOMES.AUTHORITY_ADOPTION_REQUIRED,
+      PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID,
+      PARITY_OUTCOMES.CATALOG_COLLECTION_FAILED,
+      PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE
+    ]),
+    collection_failed_marker: 'collection_failed'
   });
 
   // ---------------------------------------------------------------------------

@@ -14,13 +14,13 @@
 //   - validates strictly one-row aggregate results with exact approved columns;
 //   - reduces exact aggregate counts to the bounded #3835
 //     count/deviation/outcome vocabulary;
-//   - evaluates PARITY_EVIDENCE descriptors ONLY against bounded sanitized
-//     parity evidence supplied through the source-only translation seam,
-//     reusing the #3860 outcome vocabulary exactly (PARITY_CONFIRMED,
-//     PARITY_MISMATCH, AUTHORITY_ADOPTION_REQUIRED, CATALOG_COLLECTION_FAILED,
-//     INSUFFICIENT_EVIDENCE) and mapping them to the bounded #3835 public
-//     vocabulary (CONFIRMED, STRUCTURAL_DRIFT_DETECTED,
-//     SCHEMA_AUTHORITY_UNAVAILABLE, MONITORING_FAILED, INSUFFICIENT_EVIDENCE);
+//   - evaluates PARITY_EVIDENCE descriptors ONLY as a source-only translation
+//     seam: it consumes the already-bounded parity outcome produced by the
+//     existing #3860 authority (through the source-only injected seam) and
+//     translates that fixed outcome into the bounded #3835 public vocabulary.
+//     It is NOT a second schema/migration parity engine: it never compares
+//     expected vs observed fingerprints and never derives
+//     PARITY_CONFIRMED/PARITY_MISMATCH itself;
 //   - never emits an exact aggregate count, raw row, raw ID, raw SQL, raw
 //     provider identity, or raw database error in the public summary;
 //   - is fail-closed on every privacy and safety boundary.
@@ -28,8 +28,9 @@
 // Refs #3842.
 // Refs #3835 — taxonomy authority.
 // Refs #3458 — canonical migration/expected-schema authority (completed).
-// Refs #3860 — read-only parity core vocabulary (completed; NOT extended to
-//              PRODUCTION scope).
+// Refs #3860 — read-only parity core authority (completed; NOT extended to
+//              PRODUCTION scope). Its bounded outcome vocabulary is consumed
+//              exactly; the sentinel core implements no second parity engine.
 // Refs #3461 — Keep OPEN.
 // Refs #1882 — Keep OPEN.
 
@@ -122,14 +123,7 @@ function readOwnEnumerableDataProperty(object, key) {
     PARITY_EVIDENCE_MISSING: 'PARITY_EVIDENCE_MISSING',
     PARITY_EVIDENCE_NOT_OBJECT: 'PARITY_EVIDENCE_NOT_OBJECT',
     PARITY_ENVELOPE_INVALID: 'PARITY_ENVELOPE_INVALID',
-    PARITY_AUTHORITY_INVALID: 'PARITY_AUTHORITY_INVALID',
-    PARITY_OBSERVED_INVALID: 'PARITY_OBSERVED_INVALID',
-    PARITY_OBJECT_INVALID: 'PARITY_OBJECT_INVALID',
-    PARITY_DUPLICATE_OBJECT: 'PARITY_DUPLICATE_OBJECT',
-    PARITY_UNSUPPORTED_STATUS: 'PARITY_UNSUPPORTED_STATUS',
-    PARITY_UNSUPPORTED_VERSION: 'PARITY_UNSUPPORTED_VERSION',
-    PARITY_EMPTY_CRITICAL_OBJECTS: 'PARITY_EMPTY_CRITICAL_OBJECTS',
-    PARITY_COLLECTION_FAILED: 'PARITY_COLLECTION_FAILED'
+    PARITY_UNKNOWN_OUTCOME: 'PARITY_UNKNOWN_OUTCOME'
   });
 
   var ERROR_CODE_SET = (function () {
@@ -251,15 +245,15 @@ function readOwnEnumerableDataProperty(object, key) {
 
   // ---------------------------------------------------------------------------
   // Parity-evidence fixed key sets. A parity evidence envelope is accepted only
-  // when it is an ordinary or null-prototype record with EXACTLY the fixed
-  // keys below. Any extra key (including provider/database identity keys) is
-  // rejected fail closed and never echoed.
+  // when it is an ordinary or null-prototype record with EXACTLY one of the
+  // fixed shapes below:
+  //   { outcome: <one of the fixed #3860 PARITY_OUTCOMES strings> }
+  //   { collection_failed: true }  (bounded collection-failure marker)
+  // Any extra key (including provider/database identity keys) is rejected fail
+  // closed and never echoed.
   // ---------------------------------------------------------------------------
-  var PARITY_ENVELOPE_KEYS = makeFrozenArray(['authority', 'observed']);
+  var PARITY_OUTCOME_KEY = 'outcome';
   var PARITY_FAILURE_KEYS = makeFrozenArray(['collection_failed']);
-  var PARITY_AUTHORITY_KEYS = makeFrozenArray(['status', 'critical_objects']);
-  var PARITY_OBSERVED_KEYS = makeFrozenArray(['format_version', 'normalizer_version', 'objects']);
-  var PARITY_OBJECT_KEYS = makeFrozenArray(['name', 'fingerprint']);
 
   // ---------------------------------------------------------------------------
   // Bounded baseline classification boundary.
@@ -338,14 +332,19 @@ function readOwnEnumerableDataProperty(object, key) {
   }
 
   // ---------------------------------------------------------------------------
-  // Bounded parity evidence validation. The evidence is a plain record with
-  // exactly the fixed envelope keys. `authority` carries the committed
-  // expected-schema critical objects; `observed` carries the sanitized observed
-  // catalog. A bounded collection-failure marker `{ collection_failed: true }`
-  // is accepted and mapped to the #3860 CATALOG_COLLECTION_FAILED outcome.
-  // Every key set is exact-key; every object name/fingerprint must match the
-  // fixed contract patterns; duplicates are rejected. Provider/database
-  // identity keys are rejected fail closed and never echoed.
+  // Bounded parity evidence validation. The sentinel core is NOT a second
+  // schema/migration parity engine: it never compares expected vs observed
+  // fingerprints and never derives PARITY_CONFIRMED/PARITY_MISMATCH itself.
+  // It consumes ONLY the already-bounded parity outcome produced by the
+  // existing #3860 authority (or the bounded collection-failure marker from the
+  // adapter) through the source-only injected seam, validates that the outcome
+  // is one of the fixed #3860 PARITY_OUTCOMES strings, and translates it into
+  // the #3835/#3461 public vocabulary.
+  //
+  // Accepted envelopes (exact-key, fail closed on anything else):
+  //   { outcome: <one of the fixed #3860 PARITY_OUTCOMES strings> }
+  //   { collection_failed: true }
+  // Provider/database identity keys are rejected fail closed and never echoed.
   // ---------------------------------------------------------------------------
   function validateParityEvidence(catalog, descriptor, parityEvidence) {
     if (parityEvidence === undefined || parityEvidence === null) {
@@ -355,17 +354,21 @@ function readOwnEnumerableDataProperty(object, key) {
       return { ok: false, error: ERROR_CODES.PARITY_EVIDENCE_NOT_OBJECT };
     }
 
+    var keys;
+    try {
+      keys = Object.keys(parityEvidence);
+    } catch (e) {
+      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+    }
+    if (keys.length !== 1) {
+      return { ok: false, error: ERROR_CODES.PARITY_ENVELOPE_INVALID };
+    }
+
+    var contract = (descriptor && descriptor.parity_contract) || {};
+    var accepted = contract.accepted_outcomes || [];
+
     // Bounded collection-failure marker (exact #3860 vocabulary mapping).
-    if (hasOwn(parityEvidence, 'collection_failed') && !hasOwn(parityEvidence, 'authority') && !hasOwn(parityEvidence, 'observed')) {
-      var keys1;
-      try {
-        keys1 = Object.keys(parityEvidence);
-      } catch (e) {
-        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
-      }
-      if (keys1.length !== 1) {
-        return { ok: false, error: ERROR_CODES.PARITY_ENVELOPE_INVALID };
-      }
+    if (keys[0] === PARITY_FAILURE_KEYS[0]) {
       var flag;
       try {
         flag = readOwnEnumerableDataProperty(parityEvidence, 'collection_failed');
@@ -375,222 +378,39 @@ function readOwnEnumerableDataProperty(object, key) {
       if (flag !== true) {
         return { ok: false, error: ERROR_CODES.PARITY_ENVELOPE_INVALID };
       }
-      return { ok: true, collectionFailed: true };
+      return { ok: true, outcome: 'CATALOG_COLLECTION_FAILED' };
     }
 
-    var keys;
-    try {
-      keys = Object.keys(parityEvidence);
-    } catch (e) {
-      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
-    }
-    if (keys.length !== PARITY_ENVELOPE_KEYS.length) {
+    if (keys[0] !== PARITY_OUTCOME_KEY) {
       return { ok: false, error: ERROR_CODES.PARITY_ENVELOPE_INVALID };
     }
-    for (var e = 0; e < PARITY_ENVELOPE_KEYS.length; e++) {
-      if (keys.indexOf(PARITY_ENVELOPE_KEYS[e]) === -1) {
-        return { ok: false, error: ERROR_CODES.PARITY_ENVELOPE_INVALID };
-      }
-    }
-
-    var authority;
-    var observed;
+    var outcome;
     try {
-      authority = readOwnEnumerableDataProperty(parityEvidence, 'authority');
-      observed = readOwnEnumerableDataProperty(parityEvidence, 'observed');
-    } catch (err) {
-      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
-    }
-
-    var authorityResult = validateParityAuthority(catalog, descriptor, authority);
-    if (!authorityResult.ok) return authorityResult;
-    var observedResult = validateParityObserved(catalog, descriptor, observed);
-    if (!observedResult.ok) return observedResult;
-    return {
-      ok: true,
-      collectionFailed: false,
-      authority: authorityResult.authority,
-      observed: observedResult.observed
-    };
-  }
-
-  function validateParityAuthority(catalog, descriptor, authority) {
-    if (!isPlainRecord(authority)) {
-      return { ok: false, error: ERROR_CODES.PARITY_AUTHORITY_INVALID };
-    }
-    var keys;
-    try {
-      keys = Object.keys(authority);
+      outcome = readOwnEnumerableDataProperty(parityEvidence, 'outcome');
     } catch (e) {
       return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
     }
-    if (keys.length !== PARITY_AUTHORITY_KEYS.length) {
-      return { ok: false, error: ERROR_CODES.PARITY_AUTHORITY_INVALID };
+    if (typeof outcome !== 'string' || accepted.indexOf(outcome) === -1) {
+      return { ok: false, error: ERROR_CODES.PARITY_UNKNOWN_OUTCOME };
     }
-    for (var a = 0; a < PARITY_AUTHORITY_KEYS.length; a++) {
-      if (keys.indexOf(PARITY_AUTHORITY_KEYS[a]) === -1) {
-        return { ok: false, error: ERROR_CODES.PARITY_AUTHORITY_INVALID };
-      }
-    }
-    var status;
-    var criticalObjects;
-    try {
-      status = readOwnEnumerableDataProperty(authority, 'status');
-      criticalObjects = readOwnEnumerableDataProperty(authority, 'critical_objects');
-    } catch (err) {
-      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
-    }
-    var contract = (descriptor && descriptor.parity_contract) || {};
-    var supportedStatuses = (contract.supported_authority_statuses && contract.supported_authority_statuses.slice) ? contract.supported_authority_statuses : [];
-    if (supportedStatuses.indexOf(status) === -1) {
-      return { ok: false, error: ERROR_CODES.PARITY_UNSUPPORTED_STATUS };
-    }
-    if (!Array.isArray(criticalObjects)) {
-      return { ok: false, error: ERROR_CODES.PARITY_AUTHORITY_INVALID };
-    }
-    if (criticalObjects.length === 0) {
-      return { ok: false, error: ERROR_CODES.PARITY_EMPTY_CRITICAL_OBJECTS };
-    }
-    var listResult = validateParityObjectList(catalog, descriptor, criticalObjects);
-    if (!listResult.ok) return listResult;
-    return { ok: true, authority: { status: status, critical_objects: listResult.objects } };
-  }
-
-  function validateParityObserved(catalog, descriptor, observed) {
-    if (!isPlainRecord(observed)) {
-      return { ok: false, error: ERROR_CODES.PARITY_OBSERVED_INVALID };
-    }
-    var keys;
-    try {
-      keys = Object.keys(observed);
-    } catch (e) {
-      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
-    }
-    if (keys.length !== PARITY_OBSERVED_KEYS.length) {
-      return { ok: false, error: ERROR_CODES.PARITY_OBSERVED_INVALID };
-    }
-    for (var o = 0; o < PARITY_OBSERVED_KEYS.length; o++) {
-      if (keys.indexOf(PARITY_OBSERVED_KEYS[o]) === -1) {
-        return { ok: false, error: ERROR_CODES.PARITY_OBSERVED_INVALID };
-      }
-    }
-    var formatVersion;
-    var normalizerVersion;
-    var objects;
-    try {
-      formatVersion = readOwnEnumerableDataProperty(observed, 'format_version');
-      normalizerVersion = readOwnEnumerableDataProperty(observed, 'normalizer_version');
-      objects = readOwnEnumerableDataProperty(observed, 'objects');
-    } catch (err) {
-      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
-    }
-    var contract = (descriptor && descriptor.parity_contract) || {};
-    if (formatVersion !== contract.evidence_format_version) {
-      return { ok: false, error: ERROR_CODES.PARITY_UNSUPPORTED_VERSION };
-    }
-    if (normalizerVersion !== contract.evidence_normalizer_version) {
-      return { ok: false, error: ERROR_CODES.PARITY_UNSUPPORTED_VERSION };
-    }
-    if (!Array.isArray(objects)) {
-      return { ok: false, error: ERROR_CODES.PARITY_OBSERVED_INVALID };
-    }
-    var listResult = validateParityObjectList(catalog, descriptor, objects);
-    if (!listResult.ok) return listResult;
-    return { ok: true, observed: { format_version: formatVersion, normalizer_version: normalizerVersion, objects: listResult.objects } };
-  }
-
-  function validateParityObjectList(catalog, descriptor, objects) {
-    if (!Array.isArray(objects)) {
-      return { ok: false, error: ERROR_CODES.PARITY_OBJECT_INVALID };
-    }
-    var contract = (descriptor && descriptor.parity_contract) || {};
-    var namePattern = contract.object_name_pattern;
-    var fingerprintPattern = contract.fingerprint_pattern;
-    var normalized = [];
-    var seen = {};
-    for (var i = 0; i < objects.length; i++) {
-      var object = objects[i];
-      if (!isPlainRecord(object)) {
-        return { ok: false, error: ERROR_CODES.PARITY_OBJECT_INVALID };
-      }
-      var keys;
-      try {
-        keys = Object.keys(object);
-      } catch (e) {
-        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
-      }
-      if (keys.length !== PARITY_OBJECT_KEYS.length) {
-        return { ok: false, error: ERROR_CODES.PARITY_OBJECT_INVALID };
-      }
-      for (var k = 0; k < PARITY_OBJECT_KEYS.length; k++) {
-        if (keys.indexOf(PARITY_OBJECT_KEYS[k]) === -1) {
-          return { ok: false, error: ERROR_CODES.PARITY_OBJECT_INVALID };
-        }
-      }
-      var name;
-      var fingerprint;
-      try {
-        name = readOwnEnumerableDataProperty(object, 'name');
-        fingerprint = readOwnEnumerableDataProperty(object, 'fingerprint');
-      } catch (err) {
-        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
-      }
-      if (typeof name !== 'string' || !namePattern.test(name)) {
-        return { ok: false, error: ERROR_CODES.PARITY_OBJECT_INVALID };
-      }
-      if (typeof fingerprint !== 'string' || !fingerprintPattern.test(fingerprint)) {
-        return { ok: false, error: ERROR_CODES.PARITY_OBJECT_INVALID };
-      }
-      if (hasOwn(seen, name)) {
-        return { ok: false, error: ERROR_CODES.PARITY_DUPLICATE_OBJECT };
-      }
-      seen[name] = true;
-      normalized.push({ name: name, fingerprint: fingerprint });
-    }
-    return { ok: true, objects: normalized };
-  }
-
-  // ---------------------------------------------------------------------------
-  // Parity comparison — exact reuse of the #3860 comparison semantics:
-  // confirmed only when every expected critical object name is present in the
-  // observed catalog with an identical fingerprint. A missing expected object,
-  // a fingerprint difference, or an unexpected extra observed object is a
-  // mismatch. CATALOGUED != APPLIED: an object being listed in the committed
-  // authority NEVER implies it was observed live; only observed evidence can
-  // confirm.
-  // ---------------------------------------------------------------------------
-  function compareParityVocabularies(authority, observed) {
-    var expected = {};
-    for (var i = 0; i < authority.critical_objects.length; i++) {
-      expected[authority.critical_objects[i].name] = authority.critical_objects[i].fingerprint;
-    }
-    var seen = {};
-    for (var j = 0; j < observed.objects.length; j++) {
-      seen[observed.objects[j].name] = observed.objects[j].fingerprint;
-    }
-    var mismatched = [];
-    var expectedNames = Object.keys(expected).sort();
-    var observedNames = Object.keys(seen).sort();
-    var allNames = {};
-    for (var n = 0; n < expectedNames.length; n++) allNames[expectedNames[n]] = true;
-    for (var m = 0; m < observedNames.length; m++) allNames[observedNames[m]] = true;
-    var names = Object.keys(allNames).sort();
-    for (var x = 0; x < names.length; x++) {
-      var name = names[x];
-      if (!hasOwn(seen, name)) {
-        mismatched.push(name);
-      } else if (hasOwn(expected, name) && seen[name] !== expected[name]) {
-        mismatched.push(name);
-      } else if (!hasOwn(expected, name)) {
-        mismatched.push(name);
-      }
-    }
-    return { confirmed: mismatched.length === 0, mismatchCount: mismatched.length };
+    return { ok: true, outcome: outcome };
   }
 
   // Map the bounded #3860 parity outcome to the bounded #3835 public
   // vocabulary. The #3860 outcome string is never echoed; only the fixed
   // public codes below are emitted.
+  //
+  // Fixed translation contract:
+  //   PARITY_CONFIRMED            -> CONFIRMED
+  //   PARITY_MISMATCH             -> STRUCTURAL_DRIFT_DETECTED
+  //   AUTHORITY_ADOPTION_REQUIRED -> SCHEMA_AUTHORITY_UNAVAILABLE (bounded
+  //                                  non-success; OWNER_DECISION_REQUIRED)
+  //   CATALOG_COLLECTION_FAILED   -> MONITORING_FAILED
+  //   INSUFFICIENT_EVIDENCE       -> INSUFFICIENT_EVIDENCE
+  //   TARGET_ATTRIBUTION_INVALID  -> INSUFFICIENT_EVIDENCE (bounded non-success)
+  //   APPROVAL_INVALID            -> INSUFFICIENT_EVIDENCE (bounded non-success)
+  //   EXPECTED_SCHEMA_INVALID     -> INSUFFICIENT_EVIDENCE (bounded non-success)
+  //   unknown outcome             -> INSUFFICIENT_EVIDENCE (bounded non-success)
   function parityOutcomeToSummary(taxonomy, descriptor, releaseSha, parityOutcome) {
     switch (parityOutcome) {
       case 'PARITY_CONFIRMED':
@@ -625,6 +445,10 @@ function readOwnEnumerableDataProperty(object, key) {
           ownerAction: taxonomy.OWNER_ACTIONS.INVESTIGATE,
           evidence: taxonomy.EVIDENCE_COMPLETENESS.MISSING
         });
+      case 'TARGET_ATTRIBUTION_INVALID':
+      case 'APPROVAL_INVALID':
+      case 'EXPECTED_SCHEMA_INVALID':
+      case 'INSUFFICIENT_EVIDENCE':
       default:
         return buildParitySummary(taxonomy, descriptor, releaseSha, {
           outcome: taxonomy.OUTCOME_CODES.INSUFFICIENT_EVIDENCE,
@@ -761,30 +585,18 @@ function readOwnEnumerableDataProperty(object, key) {
         });
     }
 
-    // Dedicated parity-evidence integration function. Accepts a bounded
-    // sanitized parity evidence envelope (or a bounded collection-failure
-    // marker) and returns a #3835 public summary. Never echoes the #3860
-    // outcome string, object names, fingerprints, SQL, or provider identity.
+    // Dedicated parity-evidence integration function (source-only translation
+    // seam). Consumes ONLY the already-bounded #3860 parity outcome (or the
+    // bounded collection-failure marker) and translates it into the #3835
+    // public summary. It does NOT compare expected vs observed fingerprints and
+    // does NOT derive a parity outcome itself. Never echoes the #3860 outcome
+    // string, object names, fingerprints, SQL, or provider identity.
     async function evaluateParitySignal(descriptor, releaseSha, parityEvidence) {
       var validation = validateParityEvidence(catalog, descriptor, parityEvidence);
       if (!validation.ok) {
-        var code = validation.error;
-        if (code === ERROR_CODES.PARITY_EMPTY_CRITICAL_OBJECTS) {
-          return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, 'AUTHORITY_ADOPTION_REQUIRED');
-        }
-        if (code === ERROR_CODES.PARITY_EVIDENCE_MISSING || code === ERROR_CODES.PARITY_EVIDENCE_NOT_OBJECT) {
-          return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, 'INSUFFICIENT_EVIDENCE');
-        }
         return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, 'INSUFFICIENT_EVIDENCE');
       }
-      if (validation.collectionFailed) {
-        return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, 'CATALOG_COLLECTION_FAILED');
-      }
-      var comparison = compareParityVocabularies(validation.authority, validation.observed);
-      if (comparison.confirmed) {
-        return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, 'PARITY_CONFIRMED');
-      }
-      return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, 'PARITY_MISMATCH');
+      return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, validation.outcome);
     }
 
     return deepFreeze({
