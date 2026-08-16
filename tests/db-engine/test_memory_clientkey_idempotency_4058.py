@@ -30,14 +30,17 @@ def _quote_ident(identifier: str) -> str:
     if not identifier.replace("_", "").isalnum():
         raise ValueError("unsafe synthetic schema identifier")
     return f'"{identifier}"'
-
-
 def _install_schema(admin: psycopg.Connection, schema: str) -> None:
-    s = _quote_ident(schema)
-    admin.execute(f"CREATE SCHEMA {s}")
+    # The runtime capability check (schema_capabilities.table_has_column) probes
+    # information_schema.columns WHERE table_schema = 'public'. LoveBud's canonical
+    # tables live in the `public` schema, so the test MUST install there too — a
+    # non-public schema would make the capability probe always return False and
+    # route every request to the 501 compatibility-rejection path.
+    admin.execute("DROP TABLE IF EXISTS memories CASCADE")
+    admin.execute("DROP TABLE IF EXISTS trees CASCADE")
     admin.execute(
-        f"""
-        CREATE TABLE {s}.trees (
+        """
+        CREATE TABLE trees (
             id text PRIMARY KEY,
             owner_id text NOT NULL,
             title text NOT NULL,
@@ -48,10 +51,10 @@ def _install_schema(admin: psycopg.Connection, schema: str) -> None:
         """
     )
     admin.execute(
-        f"""
-        CREATE TABLE {s}.memories (
+        """
+        CREATE TABLE memories (
             id text PRIMARY KEY,
-            tree_id text NOT NULL REFERENCES {s}.trees(id),
+            tree_id text NOT NULL REFERENCES trees(id),
             parent_id text,
             title text NOT NULL DEFAULT '',
             memo text NOT NULL DEFAULT '',
@@ -73,6 +76,10 @@ def _install_schema(admin: psycopg.Connection, schema: str) -> None:
         )
         """
     )
+
+
+def _truncate(admin: psycopg.Connection) -> None:
+    admin.execute("TRUNCATE memories, trees CASCADE")
 
 
 def _make_env(schema: str, owner_id: str = "owner-1"):
@@ -97,7 +104,7 @@ def _make_env(schema: str, owner_id: str = "owner-1"):
     def synthetic_connection():
         conn = psycopg.connect(_conninfo(), row_factory=psycopg.rows.dict_row)
         try:
-            conn.execute(f"SET search_path TO {_quote_ident(schema)}, public")
+            conn.execute("SET search_path TO public")
             yield conn
         finally:
             conn.close()
@@ -116,7 +123,7 @@ def _make_env(schema: str, owner_id: str = "owner-1"):
         memory_writes.fetch_owner_tree = original_fetch_owner_tree
         memory_writes.require_memory_owner = original_require_memory_owner
         memory_writes.fetch_memory_for_owner_check = original_fetch_memory_for_owner_check
-        admin.execute(f"DROP SCHEMA {_quote_ident(schema)} CASCADE")
+        _truncate(admin)
         admin.close()
 
     return schema, cleanup
@@ -124,9 +131,9 @@ def _make_env(schema: str, owner_id: str = "owner-1"):
 
 def _seed_tree(schema: str, tree_id: str) -> None:
     admin = psycopg.connect(_conninfo(), autocommit=True, row_factory=psycopg.rows.dict_row)
-    admin.execute(f"SET search_path TO {_quote_ident(schema)}, public")
+    admin.execute("SET search_path TO public")
     admin.execute(
-        f"INSERT INTO {_quote_ident(schema)}.trees (id, owner_id, title, visibility) "
+        "INSERT INTO trees (id, owner_id, title, visibility) "
         "VALUES (%s, 'owner-1', 't', 'public')",
         (tree_id,),
     )
