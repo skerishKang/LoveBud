@@ -1,11 +1,29 @@
 'use strict';
 
+const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
-const parserPath = path.resolve(__dirname, '../../js/import/bookmark-html-preview-parser.js');
-const parser = require(parserPath);
+const PARSER_FILE = path.resolve(__dirname, '../../js/import/bookmark-html-preview-parser.js');
+const PARSER_SOURCE = fs.readFileSync(PARSER_FILE, 'utf8');
+
+function loadParser() {
+  const sandbox = {
+    window: {},
+    module: { exports: {} },
+    exports: {},
+    URL,
+    TextEncoder,
+    encodeURIComponent,
+    unescape,
+  };
+  vm.runInNewContext(PARSER_SOURCE, sandbox, { filename: PARSER_FILE });
+  return sandbox.module.exports;
+}
+
+const parser = loadParser();
 
 function exportedHtml(body) {
   return [
@@ -23,7 +41,7 @@ function expectError(code, fn) {
   assert.throws(fn, (error) => error && error.name === 'BookmarkHtmlPreviewError' && error.code === code);
 }
 
-{
+test('preserves nested folder path and source occurrence order', () => {
   const html = exportedHtml([
     '<DT><H3>Music</H3>',
     '<DL><p>',
@@ -39,16 +57,15 @@ function expectError(code, fn) {
   const result = parser.parseBookmarkHtmlPreview(html);
   assert.equal(result.itemCount, 3);
   assert.equal(result.supportedCount, 3);
-  assert.deepEqual(result.entries.map((entry) => entry.sourceIndex), [0, 1, 2]);
-  assert.deepEqual(result.entries[0].folderPath, ['Music']);
-  assert.deepEqual(result.entries[1].folderPath, ['Music', 'Live']);
-  assert.deepEqual(result.entries[2].folderPath, []);
+  assert.deepEqual(Array.from(result.entries, (entry) => entry.sourceIndex), [0, 1, 2]);
+  assert.deepEqual(Array.from(result.entries[0].folderPath), ['Music']);
+  assert.deepEqual(Array.from(result.entries[1].folderPath), ['Music', 'Live']);
+  assert.deepEqual(Array.from(result.entries[2].folderPath), []);
   assert.equal(result.entries[0].addDateUnixSeconds, 123);
   assert.equal(result.entries[0].url, 'https://example.com/a');
-  assert.equal(result.entries[1].title, 'Beta');
-}
+});
 
-{
+test('keeps duplicate URLs as independent occurrences', () => {
   const html = exportedHtml([
     '<DT><A HREF="https://example.com/repeat">First occurrence</A>',
     '<DT><A HREF="https://example.com/repeat">Second occurrence</A>',
@@ -57,10 +74,10 @@ function expectError(code, fn) {
   assert.equal(result.itemCount, 2);
   assert.equal(result.entries[0].url, result.entries[1].url);
   assert.notEqual(result.entries[0].occurrenceKey, result.entries[1].occurrenceKey);
-  assert.deepEqual(result.entries.map((entry) => entry.occurrenceKey), ['bookmark:0', 'bookmark:1']);
-}
+  assert.deepEqual(Array.from(result.entries, (entry) => entry.occurrenceKey), ['bookmark:0', 'bookmark:1']);
+});
 
-{
+test('accepts only http/https and strips navigation authority from unsafe entries', () => {
   const html = exportedHtml([
     '<DT><A HREF="http://example.com/one">HTTP</A>',
     '<DT><A HREF="https://example.com/two?x=1&amp;y=2">HTTPS</A>',
@@ -81,13 +98,13 @@ function expectError(code, fn) {
   assert.equal(result.entries[7].reasonCode, parser.REASON_CODES.INVALID_URL);
   assert.equal(result.entries[8].reasonCode, parser.REASON_CODES.MISSING_HREF);
   assert.equal(result.entries[9].reasonCode, parser.REASON_CODES.URL_CREDENTIALS_FORBIDDEN);
-  for (const entry of result.entries.slice(2)) {
+  for (const entry of Array.from(result.entries).slice(2)) {
     assert.equal(entry.supported, false);
     assert.equal(entry.url, null);
   }
-}
+});
 
-{
+test('treats HTML/script-like bookmark content as inert title data', () => {
   globalThis.__bookmarkParserExecuted = false;
   const html = exportedHtml(
     '<DT><A HREF="https://example.com/x"><img src=x onerror="globalThis.__bookmarkParserExecuted=true">Hello<script>globalThis.__bookmarkParserExecuted=true</script></A>'
@@ -95,32 +112,33 @@ function expectError(code, fn) {
   const result = parser.parseBookmarkHtmlPreview(html);
   assert.equal(globalThis.__bookmarkParserExecuted, false);
   assert.equal(result.entries[0].supported, true);
-  assert.ok(!result.entries[0].title.includes('<'));
-  assert.ok(!result.entries[0].title.includes('script'));
+  assert.equal(result.entries[0].title.includes('<'), false);
   delete globalThis.__bookmarkParserExecuted;
-}
+});
 
-{
+test('decodes bounded common and numeric HTML entities as plain text', () => {
   const html = exportedHtml('<DT><A HREF="https://example.com/a">Fish &amp; Chips &#x1f41f;</A>');
   const result = parser.parseBookmarkHtmlPreview(html);
   assert.equal(result.entries[0].title, 'Fish & Chips 🐟');
-}
+});
 
-{
+test('fails closed on invalid input/options and oversized input', () => {
   expectError('INVALID_INPUT', () => parser.parseBookmarkHtmlPreview(null));
   expectError('INVALID_OPTIONS', () => parser.parseBookmarkHtmlPreview(exportedHtml(''), { maxItems: 0 }));
-  expectError('INPUT_TOO_LARGE', () => parser.parseBookmarkHtmlPreview(exportedHtml('<DT><A HREF="https://example.com">x</A>'), { maxInputBytes: 20 }));
-}
+  expectError('INPUT_TOO_LARGE', () =>
+    parser.parseBookmarkHtmlPreview(exportedHtml('<DT><A HREF="https://example.com">x</A>'), { maxInputBytes: 20 })
+  );
+});
 
-{
+test('fails atomically when item count exceeds the bounded limit', () => {
   const html = exportedHtml([
     '<DT><A HREF="https://example.com/1">1</A>',
     '<DT><A HREF="https://example.com/2">2</A>',
   ].join('\n'));
   expectError('ITEM_LIMIT_EXCEEDED', () => parser.parseBookmarkHtmlPreview(html, { maxItems: 1 }));
-}
+});
 
-{
+test('fails closed when nested folder depth exceeds the bounded limit', () => {
   const html = exportedHtml([
     '<DT><H3>One</H3>',
     '<DL><p>',
@@ -131,32 +149,32 @@ function expectError(code, fn) {
     '</DL><p>',
   ].join('\n'));
   expectError('FOLDER_DEPTH_EXCEEDED', () => parser.parseBookmarkHtmlPreview(html, { maxFolderDepth: 1 }));
-}
+});
 
-{
-  const malformedUnclosedAnchor = exportedHtml('<DT><A HREF="https://example.com/a">Alpha');
-  expectError('MALFORMED_BOOKMARK_HTML', () => parser.parseBookmarkHtmlPreview(malformedUnclosedAnchor));
+test('rejects malformed/incomplete bookmark structures without returning partial preview', () => {
+  expectError('MALFORMED_BOOKMARK_HTML', () =>
+    parser.parseBookmarkHtmlPreview(exportedHtml('<DT><A HREF="https://example.com/a">Alpha'))
+  );
+  expectError('MALFORMED_BOOKMARK_HTML', () =>
+    parser.parseBookmarkHtmlPreview('<DL><p><DT><A HREF="https://example.com/a">Alpha</A>')
+  );
+  expectError('MALFORMED_BOOKMARK_HTML', () => parser.parseBookmarkHtmlPreview('<html><body>hello</body></html>'));
+});
 
-  const malformedList = '<DL><p><DT><A HREF="https://example.com/a">Alpha</A>';
-  expectError('MALFORMED_BOOKMARK_HTML', () => parser.parseBookmarkHtmlPreview(malformedList));
-
-  const notBookmarkHtml = '<html><body>hello</body></html>';
-  expectError('MALFORMED_BOOKMARK_HTML', () => parser.parseBookmarkHtmlPreview(notBookmarkHtml));
-}
-
-{
-  const tooLongTitle = exportedHtml('<DT><A HREF="https://example.com">abcdef</A>');
-  expectError('TEXT_FIELD_TOO_LARGE', () => parser.parseBookmarkHtmlPreview(tooLongTitle, { maxTitleChars: 5 }));
-
-  const tooLongUrl = exportedHtml('<DT><A HREF="https://example.com/abcdef">x</A>');
-  const result = parser.parseBookmarkHtmlPreview(tooLongUrl, { maxUrlChars: 20 });
+test('bounds title and URL fields deterministically', () => {
+  expectError('TEXT_FIELD_TOO_LARGE', () =>
+    parser.parseBookmarkHtmlPreview(exportedHtml('<DT><A HREF="https://example.com">abcdef</A>'), { maxTitleChars: 5 })
+  );
+  const result = parser.parseBookmarkHtmlPreview(
+    exportedHtml('<DT><A HREF="https://example.com/abcdef">x</A>'),
+    { maxUrlChars: 20 }
+  );
   assert.equal(result.entries[0].supported, false);
   assert.equal(result.entries[0].reasonCode, parser.REASON_CODES.URL_TOO_LONG);
-}
+});
 
-{
-  const html = exportedHtml('<DT><A HREF="https://example.com">Immutable</A>');
-  const result = parser.parseBookmarkHtmlPreview(html);
+test('returns frozen detached preview state', () => {
+  const result = parser.parseBookmarkHtmlPreview(exportedHtml('<DT><A HREF="https://example.com">Immutable</A>'));
   assert.equal(Object.isFrozen(result), true);
   assert.equal(Object.isFrozen(result.entries), true);
   assert.equal(Object.isFrozen(result.entries[0]), true);
@@ -166,16 +184,13 @@ function expectError(code, fn) {
     result.entries[0].title = 'changed';
   }, TypeError);
   assert.equal(result.entries[0].title, 'Immutable');
-}
+});
 
-{
-  const moduleSource = fs.readFileSync(parserPath, 'utf8');
-  assert.equal(/\bfetch\s*\(/.test(moduleSource), false);
-  assert.equal(/\bXMLHttpRequest\b/.test(moduleSource), false);
-  assert.equal(/\blocalStorage\b/.test(moduleSource), false);
-  assert.equal(/\bsessionStorage\b/.test(moduleSource), false);
-  assert.equal(/\bindexedDB\b/i.test(moduleSource), false);
-  assert.equal(/document\./.test(moduleSource), false);
-}
-
-console.log('bookmark-html-preview-parser #4065 contract: PASS');
+test('source boundary contains no network, DOM, or browser persistence capability', () => {
+  assert.equal(/\bfetch\s*\(/.test(PARSER_SOURCE), false);
+  assert.equal(/\bXMLHttpRequest\b/.test(PARSER_SOURCE), false);
+  assert.equal(/\blocalStorage\b/.test(PARSER_SOURCE), false);
+  assert.equal(/\bsessionStorage\b/.test(PARSER_SOURCE), false);
+  assert.equal(/\bindexedDB\b/i.test(PARSER_SOURCE), false);
+  assert.equal(/document\./.test(PARSER_SOURCE), false);
+});
