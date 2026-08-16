@@ -1,4 +1,9 @@
 import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../_shared/request-id.js';
+import {
+  buildInvalidPathEncodingResponse,
+  isInvalidPathEncodingError,
+  normalizeEncodedPathSegment
+} from '../../../_shared/path-segment.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -96,10 +101,10 @@ function buildModalUrl(request, env) {
   if (!modalBaseUrl) return null;
   const url = new URL(request.url);
   const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
-  const treeId = parts[2] || '';
+  const treeId = normalizeEncodedPathSegment(parts[2] || '');
   if (!treeId) return null;
   const target = new URL(modalBaseUrl);
-  target.pathname = `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeId))}/likes`;
+  target.pathname = `/modal/private/trees/${treeId}/likes`;
   return target;
 }
 
@@ -119,7 +124,15 @@ async function proxyTreeLike(request, env) {
   if (!['GET', 'POST'].includes(method)) return buildMethodNotAllowedResponse(requestId);
   if (!hasAuthorizationHeader(request)) return buildMissingAuthorizationResponse(requestId);
 
-  const modalUrl = buildModalUrl(request, env || {});
+  let modalUrl;
+  try {
+    modalUrl = buildModalUrl(request, env || {});
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+    }
+    throw error;
+  }
   if (!modalUrl) return buildModalUnavailableResponse(requestId);
 
   const headers = {
