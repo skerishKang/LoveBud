@@ -1,5 +1,10 @@
 import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../_shared/request-id.js';
 import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
+import {
+  buildInvalidPathEncodingResponse,
+  isInvalidPathEncodingError,
+  normalizeEncodedPathSegment
+} from '../../../_shared/path-segment.js';
 
 /**
  * Public Tree view-count edge proxy (Security slice #3917).
@@ -120,17 +125,16 @@ function buildViewAuthorityUnavailableResponse(requestId) {
 function extractTreeId(request) {
   const url = new URL(request.url);
   const parts = url.pathname.replace(/\/+$/, '').split('/').filter(Boolean);
-  const treeId = parts[2] || '';
-  return treeId;
+  return parts[2] || '';
 }
 
 function buildModalUrl(request, env) {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
-  const treeId = extractTreeId(request);
+  const treeId = normalizeEncodedPathSegment(extractTreeId(request));
   if (!treeId) return null;
   const target = new URL(modalBaseUrl);
-  target.pathname = `/modal/public/trees/${encodeURIComponent(decodeURIComponent(treeId))}/views`;
+  target.pathname = `/modal/public/trees/${treeId}/views`;
   return target;
 }
 
@@ -226,7 +230,15 @@ async function proxyTreeView(request, env) {
   const treeId = extractTreeId(request);
   if (!treeId) return buildModalUnavailableResponse(requestId);
 
-  const modalUrl = buildModalUrl(request, env || {});
+  let modalUrl;
+  try {
+    modalUrl = buildModalUrl(request, env || {});
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+    }
+    throw error;
+  }
   if (!modalUrl) return buildModalUnavailableResponse(requestId);
 
   // Keep the native Request object intact. Its headers/url/method properties

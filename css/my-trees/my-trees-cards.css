@@ -332,3 +332,43 @@
     backdrop-filter: blur(4px);
     white-space: nowrap;
 }
+
+/* ── My Trees Continuation / Pagination (#3944) ── */
+.my-trees-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 32px;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+.my-trees-load-more-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 28px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 999px;
+    border: 1px solid var(--lovetree-soft-surface-border, rgba(144, 73, 81, 0.16));
+    background: var(--lovetree-card-surface-browse, #ffffff);
+    color: var(--on-surface, #3d2e2a);
+    box-shadow: 0 4px 14px rgba(75, 64, 57, 0.06);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.my-trees-load-more-btn:hover:not(:disabled) {
+    background: var(--primary-container, #ffd9dc);
+    color: var(--on-primary-container, #5b111d);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(144, 73, 81, 0.12);
+}
+
+.my-trees-load-more-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
