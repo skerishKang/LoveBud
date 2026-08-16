@@ -517,3 +517,117 @@ test('ISOLATION. core does not depend on window/document/fetch/YT', () => {
   const mod = require(CORE_PATH);
   assert.equal(typeof mod.createTreePlayModeCore, 'function');
 });
+
+// --- 29. manual-continue user action alone never claims PLAYING ------------
+test('29. manual-continue user action alone does not claim PLAYING', () => {
+  const core = makeCore();
+  const q = [
+    { mediaId: 'A', title: 'A', startSeconds: 0, endSeconds: 5 },
+    { mediaId: 'B', title: 'B', startSeconds: 0, endSeconds: 5 }
+  ];
+  core.load(q, { selectedIndex: 0 });
+  core.play();
+  core.markAutoplayBlocked(); // MANUAL_CONTINUE_REQUIRED
+  // The user clicks Play. A correct adapter only issues a playback request
+  // (player.playVideo / core.play); it never calls markPlaying on the gesture.
+  const request = core.play();
+  assert.notEqual(request.state, STATES.PLAYING, 'user action alone must not claim PLAYING');
+  assert.equal(request.state, STATES.AUTO_PLAY_PENDING, 'request stays in pending authority');
+  assert.equal(core.getState().playbackState, STATES.AUTO_PLAY_PENDING);
+  // Blocked authority persists until explicit adapter/player confirmation.
+  assert.equal(core.getState().autoplayBlocked, true);
+});
+
+// --- 30. blocked/pending authority persists until explicit confirmation ----
+test('30. MANUAL_CONTINUE_REQUIRED/pending authority persists until explicit confirmation', () => {
+  const core = makeCore();
+  const q = [
+    { mediaId: 'A', title: 'A', startSeconds: 0, endSeconds: 5 },
+    { mediaId: 'B', title: 'B', startSeconds: 0, endSeconds: 5 }
+  ];
+  core.load(q, { selectedIndex: 0 });
+  core.play();
+  core.markAutoplayBlocked();
+  assert.equal(core.getState().playbackState, STATES.MANUAL_CONTINUE_REQUIRED);
+  // Re-requesting playback still does not reach PLAYING.
+  core.play();
+  assert.notEqual(core.getState().playbackState, STATES.PLAYING);
+  assert.equal(core.getState().autoplayBlocked, true);
+  // Only the explicit confirmation clears blocked state and reaches PLAYING.
+  const confirmed = core.markPlaying();
+  assert.equal(confirmed.state, STATES.PLAYING);
+  assert.equal(core.getState().playbackState, STATES.PLAYING);
+  assert.equal(core.getState().autoplayBlocked, false);
+});
+
+// --- 31. no non-confirmation operation reaches PLAYING ----------------------
+test('31. PLAYING reachable only via explicit adapter confirmation (markPlaying)', () => {
+  const core = makeCore();
+  const q = [
+    { mediaId: 'A', title: 'A', startSeconds: 0, endSeconds: 5 },
+    { mediaId: 'B', title: 'B', startSeconds: 0, endSeconds: 5 },
+    { mediaId: 'C', title: 'C', startSeconds: 0, endSeconds: 5 }
+  ];
+  core.load(q, { selectedIndex: 0 });
+  core.play();
+  core.markAutoplayBlocked();
+  // Every non-confirmation operation from blocked/pending authority must not
+  // produce PLAYING.
+  const ops = [
+    core.play(),
+    core.pause(),
+    core.play(),
+    core.next(),
+    core.previous(),
+    core.seek(1),
+    core.markItemCompleted()
+  ];
+  for (const r of ops) {
+    assert.notEqual(r.state, STATES.PLAYING, 'non-confirmation op must not claim PLAYING');
+  }
+  assert.notEqual(core.getState().playbackState, STATES.PLAYING);
+  // Confirmation is the single path to PLAYING.
+  const confirmed = core.markPlaying();
+  assert.equal(confirmed.state, STATES.PLAYING);
+  assert.equal(core.getState().playbackState, STATES.PLAYING);
+});
+
+// --- ADAPTER CONFIRMATION BOUNDARY (source-static PoC regression) ----------
+test('ADAPTER_CONFIRMATION. PoC adapter claims PLAYING only from real YT PLAYING callback', () => {
+  const fs = require('node:fs');
+  const src = fs.readFileSync(POC_JS_PATH, 'utf8');
+  const stripLineComments = (s) => s.replace(/\/\/[^\n]*/g, '');
+
+  // Exactly one executable core.markPlaying() call site in the whole adapter:
+  // the YT.PlayerState.PLAYING branch of onPlayerStateChange.
+  const srcNoComments = stripLineComments(src);
+  const callSites = srcNoComments.match(/core\.markPlaying\(\)/g) || [];
+  assert.equal(callSites.length, 1, 'exactly one executable markPlaying call site');
+
+  const scStart = src.indexOf('function onPlayerStateChange');
+  const scEnd = src.indexOf('function onPlayerError');
+  assert.ok(scStart >= 0 && scEnd > scStart, 'onPlayerStateChange must exist');
+  const stateChangeBody = stripLineComments(src.slice(scStart, scEnd));
+  assert.ok(/YT\.PlayerState\.PLAYING/.test(stateChangeBody), 'PLAYING branch must exist');
+  assert.equal(
+    (stateChangeBody.match(/core\.markPlaying\(\)/g) || []).length,
+    1,
+    'the single markPlaying call must live in the YT PLAYING callback'
+  );
+
+  // The Play click handler (manual MANUAL_CONTINUE_REQUIRED -> Play path)
+  // only issues a playback request; it never claims PLAYING on user gesture.
+  const clickStart = src.indexOf("btnPlay.addEventListener('click'");
+  const clickEnd = src.indexOf("btnPause.addEventListener('click'");
+  assert.ok(clickStart >= 0 && clickEnd > clickStart, 'Play click handler must exist');
+  const playHandler = stripLineComments(src.slice(clickStart, clickEnd));
+  assert.ok(
+    !/core\.markPlaying\(\)/.test(playHandler),
+    'manual-continue Play click must not call markPlaying'
+  );
+  assert.ok(/player\.playVideo\(\)/.test(playHandler), 'Play click only issues a playback request');
+  assert.ok(
+    /STATES\.MANUAL_CONTINUE_REQUIRED/.test(playHandler),
+    'manual-continue branch remains present'
+  );
+});

@@ -348,9 +348,11 @@
         if (!core) return;
         const s = core.getState();
         // If autoplay was blocked, this click resumes manual continuation.
+        // It only REQUESTS playback (player.playVideo). Actual PLAYING is
+        // confirmed exclusively by the real YT.PlayerState.PLAYING callback ->
+        // core.markPlaying(); the user gesture alone never claims PLAYING.
         if (s.playbackState === STATES.MANUAL_CONTINUE_REQUIRED) {
             if (player && player.playVideo) player.playVideo();
-            core.markPlaying();
             updateControls();
             updateStatusText();
             return;
