@@ -35,6 +35,8 @@ The branch is non-default and was created only for #4005 prototype work.
 
 ## Pre-change snapshot
 
+> **Live reconciliation (2026-08-16):** the 287-row canonical snapshot below is **historical branch-prototype evidence** — it records what the prototype executed against at the time. The current live catalog on the prototype branch `br-bitter-shape-a1yp6iup` does **not** reproduce it (`neondb`: 11 tables, 7 trees / 5 memories; `lovebud`: 2 tables, 174 trees / 254 memories), and no database on any LoveBud branch reproduces the documented 36 users / 45 Trees / 287 Memories snapshot. The prototype's DDL/uniqueness results remain valid as executed proof; the "current canonical snapshot" phrasing must be read as historical-at-execution-time until owner confirmation of the snapshot source DB.
+
 Before any DDL on the child branch:
 
 ```text
@@ -119,7 +121,7 @@ Therefore this #4005 work intentionally stops before committing an executable Pr
 
 ## Interpretation
 
-This proves the narrow schema addition is compatible with the current canonical snapshot when introduced as nullable metadata and that the proposed uniqueness semantics execute as expected on a branch.
+This proves the narrow schema addition is compatible with the canonical snapshot present at execution time (287 Memory rows, per the historical prototype record above) when introduced as nullable metadata and that the proposed uniqueness semantics execute as expected on a branch. Per live reconciliation (2026-08-16) the current live catalog does not reproduce that snapshot; the proof itself is unchanged.
 
 It does **not** yet authorize a Production migration. The next required layers are:
 

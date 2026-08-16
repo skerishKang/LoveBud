@@ -63,57 +63,61 @@ Two independent Neon projects currently contain Tree/Memory state.
 
 ### 3.1 LoveBud-era canonical candidate: `133-relovetree`
 
-Observed PostgreSQL server:
+Observed PostgreSQL server (live read-only catalog, 2026-08-16):
 
 ```text
 17.10
 ```
 
-Observed application counts:
+**Live catalog reconciliation (2026-08-16) — fresh read-only `information_schema`/`pg_catalog` inspection of the production/default branch `br-little-fire-a18brh25`.** Two databases exist on the branch. The canonical application database is `neondb` (the repository `.env.example` resolves `NETLIFY_DATABASE_URL`/`DATABASE_URL` to the `/neondb` database).
+
+Live `neondb` application schema (11 base tables):
 
 ```text
-public.users          36
-public.trees          45
-public.memories       287
-public.tree_likes      9
-public.tree_comments   3
-```
-
-There are 34 distinct non-null Tree owners, and all currently non-null Tree owner IDs resolve to a `public.users` row.
-
-Additional mature state includes:
-
-```text
-ai_logs
-community_posts
-community_comments
-community_moderation_logs
+comments
+memories
+reactions
 social_audit_log
 social_idempotency
 social_rate_limits
+tree_comments
+tree_likes
+tree_social_counts
 tree_view_dedup_events
+trees
 ```
 
-This project also contains the production lineage of the security/concurrency work currently represented in LoveBud contracts.
+Live `neondb` aggregate counts (sanitized; no row content):
+
+```text
+public.trees           7  (6 public / 1 private; 2 distinct non-null owner_ids; 0 null owner_id)
+public.memories        5  (4 public / 1 private; 0 orphan tree_id)
+public.tree_social_counts  6
+comments / reactions / tree_likes / tree_comments / social_audit_log / social_idempotency / social_rate_limits / tree_view_dedup_events  0
+```
+
+**No `public.users`, `ai_logs`, `community_posts`, `community_comments`, `community_moderation_logs`, `schema_migration_ledger`, or `tree_appreciation_orders` table exists in the live `neondb` or `lovebud` database on the production branch.** The earlier documented snapshot (`36 users / 45 Trees / 287 Memories` with a `users` table and community/ai_logs tables) is **not reproducible from the current live catalog**. It predates the current canonical schema lineage and must be treated as historical/documented evidence only until owner confirmation of the source database that produced it.
+
+A separate legacy `lovebud` database on the same branch holds a UUID-id schema (`trees.id uuid`, 174 rows; `memories.id uuid`, 254 rows) with no `users` table; it is not the canonical `/neondb` application database.
 
 ### 3.2 Separate LoveTree project: `lovetree-limone`
 
-Observed PostgreSQL server:
+Observed PostgreSQL server (live read-only catalog, 2026-08-16):
 
 ```text
 18.4
 ```
 
-Observed application counts:
+**Live catalog reconciliation (2026-08-16) — fresh read-only inspection of the production/default branch `br-holy-scene-azwi84gb` (`neondb` database).** The documented 7-Tree / 4-Memory snapshot is **live-verified**:
 
 ```text
-public.trees          7
-public.memories       4
-public.tree_likes     0
-public.tree_comments  0
+public.trees           7  (all public; 3 distinct non-null owner_ids; 0 null owner_id)
+public.memories        4  (all public; 0 orphan tree_id)
+public.tree_social_counts  7
+comments / reactions / tree_likes / tree_comments / social_audit_log / social_idempotency / social_rate_limits / tree_view_dedup_events  0
 ```
 
-It has no `public.users` table.
+It has **no `public.users` table** (live-verified), and its 11-table application schema is structurally identical to LoveBud's `neondb` schema (see §4), differing only by the three nullable Memory columns LoveBud added (`connection_reason`, `discovery_date`, `video_offset_seconds`).
 
 ### 3.3 Authority decision
 
@@ -137,47 +141,50 @@ This does **not** mean the LoveTree schema should be ignored. Several LoveTree s
 
 ### LoveBud candidate
 
-Observed non-system schemas:
+Observed non-system schemas (live-verified 2026-08-16):
 
 ```text
 public
-drizzle
+drizzle  (drizzle.__drizzle_migrations; 0 rows applied live)
 ```
 
-Extensions:
+Extensions (live-verified):
 
 ```text
 plpgsql
-pgcrypto
 ```
 
-Public RLS policies: none observed.  
-Public views: none observed.
+**No `pgcrypto` extension is installed live** (earlier documentation listing `pgcrypto` is not reproduced by the live catalog).
+
+Public RLS policies: none observed (live-verified).
+Public views / materialized views: none observed (live-verified).
+Public triggers: **none observed (live-verified)** — the earlier documented `trg_social_audit_log_sync_generic_target` / `trg_social_idempotency_sync_generic_target` triggers are not present in the live catalog.
+Custom privileges/ACLs: **none** — no table carries a non-default `relacl`; the only dedicated role is the read-only catalog role `lb_ro_709d5f3e68f774d2` used for this audit.
 
 ### LoveTree
 
-Observed non-system schema:
+Observed non-system schema (live-verified 2026-08-16):
 
 ```text
 public
 ```
 
-Extension:
+Extension (live-verified):
 
 ```text
 plpgsql
 ```
 
-Public RLS policies: none observed.  
-Public views: none observed.
+Public RLS policies: none observed (live-verified).
+Public views / materialized views: none observed (live-verified).
+Public triggers: none observed (live-verified).
+Custom privileges/ACLs: none (live-verified).
 
-Neither database currently has a `neon_auth` schema.
+Neither database currently has a `neon_auth` schema (live-verified; production branches only).
 
 ## 4.2 Enum strategy
 
-LoveBud currently uses text/varchar + checks or runtime validation for the core values inspected; no public PostgreSQL enum types were observed.
-
-LoveTree defines:
+**Live catalog reconciliation (2026-08-16): both LoveBud `neondb` and LoveTree `neondb` define the same five PostgreSQL enum types** (live-verified via `pg_type`/`pg_enum`):
 
 ```text
 comment_status  = visible | deleted
@@ -187,11 +194,9 @@ source_type     = youtube | video | song | book | person | travel | other | link
 visibility      = private | unlisted | public
 ```
 
-This is **not** a safe wholesale migration target.
+This corrects the earlier claim that LoveBud used text/varchar with no enums: the live canonical LoveBud schema is enum-based, and `visibility` already includes `unlisted` on both sides. The enum sets are therefore **not a LoveTree-only difference**; the two databases are enum-identical.
 
-Notably, LoveTree includes `unlisted`, while current canonical LoveBud production Tree visibility data observed is `public` plus two legacy null rows. Adding `unlisted` is a product-policy decision, not merely a storage refactor.
-
-Current LoveBud Memory source-type data also contains one blank `source_type` value, which would fail a strict LoveTree-style enum conversion without prior classification/normalization.
+Remaining nuance: the earlier documented legacy blank `source_type` value and legacy null-visibility Tree rows belong to the non-reproducible historical snapshot (§3.1/§6); the current live snapshot has 0 null visibility rows and no blank source_type was observed in the 5 live Memories.
 
 Decision:
 
@@ -205,11 +210,12 @@ Use existing canonical semantics during initial convergence. Any enum conversion
 
 ### Canonical LoveBud characteristics
 
-- `owner_id`, `title`, `visibility`, `keywords`, timestamps currently permit legacy null state in schema/data.
-- `memo` and `artist` are non-null.
-- `client_key` exists.
-- unique `(owner_id, client_key)` exists.
-- two legacy Tree rows currently have null owner/title/visibility/etc.; both have zero current Memory, social-count and Tree-comment dependencies.
+- **`owner_id` is `text NOT NULL` in the live catalog** (live-verified 2026-08-16; 2 distinct non-null owner_ids, 0 null); the earlier "nullable owner_id" wording reflected the non-reproducible historical snapshot.
+- `id` is `text NOT NULL` PRIMARY KEY (live-verified; **not** UUID).
+- `title`, `memo`, `artist` are `text NOT NULL`; `visibility` is enum NOT NULL; `keywords` is `jsonb NOT NULL`; timestamps `timestamptz NOT NULL`.
+- `client_key` exists (nullable `text`).
+- unique `(owner_id, client_key)` exists (live-verified index `trees_owner_client_key_uniq`).
+- index `trees_visibility_created_at_idx` and `trees_owner_id_idx` exist (live-verified).
 
 ### LoveTree refinements
 
@@ -236,14 +242,26 @@ The two legacy null Tree rows must be classified before tightening nullability. 
 
 ## 4.4 Memories
 
-### Canonical LoveBud characteristics
+### Canonical LoveBud characteristics (live-verified 2026-08-16)
 
-- 287 rows;
-- `emotion_tags` stored as an array;
-- `source_type` and `visibility` stored as text-like values;
-- no `client_key` or `sort_order` columns observed;
-- current `tree_id` index and visibility index exist;
-- parent relationships have no observed orphan-parent rows.
+- **5 rows live** (not 287; the 287-row snapshot is historical and not reproducible from the current live catalog, §3.1);
+- `emotion_tags` stored as `jsonb NOT NULL`;
+- `source_type` and `visibility` stored as enum values;
+- **`client_key` (`text` nullable) and `sort_order` (`int4` nullable) exist live**, along with unique `memories_tree_client_key_uniq` and partial unique `memories_tree_sort_order_uniq_partial`;
+- **three additional nullable columns exist live in LoveBud only**: `connection_reason` (`text`), `discovery_date` (`date`), `video_offset_seconds` (`int4`) — LoveTree does not have these;
+- live FKs: `memories.tree_id → trees.id` and `memories.parent_id → memories.id` both exist (FK-parity blocker from the historical snapshot is not reproducible live: 0 orphan-tree Memories);
+- index `memories_visibility_created_at_idx` exists.
+
+### LoveBud vs LoveTree Memory exact diff (live)
+
+```text
+columns: LoveBud 100 total vs LoveTree 97 total
+only in LoveBud: memories.connection_reason, memories.discovery_date, memories.video_offset_seconds (all nullable)
+only in LoveTree: none
+constraints: 99 == 99 (semantic identity)
+indexes:    33 == 33 (semantic identity)
+enums:       5 == 5  (identical)
+```
 
 ### LoveTree refinements
 
@@ -266,9 +284,9 @@ with:
 
 All four current LoveTree Memory rows have both `client_key` and `sort_order` populated.
 
-### Critical canonical-data blocker to strict FK parity
+### Critical canonical-data blocker to strict FK parity (historical vs live)
 
-The canonical LoveBud database currently contains:
+The **historical** canonical snapshot documented:
 
 ```text
 125 Memories referencing Tree IDs no longer present in public.trees
@@ -276,7 +294,7 @@ The canonical LoveBud database currently contains:
 observed orphan-Memory date range: 2026-05-18 through 2026-07-09
 ```
 
-No orphan `parent_id` references were observed.
+**Live reconciliation (2026-08-16): this orphan condition is not reproducible in the current live `neondb` catalog — all 5 live Memories resolve to an existing `trees.id`, and `memories.tree_id → trees.id` FK is enforced live.** The orphan risk therefore remains a historical-snapshot property pending owner confirmation of the source lineage; it must not be re-asserted as current live state.
 
 Therefore adding an immediate `memories.tree_id → trees.id` FK to canonical production would be unsafe and may fail validation or force destructive handling of historical data.
 
@@ -304,16 +322,9 @@ Canonical LoveBud uses soft-delete semantics and a partial active-like uniquenes
 unique(tree_id, owner_id) where deleted_at is null
 ```
 
-Observed rows:
+**Live reconciliation (2026-08-16):** `tree_likes` has **0 rows live** (both databases), columns are `id`, `tree_id`, `owner_id` (all `text NOT NULL`), `created_at`, nullable `deleted_at`. Live unique index `tree_likes_tree_owner_uniq` is present; the earlier 9-row / 7-soft-deleted / 8-orphan-like snapshot is historical and not reproducible live.
 
-```text
-total tree_likes:      9
-soft-deleted rows:      7
-```
-
-LoveTree uses unconditional unique `(tree_id, owner_id)` and has no current like records.
-
-Canonical LoveBud also has 8 Tree-like rows associated with one Tree ID no longer present in `trees`.
+LoveTree uses unconditional unique `(tree_id, owner_id)` (live index `tree_likes_tree_owner_uniq`) and has no current like records (live-verified).
 
 Decision:
 
@@ -335,9 +346,11 @@ LoveBud's Tree-comment lineage is richer and transitional:
 - an author FK to `users` for the legacy author field;
 - checks that generic target semantics remain Tree-scoped.
 
-LoveTree has the simpler modern surface but no actual Tree-comment data.
+**Live reconciliation (2026-08-16):** live `tree_comments` columns are `id`, `tree_id`, `owner_id`, `body`, `target_kind`, nullable `target_id`, timestamps — all `text NOT NULL` except `target_id`. Live FK `tree_comments.tree_id → trees.id` exists; **there is no `users` table live, so no author→users FK is present** (the legacy author-field shape belongs to the historical snapshot). 0 rows live in both databases.
 
-No orphan Tree-comment Tree references were observed in canonical LoveBud.
+LoveTree has the simpler modern surface but no actual Tree-comment data (live-verified).
+
+No orphan Tree-comment Tree references were observed in canonical LoveBud (live: 0 rows).
 
 Decision:
 
@@ -356,19 +369,11 @@ LoveBud contains the more mature operational lineage:
 - more operational indexes;
 - current production rows/history.
 
-Observed LoveBud triggers:
+**Live reconciliation (2026-08-16): no triggers exist in the live LoveBud catalog** — the documented `trg_social_audit_log_sync_generic_target` and `trg_social_idempotency_sync_generic_target` triggers are not present (`pg_trigger` returns none). The live schema is FK- and index-driven only.
 
-```text
-trg_social_audit_log_sync_generic_target
-  BEFORE INSERT / UPDATE
+LoveTree uses more direct FK-oriented schema definitions (live-verified; identical constraint/index sets to LoveBud).
 
-trg_social_idempotency_sync_generic_target
-  BEFORE INSERT / UPDATE
-```
-
-LoveTree uses more direct FK-oriented schema definitions but lacks these production compatibility triggers.
-
-Canonical LoveBud currently also has two social-count rows for Tree IDs no longer present in `trees`.
+Live `tree_social_counts`: LoveBud 6 rows, LoveTree 7 rows (no orphan assertion made; FK `tree_social_counts.tree_id → trees.id` exists live). The earlier two-orphan-social-count claim belongs to the historical snapshot.
 
 Decision:
 
@@ -386,7 +391,7 @@ No private text/content was emitted during classification. IDs and owner subject
 
 ### 5.1 Ownership overlap
 
-The seven LoveTree Trees are owned by three distinct owner subjects.
+The seven LoveTree Trees are owned by three distinct owner subjects (live-verified: 3 distinct non-null `owner_id` values, 0 null).
 
 - Owner group A: 1 Tree, 0 Memories; owner subject does **not** currently match a canonical LoveBud `users.id`.
 - Owner group B: 2 Trees, 1 Memory; owner subject matches a canonical LoveBud user.
@@ -399,6 +404,8 @@ Therefore:
 4 / 4 LoveTree Memories belong to those matched-owner Trees.
 1 / 7 LoveTree Trees has unresolved owner mapping and has no Memory rows.
 ```
+
+**Live reconciliation (2026-08-16):** the 7/4 row counts and 3-distinct-owner claim are live-verified. The "maps to canonical `users.id`" matching was derived from the historical snapshot lineage (the live catalog has no `users` table); it remains a documented-match result pending #4006 stable-account verification against the current lineage.
 
 ### 5.2 Collision / duplicate signals
 
@@ -416,14 +423,14 @@ It also means they must not be silently discarded merely because two owner subje
 
 ### 5.3 Structural health
 
-LoveTree data observed:
+LoveTree data observed (live-verified 2026-08-16):
 
 ```text
 7 / 7 Trees are public
 4 / 4 Memories are public
 4 / 4 Memories resolve to an existing LoveTree Tree
 0 orphan Memories
-7 / 7 Trees have client_key
+7 / 7 Trees have client_key (7 trees, 0 null client_key)
 4 / 4 Memories have client_key
 4 / 4 Memories have sort_order
 ```
@@ -446,7 +453,7 @@ The unresolved owner Tree remains `HOLD` until its identity/provenance is known.
 
 The canonical candidate is clearly the stronger data authority, but it is not a clean greenfield schema.
 
-Observed legacy compatibility state:
+Observed legacy compatibility state (historical snapshot):
 
 ```text
 2 Trees with null owner/title/visibility/timestamps/keywords
@@ -457,9 +464,11 @@ Observed legacy compatibility state:
 1 Memory with blank source_type
 ```
 
-This is the main reason **LoveTree's stricter schema cannot simply replace the LoveBud schema**.
+**Live reconciliation (2026-08-16):** the current live `neondb` snapshot does **not** reproduce any of these legacy conditions — live Trees are 6 public / 1 private with 0 null `owner_id`; all 5 Memories resolve to an existing Tree; and the strict FKs (`memories.tree_id → trees.id`, `memories.parent_id → memories.id`, `tree_likes.tree_id → trees.id`, `tree_comments.tree_id → trees.id`, `tree_social_counts.tree_id → trees.id`, `tree_view_dedup_events.tree_id → trees.id`) are enforced live. The legacy conditions are therefore properties of the historical snapshot lineage and must remain classified as such (owner confirmation of source lineage required) rather than as current live state.
 
-The correct strategy is additive convergence plus deliberate legacy classification.
+This is still the main reason **LoveTree's stricter schema cannot be assumed to replace the LoveBud schema without lineage confirmation** — the live catalogs are structurally near-identical, so the meaningful remaining differences are the three extra nullable LoveBud Memory columns and lineage/provenance questions, not a wholesale constraint gap.
+
+The correct strategy remains additive convergence plus deliberate legacy classification.
 
 No deletion/repair inference is made by this audit. Historical rows may represent deleted Tree history, old fixtures, migration residue, or intentionally retained legacy state; each category must be determined from provenance/runtime contracts before destructive action.
 
@@ -617,53 +626,49 @@ Those two tracks can run in parallel because one tests domain schema evolution a
 
 ## A. Exact schema-diff coverage matrix
 
-The following table documents the completeness of each #4005-required schema dimension in this audit document. `SCHEMA_AUTHORITY_CONFIRMED` means the current repository source or read-only DB inspection supports the claim; `CURRENT_LIVE_DB_NOT_REVERIFIED` means fresh live access was not available at final reconciliation.
+The following table documents the completeness of each #4005-required schema dimension in this audit document. `SCHEMA_AUTHORITY_CONFIRMED` means the current repository source or read-only DB inspection supports the claim; `CURRENT_LIVE_DB_NOT_REVERIFIED` means fresh live access was not available at the time that specific row was last written (rows are live-verified 2026-08-16 unless stated otherwise).
 
 | Dimension | Coverage in this doc | Status |
 |---|---|---|
-| Schemas | public + drizzle (LoveBud), public (LoveTree); no neon_auth in either | SCHEMA_AUTHORITY_CONFIRMED |
-| Tables | users, trees, memories, tree_likes, tree_comments, social_audit_log, social_idempotency, social_rate_limits, tree_view_dedup_events, community_posts, community_comments, community_moderation_logs, ai_logs (LoveBud); trees, memories, tree_likes, tree_comments (LoveTree) | SCHEMA_AUTHORITY_CONFIRMED |
-| Columns | Core application columns described semantically per table; exhaustive per-column type/nullability/default matrix not emitted (would require fresh live catalog dump) | PARTIAL_NOT_EXHAUSTIVE |
-| Types | text/varchar, integer, uuid, boolean, timestamp observed; enum types listed for LoveTree; pgcrypto extension present in LoveBud | SCHEMA_AUTHORITY_CONFIRMED |
-| Nullability | Key nullable/non-null patterns identified per table; legacy null rows documented | SCHEMA_AUTHORITY_CONFIRMED |
-| Defaults | `gen_random_uuid()` observed for UUID-shaped PKs (e.g. `users.id`, `memories.id`); `trees.id` and `tree_appreciation_orders.tree_id` are TEXT PKs (no `gen_random_uuid()`), per current repository authority; `deleted_at` nullable timestamps; `created_at`/`updated_at` with `now()`. Full per-table default matrix not re-verified against a fresh live catalog. | SCHEMA_AUTHORITY_CONFIRMED (UUID-shaped PKs, TEXT PKs) / CURRENT_LIVE_DB_NOT_REVERIFIED (full per-table matrix) |
-| PK | `trees.id` = TEXT (FK contract target; TEXT→UUID conversion prohibited per current authority) — source-grounded via `db/migrations/20260812213000_add-tree-appreciation-orders.sql` (`tree_id TEXT ... REFERENCES public.trees(id)`) plus current repo authority; `tree_appreciation_orders` PK = `tree_id` TEXT — source-grounded; `users.id` = UUID (server-generated `gen_random_uuid()`) per source defaults — source-grounded; remaining application-table PK types were NOT re-verified against a fresh live catalog. | SCHEMA_AUTHORITY_CONFIRMED (trees, tree_appreciation_orders, users) / CURRENT_LIVE_DB_NOT_REVERIFIED (other tables) |
-| FK | `tree_appreciation_orders.tree_id` TEXT → `public.trees(id)` — source-grounded (`db/migrations/20260812213000_add-tree-appreciation-orders.sql`); this is consistent with `trees.id` being TEXT. `trees.owner_id` = TEXT (nullable) per current schema foothold; a `trees.owner_id → users.id` FK is NOT asserted as a current canonical fact (source/live authority does not prove the UUID→users.id relationship here) — `INSUFFICIENT_LIVE_EVIDENCE`. `memories.parent_id → memories.id` self-FK and `memories.tree_id → trees.id` FK were NOT re-verified against a fresh live catalog (LoveTree defines `memories.tree_id → trees.id`, which canonically lacks given 125 orphan Memories) — `CURRENT_LIVE_DB_NOT_REVERIFIED` / `INSUFFICIENT_LIVE_EVIDENCE`. | SCHEMA_AUTHORITY_CONFIRMED (tree_appreciation_orders.tree_id→trees) / INSUFFICIENT_LIVE_EVIDENCE (other FKs) |
-| UNIQUE | `(owner_id, client_key)` on trees; soft-delete partial unique on tree_likes; LoveTree adds `(tree_id, client_key)` and partial `(tree_id, sort_order)` on memories | SCHEMA_AUTHORITY_CONFIRMED |
-| CHECK | No observed named CHECK constraints beyond application-level validation | CURRENT_LIVE_DB_NOT_REVERIFIED |
-| Indexes | trees.owner_id, memories.tree_id, memories.visibility, social audit/idempotency operational indexes; LoveTree adds visibility+created_at composite | SCHEMA_AUTHORITY_CONFIRMED |
-| Enums | LoveBud: none (text/varchar); LoveTree: comment_status, reaction_type, social_outcome, source_type, visibility | SCHEMA_AUTHORITY_CONFIRMED |
-| Triggers | `trg_social_audit_log_sync_generic_target`, `trg_social_idempotency_sync_generic_target` in LoveBud | SCHEMA_AUTHORITY_CONFIRMED |
-| Views | None observed in either database | SCHEMA_AUTHORITY_CONFIRMED |
-| Materialized views | None observed | SCHEMA_AUTHORITY_CONFIRMED |
-| Extensions | LoveBud: plpgsql, pgcrypto; LoveTree: plpgsql | SCHEMA_AUTHORITY_CONFIRMED |
-| Privileges/grants | Not exhaustively inventoried; no custom grant/revoke patterns observed in inspected catalog metadata | CURRENT_LIVE_DB_NOT_REVERIFIED |
-| RLS | No RLS policies observed in either database | SCHEMA_AUTHORITY_CONFIRMED |
+| Schemas | live: LoveBud `neondb` = public + drizzle (drizzle.__drizzle_migrations, 0 rows applied); LoveTree `neondb` = public; no neon_auth in either production branch | SCHEMA_AUTHORITY_CONFIRMED (live 2026-08-16) |
+| Tables | live (LoveBud `neondb`): comments, memories, reactions, social_audit_log, social_idempotency, social_rate_limits, tree_comments, tree_likes, tree_social_counts, tree_view_dedup_events, trees (11); live (LoveTree `neondb`): same 11-table set. No `users`, `community_*`, `ai_logs`, `schema_migration_ledger`, or `tree_appreciation_orders` table exists live (historical docs claimed these). | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| Columns | exhaustive live per-column matrix captured: LoveBud 100 columns, LoveTree 97 columns; exact diff = LoveBud-only `memories.connection_reason` (text), `memories.discovery_date` (date), `memories.video_offset_seconds` (int4), all nullable | COMPLETE (live) |
+| Types | live: text, int4, jsonb, date, timestamptz, plus 5 user-defined enum types in BOTH databases; NO uuid-typed application columns in `neondb` (all IDs are text); the legacy `lovebud` database (separate lineage) uses uuid ids | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| Nullability | live per-column matrix captured (NOT NULL enforced via named CHECK `x_not_null` constraints, e.g. `trees_owner_id_not_null`); `trees.owner_id` is TEXT NOT NULL live; 0 null owner_id rows | COMPLETE (live) |
+| Defaults | live: no `gen_random_uuid()` defaults in `neondb` (ids are client-supplied text); `created_at`/`updated_at` timestamptz NOT NULL with defaults; `tree_social_counts.like_count`/`view_count`/`request_count` default 0; full per-table default matrix captured | COMPLETE (live) |
+| PK | live: every table PK is `text` (e.g. `trees_pkey` on `trees.id text`, `memories_pkey` on `memories.id text`); `tree_social_counts` PK = `tree_id text`; `tree_appreciation_orders` does not exist live; the legacy `lovebud` lineage uses uuid PKs | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| FK | live FK set (both databases, identical): memories.tree_id→trees.id, memories.parent_id→memories.id, comments.memory_id→memories.id, reactions.memory_id→memories.id, social_audit_log.memory_id→memories.id, social_idempotency.target_memory_id→memories.id, social_rate_limits.memory_id→memories.id, tree_comments.tree_id→trees.id, tree_likes.tree_id→trees.id, tree_social_counts.tree_id→trees.id, tree_view_dedup_events.tree_id→trees.id. No owner_id→users FK exists (no users table live). `tree_appreciation_orders.tree_id→trees(id)` remains source-grounded migration contract only (table absent live). | COMPLETE (live) |
+| UNIQUE | live: memories(tree_id, client_key), partial memories(tree_id, sort_order) WHERE sort_order IS NOT NULL, trees(owner_id, client_key), tree_likes(tree_id, owner_id), reactions(memory_id, owner_id, type), social_idempotency(actor_id, operation, idempotency_key), tree_view_dedup unique — identical in both databases | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| CHECK | live: named NOT NULL check constraints exist across all tables in both databases (e.g. `trees_id_not_null`, `memories_title_not_null`, `comments_body_not_null`); LoveBud names are auto-generated numeric forms, LoveTree uses semantic names; no domain-value CHECK constraints observed | COMPLETE (live) |
+| Indexes | live: 33 indexes in each database with identical semantics (trees.owner_id, trees.visibility+created_at, memories.tree_id, memories.visibility+created_at, social audit/idempotency/rate-limit/dedup operational indexes, comments/reactions memory+owner indexes) | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| Enums | live: both LoveBud and LoveTree define the same 5 enums — comment_status (visible, deleted), reaction_type (like, love, laugh, wow, sad, angry), social_outcome (ok, duplicate, not_found, forbidden, rate_limited, error), source_type (youtube, video, song, book, person, travel, other, link), visibility (private, unlisted, public) | COMPLETE (live; corrects earlier "LoveBud: none" claim) |
+| Triggers | live: none in either database (`pg_trigger` returns zero non-internal triggers); earlier documented `trg_social_audit_log_sync_generic_target` / `trg_social_idempotency_sync_generic_target` are not present | COMPLETE (live; corrects earlier claim) |
+| Views | none live (both databases) | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| Materialized views | none live (both databases) | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| Extensions | live: plpgsql in both; NO pgcrypto (corrects earlier LoveBud claim) | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| Privileges/grants | live: no table carries a non-default `relacl`; no custom grants/revokes; dedicated read-only role `lb_ro_709d5f3e68f774d2` exists on LoveBud `neondb` for this audit | COMPLETE (live) |
+| RLS | no RLS policies live (both databases) | SCHEMA_AUTHORITY_CONFIRMED (live) |
 
-Dimensions marked `CURRENT_LIVE_DB_NOT_REVERIFIED` require fresh live PostgreSQL catalog queries to complete. The repository source (migration files, Drizzle schema definitions) provides partial evidence but does not reflect privilege/check-constraint drift.
+All 18 #4005-required dimensions are now backed by fresh live read-only catalog evidence collected 2026-08-16 (`information_schema` + `pg_catalog` via the dedicated `lb_ro_…` read-only role on LoveBud and read-only owner-role catalog queries on LoveTree). Historical claims that the live catalog does not reproduce (users/community/ai_logs tables, pgcrypto, triggers, 36/45/287 snapshot) are explicitly marked historical and require owner lineage confirmation before being re-asserted.
 
 ## B. Persisted ownership-subject inventory
 
-The following tables and columns persist provider-shaped/Firebase-like actor subjects. SCHEMA_AUTHORITY_CONFIRMED means the column exists in current source; LIVE_VALUE_POPULATION_NOT_REVERIFIED means actual value provenance (Firebase UID vs future app_account) was not re-verified at final reconciliation.
+The following tables and columns persist actor/owner subjects. **Live-verified 2026-08-16** — every column below was observed in the live `neondb` catalog of the applicable database; all subject columns are `text NOT NULL` (no UUID-shaped application columns, no direct Firebase UID column). Firebase/provider subjects are resolved through the auth session layer and mapped to these text subjects at write time; the raw Firebase subject is not persisted.
 
-| Table | Column | Semantic role | Current subject shape | FK/constraint evidence | Runtime writers | Future app_account migration impact | Confidence |
+| Table | Column | Semantic role | Live subject shape | FK/constraint evidence (live) | Runtime writers | Future app_account migration impact | Confidence |
 |---|---|---|---|---|---|---|---|
-| users | id | Primary account identity | UUID (server-generated); linked to Firebase auth subject via auth session, not direct FK | PK; referenced by tree_comments.author_id, tree_likes.owner_id, community_* tables per prior inspection (a `trees.owner_id → users.id` FK is NOT proven by current authority — `trees.owner_id` is TEXT, type-incompatible with a UUID PK FK) | Auth bootstrap, session resolution | HIGH — canonical identity target for #4006 | SCHEMA_AUTHORITY_CONFIRMED (UUID/reference pattern per prior inspection); LIVE_VALUE_POPULATION_NOT_REVERIFIED |
-| trees | owner_id | Tree ownership authority | TEXT (nullable) per current schema foothold; UUID→users.id relationship NOT asserted as current canonical fact | no `trees.owner_id → users.id` FK proven by current source/live authority (TEXT vs UUID PK type-incompatible); unique with client_key | create_owner_tree, fork_public_tree | subject-shape mapping pending #4006 identity proof | INSUFFICIENT_LIVE_EVIDENCE (TEXT type source-grounded; FK→users.id not proven) |
-| memories | tree_id → trees.owner_id | Indirect Memory ownership authority | Transitive through trees.owner_id | No direct FK (125 orphan Memories); INNER JOIN trees in transaction | create_owner_memory, update_owner_memory | Transitive via tree ownership | SCHEMA_AUTHORITY_CONFIRMED; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
-| tree_likes | owner_id | Actor identity for likes | UUID-shaped per prior inspection; UUID→users.id FK not re-verified against fresh live catalog | FK → users.id (prior inspection, INSUFFICIENT_LIVE_EVIDENCE); partial unique (tree_id, owner_id) where deleted_at is null | toggle_like | Must map to app_account | INSUFFICIENT_LIVE_EVIDENCE |
-| tree_comments | author_id | Actor identity for comments | UUID-shaped per prior inspection; UUID→users.id FK not re-verified against fresh live catalog | FK → users.id (prior inspection, INSUFFICIENT_LIVE_EVIDENCE) | create_tree_comment | Must map to app_account | INSUFFICIENT_LIVE_EVIDENCE |
-| social_audit_log | actor_id | Audit trail actor | UUID-shaped per prior inspection; not re-verified against fresh live catalog | Operational index; used in social audit triggers | Social write routes | Audit identity must survive account migration | INSUFFICIENT_LIVE_EVIDENCE |
-| social_idempotency | actor_id | Idempotency key scope | UUID-shaped per prior inspection; not re-verified against fresh live catalog | Operational index | Social write routes | Idempotency scope must survive account migration | INSUFFICIENT_LIVE_EVIDENCE |
-| social_rate_limits | actor_id | Rate limit subject | UUID-shaped per prior inspection; not re-verified against fresh live catalog | Operational index | Rate-limit middleware | Rate-limit identity must survive account migration | INSUFFICIENT_LIVE_EVIDENCE |
-| tree_view_dedup_events | actor_id | View deduplication scope | UUID-shaped (nullable) per prior inspection; not re-verified against fresh live catalog | Operational index | View recording | Dedup scope optional for unauthenticated views | INSUFFICIENT_LIVE_EVIDENCE |
-| community_posts | author_id | Community post author | UUID-shaped per prior inspection; UUID→users.id FK not re-verified | FK → users.id inferred (prior inspection, INSUFFICIENT_LIVE_EVIDENCE) | Community routes | Must map to app_account | INSUFFICIENT_LIVE_EVIDENCE; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
-| community_comments | author_id | Community comment author | UUID-shaped per prior inspection; UUID→users.id FK not re-verified | FK → users.id inferred (prior inspection, INSUFFICIENT_LIVE_EVIDENCE) | Community routes | Must map to app_account | INSUFFICIENT_LIVE_EVIDENCE; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
-| community_moderation_logs | moderator_id | Moderation actor | UUID-shaped per prior inspection; UUID→users.id FK not re-verified | FK → users.id inferred (prior inspection, INSUFFICIENT_LIVE_EVIDENCE) | Moderation routes | Audit identity | INSUFFICIENT_LIVE_EVIDENCE; LIVE_VALUE_POPULATION_NOT_REVERIFIED |
+| trees | owner_id | Tree ownership authority | `text NOT NULL` (2 distinct non-null live owners; 0 null) | no owner_id FK (no users table live); unique with client_key (`trees_owner_client_key_uniq`); index `trees_owner_id_idx` | create_owner_tree, fork_public_tree | Must map to app_account (no `users` table to reference) | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| memories | tree_id → trees.owner_id | Indirect Memory ownership authority | Transitive through trees.owner_id | live FK `memories.tree_id → trees.id`; 0 orphan-tree Memories live | create_owner_memory, update_owner_memory | Transitive via tree ownership | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| tree_likes | owner_id | Actor identity for likes | `text NOT NULL` (0 rows live) | live unique `tree_likes_tree_owner_uniq`; FK `tree_likes.tree_id → trees.id` | toggle_like | Must map to app_account | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| tree_comments | owner_id | Actor identity for comments | `text NOT NULL` (0 rows live; column is `owner_id`, not `author_id`) | FK `tree_comments.tree_id → trees.id`; index `tree_comments_owner_id_idx` | create_tree_comment | Must map to app_account | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| comments | owner_id | Memory-comment actor | `text NOT NULL` (0 rows live) | FK `comments.memory_id → memories.id`; index `comments_owner_id_idx` | memory comment routes | Must map to app_account | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| reactions | owner_id | Memory-reaction actor | `text NOT NULL` (0 rows live) | unique `reactions_memory_owner_type_uniq`; FK `reactions.memory_id → memories.id` | memory reaction routes | Must map to app_account | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| social_audit_log | actor_id | Audit trail actor | `text NOT NULL` (0 rows live) | index `social_audit_log_actor_id_idx`; FK `memory_id → memories.id` | Social write routes | Audit identity must survive account migration | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| social_idempotency | actor_id | Idempotency key scope | `text NOT NULL` (0 rows live) | unique `social_idempotency_actor_op_key_uniq` | Social write routes | Idempotency scope must survive account migration | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| social_rate_limits | actor_id | Rate limit subject | `text NOT NULL` (0 rows live) | index `social_rate_limits_scope_actor_idx` | Rate-limit middleware | Rate-limit identity must survive account migration | SCHEMA_AUTHORITY_CONFIRMED (live) |
+| tree_view_dedup_events | actor_key | View deduplication scope | `text NOT NULL` (0 rows live; column is `actor_key`, not `actor_id`) | unique `tree_view_dedup_event_uniq`; index `tree_view_dedup_tree_actor_idx` | View recording | Dedup scope must survive account migration | SCHEMA_AUTHORITY_CONFIRMED (live) |
 
-**Count**: 12 tables, 12 subject columns identified. Current repository authority establishes `trees.owner_id` as TEXT (not UUID) and does NOT prove a `trees.owner_id → users.id` FK; other subject columns are described as UUID-shaped references to `users.id` from prior inspection but were NOT re-verified against a fresh live catalog (`CURRENT_LIVE_DB_NOT_REVERIFIED` / `INSUFFICIENT_LIVE_EVIDENCE` apply where live value/type provenance is unverified). No direct Firebase UID column was observed. The Firebase subject is resolved through the auth session layer (Cloudflare/Modal) and mapped to the internal UUID at write time; the raw Firebase subject is not persisted in application tables.
-
-**No raw UID, email, provider subject, or private identifier was emitted in this document.**
+**Count**: 10 tables, 10 subject columns live-verified. No `users` table exists live, so no `owner_id/actor_id → users.id` FK is present; the documented `users`-referencing inventory (12 tables incl. community_* / ai_logs) belongs to the historical snapshot lineage and requires owner confirmation. No direct Firebase UID column was observed. Values were inspected only through aggregate counts and column metadata — **no raw UID, email, provider subject, or private identifier was emitted in this document.**
 
 ## C. Memory lineage current-authority conclusion
 
@@ -696,19 +701,19 @@ migrations: [
 Key semantic distinction:
 
 - **CANONICAL CATALOG POPULATED**: Yes (2 entries) — catalog entry addition is permitted while ADOPTION_REQUIRED.
-- **PRODUCTION_SCHEMA_EXISTS**: Yes — current authority (#4043) confirms `public.tree_appreciation_orders` canonical shape already exists in Production/default-branch Neon and schema/runtime activation occurred. This is historical/current Production schema state, NOT a new #4005 convergence apply.
+- **PRODUCTION_SCHEMA_EXISTS**: NOT REPRODUCED BY LIVE CATALOG (2026-08-16) — the #4043-based claim that `public.tree_appreciation_orders` already exists in Production/default-branch Neon is **not reproduced** by the fresh live read-only catalog: the table is absent from both `neondb` and `lovebud` databases on the production branch `br-little-fire-a18brh25` (as are `schema_migration_ledger` and `users`). This is recorded as `CATALOGUED_BUT_ABSENT_LIVE` and requires **owner reconciliation** (the #4043 activation claim may reference a different branch/database/project or predate a reset). It is NOT treated as a new #4005 convergence apply and does not grant adoption authority.
 - **CANONICAL RUNNER ADOPTION / ADOPTION ATTESTED**: No — `status: ADOPTION_REQUIRED`; a separately approved adoption baseline is required before any status transition.
 - **#4005_NEW_CONVERGENCE_APPLY_AUTHORIZED**: No — a new #4005 convergence action requires ACTIVE manifest + runner protocol compliance; not authorized.
-- **PRODUCTION_MIGRATION (new apply)**: NOT_AUTHORIZED — preserved for NEW #4005 convergence action. This does NOT deny historical/current Production schema activation (PRODUCTION_SCHEMA_EXISTS above).
+- **PRODUCTION_MIGRATION (new apply)**: NOT_AUTHORIZED — preserved for NEW #4005 convergence action. Historical/current Production schema activation claims (PRODUCTION_SCHEMA_EXISTS above) are now classified `CATALOGUED_BUT_ABSENT_LIVE` pending owner reconciliation and do not grant adoption authority.
 
 ### D.1 Adoption-gate verification item (schema-drift audit 2026-08-16)
 
-Read-only drift audit (`COMP2_CANONICAL_SCHEMA_DRIFT_AUDIT_REPORT`, reconciliation basis `4814190982655c55e72bc01d3d2b6663138ecfa6` retained as historical provenance; earlier basis `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd`) confirmed all repository-side dimensions are drift-free: both catalog checksums match the on-disk SQL byte-for-byte, both expected-schema critical objects correspond 1:1 to the two migrations' postconditions, and the runtime `tree_appreciation_orders` writer (`modal_compute/appreciation_orders.py`) matches migration #2's DDL exactly. Live-catalog dimensions are `INSUFFICIENT_LIVE_EVIDENCE` (no approved read-only connection available at audit time).
+Read-only drift audit (reconciliation basis `4814190982655c55e72bc01d3d2b6663138ecfa6` retained as historical provenance; earlier basis `c5de1d14e7b0c4b9c07586cc6655f7d4c9d2ffbd`) confirmed all repository-side dimensions are drift-free: both catalog checksums match the on-disk SQL byte-for-byte, both expected-schema critical objects correspond 1:1 to the two migrations' postconditions, and the runtime `tree_appreciation_orders` writer (`modal_compute/appreciation_orders.py`) matches migration #2's DDL exactly. **The live-catalog dimension is now upgraded from `INSUFFICIENT_LIVE_EVIDENCE` to live-verified (2026-08-16)** via the dedicated `lb_ro_…` read-only role on LoveBud and read-only owner-role catalog queries on LoveTree: the migration-ledger critical objects (`public.schema_migration_ledger`, `public.tree_appreciation_orders`) are **catalogued but absent from the live catalog** on the production branch (both `neondb` and `lovebud` databases), which is recorded as `CATALOGUED_BUT_ABSENT_LIVE` and requires owner reconciliation.
 
 One flagged adoption-gate verification item (NOT a code change; no PR required now):
 
-- Migration `20260812213000` declares `tree_id TEXT ... REFERENCES public.trees(id)`. The db-engine proof applies it only against a synthetic TEXT parent (`appreciation-order-schema-3982.cjs` creates `trees(id TEXT PRIMARY KEY)`). Current repository authority establishes `public.trees.id` as TEXT (`TEXT→UUID` conversion prohibited; `trees` schema foothold `owner_id` = TEXT nullable), so the TEXT FK is type-consistent with the parent PK and the prior uuid-incompatibility concern does NOT apply under current authority. This is source-grounded (`db/migrations/20260812213000_add-tree-appreciation-orders.sql` TEXT FK target + current repo authority), not a fresh live catalog re-verification.
-- Resolution: `trees.id` TEXT is the current source-grounded authority; a fresh approved read-only catalog check remains classified `CURRENT_LIVE_DB_NOT_REVERIFIED` until performed, but the TEXT-FK type concern is resolved by current authority.
+- Migration `20260812213000` declares `tree_id TEXT ... REFERENCES public.trees(id)`. The db-engine proof applies it only against a synthetic TEXT parent (`appreciation-order-schema-3982.cjs` creates `trees(id TEXT PRIMARY KEY)`). **Live-verified 2026-08-16**: the live catalog confirms `public.trees.id` is `text` (PK) and `public.trees.owner_id` is `text NOT NULL`, so the TEXT FK is type-consistent with the parent PK — the prior uuid-incompatibility concern does NOT apply. This is now backed by fresh live catalog evidence (previously source-grounded only).
+- Resolution: `trees.id` TEXT is live-verified (not merely source-grounded). The migration #2 target object itself (`public.tree_appreciation_orders`) is `CATALOGUED_BUT_ABSENT_LIVE` on the production branch — the catalog entry exists and its SQL checksum matches on-disk, but the object does not exist in the live catalog; runner/adoption authority remains `ADOPTION_REQUIRED`/HOLD pending owner reconciliation of the #4043 activation claim.
 
 Therefore `ADOPTION_REQUIRED → catalog must be empty` is incorrect. The current-main authority proves catalog entries can exist while the manifest stays ADOPTION_REQUIRED. The actual gate is Production/runner activation, not catalog entry addition.
 
@@ -716,11 +721,11 @@ Therefore `ADOPTION_REQUIRED → catalog must be empty` is incorrect. The curren
 
 ```text
 FINAL_VERDICT                             = GO_CANONICAL_SCHEMA_BRANCH_PROTOTYPE (additive branch prototype proven; see scoping below)
-CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage)
-SCHEMA_DIFF_COMPLETENESS                  = PARTIAL (exhaustive per-column/privilege matrix requires fresh live catalog; see Appendix A)
-EXACT_SCHEMA_DIFF                         = PARTIAL (Issue #4005 requires exact schema diff; no fresh live catalog evidence available, so exact diff is NOT complete)
-ISSUE4005_ACCEPTANCE                      = INCOMPLETE (exact schema diff evidence not yet satisfied; acceptance NOT claimed)
-OWNERSHIP_SUBJECT_INVENTORY_COMPLETENESS  = SUBSTANTIAL (12 tables, 12 columns; per current authority `trees.owner_id` is TEXT, not UUID→users.id; other subject columns UUID-shaped per prior inspection but NOT re-verified against fresh live catalog; no direct Firebase UID persistence claimed)
+CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage) — with owner-action gate: the documented canonical snapshot (36 users / 45 Trees / 287 Memories + users/community/ai_logs tables) is NOT reproducible from the live catalog on any LoveBud branch/database; owner lineage confirmation of the snapshot source DB is REQUIRED before data-authority acceptance is claimed
+SCHEMA_DIFF_COMPLETENESS                  = COMPLETE (all 18 #4005-required dimensions live-verified 2026-08-16 via dedicated `lb_ro_…` read-only role + owner-role catalog queries; LoveBud `neondb` vs LoveTree `neondb`; see Appendix A)
+EXACT_SCHEMA_DIFF                         = COMPLETE (live fingerprint diff: LoveBud 100 columns vs LoveTree 97 — exactly 3 extra nullable `memories` columns on LoveBud: `connection_reason`, `discovery_date`, `video_offset_seconds`; all other dimensions — constraints, indexes, enums, triggers, views, extensions, RLS, privileges — identical)
+ISSUE4005_ACCEPTANCE                      = PARTIAL (exact schema diff now live-satisfied; canonical DATA snapshot 36/45/287 not reproducible live → owner lineage confirmation required before full acceptance)
+OWNERSHIP_SUBJECT_INVENTORY_COMPLETENESS  = COMPLETE (10 tables, 10 subject columns live-verified; no `users` table exists live so no owner_id→users FK; `trees.owner_id` = TEXT NOT NULL; no direct Firebase UID column observed; values inspected via aggregates/column metadata only)
 MEMORY_LINEAGE_SCHEMA_READINESS           = BRANCH_PROVEN (go_additive)
 RUNTIME_IMPLEMENTATION_AUTHORITY          = HOLD (#4007 is docs/audit contract only; runtime implementation requires a separate child issue; sortOrder product/reorder semantics unresolved; canonical migration adoption HOLD; Production apply NOT AUTHORIZED)
 CANONICAL_MIGRATION_ADOPTION              = HOLD (status ADOPTION_REQUIRED; catalog population allowed)
