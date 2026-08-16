@@ -283,7 +283,155 @@ the worker must follow the selected source-coherence/restart policy rather than 
 
 ---
 
-## 12. Required controlled tests
+## 12. Provider credential authority generation reconciliation
+
+This section reconciles the base async authority with the current #4025 OAuth reconnect / credential-generation authority. It is normative for future implementation planning. **Executor fencing and provider credential authority are two independent domains and must remain distinct.**
+
+### 12.1 Two fencing domains
+
+A. **Executor fencing** — `executor_fence_epoch` (or transactionally equivalent authority).
+Purpose: which worker/executor is currently allowed to mutate authoritative import job state.
+Protects: item outcome write, checkpoint advance, counters, lease renew, cancel acknowledgement, processing status, terminal status.
+
+B. **Provider credential authority** — `provider_credential_generation` / `provider_connection_revision` (or transactionally equivalent opaque server authority).
+Purpose: which canonical provider credential authority the job is allowed to use for provider-authorized work.
+Protects: playlist enumeration, provider page request, provider metadata request, token refresh/use, resume provider work, takeover provider work.
+
+Required invariant:
+
+```text
+EXECUTOR_FENCE_EPOCH != PROVIDER_CREDENTIAL_GENERATION
+```
+
+A current executor may still hold a stale provider credential. A current provider credential does not make a stale executor authoritative. Both must independently pass before their respective work proceeds.
+
+### 12.2 Job admission binding
+
+Future conceptual `import_jobs` authority adds an admitted-generation binding:
+
+```text
+provider_connection_id
+provider_credential_generation_at_admission
+```
+
+(or equivalent opaque authority reference; exact schema names are not fixed).
+
+Job admission must resolve server-side:
+
+```text
+actor → canonical provider connection → current verified connection authority → current credential generation → bind job admission to that generation
+```
+
+Browser/client must not mint `provider_connection_id` authority, `credential_generation`, or `connection_revision` arbitrarily. Client-supplied generation must never be trusted as authority.
+
+### 12.3 Provider-authorized work gate
+
+Revalidate provider authority before provider-authorized work at minimum at:
+
+- initial worker start;
+- resume after process restart;
+- executor lease takeover;
+- before beginning a new provider page batch;
+- after token refresh / reconnect signal;
+- before retry after provider authorization failure.
+
+This is bounded server-side validation — not a wasteful provider identity call before every individual API request. Required validation before continuing provider-authorized work:
+
+```text
+current canonical provider connection
++ active status
++ expected provider identity
++ credential generation compatibility
+```
+
+### 12.4 Rotation / reconnect transition matrix
+
+C1 — **unchanged credential authority**: job admitted under generation N, current canonical connection generation = N → provider work may proceed, subject to executor fence and all normal auth checks.
+
+C2 — **reconnect without new refresh_token**: per #4025, an existing usable encrypted refresh credential is preserved. Do not assume `credential_generation` must advance merely because non-secret connection metadata changed. If canonical credential authority is still generation N, a job admitted under N may continue after bounded server-side validation. If an implementation uses a broader connection revision that advances independently of `credential_generation`, that must not be conflated with credential rotation; document the distinction.
+
+C3 — **same canonical provider identity, new refresh_token returned**: old generation N → atomic credential rotation, current generation N+1. A job admitted under N MUST NOT use the generation N credential. Selected future transition: server validates same actor / same canonical provider identity / canonical connection remains active / new current generation is valid, then the job may **REBIND N → N+1** through an authoritative server-side transition. Rebind must be persisted and race-safe. No browser-supplied generation update.
+
+C4 — **rotation during rebind**: concurrent credential rotation N → N+1 then N+1 → N+2. A job attempting rebind must bind only to the currently validated generation. It must not persist N+1 as current after canonical authority already advanced to N+2. Use compare-and-set / transaction / equivalent future authority semantics.
+
+C5 — **disconnect/revoke**: canonical connection becomes unusable → automatic rebind = **FORBIDDEN**. The job must stop/fail/requeue with a bounded sanitized category such as `PROVIDER_REAUTHORIZATION_REQUIRED` (or equivalent). Disconnect/revoke must never be interpreted as "find a newer generation and continue"; a new verified OAuth flow is required.
+
+C6 — **canonical provider identity changes**: job admitted for identity X, current connection is now identity Y → silent rebind = **FORBIDDEN**. The job must stop/fail/requeue or require explicit new import authority. Never silently convert an import of playlist/account X into provider identity Y.
+
+### 12.5 Rebind authority
+
+If same-identity credential rotation is rebindable, the future server transition is conceptually:
+
+```text
+job provider generation = N
+current canonical generation = N+1
+```
+
+Server proves: job actor == connection actor; provider == youtube; canonical provider identity unchanged; connection active; N is superseded; N+1 is the exact current generation. Then atomically: `job.provider_credential_generation` N → N+1. Provider work may resume only after successful authoritative rebind.
+
+```text
+REBIND_WITHOUT_SERVER_VALIDATION = FORBIDDEN
+CLIENT_GENERATION_MINTING = FORBIDDEN
+REBIND_TO_NONCURRENT_GENERATION = FORBIDDEN
+REBIND_AFTER_DISCONNECT = FORBIDDEN
+CROSS_IDENTITY_REBIND = FORBIDDEN
+```
+
+### 12.6 Executor takeover × credential rotation
+
+Worker A owns executor epoch E1 and job credential generation N → credential rotates N → N+1 → A pauses → lease expires → worker B takes executor epoch E2.
+
+B must independently validate BOTH:
+
+```text
+executor authority: E2 current
+provider authority: N stale vs canonical N+1
+```
+
+B cannot conclude "I own E2, therefore old N is usable." B rebinds to N+1 if same canonical active identity and rebind policy permits, or stops/fails/requeues if provider authority is unusable. When A resumes, A fails executor fence E1 even if it somehow knows N+1.
+
+```text
+STALE_EXECUTOR + CURRENT_CREDENTIAL → authoritative mutation forbidden
+CURRENT_EXECUTOR + STALE_CREDENTIAL → provider work forbidden
+```
+
+### 12.7 Access token vs canonical credential generation
+
+A short-lived access-token refresh using the same canonical refresh credential authority does **not** mean `provider_credential_generation` advances. Credential generation represents long-lived canonical authority replacement/revocation (or a transactionally equivalent event), not every ephemeral access-token issuance.
+
+```text
+ACCESS_TOKEN_INSTANCE != CANONICAL_CREDENTIAL_GENERATION
+```
+
+Otherwise long 5K imports would spuriously stale themselves on every normal token refresh.
+
+### 12.8 Failure truthfulness
+
+If provider credential authority becomes unusable, the job must never report `completed` merely because canonical DB writes already exist. Use the truthful bounded #4027 lifecycle (`queued` / `processing` / `partial_failed` / `failed` / `cancelled`) with a bounded error/reason category kept separately. Conceptual categories: `PROVIDER_REAUTHORIZATION_REQUIRED`, `PROVIDER_AUTHORITY_SUPERSEDED`, `PROVIDER_IDENTITY_CHANGED` — exact public vocabulary remains future implementation detail unless #4027 already fixes it. No raw OAuth/provider response body in error evidence.
+
+### 12.9 Snapshot coherence survives rebind
+
+Credential rebind does not reset or bypass source snapshot coherence. Example: pages 1–40 enumerated under generation N, credential rotates, job rebinds to N+1, pages 41–100 continue. Same provider identity does not prove the source snapshot is unchanged. Completion still requires membership + order + count coherence and terminal bounded revalidation.
+
+```text
+PAGETOKEN_AS_SNAPSHOT_ISOLATION = FORBIDDEN
+MIXED_SOURCE_VERSION_COMPLETION = FORBIDDEN
+CREDENTIAL_REBIND_BYPASSES_SNAPSHOT_CHECK = NO
+```
+
+### 12.10 Model B visibility remains unchanged
+
+During import: Tree private, ALL imported Moments private. Import completion != publication. Provider credential failure/rebind/requeue must never expose incomplete imported content publicly.
+
+```text
+INCOMPLETE_IMPORT_PUBLIC_EXPOSURE = ZERO
+```
+
+Publication freshness remains owned by #4029/#4036; this section does not modify publication semantics.
+
+---
+
+## 13. Required controlled tests
 
 Future runtime implementation must include executable deterministic tests for at least:
 
@@ -313,9 +461,26 @@ Future runtime implementation must include executable deterministic tests for at
 
 Cross-repository 300/1K/5K E2E is coordinated with #4031.
 
+### Provider credential authority
+
+19. CG1 — job admitted under generation N, current generation N → provider work allowed;
+20. CG2 — reconnect without new refresh_token; existing usable credential generation remains N → job continues after validation; no forced stale transition;
+21. CG3 — new refresh_token rotates N → N+1 → old-N provider use = 0; server-validated same-identity rebind succeeds;
+22. CG4 — concurrent rotation N → N+1 → N+2 during rebind → job cannot settle on stale N+1;
+23. CG5 — disconnect/revoke after job admission → provider calls after revoke = 0; no automatic generation rebind; truthful fail/requeue/reauthorization requirement;
+24. CG6 — provider identity X → Y → cross-identity silent rebind = 0;
+25. CG7 — executor takeover after credential rotation → new executor validates/rebinds provider authority before provider work;
+26. CG8 — old executor resumes after takeover → authoritative job mutation = 0 regardless of provider generation knowledge;
+27. CG9 — normal access-token refresh at the same canonical credential generation → does not unnecessarily stale the job;
+28. CG10 — credential rotation mid-enumeration → rebind does not bypass membership/order/count terminal revalidation;
+29. CG11 — queued job generation becomes stale before first worker start → first worker resolves current authority before first provider call;
+30. CG12 — processing job generation becomes stale → no stale provider request after detection;
+31. CG13 — malformed/client-minted credential generation → ignored/rejected/fail closed; cannot grant authority;
+32. CG14 — raw refresh/access token, ciphertext, provider account identifier, raw provider response → never logged/emitted in GitHub evidence.
+
 ---
 
-## 13. Reconciled async verdict
+## 14. Reconciled async verdict
 
 ```text
 DURABLE_ASYNC_JOB = REQUIRED
@@ -330,6 +495,18 @@ SOURCE_COHERENCE = MEMBERSHIP_PLUS_ORDER_PLUS_COUNT
 TERMINAL_SOURCE_REVALIDATION = REQUIRED_OR_STRONGER_PROVEN_EQUIVALENT
 MIXED_SOURCE_VERSION_COMPLETION = FORBIDDEN
 DRIFT_RETRY = BOUNDED
+PROVIDER_CREDENTIAL_GENERATION_BINDING = REQUIRED (admitted generation recorded)
+JOB_ADMISSION_PROVIDER_AUTHORITY = REQUIRED (server-side canonical resolution)
+SILENT_STALE_CREDENTIAL_USE = FORBIDDEN
+SAME_IDENTITY_ROTATION_REBIND = SERVER_VALIDATED_ONLY
+REBIND_TO_NONCURRENT_GENERATION = FORBIDDEN
+REBIND_AFTER_DISCONNECT_REVOKE = FORBIDDEN
+CROSS_IDENTITY_REBIND = FORBIDDEN
+CLIENT_GENERATION_MINTING = FORBIDDEN
+EXECUTOR_FENCE_AND_PROVIDER_GENERATION = DISTINCT
+ACCESS_TOKEN_REFRESH = NOT_CANONICAL_CREDENTIAL_GENERATION_ROTATION
+CREDENTIAL_REBIND_BYPASSES_SNAPSHOT_CHECK = NO
+INCOMPLETE_IMPORT_PUBLIC_EXPOSURE = ZERO
 RUNTIME_IMPLEMENTATION = NOT_YET_PERFORMED
 ```
 

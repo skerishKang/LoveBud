@@ -221,6 +221,7 @@ id
 actor_id
 provider = youtube
 provider_connection_id
+provider_credential_generation_at_admission nullable
 source_collection_ref
 source_snapshot_ref
 idempotency_key
@@ -262,6 +263,8 @@ updated_at
 ```
 
 Raw private playlist titles/descriptions and OAuth credentials do not belong in job status tables merely for observability.
+
+The job must record the provider connection/credential authority generation under which it was admitted (`provider_credential_generation_at_admission`, or transactionally equivalent opaque server authority). On resume, executor takeover and before provider-authorized work, that admitted generation is revalidated against the current canonical provider connection. A superseded generation is never used silently: the job either server-validates a same-identity rebind to the current generation or stops/fails/requeues with a bounded reauthorization category. Provider credential authority is independent of executor fencing (see the fencing/snapshot addendum §12).
 
 ---
 
