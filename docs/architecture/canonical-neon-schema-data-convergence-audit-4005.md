@@ -470,41 +470,43 @@ No deletion/repair inference is made by this audit. Historical rows may represen
 
 ## 7. Canonical schema vNext decision
 
-Canonical vNext should begin from the LoveBud production lineage, with selected LoveTree improvements added only where they have clear product/runtime value.
+Canonical vNext should begin from the LoveBud production lineage (candidate canonical authority; the 36/45/287 historical snapshot requires owner lineage confirmation). Per the live-verified 2026-08-16 catalogs, the two databases are structurally near-identical: the dimensions previously framed as "LoveTree improvements to port" (Memory `client_key`/`sort_order`, supporting indexes/uniqueness, Tree owner index, Tree/Memory visibility+created indexes, the 5 enums incl. `unlisted`, JSONB emotion tags, Trees core NOT NULL shape, current FKs, unconditional `tree_likes` uniqueness) are **already present in both live databases**. vNext therefore contains no pending cross-database schema port for those dimensions; the remaining vNext decisions are product/runtime semantics (e.g. sortOrder reorder), the LoveBud-only nullable Memory columns, lineage/provenance confirmation, and the separate PostgreSQL major-version platform decision.
 
 ### 7.1 Keep as canonical now
 
 ```text
-LoveBud users/account-linked ownership lineage
+LoveBud / 133-relovetree production lineage (candidate canonical authority; 36/45/287 historical snapshot = HISTORICAL_NOT_REPRODUCED, owner lineage confirmation required)
 LoveBud Tree/Memory IDs and production data
-LoveBud soft-delete Tree-like semantics
+Tree ownership through trees.owner_id (text NOT NULL live; no users table / owner_id→users FK exists live)
 LoveBud social idempotency/audit/rate-limit contracts
 LoveBud visibility-revocation security contracts
 LoveBud generic social target compatibility until runtime is converged
 ```
 
-### 7.2 Port additively first
+The earlier "users/account-linked ownership lineage" and "soft-delete Tree-like semantics" bullets reflected the non-reproduced historical snapshot (no `users` table live; `tree_likes` uniqueness is the identical unconditional `(tree_id, owner_id)` index in both live DBs). That snapshot evidence is preserved only as `HISTORICAL_NOT_REPRODUCED` (§4/§6) and is not asserted as current canonical state.
 
-Highest-confidence LoveTree improvements:
+### 7.2 Already present in both live databases (no port required)
+
+Live-verified 2026-08-16 — none of these is a pending LoveTree→LoveBud port:
 
 ```text
-Memory client_key capability
-Memory sort_order capability
-supporting indexes/uniqueness only after compatibility evidence
-Tree owner lookup index if query evidence supports it
-Tree/Memory visibility+created indexes if query evidence supports them
+Memory client_key (text, nullable)      = already present in both live DBs (memories_tree_client_key_uniq)
+Memory sort_order (int4, nullable)      = already present in both live DBs (memories_tree_sort_order_uniq_partial)
+supporting indexes/uniqueness           = already present in both live DBs
+Tree owner lookup index                 = trees_owner_id_idx present in both live DBs
+Tree/Memory visibility+created indexes  = trees_visibility_created_at_idx / memories_visibility_created_at_idx present in both live DBs
 ```
 
 ### 7.3 Explicitly do not port wholesale
 
+The following are genuine non-port / HOLD items (not already-live dimensions):
+
 ```text
-PostgreSQL 18 merely because LoveTree already uses it
-enum visibility including unlisted
-all NOT NULL constraints
-ARRAY → JSONB conversions
-unconditional Tree-like uniqueness
-strict Tree FKs before legacy orphan classification
-LoveTree database itself as production authority
+PostgreSQL 18 as a platform upgrade       = HOLD — separate runtime/operations decision with its own compatibility/rollback evidence; NOT framed as a LoveTree schema-port difference
+LoveTree database as production authority = NO — canonical direction remains LoveBud / 133-relovetree lineage
+Wholesale NOT NULL / FK tightening and enum/check normalization as a blanket action = HOLD — no live gap exists (Trees core NOT NULL, current FKs, and the 5 enums incl. unlisted are already aligned in both live DBs); blanket tightening is not authorized
+LoveBud-only nullable Memory columns (connection_reason, discovery_date, video_offset_seconds) = HOLD — product decision required (retain/retire); do not silently copy to LoveTree
+Destructive handling of historical orphan/null/soft-delete evidence = HOLD — HISTORICAL_NOT_REPRODUCED pending owner lineage confirmation; no deletion/repair inference
 ```
 
 PostgreSQL 17→18 should be a separate platform upgrade with its own compatibility/rollback evidence, not bundled into cross-database convergence.
@@ -524,7 +526,7 @@ PostgreSQL 17→18 should be a separate platform upgrade with its own compatibil
 
 Create a child branch from canonical Neon and test only additive vNext candidates first.
 
-Initial candidates:
+Initial candidates (live reconciliation 2026-08-16: these schema shapes already exist in both live DBs; the additive branch prototype was executed and proven on `br-bitter-shape-a1yp6iup`, §C):
 
 - nullable Memory `client_key`;
 - nullable Memory `sort_order`;
@@ -568,8 +570,8 @@ Before strict FK convergence, classify canonical orphan data:
 - missing-Tree Memories;
 - orphan Tree likes;
 - orphan social counts;
-- two structurally inert null Tree rows;
-- blank source type row.
+- two structurally inert null Tree rows (historical snapshot lineage only — live has 0 null-owner_id and 0 null-visibility Tree rows);
+- blank source type row (historical snapshot lineage only — none observed among the 5 live Memories).
 
 Possible final treatments include preserve-in-place, archive, canonical parent restoration, or explicit legacy quarantine, but none is selected without evidence.
 
@@ -604,7 +606,7 @@ The fact that two of three LoveTree owner subjects already match canonical `user
 
 The next database mutation, if authorized, should be **only on a temporary Neon branch** and should test an additive canonical-vNext slice.
 
-Recommended first schema prototype:
+Recommended first schema prototype (live reconciliation 2026-08-16: the client_key/sort_order schema shape already exists in both live databases; the additive branch prototype was executed and proven on `br-bitter-shape-a1yp6iup`, §C — remaining work is runtime/product write-contract validation, not schema porting):
 
 ```text
 Memory client_key (nullable compatibility)
@@ -719,6 +721,7 @@ CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage
 SCHEMA_DIFF_COMPLETENESS                  = COMPLETE (all 18 #4005-required dimensions live-verified 2026-08-16 via dedicated `lb_ro_…` read-only role + owner-role catalog queries; LoveBud `neondb` vs LoveTree `neondb`; see Appendix A)
 EXACT_SCHEMA_DIFF                         = COMPLETE (live fingerprint diff: LoveBud 100 columns vs LoveTree 97 — exactly 3 extra nullable `memories` columns on LoveBud: `connection_reason`, `discovery_date`, `video_offset_seconds`; all other dimensions — constraints, indexes, enums, triggers, views, extensions, RLS, privileges — identical)
 SEMANTIC_DECISION_RECONCILIATION          = PASS (historical-vs-current contradictions removed: client_key/sort_order and their uniqueness dispositions are SAME_SEMANTIC_CURRENTLY (both live DBs); tree_likes uniqueness identical in both live DBs; "two legacy null Tree rows" and 287-Memory references restricted to the non-reproduced historical snapshot)
+CANONICAL_SCHEMA_VNEXT                   = DEFINED (§7 — no pending cross-database schema ports; all previously "LoveTree-to-port" dimensions already present in both live DBs; remaining vNext decisions = product/runtime semantics, LoveBud-only Memory columns, lineage confirmation, PostgreSQL platform decision)
 LIVE_36_45_287_LINEAGE                    = OWNER_CONFIRMATION_REQUIRED (classified HISTORICAL_NOT_REPRODUCED; not re-asserted as current live state)
 CURRENT_DEFAULT_APPRECIATION_SCHEMA       = ABSENT (public.tree_appreciation_orders absent live on the production branch — CATALOGUED_BUT_ABSENT_LIVE, §D)
 ISSUE4005_ACCEPTANCE                      = PARTIAL (exact schema diff now live-satisfied; canonical DATA snapshot 36/45/287 not reproducible live → owner lineage confirmation required before full acceptance)
