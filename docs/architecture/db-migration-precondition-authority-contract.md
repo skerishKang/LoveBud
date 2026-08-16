@@ -311,7 +311,7 @@ A future child may add the registry as an additional fixed source input while pr
 
 - The canonical manifest (`db/migration-provenance/canonical-migrations.json`) owns migration identity, order, and checksum authority.
 - The precondition registry references manifest migration IDs. It **must not** invent migration IDs.
-- The current canonical manifest remains `ADOPTION_REQUIRED` with `migrations: []`.
+- The current canonical manifest remains `ADOPTION_REQUIRED` with two catalogued migrations (catalog population is distinct from adoption).
 - The current manifest adapter (`scripts/migration-canonical-manifest-adapter-core.cjs`) is **not** changed.
 - No `expected_preconditions` field is added to the canonical manifest or its projection.
 - Future source validation will cross-validate the registry against the full canonical manifest (every manifest migration has a registry entry, every registry entry references a manifest migration, no orphan entries).

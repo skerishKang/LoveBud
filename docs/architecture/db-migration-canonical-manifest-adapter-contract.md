@@ -100,7 +100,7 @@ The existing validator owns:
 
 ## Current `ADOPTION_REQUIRED` Behavior
 
-The current committed manifest is:
+The current committed manifest remains `ADOPTION_REQUIRED` and is catalog-populated with two migrations. The contract below uses the empty-array form as the representative structurally valid fixture (also exercised by the synthetic test manifest); catalog population does not change the adapter contract:
 
 ```json
 { "status": "ADOPTION_REQUIRED", "migrations": [] }

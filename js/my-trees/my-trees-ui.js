@@ -244,14 +244,29 @@
   }
 
   function normalizeCardVisibility(tree) {
-    return tree && tree.visibility === 'public' ? 'public' : 'private';
+    if (tree && tree.visibility === 'public') return 'public';
+    if (tree && tree.visibility === 'private') return 'private';
+    // Issue #3934: anything other than a literal public/private value is
+    // unresolved. Do NOT coerce it into a public/private claim.
+    return 'unknown';
   }
 
   function buildVisibilityBadgeHtml(visibility, i18n) {
-    var visibilityLabel = visibility === 'public'
-      ? getI18nText(i18n, 'myTrees.summary_public', '공개')
-      : getI18nText(i18n, 'myTrees.summary_private', '비공개');
-    var visibilityIcon = visibility === 'public' ? 'public' : 'lock';
+    var visibilityLabel;
+    var visibilityIcon;
+    if (visibility === 'public') {
+      visibilityLabel = getI18nText(i18n, 'myTrees.summary_public', '공개');
+      visibilityIcon = 'public';
+    } else if (visibility === 'private') {
+      visibilityLabel = getI18nText(i18n, 'myTrees.summary_private', '비공개');
+      visibilityIcon = 'lock';
+    } else {
+      // Issue #3934: unknown/unresolved visibility. Never claim public or
+      // private. Show a neutral indicator only (#3934 display truthfulness).
+      visibilityLabel = getI18nText(i18n, 'myTrees.summary_unknown', '확인 불가');
+      visibilityIcon = 'help';
+      visibility = 'unknown';
+    }
     // #3587: demote to quiet icon-only indicator. No visible text label,
     // transparent background, no border/pill. aria-label + title preserved.
     return '<span class="tree-card-visibility ' + visibility + '" aria-label="' + visibilityLabel + '" title="' + visibilityLabel + '" data-visibility="' + visibility + '">' +
@@ -461,7 +476,7 @@
       normalizedTree = {
         id: tree && tree.id,
         title: (tree && tree.title) || '나의 러브트리',
-        visibility: tree && tree.visibility === 'public' ? 'public' : 'private',
+        visibility: tree && tree.visibility === 'public' ? 'public' : (tree && tree.visibility === 'private' ? 'private' : 'unknown'),
         updatedAt: (tree && (tree.updatedAt || tree.createdAt)) || null,
         memoryCount: getTreeMomentCount(tree),
         representativeThumbnail: getRepresentativeThumbnail(tree),
@@ -469,7 +484,7 @@
         representativeMemo: tree && (tree.representativeMemo || tree.representative_memo || '')
       };
     } else {
-      normalizedTree.visibility = normalizedTree.visibility === 'public' ? 'public' : 'private';
+      normalizedTree.visibility = normalizedTree.visibility === 'public' ? 'public' : (normalizedTree.visibility === 'private' ? 'private' : 'unknown');
       normalizedTree.representativeThumbnail = normalizedTree.representativeThumbnail || getRepresentativeThumbnail(tree);
       normalizedTree.memoryCount = getTreeMomentCount(tree || normalizedTree);
       normalizedTree.representativeTitle = normalizedTree.representativeTitle || (tree && (tree.representativeTitle || tree.representative_title || ''));
@@ -618,6 +633,88 @@
   var isLoadingMore = false;
   var scrollSentinel = null;
 
+  function updatePaginationControls(options) {
+    var container = document.getElementById('state-loaded');
+    if (!container) return;
+
+    var existingPagination = document.getElementById('my-trees-pagination');
+    var stateModule = window.LoveBudMyTreesState || null;
+    var hasMore = stateModule && typeof stateModule.hasMoreTrees === 'function' ? stateModule.hasMoreTrees() : false;
+    var isLoading = stateModule && typeof stateModule.getIsLoadingMoreTrees === 'function' ? stateModule.getIsLoadingMoreTrees() : false;
+
+    if (!hasMore) {
+      if (existingPagination) {
+        existingPagination.remove();
+      }
+      return;
+    }
+
+    if (!existingPagination) {
+      existingPagination = document.createElement('div');
+      existingPagination.id = 'my-trees-pagination';
+      existingPagination.className = 'my-trees-pagination';
+      container.appendChild(existingPagination);
+    }
+
+    existingPagination.replaceChildren();
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'myTreesLoadMoreBtn';
+    btn.className = 'btn-round btn-secondary my-trees-load-more-btn';
+    btn.setAttribute('data-i18n', 'myTrees.load_more');
+    btn.disabled = isLoading;
+    btn.textContent = isLoading ? '불러오는 중...' : '더 보기';
+
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = '불러오는 중...';
+
+      if (options && typeof options.onLoadMore === 'function') {
+        options.onLoadMore();
+      } else if (window.LoveBudMyTreesData && typeof window.LoveBudMyTreesData.loadMoreTrees === 'function') {
+        window.LoveBudMyTreesData.loadMoreTrees();
+      }
+    });
+
+    existingPagination.appendChild(btn);
+  }
+
+  function appendTrees(newItems, allTrees, appendOptions) {
+    if (!Array.isArray(newItems) || newItems.length === 0) return;
+
+    allTreesData = Array.isArray(allTrees) ? allTrees : [];
+    totalTreesCount = allTreesData.length;
+
+    var grid = document.getElementById('trees-grid');
+    if (!grid) {
+      renderTrees(allTrees, appendOptions);
+      return;
+    }
+
+    var buildTreeCardFn = (appendOptions && appendOptions.buildTreeCard) || buildTreeCard;
+    var onSelect = appendOptions && appendOptions.onSelect;
+    var onNavigate = appendOptions && appendOptions.onNavigate;
+
+    newItems.forEach(function(tree) {
+      var card = buildTreeCardFn(tree, { onSelect: onSelect, onNavigate: onNavigate });
+      if (card instanceof Node) {
+        grid.appendChild(card);
+      }
+    });
+
+    var setState = appendOptions && appendOptions.setState;
+    var stateEnum = appendOptions && appendOptions.stateEnum;
+
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: onSelect, onNavigate: onNavigate });
+    updatePaginationControls(appendOptions);
+
+    if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
+      setState(stateEnum.LOADED);
+    }
+  }
+
   function renderTrees(trees, options) {
     var hubOnSelect = options && options.onSelect;
     var hubOnNavigate = options && options.onNavigate;
@@ -636,6 +733,10 @@
     updateManageSummaryFn(trees, options);
 
     if (!trees || trees.length === 0) {
+      var existingPagination = document.getElementById('my-trees-pagination');
+      if (existingPagination) {
+        existingPagination.remove();
+      }
       if (typeof setState === 'function' && stateEnum && stateEnum.EMPTY) {
         setState(stateEnum.EMPTY);
       }
@@ -657,6 +758,7 @@
 
     renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
     setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
+    updatePaginationControls(options);
 
     if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
       setState(stateEnum.LOADED);
@@ -751,6 +853,10 @@
     if (grid) {
       grid.innerHTML = '';
     }
+    var existingPagination = document.getElementById('my-trees-pagination');
+    if (existingPagination) {
+      existingPagination.remove();
+    }
     currentVisibleCount = 0;
     allTreesData = [];
     totalTreesCount = 0;
@@ -769,6 +875,8 @@
     updateManageSummary: updateManageSummary,
     buildTreeCard: buildTreeCard,
     renderTrees: renderTrees,
+    appendTrees: appendTrees,
+    updatePaginationControls: updatePaginationControls,
     validateEntryTarget: validateEntryTarget,
     resolveSafeBasePath: resolveSafeBasePath,
     validateAndResolveEntryTargets: validateAndResolveEntryTargets

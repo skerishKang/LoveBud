@@ -66,6 +66,9 @@
       localStorage.removeItem('lovebud_auth_confirmed');
       localStorage.removeItem('lovebud_auth_token');
     } catch (e) {}
+    if (myTreesState && typeof myTreesState.resetPaginationState === 'function') {
+      myTreesState.resetPaginationState();
+    }
   }
 
   function setupHeaderCreateButton() {
@@ -233,6 +236,7 @@
             window.LoveBudMyTreesPreviewHub.onCardClick(tree);
           }
         },
+        onLoadMore: loadMoreTrees,
         setLastTreesData: function(data) {
           // Do not overwrite our raw lastTreesData closure variable here when rendering filtered list
         }
@@ -403,6 +407,21 @@
     warnMissingModule('LoveBudMyTreesData', 'loadTrees');
     showMissingActionError('loadTrees');
     myTreesPage.setState?.(myTreesPage.STATE.ERROR);
+  }
+
+  async function loadMoreTrees(options) {
+    options = options || {};
+    if (myTreesData && typeof myTreesData.loadMoreTrees === 'function') {
+      return myTreesData.loadMoreTrees({
+        renderTrees: function(nextTrees) {
+          renderTrees(nextTrees, false);
+        },
+        showToast: showToast,
+        i18n: window.t || function(k) { return k; }
+      });
+    }
+
+    warnMissingModule('LoveBudMyTreesData', 'loadMoreTrees');
   }
 
   var myTreesStarted = false;

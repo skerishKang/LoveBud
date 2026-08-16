@@ -157,7 +157,7 @@ const FILE_ALLOWLIST = {
   },
   'js/my-trees/my-trees-batch-render.js': {
     count: 2, classification: 'safe',
-    reason: 'clear-container (×2): grid.innerHTML = empty string'
+    reason: 'clear-container (×2): grid.innerHTML = empty string for initial load + resetBatchState; #3944 pagination rebuild uses replaceChildren() and does not introduce an additional innerHTML sink'
   },
   'js/my-trees/my-trees-i18n-refresh.js': {
     count: 5, classification: 'safe',
