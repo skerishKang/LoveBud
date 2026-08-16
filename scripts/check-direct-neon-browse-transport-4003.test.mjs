@@ -428,7 +428,6 @@ check('tag parsing deterministic and capped', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 check('driver contract: executor invokes real driver via sql.query (fetch-stubbed, no network)', async () => {
-  const FAKE_NEON_URL = 'postgresql://bench-user:bench-pass@ep-regression-123456.us-east-1.aws.neon.tech/neondb?sslmode=require';
   const calls = [];
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, opts) => {
@@ -444,7 +443,7 @@ check('driver contract: executor invokes real driver via sql.query (fetch-stubbe
     );
   };
   try {
-    const executor = await createDirectNeonBrowseExecutor({ connectionString: FAKE_NEON_URL });
+    const executor = await createDirectNeonBrowseExecutor({ connectionString: NEON_SECRET });
     // If the transport regressed to `sql(text, values)`, the real driver
     // throws the tagged-template error BEFORE any fetch happens.
     const rows = await executor('SELECT $1::int AS n', [7]);
