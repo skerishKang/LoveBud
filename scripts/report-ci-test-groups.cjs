@@ -479,7 +479,7 @@ function getVerifyStaticCommands(ciYaml) {
     let normalized = cmd;
     if (cmd === 'npm ci') {
       normalized = 'ci';
-    } else if (cmd === 'npm test') {
+    } else if (cmd === 'npm test' || cmd === 'node scripts/ci-smoke-runner.cjs') {
       normalized = 'test';
     } else if (cmd.startsWith('npm run ')) {
       normalized = cmd.slice(8).trim();
