@@ -18,14 +18,25 @@ from modal_compute.write_validation import (
     require_tree_owner,
 )
 from modal_compute.validation import (
-    normalize_group_name,
     normalize_keywords,
     normalize_tree_row,
     validate_explicit_visibility,
-    validate_optional_string,
     validate_required_uuid,
+    validate_tree_group_name,
+    validate_tree_title,
     validate_visibility,
 )
+
+
+ALLOWED_TREE_UPDATE_FIELDS = {
+    "title",
+    "visibility",
+    "groupName",
+    "keywords",
+}
+
+ALLOWED_TREE_UPDATE_EMPTY_CODE = "EMPTY_TREE_UPDATE"
+ALLOWED_TREE_UPDATE_UNSUPPORTED_CODE = "UNSUPPORTED_TREE_UPDATE_FIELDS"
 
 
 def create_owner_tree(
@@ -39,12 +50,17 @@ def create_owner_tree(
     if not owner_id:
         raise HTTPException(status_code=401, detail="Authentication required")
 
+    # #3935 strict scalar validation MUST precede any DB side effect.
+    # ensure_owner_user_exists() performs a real owner-row upsert, so validating
+    # the supplied title/groupName first guarantees a malformed scalar is
+    # rejected with HTTP 400 before any owner row or Tree INSERT is written.
+    title = validate_tree_title(payload.get("title"), max_length=200) or "My LoveTree"
+    group_name = validate_tree_group_name(payload.get("groupName"))
+
     ensure_owner_user_exists(owner_id, owner_email)
-    title = validate_optional_string(payload.get("title"), 200) or "My LoveTree"
     visibility = validate_visibility(payload.get("visibility"), "public")
     require_plus_for_private_storage(owner_id, visibility)
 
-    group_name = normalize_group_name(payload.get("groupName"))
     keywords = normalize_keywords(payload.get("keywords"))
 
     query = """
@@ -92,12 +108,30 @@ def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> d
     safe_tree_id = validate_required_uuid(tree_id, "treeId")
     require_tree_owner(safe_tree_id, owner_id)
 
+    unknown_fields = [
+        k for k in payload.keys() if k not in ALLOWED_TREE_UPDATE_FIELDS
+    ]
+    if unknown_fields:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": ALLOWED_TREE_UPDATE_UNSUPPORTED_CODE,
+                "fields": sorted(unknown_fields),
+            },
+        )
+
+    if not payload:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ALLOWED_TREE_UPDATE_EMPTY_CODE},
+        )
+
     updates: list[str] = []
     params: list[Any] = []
 
     if "title" in payload:
         updates.append("title = %s")
-        params.append(validate_optional_string(payload.get("title"), 200))
+        params.append(validate_tree_title(payload.get("title"), max_length=200))
 
     if "visibility" in payload:
         visibility = validate_explicit_visibility(payload.get("visibility"))
@@ -107,7 +141,7 @@ def update_owner_tree(owner_id: str, tree_id: str, payload: dict[str, Any]) -> d
 
     if "groupName" in payload:
         updates.append("group_name = %s")
-        params.append(normalize_group_name(payload.get("groupName")))
+        params.append(validate_tree_group_name(payload.get("groupName")))
 
     if "keywords" in payload:
         updates.append("keywords = %s")

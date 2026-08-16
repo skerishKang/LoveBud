@@ -17,9 +17,33 @@
   "classificationBasis": "Content-evidence based. Each file is read; its source-read/execution/fake-env markers determine the primary layer. Filename alone is never used.",
   "entries": [
     {
+      "path": "tests/contracts/comment-pagination-3939-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/comments.py, modal_compute/tree_comments.py, modal_compute/social_cursor.py, modal_compute/app.py, Cloudflare proxy files, postgres-client.js, and tree-comments-client.js to assert comment forward cursor pagination contract across Moment public/authenticated comments and Tree comments (created_at ASC, id ASC, LIMIT limit+1, nextCursor forwarding, privacy DTOs); pure static source-read, no execution (#3939).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/ci-failure-observability-4014-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes in-memory, synthetic subprocess, and mock stream tests for scripts/ci-smoke-runner.cjs to verify non-zero exit code preservation on test failure, parsing of TAP/Spec failure output (failing file, subtest name, assertion error message, location), Step Summary generation, stderr highlight formatting, and credential redaction. Also statically reads .github/workflows/ci.yml to verify step ordering (Lint -> Build check -> Smoke test -> Verify) and integration. No real external network, browser, database, or Production mutation (#4014).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-comment-rate-limit-3940-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/social_rate_limit.py, modal_compute/tree_comments.py, and companion test suite to assert bounded Tree-level comment rate limiting contract (10/min, scope tree-comment:actor, memory_id=None, 429/503 taxonomy, transaction ordering visibility -> idempotency -> rate limit -> insert); pure static source-read only, no execution (#3940).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/ci-browser-hermetic-4013-negative-controls.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes the #4013 hermetic external-network negative controls via the tests/helpers/external-network-hermetic.cjs policy helper in real Playwright Chromium against a local 127.0.0.1 HTTP server. Exercises NC1 hostname-vs-pathname classification regression (fonts.googleapis.com hits the deterministic fixture, not pathname branch), NC2 unexpected external origin abort (example.invalid prevented from reaching the real network with exact URL surfaced), NC3 same-origin 4xx failing loudly, NC4 browser console error capture retained, and NC5 known-external fixture throw aborting without route.continue() or real network fallback. The hermetic helper secures all real-local browser contracts that load production js/ and css/ modules. No Production, auth, provider, DB mutation, or real external-network fallback.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/owner-list-cloudflare-forwarding.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the dedicated Cloudflare route builders (functions/api/trees.js buildPrivateTreesModalUrl and functions/_shared/memory-route-proxy.js buildMemoryCollectionModalUrl) in-process with constructed Request inputs and asserts exact same-origin forwarding of pagination/cursor/limit/treeId for cursor mode and legacy-array passthrough. No real network, browser, auth provider, database, deployment, or Production resource is used (#3944).",
       "capabilities": []
     },
     {
@@ -2454,7 +2478,13 @@
     {
       "path": "tests/contracts/my-trees-visibility-display-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used as truth.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-filter-visibility-3934.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production my-trees-filter.js module source and executes it in a local vm context to assert Issue #3934 visibility bucket contracts; no real external system or production resource used.",
       "capabilities": []
     },
     {
@@ -4968,6 +4998,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/client-browse-revocation-cache-4055-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/cache-utils.js, js/search/search-preview-cache.js, and js/search/search-data.js in an in-process fake browser environment (memory cache + fake sessionStorage) and proves the #4055 visibility-revocation sequences deterministically: per-Tree public-projection purge with unrelated-Tree preservation (Case F), sessionStorage resurrection block on reload (Case D), Browse authority-first render with the revoked Tree never painted (Case A), mutation-purge-then-reload absence (Case A2), network-failure negative control where a failed fresh fetch must not restore a deleted Tree from cache (Case C), and the preview authority gate where a cached old thumbnail/source projection is not returned once fresh Browse excludes the Tree (Case B/B2); plus a source-static assertion that mutation purge wiring in editor-tree-helpers/editor-memory-actions/my-trees-actions/editor-rename-ui runs only after confirmed success (Case E). No real network, browser, auth provider, database, deployment, or Production resource is used (#4055).",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -4984,6 +5020,22 @@
       "layer": "SUPPLEMENTAL_PYTHON",
       "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/test_memory_parent_atomicity_3951.py",
+      "defaultCi": false,
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "rationale": "Python test executed outside the default Node CI chain (separate command/manual run); proves the Issue #3951 reparent source contract (single transaction, tree-scoped pg_advisory_xact_lock, post-lock source/target reread, bounded error codes) and the behavioral matrix (self/cross-tree/missing/cycle/detach/rollback/owner-auth) with a mocked hierarchy fixture. Not enumerated by package.json test script.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/db-engine/memory-parent-cycle-concurrency-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Creates a disposable loopback PostgreSQL database and drives two real pg.Client connections (barrier-synchronized) to prove concurrent Memory reparents A->B and B->A cannot both commit: tree-scoped pg_advisory_xact_lock serializes same-Tree writes (different Trees derive independent lock keys), the loser re-validates the committed hierarchy and receives a bounded PARENT_CYCLE, and the final reread is acyclic. Also asserts the source contract that validation and the parent_id UPDATE share one transaction. Reads only LB_TEST_PG* synthetic env; never DATABASE_URL.",
+      "capabilities": [
+        "postgresql"
+      ]
     },
     {
       "path": "tests/contracts/test_owner_tree_query_error_classification.py",
@@ -5140,6 +5192,13 @@
         "child_process",
         "filesystem"
       ]
+    },
+    {
+      "path": "tests/db-engine/tree-social-visibility-concurrency-postgres.test.cjs",
+      "defaultCi": false,
+      "layer": "DB_ENGINE_EXECUTION",
+      "rationale": "Creates a disposable loopback PostgreSQL 17.4 database and drives two real pg.Client connections to prove Tree Like/Comment visibility locking: private-first write denies leak-safe (zero mutation), social-first write blocks concurrent public->private visibility UPDATE behind a FOR SHARE row lock until commit, mid-transaction rollback leaves no partial rows, and NULL visibility stays fail-closed. Static source assertions verify modal_compute/tree_likes.py and tree_comments.py require explicit public visibility before mutation locks. Reads only LB_TEST_PG* synthetic env; never DATABASE_URL (#3947).",
+      "capabilities": []
     },
     {
       "path": "tests/db-engine/trees-schema-foothold-postgres.test.cjs",

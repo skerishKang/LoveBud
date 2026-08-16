@@ -264,7 +264,7 @@ def test_fetch_comments_authenticated_non_owner_foreign_comment():
     auth_row = {
         "id": memory_id,
         "tree_id": tree_id,
-        "mem_visibility": "public",
+        "visibility": "public",
         "tree_owner_id": tree_owner_uid,
         "tree_visibility": "public",
     }
@@ -367,7 +367,7 @@ def test_fetch_comments_authenticated_non_owner_no_comments():
     auth_row = {
         "id": memory_id,
         "tree_id": str(uuid.uuid4()),
-        "mem_visibility": "public",
+        "visibility": "public",
         "tree_owner_id": tree_owner_uid,
         "tree_visibility": "public",
     }

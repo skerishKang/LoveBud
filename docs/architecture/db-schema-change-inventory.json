@@ -27,7 +27,7 @@
     "PROHIBITED_FOR_NEW_USE",
     "UNCLEAR_REQUIRES_DECISION"
   ],
-  "canonical_status_note": "Vocabulary is intentionally identical to docs/architecture/migration-path-inventory.json so the two inventories do not diverge. CANONICAL_CANDIDATE means a path is part of the future canonical read-only/provenance direction; it is NOT a claim that the path is an approved Production migration route. The committed canonical migration stream is inactive (ADOPTION_REQUIRED) and empty.",
+  "canonical_status_note": "Vocabulary is intentionally identical to docs/architecture/migration-path-inventory.json so the two inventories do not diverge. CANONICAL_CANDIDATE means a path is part of the future canonical read-only/provenance direction; it is NOT a claim that the path is an approved Production migration route. The committed canonical migration stream is inactive (ADOPTION_REQUIRED) with two catalogued migrations; catalog population is distinct from runner activation/adoption.",
   "category_enum": [
     "sql_migration",
     "sql_incident_repair",
@@ -1252,7 +1252,7 @@
       "execution_actor": "none",
       "automation": "none",
       "ledger_candidate": "yes",
-      "notes": "Reserved canonical migration directory. Contains no executable migration in this bootstrap slice; intentionally empty so production history is not fabricated. New files require an immutable entry in canonical-migrations.json. Keep #1882 OPEN."
+      "notes": "Reserved canonical migration directory. Contains two catalogued additive migrations (bootstrap-migration-ledger, add-tree-appreciation-orders) registered in canonical-migrations.json; none are executed against any environment (production history is not fabricated). New files require an immutable entry in canonical-migrations.json. Keep #1882 OPEN."
     },
     {
       "path": "db/migration-provenance/canonical-migrations.json",
@@ -1267,7 +1267,7 @@
       "execution_actor": "none",
       "automation": "none",
       "ledger_candidate": "yes",
-      "notes": "Append-only canonical migration manifest. Currently empty/inactive (ADOPTION_REQUIRED). This is the future ledger source-of-truth, not an executed migration list."
+      "notes": "Append-only canonical migration manifest. Currently inactive (ADOPTION_REQUIRED) with two catalogued migrations; catalog population is distinct from runner activation. This is the future ledger source-of-truth, not an executed migration list."
     },
     {
       "path": "db/migration-provenance/ledger-contract.json",

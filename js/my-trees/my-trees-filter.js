@@ -57,7 +57,9 @@
     }
 
     if (f === 'private') {
-      return tree.visibility !== 'public';
+      // Issue #3934: unresolved (unknown/empty) visibility is excluded from
+      // both the public and private buckets — it may remain only in 'all'.
+      return tree.visibility === 'private';
     }
 
     var count = getTreeMomentCount(tree);
