@@ -291,3 +291,57 @@
     max-height: min(420px, calc(100vh - 260px));
   }
 }
+
+/* #4069 — private-first import intent review (title input + review summary). */
+.ypp-intent-section {
+  margin-top: 12px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--outline-variant, #e4e1ec);
+}
+.ypp-title-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ypp-title-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+.ypp-title-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 8px;
+  font: inherit;
+  color: var(--on-surface);
+}
+.ypp-title-input:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 1px;
+}
+.ypp-title-error {
+  color: var(--error, #b3261e);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ypp-review {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--on-surface-variant);
+  line-height: 1.5;
+}
+.ypp-review-ready {
+  background: color-mix(in srgb, var(--primary, #904951) 6%, transparent);
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--on-surface);
+}
+.ypp-review-title {
+  font-weight: 600;
+}
+.ypp-review-muted {
+  color: var(--on-surface-variant);
+}

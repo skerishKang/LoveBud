@@ -9,7 +9,21 @@
  *   -> ordered read-only preview
  *   -> per-occurrence item selection (occurrence identity = position, NOT videoId)
  *   -> ordered import draft builder (source order preserved, no DB write)
- *   -> Tree write 0, Moment write 0, Connection write 0
+ *   -> private-first import intent review (#4069): Tree title input + bounded
+ *      deterministic private import intent, no Tree/Moment/Connection write
+ *
+ * #4069 import-intent review contract:
+ *   - canonical Tree-title bound = 200 (validate_tree_title max_length, #3935)
+ *   - trim deterministic; empty/whitespace-only and over-limit fail closed
+ *   - prepared intent visibility is exactly 'private' — no public/import-and-
+ *     publish shortcut; a public YouTube playlist is not publication authority
+ *   - buildPrivateImportIntent() is pure/deterministic: preview + #4062
+ *     selection + normalized title -> detached private intent; source order
+ *     preserved, duplicate occurrences distinct, unavailable excluded
+ *   - review state is never cached: every preview/selection/title change
+ *     re-derives it, so a stale intent can never remain silently actionable
+ *   - intent carries only bounded fields; no persisted IDs invented, no
+ *     semantic Connections, no client-side persistence claim
  *
  * #4062 selection contract:
  *   - selection identity is the preview occurrence (position), so duplicate
@@ -163,6 +177,158 @@
     return draft;
   }
 
+  // #4069 — canonical Tree-title bound. Server authority:
+  // modal_compute/validation.py validate_tree_title(max_length=200) (#3935);
+  // the create-tree modal input also uses maxlength="200". Reused verbatim —
+  // no new persisted limit invented.
+  var TREE_TITLE_MAX = 200;
+  var PRIVATE_VISIBILITY = 'private';
+  var TITLE_INPUT_ID = 'youtubePlaylistTreeTitle';
+  var TITLE_ERROR_ID = 'youtubePlaylistTitleError';
+  var REVIEW_ID = 'youtubePlaylistReview';
+
+  /**
+   * #4069 normalizeTreeTitle — deterministic trim + bounded length.
+   * Mirrors validate_tree_title semantics (strip, overlength fails closed).
+   * Empty/whitespace-only title fails closed for import-intent review even
+   * though the create path may fall back to a default title.
+   */
+  function normalizeTreeTitle(raw) {
+    if (typeof raw !== 'string') return { ok: false, code: 'TITLE_INVALID_TYPE' };
+    var text = raw.trim();
+    if (text.length === 0) return { ok: false, code: 'TITLE_REQUIRED' };
+    if (text.length > TREE_TITLE_MAX) return { ok: false, code: 'TITLE_TOO_LONG' };
+    return { ok: true, value: text };
+  }
+
+  /**
+   * #4069 buildPrivateImportIntent — pure/deterministic private-first import
+   * intent builder.
+   *   accepted preview identity + #4062 ordered selected occurrences +
+   *   normalized Tree title -> detached private import intent.
+   * Invariants:
+   *   - source order preserved (never click order)
+   *   - duplicate video occurrences remain distinct (occurrence identity)
+   *   - unavailable/non-selectable occurrences cannot re-enter
+   *   - caller preview/selection/title inputs are never mutated
+   *   - returned intent is detached from internal selection state
+   *   - no persisted Tree/Moment IDs invented; no semantic Connections
+   *     generated from adjacency; no client-side persistence claim
+   */
+  function buildPrivateImportIntent(previewData, selectedPositions, rawTitle) {
+    var titleResult = normalizeTreeTitle(rawTitle);
+    if (!titleResult.ok) return { ok: false, error: titleResult };
+    var orderedItems = buildOrderedImportDraft(previewData, selectedPositions);
+    if (orderedItems.length === 0) {
+      return { ok: false, error: { code: 'NO_SELECTED_ELIGIBLE_ITEMS' } };
+    }
+    var playlist = (previewData && previewData.playlist) || {};
+    return {
+      ok: true,
+      intent: {
+        source: {
+          playlistId: typeof playlist.id === 'string' ? playlist.id : '',
+          playlistTitle: typeof playlist.title === 'string' ? playlist.title : '',
+          channelTitle: typeof playlist.channelTitle === 'string' ? playlist.channelTitle : '',
+        },
+        items: orderedItems,
+        tree: {
+          title: titleResult.value,
+          visibility: PRIVATE_VISIBILITY,
+        },
+        pending: true, // no persisted entity — a later transactional write child creates it
+      },
+    };
+  }
+
+  function readTitleValue() {
+    var input = $id(TITLE_INPUT_ID);
+    return input ? String(input.value || '') : '';
+  }
+
+  function clearTitleInput() {
+    var input = $id(TITLE_INPUT_ID);
+    if (input) input.value = '';
+    setTitleError('');
+  }
+
+  function setTitleError(message) {
+    var err = $id(TITLE_ERROR_ID);
+    if (!err) return;
+    err.textContent = message || '';
+    err.hidden = !message;
+  }
+
+  /** Eligible positions currently selected against the live preview. */
+  function selectedEligiblePositions() {
+    var items = (lastPreviewData && Array.isArray(lastPreviewData.items)) ? lastPreviewData.items : [];
+    var result = {};
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (isItemSelectable(it) && selection[String(it.position)] === true) {
+        result[String(it.position)] = true;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * #4069 renderReview — re-derives the pre-write review from live state only.
+   * The review/intent is never cached, so a stale intent can never remain
+   * silently actionable: every preview/selection/title change re-renders it.
+   */
+  function renderReview() {
+    var review = $id(REVIEW_ID);
+    if (!review) return;
+    if (!lastPreviewData) {
+      review.innerHTML = '';
+      setTitleError('');
+      return;
+    }
+    var titleResult = normalizeTreeTitle(readTitleValue());
+    var count = Object.keys(selectedEligiblePositions()).length;
+    if (!titleResult.ok) {
+      setTitleError(
+        titleResult.code === 'TITLE_REQUIRED'
+          ? 'Tree 제목을 입력해주세요.'
+          : titleResult.code === 'TITLE_TOO_LONG'
+            ? '제목은 ' + TREE_TITLE_MAX + '자 이하여야 해요.'
+            : 'Tree 제목 형식을 확인해주세요.'
+      );
+      review.innerHTML = '<p class="ypp-review-muted">제목을 확인한 뒤 다시 확인해주세요.</p>';
+      return;
+    }
+    setTitleError('');
+    if (count === 0) {
+      review.innerHTML = '<p class="ypp-review-muted">가져올 항목을 선택해주세요.</p>';
+      return;
+    }
+    var intentResult = buildPrivateImportIntent(lastPreviewData, selectedEligiblePositions(), titleResult.value);
+    if (!intentResult.ok) {
+      review.innerHTML = '<p class="ypp-review-muted">가져올 항목을 다시 확인해주세요.</p>';
+      return;
+    }
+    review.innerHTML =
+      '<div class="ypp-review-ready" data-review-ready="true">' +
+        '<p class="ypp-review-title">Tree 제목: <strong>' + escapeHtml(titleResult.value) + '</strong></p>' +
+        '<p>선택 항목: ' + count + '개</p>' +
+        '<p>공개 범위: 비공개</p>' +
+        '<p>아직 Tree가 생성되지 않았어요. 이 검토는 저장 전 준비 단계예요.</p>' +
+      '</div>';
+  }
+
+  /**
+   * #4069 getPreparedImportIntent — current detached private intent from live
+   * UI state, or null when no preview / invalid title / nothing selected.
+   * Recomputes every call — never returns a stale cached intent.
+   */
+  function getPreparedImportIntent() {
+    if (!lastPreviewData) return null;
+    var result = buildPrivateImportIntent(lastPreviewData, selection, readTitleValue());
+    if (!result.ok) return null;
+    return result.intent;
+  }
+
   function resetSelection() {
     selection = {};
     updateSelectionCount();
@@ -173,6 +339,7 @@
     if (countEl) {
       countEl.textContent = '선택 ' + Object.keys(selection).length + '개';
     }
+    renderReview(); // #4069: any selection change re-derives the review
   }
 
   function selectionCount() {
@@ -354,23 +521,29 @@
   var api = (typeof window !== 'undefined' && window.LoveTreeYouTubePlaylistPreview) || null;
 
   function setStateLoading() {
+    lastPreviewData = null; // #4069: new preview request invalidates prior review
     resetSelection(); // new preview request: stale selection must not leak
+    clearTitleInput(); // #4069: stale title/review must not survive a new request
     var result = $id(RESULT_ID);
     if (result) result.innerHTML = renderLoading();
+    renderReview();
   }
 
   function setStateSuccess(data) {
     lastPreviewData = data;
     resetSelection(); // fresh success: stale selection must not leak
     renderPlaylist(data);
-    updateSelectionCount();
+    clearTitleInput(); // #4069: new preview success invalidates prior review
+    renderReview();
   }
 
   function setStateError(code, message) {
     lastPreviewData = null;
     resetSelection(); // error: stale selection must not leak
+    clearTitleInput(); // #4069: error invalidates stale review
     var result = $id(RESULT_ID);
     if (result) result.innerHTML = renderError(message);
+    renderReview();
   }
 
   function readIdentity() {
@@ -388,6 +561,9 @@
     if (result) result.innerHTML = '';
     lastPreviewData = null;
     resetSelection(); // close: stale selection must not be silently restored
+    clearTitleInput(); // #4069: close invalidates review state
+    var review = $id(REVIEW_ID);
+    if (review) review.innerHTML = '';
     if (returnFocus && btn && typeof btn.focus === 'function') {
       btn.focus();
     }
@@ -403,6 +579,7 @@
     if (input && typeof input.focus === 'function') {
       input.focus();
     }
+    renderReview(); // #4069: reopen reflects current (cleared) review state
   }
 
   function onOpenButtonClick() {
@@ -455,6 +632,12 @@
           event.preventDefault();
           closePopover(true);
         }
+      });
+    }
+    var titleInput = $id(TITLE_INPUT_ID);
+    if (titleInput && typeof titleInput.addEventListener === 'function') {
+      titleInput.addEventListener('input', function () {
+        renderReview(); // #4069: title change re-derives review
       });
     }
     var popover = $id(POPOVER_ID);
@@ -514,38 +697,36 @@
     }
   }
 
+  var publicApi = {
+    init: init,
+    buildRequest: buildRequest,
+    isItemSelectable: isItemSelectable,
+    buildOrderedImportDraft: buildOrderedImportDraft,
+    buildPrivateImportIntent: buildPrivateImportIntent,
+    normalizeTreeTitle: normalizeTreeTitle,
+    getPreparedImportIntent: getPreparedImportIntent,
+    renderReview: renderReview,
+    clearTitleInput: clearTitleInput,
+    setStateLoading: setStateLoading,
+    setStateSuccess: setStateSuccess,
+    setStateError: setStateError,
+    renderRow: renderRow,
+    renderPlaylist: renderPlaylist,
+    buildPlaylistHtml: buildPlaylistHtml,
+    localizeState: localizeState,
+    escapeHtml: escapeHtml,
+    resetSelection: resetSelection,
+    selectAllEligible: selectAllEligible,
+    clearSelection: clearSelection,
+    selectionCount: selectionCount,
+    TREE_TITLE_MAX: TREE_TITLE_MAX,
+    PRIVATE_VISIBILITY: PRIVATE_VISIBILITY,
+  };
   if (typeof window !== 'undefined') {
-    window.LoveTreeYouTubePlaylistPreviewUI = {
-      init: init,
-      buildRequest: buildRequest,
-      isItemSelectable: isItemSelectable,
-      buildOrderedImportDraft: buildOrderedImportDraft,
-      renderRow: renderRow,
-      renderPlaylist: renderPlaylist,
-      buildPlaylistHtml: buildPlaylistHtml,
-      localizeState: localizeState,
-      resetSelection: resetSelection,
-      selectAllEligible: selectAllEligible,
-      clearSelection: clearSelection,
-      selectionCount: selectionCount,
-    };
+    window.LoveTreeYouTubePlaylistPreviewUI = publicApi;
   }
   if (typeof module !== 'undefined' && module && module.exports) {
-    module.exports = {
-      init: init,
-      buildRequest: buildRequest,
-      isItemSelectable: isItemSelectable,
-      buildOrderedImportDraft: buildOrderedImportDraft,
-      renderRow: renderRow,
-      renderPlaylist: renderPlaylist,
-      buildPlaylistHtml: buildPlaylistHtml,
-      localizeState: localizeState,
-      escapeHtml: escapeHtml,
-      resetSelection: resetSelection,
-      selectAllEligible: selectAllEligible,
-      clearSelection: clearSelection,
-      selectionCount: selectionCount,
-    };
+    module.exports = publicApi;
   }
   init();
 })();
