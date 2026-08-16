@@ -23,6 +23,109 @@
     return (options && options.updateManageSummary) || UI.updateManageSummary;
   }
 
+  function hasMoreServerTrees() {
+    var stateModule = window.LoveBudMyTreesState || null;
+    return !!(stateModule && typeof stateModule.hasMoreTrees === 'function' && stateModule.hasMoreTrees());
+  }
+
+  function updateLoadedCountSummary() {
+    var summary = document.getElementById('trees-manage-summary');
+    if (!summary) return;
+
+    if (hasMoreServerTrees()) {
+      summary.textContent = '현재 ' + totalTreesCount + '개 로드됨';
+      return;
+    }
+
+    var i18n = window.i18nMyTrees || {};
+    var countText = (i18n.myTrees_count || '총 {count}개').replace('{count}', String(totalTreesCount));
+    summary.textContent = countText;
+  }
+
+  function updatePaginationControls(options) {
+    var container = document.getElementById('state-loaded');
+    if (!container) return;
+
+    var existingPagination = document.getElementById('my-trees-pagination');
+    var stateModule = window.LoveBudMyTreesState || null;
+    var hasMore = stateModule && typeof stateModule.hasMoreTrees === 'function' ? stateModule.hasMoreTrees() : false;
+    var isLoading = stateModule && typeof stateModule.getIsLoadingMoreTrees === 'function' ? stateModule.getIsLoadingMoreTrees() : false;
+
+    if (!hasMore) {
+      if (existingPagination) {
+        existingPagination.remove();
+      }
+      updateLoadedCountSummary();
+      return;
+    }
+
+    if (!existingPagination) {
+      existingPagination = document.createElement('div');
+      existingPagination.id = 'my-trees-pagination';
+      existingPagination.className = 'my-trees-pagination';
+      container.appendChild(existingPagination);
+    }
+
+    existingPagination.replaceChildren();
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'myTreesLoadMoreBtn';
+    btn.className = 'btn-round btn-secondary my-trees-load-more-btn';
+    btn.setAttribute('data-i18n', 'myTrees.load_more');
+    btn.disabled = isLoading;
+    btn.textContent = isLoading ? '불러오는 중...' : '더 보기';
+
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = '불러오는 중...';
+
+      if (options && typeof options.onLoadMore === 'function') {
+        options.onLoadMore();
+      } else if (window.LoveBudMyTreesData && typeof window.LoveBudMyTreesData.loadMoreTrees === 'function') {
+        window.LoveBudMyTreesData.loadMoreTrees();
+      }
+    });
+
+    existingPagination.appendChild(btn);
+    updateLoadedCountSummary();
+  }
+
+  function appendTrees(newItems, allTrees, appendOptions) {
+    allTreesData = Array.isArray(allTrees) ? allTrees : [];
+    totalTreesCount = allTreesData.length;
+
+    var grid = document.getElementById('trees-grid');
+    if (!grid) {
+      renderTrees(allTreesData, appendOptions);
+      return;
+    }
+
+    var buildTreeCardFn = (appendOptions && appendOptions.buildTreeCard) || getBuildTreeCard(appendOptions);
+    var onSelect = appendOptions && appendOptions.onSelect;
+    var onNavigate = appendOptions && appendOptions.onNavigate;
+    var setState = appendOptions && appendOptions.setState;
+    var stateEnum = appendOptions && appendOptions.stateEnum;
+
+    // Preserve the existing local batch authority. A server-page fetch only
+    // extends the in-memory buffer; it must not clear the grid or append the
+    // entire newly fetched page at once. Continue from the exact visible
+    // boundary and let the sentinel keep rendering bounded local batches.
+    if (Array.isArray(newItems) && newItems.length > 0 && currentVisibleCount < totalTreesCount) {
+      renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: onSelect, onNavigate: onNavigate });
+    } else {
+      updateLoadedCountSummary();
+    }
+
+    setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: onSelect, onNavigate: onNavigate });
+    updatePaginationControls(appendOptions);
+
+    if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
+      setState(stateEnum.LOADED);
+    }
+  }
+
   function renderTrees(trees, options) {
     var hubOnSelect = options && options.onSelect;
     var hubOnNavigate = options && options.onNavigate;
@@ -43,6 +146,10 @@
     }
 
     if (!trees || trees.length === 0) {
+      var existingPagination = document.getElementById('my-trees-pagination');
+      if (existingPagination) {
+        existingPagination.remove();
+      }
       if (typeof setState === 'function' && stateEnum && stateEnum.EMPTY) {
         setState(stateEnum.EMPTY);
       }
@@ -65,6 +172,7 @@
 
     renderNextBatch(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
     setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, { onSelect: hubOnSelect, onNavigate: hubOnNavigate });
+    updatePaginationControls(options);
 
     if (typeof setState === 'function' && stateEnum && stateEnum.LOADED) {
       setState(stateEnum.LOADED);
@@ -100,13 +208,7 @@
     }
 
     currentVisibleCount = endIndex;
-
-    var summary = document.getElementById('trees-manage-summary');
-    if (summary) {
-      var i18n = window.i18nMyTrees || {};
-      var countText = (i18n.myTrees_count || '총 {count}개').replace('{count}', String(totalTreesCount));
-      summary.textContent = countText;
-    }
+    updateLoadedCountSummary();
   }
 
   function setupScrollContinuation(grid, buildTreeCardFn, setState, stateEnum, extraOptions) {
@@ -161,6 +263,10 @@
     if (grid) {
       grid.innerHTML = '';
     }
+    var existingPagination = document.getElementById('my-trees-pagination');
+    if (existingPagination) {
+      existingPagination.remove();
+    }
     currentVisibleCount = 0;
     allTreesData = [];
     totalTreesCount = 0;
@@ -169,10 +275,13 @@
 
   var api = {
     renderTrees: renderTrees,
+    appendTrees: appendTrees,
     renderNextBatch: renderNextBatch,
     setupScrollContinuation: setupScrollContinuation,
     loadMoreBatch: loadMoreBatch,
-    resetBatchState: resetBatchState
+    resetBatchState: resetBatchState,
+    updatePaginationControls: updatePaginationControls,
+    updateLoadedCountSummary: updateLoadedCountSummary
   };
 
   window.LoveBudMyTreesBatchRender = api;

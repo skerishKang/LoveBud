@@ -99,7 +99,8 @@ test('Cloudflare tree view route preserves bounded stream enforcement and forwar
   assert.match(cloudflareRoute, /export\s+async\s+function\s+onRequestPost/);
   assert.match(cloudflareRoute, /method\s*!==\s*'POST'/);
   assert.match(cloudflareRoute, /allow:\s*'POST'/);
-  assert.match(cloudflareRoute, /\/modal\/public\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeId\)\)\}\/views/);
+  assert.match(cloudflareRoute, /const treeId = normalizeEncodedPathSegment\(extractTreeId\(request\)\)/);
+  assert.match(cloudflareRoute, /\/modal\/public\/trees\/\$\{treeId\}\/views/);
 
   // #3920 resource boundary remains authoritative even though accepted body
   // bytes are discarded instead of forwarded.

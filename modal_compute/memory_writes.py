@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import uuid
 from typing import Any
 
@@ -169,6 +170,12 @@ _SOURCE_ACK_MAX_LEN = {
 }
 
 
+def _memory_parent_advisory_lock(tree_id: str) -> int:
+    raw = f"memory-parent-graph:{tree_id}"
+    digest = hashlib.sha256(raw.encode("utf-8")).digest()[:8]
+    return int.from_bytes(digest, byteorder="big", signed=True)
+
+
 def _source_ack_requested_value(payload_key: str, payload: dict[str, Any]) -> str:
     """Normalize a requested source-identity value the same way the SQL binding does.
 
@@ -316,6 +323,13 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         params.append(validate_optional_memory_string(payload.get("timestamp"), "timestamp", 100))
 
     # New: parentId update support
+    # The non-null reparent path performs parent existence / same-tree / self /
+    # ancestor-cycle validation AND the parent_id UPDATE inside ONE DB
+    # transaction (see _validate_reparent_atomic). This makes the cycle check
+    # atomic with the write so concurrent reparents cannot read each other's
+    # stale state (Issue #3951). Detach (parentId null/empty) is acyclic by
+    # construction and stays a single UPDATE in the same transaction below.
+    reparent_target = None
     if "parentId" in payload:
         parent_id_value = payload.get("parentId")
         # Normalize disconnect values: null, "", whitespace-only -> None
@@ -323,46 +337,9 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
             updates.append("parent_id = NULL")
         else:
             # Validate UUID format
-            parent_id = validate_required_uuid(parent_id_value, "parentId")
-            # Check: parent memory exists, same tree, not self, not descendant
-            # All checks must happen within the same DB connection context
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    # Check parent exists
-                    cur.execute(
-                        """
-                        SELECT id, tree_id, parent_id
-                        FROM memories
-                        WHERE id = %s
-                        """,
-                        (parent_id,),
-                    )
-                    parent_mem = cur.fetchone()
-                    if not parent_mem:
-                        raise HTTPException(
-                            status_code=400,
-                            detail={"code": "INVALID_PARENT_ID", "reason": "not_found"},
-                        )
-                # Check: same tree
-                if str(parent_mem["tree_id"]) != str(memory["tree_id"]):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"code": "PARENT_MEMORY_TREE_MISMATCH"},
-                    )
-                # Check: not self
-                if str(parent_mem["id"]) == str(safe_memory_id):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"code": "INVALID_PARENT_ID", "reason": "self_parent"},
-                    )
-                # Check: not descendant (cycle detection with visited guard)
-                if _would_create_cycle(conn, safe_memory_id, parent_id):
-                    raise HTTPException(
-                        status_code=400,
-                        detail={"code": "PARENT_CYCLE"},
-                    )
+            reparent_target = validate_required_uuid(parent_id_value, "parentId")
             updates.append("parent_id = %s")
-            params.append(parent_id)
+            params.append(reparent_target)
 
     if not updates:
         # This should not happen due to empty payload check above, but guard anyway
@@ -387,6 +364,40 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
+                if reparent_target is not None:
+                    # Reread source Memory + owning Tree inside the transaction
+                    # to obtain the authoritative tree_id. The pre-transaction
+                    # memory["tree_id"] read (from require_memory_owner) must
+                    # NOT be used as concurrency authority (Issue #3951).
+                    cur.execute(
+                        """
+                        SELECT m.id, m.tree_id, m.parent_id, m.visibility,
+                               t.owner_id AS tree_owner_id
+                        FROM memories m
+                        INNER JOIN trees t ON t.id = m.tree_id
+                        WHERE m.id = %s
+                        LIMIT 1
+                        """,
+                        (safe_memory_id,),
+                    )
+                    source_row = cur.fetchone()
+                    if not source_row:
+                        raise HTTPException(status_code=404, detail="Memory not found")
+                    if str(source_row["tree_owner_id"]) != owner_id:
+                        raise HTTPException(
+                            status_code=403, detail="Access denied: not your memory"
+                        )
+                    authoritative_tree_id = str(source_row["tree_id"])
+
+                    # Acquire tree-scoped transaction advisory lock.
+                    # Only one reparent transaction per Tree can proceed,
+                    # while different Trees use independent lock keys and
+                    # do not serialize (Issue #3951).
+                    lock_key = _memory_parent_advisory_lock(authoritative_tree_id)
+                    cur.execute("SELECT pg_advisory_xact_lock(%s)", (lock_key,))
+
+                    # Post-lock: reread source + target, validate graph
+                    _validate_reparent_atomic(cur, safe_memory_id, reparent_target, owner_id)
                 cur.execute(query, tuple(params + [safe_memory_id, owner_id]))
                 row = cur.fetchone()
                 if not row:
@@ -400,31 +411,96 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
     return normalize_memory_row(row)
 
 
-def _would_create_cycle(conn, source_id: str, target_parent_id: str) -> bool:
+def _validate_reparent_atomic(cur, source_id: str, parent_id: str, owner_id: str) -> None:
+    """Validate a memory reparent under the tree-scoped advisory lock.
+
+    Called after pg_advisory_xact_lock acquisition (tree-scoped key
+    "memory-parent-graph:<tree_id>"). The advisory lock guarantees that
+    only one reparent transaction per Tree is active, so no concurrent
+    reparent within the same Tree can mutate the parent graph underneath
+    this walk.
+
+    Post-lock steps (all within the single authoritative transaction):
+
+        1. Reread source Memory + owning Tree (owner_id re-verified)
+        2. Reread target parent (existence + same-Tree check)
+        3. Self-parent rejection
+        4. Ancestor-chain walk + cycle detection
+
+    Any failure raises a bounded HTTPException (never a raw DB error /
+    deadlock / constraint text).
     """
-    Check if setting source_id's parent to target_parent_id would create a cycle.
-    Walks up the ancestor chain from target_parent_id looking for source_id.
-    Includes visited guard to prevent infinite loops on existing corrupted data.
+    source_id = str(source_id)
+    parent_id = str(parent_id)
+
+    # Self-parent is rejected up front with its own bounded code.
+    if parent_id == source_id:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_PARENT_ID", "reason": "self_parent"},
+        )
+
+    # --- Post-lock: reread source Memory ---
+    cur.execute(
+        "SELECT m.id, m.tree_id, m.parent_id, t.owner_id AS tree_owner_id FROM memories m INNER JOIN trees t ON t.id = m.tree_id WHERE m.id = %s",
+        (source_id,),
+    )
+    source_row = cur.fetchone()
+    if not source_row:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    if str(source_row["tree_owner_id"]) != owner_id:
+        raise HTTPException(
+            status_code=403, detail="Access denied: not your memory"
+        )
+
+    # --- Post-lock: reread target parent ---
+    cur.execute(
+        "SELECT id, tree_id, parent_id FROM memories WHERE id = %s",
+        (parent_id,),
+    )
+    target_row = cur.fetchone()
+    if not target_row:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_PARENT_ID", "reason": "not_found"},
+        )
+
+    # --- Same-tree check ---
+    source_tree_id = str(source_row["tree_id"])
+    if str(target_row["tree_id"]) != source_tree_id:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "PARENT_MEMORY_TREE_MISMATCH"},
+        )
+
+    # --- Ancestor-chain walk + cycle check (advisory lock serializes) ---
+    _assert_no_ancestor_cycle_locked(cur, source_id, parent_id)
+
+
+def _assert_no_ancestor_cycle_locked(cur, source_id: str, parent_id: str) -> None:
+    """Walk the target's ancestor chain and raise PARENT_CYCLE if the
+    source is reachable.
+
+    Every call is protected by the tree-scoped pg_advisory_xact_lock acquired
+    by the caller, so no concurrent reparent can mutate the chain during the
+    walk. The visited guard also rejects a corrupted pre-existing cycle without
+    looping forever.
     """
-    visited = set()
-    current_id = target_parent_id
-    with conn.cursor() as cur:
-        while current_id:
-            if str(current_id) == str(source_id):
-                return True
-            if str(current_id) in visited:
-                # Existing cycle in DB - break to avoid infinite loop
-                return True
-            visited.add(str(current_id))
-            cur.execute(
-                "SELECT parent_id FROM memories WHERE id = %s",
-                (current_id,),
-            )
-            row = cur.fetchone()
-            if not row or not row["parent_id"]:
-                break
-            current_id = row["parent_id"]
-    return False
+    source_id = str(source_id)
+    parent_id = str(parent_id)
+    visited: set[str] = set()
+    current = parent_id
+    while current:
+        if current in visited:
+            raise HTTPException(status_code=400, detail={"code": "PARENT_CYCLE"})
+        visited.add(current)
+        if current == source_id:
+            raise HTTPException(status_code=400, detail={"code": "PARENT_CYCLE"})
+        cur.execute("SELECT parent_id FROM memories WHERE id = %s", (current,))
+        row = cur.fetchone()
+        if not row or not row["parent_id"]:
+            break
+        current = str(row["parent_id"])
 
 
 def delete_owner_memory(owner_id: str, memory_id: str) -> dict[str, Any]:

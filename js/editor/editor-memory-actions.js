@@ -94,10 +94,14 @@ function createEditorMemoryActions(deps) {
 
     const getEditableSourceUrl = (memory) => String(memory?.sourceUrl || '').trim();
 
-    const clearCommunityCaches = () => {
+    // #4055: single client-side public-projection invalidation wrapper.
+    // Passes the affected treeId so only that tree's Browse/preview projections
+    // are purged (per-Tree precision); the apiClient clears the module-level
+    // public Memories caches and the LoveBudCache public projection namespace.
+    const clearCommunityCaches = (treeId) => {
         if (window.apiClient && typeof window.apiClient.clearCommunityCaches === 'function') {
             try {
-                window.apiClient.clearCommunityCaches();
+                window.apiClient.clearCommunityCaches(treeId);
             } catch (e) {
                 console.error('[editor] Failed to clear community caches:', e);
             }
@@ -274,8 +278,9 @@ function createEditorMemoryActions(deps) {
             }
         }
 
+        let treeId = 'default';
         if (window.LoveBudCache) {
-            const treeId = (currentTreeData && currentTreeData.id) || nextEditingMemory.treeId || 'default';
+            treeId = (currentTreeData && currentTreeData.id) || nextEditingMemory.treeId || 'default';
             window.LoveBudCache.set('memories_' + treeId, nextMemories, 2 * 60 * 1000);
         }
 
@@ -284,7 +289,7 @@ function createEditorMemoryActions(deps) {
         updateDetailPanel(nextEditingMemory);
         updateSidebarStatus();
         if (typeof rerenderCanvas === 'function') rerenderCanvas();
-        clearCommunityCaches();
+        clearCommunityCaches(treeId);
 
         return {
             nextEditingMemory,
@@ -835,8 +840,9 @@ function createEditorMemoryActions(deps) {
             }
         }
 
+        let treeId = 'default';
         if (window.LoveBudCache) {
-            const treeId = (currentTreeData && currentTreeData.id) || nextMemory.treeId || 'default';
+            treeId = (currentTreeData && currentTreeData.id) || nextMemory.treeId || 'default';
             const cacheKey = 'memories_' + treeId;
             window.LoveBudCache.set(cacheKey, memories, 2 * 60 * 1000);
         }
@@ -851,7 +857,7 @@ function createEditorMemoryActions(deps) {
 
         // Invalidate community/public caches after confirmed remote update
         if (!localSaveMode && savedMemory) {
-            clearCommunityCaches();
+            clearCommunityCaches(treeId);
         }
 
         if (typeof rerenderCanvas === 'function') rerenderCanvas();
@@ -877,7 +883,12 @@ function createEditorMemoryActions(deps) {
 
                 const nextMemories = getTreeMemories().filter((m) => m.id !== currentEditingMemory.id);
                 setTreeMemories(nextMemories);
+                const treeData = getCurrentTreeData();
+                const treeId = (treeData && treeData.id) || currentEditingMemory.treeId || 'default';
                 window.LoveBudCache.set('memories_' + treeId, nextMemories, 2 * 60 * 1000);
+                // #4055: confirmed Memory delete must purge the containing tree's
+                // public Browse/preview projections immediately.
+                clearCommunityCaches(treeId);
                 setCurrentEditingMemory(null);
                 exitEditMode();
 
