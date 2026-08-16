@@ -4252,6 +4252,12 @@
       ]
     },
     {
+      "path": "tests/contracts/bookmark-html-preview-ui-4072-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4072 local-preview contract: File.text() local read only with oversized-file fail-closed preflight at parser HARD_LIMITS.maxInputBytes (1 MiB), parser authority is #4065 ONLY (no second parser/DOMParser), ordered preview in canonical sourceIndex order with duplicate URL occurrences kept distinct, clickable link only when parser returned supported=true + non-null url (unsupported/credential/rejected entries inert status only, raw href never reconstructed or displayed), textContent/createElement rendering only (zero innerHTML/srcdoc/document.write sinks, user text cannot execute as HTML), IDLE/READING/READY/EMPTY/ERROR state machine with immediate stale-preview invalidation on new file selection and reset clearing input+preview+error, and no fetch/XHR/FormData/backend/storage capability. No network, no DB, no browser, no Production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/youtube-playlist-preview-client-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the production client wrapper (js/api/import-youtube-playlist-preview.js, a browser IIFE) inside a vm sandbox with mocked fetch, timers, and a stubbed auth pipeline. Verifies same-origin route targeting (never a Google endpoint), Authorization acquisition, bounded JSON body, AbortController signal, normalized envelope errors, FAIL-CLOSED handling of non-2xx responses with and without envelopes, FAIL-CLOSED handling of non-canonical 2xx responses, PROVIDER_TIMEOUT on abort, and validateSourceIdentity exactly-one semantics. No network, no DB, no Production.",

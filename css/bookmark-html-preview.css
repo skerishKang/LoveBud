@@ -1,0 +1,164 @@
+/* #4072 — Local bookmark HTML preview surface. */
+
+.bh-surface {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 20px 64px;
+}
+
+.bh-title-heading {
+  margin: 0 0 8px;
+  font-size: 22px;
+  color: var(--on-surface);
+}
+
+.bh-help {
+  margin: 0 0 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--on-surface-variant);
+}
+
+.bh-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* Visually hidden but keyboard-reachable file input (focus ring via label). */
+.bh-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.bh-file-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 999px;
+  background: var(--surface-container, #fff);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bh-file-input:focus-visible + .bh-file-label {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+.bh-reset-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bh-reset-btn:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+.bh-status {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--on-surface-variant);
+}
+
+.bh-error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--error, #b3261e);
+  line-height: 1.5;
+}
+
+.bh-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bh-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 10px;
+  background: var(--surface-container, #fff);
+}
+
+.bh-row-unsupported {
+  border-style: dashed;
+}
+
+.bh-order {
+  flex: 0 0 auto;
+  min-width: 28px;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.bh-meta {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bh-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+.bh-path {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.bh-link {
+  flex: 0 1 auto;
+  font-size: 12px;
+  color: var(--primary, #904951);
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.bh-state {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* State is never color-only: text label + dashed border for unsupported. */
+.bh-state-supported {
+  color: #1b6e3c;
+  background: rgba(27, 110, 60, 0.08);
+  border: 1px solid rgba(27, 110, 60, 0.25);
+}
+
+.bh-state-unsupported {
+  color: var(--error, #b3261e);
+  background: rgba(179, 38, 30, 0.06);
+  border: 1px solid rgba(179, 38, 30, 0.25);
+}
