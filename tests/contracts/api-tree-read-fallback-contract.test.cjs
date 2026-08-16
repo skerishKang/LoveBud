@@ -338,23 +338,20 @@ async function callBrowseSummary(request, envOverrides) {
 }
 
 function browseBody(items) {
-  return new Response(JSON.stringify({ items, nextCursor: null }), {
+  return new Response(JSON.stringify(items), {
     status: 200,
     headers: { 'content-type': 'application/json' }
   });
 }
 
 function staleBrowseBody() {
-  return new Response(JSON.stringify({
-    items: [{
-      id: 'tree-revoked',
-      title: 'STALE PRE-REVOCATION TITLE',
-      visibility: 'public',
-      representativeThumbnail: 'https://stale.example/revoked-thumb.jpg',
-      representativeMemorySourceUrl: 'https://stale.example/revoked-source'
-    }],
-    nextCursor: null
-  }), {
+  return new Response(JSON.stringify([{
+    id: 'tree-revoked',
+    title: 'STALE PRE-REVOCATION TITLE',
+    visibility: 'public',
+    representativeThumbnail: 'https://stale.example/revoked-thumb.jpg',
+    representativeMemorySourceUrl: 'https://stale.example/revoked-source'
+  }]), {
     status: 200,
     headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=420' }
   });
@@ -378,7 +375,8 @@ test('#4051 Browse: preloaded legacy cache body is ignored after Tree visibility
     assert.equal(mockCaches.default.putCalls, putCallsBefore, 'exact Browse route must not persist Cache API bodies');
 
     const body = await response.json();
-    assert.deepEqual(body.items, [], 'revoked Tree must disappear according to current authority');
+    assert.ok(Array.isArray(body), 'Browse authority response must be a JSON array');
+    assert.deepEqual(body, [], 'revoked Tree must disappear according to current authority');
     assert.ok(!JSON.stringify(body).includes('STALE PRE-REVOCATION TITLE'));
     assert.ok(!JSON.stringify(body).includes('revoked-thumb.jpg'));
     assert.ok(!JSON.stringify(body).includes('revoked-source'));
@@ -411,9 +409,10 @@ test('#4051 Browse: Memory visibility revocation cannot retain prior representat
     assert.equal(mockCaches.default.matchCalls, matchCallsBefore, 'stale representative Memory cache must not be consulted');
 
     const body = await response.json();
-    assert.equal(body.items[0].id, 'tree-revoked');
-    assert.equal(body.items[0].representativeThumbnail, null);
-    assert.equal(body.items[0].representativeMemorySourceUrl, null);
+    assert.ok(Array.isArray(body), 'Browse authority response must be a JSON array');
+    assert.equal(body[0].id, 'tree-revoked');
+    assert.equal(body[0].representativeThumbnail, null);
+    assert.equal(body[0].representativeMemorySourceUrl, null);
     const serialized = JSON.stringify(body);
     assert.ok(!serialized.includes('revoked-thumb.jpg'));
     assert.ok(!serialized.includes('revoked-source'));
@@ -440,11 +439,13 @@ test('#4051 Browse: sequential authority reads converge after deletion and never
     const url = `${TEST_HOST}/api/community/trees?view=summary&sort=views&limit=18`;
     const first = await callBrowseSummary(new Request(url));
     const firstBody = await first.json();
-    assert.equal(firstBody.items[0].id, 'tree-delete');
+    assert.ok(Array.isArray(firstBody), 'first Browse response must be a JSON array');
+    assert.equal(firstBody[0].id, 'tree-delete');
 
     const second = await callBrowseSummary(new Request(url));
     const secondBody = await second.json();
-    assert.deepEqual(secondBody.items, [], 'deleted Tree must disappear on the next anonymous Browse read');
+    assert.ok(Array.isArray(secondBody), 'second Browse response must be a JSON array');
+    assert.deepEqual(secondBody, [], 'deleted Tree must disappear on the next anonymous Browse read');
     assert.equal(calls.length, 2, 'same normalized key must still hit current authority twice');
     assert.equal(mockCaches.default.matchCalls, 0);
     assert.equal(mockCaches.default.putCalls, 0);
@@ -466,6 +467,8 @@ test('#4051 Browse: all supported sort modes preserve normalized forwarding with
       const response = await callBrowseSummary(new Request(`${TEST_HOST}/api/community/trees?view=summary&sort=${sort}&limit=60`));
       assert.equal(response.status, 200);
       assert.equal(response.headers.get('Cache-Control'), 'no-store');
+      const returnedBody = await response.json();
+      assert.ok(Array.isArray(returnedBody), `valid-response regression: ${sort} Browse response must be a JSON array`);
     }
 
     assert.equal(calls.length, 4);
