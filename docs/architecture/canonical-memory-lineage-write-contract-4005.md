@@ -14,7 +14,7 @@ This document is source/contract only. It deliberately does not modify `modal_co
 
 ## 2. Collision / sequencing decision
 
-Runtime implementation of `clientKey` / `sortOrder` is intentionally deferred because the authoritative Memory write path (`modal_compute/memory_writes.py`) has active overlapping work that must land first.
+Runtime implementation of `clientKey` / `sortOrder` is intentionally deferred. This document is a docs/audit contract only: any runtime implementation must be a **separate implementation child** created from then-current main, and is not authorized by this PR. `sortOrder` product/reorder transaction semantics remain unresolved, canonical migration adoption remains HOLD, and Production apply remains NOT AUTHORIZED. **Current active-writer conflict is NOT the reason** — the historical overlaps below have all resolved.
 
 Current PR state (reconciled at 2026-08-15):
 
@@ -28,7 +28,8 @@ Verdict:
 
 ```text
 SOURCE_CONTRACT_NOW
-RUNTIME_IMPLEMENTATION_AFTER_MEMORY_WRITE_PR_RECONCILIATION
+RUNTIME_IMPLEMENTATION_SEPARATE_CHILD_REQUIRED
+HOLD_SORT_ORDER_PRODUCT_SEMANTICS
 ```
 
 ## 3. Current LoveBud runtime evidence
