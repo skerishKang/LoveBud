@@ -22,6 +22,9 @@
 // by `../../_shared/direct-neon-browse-summary-core.js`.
 
 import {
+  normalizeBrowseLimit,
+} from '../../_shared/direct-neon-browse-summary-core.js';
+import {
   DIRECT_NEON_BROWSE_CONNECTION_SECRET,
   DIRECT_NEON_BROWSE_ENABLED_FLAG,
   fetchBrowseSummaryViaDirectNeon,
@@ -66,9 +69,21 @@ export async function buildDirectNeonBrowseResponse({ request, env = {}, executo
   try {
     const url = new URL(request.url);
     sort = url.searchParams.get('sort') || undefined;
-    limit = url.searchParams.get('limit') || undefined;
+    limit = normalizeBrowseLimit(url.searchParams.get('limit') || undefined);
   } catch {
     return buildJsonResponse(400, { error: 'invalid request url' }, { 'x-lovebud-route-status': 'bad-request' });
+  }
+
+  // `buildModalUrl()` uses the same numeric 1..60 clamp before forwarding to
+  // FastAPI, whose canonical `limit: int` contract rejects an in-range
+  // fractional value (for example 1.5) with 422. Fail before any Neon query so
+  // the experimental seam preserves that observable error boundary instead of
+  // turning a PostgreSQL bigint-parameter failure into a 502.
+  if (!Number.isInteger(limit)) {
+    return buildJsonResponse(422, {
+      error: 'invalid Browse limit',
+      code: 'INVALID_LIMIT',
+    }, { 'x-lovebud-route-status': 'invalid-limit' });
   }
 
   try {
