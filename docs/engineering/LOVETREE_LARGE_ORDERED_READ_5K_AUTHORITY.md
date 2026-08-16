@@ -6,9 +6,9 @@
 **Platform authority:** #4004  
 **Ordering dependency:** #4026  
 **Completeness precedent:** #3924  
-**Status:** Implementation-ready read contract; no runtime/schema implementation in this document.  
-**Audited baseline:** LoveBud `main` `ba7d470385f8bf21471cb8d5eeb9a4846df7232d`  
-**Last updated:** 2026-08-14
+**Status:** Future read authority (RFC); no runtime/schema implementation in this document.
+**Audited baseline:** LoveBud `main` `e282f610261d2562af51ce7da1506fbe3faa3c90`
+**Last updated:** 2026-08-17
 
 ---
 
@@ -69,6 +69,53 @@ Exact schema name/type may be finalized under #4004, but semantics are fixed:
 
 A cursor is valid only for the sequence version it was issued against.
 
+### 3.1 Public projection revision (projection-membership authority)
+
+Structural sequence consistency is NOT the same as public projection membership
+consistency:
+
+```text
+moment_sequence_version    = STRUCTURAL SEQUENCE REVISION
+public_projection_revision = PUBLIC PROJECTION MEMBERSHIP REVISION
+```
+
+`moment_sequence_version` (kept from the original contract) is the authority for
+canonical Moment membership/order **structure**:
+
+```text
+- Moment insert
+- Moment delete
+- sort_order change / reorder
+- any canonical sequence membership/order change
+```
+
+`public_projection_revision` is a **separate server-controlled monotonic
+revision** that fences the current PUBLIC ordered-read projection's membership /
+public-eligibility generation. This is a FUTURE AUTHORITY CONTRACT: it is not an
+instruction to add a schema column today. The future implementation PR decides
+storage (DB column, transactional generation record, or an equivalent
+server-controlled revision); this RFC fixes the semantic authority.
+
+Bump `public_projection_revision` when the PUBLIC ordered-read membership
+changes, at minimum for:
+
+```text
+- Moment private -> public
+- Moment public -> private
+- Moment public eligibility change
+- Tree visibility change that allows/forbids public read
+- any canonical input to a future public eligibility rule that changes membership
+```
+
+Structural changes (insert/delete/reorder) also change the public ordered
+projection's membership/order, so they bump **both** authorities. Content-only
+edits (title/memo) that do not change membership, order, or public eligibility
+must NOT bump `public_projection_revision`:
+
+```text
+PUBLIC_PROJECTION_REVISION != GENERAL_CONTENT_REVISION
+```
+
 ---
 
 ## 4. Tree shell
@@ -91,6 +138,7 @@ Large-tree shell additions conceptually include:
     "visibility": "private",
     "momentCount": 5000,
     "momentSequenceVersion": 42,
+    "publicProjectionRevision": 42,
     "importState": "completed"
   }
 }
@@ -128,6 +176,7 @@ Response concept:
 {
   "treeId": "...",
   "momentSequenceVersion": 42,
+  "publicProjectionRevision": 42,
   "totalCount": 5000,
   "returnedCount": 100,
   "items": [],
@@ -136,6 +185,19 @@ Response concept:
 ```
 
 Explicitly separate `totalCount` and `returnedCount`.
+
+Within one accepted read response, `totalCount`, the returned window, and
+`nextCursor` must belong to the SAME accepted authority generation:
+
+```text
+moment_sequence_version + public_projection_revision
+```
+
+Never mix count from projection generation A with page items from generation B:
+
+```text
+COUNT_PAGE_PROJECTION_COHERENCE = REQUIRED
+```
 
 Never use the old pattern where a hidden `LIMIT` can be mistaken for the complete Tree.
 
@@ -147,22 +209,61 @@ Opaque cursor logically contains or references:
 
 ```text
 tree identity
-caller projection/read mode as needed
+read mode / projection identity (PUBLIC vs OWNER)
 moment_sequence_version
+public_projection_revision (for public cursors)
 last sort_order
 last Moment ID tiebreaker
 cursor format version
+projection/membership filter identity if one changes membership
 ```
 
-Client must not construct or edit cursors.
+Client must not construct or edit cursors. The cursor is opaque and
+server-controlled; the client cannot mint authority by choosing a revision.
+
+The read mode is part of the cursor authority:
+
+```text
+OWNER CURSOR cannot be replayed as PUBLIC CURSOR
+PUBLIC CURSOR cannot be replayed as OWNER CURSOR
+```
 
 ### Cursor validation
+
+On every continuation, in order:
+
+```text
+1. re-check current authentication / authorization / Tree visibility
+2. confirm current public eligibility authority
+3. verify cursor read-mode binding
+4. verify structural moment_sequence_version
+5. verify public_projection_revision (public cursors)
+6. only then perform keyset continuation
+7. build the result through the CURRENT visibility filter
+```
 
 If current Tree sequence version != cursor sequence version:
 
 ```text
 409 or equivalent structured TREE_SEQUENCE_CHANGED
 ```
+
+If a public cursor's `public_projection_revision` != current revision:
+
+```text
+structured PUBLIC_PROJECTION_CHANGED -> REJECT / RESTART_REQUIRED
+```
+
+A stale public cursor is NEVER silently continued, never mixed with a new
+projection, and never silently skipped past newly-visible members:
+
+```text
+OLD_PUBLIC_CURSOR + NEW_PUBLIC_PROJECTION -> CONTINUE = FORBIDDEN
+```
+
+The caller must either restart traversal or use a new anchor flow explicitly
+permitted by the authority. Never splice an old traversal with a new projection
+mid-window.
 
 The client must refresh the relevant shell/window rather than silently continuing a stale sequence.
 
@@ -189,8 +290,21 @@ Semantics:
 - `fromOrder` is canonical LoveTree order, not database OFFSET;
 - server queries by indexed `sort_order >= fromOrder`;
 - response uses the requested/validated sequence version;
-- if version changed, return structured sequence-change response;
+- if structural version changed, return structured sequence-change response;
+- public deep jump / range carries the same public projection fence as window
+  pagination: read mode + `moment_sequence_version` + `public_projection_revision`
+  are all validated before serving a public jump/range; a stale public
+  projection revision returns `PUBLIC_PROJECTION_CHANGED` (REJECT /
+  RESTART_REQUIRED) instead of serving a mixed or stale window;
 - max 250 items.
+
+There is no dual contract where ordinary pagination is fenced but deep jump or
+range reads are allowed to serve a stale public projection:
+
+```text
+DEEP_JUMP_PROJECTION_FENCING = REQUIRED
+RANGE_READ_PROJECTION_FENCING = REQUIRED
+```
 
 This avoids expensive/unstable deep OFFSET pagination and supports minimap/search/direct-jump UI.
 
@@ -237,17 +351,44 @@ When import completes, canonical count/order reconciliation must succeed before 
 - import warnings;
 - owner edit metadata.
 
+### Owner cursor freshness
+
+If the owner projection uses all owner-authorized Moments as its membership,
+then an owner-only title/memo edit that does NOT insert/delete, does NOT change
+`sort_order`, and does NOT change owner membership may continue with the existing
+owner cursor: structural sequence unchanged + owner membership unchanged =>
+owner cursor may continue. If the owner read applies a separate membership
+filter, that filter's projection authority must be defined explicitly. Do not
+invent a generic revision system; the blocker is the PUBLIC projection.
+
 ### Public window
 
 Must preserve existing security invariants:
 
 - effective Tree/Moment visibility intersection;
-- immediate visibility revocation;
+- immediate visibility revocation (IMMEDIATE_PRIVATE_REVOCATION_WINS = YES);
 - leak-safe missing/forbidden behavior;
 - no private playlist provenance;
 - no private/unavailable media fields disallowed by #4029.
 
 Public `totalCount` counts only the public projection, not hidden owner Moments.
+
+Public cursors are fenced by `public_projection_revision`. Two explicit cases:
+
+```text
+NEWLY_PUBLIC_EARLIER_MEMBER_SILENT_SKIP = FORBIDDEN
+  Initial:  sort_order 1..100 read, sort_order 50 private, cursor after 100
+  Then:     sort_order 50 private -> public
+  Correct:  old public cursor continuation = STALE (RESTART_REQUIRED)
+  Incorrect: continue from 101 and silently skip newly-public 50
+
+REVOKED_PRIVATE_CONTENT_EXPOSURE = ZERO_REQUIRED
+  Initial:  sort_order 150 public, public cursor issued earlier
+  Then:     150 public -> private
+  Correct:  current authorization/visibility immediately wins; the old public
+            cursor cannot expose 150; projection revision mismatch makes the
+            old traversal stale/restart.
+```
 
 ---
 
@@ -272,6 +413,18 @@ Implementation must evaluate:
 - transaction impact of reorder/version bumps.
 
 No LoveBud-only index/migration outside #4004 canonical schema authority.
+
+---
+
+## 11.1 Tree visibility revocation
+
+If the Tree itself changes public -> private, public read must fail closed
+immediately even with an existing public cursor. The old cursor snapshot must
+not keep Tree/Moment content publicly readable:
+
+```text
+PUBLIC_TREE_REVOCATION = IMMEDIATE
+```
 
 ---
 
@@ -415,14 +568,22 @@ Candidate structured categories:
 ```text
 TREE_NOT_FOUND_OR_FORBIDDEN
 TREE_SEQUENCE_CHANGED
+PUBLIC_PROJECTION_CHANGED
+CURSOR_RESTART_REQUIRED
 INVALID_CURSOR
 CURSOR_TREE_MISMATCH
 CURSOR_PROJECTION_MISMATCH
+CURSOR_READ_MODE_MISMATCH
 INVALID_ORDER_RANGE
 PAGE_LIMIT_EXCEEDED
 TREE_IMPORT_INCOMPLETE
 READ_CONFIGURATION_REQUIRED
 ```
+
+`PUBLIC_PROJECTION_CHANGED` extends the existing stale-sequence error family
+(stale public cursor + new public projection => REJECT / RESTART_REQUIRED; no
+new unrelated taxonomy). `CURSOR_READ_MODE_MISMATCH` covers owner-cursor-as-public
+and public-cursor-as-owner replay attempts.
 
 Raw SQL/provider/private data never appears in error messages.
 
@@ -491,6 +652,56 @@ No Production 5K mutation solely to obtain evidence.
 14. 300/1K/5K fixture traversal exact;
 15. visibility revocation regression contracts preserved.
 
+### Future public projection freshness matrix (R1-R12)
+
+These are FUTURE contract-test matrix entries for the public projection
+revision authority (no runtime test code in this PR):
+
+```text
+R1.  structural insert                  -> moment_sequence_version advances -> old cursor stale
+R2.  reorder / sort_order mutation      -> structural version advances      -> old cursor stale
+R3.  delete                             -> structural version advances      -> old cursor stale
+R4.  public cursor issued, then public Moment -> private
+     -> old cursor cannot expose it -> stale/restart required
+R5.  public cursor issued, then earlier private Moment -> public
+     -> old cursor rejects/restarts -> NO silent skip of newly-visible member
+R6.  Tree public -> private
+     -> old public cursor immediately unusable
+R7.  structural version unchanged + public projection revision unchanged
+     -> continuation deterministic PASS
+R8.  owner-only title/memo edit + membership/order unchanged
+     -> owner cursor remains valid
+R9.  owner cursor replayed as public -> reject (CURSOR_READ_MODE_MISMATCH)
+R10. public cursor replayed as owner -> reject (CURSOR_READ_MODE_MISMATCH)
+R11. totalCount + items + nextCursor -> SAME accepted structural/projection generation
+R12. public deep jump / range -> same public projection fencing as windows
+```
+
+---
+
+## 21.1 Cross-RFC boundary (read projection vs publication preflight)
+
+`public_projection_revision` (#4028 / #4035, ordered READ traversal projection
+freshness) is related to but DISTINCT from the publication revision / publication
+fingerprint of #4029 / #4036 (final publication eligibility/preflight freshness):
+
+```text
+READ_PROJECTION_REVISION != PUBLICATION_PREFLIGHT_REVISION
+```
+
+Whether they can share the same implementation generation in the future is a
+separate design decision; this RFC does NOT fix cross-RFC storage architecture.
+
+This authority also respects the #4033 selected visibility model:
+
+```text
+During import/review: Tree.visibility = private, ALL imported Moment.visibility = private
+Import completion != publication
+Final publication = explicit owner action
+```
+
+`draft`/`staged`/`importing` are NOT made canonical visibility pseudo-values.
+
 ---
 
 ## 22. Non-goals
@@ -526,12 +737,21 @@ No Production 5K mutation solely to obtain evidence.
 ```text
 LARGE_TREE_DEFAULT_FULL_HYDRATION = PROHIBITED
 CANONICAL_ORDER = sort_order
-CANONICAL_SEQUENCE_VERSION = REQUIRED
+CANONICAL_SEQUENCE_VERSION = REQUIRED (moment_sequence_version)
+PUBLIC_PROJECTION_MEMBERSHIP_VERSION = DEFINED (public_projection_revision)
 DEFAULT_WINDOW = 100
 MAX_WINDOW = 250
 PAGINATION = OPAQUE KEYSET CURSOR
 DEEP_JUMP = sort_order RANGE, NOT OFFSET
 STALE_CURSOR_AFTER_STRUCTURE_CHANGE = REJECT
+STALE_PUBLIC_CURSOR_MIXING = FORBIDDEN
+NEWLY_PUBLIC_EARLIER_MEMBER_SILENT_SKIP = FORBIDDEN
+IMMEDIATE_PRIVATE_REVOCATION = REQUIRED
+READ_MODE_CURSOR_BINDING = REQUIRED
+COUNT_PAGE_PROJECTION_COHERENCE = REQUIRED
+DEEP_JUMP_PROJECTION_FENCING = REQUIRED
+RANGE_READ_PROJECTION_FENCING = REQUIRED
+READ_PROJECTION_VS_PUBLICATION_REVISION = DISTINCT
 PUBLIC_TOTAL_COUNT = PUBLIC_PROJECTION_COUNT
 SILENT_TRUNCATION_AS_COMPLETE = PROHIBITED
 5K_TARGET = SUPPORTED_BY_ARCHITECTURE, GATED_BY EVIDENCE
