@@ -3,6 +3,7 @@
 > **Status:** owner-approved operating policy — Issue #3664
 > **Parent operating model:** `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
 > **Hard-governance authority:** `../ops/MVP_AGENT_GOVERNANCE.md`
+> **Parallel-work authority:** `../ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
 
 ## 1. Purpose
 
@@ -13,9 +14,10 @@ The UI Rapid Iteration Lane exists to:
 - shorten low-risk visual feedback loops;
 - allow multiple Production visual iterations in one work session;
 - keep Local Validation for work that actually needs a local checkout, browser profile, authenticated session, database, provider tool, operating-system integration, or broad regression evidence;
-- preserve independent Web CTO review, exact-head merge safety, and Production visual acceptance.
+- preserve independent Web CTO review, exact-head integration safety, and Production visual acceptance;
+- preserve one-writer-per-semantic-authority coordination when multiple agents work in parallel.
 
-This policy changes process weight, not engineering quality. Verification remains proportional to the behavior that can be affected.
+This policy changes process weight, not engineering quality or integration authority. Verification remains proportional to the behavior that can be affected.
 
 ## 2. Classification is mandatory
 
@@ -31,6 +33,8 @@ U3 — Runtime-sensitive UI
 Classification is based on actual affected behavior, not the file extension alone.
 
 A CSS edit can be U2 if it changes responsive structure or visibility semantics. An HTML edit can be U0 if it only changes static copy. Any uncertainty should escalate one level rather than block the work.
+
+In an explicitly declared multi-model lane, also classify branch/path/semantic-authority overlap as `GREEN`, `YELLOW`, or `RED` before writing.
 
 ## 3. U0 — Copy-only
 
@@ -64,7 +68,8 @@ Web CTO exact-copy contract
 → separate Web Developer direct branch edit
 → focused syntax/static/diff verification
 → Web CTO exact-head review
-→ expected-head squash merge
+→ user/task integration decision
+→ authorized expected-head merge when applicable
 → Production copy/visual confirmation
 ```
 
@@ -76,7 +81,7 @@ Web CTO exact-copy contract
 - focused contract only when one exists for the affected copy;
 - `git diff --check` or equivalent remote diff review;
 - CI classification;
-- Production confirmation after merge.
+- Production confirmation after an authorized merge.
 
 ### Local Validation
 
@@ -116,7 +121,8 @@ Web CTO visual delta contract
 → separate Web Developer direct branch edit
 → focused CSS/static/diff verification
 → Web CTO exact-head review
-→ expected-head squash merge
+→ user/task integration decision
+→ authorized expected-head merge when applicable
 → user/CTO Production visual confirmation
 → optional immediate follow-up micro PR
 ```
@@ -128,7 +134,7 @@ Web CTO visual delta contract
 - focused CSS/static contract when available;
 - syntax/build check only when the changed source requires it;
 - CI classification;
-- Production visual confirmation.
+- Production visual confirmation after integration.
 
 ### Local Validation and screenshots
 
@@ -136,7 +142,7 @@ Skipped by default.
 
 Pre-merge screenshots are optional. They may be requested when the change is difficult to infer from the diff, affects several breakpoints, or has a high chance of clipping/overflow.
 
-Production visual confirmation is the normal final visual check under the merge-first workflow.
+Production visual confirmation is the normal final visual check under the merge-first evidence workflow when a merge is separately authorized.
 
 ## 5. U2 — Structural UI
 
@@ -160,7 +166,8 @@ Web CTO design/state contract or UI Lab prototype
 → focused unit/contract/static tests
 → Local Validation only when the affected behavior needs local/browser evidence
 → Web CTO exact-head review
-→ expected-head squash merge
+→ user/task integration decision
+→ authorized expected-head merge when applicable
 → Production visual acceptance
 ```
 
@@ -170,7 +177,7 @@ Web CTO design/state contract or UI Lab prototype
 - affected states and breakpoint rules;
 - focused executable tests for DOM/state contracts where practical;
 - layout/overflow/browser evidence when the changed structure cannot be proven statically;
-- Production visual acceptance.
+- Production visual acceptance after integration.
 
 ### UI Lab
 
@@ -208,16 +215,17 @@ After visual approval, the Web Developer maps the approved structure into Produc
 ### Default flow
 
 ```text
-Web CTO contract
+Web CTO contract and semantic-authority allocation
 → separate Web Developer implementation and tests
 → GitHub CI
-→ Local Validation exact-head runtime/browser/auth/environment evidence
+→ Local Validation exact-head runtime/browser/auth/environment evidence when trigger-qualified
 → Web CTO final review
-→ expected-head squash merge
+→ user/task integration decision
+→ authorized expected-head merge when applicable
 → Production runtime verification
 ```
 
-U3 uses the full separated execution model.
+U3 uses the full separated execution model and semantic-authority collision checks.
 
 ## 7. Escalation triggers
 
@@ -232,6 +240,8 @@ A U0/U1 change must be escalated to U2 or U3 when any of the following appears:
 - a new dependency, build configuration, workflow, or bundling change;
 - privacy, security, ownership, publication, or entitlement semantics;
 - the visual change cannot be safely reversed with a small follow-up PR.
+
+Escalation may also move an implementation from `GREEN` to `YELLOW/RED` when the change enters another agent's active semantic authority.
 
 ## 8. Issue policy
 
@@ -262,13 +272,14 @@ A micro PR should normally be:
 - free of unrelated refactoring;
 - explicit about `UI class: U0` or `UI class: U1`;
 - explicit about Local Validation being `NOT_REQUIRED` or the reason it was requested;
-- explicit about the focused checks actually run.
+- explicit about the focused checks actually run;
+- explicit about active semantic authority/parallel classification when a multi-model lane is active.
 
-A Draft state is optional. Ready status does not replace Web CTO approval.
+Outside an explicit lane that requires Draft, Draft state remains process-lightweight and may be optional. Inside an explicitly declared multi-model lane, follow that lane's Draft/integration gate. Ready status never replaces independent Web CTO approval or task-specific integration authority.
 
 ### U2/U3 PR
 
-Use the normal implementation, evidence, and review fields from the parent operating model.
+Use the normal implementation, evidence, writer-ownership, and review fields from the parent operating model.
 
 ## 10. Test matrix
 
@@ -277,7 +288,7 @@ Use the normal implementation, evidence, and review fields from the parent opera
 | U0 | exact diff, syntax/static check, focused copy contract if present, CI classification | skipped | optional pre-merge; Production confirmation | not required solely for copy |
 | U1 | exact diff, CSS/static check, focused visual contract if present, CI classification | skipped | optional pre-merge; Production confirmation | not required solely for page-scoped visual values |
 | U2 | focused structural/contract tests, affected build/static checks, CI | conditional | conditional pre-merge; Production acceptance | only when shared/broad risk warrants it |
-| U3 | focused + relevant regression/build/runtime checks, CI | normally required | normally required for affected runtime | risk-based relevant regression required |
+| U3 | focused + relevant regression/build/runtime checks, CI | trigger-qualified | required when affected runtime acceptance needs browser/environment evidence | risk-based relevant regression required |
 
 The table does not weaken canonical CI hard rules. If a relevant CI step executes and fails, classify it according to `MVP_AGENT_GOVERNANCE.md`.
 
@@ -300,9 +311,11 @@ For U0/U1, an unsuccessful visual result should lead to a new small follow-up PR
 
 ```text
 Production observation
-→ exact micro correction
+→ exact micro correction on a new branch
 → focused checks
-→ expected-head squash merge
+→ independent exact-head review
+→ user/task integration decision
+→ authorized expected-head merge when applicable
 → Production re-check
 ```
 
@@ -310,17 +323,25 @@ Do not force-push or reset `main`. If a merged change is harmful and cannot be c
 
 ## 13. Parallel UI work
 
-Parallel UI work is allowed when file ownership does not overlap.
+Parallel UI work is allowed only when branch, file, and semantic authority are independent.
 
-Recommended split:
+Recommended `GREEN` split:
 
 ```text
-Web Developer A: Browse page-scoped files
-Web Developer B: My Trees page-scoped files
-Web Developer C: Editor page-scoped files
+Web Developer A: Browse page-scoped visual authority
+Web Developer B: My Trees page-scoped visual authority
+Web Developer C: Editor page-scoped visual authority
 ```
 
-Shared tokens, global CSS, common components, or shared JavaScript must have one active writer or a serialized dependency order.
+Before writing, use:
+
+```text
+GREEN  = independent file + semantic authority → parallel implementation
+YELLOW = different files but shared semantic authority → review/sequencing only
+RED    = same file/core authority → one active writer
+```
+
+Shared tokens, global CSS, common components, shared JavaScript, accessibility/visibility semantics, auth/API/runtime boundaries, or any other cross-page semantic authority must have one active writer or a serialized dependency order.
 
 ## 14. Required reporting fields
 
@@ -329,19 +350,22 @@ Every UI implementation report must include:
 ```text
 UI class: U0 / U1 / U2 / U3
 classification reason
+active semantic authority / writer
+parallel class: GREEN / YELLOW / RED
 changed files
 behavior explicitly unchanged
 focused checks
 CI classification
 Local Validation: REQUIRED / NOT_REQUIRED / COMPLETED / PENDING
 pre-merge browser evidence: USED / NOT_USED / NOT_REQUIRED
+integration authority: AUTHORIZED / NOT_AUTHORIZED / PENDING
 Production verification required: YES / NO
 exact head SHA
 ```
 
 ## 15. Governance boundary
 
-This lane does not add or remove hard blockers. It allocates verification effort according to change risk.
+This lane does not add or remove hard blockers. It allocates verification effort according to change risk while inheriting canonical writer and integration authority.
 
 The following remain authoritative:
 
@@ -350,9 +374,12 @@ The following remain authoritative:
 - production-destructive changes require approval;
 - no merge on `CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION`;
 - documented alternative evidence for `CI_UNAVAILABLE_INFRA`;
-- expected-head verification and squash merge;
+- one writer per branch/file/semantic authority in an active multi-model lane;
+- implementation workers do not Ready-transition or merge their own active PR unless task-specific owner authorization delegates that integration authority;
+- any authorized merge requires independent review and exact-head verification;
 - never close #1882 and use `Refs #1882` only.
 
+Refs #3994.
 Refs #3664.
 Refs #3662.
 Refs #1882 — Keep OPEN.

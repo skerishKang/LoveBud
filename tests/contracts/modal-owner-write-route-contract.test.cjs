@@ -113,15 +113,15 @@ function assertRoutePassesPayload(normalized, callee, argsPattern, routeLabel) {
 }
 
 // create_owner_tree helper contracts
-test('create_owner_tree uses validate_optional_string for title with max 200', () => {
+test('create_owner_tree uses validate_tree_title for title with max 200', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_tree');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /validate_optional_string.*title.*200/i,
-    'create_owner_tree must validate title with max 200 characters'
+    /validate_tree_title.*title.*200/i,
+    'create_owner_tree must validate title with max 200 characters via validate_tree_title (#3935)'
   );
 });
 
@@ -246,15 +246,30 @@ test('create_owner_memory raises 403 when tree not owned', () => {
   );
 });
 
-test('create_owner_memory uses tree visibility fallback', () => {
+test('create_owner_memory visibility resolution follows #3934 contract', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /visibility.*validate_visibility.*visibility.*tree.*visibility/i,
-    'create_owner_memory must use tree visibility as fallback'
+    /tree_visibility_unresolved/,
+    'create_owner_memory must fail closed on unresolved parent Tree visibility (#3934)'
+  );
+  assert.match(
+    normalized,
+    /parent_visibility=="public"/,
+    'create_owner_memory must inherit a literal public parent visibility'
+  );
+  assert.match(
+    normalized,
+    /parent_visibility=="private"/,
+    'create_owner_memory must inherit a literal private parent visibility'
+  );
+  assert.match(
+    normalized,
+    /validate_visibility\(explicit_visibility/,
+    'create_owner_memory must validate explicit visibility via validate_visibility (#3935/#3936)'
   );
 });
 
@@ -270,27 +285,34 @@ test('create_owner_memory calls require_plus_for_private_storage', () => {
   );
 });
 
-test('create_owner_memory guards emotionTags max 20 items', () => {
+test('create_owner_memory guards emotionTags via strict helper', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'create_owner_memory');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /emotiontags.*isinstance.*list/i,
-    'create_owner_memory must check emotionTags is list'
+    /emotion_tags=validate_emotion_tags\(payload\["emotiontags"\]\)if"emotiontags"inpayloadelse\[\]/,
+    'create_owner_memory must validate emotionTags through validate_emotion_tags with empty default'
   );
 
+  // The strict validation contract lives in the shared helper (#3937).
+  const helper = getFunctionBody(source, 'validate_emotion_tags');
+  const helperNorm = compact(helper);
   assert.match(
-    normalized,
-    /len.*emotiontags.*20/i,
-    'create_owner_memory must guard emotionTags max 20 items'
+    helperNorm,
+    /isinstance\(value,list\)/,
+    'validate_emotion_tags must check emotionTags is list'
   );
-
   assert.match(
-    normalized,
-    /httpexception.*400.*emotiontags.*exceeds.*maximum.*20/i,
-    'create_owner_memory must raise 400 for too many emotionTags'
+    helperNorm,
+    /len\(value\)>20/,
+    'validate_emotion_tags must guard emotionTags max 20 items'
+  );
+  assert.match(
+    helperNorm,
+    /httpexception\(status_code=400,detail="emotiontagsexceedsmaximumof20items"\)/,
+    'validate_emotion_tags must raise 400 for too many emotionTags'
   );
 });
 
@@ -362,8 +384,8 @@ test('update_owner_tree only allows title and visibility updates', () => {
 
   assert.match(
     normalized,
-    /validate_optional_string.*title.*200/i,
-    'update_owner_tree must validate title when updating'
+    /validate_tree_title.*title.*200/i,
+    'update_owner_tree must validate title when updating via validate_tree_title (#3935)'
   );
 });
 
@@ -639,27 +661,39 @@ test('update_owner_memory maps source URL payload fields to DB columns', () => {
   );
 });
 
-test('update_owner_memory guards emotionTags max 20 items', () => {
+test('update_owner_memory guards emotionTags via strict helper', () => {
   const source = readOwnerWrites();
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /emotiontags.*isinstance.*list/i,
-    'update_owner_memory must check emotionTags is list'
+    /validate_emotion_tags\(payload\["emotiontags"\]\)/,
+    'update_owner_memory must validate emotionTags through validate_emotion_tags'
   );
-
   assert.match(
     normalized,
-    /len.*emotiontags.*20/i,
-    'update_owner_memory must guard emotionTags max 20 items'
+    /emotion_tags=%s/,
+    'update_owner_memory must persist emotion_tags only when supplied'
   );
 
+  // The strict validation contract lives in the shared helper (#3937).
+  const helper = getFunctionBody(source, 'validate_emotion_tags');
+  const helperNorm = compact(helper);
   assert.match(
-    normalized,
-    /httpexception.*400.*emotiontags.*exceeds.*maximum.*20/i,
-    'update_owner_memory must raise 400 for too many emotionTags'
+    helperNorm,
+    /isinstance\(value,list\)/,
+    'validate_emotion_tags must check emotionTags is list'
+  );
+  assert.match(
+    helperNorm,
+    /len\(value\)>20/,
+    'validate_emotion_tags must guard emotionTags max 20 items'
+  );
+  assert.match(
+    helperNorm,
+    /httpexception\(status_code=400,detail="emotiontagsexceedsmaximumof20items"\)/,
+    'validate_emotion_tags must raise 400 for too many emotionTags'
   );
 });
 

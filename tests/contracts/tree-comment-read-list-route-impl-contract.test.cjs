@@ -69,7 +69,8 @@ test('POST create behavior remains unchanged (auth + idempotency + 405 for non-P
 
 test('read path targets the tree-comments Modal endpoint and never the moment comments table', () => {
   const src = readSrc();
-  assert.ok(/\/modal\/private\/trees\/\${encodeURIComponent\(decodeURIComponent\(treeId\)\)}\/comments/.test(src), 'read path must target the tree-comments Modal route');
+  assert.ok(/const treeId = normalizeEncodedPathSegment\(parts\[2\] \|\| ''\)/.test(src), 'read path must canonicalize the tree ID through the shared path-segment helper');
+  assert.ok(/target\.pathname = `\/modal\/private\/trees\/\$\{treeId\}\/comments`/.test(src), 'read path must target the tree-comments Modal route with the canonical tree ID');
   assert.ok(!/memories\/\[memory_id\]\/comments/.test(src), 'read path must not target moment comments route');
 });
 

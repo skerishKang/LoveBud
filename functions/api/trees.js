@@ -114,6 +114,26 @@ function buildModalConfigMissingResponse(requestId = null) {
   });
 }
 
+function clampOwnerTreesLimit(rawLimit) {
+  return Math.min(Math.max(Number(rawLimit || 100) || 100, 1), 200);
+}
+
+export function buildPrivateTreesModalUrl(request, env = {}) {
+  const modalBaseUrl = stripTrailingSlash(env?.MODAL_BASE_URL);
+  if (!modalBaseUrl) return null;
+
+  const sourceUrl = new URL(request.url);
+  const target = new URL('/modal/private/trees', modalBaseUrl);
+  target.searchParams.set('limit', String(clampOwnerTreesLimit(sourceUrl.searchParams.get('limit'))));
+
+  const pagination = sourceUrl.searchParams.get('pagination');
+  if (pagination) target.searchParams.set('pagination', pagination);
+  const cursor = sourceUrl.searchParams.get('cursor');
+  if (cursor) target.searchParams.set('cursor', cursor);
+
+  return target;
+}
+
 export async function onRequestGet(context) {
   const request = context.request;
   const requestId = getOrCreateRequestId(request);
@@ -130,10 +150,7 @@ export async function onRequestGet(context) {
     });
   }
 
-  const sourceUrl = new URL(request.url);
-  const limit = Math.min(Math.max(Number(sourceUrl.searchParams.get('limit') || 100) || 100, 1), 200);
-  const target = new URL('/modal/private/trees', modalBaseUrl);
-  target.searchParams.set('limit', String(limit));
+  const target = buildPrivateTreesModalUrl(request, context.env);
 
   const modalRequestHeaders = {
     accept: 'application/json',
