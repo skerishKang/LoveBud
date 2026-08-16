@@ -264,3 +264,17 @@
   margin-bottom: 0;
   color: var(--on-surface-variant);
 }
+
+/* State is never color-only: text label + dashed border for unsupported.
+   Restored parent #4072/#4075 visual state representation. */
+.bh-state-supported {
+  color: #1b6e3c;
+  background: rgba(27, 110, 60, 0.08);
+  border: 1px solid rgba(27, 110, 60, 0.25);
+}
+
+.bh-state-unsupported {
+  color: var(--error, #b3261e);
+  background: rgba(179, 38, 30, 0.06);
+  border: 1px solid rgba(179, 38, 30, 0.25);
+}

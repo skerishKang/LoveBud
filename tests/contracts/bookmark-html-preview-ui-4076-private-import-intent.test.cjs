@@ -9,15 +9,22 @@
  *
  * Verifies the #4076 private-first pre-write import intent contract:
  *
- *  - Tree title input: deterministic trim; empty / whitespace-only rejected;
- *    canonical Tree-title max length (200, reused from
- *    modal_compute/validation.py::validate_tree_title) enforced; title is plain
- *    text/data only (never trusted markup)
+ *  - Tree title input: the title is plain text/data only (never trusted
+ *    markup). Two distinct authorities:
+ *      (a) backend canonical (modal_compute/validation.py::validate_tree_title,
+ *          max_length=200): deterministic trim + reject over 200 Unicode CODE
+ *          POINTS (counted via Array.from so emoji/non-BMP align with Python
+ *          len()); the HTML maxlength attribute is intentionally NOT used as the
+ *          authority because it counts UTF-16 code units.
+ *      (b) #4076 product fail-closed requirement: reject non-string, empty, or
+ *          whitespace-only title (separate from the backend trim+max authority).
  *  - private-first visibility: buildBookmarkImportIntent always returns
  *    visibility === 'private'; no public toggle / import-and-publish shortcut
  *  - deterministic detached builder: selected eligible occurrences only, exact
  *    canonical source order, duplicate identical URLs stay independent, unsafe
- *    (unsupported / credential-bearing / null) URLs cannot re-enter
+ *    (unsupported / credential-bearing / null) URLs cannot re-enter; URL safety
+ *    is enforced with the WHATWG URL parser (http/https only, hostname required,
+ *    credentials rejected, malformed URLs rejected)
  *  - pre-write review summary: normalized title, selected count, private
  *    visibility, explicit "not yet saved" statement; becomes stale/non-actionable
  *    the instant any authority input changes (new file / READING / ERROR / EMPTY
@@ -235,8 +242,11 @@ test('4076: whitespace-only title fails closed', async () => {
   assert.equal(api.hasActionableReview(), false);
 });
 
-// ─── 4. over canonical max (200) => fail closed ──────────────────────────────
-test('4076: over canonical Tree-title max length (200) fails closed', async () => {
+// ─── 4. over canonical max (200 code points) => fail closed ──────────────────
+// The 200 bound is the BACKEND canonical authority (validate_tree_title
+// max_length=200), measured in Unicode CODE POINTS. Empty / whitespace-only
+// rejection is the separate #4076 product fail-closed requirement.
+test('4076: over canonical Tree-title max length (200 code points) fails closed', async () => {
   const { api } = loadUi();
   assert.equal(api.TREE_TITLE_MAX_LENGTH, 200, 'reuses canonical max 200');
   await api.handleFileSelected(fakeFile(GOOD().length, () => Promise.resolve(GOOD())));
@@ -249,6 +259,24 @@ test('4076: over canonical Tree-title max length (200) fails closed', async () =
   const intent = api.buildImportIntent();
   assert.ok(intent, 'exactly-max title accepted');
   assert.equal(intent.treeTitle.length, 200);
+});
+
+// ─── 4b. max length is code-point based (emoji-safe, matches Python len()) ───
+test('4076: title max length counts Unicode code points, not UTF-16 units', async () => {
+  const { api } = loadUi();
+  await api.handleFileSelected(fakeFile(GOOD().length, () => Promise.resolve(GOOD())));
+  api.setOccurrenceSelected(0, true);
+  // 200 emoji = 200 code points but 400 UTF-16 code units. Backend len()==200,
+  // so this MUST be accepted (the old .length check would have wrongly failed).
+  api.setTreeTitle('🙂'.repeat(200));
+  const intent = api.buildImportIntent();
+  assert.ok(intent, '200 emoji accepted (code-point count aligns with backend)');
+  assert.equal(Array.from(intent.treeTitle).length, 200, '200 code points');
+  assert.equal(intent.treeTitle.length, 400, 'UTF-16 length is 400 but still allowed');
+  // 201 emoji = 201 code points -> rejected.
+  api.setTreeTitle('🙂'.repeat(201));
+  assert.equal(api.buildImportIntent(), null, '201 emoji rejected (over code-point max)');
+  assert.equal(api.hasActionableReview(), false);
 });
 
 // ─── 5. duplicate identical URLs remain independent occurrences ───────────────
@@ -325,6 +353,36 @@ test('4076: credential-bearing URL is excluded and raw credentials never exposed
   ], count: 2, source: 'bookmark-html-local' };
   const built = api.buildBookmarkImportIntent(bad, 'T');
   assert.equal(built.count, 1, 'builder refuses credential-bearing URL even if passed directly');
+});
+
+// ─── 8b. malformed / non-http URL is excluded by URL-parser validation ───────
+test('4076: malformed / non-http URL is excluded via WHATWG URL parser', async () => {
+  const { api } = loadUi();
+  const good = { entries: [
+    { occurrenceKey: 'k0', sourceIndex: 0, title: 'A', url: 'https://example.com/a' },
+  ], count: 1, source: 'bookmark-html-local' };
+  assert.equal(api.buildBookmarkImportIntent(good, 'T').count, 1, 'baseline good url accepted');
+  // Each malformed/unsafe url must be excluded even if a caller passes it.
+  const malicious = [
+    'http://',              // no hostname (parse fails / empty host)
+    'ht tp://example.com',  // malformed -> URL parser throws
+    'not a url at all',     // URL parser throws
+    'ftp://example.com/x',  // unsupported scheme
+    'file:///etc/passwd',   // wrong scheme + absolute path
+    'https://user:pass@x',  // credentials
+  ];
+  malicious.forEach((url, i) => {
+    const draft = {
+      entries: [
+        { occurrenceKey: 'k0', sourceIndex: 0, title: 'A', url: 'https://example.com/a' },
+        { occurrenceKey: 'k' + i, sourceIndex: i + 1, title: 'Bad', url },
+      ],
+      count: 2,
+      source: 'bookmark-html-local',
+    };
+    const built = api.buildBookmarkImportIntent(draft, 'T');
+    assert.equal(built.count, 1, 'malformed/unsafe url excluded: ' + JSON.stringify(url));
+  });
 });
 
 // ─── 9. visibility is exactly private ─────────────────────────────────────────

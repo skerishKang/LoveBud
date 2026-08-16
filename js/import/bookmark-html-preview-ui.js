@@ -60,10 +60,14 @@
  *     only the minimum existing safe preview fields.
  *
  * #4076 contract (added):
- *   - Tree title input: deterministic trim; empty / whitespace-only rejected;
- *     canonical Tree-title max length (200, reused from
- *     modal_compute/validation.py::validate_tree_title) enforced; the title is
- *     plain text/data only (never trusted markup).
+ *   - Tree title input: the title is plain text/data only (never trusted
+ *     markup). Two distinct authorities apply:
+ *       (a) backend canonical (modal_compute/validation.py::validate_tree_title,
+ *           max_length=200): deterministic trim + reject over 200 Unicode CODE
+ *           POINTS (counted via Array.from so emoji/non-BMP align with Python
+ *           len()).
+ *       (b) #4076 product fail-closed requirement: reject non-string, empty, or
+ *           whitespace-only title (not part of the backend trim+max authority).
  *   - private-first pre-write import intent: buildBookmarkImportIntent(draft,
  *     normalizedTreeTitle) returns a detached, frozen, NOT_PERSISTED intent with
  *     visibility always 'private'. No public toggle / import-and-publish
@@ -106,10 +110,15 @@
   var REVIEW_BUILD_ID = 'bookmarkHtmlReviewBtn';
   var INTENT_REVIEW_ID = 'bookmarkHtmlImportReview';
 
-  // Canonical Tree-title validation authority reused from
-  // modal_compute/validation.py::validate_tree_title (default max_length=200):
-  // trim(); reject empty/whitespace-only; reject over-length. No new persisted
-  // or schema limit is invented here — 200 is the existing canonical bound.
+  // Canonical Tree-title max length = 200, reused from
+  // modal_compute/validation.py::validate_tree_title (default max_length=200).
+  // The backend measures length in Unicode code points (Python len()); JS
+  // String.length measures UTF-16 code units, so a 200-emoji title would read
+  // 400 here and wrongly fail. We therefore count CODE POINTS (Array.from) to
+  // match the backend canonical authority exactly — 200 code points allowed.
+  // No new persisted/schema limit is invented; 200 is the existing canonical
+  // bound. (Empty / whitespace-only rejection is the separate #4076 product
+  // fail-closed requirement, not part of the backend trim+max authority.)
   var TREE_TITLE_MAX_LENGTH = 200;
 
   var state = 'IDLE';
@@ -231,14 +240,24 @@
    * already contains only eligible occurrences, but the intent builder is the
    * final authority and must refuse to carry any unsupported-scheme,
    * credential-bearing, or null/empty URL even if a caller passes one.
-   * Only plain http(s) URLs without userinfo (credentials) are allowed. This is
-   * a minimal URL check, NOT a second HTML bookmark parser.
+   *
+   * Validation is done with the WHATWG `URL` parser (not a prefix regex):
+   *   - must parse without throwing (malformed URLs are rejected)
+   *   - only `http:` / `https:` protocols are allowed
+   *   - a non-empty `hostname` is required
+   *   - any `username` or `password` (credentials) rejects the URL
    */
   function isIntentSafeUrl(url) {
     if (typeof url !== 'string' || url.length === 0) return false;
-    var m = /^https?:\/\/([^/@]+@)?/i.exec(url);
-    if (!m) return false;
-    if (m[1]) return false; // userinfo / credentials present
+    var parsed;
+    try {
+      parsed = new URL(url);
+    } catch (_) {
+      return false; // malformed URL cannot be validated -> reject
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    if (!parsed.hostname) return false; // hostname is mandatory
+    if (parsed.username || parsed.password) return false; // credentials -> reject
     return true;
   }
 
@@ -394,15 +413,21 @@
 
   /**
    * Canonical Tree-title normalization, reused from
-   * modal_compute/validation.py::validate_tree_title(max_length=200):
-   *   - non-string value -> fail (INVALID_TYPE)
-   *   - trim deterministic surrounding whitespace
-   *   - empty / whitespace-only -> fail (EMPTY)
-   *   - over TREE_TITLE_MAX_LENGTH -> fail (TOO_LONG)
-   *   - otherwise -> trimmed text
+   * modal_compute/validation.py::validate_tree_title(max_length=200).
    *
-   * No new persisted/schema limit is invented; 200 is the existing canonical
-   * bound. Returns { ok, value } on success or { ok:false, reason } on failure.
+   * Two distinct concerns, kept separate:
+   *
+   *   (a) Backend canonical authority (validate_tree_title):
+   *         - trim deterministic surrounding whitespace
+   *         - over 200 Unicode CODE POINTS -> fail (TOO_LONG)
+   *       We count code points (Array.from) so emoji/non-BMP characters align
+   *       with Python's len(); a 200-emoji title is accepted, 201 is rejected.
+   *
+   *   (b) #4076 product fail-closed requirement (not in the backend authority):
+   *         - non-string value -> fail (INVALID_TYPE)
+   *         - empty / whitespace-only after trim -> fail (EMPTY)
+   *
+   * Returns { ok, value } on success or { ok:false, reason } on failure.
    *
    * @param {*} raw — user-entered title (string expected)
    */
@@ -414,7 +439,8 @@
     if (text.length === 0) {
       return { ok: false, reason: 'EMPTY' };
     }
-    if (text.length > TREE_TITLE_MAX_LENGTH) {
+    // Code-point length (not UTF-16 units) to match backend len() exactly.
+    if (Array.from(text).length > TREE_TITLE_MAX_LENGTH) {
       return { ok: false, reason: 'TOO_LONG' };
     }
     return { ok: true, value: text };
