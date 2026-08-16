@@ -1,4 +1,4 @@
-/* #4072 — Local bookmark HTML preview surface. */
+/* #4072 / #4074 / #4076 — Local bookmark HTML preview surface. */
 
 .bh-surface {
   max-width: 720px;
@@ -189,15 +189,78 @@
   outline-offset: 2px;
 }
 
-/* State is never color-only: text label + dashed border for unsupported. */
-.bh-state-supported {
-  color: #1b6e3c;
-  background: rgba(27, 110, 60, 0.08);
-  border: 1px solid rgba(27, 110, 60, 0.25);
+/* #4076 — Tree title input + private-first pre-write import intent review. */
+.bh-tree-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
-.bh-state-unsupported {
+.bh-tree-title-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.bh-tree-title-input {
+  flex: 1 1 240px;
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 10px;
+  background: var(--surface-container, #fff);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 14px;
+}
+
+.bh-tree-title-input:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+/* Error state is never color-only: it is announced via role=alert. */
+.bh-tree-title-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
   color: var(--error, #b3261e);
-  background: rgba(179, 38, 30, 0.06);
-  border: 1px solid rgba(179, 38, 30, 0.25);
+  line-height: 1.5;
+}
+
+.bh-review-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--primary, #904951);
+  border-radius: 999px;
+  background: var(--primary, #904951);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bh-review-btn:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+.bh-import-review {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 12px;
+  background: var(--surface-container, #fff);
+}
+
+.bh-import-review p {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--on-surface);
+}
+
+.bh-import-review p:last-child {
+  margin-bottom: 0;
+  color: var(--on-surface-variant);
 }

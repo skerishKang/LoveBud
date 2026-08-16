@@ -59,7 +59,29 @@
  *     result or internal selection state and returns new frozen objects with
  *     only the minimum existing safe preview fields.
  *
- * Refs: #4074, #4072, #4065, #3897, #3903, #1882.
+ * #4076 contract (added):
+ *   - Tree title input: deterministic trim; empty / whitespace-only rejected;
+ *     canonical Tree-title max length (200, reused from
+ *     modal_compute/validation.py::validate_tree_title) enforced; the title is
+ *     plain text/data only (never trusted markup).
+ *   - private-first pre-write import intent: buildBookmarkImportIntent(draft,
+ *     normalizedTreeTitle) returns a detached, frozen, NOT_PERSISTED intent with
+ *     visibility always 'private'. No public toggle / import-and-publish
+ *     shortcut is produced (IMPORT != PUBLICATION).
+ *   - pre-write review summary (bounded, role=status / aria-live) declares the
+ *     normalized title, selected count, visibility=private, and that no Tree has
+ *     been created yet. It becomes stale/non-actionable the moment any authority
+ *     input changes (new file / READING / ERROR / EMPTY / reset / selection
+ *     change / select-all / clear / title change).
+ *   - #4075 async lifecycle (readGeneration supersession, stale fulfillment /
+ *     rejection suppression, reset supersede) is preserved: a superseded late
+ *     File.text() fulfillment/rejection can never restore an old review or
+ *     destroy the current one.
+ *   - the rendered review/intent carries NO raw bookmark HTML, raw rejected
+ *     href, credential-bearing raw URL, browser filesystem path, local absolute
+ *     path, file contents, credentials, token, or secret.
+ *
+ * Refs: #4076, #4074, #4072, #4065, #3897, #3903, #1882.
  */
 
 (function () {
@@ -78,7 +100,25 @@
   var CLEAR_ID = 'bookmarkHtmlClearBtn';
   var SELECTED_COUNT_ID = 'bookmarkHtmlSelectedCount';
 
+  // #4076 — private-first pre-write import intent review.
+  var TREE_TITLE_INPUT_ID = 'bookmarkHtmlTreeTitleInput';
+  var TREE_TITLE_ERROR_ID = 'bookmarkHtmlTreeTitleError';
+  var REVIEW_BUILD_ID = 'bookmarkHtmlReviewBtn';
+  var INTENT_REVIEW_ID = 'bookmarkHtmlImportReview';
+
+  // Canonical Tree-title validation authority reused from
+  // modal_compute/validation.py::validate_tree_title (default max_length=200):
+  // trim(); reject empty/whitespace-only; reject over-length. No new persisted
+  // or schema limit is invented here — 200 is the existing canonical bound.
+  var TREE_TITLE_MAX_LENGTH = 200;
+
   var state = 'IDLE';
+
+  // #4076 — user-entered Tree title is plain text/data only (never trusted
+  // markup). Stored raw; normalized on demand. Never persisted.
+  var treeTitleRaw = '';
+  // The current pre-write import intent/review. Null = stale / non-actionable.
+  var currentReview = null;
 
   var parserApi = (typeof window !== 'undefined' && window.LoveBudBookmarkHtmlPreviewParser) || null;
 
@@ -132,6 +172,7 @@
     clearPreview();
     resetSelection();
     lastResult = null; // preview authority invalidates with selection
+    invalidateReview(); // #4076 review authority invalidates with selection
     setError(message);
     setState('ERROR', '');
   }
@@ -185,6 +226,22 @@
       entry.url.length > 0;
   }
 
+  /**
+   * Defensive URL-safety gate for the #4076 intent builder. The ordered draft
+   * already contains only eligible occurrences, but the intent builder is the
+   * final authority and must refuse to carry any unsupported-scheme,
+   * credential-bearing, or null/empty URL even if a caller passes one.
+   * Only plain http(s) URLs without userinfo (credentials) are allowed. This is
+   * a minimal URL check, NOT a second HTML bookmark parser.
+   */
+  function isIntentSafeUrl(url) {
+    if (typeof url !== 'string' || url.length === 0) return false;
+    var m = /^https?:\/\/([^/@]+@)?/i.exec(url);
+    if (!m) return false;
+    if (m[1]) return false; // userinfo / credentials present
+    return true;
+  }
+
   function updateSelectedCount() {
     var el = $id(SELECTED_COUNT_ID);
     if (!el) return;
@@ -227,8 +284,9 @@
       selectedSet.delete(sourceIndex);
     }
     var cb = renderedCheckboxes[sourceIndex];
-    if (cb) cb.checked = selectedSet.has(sourceIndex);
+    if (cb) cb.checked = selectedSet.has(Number(sourceIndex));
     updateSelectedCount();
+    invalidateReview(); // #4076 review authority invalidates on selection change
     return selectedSet.has(sourceIndex);
   }
 
@@ -246,6 +304,7 @@
     }
     applySelectionToDom();
     updateSelectedCount();
+    invalidateReview(); // #4076 review authority invalidates on select-all change
   }
 
   /** Clear the entire selection. */
@@ -253,6 +312,7 @@
     selectedSet = new Set();
     applySelectionToDom();
     updateSelectedCount();
+    invalidateReview(); // #4076 review authority invalidates on clear-selection
   }
 
   function getSelectedCount() {
@@ -329,6 +389,106 @@
       count: draftEntries.length,
       ordered: true,
       source: 'bookmark-html-local',
+    });
+  }
+
+  /**
+   * Canonical Tree-title normalization, reused from
+   * modal_compute/validation.py::validate_tree_title(max_length=200):
+   *   - non-string value -> fail (INVALID_TYPE)
+   *   - trim deterministic surrounding whitespace
+   *   - empty / whitespace-only -> fail (EMPTY)
+   *   - over TREE_TITLE_MAX_LENGTH -> fail (TOO_LONG)
+   *   - otherwise -> trimmed text
+   *
+   * No new persisted/schema limit is invented; 200 is the existing canonical
+   * bound. Returns { ok, value } on success or { ok:false, reason } on failure.
+   *
+   * @param {*} raw — user-entered title (string expected)
+   */
+  function normalizeBookmarkImportTreeTitle(raw) {
+    if (typeof raw !== 'string') {
+      return { ok: false, reason: 'INVALID_TYPE' };
+    }
+    var text = raw.trim();
+    if (text.length === 0) {
+      return { ok: false, reason: 'EMPTY' };
+    }
+    if (text.length > TREE_TITLE_MAX_LENGTH) {
+      return { ok: false, reason: 'TOO_LONG' };
+    }
+    return { ok: true, value: text };
+  }
+
+  /**
+   * Pure, deterministic, detached pre-write import intent builder.
+   *
+   *   buildBookmarkImportIntent(orderedDraft, normalizedTreeTitle)
+   *
+   * Contract:
+   *   - consumes ONLY the existing #4074 ordered draft (selected eligible
+   *     occurrences) plus the canonical normalized Tree title
+   *   - selected eligible occurrences only (re-filtered by eligibility;
+   *     unsupported / rejected / credential-bearing / null-url entries cannot
+   *     re-enter even if a caller passes them)
+   *   - exact canonical source order (ascending sourceIndex)
+   *   - duplicate identical URLs remain independent occurrences
+   *   - detached result: never references or mutates the draft/preview/parser
+   *     result, and never mutates internal selection/title state
+   *   - visibility is ALWAYS 'private' (IMPORT != PUBLICATION); no public
+   *     toggle, no import-and-publish shortcut is produced
+   *   - carries ONLY: treeTitle, visibility, source, entries
+   *     (occurrenceKey/sourceIndex/title/url/folderPath), count, and explicit
+   *     NOT_PERSISTED markers (persisted:false, created:false)
+   *   - NO Tree/Memory/Moment/Connection ID, owner/account ID, persisted
+   *     sortOrder, DB row identity, server acknowledgement
+   *   - NO raw bookmark HTML, raw rejected href, credential-bearing raw URL,
+   *     browser filesystem path, local absolute path, file contents,
+   *     credentials, token, or secret
+   *
+   * Fails closed (returns null) when the title is not normalized-valid or the
+   * draft is missing/invalid.
+   *
+   * @param {Object} orderedDraft — output of buildOrderedBookmarkImportDraft
+   * @param {string} normalizedTreeTitle — already normalized/validated title
+   */
+  function buildBookmarkImportIntent(orderedDraft, normalizedTreeTitle) {
+    var norm = normalizeBookmarkImportTreeTitle(normalizedTreeTitle);
+    if (!norm.ok) return null;
+    if (!orderedDraft || !Array.isArray(orderedDraft.entries)) return null;
+
+    // Final authority: selected eligible occurrences only, canonical source
+    // order, duplicate URLs preserved as independent occurrences.
+    var picked = [];
+    for (var i = 0; i < orderedDraft.entries.length; i++) {
+      var entry = orderedDraft.entries[i];
+      if (!entry) continue;
+      // Draft entries omit `supported`, so re-gate on URL safety: exclude
+      // unsupported-scheme / credential-bearing / null-url entries that must
+      // never re-enter the intent.
+      if (!isIntentSafeUrl(entry.url)) continue;
+      picked.push(entry);
+    }
+    picked.sort(function (a, b) { return a.sourceIndex - b.sourceIndex; });
+
+    var intentEntries = picked.map(function (entry) {
+      return Object.freeze({
+        occurrenceKey: entry.occurrenceKey,
+        sourceIndex: entry.sourceIndex,
+        title: entry.title,
+        url: entry.url,
+        folderPath: Object.freeze((entry.folderPath || []).slice()),
+      });
+    });
+
+    return Object.freeze({
+      treeTitle: norm.value,
+      visibility: 'private',
+      source: 'bookmark-html-local',
+      entries: Object.freeze(intentEntries),
+      count: intentEntries.length,
+      persisted: false,
+      created: false,
     });
   }
 
@@ -436,6 +596,7 @@
       lastResult = null;
       resetSelection();
       clearPreview();
+      invalidateReview(); // #4076 review authority invalidates on EMPTY
       setState('EMPTY', '북마크 항목이 없어요.');
       return;
     }
@@ -455,6 +616,7 @@
     resetSelection();
     clearPreview(); // new file selection: previous preview + selection are stale
     lastResult = null; // preview authority invalidates with selection (READING)
+    invalidateReview(); // #4076 review authority invalidates on new file / READING
     setError('');
     if (!file) {
       failWith('파일을 선택해주세요.');
@@ -486,11 +648,133 @@
     readGeneration++; // supersede any pending read before clearing the surface
     resetSelection();
     lastResult = null; // preview authority invalidates with selection
+    invalidateReview(); // #4076 review authority invalidates on explicit reset
     var input = $id(FILE_INPUT_ID);
     if (input) input.value = '';
     clearPreview();
     setError('');
     setState('IDLE', '');
+  }
+
+  // ── #4076 private-first pre-write import intent review ────────────────────
+
+  /** Drop the current review/intent authority (stale on any input change). */
+  function invalidateReview() {
+    currentReview = null;
+    var el = $id(INTENT_REVIEW_ID);
+    if (el) {
+      el.textContent = '';
+      el.hidden = true;
+    }
+  }
+
+  function setTreeTitleError(message) {
+    var el = $id(TREE_TITLE_ERROR_ID);
+    if (!el) return;
+    el.textContent = message || '';
+    el.hidden = !message;
+  }
+
+  function clearTreeTitleError() {
+    setTreeTitleError('');
+  }
+
+  /** Live validation feedback for the title input (no error before typing). */
+  function updateTreeTitleErrorState() {
+    var trimmed = (typeof treeTitleRaw === 'string') ? treeTitleRaw.trim() : '';
+    if (trimmed.length === 0) {
+      clearTreeTitleError();
+      return;
+    }
+    var norm = normalizeBookmarkImportTreeTitle(treeTitleRaw);
+    if (!norm.ok && norm.reason === 'TOO_LONG') {
+      setTreeTitleError('트리 제목이 너무 길어요. 최대 ' + TREE_TITLE_MAX_LENGTH + '자까지 가능해요.');
+    } else if (!norm.ok) {
+      setTreeTitleError('트리 제목을 입력해 주세요.');
+    } else {
+      clearTreeTitleError();
+    }
+  }
+
+  /**
+   * Set the user-entered Tree title (plain text only). Any change invalidates
+   * the current review/intent immediately (OLD_REVIEW != ACTIONABLE_AFTER_INPUT_CHANGE).
+   * @param {*} raw
+   */
+  function setTreeTitle(raw) {
+    treeTitleRaw = (raw === null || raw === undefined) ? '' : String(raw);
+    invalidateReview();
+    updateTreeTitleErrorState();
+  }
+
+  function getTreeTitle() {
+    return treeTitleRaw;
+  }
+
+  /** Current normalized title result: { ok, value } or { ok:false, reason }. */
+  function getNormalizedTreeTitle() {
+    return normalizeBookmarkImportTreeTitle(treeTitleRaw);
+  }
+
+  /** Render the bounded review summary with textContent only (zero innerHTML). */
+  function renderReview(intent) {
+    var el = $id(INTENT_REVIEW_ID);
+    if (!el) return;
+    el.textContent = '';
+    var title = document.createElement('p');
+    title.textContent = '트리 제목: ' + intent.treeTitle;
+    el.appendChild(title);
+    var count = document.createElement('p');
+    count.textContent = '가져올 북마크: ' + intent.count + '개';
+    el.appendChild(count);
+    var vis = document.createElement('p');
+    vis.textContent = '공개 범위: 비공개';
+    el.appendChild(vis);
+    var note = document.createElement('p');
+    note.textContent = '아직 저장되지 않았어요. 이 단계는 검토용이에요.';
+    el.appendChild(note);
+    el.hidden = false;
+  }
+
+  /**
+   * Build the pre-write import intent from the current UI authority (title +
+   * selection). Returns the detached intent, or null when the current authority
+   * cannot produce an actionable intent (fails closed). The returned intent is
+   * the only review payload; it never persists anything.
+   */
+  function buildImportIntent() {
+    var norm = normalizeBookmarkImportTreeTitle(treeTitleRaw);
+    if (!norm.ok) {
+      if (norm.reason === 'TOO_LONG') {
+        setTreeTitleError('트리 제목이 너무 길어요. 최대 ' + TREE_TITLE_MAX_LENGTH + '자까지 가능해요.');
+      } else {
+        setTreeTitleError('트리 제목을 입력해 주세요.');
+      }
+      invalidateReview();
+      return null;
+    }
+    var preview = getPreview();
+    var draft = buildOrderedBookmarkImportDraft(preview, getSelectedOccurrences());
+    if (!draft || draft.count === 0) {
+      clearTreeTitleError();
+      invalidateReview();
+      return null;
+    }
+    clearTreeTitleError();
+    var intent = buildBookmarkImportIntent(draft, norm.value);
+    currentReview = intent;
+    renderReview(intent);
+    return intent;
+  }
+
+  /** Current review/intent, or null when stale / non-actionable. */
+  function getImportIntent() {
+    return currentReview;
+  }
+
+  /** Whether a review/intent is currently actionable (not stale). */
+  function hasActionableReview() {
+    return currentReview !== null;
   }
 
   function attachEvents() {
@@ -513,6 +797,16 @@
     var clearBtn = $id(CLEAR_ID);
     if (clearBtn && typeof clearBtn.addEventListener === 'function') {
       clearBtn.addEventListener('click', clearSelection);
+    }
+    var titleInput = $id(TREE_TITLE_INPUT_ID);
+    if (titleInput && typeof titleInput.addEventListener === 'function') {
+      titleInput.addEventListener('input', function () {
+        setTreeTitle(titleInput.value);
+      });
+    }
+    var reviewBtn = $id(REVIEW_BUILD_ID);
+    if (reviewBtn && typeof reviewBtn.addEventListener === 'function') {
+      reviewBtn.addEventListener('click', buildImportIntent);
     }
   }
 
@@ -543,6 +837,16 @@
     getSelectedOccurrences: getSelectedOccurrences,
     getPreview: getPreview,
     buildOrderedBookmarkImportDraft: buildOrderedBookmarkImportDraft,
+    TREE_TITLE_MAX_LENGTH: TREE_TITLE_MAX_LENGTH,
+    normalizeBookmarkImportTreeTitle: normalizeBookmarkImportTreeTitle,
+    setTreeTitle: setTreeTitle,
+    getTreeTitle: getTreeTitle,
+    getNormalizedTreeTitle: getNormalizedTreeTitle,
+    buildBookmarkImportIntent: buildBookmarkImportIntent,
+    buildImportIntent: buildImportIntent,
+    getImportIntent: getImportIntent,
+    hasActionableReview: hasActionableReview,
+    invalidateReview: invalidateReview,
   };
   if (typeof window !== 'undefined') {
     window.LoveBudBookmarkHtmlPreviewUI = publicApi;
