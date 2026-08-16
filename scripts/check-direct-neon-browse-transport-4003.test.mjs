@@ -180,6 +180,27 @@ check('seam: full wired path returns 200 normalized array via injected executor'
   assert.deepEqual(body[0].emotionTags, ['calm', 'joy']);
 });
 
+check('seam: in-range fractional limit preserves Production 422 boundary and performs zero DB query', async () => {
+  let queried = false;
+  const res = await buildDirectNeonBrowseResponse({
+    request: new Request('https://x.test/api/experimental/direct-neon-browse?sort=latest&limit=1.5'),
+    env: {
+      [DIRECT_NEON_BROWSE_ENABLED_FLAG]: 'true',
+      [DIRECT_NEON_BROWSE_CONNECTION_SECRET]: NEON_SECRET,
+    },
+    executorOverride: async () => { queried = true; return []; },
+  });
+  assert.equal(res.status, 422);
+  assert.equal(res.headers.get('x-lovebud-route-status'), 'invalid-limit');
+  assert.equal(queried, false);
+
+  const modal = buildModalUrl(
+    { url: 'https://x.test/api/community/trees?view=summary&sort=latest&limit=1.5', method: 'GET' },
+    { MODAL_BASE_URL: 'https://modal.test' },
+  );
+  assert.equal(modal.searchParams.get('limit'), '1.5');
+});
+
 check('seam: non-GET method => 405', async () => {
   const res = await onRequest({
     request: new Request('https://x.test/api/experimental/direct-neon-browse', { method: 'POST' }),
