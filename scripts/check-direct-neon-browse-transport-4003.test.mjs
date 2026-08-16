@@ -292,20 +292,19 @@ check('timestamp: ISO string passes through unchanged', () => {
   assert.equal(row.createdAt, '2026-08-01T00:00:00+00:00');
 });
 
-check('timestamp: JS Date serialized to ISO (Neon driver boundary)', () => {
-  const date = new Date('2026-08-01T00:00:00Z');
-  const row = normalizeDirectNeonBrowseRow({ id: 't', created_at: date, memory_count: 3 });
-  assert.equal(row.createdAt, date.toISOString());
+check('timestamp: driver-returned PG-text timestamp normalizes to canonical Modal/Python form', () => {
+  const row = normalizeDirectNeonBrowseRow({ id: 't', created_at: '2026-08-01 00:00:00.123456+00', memory_count: 3 });
+  assert.equal(row.createdAt, '2026-08-01T00:00:00.123456+00:00');
 });
 
-check('timestamp: transport executor returning Date timestamps normalizes consistently', async () => {
-  const date = new Date('2026-08-03T12:00:00Z');
+check('timestamp: transport executor returning PG-text timestamps normalizes to canonical Modal/Python form', async () => {
   const executor = makeMockExecutor(
     { has_social_counts_table: true, has_like_count_column: true, has_view_count_column: true },
-    [{ id: 't', title: 'T', visibility: 'public', memory_count: 3, created_at: date, updated_at: null, all_tags: [], like_count: 0, raw_thumbnail: '', raw_source_url: '' }],
+    [{ id: 't', title: 'T', visibility: 'public', memory_count: 3, created_at: '2026-08-03 12:00:00.123456+00', updated_at: '2026-08-03 12:00:00.654321+00', all_tags: [], like_count: 0, raw_thumbnail: '', raw_source_url: '' }],
   );
   const rows = await fetchBrowseSummaryViaDirectNeon({ executor, sort: 'latest', limit: 1 });
-  assert.equal(rows[0].createdAt, date.toISOString());
+  assert.equal(rows[0].createdAt, '2026-08-03T12:00:00.123456+00:00');
+  assert.equal(rows[0].updatedAt, '2026-08-03T12:00:00.654321+00:00');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
