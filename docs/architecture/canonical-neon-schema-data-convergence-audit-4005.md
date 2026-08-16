@@ -125,13 +125,13 @@ The existing LoveBud / `133-relovetree` database lineage is the correct **candid
 
 Reasons:
 
-1. it contains substantially more real application state;
-2. it has the current account/user relation used by Tree ownership;
+1. its live `neondb` catalog (production/default branch `br-little-fire-a18brh25`) is the canonical application database, carrying the 11-table schema the LoveBud product is built on (live-verified 2026-08-16);
+2. its Tree ownership is exercised through `trees.owner_id` (`text NOT NULL`, 2 distinct non-null live owners, 0 null); the earlier "current account/user relation" rationale was based on the 36-user `public.users` snapshot, which is classified **`HISTORICAL_NOT_REPRODUCED`** and requires owner lineage confirmation before any account-relation claim is re-asserted;
 3. it contains the mature social/idempotency/audit/dedup lineage;
 4. current LoveBud product/security contracts are already built around its semantics;
 5. moving authority to the smaller LoveTree database would create unnecessary data migration and security-contract risk.
 
-This does **not** mean the LoveTree schema should be ignored. Several LoveTree schema refinements are useful candidates to port additively into canonical schema vNext.
+This does **not** mean the LoveTree schema should be ignored. Any genuine LoveTree-only improvement remains a candidate to port additively into canonical schema vNext; on the currently live-verified dimensions the two databases are structurally identical, so no such pending port exists today (see §4.3/§4.4 dispositions).
 
 ---
 
@@ -219,26 +219,28 @@ Use existing canonical semantics during initial convergence. Any enum conversion
 
 ### LoveTree refinements
 
-- stronger non-null requirements;
-- enum visibility;
-- JSONB keywords;
-- index on `owner_id`;
-- index on `(visibility, created_at)`;
-- same owner/client-key uniqueness concept.
+**Live reconciliation (2026-08-16):** every item below is **already present in the live LoveBud `neondb` catalog** (live-verified: `owner_id`/`title`/`memo`/`artist`/`visibility`/`keywords` NOT NULL; enum `visibility` incl. `unlisted`; `keywords` `jsonb NOT NULL`; indexes `trees_owner_id_idx` and `trees_visibility_created_at_idx`; unique `trees_owner_client_key_uniq`). These are therefore **not pending LoveTree→LoveBud ports** — the two live databases are structurally identical on the Trees dimension.
+
+- stronger non-null requirements (present live in both);
+- enum visibility (present live in both);
+- JSONB keywords (present live in both);
+- index on `owner_id` (present live in both);
+- index on `(visibility, created_at)` (present live in both);
+- same owner/client-key uniqueness concept (present live in both).
 
 ### Decision
 
 ```text
 Tree authority                     = LOVEBUD_CANONICAL
-owner/client-key uniqueness        = SAME_SEMANTIC
-owner index                         = LOVETREE_IMPROVEMENT_TO_EVALUATE
-visibility+created index            = LOVETREE_IMPROVEMENT_TO_EVALUATE
-NOT NULL wholesale                  = HOLD_LEGACY_DATA
-JSONB keywords conversion           = HOLD_NO_CURRENT_NEED
-unlisted visibility                 = PRODUCT_DECISION_REQUIRED
+owner/client-key uniqueness        = SAME_SEMANTIC_CURRENTLY (identical live index in both DBs)
+owner index                         = SAME_SEMANTIC_CURRENTLY (trees_owner_id_idx present live in both)
+visibility+created index            = SAME_SEMANTIC_CURRENTLY (trees_visibility_created_at_idx present live in both)
+NOT NULL wholesale                  = HOLD (no live NOT NULL gap on Trees core columns; blanket tightening not authorized)
+JSONB keywords                      = SAME_SEMANTIC_CURRENTLY (jsonb NOT NULL in both)
+unlisted visibility                 = SAME_SEMANTIC_CURRENTLY (enum value present in both; product usage decision remains separate)
 ```
 
-The two legacy null Tree rows must be classified before tightening nullability. They currently appear structurally inert, but this audit does not authorize deletion.
+**Live reconciliation (2026-08-16):** the historical "two legacy null Tree rows" belong to the non-reproducible historical snapshot only — the current live catalog has **0 null-owner_id and 0 null-visibility Tree rows** (`trees.owner_id` is `text NOT NULL`, 0 null). They are no longer a current blocker; if the historical snapshot lineage is re-confirmed by the owner, classification of those rows would still not authorize deletion under this audit.
 
 ## 4.4 Memories
 
@@ -263,16 +265,16 @@ indexes:    33 == 33 (semantic identity)
 enums:       5 == 5  (identical)
 ```
 
-### LoveTree refinements
+### Memory lineage columns — live state (both databases)
 
-LoveTree adds:
+**Live reconciliation (2026-08-16):** `client_key` (`text`, nullable) and `sort_order` (`int4`, nullable) **already exist in both live LoveBud and LoveTree `neondb` databases**, together with unique `memories_tree_client_key_uniq` and partial unique `memories_tree_sort_order_uniq_partial` (identical in both; live-verified). These are **not** a LoveTree-only addition awaiting port to LoveBud — there is no pending client_key/sort_order port decision.
 
 ```text
 client_key
 sort_order
 ```
 
-with:
+Present in both live databases:
 
 - unique `(tree_id, client_key)`;
 - partial unique `(tree_id, sort_order)` when sort order is non-null;
@@ -282,7 +284,7 @@ with:
 - JSONB emotion tags;
 - enum visibility/source type.
 
-All four current LoveTree Memory rows have both `client_key` and `sort_order` populated.
+The only live Memory-column difference between the two databases is the three extra nullable columns present in LoveBud only (`connection_reason`, `discovery_date`, `video_offset_seconds`, §3.2/§4.4 above).
 
 ### Critical canonical-data blocker to strict FK parity (historical vs live)
 
@@ -296,42 +298,34 @@ observed orphan-Memory date range: 2026-05-18 through 2026-07-09
 
 **Live reconciliation (2026-08-16): this orphan condition is not reproducible in the current live `neondb` catalog — all 5 live Memories resolve to an existing `trees.id`, and `memories.tree_id → trees.id` FK is enforced live.** The orphan risk therefore remains a historical-snapshot property pending owner confirmation of the source lineage; it must not be re-asserted as current live state.
 
-Therefore adding an immediate `memories.tree_id → trees.id` FK to canonical production would be unsafe and may fail validation or force destructive handling of historical data.
+Therefore any new FK-tightening/constraint-application action aimed at the **historical** snapshot lineage would be unsafe and may fail validation or force destructive handling of historical data; for the **current live catalog** no such action is needed because `memories.tree_id → trees.id` and `memories.parent_id → memories.id` are already enforced live in both databases (live-verified).
 
 Decision:
 
 ```text
-client_key                           = LOVETREE_IMPROVEMENT_TO_PORT_ADDITIVELY
-sort_order                           = LOVETREE_IMPROVEMENT_TO_PORT_ADDITIVELY
-(tree_id, client_key) uniqueness     = PORT_AFTER_BACKFILL/WRITE_CONTRACT
-(tree_id, sort_order) uniqueness     = PORT_AFTER_ORDERING_CONTRACT
-parent FK                            = CANDIDATE_AFTER_BRANCH_VALIDATION
-tree FK                              = HOLD_LEGACY_ORPHAN_CLASSIFICATION
-visibility+created index             = CANDIDATE
-ARRAY → JSONB emotion_tags           = HOLD_NO_CURRENT_MIGRATION_JUSTIFICATION
-enum visibility/source_type          = HOLD_DATA_AND_PRODUCT_COMPATIBILITY
+client_key                           = SAME_SEMANTIC_CURRENTLY (present in both live DBs)
+sort_order                           = SAME_SEMANTIC_CURRENTLY (present in both live DBs)
+(tree_id, client_key) uniqueness     = SAME_SEMANTIC_CURRENTLY (identical live index in both)
+(tree_id, sort_order) uniqueness     = SAME_SEMANTIC_CURRENTLY (identical partial unique in both)
+parent FK                            = PRESENT_LIVE_BOTH (memories.parent_id → memories.id)
+tree FK                              = PRESENT_LIVE_BOTH (memories.tree_id → trees.id); historical orphan classification remains only for the non-reproduced snapshot lineage
+visibility+created index             = SAME_SEMANTIC_CURRENTLY (memories_visibility_created_at_idx in both)
+emotion_tags                         = SAME_SEMANTIC_CURRENTLY (jsonb NOT NULL in both)
+enum visibility/source_type          = SAME_SEMANTIC_CURRENTLY (same 5 enums in both)
 ```
 
-Do not synthesize arbitrary client keys or sort order for 287 existing Memories merely to satisfy a new constraint. Existing data should remain valid while new-write contracts can begin populating the new fields.
+Do not synthesize arbitrary client keys or sort order for the **historical 287-Memory prototype snapshot** merely to satisfy a new constraint (the live catalog holds 5 Memories, §3.1). Existing data should remain valid while new-write contracts can begin populating the new fields.
 
 ## 4.5 Tree likes
 
-Canonical LoveBud uses soft-delete semantics and a partial active-like uniqueness rule:
-
-```text
-unique(tree_id, owner_id) where deleted_at is null
-```
-
-**Live reconciliation (2026-08-16):** `tree_likes` has **0 rows live** (both databases), columns are `id`, `tree_id`, `owner_id` (all `text NOT NULL`), `created_at`, nullable `deleted_at`. Live unique index `tree_likes_tree_owner_uniq` is present; the earlier 9-row / 7-soft-deleted / 8-orphan-like snapshot is historical and not reproducible live.
-
-LoveTree uses unconditional unique `(tree_id, owner_id)` (live index `tree_likes_tree_owner_uniq`) and has no current like records (live-verified).
+**Live reconciliation (2026-08-16):** `tree_likes` has **0 rows live** (both databases), columns are `id`, `tree_id`, `owner_id` (all `text NOT NULL`), `created_at`, nullable `deleted_at`. **Both live databases carry the identical unique `(tree_id, owner_id)` index `tree_likes_tree_owner_uniq`** (live-verified) — there is no live uniqueness difference between LoveBud and LoveTree. The earlier "LoveBud soft-delete / partial active-like uniqueness" rule (`unique(tree_id, owner_id) where deleted_at is null`) and the 9-row / 7-soft-deleted / 8-orphan-like snapshot are historical and not reproducible live.
 
 Decision:
 
 ```text
-LoveBud soft-delete like semantics = LOVEBUD_CANONICAL
-LoveTree unconditional uniqueness  = DO_NOT_PORT
-Tree FK tightening                 = HOLD_LEGACY_ORPHAN_CLASSIFICATION
+tree_likes uniqueness (live)        = SAME_SEMANTIC_CURRENTLY (identical unique (tree_id, owner_id) index in both live DBs)
+soft-delete / partial-unique rule   = HISTORICAL_SNAPSHOT_NOT_REPRODUCED_LIVE
+Tree FK tightening                  = HOLD_LEGACY_ORPHAN_CLASSIFICATION
 ```
 
 The recent LoveBud/LoveTree social implementations already demonstrate that re-like/restore concurrency behavior is product logic, not a trivial schema equivalence.
@@ -724,6 +718,9 @@ FINAL_VERDICT                             = GO_CANONICAL_SCHEMA_BRANCH_PROTOTYPE
 CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage) — with owner-action gate: the documented canonical snapshot (36 users / 45 Trees / 287 Memories + users/community/ai_logs tables) is NOT reproducible from the live catalog on any LoveBud branch/database; owner lineage confirmation of the snapshot source DB is REQUIRED before data-authority acceptance is claimed
 SCHEMA_DIFF_COMPLETENESS                  = COMPLETE (all 18 #4005-required dimensions live-verified 2026-08-16 via dedicated `lb_ro_…` read-only role + owner-role catalog queries; LoveBud `neondb` vs LoveTree `neondb`; see Appendix A)
 EXACT_SCHEMA_DIFF                         = COMPLETE (live fingerprint diff: LoveBud 100 columns vs LoveTree 97 — exactly 3 extra nullable `memories` columns on LoveBud: `connection_reason`, `discovery_date`, `video_offset_seconds`; all other dimensions — constraints, indexes, enums, triggers, views, extensions, RLS, privileges — identical)
+SEMANTIC_DECISION_RECONCILIATION          = PASS (historical-vs-current contradictions removed: client_key/sort_order and their uniqueness dispositions are SAME_SEMANTIC_CURRENTLY (both live DBs); tree_likes uniqueness identical in both live DBs; "two legacy null Tree rows" and 287-Memory references restricted to the non-reproduced historical snapshot)
+LIVE_36_45_287_LINEAGE                    = OWNER_CONFIRMATION_REQUIRED (classified HISTORICAL_NOT_REPRODUCED; not re-asserted as current live state)
+CURRENT_DEFAULT_APPRECIATION_SCHEMA       = ABSENT (public.tree_appreciation_orders absent live on the production branch — CATALOGUED_BUT_ABSENT_LIVE, §D)
 ISSUE4005_ACCEPTANCE                      = PARTIAL (exact schema diff now live-satisfied; canonical DATA snapshot 36/45/287 not reproducible live → owner lineage confirmation required before full acceptance)
 OWNERSHIP_SUBJECT_INVENTORY_COMPLETENESS  = COMPLETE (10 tables, 10 subject columns live-verified; no `users` table exists live so no owner_id→users FK; `trees.owner_id` = TEXT NOT NULL; no direct Firebase UID column observed; values inspected via aggregates/column metadata only)
 MEMORY_LINEAGE_SCHEMA_READINESS           = BRANCH_PROVEN (go_additive)
