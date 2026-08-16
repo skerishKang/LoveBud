@@ -3,7 +3,14 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
+from fastapi import HTTPException
+
 from modal_compute.db import get_db_connection, run_db_with_retry
+from modal_compute.social_cursor import (
+    CommentCursorError,
+    decode_comment_cursor,
+    encode_comment_cursor,
+)
 from modal_compute.social_errors import SocialWriteError
 from modal_compute.social_idempotency import (
     _compute_key_hash,
@@ -11,8 +18,9 @@ from modal_compute.social_idempotency import (
     reserve_and_verify_idempotency_target,
     validate_idempotency_key_format,
 )
+from modal_compute.social_rate_limit import check_tree_comment_rate_limits
 from modal_compute.social_write_audit import record_audit_target
-from modal_compute.tree_likes import require_public_tree_for_like
+from modal_compute.tree_likes import require_public_tree_cursor, require_public_tree_for_like
 from modal_compute.validation import validate_optional_string, validate_required_uuid
 
 COMMENT_BODY_MAX = 5000
@@ -43,7 +51,11 @@ def normalize_public_tree_comment_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def fetch_tree_comments(tree_id: str, limit: int = 20) -> dict[str, Any]:
+def fetch_tree_comments(
+    tree_id: str,
+    limit: int = 20,
+    cursor: str | None = None,
+) -> dict[str, Any]:
     """Read whole-tree (tree-level) comments for a public tree.
 
     Targets only `tree_comments` with `tree_comments.tree_id = :treeId`.
@@ -61,23 +73,50 @@ def fetch_tree_comments(tree_id: str, limit: int = 20) -> dict[str, Any]:
 
     require_public_tree_for_like(safe_tree_id)
 
-    def operation() -> list[dict[str, Any]]:
+    decoded = None
+    if cursor is not None:
+        try:
+            decoded = decode_comment_cursor(cursor, "tree_comments", expected_target_id=safe_tree_id)
+        except CommentCursorError:
+            raise HTTPException(status_code=400, detail="Invalid pagination cursor")
+
+    def operation() -> tuple[list[dict[str, Any]], str | None]:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                params: list[Any] = [safe_tree_id]
+                cursor_predicate = ""
+                if decoded is not None:
+                    cursor_predicate = "AND ((created_at > %s) OR (created_at = %s AND id > %s))"
+                    params.extend([decoded["created_at"], decoded["created_at"], decoded["id"]])
+                params.append(safe_limit + 1)
                 cur.execute(
-                    """
+                    f"""
                     SELECT id, tree_id, body, created_at, updated_at
                     FROM tree_comments
                     WHERE tree_id = %s
+                      {cursor_predicate}
                     ORDER BY created_at ASC, id ASC
                     LIMIT %s
                     """,
-                    (safe_tree_id, safe_limit),
+                    tuple(params),
                 )
                 rows = cur.fetchall()
-                return [normalize_public_tree_comment_row(row) for row in rows]
+                has_more = len(rows) > safe_limit
+                returned_rows = rows[:safe_limit]
+                items = [normalize_public_tree_comment_row(row) for row in returned_rows]
+                next_cur = None
+                if has_more and returned_rows:
+                    last = returned_rows[-1]
+                    next_cur = encode_comment_cursor(
+                        "tree_comments",
+                        last.get("created_at"),
+                        str(last["id"]),
+                        target_id=safe_tree_id,
+                    )
+                return items, next_cur
 
-    return {"comments": run_db_with_retry(operation)}
+    items, next_cursor = run_db_with_retry(operation)
+    return {"comments": items, "nextCursor": next_cursor}
 
 
 def create_tree_comment(
@@ -110,14 +149,13 @@ def create_tree_comment(
 
     validate_idempotency_key_format(idempotency_key)
 
-    require_public_tree_for_like(safe_tree_id)
-
     operation = "tree.comment.create"
     body_dict: dict[str, Any] = {"body": safe_body}
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             try:
+                require_public_tree_cursor(cur, safe_tree_id)
                 replay = reserve_and_verify_idempotency_target(
                     cur, owner_id, operation, idempotency_key,
                     "tree", safe_tree_id, body_dict,
@@ -153,6 +191,8 @@ def create_tree_comment(
                         code="IDEMPOTENCY_RESULT_UNAVAILABLE",
                         message="The original comment is no longer available",
                     )
+
+                check_tree_comment_rate_limits(cur, owner_id)
 
                 comment_id = str(uuid.uuid4())
                 cur.execute(

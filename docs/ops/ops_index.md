@@ -18,6 +18,8 @@ normal path
 
 Do not add Local Validation, full-suite testing, Preview, multi-viewport browser QA, Cloudflare authentication, Wrangler, deployment retries, or extended runtime evidence unless the change class or an observed failure requires them.
 
+**Local full-suite execution is not the default.** Use [IMPACT_BASED_TEST_EXECUTION_POLICY.md](IMPACT_BASED_TEST_EXECUTION_POLICY.md) to select focused checks, treat GitHub Actions as the normal repository-wide CI layer, and assign Local Validation only when a declared trigger requires evidence that focused Web checks plus CI cannot supply.
+
 When a real error is found, escalation is immediate and strict:
 
 ```text
@@ -48,20 +50,22 @@ Missing optional evidence is not an error. A tool failure is not a product failu
 
 1. [MVP_AGENT_GOVERNANCE.md](MVP_AGENT_GOVERNANCE.md) — hard blockers, CI, role/UI owner approvals, expected-head merge.
 2. [../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md](../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md) — separated execution roles.
-3. [../project/UI_RAPID_ITERATION_LANE.md](../project/UI_RAPID_ITERATION_LANE.md) — U0/U1/U2/U3 UI process.
-4. [MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md](MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md) — current Production verification flow.
-5. [PR_CHECKLIST.md](PR_CHECKLIST.md) — risk-proportional PR checklist.
-6. [UI_SCREENSHOT_CTO_REVIEW_POLICY.md](UI_SCREENSHOT_CTO_REVIEW_POLICY.md) — class-dependent screenshot and visual judgment.
-7. [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) — current local Windows/PowerShell source of truth.
-8. [REMOTE_ACCESS_AND_WSL.md](REMOTE_ACCESS_AND_WSL.md) — historical WSL/remote-access reference; not current startup guidance.
-9. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) — safe GitHub authentication/token handling.
+3. [IMPACT_BASED_TEST_EXECUTION_POLICY.md](IMPACT_BASED_TEST_EXECUTION_POLICY.md) — focused test selection, GitHub CI authority, Local trigger codes, duplicate-execution prevention.
+4. [../project/UI_RAPID_ITERATION_LANE.md](../project/UI_RAPID_ITERATION_LANE.md) — U0/U1/U2/U3 UI process.
+5. [MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md](MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md) — current Production verification flow.
+6. [PR_CHECKLIST.md](PR_CHECKLIST.md) — risk-proportional PR checklist.
+7. [UI_SCREENSHOT_CTO_REVIEW_POLICY.md](UI_SCREENSHOT_CTO_REVIEW_POLICY.md) — class-dependent screenshot and visual judgment.
+8. [PATHS_AND_SHELLS.md](PATHS_AND_SHELLS.md) — current local Windows/PowerShell source of truth.
+9. [REMOTE_ACCESS_AND_WSL.md](REMOTE_ACCESS_AND_WSL.md) — historical WSL/remote-access reference; not current startup guidance.
+10. [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md) — safe GitHub authentication/token handling.
 
 ## Current execution summary
 
 ```text
-Web CTO contract
-→ separate Web Developer implementation
-→ Local Validation only when required
+Web CTO remote triage and contract
+→ separate Web Developer implementation + focused checks
+→ GitHub Actions normal CI matrix
+→ Local Validation only for declared trigger-qualified work
 → Web CTO final review
 ```
 
@@ -70,7 +74,7 @@ UI:
 ```text
 U0/U1: focused Web path, no Local by default
 U2: structural tests + conditional Local/browser evidence
-U3: full runtime-sensitive path
+U3: full relevant runtime path, not an automatic unrelated full-suite run
 ```
 
 ## Browser and evidence
@@ -86,13 +90,14 @@ Preview/fixed slot is optional evidence unless explicitly assigned. Historical d
 
 ## CI and quality
 
+- [IMPACT_BASED_TEST_EXECUTION_POLICY.md](IMPACT_BASED_TEST_EXECUTION_POLICY.md) — canonical day-to-day test execution and Local Validation routing.
 - [CI_UNAVAILABLE_INFRA_MERGE_POLICY.md](CI_UNAVAILABLE_INFRA_MERGE_POLICY.md) — alternative evidence for infrastructure-unavailable CI.
 - [KNOWN_CI_E2E_BLOCKERS.md](KNOWN_CI_E2E_BLOCKERS.md) — recurring CI/E2E classification reference.
 - [E2E_SMOKE_COVERAGE_POLICY.md](E2E_SMOKE_COVERAGE_POLICY.md) — E2E coverage reference for affected runtime behavior.
 - [DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md) — deployment checks.
 - [RUNBOOK.md](RUNBOOK.md) — runtime incident response.
 
-Test scope is selected by affected behavior and risk. Older universal full-suite wording does not override U0/U1 fast-lane policy.
+Test scope is selected by affected behavior and risk. Exact-head GitHub CI is the normal repository-wide execution authority. Local Validation must add distinct evidence under a declared trigger; it is not used merely to duplicate an already-green CI lane. Older universal full-suite wording does not override the current impact-based policy or U0/U1 fast-lane policy.
 
 ## Parallel work and repository state
 
@@ -102,7 +107,7 @@ Test scope is selected by affected behavior and risk. Older universal full-suite
 - [SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md](SOURCE_OF_TRUTH_HYGIENE_DISPOSITION.md)
 - [LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md](LOCAL_FILE_HYGIENE_PG_DEPENDENCY_AUDIT.md)
 
-One active writer per remote branch. Preserve other workers' state. Do not use destructive cleanup without approval.
+One active writer per remote branch. Preserve other workers' state. Do not use destructive cleanup without approval. Parallelize read-only remote forensic/review work freely when useful; parallel implementation or Local Validation requires independent branches and contracts.
 
 ## Runtime-specific references
 
@@ -127,6 +132,7 @@ Many operations documents were written for earlier fixed-slot, Local-coder, TF L
 
 - `MVP_AGENT_GOVERNANCE.md`;
 - `WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`;
+- `IMPACT_BASED_TEST_EXECUTION_POLICY.md`;
 - `UI_RAPID_ITERATION_LANE.md`;
 - `MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`.
 

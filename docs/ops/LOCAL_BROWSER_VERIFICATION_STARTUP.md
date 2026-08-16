@@ -10,7 +10,7 @@
 **Owner:** CTO / Ops Lead
 **Scope:** Local browser verification, browser smoke, PR Preview checks, fixed test slot checks, and local-only visual checks
 >
-> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` (owner-approved #3442 comment `4947327550`) is the source of truth. Browser tooling is allowed by default; dirty worktree, missing fixed slot, and missing CTO-assigned URL are not automatic BLOCKED reasons. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
+> **Canonical precedence:** `docs/ops/MVP_AGENT_GOVERNANCE.md` is the source of truth for hard blockers, parallel writer ownership, and merge governance. `docs/ops/PARALLEL_WORKTREE_AGENT_POLICY.md` is the focused branch/path/semantic-authority coordination source. Browser tooling is allowed by default; dirty worktree, missing fixed slot, and missing CTO-assigned URL are not automatic BLOCKED reasons. Conflicting sections are `NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT`.
 
 ---
 
@@ -30,13 +30,15 @@ This document intentionally does not contain task-specific PR numbers, branch SH
 
 Read these together when the task involves browser or local verification:
 
+- [MVP_AGENT_GOVERNANCE.md](MVP_AGENT_GOVERNANCE.md) — canonical hard-blocker, parallel writer-ownership, and merge-governance rules.
+- [PARALLEL_WORKTREE_AGENT_POLICY.md](PARALLEL_WORKTREE_AGENT_POLICY.md) — branch/path/semantic-authority lock procedure for parallel agents.
 - [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md) — URL provenance rules for PR Preview, Branch Preview, fixed slots, production, and local verification.
 - [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md) — fixed test slot ownership, Local/Ops role boundaries, evidence hygiene, slot update and restore procedures.
 - [PR_CHECKLIST.md](PR_CHECKLIST.md) — PR readiness and verification checklist.
 - [RUNBOOK.md](RUNBOOK.md) — operational recovery and incident handling.
 - [../engineering/CSS_ARCHITECTURE.md](../engineering/CSS_ARCHITECTURE.md) — CSS import hub, split ownership, and visual verification guidance for stylesheet changes.
 
-When a task-specific instruction conflicts with these documents, follow the task-specific instruction only if it is explicit and narrower. Do not infer exceptions.
+When a task-specific instruction conflicts with these documents, follow the task-specific instruction only if it is explicit, narrower, and does not violate canonical hard blockers or another active writer's authority. Do not infer exceptions.
 
 ---
 
@@ -49,12 +51,13 @@ A local/browser verifier must start with these rules:
 - Do not merge.
 - Do not close issues.
 - Do not delete branches.
-- Do not force push except for a CTO-assigned fixed test slot update that explicitly allows `--force-with-lease`.
+- Do not force push a feature/PR branch. The only standing exception is a CTO-assigned ephemeral fixed test slot update that explicitly permits `--force-with-lease` under `TEST_PREVIEW_SLOTS.md`; that exception never authorizes feature-branch or `main` history rewriting.
 - Do not use guessed preview URLs.
 - Do not use another PR's preview URL.
 - A fixed test slot is an evidence option, not a permission gate. Use one when assigned, but its absence is not an automatic blocker (canonical policy).
 - Do not perform destructive or out-of-scope production data/schema/security mutation without owner approval; ordinary task-scoped test-data create/edit/delete is allowed when appropriate.
 - Do not expose tokens, cookies, passwords, Authorization headers, raw Firebase credentials, or private content in evidence.
+- Do not modify another agent's active branch/file/semantic authority.
 - Do not modify PR #7 or prototype/reference/demo/variant paths.
 
 NON_NORMATIVE_OUTSIDE_NAMED_CONTEXT: historically "If a local working tree is dirty before the task begins, stop and report `BLOCKED`." Under canonical policy, a dirty worktree is preserved and bypassed with another worktree/branch or read-only inspection; it is not an automatic blocker. Only `clean`/`reset`/`stash drop`/overwrite requires explicit approval.
@@ -90,6 +93,8 @@ git diff --stat origin/main...HEAD
 For CSS extraction or import hub work, additionally check the relevant import hub and moved selector/module boundaries. Use task-specific file paths.
 
 If `git diff --check` fails, report the exact failure and do not mark the PR ready until corrected by an authorized implementation executor.
+
+Before any write-capable work, also confirm that no other active agent owns the same branch, file, or semantic authority. A browser verifier normally remains read-only.
 
 ---
 
@@ -240,8 +245,10 @@ Use precise labels:
 
 ## 11. Ready, merge, and issue state rules
 
-- Draft to ready transition is at the worker's discretion (canonical policy: draft-by-default is advisory, not mandatory). Move to ready when appropriate.
-- Routine PRs may be squash-merged without repeated owner/CTO approval: only after independent remote diff review, green CI, and expected PR head SHA confirmation; do not merge on red or pending CI.
+- Browser/local verification does not itself grant Ready or merge authority.
+- An implementation worker must not Ready-transition or merge its own active PR unless a task-specific owner instruction explicitly delegates that integration authority.
+- Any authorized Ready/merge action requires the applicable independent remote review, expected PR head SHA confirmation, and acceptable CI/evidence. Never merge on `CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION`.
+- A fixed-slot `--force-with-lease` assignment is verification-infrastructure authority only; it does not grant permission to alter the PR branch, mark it Ready, or merge it.
 - Issue close requires explicit instruction and correct close keyword hygiene.
 - Use `Refs #<issue>` unless the task explicitly authorizes `Fixes`, `Closes`, or `Resolves`.
 - Do not close parent tracking issues when only one phase or one backlog item is complete.
@@ -306,5 +313,5 @@ Report local results as `LOCAL_ONLY` unless the task explicitly says local verif
 ## 14. One-line rule
 
 ```text
-Start every browser/local verification by confirming branch, SHA, diff scope, URL provenance, and evidence rules; never turn guessed URLs, local-only checks, or GitHub metadata into final browser PASS.
+Start every browser/local verification by confirming branch, SHA, diff scope, URL provenance, evidence rules, and active writer ownership; never turn guessed URLs, local-only checks, GitHub metadata, or fixed-slot access into implementation or merge authority.
 ```

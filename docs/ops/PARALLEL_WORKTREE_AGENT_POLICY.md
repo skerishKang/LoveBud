@@ -9,12 +9,18 @@
 
 LoveBud는 여러 AI 모델과 실행자가 병렬로 작업합니다. 브랜치만 나누면 충분하지 않습니다. 같은 로컬 작업 폴더를 공유하면 checkout, reset, 미커밋 변경, 생성 파일, 의존성 설치, cleanup 명령 때문에 서로의 작업이 섞일 수 있습니다.
 
+또한 **브랜치와 파일이 달라도 같은 semantic authority를 동시에 구현하면 충돌로 취급합니다.** Auth, DB schema/migration, DB transport, API runtime/routing, Tree/Memory/social write, visibility, owner mapping, Modal contraction처럼 하나의 의미적 권한 경계를 여러 파일이 공유할 수 있기 때문입니다.
+
 따라서 LoveBud 병렬 작업은 아래 원칙을 따릅니다.
 
 ```text
 작업 1개 = 브랜치 1개 = worktree 1개 = PR 1개
 검증 1개 = 검증 전용 worktree 1개 또는 읽기 전용 PR 검토 1개
 통합 = GitHub PR을 통한 main 순차 merge
+
+ONE WRITER PER BRANCH
+ONE WRITER PER FILE
+ONE WRITER PER SEMANTIC AUTHORITY
 ```
 
 전용 worktree는 고정하지만, 실제 작업 브랜치명은 CTO가 매번 지정하지 않아도 됩니다. 에이전트는 자기 전용 worktree에서 작업 성격에 맞는 새 브랜치명을 정하고, 반드시 최신 `origin/main` 기준으로 분기한 뒤 branch name / base SHA / clean 상태를 보고합니다.
@@ -162,6 +168,28 @@ git status --short
 git rev-parse HEAD
 ```
 
+로컬 수정 전에 GitHub remote에서 다음도 확인합니다.
+
+```text
+current main
+관련 open PR / Issue
+대상 PR exact head
+main→PR diff
+active writer
+path overlap
+semantic authority overlap
+```
+
+병렬 구현 분류:
+
+```text
+GREEN  = branch/path/semantic authority가 독립적 → 병렬 구현 가능
+YELLOW = 파일은 달라도 semantic authority가 겹침 → read/review/CI forensic만 병렬, 구현은 sequencing
+RED    = 같은 branch/file/core authority → active writer 1명만 구현
+```
+
+다른 에이전트가 semantic authority의 active writer이면 읽기, 원격 감사, CI forensic, review finding은 가능하지만 경쟁 구현은 금지합니다. Reviewer가 blocking finding을 남기면 active writer가 같은 branch에서 correction을 수행하고 새 exact head를 보고합니다.
+
 즉시 중단 조건:
 
 ```text
@@ -170,6 +198,7 @@ git rev-parse HEAD
 금지 파일이 이미 수정되어 있음
 민감값이 노출될 위험이 있음
 origin/main 기준 새 작업 브랜치가 아님
+다른 active writer와 path 또는 semantic authority가 충돌함
 ```
 
 ---
@@ -229,14 +258,17 @@ DEPLOYMENT GATED
 1. 전용 worktree 배정
 2. 에이전트가 작업 성격에 맞는 새 브랜치 생성
 3. branch name / base SHA / clean 상태 시작 보고
-4. 로컬 수정
-5. 로컬 검증
-6. diff/stat/status 보고
-7. CTO 승인 후 push
-8. PR 생성
-9. 검증 모델 검토
-10. CTO merge 판단
+4. active writer + semantic authority collision 확인
+5. 로컬 수정
+6. focused local validation
+7. diff/stat/status 보고
+8. normal additive commit + push
+9. Draft PR 생성/갱신
+10. 검증 모델/Web CTO 독립 검토
+11. CTO merge 판단
 ```
+
+허용된 feature branch 범위 안에서는 구현 에이전트가 정상적인 additive commit/push와 Draft PR 유지보수를 수행할 수 있습니다. 별도 승인이 없는 한 Draft→Ready, merge, force-push, rebase, amend로 published history를 다시 쓰는 행위는 금지합니다.
 
 통합은 GitHub PR로만 합니다.
 
@@ -258,20 +290,30 @@ LoveBud-wt-codex → branch push → PR → main merge
 
 병렬 개발은 허용하지만 merge는 순차로 진행합니다.
 
-한 PR이 merge된 후 다른 작업 브랜치는 최신 main을 반영해야 합니다.
+한 PR이 merge된 후 다른 작업 브랜치는 최신 main과의 overlap을 다시 확인해야 합니다. 정렬이 필요한 경우 published history를 재작성하지 않고 normal merge-forward를 사용합니다.
 
 ```powershell
 git fetch origin
-git rebase origin/main
+git checkout <task-branch>
+git merge --no-edit origin/main
 ```
 
-또는 GitHub에서 branch update 후 검증을 다시 실행합니다.
+금지:
+
+```text
+git rebase origin/main
+force-push
+published commit amend/history rewrite
+```
+
+merge-forward 후에는 path overlap뿐 아니라 semantic overlap을 다시 판정하고 새 exact-head에 필요한 focused check + GitHub CI를 실행합니다.
 
 권장 merge 원칙:
 
 ```text
 작고 위험 낮은 PR 먼저
-runtime-sensitive PR은 rebase 후 merge
+runtime-sensitive PR은 current-main alignment 후 merge
+공유 Auth/API/DB/schema authority는 dependency 순서대로 직렬 merge
 Search/Auth/API PR은 더 엄격하게 검증
 Netlify actual deletion은 readiness check 후 별도 승인 PR에서만 수행
 ```
@@ -350,6 +392,18 @@ CSS polish와 backend/API 변경 혼합
 Netlify blocker 제거 PR에서 netlify.toml 또는 netlify/** 삭제
 ```
 
+특히 서로 다른 파일이라도 아래처럼 같은 semantic authority를 수정하면 병렬 독립 작업으로 취급하지 않습니다.
+
+```text
+Firebase/Neon Auth/client token/server verifier → AUTH authority
+schema manifest/migration/constraint/index → DB_SCHEMA authority
+Neon Serverless/Hyperdrive/pg/Drizzle adapter → DB_TRANSPORT authority
+Pages Function/Worker/Service Binding/API route → API_RUNTIME authority
+Tree/Memory/social mutation 경계 → 각각의 WRITE authority
+visibility/owner mapping/entitlement → 보안·소유권 authority
+Modal CRUD contraction/shared Cloudflare cutover → PLATFORM_RUNTIME authority
+```
+
 ---
 
 ## 15. 보고 형식
@@ -360,6 +414,11 @@ Netlify blocker 제거 PR에서 netlify.toml 또는 netlify/** 삭제
 assigned worktree path
 agent-chosen branch
 base SHA
+active semantic authority
+active writer
+parallel classification: GREEN / YELLOW / RED
+path overlap checked: yes/no
+authority overlap checked: yes/no
 changed files
 added files
 deleted files
@@ -381,6 +440,7 @@ target head SHA
 expected head SHA matched: yes/no
 changed files
 scope result
+semantic authority overlap result
 test result
 grep/security result
 browser smoke result if applicable
@@ -401,10 +461,13 @@ LoveBud control repo에 접근하지 마십시오.
 main을 직접 수정하거나 push하지 마십시오.
 최신 origin/main 기준으로 작업 성격에 맞는 새 브랜치를 직접 만드십시오.
 branch name / base SHA / clean 상태를 시작 보고에 포함하십시오.
-CTO 승인 전 push/PR 생성 금지.
-merge 금지.
+작업 전 active writer와 branch/file/semantic authority 충돌을 확인하십시오.
+ONE WRITER PER BRANCH / FILE / SEMANTIC AUTHORITY를 지키십시오.
+허용된 feature branch에서는 additive commit/push와 Draft PR 유지보수만 수행하십시오.
+rebase / force-push / published amend 금지.
+Draft→Ready 및 merge 금지.
 민감값 출력 금지.
-예상하지 못한 파일이 수정되어 있으면 즉시 중단하십시오.
+예상하지 못한 파일 또는 semantic authority 충돌이 있으면 즉시 중단하십시오.
 ```
 
 ---
@@ -415,6 +478,9 @@ merge 금지.
 작업 1개 = 브랜치 1개 = worktree 1개 = PR 1개
 검증 1개 = 검증 worktree 1개 또는 읽기 전용 PR 검토 1개
 작업 브랜치명 = 에이전트가 작업 성격에 맞게 직접 생성
-main 통합 = GitHub PR only
+병렬 구현 = branch/path/semantic authority 모두 독립일 때만
+active authority = writer 1명, 다른 모델은 review/forensic only
+main 통합 = GitHub PR only + 순차 merge
+current-main alignment = normal merge-forward, no rebase/history rewrite
 LoveBud control repo = clean main baseline only
 ```

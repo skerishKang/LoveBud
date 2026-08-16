@@ -7,6 +7,7 @@ from modal_compute.social_errors import SocialWriteError
 
 COMMENT_ACTOR_LIMIT = 10
 COMMENT_ACTOR_MEMORY_LIMIT = 3
+TREE_COMMENT_ACTOR_LIMIT = 10
 WINDOW_MINUTES = 1
 
 
@@ -94,5 +95,33 @@ def check_comment_rate_limits(
             status_code=429,
             code="RATE_LIMITED_MEMORY",
             message="Too many comments on this memory. Please try again later.",
+            retry_after_ms=WINDOW_MINUTES * 60 * 1000,
+        )
+
+
+def check_tree_comment_rate_limits(
+    cur: Any,
+    actor_id: str,
+) -> None:
+    try:
+        actor_ok = check_and_increment_rate_limit(
+            cur,
+            scope="tree-comment:actor",
+            actor_id=actor_id,
+            memory_id=None,
+            max_count=TREE_COMMENT_ACTOR_LIMIT,
+        )
+    except Exception:
+        raise SocialWriteError(
+            status_code=503,
+            code="RATE_LIMIT_UNAVAILABLE",
+            message="Comment write service is temporarily unavailable",
+        )
+
+    if not actor_ok:
+        raise SocialWriteError(
+            status_code=429,
+            code="RATE_LIMITED",
+            message="Too many comments. Please try again later.",
             retry_after_ms=WINDOW_MINUTES * 60 * 1000,
         )
