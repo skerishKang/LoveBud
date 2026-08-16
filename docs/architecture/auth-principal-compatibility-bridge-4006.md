@@ -342,7 +342,7 @@ password-reset email
 logout/session clearing
 ```
 
-Current child Neon Auth configuration already supports email/password signup configuration and has one Google provider configured, but deployed browser OAuth remains blocked by zero configured trusted origins.
+Current child Neon Auth configuration supports email/password signup and has one Google provider configured. The synthetic email/password lifecycle through the managed endpoint is PASS-proven (19 PASS / 2 BYPASS / 0 FAIL, including origin validation: missing origin → 400, untrusted origin → 403). Deployed browser OAuth remains BLOCKED_ZERO_TRUSTED_ORIGINS (0 trusted origins configured on the child).
 
 Provider feature availability alone is not cutover evidence; session, callback, ownership and rollback parity must be tested.
 

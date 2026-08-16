@@ -137,9 +137,9 @@ Interpretation:
 - deployed LoveBud/LoveTree browser OAuth must remain `HOLD` until explicit trusted origins/callback configuration is added through the supported Neon Auth management surface;
 - direct SQL editing of managed Auth configuration is intentionally avoided.
 
-Neon documents the current branchable Auth implementation as Better Auth-based, with branch-scoped users/sessions/config/JWKS and branch-specific Auth endpoints. Better Auth's standard email/password lifecycle exposes sign-up, sign-in, session-cookie and sign-out flows; the intended next test is therefore an end-to-end synthetic lifecycle through the managed endpoint rather than manually inserting rows into `neon_auth` tables.
+Neon documents the current branchable Auth implementation as Better Auth-based, with branch-scoped users/sessions/config/JWKS and branch-specific Auth endpoints. Better Auth's standard email/password lifecycle exposes sign-up, sign-in, session-cookie and sign-out flows; the intended test is therefore an end-to-end synthetic lifecycle through the managed endpoint rather than manually inserting rows into `neon_auth` tables.
 
-The current execution container cannot resolve external DNS, so the endpoint lifecycle could not be invoked from this worker after provisioning. This is an execution-environment limitation, not a failed Auth service/database test. No direct-table imitation of signup/session state was performed.
+A later network-capable run executed that synthetic lifecycle through the managed child endpoint: email/password signup, signin, session-token validation, logout and post-logout rejection all passed (19 PASS / 2 BYPASS / 0 FAIL). The GET /session REST endpoint is not exposed by the managed API, so session validation is token-based (BYPASS). Origin validation passed (missing origin → 400; untrusted origin → 403). No direct-table imitation of signup/session state was performed.
 
 ## Identity migration rule
 
@@ -161,16 +161,16 @@ Product authorization should progressively resolve through the stable applicatio
 
 ## Next evidence required
 
-Before any production cutover:
+Before any production cutover, each item with its current evidence status:
 
-1. run synthetic Neon Auth sign-up/sign-in/sign-out against the child Auth endpoint from a network-capable test runner;
-2. link synthetic Neon identities to dedicated test app accounts and verify uniqueness/relink rejection;
-3. validate session/JWT verification and logout/revocation behavior;
-4. determine password migration/reset strategy rather than assuming Firebase password hashes can be moved transparently;
-5. configure and validate Google OAuth callback/trusted-origin behavior for both LoveBud and LoveTree domains on non-production Auth first;
-6. inventory current Firebase provider configuration using non-mutating access where available;
-7. define resolution policy for the two unresolved legacy subjects;
-8. add application/runtime contracts before changing product routes.
+1. **synthetic Neon Auth sign-up/sign-in/sign-out against the child Auth endpoint** — **COMPLETED / PASS** (19 PASS / 2 BYPASS / 0 FAIL on the managed endpoint);
+2. **link synthetic Neon identities to dedicated test app accounts and verify uniqueness/relink rejection** — **DESIGN VERIFIED** via the branch uniqueness constraints; managed JIT runtime **NOT PROVEN** (no account-linking API in the managed endpoint);
+3. **session/JWT verification and logout/revocation behavior** — **COMPLETED / PASS** for the tested email/password lifecycle (JWKS EdDSA, malformed/no-auth rejection, signout invalidation); GET /session endpoint **BYPASS**;
+4. **password migration/reset strategy** rather than assuming Firebase password hashes can be moved transparently — **JIT preferred path confirmed**; managed JIT runtime **NOT PROVEN**; forced reset remains the fallback;
+5. **Google OAuth callback/trusted-origin behavior for LoveBud and LoveTree on non-production Auth** — **BLOCKED_ZERO_TRUSTED_ORIGINS** (0 trusted origins configured on the child; owner action required);
+6. **current Firebase provider configuration inventory using non-mutating access** — **BLOCKED_BY_OWNER_ACCESS** (no Firebase Admin credentials available);
+7. **resolution policy for the two unresolved legacy subjects** — **REMAINS REQUIRED** (both subjects quarantined in `app_identity_reconciliation_cases`; policy not yet defined);
+8. **application/runtime contracts before changing product routes** — **REMAINS REQUIRED / HOLD**.
 
 ## Verdict
 

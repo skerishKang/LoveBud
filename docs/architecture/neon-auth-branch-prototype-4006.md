@@ -264,7 +264,7 @@ PASSWORD_HASH_IMPORT_SUPPORTED_AND_TESTED: NO
 HOLD_FIREBASE_HASH_EXPORT_FOR_MIGRATION: YES
 PREFERRED_NONPROD_TEST_PATH: JUST_IN_TIME_ACCOUNT_LINK_REQUIRED
 FALLBACK_PATH: FORCED_PASSWORD_RESET_REQUIRED
-JIT_MANAGED_ENDPOINT_E2E: PENDING
+JIT_MANAGED_ENDPOINT_E2E: DESIGN_VERIFIED_MANAGED_RUNTIME_NOT_PROVEN
 PRODUCTION_AUTH_CUTOVER: HOLD
 ```
 
@@ -279,7 +279,7 @@ The preferred staged candidate is therefore `JUST_IN_TIME_ACCOUNT_LINK_REQUIRED`
 
 If managed Neon Auth cannot support a safe JIT flow, the fallback is `FORCED_PASSWORD_RESET_REQUIRED`, also bound to a deterministically resolved existing `app_account` rather than email matching.
 
-This decision remains pending managed-endpoint E2E. No password/hash conversion should be invented from schema similarity, and sensitive Firebase hash material should not be exported merely to test an undocumented path.
+This decision remains gated on managed-endpoint JIT E2E, which is design-verified but not runtime-proven through the managed endpoint. No password/hash conversion should be invented from schema similarity, and sensitive Firebase hash material should not be exported merely to test an undocumented path.
 
 ## 12. Shared-app SSO topology selected; runtime proof pending
 
@@ -291,8 +291,8 @@ Selected topology:
 SSO_TOPOLOGY: SEPARATE_APP_ORIGINS_USING_CENTRAL_AUTH_REDIRECT_SESSION_EXCHANGE
 SHARED_APP_ACCOUNT_AUTHORITY: REQUIRED
 DIRECT_CROSS_APP_COOKIE_SHARING: NOT_REQUIRED
-NONPROD_TRUSTED_ORIGIN_E2E: PENDING
-GOOGLE_OAUTH_BRANCH_E2E: PENDING
+NONPROD_TRUSTED_ORIGIN_E2E: PARTIAL_ORIGIN_VALIDATION_PASS_OAUTH_BLOCKED
+GOOGLE_OAUTH_BRANCH_E2E: BLOCKED_ZERO_TRUSTED_ORIGINS
 PRODUCTION_TRUSTED_ORIGIN_CHANGE: HOLD
 PRODUCTION_AUTH_CUTOVER: HOLD
 ```
@@ -351,18 +351,18 @@ Modal remains orthogonal specialized compute and should not become the identity 
 
 ## 15. Next experiments
 
-The safe next #4006 steps are now:
+The safe next #4006 steps, with current evidence status attached:
 
-1. complete a **read-only Firebase Auth population/provider inventory**: total auth users; Email/Password count; Google count; any other providers; disabled/unverified/duplicate-email edge cases; and deterministic coverage between active Product owners and Firebase accounts, without exposing emails, provider identifiers, hashes, tokens, or credentials;
-2. run synthetic Neon Auth sign-up/sign-in/sign-out against the existing non-production child Auth endpoint from a network-capable runner;
-3. test the preferred JIT existing-account link flow without exporting Firebase password hashes;
-4. verify provider-specific token/session/JWKS validation and logout/revocation behavior;
-5. configure and validate fixed non-production trusted origins/callbacks for both LoveBud and LoveTree;
-6. prove central redirect/session exchange maps both applications to the same stable `app_account` without cross-origin cookie assumptions;
-7. verify the actual runtime Firebase issuer/project namespace before any production identity seeding;
-8. define resolution policy for unresolved legacy social subjects;
-9. add runtime contracts before changing Product owner routes;
-10. only then propose a staged production migration PR.
+1. **read-only Firebase Auth population/provider inventory** — attempted, **BLOCKED_BY_OWNER_ACCESS** (no Firebase Admin credentials / service-account key available); needs owner-provided read-only access or a sanitized `firebase auth:export`;
+2. **synthetic Neon Auth sign-up/sign-in/sign-out** against the child Auth endpoint — **COMPLETED / PASS** (19 PASS / 2 BYPASS / 0 FAIL);
+3. **JIT existing-account link flow** — **DESIGN VERIFIED**; managed runtime **NOT PROVEN** because the managed endpoint exposes no account-linking API;
+4. **provider-specific token/session/JWKS validation and logout/revocation** — **COMPLETED / PASS** for the tested email/password lifecycle (JWKS EdDSA, malformed/no-auth rejection, signout invalidation); GET /session REST endpoint **BYPASS** (token-based);
+5. **fixed non-production trusted origins/callbacks for LoveBud and LoveTree** — **BLOCKED_ZERO_TRUSTED_ORIGINS** (0 trusted origins configured on the child; owner action required);
+6. **central redirect/session exchange to one stable `app_account`** — **NOT PROVEN** (requires browser E2E after trusted origins are configured);
+7. **runtime Firebase issuer/project namespace verification** before any production identity seeding — **REMAINS REQUIRED** (repository config converges on `relovetree`, but deployed-config drift must be re-verified);
+8. **resolution policy for the unresolved legacy social subjects** — **REMAINS REQUIRED** (two subjects quarantined; policy not yet defined);
+9. **runtime contracts before changing Product owner routes** — **REMAINS REQUIRED**;
+10. **staged production migration PR** — **REMAINS GATED** on the items above.
 
 ## 16. Prototype verdict
 
@@ -393,11 +393,13 @@ PASS: existing-account compatibility resolver and uniqueness model
 PASS: password migration path narrowed without unsupported hash import
 PASS: shared-app SSO topology selected
 PASS: current single Firebase namespace gate documented
-PENDING: Firebase Auth population/provider/edge-case inventory
-PENDING: managed-endpoint signup/session/JIT-link E2E
-PENDING: non-production trusted-origin + Google OAuth E2E
-PENDING: provider-neutral server/runtime acceptance
-PENDING: entitlement and stable Product-owner migration
+PASS: managed email/password signup/signin/signout + session lifecycle on the child branch (19 PASS / 2 BYPASS / 0 FAIL)
+PASS: origin validation on the managed endpoint (missing origin → 400; untrusted origin → 403)
+BLOCKED_BY_OWNER_ACCESS: Firebase Auth population/provider/edge-case inventory
+BLOCKED_ZERO_TRUSTED_ORIGINS: non-production trusted-origin + Google OAuth browser E2E
+DESIGN_VERIFIED_MANAGED_RUNTIME_NOT_PROVEN: JIT managed-endpoint link
+NOT_PROVEN: provider-neutral server/runtime acceptance
+NOT_PROVEN: entitlement and stable Product-owner migration
 ```
 
 Neon Auth remains a viable shared-auth candidate, but Production auth cutover is not authorized.
