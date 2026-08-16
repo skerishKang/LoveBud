@@ -9,7 +9,9 @@
 **AI track:** #4030 — non-blocking  
 **Status:** Pre-implementation QA/acceptance authority. No Production bulk mutation authorized.  
 **Baseline at creation:** LoveBud `ba7d470385f8bf21471cb8d5eeb9a4846df7232d`; `lovetree-limone` `5a96861f5bbbdf65fbadeab614d50fd300db69a7`.  
-**Last updated:** 2026-08-14
+**Current reconciliation baseline:** LoveBud `main` `e282f610261d2562af51ce7da1506fbe3faa3c90`; `lovetree-limone` `21a39929ba6b6997ce3ad90f51c0ec0bf8f099f5`; `lovetree-limone#172` OPEN.
+**Last updated:** 2026-08-16
+**Blocker corrections applied:** Web CTO reviews `4943690923` (publication stale-preflight matrix), async lease-takeover, ordered-read projection consistency, OAuth reconnect, source-mutation-during-enumeration, and follow-up `5301906011` (Model B publication visibility lifecycle).
 
 ---
 
@@ -33,6 +35,8 @@ app account
 ```
 
 The original YouTube playlist remains unchanged.
+
+**Cross-repository boundary:** LoveBud owns the canonical backend/data/auth/import/read/publication authority. LoveTree (`lovetree-limone`) is the consumer/UI/native product surface. #4031 does not make LoveTree a second canonical backend. Cross-repo QA validates exactly: LoveBud canonical truth → API/read contract → LoveTree consumer → visible UI behavior.
 
 This plan must be usable for three controlled scale gates:
 
@@ -93,9 +97,11 @@ Do not record in shared evidence:
 - API/client secret;
 - raw private playlist URL/ID/title;
 - real user identity;
+- raw provider account identifier;
 - private Moment memo/content;
 - raw DB connection string;
-- raw provider response body.
+- raw provider response body;
+- OAuth/refresh token, authorization code, API/client secret, cookie/session secret, secret bindings.
 
 Use controlled synthetic/test playlists for load gates unless an explicit owner-controlled private fixture is approved and kept out of logs/screenshots.
 
@@ -185,6 +191,28 @@ PASS:
 - authorized account can list owned playlists, including a controlled private playlist;
 - revoked/missing scope fails closed with reauthorization state;
 - discovery pagination does not assume <= 50 playlists.
+
+### A6 — reconnect / credential lifecycle (per #4032 reconnect convergence authority)
+
+The connection authority stays singular and usable across reconnect/re-consent. PASS requires:
+
+```text
+A6a same actor + same canonical YouTube identity reconnects
+    => exactly one active provider connection authority
+A6b reconnect token response omits refresh_token
+    => existing usable encrypted refresh credential is preserved; connection remains usable
+A6c reconnect returns a new refresh_token
+    => credential rotates atomically; credential_generation advances; superseded credential unusable
+A6d duplicate / replayed / concurrent reconnect
+    => duplicate active connection authorities = 0
+A6e disconnect / revoke after reconnect
+    => current + superseded credential authority for that canonical connection unusable
+A6f queued/processing import bound to superseded credential generation
+    => explicit current-generation resolution/rebind OR bounded fail/requeue;
+       silent continuation on a stale credential generation = FORBIDDEN
+```
+
+Evidence proves canonical provider identity/connection convergence and credential-generation fencing with sanitized generation/result/category only — never raw provider account identifiers, tokens, or credential ciphertext.
 
 ---
 
@@ -307,9 +335,81 @@ and provider enumeration reaches a terminal end condition.
 
 Unexplained provider-count discrepancy cannot be `completed`.
 
+### J9 — stale executor after lease takeover (per #4034 fencing authority)
+
+```text
+A claims generation N and begins processing
+→ A is paused past lease expiry
+→ B claims generation N+1
+→ B performs authoritative progress
+→ A resumes and attempts: item outcome / checkpoint / counter / lease renew /
+  cancellation acknowledgement / terminal status mutation with generation N
+```
+
+PASS:
+
+- A authoritative mutations = 0;
+- A cannot renew or reclaim generation N;
+- B remains sole authoritative writer for N+1;
+- checkpoint/counter reflect only committed canonical outcomes;
+- terminal/cancel state cannot be overwritten by A;
+- final canonical occurrence count/order exact.
+
+### J10 — positive fencing control
+
+An active current-generation lease holder renews and advances normally (item progress, checkpoint, counter, renewal) with zero interference. This proves the fence rejects stale writers without blocking the current one.
+
+Fencing requirement: every authoritative mutation checks the current server/database-controlled fencing generation/epoch inside the same authoritative transaction — a lease owner token plus expiry alone is NOT sufficient fencing.
+
 ---
 
-## 9. Ordered read acceptance — #4028
+## 9. Source snapshot coherence acceptance — #4027
+
+Provider `nextPageToken` / `pageToken` is pagination continuity, NOT snapshot isolation. PASS requires a controlled future scenario where the source mutates mid-enumeration:
+
+```text
+start multi-page enumeration
+→ at least one page durably processed
+→ controlled source mutation
+S1 remove one occurrence + insert another (total count unchanged)
+S2 same membership + reorder occurrences (total count unchanged)
+S3 page token invalid / restart-from-beginning
+```
+
+PASS for each case:
+
+- mixed source generations NEVER report `completed`;
+- total-count equality alone cannot prove completeness;
+- membership coherence revalidated (canonical occurrence set matches the selected #4027 snapshot contract);
+- source-order coherence revalidated;
+- count coherence revalidated;
+- occurrence/order fingerprint or equivalent authority validated per #4027;
+- implementation either performs a bounded clean restart/reconciliation OR returns truthful `partial_failed` / `failed` (`source_changed`);
+- abandoned-version occurrences do not silently remain in the final snapshot;
+- retained occurrences duplicated = 0 after restart/retry;
+- page-token restart + item idempotency alone is NOT snapshot proof.
+
+Evidence records only sanitized counts / fingerprints / categories / generation ids — never raw private playlist IDs, titles, or content.
+
+---
+
+## 10. Ordered read acceptance — #4028
+
+Three distinct semantic authorities (per #4035/#4036 current authority):
+
+```text
+moment_sequence_version    = STRUCTURAL SEQUENCE REVISION      — ordered canonical set/order binding
+public_projection_revision = PUBLIC ORDERED-READ PROJECTION MEMBERSHIP REVISION
+publication_revision       = PUBLICATION PREFLIGHT/PUBLISH FRESHNESS — #4029 acceptance only
+```
+
+They are distinct:
+
+```text
+moment_sequence_version != public_projection_revision != publication_revision
+```
+
+`!=` means distinct semantic responsibility; physical storage architecture remains a future implementation decision. `public_projection_revision` is NEVER a publication authorization token, and `moment_sequence_version` alone is NEVER publication freshness.
 
 ### R1 — shell
 
@@ -348,17 +448,106 @@ PASS:
 - correct order neighborhood returned;
 - no deep OFFSET dependency required by contract.
 
-### R4 — stale cursor
+### R4 — structural stale cursor
 
-Fetch cursor, then reorder/insert/delete.
+Fetch cursor, then reorder/insert/delete/sort_order change.
 
 PASS:
 
 ```text
-old cursor → TREE_SEQUENCE_CHANGED / explicit conflict
+old cursor → stale structural sequence → rejected / restart per current contract
 ```
 
 not a silently mixed sequence.
+
+### R4a — immediate private revocation
+
+Public cursor issued, then a later/public-visible Moment becomes private.
+
+PASS:
+
+```text
+old cursor never exposes the revoked Moment
+stale projection rejected/restarted
+```
+
+### R4b — newly public earlier member
+
+Public cursor issued, then an earlier private Moment becomes public.
+
+PASS:
+
+```text
+old cursor cannot silently continue and skip the new earlier member
+reject/restart required
+NEWLY_PUBLIC_EARLIER_MEMBER_SILENT_SKIP = FORBIDDEN
+```
+
+### R4c — Tree visibility revocation
+
+Public cursor, then Tree public → private.
+
+PASS:
+
+```text
+old public cursor immediately unusable
+zero further public disclosure
+```
+
+### R4d — unchanged projection
+
+Unchanged structural sequence + unchanged public projection generation.
+
+PASS:
+
+```text
+deterministic continuation may succeed
+```
+
+### R4e — owner title/memo-only edit
+
+Membership/order unchanged, owner-only content edit.
+
+PASS:
+
+```text
+owner cursor may continue without unnecessary invalidation (per #4035 current authority)
+```
+
+### R4f — read-mode replay
+
+PASS:
+
+```text
+OWNER cursor → PUBLIC replay = rejected
+PUBLIC cursor → OWNER replay = rejected
+```
+
+### R4g — count/page coherence
+
+PASS:
+
+```text
+totalCount + returned window + nextCursor bind to the SAME accepted
+moment_sequence_version + public_projection_revision generation
+```
+
+### R4h — deep jump
+
+Public deep jump carries the same read-mode + sequence + projection fence; it does not bypass public projection freshness.
+
+### R4i — range read
+
+Public range read applies the same public projection fencing.
+
+Negative cases must prove after restart/full traversal:
+
+```text
+private leakage = 0
+duplicate/gap after restart = 0
+full traversal current truth restored
+totalCount == current public projection
+```
 
 ### R5 — privacy
 
@@ -371,7 +560,7 @@ unauthorized private Moment data = 0
 
 ---
 
-## 10. Large UI acceptance — `lovetree-limone#172`
+## 11. Large UI acceptance — `lovetree-limone#172`
 
 The Tree may contain 5K Moments while mounted heavy UI remains bounded.
 
@@ -430,7 +619,9 @@ Gate B/C must meet those frozen budgets or receive an explicit reviewed budget r
 
 ---
 
-## 11. Publication acceptance — #4029
+## 12. Publication acceptance — #4029
+
+Publication freshness authority is the server-controlled monotonic `publication_revision` (#4036): preflight binds Tree/actor + `moment_sequence_version` + `publication_revision` + checked_at + valid_until/TTL + relevant provider freshness state. A client can never mint it (`publishReady: true` cannot bypass server authority).
 
 ### P1 — source playlist unchanged
 
@@ -476,15 +667,36 @@ PASS:
 - public-playable claim = 0;
 - private-only provider metadata absent from public projection.
 
-### P6 — stale preflight
-
-Preflight → mutate Tree sequence → publish.
-
-PASS:
+### P6 — stale preflight matrix (per #4036 publication_revision authority)
 
 ```text
-stale preflight rejected
+P6a preflight → reorder / insert / delete
+     => structural sequence stale → publish rejected / re-preflight
+P6b preflight → publication-relevant Moment visibility change (no sequence mutation)
+     => moment_sequence_version unchanged, publication_revision advances → old preflight rejected
+P6c preflight → Tree visibility / publication-relevant state change (structural sequence may be unchanged)
+     => old preflight rejected
+P6d preflight → source/media identity change altering provider target
+     => publication_revision stale → reject / revalidate
+P6e preflight → canonical availability/classification input change
+     => reject / revalidate
+P6f preflight → unlisted include / exclude / revoke decision change
+     => stale publication authority → reject
+P6g provider validity / TTL expired
+     => provider recheck or fail closed
+P6h unchanged exact relevant inputs + current structural sequence + current publication_revision + valid TTL/provider state
+     => final publish path may proceed
+P6i client sends publishReady=true with stale preflight
+     => cannot bypass server authority
+P6j Tree A preflight → Tree B publish attempt
+     => reject
+P6k publication_revision stale while structural sequence unchanged
+     => reject
+P6l structural sequence stale while publication_revision unchanged
+     => reject / re-preflight per contract
 ```
+
+The test asserts the server-controlled revision/fingerprint, not merely a browser-supplied flag. After every negative case, final public reread must remain leak-safe (no private/unavailable exposure, no stale projection).
 
 ### P7 — final public reread
 
@@ -496,7 +708,41 @@ After controlled publish:
 
 ---
 
-## 12. AI non-blocking acceptance — #4030
+## 13. Publication visibility lifecycle acceptance — Model B (per #4026/#4029/#4033 current authority)
+
+Selected staging model — MODEL B only (no dual-model acceptance):
+
+```text
+During import/review:
+  Tree.visibility = private
+  ALL imported Moment.visibility = private
+Import completion != publication
+Final publication = explicit owner action
+FINAL_PUBLICATION_VISIBILITY_TRANSITION = APPROVED_MOMENTS + TREE ATOMIC PROMOTION
+```
+
+No canonical pseudo visibility values (`draft` / `staged` / `importing`); import lifecycle state is a separate server-side concept. At every scale gate (300 / 1K / 5K):
+
+```text
+V1  queued → public Tree exposure = 0, public imported Moment exposure = 0
+V2  processing / importing → public exposure = 0
+V3  partial_failed → public exposure = 0
+V4  failed → public exposure = 0
+V5  cancelled → public exposure = 0
+V6  completed but not explicitly published → public exposure = 0
+V7  explicit publish → exactly approved/current-public-eligible Moments promoted private→public
+    AND Tree promoted private→public, in ONE atomic boundary
+V8  blocked/private/unavailable/unknown/rejected-unlisted
+    → owner row preserved private, absent from public projection
+V9  public shell/window count = exact approved public Moment set count
+V10 mid-publish failure → rollback → zero partial public state
+V11 post-publish public reread → exact approved projection only
+V12 source YouTube playlist privacy → unchanged
+```
+
+---
+
+## 14. AI non-blocking acceptance — #4030
 
 The import E2E gate does **not** require AI.
 
@@ -517,14 +763,19 @@ If AI is enabled in a later test:
 
 ---
 
-## 13. Gate A — 300 Moments
+## 15. Gate A — 300 Moments
 
 Required before 300 becomes an enabled product ceiling:
 
-- authorization matrix PASS;
+- authorization matrix PASS (A1–A5);
+- OAuth reconnect/credential lifecycle PASS (A6a–A6f);
 - exact mapping/order/provenance PASS;
 - idempotent async job PASS;
 - crash/restart/cancel PASS;
+- structural cursor freshness + public projection cursor freshness PASS (R4, R4a–R4i);
+- publication preflight freshness matrix PASS (P6a–P6l);
+- Model B zero-exposure + atomic publish PASS (V1–V12);
+- public count correctness PASS;
 - complete ordered read PASS;
 - desktop/mobile large UI baseline budgets frozen and PASS;
 - publication privacy matrix PASS;
@@ -534,35 +785,43 @@ A 300 PASS is architecture proof, not evidence that 5K is safe.
 
 ---
 
-## 14. Gate B — 1,000 Moments
+## 16. Gate B — 1,000 Moments
 
 Everything from Gate A plus:
 
 - >= 20 provider pages where fixture/provider layout supports it, or equivalent pagination stress;
+- forced lease-expiry/takeover cycle (J9/J10) — at least one full stale-executor takeover, not only restart before a replacement owner exists;
+- multi-page enumeration + source mutation during enumeration (S1/S2/S3) with membership/order/count coherence;
+- page-token restart truthfulness;
 - bounded executor memory verified;
 - multiple restart/checkpoint boundaries;
 - full window traversal exact;
+- cursor/deep pagination behavior under load;
 - deep jump/search proven beyond first several windows;
 - #160/#172 semantic-zoom/large-view behavior measured;
 - no material UI regression against frozen budgets;
-- preflight batching proven without one-provider-call-per-Moment.
+- publication preflight scale behavior (batching without one-provider-call-per-Moment).
 
 ---
 
-## 15. Gate C — 5,000 Moments
+## 17. Gate C — 5,000 Moments
 
 Everything from A/B plus:
 
 - complete ~100-page provider enumeration path or provider-equivalent controlled simulation;
 - full canonical count/order/provenance reconciliation;
-- executor survives process loss/reclaim at scale;
+- executor survives process loss/reclaim at scale (fencing generation holds at 5K);
+- restart/takeover under load;
+- source mutation during multi-page import coherence;
 - retry/cancel remains bounded;
 - no single HTTP request or DB transaction spans the entire import;
 - ordered read traverses all 5K with no gap/duplicate;
 - deep jump near 4,999 works;
 - editor does not mount 5K heavyweight surfaces;
 - publication preflight uses batched unique-media checks;
+- final approved-set atomic publication (V7/V10/V11) at 5K;
 - final public/private projections remain leak-safe;
+- cross-repository UI correctness against current `lovetree-limone` main;
 - operational quota/resource estimates recorded;
 - rollback/feature-disable switch documented.
 
@@ -570,7 +829,39 @@ Gate C Production enablement requires an explicit release decision after evidenc
 
 ---
 
-## 16. Cleanup after test runs
+## 18. Per-gate acceptance evidence schema
+
+Each future gate records, per run:
+
+```text
+gate, scale
+LoveBud implementation SHA
+lovetree-limone consumer SHA
+deployment identity
+fixture category
+expected total occurrence count
+actual canonical count
+owner read count
+public approved count
+cursor generation metadata (sanitized)
+publication revision metadata (sanitized)
+job generation/fencing metadata (sanitized)
+restart/takeover result
+snapshot fingerprint result
+duplicate count
+private leakage count
+silent truncation count
+public exposure before publication
+post-public projection count
+latency/memory/render evidence where appropriate
+verdict (PASS / FAIL / HOLD / BLOCKED)
+```
+
+NEVER recorded as evidence: OAuth/refresh token, authorization code, cookie/session secret, DB URL, raw private playlist URL, private playlist title (if sensitive), raw provider account identifier, secret bindings, raw provider error bodies.
+
+---
+
+## 19. Cleanup after test runs
 
 Controlled fixture cleanup must be explicit.
 
@@ -588,7 +879,7 @@ Production cleanup requires normal product/admin authority and explicit approval
 
 ---
 
-## 17. Failure classification
+## 20. Failure classification
 
 Use:
 
@@ -610,7 +901,7 @@ Do not convert HOLD/BLOCKED into PASS because adjacent tests succeeded.
 
 ---
 
-## 18. Cross-repository release checklist
+## 21. Cross-repository release checklist
 
 Before any scale-ceiling increase:
 
@@ -629,7 +920,7 @@ Before any scale-ceiling increase:
 
 ---
 
-## 19. Stop conditions
+## 22. Stop conditions
 
 STOP immediately when:
 
@@ -648,15 +939,42 @@ STOP immediately when:
 
 ---
 
-## 20. Planning verdict
+## 23. Planning verdict
 
 ```text
-CROSS_REPO_E2E_PLAN = DEFINED
+CROSS_REPO_ACCEPTANCE_PLAN = RECONCILED
 SCALE_GATES = 300 → 1000 → 5000
+OAUTH_RECONNECT_ACCEPTANCE = DEFINED (A6a–A6f)
+CREDENTIAL_GENERATION_FENCING_ACCEPTANCE = DEFINED
+EXECUTOR_LEASE_TAKEOVER_ACCEPTANCE = DEFINED (J9/J10)
+STALE_EXECUTOR_AUTHORITATIVE_MUTATION = ZERO_REQUIRED
+SOURCE_SNAPSHOT_COHERENCE_ACCEPTANCE = DEFINED (S1/S2/S3)
+PAGETOKEN_AS_SNAPSHOT_ISOLATION = FORBIDDEN
+COUNT_ONLY_COMPLETENESS = INSUFFICIENT
+STRUCTURAL_SEQUENCE_ACCEPTANCE = DEFINED
+PUBLIC_READ_PROJECTION_FRESHNESS_ACCEPTANCE = DEFINED (R4a–R4i)
+NEWLY_PUBLIC_EARLIER_MEMBER_SILENT_SKIP = FORBIDDEN
+IMMEDIATE_PRIVATE_REVOCATION_ACCEPTANCE = DEFINED
+READ_MODE_CURSOR_REPLAY = FORBIDDEN
+PUBLICATION_REVISION_FRESHNESS_ACCEPTANCE = DEFINED (P6a–P6l)
+STALE_PUBLICATION_PREFLIGHT_BYPASS = FORBIDDEN
+MODEL_B_PUBLICATION_TRANSITION_ACCEPTANCE = DEFINED (V1–V12)
+APPROVED_MOMENTS_PLUS_TREE_ATOMIC_PROMOTION = REQUIRED
+BLOCKED_MOMENTS_REMAIN_PRIVATE = REQUIRED
+INCOMPLETE_IMPORT_PUBLIC_EXPOSURE = ZERO_REQUIRED
+REVISION_AUTHORITY_CONFLATION = NONE
 COUNT_ORDER_IDEMPOTENCY = HARD GATES
 PRIVATE_SOURCE_VISIBILITY_MUTATION = ZERO
 IMPORT_TO_PUBLIC_AUTOMATION = ZERO
 AI_REQUIRED_FOR_IMPORT = NO
+GATE_300_SPECIFICATION = DEFINED
+GATE_1000_SPECIFICATION = DEFINED
+GATE_5000_SPECIFICATION = DEFINED
+GATE_300_RUNTIME_EVIDENCE = NOT_EXECUTED
+GATE_1000_RUNTIME_EVIDENCE = NOT_EXECUTED
+GATE_5000_RUNTIME_EVIDENCE = NOT_EXECUTED
+PRODUCTION_5K_ENABLEMENT = NOT_AUTHORIZED
 PRODUCTION_5K_TEST_WITHOUT_APPROVAL = PROHIBITED
+RUNTIME_E2E_EXECUTION = NOT_PERFORMED
 IMPLEMENTATION = NOT_YET PERFORMED
 ```
