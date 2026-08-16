@@ -300,7 +300,7 @@ test('4072: reset clears file input, preview, and error', async () => {
   const html = exportedHtml('<DT><A HREF="https://example.com/a">Alpha</A>');
   await api.handleFileSelected(fakeFile(html.length, () => Promise.resolve(html)));
   assert.equal(api.getState(), 'READY');
-  elements[FILE_INPUT_ID].value = 'C:\\fakepath\\bookmarks.html';
+  elements[FILE_INPUT_ID].value = 'bookmarks.html';
   api.resetSurface();
   assert.equal(api.getState(), 'IDLE');
   assert.equal(elements[FILE_INPUT_ID].value, '');
