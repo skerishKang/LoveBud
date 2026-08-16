@@ -69,9 +69,16 @@
                 const options = { method: 'POST', body: JSON.stringify({ body }) };
                 return BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`, addIdempotencyKey(options, idempotencyKey));
             },
-            fetchComments: async (memoryId) => BaseApiFetch.apiFetch(`/memories/${memoryId}/comments`),
+            fetchComments: async (memoryId, options = {}) => {
+                const params = new URLSearchParams();
+                if (options && options.limit) params.set('limit', String(options.limit));
+                if (options && options.cursor) params.set('cursor', String(options.cursor));
+                if (options && options.pagination) params.set('pagination', String(options.pagination));
+                const query = params.toString();
+                return BaseApiFetch.apiFetch(`/memories/${memoryId}/comments` + (query ? '?' + query : ''));
+            },
             fetchPublicMomentReactionSummary: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/reactions`, { publicRead: true }),
-            fetchPublicMomentComments: async (treeId, memoryId) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/comments`, { publicRead: true })
+            fetchPublicMomentComments: async (treeId, memoryId, options = {}) => BaseApiFetch.apiFetch(`/trees/${encodeURIComponent(treeId)}/memories/${encodeURIComponent(memoryId)}/comments` + (options && options.cursor ? `?cursor=${encodeURIComponent(options.cursor)}` : '') + (options && options.limit ? `${options.cursor ? '&' : '?'}limit=${encodeURIComponent(options.limit)}` : ''), { publicRead: true })
         };
     }
 
@@ -164,9 +171,26 @@
             return getCommunityMemories(options);
         }
 
-        function clearCommunityCaches() {
+        // #4055: targeted public-projection invalidation. A successful
+        // visibility/delete mutation must not leave stale public Browse lists or
+        // previews in the browser cache. When a treeId is known only that tree's
+        // projections are purged (per-Tree precision); otherwise the bounded
+        // public projection namespace is purged. Auth/session caches are never
+        // touched.
+        function clearCommunityCaches(treeId) {
             publicMemoriesCache = null;
             publicMemoriesByTreeCache.clear();
+            try {
+                if (window.LoveBudCache && typeof window.LoveBudCache.clearPublicTreeCaches === 'function') {
+                    if (treeId) {
+                        window.LoveBudCache.clearPublicTreeCaches(treeId);
+                    } else if (typeof window.LoveBudCache.clearPublicBrowseCaches === 'function') {
+                        window.LoveBudCache.clearPublicBrowseCaches();
+                    }
+                }
+            } catch (e) {
+                console.warn('[postgres-client] Failed to clear public projection caches:', e);
+            }
         }
 
         return {
@@ -200,7 +224,12 @@
                 if (!PublicTreeAdapter) {
                     throw new Error('LoveTreePublicTreeAdapter not loaded');
                 }
-                const apiMemories = await communityApi.getCachedCommunityMemories({ treeId: tree?.id, limit: 100 });
+                // #4055: the authoritative preview re-check must consult
+                // CURRENT public Memory authority. getCachedCommunityMemories
+                // could rehydrate an old representative Memory from
+                // publicMemoriesByTreeCache after a revocation while the parent
+                // Tree stays public — always fetch fresh public memories here.
+                const apiMemories = await communityApi.getCommunityMemories({ treeId: tree?.id, limit: 100 });
                 return PublicTreeAdapter.hydrateTreeWithPublicMemories(tree, apiMemories);
             }
         };

@@ -93,7 +93,6 @@ test('My Trees hub uses localized 내 트리 미리보기 and Selected tree tags
   assert.match(hub, /showPlaceholder\(\)[\s\S]*?i18nHub\('myTrees\.hub_badge'/, 'showPlaceholder must update badge using myTrees.hub_badge key');
   assert.match(hub, /showContent\([\s\S]*?i18nHub\('myTrees\.hub_badge'/, 'showContent must update badge using myTrees.hub_badge key');
 
-  // Verify no empty string keys are used for the hub badge in runtime rendering
   const lines = hub.split('\n');
   for (const line of lines) {
     if (line.includes('els.badge.textContent') && line.includes('i18nHub')) {
@@ -108,8 +107,74 @@ test('My Trees hub visually simplifies representative blocks and differentiates 
 
   assert.match(content, /\.my-trees-hub-rep\s*\{\s*display:\s*flex;\s*flex-direction:\s*column;\s*gap:\s*8px;\s*margin-top:\s*16px;\s*padding:\s*0;\s*border-radius:\s*0;\s*background:\s*transparent;\s*border:\s*none;\s*box-shadow:\s*none;\s*\}/s, 'representative block card decorations must be removed');
   assert.match(actions, /\.my-trees-hub-open-btn\s*\{[^}]*background:\s*var\(--primary\);[^}]*color:\s*white;[^}]*\}/s, '감상 열기 (openBtn) must be primary colored');
-  // #3578 Phase 1: the Edit secondary button is removed from the hub.
-  // Appreciation (openBtn) is the only external entry; verify the obsolete
-  // edit-btn secondary outline style is gone.
   assert.doesNotMatch(actions, /\.my-trees-hub-edit-btn\b/, 'obsolete edit-btn secondary style must be absent (#3578)');
+});
+
+// ─── Issue #3944: participant continuation authority ────────────────────────
+
+test('My Trees server-page append preserves local batch authority and truthful partial counts', () => {
+  const batch = read('js/my-trees/my-trees-batch-render.js');
+  const appendStart = batch.indexOf('function appendTrees(');
+  const renderStart = batch.indexOf('function renderTrees(', appendStart);
+  const appendBlock = batch.slice(appendStart, renderStart);
+
+  assert.ok(appendStart >= 0, 'batch renderer must define appendTrees');
+  assert.match(appendBlock, /allTreesData = Array\.isArray\(allTrees\) \? allTrees : \[\];/, 'server page must extend the in-memory authority');
+  assert.match(appendBlock, /renderNextBatch\(/, 'server page append must continue through the bounded local batch renderer');
+  assert.doesNotMatch(appendBlock, /grid\.innerHTML\s*=/, 'server page append must never clear the existing grid');
+  assert.doesNotMatch(appendBlock, /newItems\.forEach\(/, 'server page append must not dump the full fetched page directly into the DOM');
+  assert.match(batch, /summary\.textContent = '현재 ' \+ totalTreesCount \+ '개 로드됨';/, 'non-terminal cursor state must say the currently loaded count');
+  assert.match(batch, /\(i18n\.myTrees_count \|\| '총 \{count\}개'\)/, 'terminal cursor state may restore the authoritative total label');
+});
+
+test('My Trees Tree continuation keeps stale finalizers from clearing a newer request and restores retry UI', () => {
+  const render = read('js/my-trees/my-trees-render.js');
+
+  assert.match(render, /value === false[\s\S]*?dataModule\.isLoadMoreInFlight\(\)/, 'loading=false must be rejected while the generation-owned request guard is still active');
+  assert.match(render, /callerOptions\.appendTrees = function/, 'loadMoreTrees bridge must inject append semantics even for legacy callers');
+  assert.match(render, /callerOptions\.onSettled = function/, 'loadMoreTrees bridge must inject a settlement hook');
+  assert.match(render, /refreshPaginationControls\(\);/, 'settlement must refresh the retry/load-more control');
+  assert.match(render, /onLoadMore: requestNextTreePage/, 'refreshed control must call the same bounded continuation authority');
+});
+
+test('My Trees Memory hydration uses the bounded owner page contract instead of the legacy capped list', () => {
+  const render = read('js/my-trees/my-trees-render.js');
+  const client = read('js/postgres-client.js');
+
+  assert.match(client, /getMemoriesPage: async \(options = \{\}\)/, 'canonical client must expose owner Memory cursor paging');
+  assert.match(render, /var MEMORY_PAGE_LIMIT = 100;/, 'participant Memory reads must remain bounded per request');
+  assert.match(render, /client\.getMemoriesByTree = function \(treeId\)/, 'legacy hydration call must be bridged without changing preview-state API shape');
+  assert.match(render, /client\.getMemoriesPage\(\{ treeId: authority\.treeId, limit: MEMORY_PAGE_LIMIT \}\)/, 'initial hydration must consume exactly one bounded cursor page');
+  assert.match(render, /entry\.nextCursor = page\.nextCursor;/, 'initial hydration must retain the continuation cursor');
+  assert.match(render, /return entry\.items\.slice\(\);/, 'legacy hydration consumer must still receive an array-compatible first page');
+});
+
+test('My Trees Memory continuation is explicit-demand, one-page-at-a-time, retryable, and authority-bound', () => {
+  const render = read('js/my-trees/my-trees-render.js');
+  const start = render.indexOf('function fetchNextMemoryPage(');
+  const end = render.indexOf('function isExpandedFlowToggle(', start);
+  const block = render.slice(start, end);
+
+  assert.ok(start >= 0 && end > start, 'fetchNextMemoryPage participant path must exist');
+  assert.match(block, /entry\.initialized && !entry\.nextCursor/, 'terminal Memory cursor must stop further reads');
+  assert.match(block, /var requestCursor = entry\.initialized \? entry\.nextCursor : null;/, 'retry must reuse the retained cursor authority');
+  assert.match(block, /client\.getMemoriesPage\(\{[\s\S]*?cursor: requestCursor \|\| undefined/, 'one participant demand must issue one bounded page request');
+  assert.match(block, /isMemoryAuthorityCurrent\(authority, true\)/, 'late page completion must re-check current account/generation/selected-tree authority');
+  assert.match(block, /requestSeq !== entry\.requestSeq/, 'superseded Memory requests must be discarded');
+  assert.match(block, /entry\.nextCursor = page\.nextCursor;/, 'cursor may advance only on a valid successful completion');
+  assert.match(block, /Cursor is intentionally not advanced on failure/, 'failure path must preserve the retry cursor');
+  assert.doesNotMatch(block, /while\s*\(/, 'Memory continuation must never auto-drain pages');
+  assert.doesNotMatch(block, /for\s*\([^;]*;[^;]*nextCursor/, 'Memory continuation must not loop on cursor exhaustion');
+
+  assert.match(render, /getConfirmedOwnerUid\(\) !== authority\.uid/, 'Memory page state must be bound to the authenticated owner');
+  assert.match(render, /getOwnerListGeneration\(\) !== authority\.generation/, 'Memory page state must be bound to the owner-list epoch');
+  assert.match(render, /getTreeId\(selected\) !== authority\.treeId/, 'participant continuation must reject a late response after tree selection changes');
+  assert.match(render, /data-my-trees-memory-continuation/, 'expanded flow must expose a dedicated demand control when another server page exists');
+
+  const selectionIndex = render.indexOf('var selectedTree = hub.getSelectedTree();');
+  const deferredStart = render.indexOf('setTimeout(function () {', selectionIndex);
+  const demandIndex = render.indexOf('fetchNextMemoryPage(selectedTree);', deferredStart);
+  const deferredEnd = render.indexOf('}, 0);', demandIndex);
+  assert.ok(selectionIndex >= 0 && deferredStart > selectionIndex && demandIndex > deferredStart && deferredEnd > demandIndex,
+    'first flow expansion must schedule one selected-tree page demand after the existing toggle runs');
 });

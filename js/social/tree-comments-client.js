@@ -129,7 +129,10 @@
     }
 
     const limit = sanitizeLimit(opts.limit);
-    const endpoint = `/trees/${encodeURIComponent(cleanTreeId)}/comments?limit=${limit}`;
+    let endpoint = `/trees/${encodeURIComponent(cleanTreeId)}/comments?limit=${limit}`;
+    if (opts.cursor && typeof opts.cursor === 'string') {
+      endpoint += `&cursor=${encodeURIComponent(opts.cursor)}`;
+    }
 
     const apiFetch = resolveApiFetch();
     try {
@@ -137,10 +140,12 @@
       // no Idempotency-Key, and never triggers a 401 mutation/auth retry loop.
       const payload = await apiFetch(endpoint, { publicRead: true });
       const comments = extractComments(payload);
+      const nextCursor = (payload && typeof payload.nextCursor === 'string') ? payload.nextCursor : null;
       return {
         ok: true,
         state: comments.length > 0 ? 'loaded_with_comments' : 'loaded_empty',
         comments,
+        nextCursor,
       };
     } catch (err) {
       return mapError(err);

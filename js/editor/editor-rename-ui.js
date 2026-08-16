@@ -261,6 +261,15 @@
     const win = windowRef || getWindowRef();
     if (win && win.apiClient && typeof win.apiClient.updateTree === 'function') {
       return win.apiClient.updateTree(treeId, { title: nextTitle }).then(function(updatedTree) {
+        // #4055: a confirmed title change makes the public Browse card stale.
+        // Purge only after the mutation succeeds.
+        try {
+          if (win.apiClient && typeof win.apiClient.clearCommunityCaches === 'function') {
+            win.apiClient.clearCommunityCaches(treeId);
+          }
+        } catch (e) {
+          console.error('[editor] Failed to clear community caches after rename:', e);
+        }
         win.currentTreeData = Object.assign({}, currentTree, updatedTree || {}, { title: nextTitle });
         syncEditorTreeTitle(nextTitle);
         return win.currentTreeData;

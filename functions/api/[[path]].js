@@ -8,6 +8,11 @@ import {
   prepareMemoryWriteProxyRequest
 } from '../_shared/memory-route-proxy.js';
 import { readBoundedRequestBody } from '../_shared/bounded-request-body.js';
+import {
+  buildInvalidPathEncodingResponse,
+  isInvalidPathEncodingError,
+  normalizeEncodedPathSegment
+} from '../_shared/path-segment.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -159,14 +164,14 @@ export function buildModalUrl(request, env) {
   // POST /api/trees/:id/fork → /modal/private/trees/:id/fork
   const treeForkMatch = path.match(/^\/api\/trees\/([^/]+)\/fork$/);
   if (treeForkMatch && method === 'POST') {
-    const treeId = encodeURIComponent(decodeURIComponent(treeForkMatch[1]));
+    const treeId = normalizeEncodedPathSegment(treeForkMatch[1]);
     target.pathname = `/modal/private/trees/${treeId}/fork`;
     return target;
   }
 
   const capabilityMatch = path.match(/^\/api\/private\/trees\/([^/]+)\/capability$/);
   if (capabilityMatch) {
-    const treeId = encodeURIComponent(decodeURIComponent(capabilityMatch[1]));
+    const treeId = normalizeEncodedPathSegment(capabilityMatch[1]);
     target.pathname = `/modal/private/trees/${treeId}/capability`;
     return target;
   }
@@ -175,9 +180,10 @@ export function buildModalUrl(request, env) {
   if (treeMatch) {
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
     const isWrite = ['PUT', 'DELETE'].includes(method);
+    const treeId = normalizeEncodedPathSegment(treeMatch[1]);
     target.pathname = (isWrite || authHeader)
-      ? `/modal/private/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`
-      : `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
+      ? `/modal/private/trees/${treeId}`
+      : `/modal/trees/${treeId}`;
     return target;
   }
 
@@ -186,7 +192,7 @@ export function buildModalUrl(request, env) {
   // is POST, so the edge gateway translates PUT → POST (see tryModalWrite).
   const hubLayoutMatch = path.match(/^\/api\/trees\/([^/]+)\/hub-layout$/);
   if (hubLayoutMatch) {
-    const treeId = encodeURIComponent(decodeURIComponent(hubLayoutMatch[1]));
+    const treeId = normalizeEncodedPathSegment(hubLayoutMatch[1]);
     target.pathname = `/modal/private/trees/${treeId}/hub-layout`;
     return target;
   }
@@ -362,7 +368,7 @@ async function tryModalRead(request, env, requestId = null) {
   const treeMatch = path.match(/^\/api\/trees\/([^/]+)$/);
   if (treeMatch && response.status === 404 && request.headers.get('authorization')) {
     const publicTarget = new URL(stripTrailingSlash(env.MODAL_BASE_URL));
-    publicTarget.pathname = `/modal/trees/${encodeURIComponent(decodeURIComponent(treeMatch[1]))}`;
+    publicTarget.pathname = `/modal/trees/${normalizeEncodedPathSegment(treeMatch[1])}`;
     const publicUrlLog = getSafeUrlLog(publicTarget);
     console.log(`[LoveBudCloudflareProxy] 404 Fallback GET -> ${publicUrlLog} (id=${requestId})`);
     try {
@@ -485,14 +491,26 @@ export async function onRequest(context) {
     return buildMemoryMissingModalConfigResponse(requestId);
   }
 
-  const isModalOwned = isModalOwnedGetRoute(request, env || {});
-  const isModalOwnedWrite = isModalOwnedWriteRoute(request, env || {});
+  let isModalOwned;
+  let isModalOwnedWrite;
+  try {
+    isModalOwned = isModalOwnedGetRoute(request, env || {});
+    isModalOwnedWrite = isModalOwnedWriteRoute(request, env || {});
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+    }
+    throw error;
+  }
 
   if (isModalOwnedWrite) {
     try {
       const modalResponse = await tryModalWrite(request, env || {}, requestId);
       if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
     } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
       console.warn('[LoveBudCloudflareProxy] Modal write failed, returning 503', error);
       return buildModalUnavailableResponse(requestId);
     }
@@ -520,6 +538,9 @@ export async function onRequest(context) {
       // Fail closed: anonymous Tree detail must always produce an answer from authority.
       return buildModalUnavailableResponse(requestId);
     } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
       console.warn('[LoveBudCloudflareProxy] Modal read failed for public tree, returning 503', error);
       return buildModalUnavailableResponse(requestId);
     }
@@ -545,6 +566,9 @@ export async function onRequest(context) {
       }
       if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
     } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
         return buildModalUnavailableResponse(requestId);
@@ -573,6 +597,9 @@ export async function onRequest(context) {
         return await withUpstreamHeader(finalResponse, 'modal', requestId);
       }
     } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
       if (isModalOwned) {
         console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
         return buildModalUnavailableResponse(requestId);
@@ -580,7 +607,15 @@ export async function onRequest(context) {
     }
   }
 
-  const modalUrl = buildModalUrl(request, env || {});
+  let modalUrl;
+  try {
+    modalUrl = buildModalUrl(request, env || {});
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+    }
+    throw error;
+  }
   if (modalUrl) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '');

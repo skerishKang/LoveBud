@@ -92,6 +92,7 @@ const EXPECTED_DB_ENGINE_SCRIPTS = [
   { script: 'test:db-engine:clean-canonical-bootstrap', target: 'tests/db-engine/clean-canonical-bootstrap-postgres.test.cjs' },
   { script: 'test:db-engine:readonly-target-attribution-parity', target: 'tests/db-engine/readonly-target-attribution-parity-postgres.test.cjs' },
   { script: 'test:db-engine:structural-sentinel',     target: 'tests/db-engine/schema-orphan-structural-sentinel-postgres.test.cjs' },
+  { script: 'test:db-engine:memory-parent-cycle-concurrency', target: 'tests/db-engine/memory-parent-cycle-concurrency-postgres.test.cjs' },
 ];
 
 const CANONICAL_FIELD_DEFINITION_KEYS = [
