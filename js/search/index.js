@@ -182,12 +182,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.updateUrlState({ historyMode: effectiveHistory });
             }
 
-            if (Array.isArray(tree.memories) && tree.memories.length > 0) {
-                previewCacheApi.writePreviewCache(tree.id, tree);
-                PreviewRenderer.updatePreview(tree);
-                return;
-            }
-
+            // #4055 (Web CTO blocking review): never paint a previously-merged
+            // tree's memories inline as current authority. A tree in
+            // state.allTrees may carry memories from an earlier hydration that
+            // outlived a Memory-only revocation while the parent Tree stayed
+            // public. Every preview open revalidates current Memory authority.
             dataApi.hydrateSelectedTreePreview(tree);
         };
 
@@ -258,9 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             refs,
             state,
             ui,
-            previewCacheApi,
-            dataApi,
-            PreviewRenderer
+            dataApi
         })
         : createInlinePreviewController();
 
@@ -345,11 +342,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        if (selectedTree && Array.isArray(selectedTree.memories) && selectedTree.memories.length > 0) {
-            previewCacheApi.writePreviewCache(selectedTree.id, selectedTree);
-            PreviewRenderer.updatePreview(selectedTree);
-            ui.syncPreviewVisibility();
-        }
+        // #4055 (Web CTO blocking review): never repaint a previously-merged
+        // tree's memories inline as current authority. state.allTrees trees may
+        // carry memories from an earlier hydration that outlived a Memory-only
+        // revocation while the parent Tree stayed public. The preview panel is
+        // painted only by hydrateSelectedTreePreview after fresh Memory
+        // authority validation (FRESH_TREE_MEMBERSHIP != FRESH_REPRESENTATIVE_MEMORY_AUTHORITY).
     }
 
     function findRenderedTreeCard(treeId) {

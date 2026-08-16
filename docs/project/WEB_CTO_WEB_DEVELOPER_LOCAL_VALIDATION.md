@@ -2,7 +2,10 @@
 
 > **Status:** owner-approved operating model — Issue #3662
 > **UI acceleration amendment:** Issue #3664
+> **Parallel authority amendment:** PR #3994 / owner direction 2026-08-12
 > **Hard-governance authority:** `../ops/MVP_AGENT_GOVERNANCE.md`
+> **Parallel-work authority:** `../ops/PARALLEL_WORKTREE_AGENT_POLICY.md`
+> **Test-execution authority:** `../ops/IMPACT_BASED_TEST_EXECUTION_POLICY.md`
 
 ## 1. Purpose
 
@@ -12,13 +15,17 @@ Independent review must remain real. The same conversation/context should not bo
 
 Low-risk UI changes use the risk-proportional process in `UI_RAPID_ITERATION_LANE.md` rather than the full backend-grade flow.
 
+Test execution is impact-based. Focused developer checks prove the changed behavior, GitHub Actions is the normal repository-wide CI execution layer, and Local Validation is assigned only when a declared trigger requires evidence that focused Web checks plus CI cannot supply.
+
+When multiple models/agents work concurrently, development speed is subordinate to collision safety: one writer per branch, file, and semantic authority. Read/review/CI forensic work may remain parallel where implementation cannot.
+
 ## 2. Roles and lifecycle
 
 The three execution roles are:
 
 ```text
 Web CTO
-Web Developer
+Web Developer / designated implementation owner
 Local Validation
 ```
 
@@ -26,14 +33,17 @@ The normal lifecycle has four stages because the Web CTO participates before and
 
 ```text
 User request
-→ Web CTO contract
-→ separate Web Developer implementation
-→ Local Validation when required
+→ Web CTO remote triage, contract, and authority allocation
+→ separate Web Developer / implementation owner + focused checks
+→ GitHub Actions relevant/full matrix
+→ Local Validation only when trigger-qualified evidence is required
 → Web CTO independent final review
-→ user decision / expected-head squash merge
+→ user decision / task-authorized expected-head merge
 ```
 
 Local Validation is conditional, not ceremonial. It is omitted when the change class and available evidence do not require a local environment.
+
+Ready transition and merge are integration actions. They are not automatically granted to the implementation worker merely because implementation and CI are complete.
 
 ## 3. Web CTO
 
@@ -46,7 +56,9 @@ The Web CTO owns:
 - allowed and forbidden paths;
 - protected Issue wording;
 - change-risk classification;
+- affected-behavior and plausible-regression classification;
 - acceptance criteria and required tests/evidence;
+- parallel writer/semantic-authority allocation and sequencing;
 - final remote diff, CI, evidence, and merge judgment.
 
 ### Before implementation
@@ -58,11 +70,25 @@ The Web CTO must:
 3. define the exact outcome and behavior that must remain unchanged;
 4. select focused tests based on affected behavior rather than file count;
 5. state whether Local Validation is `REQUIRED`, `CONDITIONAL`, or `NOT_REQUIRED`;
-6. define safe parallel boundaries.
+6. when Local may be required, name the applicable trigger code from `IMPACT_BASED_TEST_EXECUTION_POLICY.md`;
+7. define safe parallel boundaries, active writer, and semantic authority.
+
+Before spending a Local cycle, the Web CTO should use remote evidence to classify the work whenever possible:
+
+```text
+READY
+CI_ONLY
+NARROW_FIX
+LOCAL_REQUIRED
+IMPLEMENTATION_REQUIRED
+BLOCKED_BY_DEPENDENCY
+```
 
 ### During implementation
 
 The Web CTO may clarify or explicitly revise the contract, inspect remote progress, stop overlap, or split scope. It must not silently lower acceptance criteria to match the implementation.
+
+When another implementation owner holds an active semantic authority, the Web CTO may read, review, investigate CI, and leave correction findings, but should not create a competing implementation for that authority unless ownership is explicitly transferred.
 
 ### Final review
 
@@ -73,11 +99,12 @@ The Web CTO independently checks:
 - scope and non-goals;
 - whether tests prove the affected behavior;
 - CI classification;
+- whether any Local Validation added distinct required evidence rather than duplicating already-green exact-head CI;
 - Local Validation evidence when required and exact-head match;
 - browser/auth/API/database evidence when required;
 - security, privacy, cache, accessibility, and regression risk;
 - PR body and Issue linkage;
-- expected head immediately before squash merge.
+- expected head immediately before any task-authorized merge.
 
 Final judgment:
 
@@ -87,6 +114,8 @@ CONDITIONALLY_READY
 NOT_READY
 ```
 
+A `READY` judgment means the technical review gate is satisfied. It does not itself manufacture merge authority if the task/owner kept Ready or merge separately gated.
+
 ## 4. Web Developer
 
 The Web Developer operates in a separate web conversation/context from the Web CTO and owns implementation, implementation tests, branch commits, PR maintenance, and CI-driven correction.
@@ -94,58 +123,85 @@ The Web Developer operates in a separate web conversation/context from the Web C
 Responsibilities:
 
 - re-verify the supplied baseline and current remote state;
+- confirm active writer, path overlap, and semantic-authority overlap before writing;
 - create or use the assigned feature branch;
 - implement the smallest change satisfying the contract;
 - write focused tests/contracts required by the change class;
+- run the smallest sufficient developer checks for affected behavior;
 - create additive commits;
-- create or update the PR;
+- create or update the Draft PR;
 - inspect CI and correct executed code failures;
-- report exact SHA, diff, tests, CI, and remaining evidence needs.
+- report exact SHA, diff, tests, CI, active authority, and remaining evidence needs.
 
 The Web Developer does not:
 
 - make final product acceptance or merge decisions;
+- Ready-transition or merge its own active PR unless a task-specific owner instruction explicitly delegates that integration authority;
 - close protected parent Issues;
 - expand product, architecture, dependencies, data models, or APIs without approval;
 - treat test or CI success as final CTO approval;
-- force-push, destructively reset, clean, or delete another worktree without approval.
+- run unrelated full local suites merely because source changed;
+- create a competing implementation for another worker's active branch/file/semantic authority;
+- force-push, rebase published feature history, destructively reset, clean, or delete another worktree without approval.
 
 Direct GitHub implementation is the default when repository files are accessible and no full local authoring environment is required.
 
 ```text
 exact baseline
+→ authority collision check
 → feature branch
 → code and focused tests
 → additive commit
-→ PR
-→ CI inspection/correction
+→ Draft PR
+→ GitHub CI inspection/correction
 ```
 
 `main` is never edited directly.
 
 ## 5. Local Validation
 
-Local Validation is an execution and evidence role, not the default coding or design role.
+Local Validation is an execution and evidence role, not the default coding, design, or repository-wide test runner.
 
-Use it when the work requires one or more of:
+Use it only when at least one declared trigger from `../ops/IMPACT_BASED_TEST_EXECUTION_POLICY.md` applies:
+
+```text
+L1_ENVIRONMENT_REQUIRED
+L2_CI_FAILURE_REPRODUCTION
+L3_CI_COVERAGE_GAP
+L4_PRISTINE_MAIN_COMPARISON
+L5_RUNTIME_BROWSER_REQUIRED
+L6_BROAD_SHARED_REGRESSION
+L7_CI_OR_TEST_INFRA_CHANGE
+```
+
+Typical reasons include:
 
 - full-checkout test/build commands unavailable to Web;
 - local secret usage without value exposure;
 - actual database, Docker, provider CLI, GPU, device, or OS behavior;
 - authenticated browser profile;
 - runtime-sensitive desktop/mobile, console, network, or API evidence;
-- broad regression comparison against pristine `main`.
+- exact reproduction of an executed GitHub CI failure;
+- a CI/test discovery gap that leaves required behavior unexecuted;
+- branch-only versus pristine-main failure classification;
+- broad shared regression evidence that focused tests plus normal CI do not adequately prove;
+- CI/test infrastructure changes whose execution machinery itself needs validation.
 
 Responsibilities:
 
 - check out the exact remote PR head in a dedicated worktree;
 - preserve all existing worker state;
 - execute only the assigned commands and flows;
+- start from the smallest reproducer when debugging an executed failure;
 - collect raw counts, logs, screenshots, and environment evidence;
-- distinguish pristine-main failures from branch-only failures;
+- distinguish pristine-main failures from branch-only failures when required;
 - return exact evidence without rewriting acceptance criteria.
 
+If exact-head GitHub CI already passed the same lane, Local Validation must not rerun it solely for duplicate evidence. The handoff must state what additional Local evidence is required.
+
 Local Validation normally does not redesign or broadly rewrite production source. A product-source defect returns to the Web Developer unless the contract authorizes a precise minimal change.
+
+Local Validation does not gain Ready/merge authority merely by producing PASS evidence.
 
 A local report includes:
 
@@ -153,10 +209,13 @@ A local report includes:
 repository/worktree
 local and remote branch
 starting and tested head
+Local trigger code(s)
 status before/after
 commands and counts
-relevant raw failures
+relevant raw failures/subtests
+branch-only vs pristine-main classification when used
 browser/auth/console/network state
+checks intentionally not rerun and why
 remaining untracked files
 reset/stash/clean used: YES/NO
 ```
@@ -168,11 +227,12 @@ reset/stash/clean used: YES/NO
 Default for most repository work.
 
 ```text
-Web CTO contract
-→ Web Developer direct branch implementation
-→ CI
-→ Local Validation only if required by the contract
+Web CTO contract + authority allocation
+→ Web Developer direct branch implementation + focused checks
+→ GitHub CI
+→ Local Validation only if trigger-qualified evidence is required
 → Web CTO final review
+→ user/task-authorized integration when applicable
 ```
 
 ### Mode B — Patch package
@@ -191,18 +251,19 @@ change-package/
 └─ REVIEW_NOTES.md
 ```
 
-Local Validation applies the exact package and executes the test plan. It does not redesign the patch.
+Local Validation applies the exact package and executes the test plan. It does not redesign the patch or expand the test plan without an evidence-based trigger.
 
 ### Mode C — Local-environment validation loop
 
-Use for database/provider/OS/device/authenticated-browser dependencies.
+Use for database/provider/OS/device/authenticated-browser dependencies or exact CI-failure reproduction.
 
 ```text
 Web Developer implementation
-→ Local Validation execution
+→ Local Validation exact trigger-qualified execution
 → raw failure evidence
 → Web Developer correction
-→ Local Validation re-execution
+→ Local Validation reruns only newly affected evidence when still required
+→ GitHub CI exact-head matrix
 ```
 
 ### Mode D — UI Rapid Iteration Lane
@@ -214,7 +275,8 @@ U0/U1:
 Web CTO contract
 → Web Developer direct edit
 → focused checks
-→ Web CTO final review and merge
+→ Web CTO final review
+→ task-authorized merge when applicable
 → Production visual confirmation
 
 U2:
@@ -225,7 +287,8 @@ Web CTO design/prototype
 → Web CTO final review
 
 U3:
-full Mode A/C runtime path
+full relevant runtime path
+→ Local only when the runtime/environment trigger applies
 ```
 
 ## 7. Independent-review safeguard
@@ -242,6 +305,8 @@ The Web CTO reviews evidence, not the developer's private reasoning:
 - Local Validation evidence when required.
 
 A Web CTO may author prototypes, design references, exact copy, state contracts, or patch drafts. A separate Web Developer must implement or independently review production changes before final CTO approval.
+
+If the Web CTO itself authors a repository correction, that same context does not claim independent final approval for the correction.
 
 ## 8. UI and design work
 
@@ -260,21 +325,48 @@ Risk classification controls the process:
 
 - U0/U1: Local skipped by default; Production is the fast final visual loop.
 - U2: structural evidence and conditional browser/local validation.
-- U3: full runtime evidence.
+- U3: full relevant runtime evidence, without unrelated full-suite duplication.
 
 ## 9. Parallel work
 
-Parallel execution requires:
+Parallel execution requires more than separate branches.
 
-- separate branches;
+```text
+ONE WRITER PER BRANCH
+ONE WRITER PER FILE
+ONE WRITER PER SEMANTIC AUTHORITY
+```
+
+Before any write, classify the intended implementation:
+
+```text
+GREEN  = branch/path/semantic authority independent
+          → parallel implementation allowed
+
+YELLOW = files differ but semantic authority is shared
+          → read/review/CI forensic may proceed; implementation is sequenced
+
+RED    = same branch/file/core semantic authority
+          → one active writer only
+```
+
+Representative semantic authorities include auth/session/account/token, DB schema/migration, DB transport, API runtime/routing, Tree write, Memory write, social write, visibility, owner/entitlement mapping, and Modal/shared-platform runtime contraction.
+
+Operational rules:
+
 - separate local worktrees when local work exists;
-- non-overlapping file ownership or explicit responsibility boundaries;
 - one active writer per remote branch;
-- no simultaneous push from two computers to one branch;
-- remote-head check before push;
-- latest-main relationship check before merge.
+- no simultaneous push from two computers/agents to one branch;
+- no competing implementation merely because files differ;
+- remote-head and active-authority check before push;
+- latest-main path + semantic relationship check after dependency merge and before integration;
+- blocking review findings return to the active writer unless ownership is explicitly transferred.
 
-Shared tokens, global CSS, common components, and shared JavaScript require one active writer or serialized order.
+Parallelize read-only remote forensic/review work aggressively when it shortens classification time. Multiple Web implementation or Local workers are useful only when branches and affected contracts are genuinely independent.
+
+Shared tokens, global CSS, common components, shared JavaScript, test registries, package/CI infrastructure, database schema, auth/security boundaries, write semantics, visibility/ownership, and platform-runtime boundaries require one active writer or serialized order unless explicitly partitioned.
+
+When the owner explicitly declares a multi-model parallel lane, collision avoidance is the highest-priority coordination rule for that lane. Adding Local or Web workers is not a substitute for reducing duplicate test execution or for assigning one writer per authority.
 
 ## 10. Evidence and CI
 
@@ -297,7 +389,22 @@ PRODUCTION_EVIDENCE
 
 Preview/fixed-slot environments are evidence options, not permission gates. Merge-first Production verification is the current default unless the task explicitly requests pre-merge browser evidence.
 
-Verification effort is risk-proportional. U0/U1 do not require unrelated full-suite tests or Local Validation merely because an HTML/CSS file changed. U2/U3 use the focused and regression evidence appropriate to their actual behavior.
+Verification effort is risk-proportional and impact-based. Focused developer checks prove the changed behavior; GitHub Actions is the normal repository-wide CI execution authority; Local Validation provides only trigger-qualified additional evidence.
+
+For an executed CI failure:
+
+```text
+exact failing step/subtest
+→ smallest reproducer
+→ branch-only / pristine-main / infrastructure classification
+→ smallest corrective change when branch-caused
+→ affected rerun
+→ relevant exact-head CI
+```
+
+Do not repeatedly rerun broad suites until green. A passing rerun alone does not prove that a prior failure was a flake.
+
+After merge-forward/current-main alignment, inspect incoming commits for path and semantic overlap. Rerun newly affected focused checks, then rely on exact-head GitHub CI for the normal matrix unless a Local trigger requires more evidence.
 
 Reports separate:
 
@@ -318,11 +425,14 @@ Issue/PR
 exact base and target branch
 objective and user-visible outcome
 risk/UI class
+affected behavior / blast radius
+semantic authority / active writer
 non-goals
 allowed/forbidden paths
 required implementation
 focused tests
 Local Validation requirement
+Local trigger code(s), if applicable
 acceptance criteria
 protected Issues
 stop conditions
@@ -336,13 +446,19 @@ Only when Local Validation is required:
 ```text
 PR and exact head
 remote branch
+Local trigger code(s)
 worktree instructions
-commands and expected results
-browser/auth/viewports/flows
+exact commands/flows and expected results
+why focused Web checks + GitHub CI are insufficient
+browser/auth/viewports/flows when applicable
+whether pristine-main comparison is required
 required evidence
 allowed local changes
 forbidden destructive commands
+stop condition
 ```
+
+Do not hand off vague instructions such as `run everything`, `run all tests just in case`, or `fully verify` without naming the affected behavior and required lane.
 
 ### Web Developer → Web CTO when Local is not required
 
@@ -350,6 +466,8 @@ forbidden destructive commands
 exact head
 changed files/diff
 risk classification
+affected behavior
+active semantic authority
 focused checks
 CI classification
 Local Validation: NOT_REQUIRED with reason
@@ -367,9 +485,12 @@ The following remain authoritative:
 - production-destructive actions require approval;
 - do not merge on `CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION`;
 - use the documented alternative-evidence path for `CI_UNAVAILABLE_INFRA`;
-- verify expected head, then squash merge;
+- enforce one writer per branch/file/semantic authority in an active multi-model lane;
+- implementation workers do not Ready-transition or merge their own active PR unless task-specific owner authorization delegates that integration authority;
+- any authorized merge requires independent review, acceptable CI/evidence, and exact expected-head verification;
 - never close #1882 and use `Refs #1882` only.
 
+Refs #3994.
 Refs #3664.
 Refs #3662.
 Refs #1882 — Keep OPEN.

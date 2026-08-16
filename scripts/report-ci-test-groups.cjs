@@ -80,6 +80,7 @@ const CANONICAL_GROUP_FIELDS = [
 
 const EXPECTED_DB_ENGINE_SCRIPTS = [
   { script: 'test:db-engine:tree-comments',          target: 'tests/db-engine/tree-comments-reconcile-postgres.test.cjs' },
+  { script: 'test:db-engine:tree-social-visibility-concurrency',          target: 'tests/db-engine/tree-social-visibility-concurrency-postgres.test.cjs' },
   { script: 'test:db-engine:fork-public-tree-visibility-concurrency', target: 'tests/db-engine/fork-public-tree-visibility-concurrency-postgres.test.cjs' },
   { script: 'test:db-engine:trees-schema',            target: 'tests/db-engine/trees-schema-foothold-postgres.test.cjs' },
   { script: 'test:db-engine:generic-social-a-guard',  target: 'tests/db-engine/generic-social-a-guard-postgres.test.cjs' },
@@ -91,6 +92,7 @@ const EXPECTED_DB_ENGINE_SCRIPTS = [
   { script: 'test:db-engine:clean-canonical-bootstrap', target: 'tests/db-engine/clean-canonical-bootstrap-postgres.test.cjs' },
   { script: 'test:db-engine:readonly-target-attribution-parity', target: 'tests/db-engine/readonly-target-attribution-parity-postgres.test.cjs' },
   { script: 'test:db-engine:structural-sentinel',     target: 'tests/db-engine/schema-orphan-structural-sentinel-postgres.test.cjs' },
+  { script: 'test:db-engine:memory-parent-cycle-concurrency', target: 'tests/db-engine/memory-parent-cycle-concurrency-postgres.test.cjs' },
 ];
 
 const CANONICAL_FIELD_DEFINITION_KEYS = [
@@ -477,7 +479,7 @@ function getVerifyStaticCommands(ciYaml) {
     let normalized = cmd;
     if (cmd === 'npm ci') {
       normalized = 'ci';
-    } else if (cmd === 'npm test') {
+    } else if (cmd === 'npm test' || cmd === 'node scripts/ci-smoke-runner.cjs') {
       normalized = 'test';
     } else if (cmd.startsWith('npm run ')) {
       normalized = cmd.slice(8).trim();

@@ -43,8 +43,9 @@ test('Cloudflare gateway preserves detail route public-private split', () => {
   assert.match(memorySource, /isMemoryDetailRequest\(request\)/);
   assert.match(memorySource, /\$\{isPrivate \? '\/modal\/private\/memories' : '\/modal\/memories'\}\/\$\{memoryId\}/);
   assert.match(source, /const treeMatch = path\.match/);
-  assert.match(source, /`\/modal\/private\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeMatch\[1\]\)\)\}`/);
-  assert.match(source, /`\/modal\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeMatch\[1\]\)\)\}`/);
+  assert.match(source, /const treeId = normalizeEncodedPathSegment\(treeMatch\[1\]\)/);
+  assert.match(source, /`\/modal\/private\/trees\/\$\{treeId\}`/);
+  assert.match(source, /`\/modal\/trees\/\$\{treeId\}`/);
 });
 
 test('Cloudflare gateway preserves fork route and method ownership', () => {
