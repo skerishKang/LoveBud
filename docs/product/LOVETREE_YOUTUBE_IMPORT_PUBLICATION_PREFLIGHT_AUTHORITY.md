@@ -6,8 +6,9 @@
 **Platform authority:** #4004  
 **Dependencies:** #4026 domain/provenance authority, #4028 public/owner read authority  
 **Status:** Implementation-ready publication/privacy contract; no runtime implementation in this document.  
-**Audited baseline:** LoveBud `main` `ba7d470385f8bf21471cb8d5eeb9a4846df7232d`  
-**Last updated:** 2026-08-14
+**Audited baseline:** LoveBud `main` `e282f610261d2562af51ce7da1506fbe3faa3c90`
+**Last updated:** 2026-08-16
+**Blocker corrections applied:** Web CTO review `4943690097` (publication freshness authority) + Web CTO follow-up `5301905315` (explicit final visibility transition)
 
 ---
 
@@ -57,13 +58,14 @@ Provider data is an input to publication policy. It is not a reason to expose ra
 
 ## 3. Imported Tree default
 
-Every playlist-derived Tree begins:
+Every playlist-derived Tree begins canonical-publication-private:
 
 ```text
-private / draft / staged
+Tree.visibility = private
+ALL imported Moment.visibility = private
 ```
 
-according to the canonical shared product model.
+(`draft` / `staged` / `importing` are import lifecycle concepts, NOT canonical visibility values. The canonical visibility vocabulary is not extended with pseudo-values; import lifecycle state remains a separate server-side concept.)
 
 Import completion means:
 
@@ -98,6 +100,9 @@ Candidate summary:
   "ok": true,
   "treeId": "opaque",
   "sequenceVersion": 42,
+  "publicationRevision": 17,
+  "checkedAt": "2026-08-16T00:00:00Z",
+  "validUntil": "2026-08-16T01:00:00Z",
   "summary": {
     "total": 5000,
     "publicEmbeddable": 4970,
@@ -271,11 +276,14 @@ Recommended freshness model:
 preflight result has:
 - checked_at
 - tree moment_sequence_version
+- publication_revision (Section 24)
 - provider state snapshot/version metadata as needed
-- short validity window
+- short validity window (TTL / valid_until)
 ```
 
-If Tree membership/order/visibility changes after preflight, or the preflight becomes stale, final publish must revalidate or reject the stale preflight.
+`moment_sequence_version` alone is NOT sufficient publication freshness: a visibility/media/source/owner-decision change can change the publication outcome without changing the structural sequence. `publication_revision` advances on every such mutation (Sections 24–25).
+
+If Tree membership/order changes, publication-relevant state changes, or the preflight expires, final publish must revalidate or reject the stale preflight.
 
 The exact validity duration is configurable and should balance provider quota with privacy correctness.
 
@@ -285,27 +293,37 @@ For high-risk transitions from private Tree → public Tree, correctness wins ov
 
 ## 11. Sequence/version binding
 
-Preflight must bind to the canonical Tree sequence/content version selected under #4028.
+Preflight binds to the canonical authorities selected across the YouTube import RFCs. Three distinct semantic authorities exist:
 
-Conceptually:
+```text
+moment_sequence_version    = STRUCTURAL SEQUENCE REVISION      — ordered canonical set/order binding
+public_projection_revision = ORDERED-READ PROJECTION REVISION  — #4028/#4035 public read membership revision
+publication_revision       = PUBLICATION PREFLIGHT/PUBLISH FRESHNESS — this document (Section 24)
+```
+
+Preflight result is bound to (conceptually):
 
 ```text
 preflight.tree_id
 preflight.moment_sequence_version
+preflight.publication_revision
 preflight.checked_at
+preflight.valid_until (TTL)
 ```
 
-Final publish accepts only a compatible current version.
+Final publish accepts only a preflight whose `moment_sequence_version` AND `publication_revision` are both compatible/current, and whose TTL is unexpired.
 
-If the owner adds/removes/reorders source Moments or changes relevant visibility after preflight:
+If the owner adds/removes/reorders source Moments after preflight:
 
 ```text
 PUBLICATION_PREFLIGHT_STALE
 ```
 
-and re-check is required where the mutation affects eligibility.
+and a fresh preflight is required.
 
-Reorder alone may not change media eligibility, but using one monotonic sequence/content version is safer for V1 than silently publishing a different set than the user reviewed.
+If any publication-relevant mutation occurs (Section 25 P1–P12) — including visibility/media/source/owner-decision changes that do NOT change the structural sequence — the preflight is stale even though `moment_sequence_version` may be unchanged, because `publication_revision` advanced.
+
+Reorder semantics: reorder may not change media eligibility, but V1 conservatively binds preflight to `moment_sequence_version` as well, so any reorder invalidates the reviewed preflight and requires a fresh one (the user reviewed a specific canonical set/order).
 
 ---
 
@@ -321,18 +339,20 @@ Request carries a server-issued preflight reference/version, not a client-author
 
 Server validates:
 
-1. actor owns Tree;
+1. actor still owns Tree;
 2. Tree is eligible for publication;
-3. import is complete;
+3. import is completed/reconciled;
 4. preflight belongs to this Tree/actor;
-5. preflight is current/non-expired;
-6. sequence/version matches;
-7. all blocking Moments are resolved;
-8. unlisted explicit decisions are recorded;
-9. canonical visibility mutation succeeds transactionally;
-10. public reread reflects only allowed Moment projection.
+5. preflight is current/non-expired — TTL valid AND `publication_revision` current;
+6. `moment_sequence_version` compatible/current AND `publication_revision` compatible/current;
+7. provider/media eligibility result still valid according to contract;
+8. all blocking Moments are resolved;
+9. unlisted owner decisions are still current/recorded;
+10. visibility promotion plan matches the reviewed preflight (exact approved/public-eligible set);
+11. final canonical visibility mutation — approved Moments + Tree — is ONE atomic transaction; any mid-publish failure rolls back (zero partial public state);
+12. public reread exposes only the permitted projection.
 
-A stale browser cannot bypass current server policy by posting `publishReady: true`.
+A client cannot mint publication authority: `publication_revision` and the preflight reference are server-issued/checked. A stale browser cannot bypass current server policy by posting `publishReady: true`.
 
 ---
 
@@ -558,7 +578,160 @@ Correct copy should explain:
 
 ---
 
-## 24. Implementation split
+## 24. Publication freshness authority
+
+#4029 selects one explicit server-controlled authority for publication/preflight freshness:
+
+```text
+publication_revision
+= server-controlled monotonic revision of publication-relevant canonical state
+```
+
+`publication_revision` is incremented transactionally with every mutation that can change a publication outcome. Only the server issues/checks it; a client can never mint or supply it.
+
+Relationship to the other authorities:
+
+```text
+moment_sequence_version    = STRUCTURAL SEQUENCE REVISION      — ordered canonical set/order binding
+public_projection_revision = ORDERED-READ PROJECTION REVISION  — #4028/#4035 public read membership revision
+publication_revision       = PUBLICATION PREFLIGHT/PUBLISH FRESHNESS — this document
+```
+
+All three are semantically distinct:
+
+```text
+moment_sequence_version != public_projection_revision != publication_revision
+```
+
+`!=` means distinct semantic responsibility. It does NOT mandate three physical columns: whether future implementation shares one storage generation or uses separate columns is a future implementation decision. Semantic authority stays distinct.
+
+`publication_revision` is NOT a general content revision: title/memo/display-content edits that do not change publication outcome must not bump it.
+
+This closes the stale-preflight hole:
+
+```text
+preflight(sequenceVersion=42, publication_revision=R17)
+→ visibility / media / source / owner-decision mutation (no insert/delete/reorder)
+→ moment_sequence_version still 42 (structural sequence unchanged)
+→ publication_revision = R18 (incremented transactionally with the mutation)
+→ old preflight cannot appear current; PUBLICATION_PREFLIGHT_STALE
+```
+
+---
+
+## 25. Publication revision invalidation matrix
+
+The freshness authority must invalidate a stale preflight on at least:
+
+```text
+P1.  Moment add
+P2.  Moment remove
+P3.  relevant Moment visibility change
+P4.  Tree visibility change
+P5.  source/media identity change affecting the provider lookup target
+P6.  canonical state change affecting public / link-only / unlisted / private / unavailable / unknown classification
+P7.  unlisted include decision
+P8.  unlisted exclude/revoke decision
+P9.  approved public projection membership change
+P10. any owner mutation affecting publication eligibility
+P11. blocking-item resolution change
+P12. provider/media preflight target set change
+```
+
+Role separation:
+
+```text
+moment_sequence_version = ordered canonical set binding
+publication_revision    = publication eligibility/preflight freshness binding
+```
+
+Reorder semantics: reorder does not by itself change media eligibility, but V1 conservatively keeps the preflight bound to the reviewed canonical set/order — any reorder makes the preflight stale (`PUBLICATION_PREFLIGHT_STALE`) and requires a fresh one, even if `publication_revision` did not need to advance. This keeps the publish target exactly bound to what the user reviewed.
+
+---
+
+## 26. Final visibility transition
+
+Selected staging model (mirrors the current #4026/#4033 direction):
+
+```text
+During import/review:
+  Tree.visibility = private
+  ALL imported Moment.visibility = private
+  (the ordinary omitted-visibility write path under a private Tree naturally persists
+   imported Moments as canonical private)
+Import lifecycle state (queued / processing / partial_failed / failed / cancelled / completed)
+  is a SEPARATE server-side concept — never a canonical visibility pseudo-value
+Import completion != publication
+Final publication = explicit owner action
+```
+
+```text
+FINAL_PUBLICATION_VISIBILITY_TRANSITION = APPROVED_MOMENTS + TREE ATOMIC PROMOTION
+```
+
+The final publish contract (single atomic boundary):
+
+1. current fresh preflight verified — not expired, `publication_revision` current, `moment_sequence_version` compatible;
+2. exact approved/public-eligible Moment set fixed from the reviewed preflight;
+3. blocked / private / unavailable / unknown / rejected-unlisted Moments stay private (owner-preserved canonical Moments, never in any public projection or public count);
+4. exactly the approved/public-eligible Moments are promoted to canonical public;
+5. the Tree is promoted to canonical public;
+6. steps 4–5 happen in one transaction / atomic publish boundary;
+7. any mid-publish failure rolls back — zero partial public state, no half-promoted Tree;
+8. public reread verifies the exposed projection matches exactly the permitted set.
+
+Under this model, final publish never changes Tree visibility alone: promoting only the Tree under an all-private staging model would yield a public Tree with no public Moments (a broken projection), and promoting Moments while the Tree stays private would keep effective public exposure zero. The promotion is always the approved set + Tree together.
+
+---
+
+## 27. Failure / partial import safety
+
+Public exposure must be 0 in every import lifecycle state:
+
+```text
+queued
+processing / importing
+partial_failed
+failed
+cancelled
+```
+
+Import completion alone never publishes. Only the explicit final publication action (Section 26) can expose any public surface.
+
+Private / unavailable / rejected / unresolved items remain owner-preserved canonical Moments, but are never exposed through any public projection — including counts (Section 18) and playback surfaces.
+
+LoveBud never mutates YouTube source playlist privacy or video privacy (Sections 1, 17, 23).
+
+---
+
+## 28. Future contract test matrix
+
+Runtime test code is NOT implemented in this authority PR. When publication runtime lands, at least the following contract tests are required:
+
+```text
+F1.  preflight → Moment add → stale
+F2.  preflight → Moment remove → stale
+F3.  preflight → Moment visibility change → stale
+F4.  preflight → Tree visibility-relevant change → stale
+F5.  preflight → media/source identity change → stale
+F6.  preflight → unlisted include decision change → stale
+F7.  preflight → unlisted revoke/exclude → stale
+F8.  no publication-relevant mutation + unexpired preflight → may remain valid
+F9.  stale preflight cannot publish via client `publishReady: true`
+F10. Tree A preflight cannot publish Tree B
+F11. blocked/private item remains private after successful publication
+F12. approved public-eligible Moment promotion + Tree promotion atomic
+F13. failure mid-publish → zero partial public state
+F14. partial_failed/importing Tree cannot publish
+F15. source playlist remains unchanged
+F16. public reread matches exactly approved/public-eligible projection
+F17. publication_revision stale while structural sequence unchanged → publish reject
+F18. moment_sequence_version stale while publication_revision unchanged → publish reject / re-preflight per contract
+```
+
+---
+
+## 29. Implementation split
 
 After authority approval:
 
@@ -572,7 +745,7 @@ After authority approval:
 
 ---
 
-## 25. Authority verdict
+## 30. Authority verdict
 
 ```text
 SOURCE_PLAYLIST_PRIVACY_MUTATION = PROHIBITED
@@ -586,5 +759,11 @@ PRIVATE_OR_UNAVAILABLE = PUBLICATION_WITHHELD
 UNKNOWN = FAIL_CLOSED
 PRIVATE_SOURCE_PROVENANCE_PUBLIC = PROHIBITED
 PREFLIGHT_SEQUENCE_BINDING = REQUIRED
+PUBLICATION_FRESHNESS_AUTHORITY = SERVER-CONTROLLED publication_revision
+MOMENT_SEQUENCE_VERSION_ROLE = STRUCTURAL_ONLY
+PUBLIC_PROJECTION_REVISION_ROLE = ORDERED_READ_ONLY
+PUBLICATION_REVISION_ROLE = PREFLIGHT/PUBLISH_FRESHNESS
+FINAL_VISIBILITY_TRANSITION = APPROVED_MOMENTS + TREE ATOMIC PROMOTION
+STALE_PREFLIGHT_BYPASS = PROHIBITED
 RUNTIME_IMPLEMENTATION = NOT_YET_PERFORMED
 ```
