@@ -361,6 +361,24 @@ check('production route: catch-all file contains no direct-Neon wiring', () => {
   assert.doesNotMatch(src, /direct-neon|DIRECT_NEON_BROWSE|neondatabase/i);
 });
 
+// J2. CURRENT effective Production authority (post-#4052), proven against the
+// exact handler file — NOT merely the catch-all file identity.
+// After #4052, `/api/community/trees?view=summary` is owned by the exact Pages
+// Function `functions/api/community/trees.js`, which reuses `buildModalUrl` and
+// sets `Cache-Control: no-store` with NO persistent Cache API body authority.
+check('production authority: effective Browse handler is community/trees.js (post-#4052)', () => {
+  const file = path.join(process.cwd(), 'functions', 'api', 'community', 'trees.js');
+  const src = fs.readFileSync(file, 'utf8');
+  // Reuses the canonical mapping rather than reimplementing it.
+  assert.match(src, /import\s*{\s*buildModalUrl\s*}\s*from\s*['"]\.\.\/\[\[path\]\]\.js['"]/);
+  // Effective route authority: no-store, no persistent Cache API body.
+  assert.match(src, /no-store/);
+  assert.doesNotMatch(src, /caches\.default/);
+  assert.doesNotMatch(src, /cache\.put/);
+  assert.doesNotMatch(src, /max-age=420/);
+  assert.doesNotMatch(src, /stale-while-revalidate/);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Supporting parity helpers (consistent with #4012 core contract)
 // ─────────────────────────────────────────────────────────────────────────────
