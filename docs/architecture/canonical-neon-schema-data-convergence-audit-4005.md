@@ -332,15 +332,16 @@ The recent LoveBud/LoveTree social implementations already demonstrate that re-l
 
 ## 4.6 Tree comments
 
-LoveBud's Tree-comment lineage is richer and transitional:
+**Live current (2026-08-16):** live `tree_comments` columns are `id`, `tree_id`, `owner_id`, `body`, `target_kind`, nullable `target_id`, timestamps — all `text NOT NULL` except `target_id`. Live FK `tree_comments.tree_id → trees.id` exists; 0 rows live in both databases.
 
 - canonical `owner_id` / body / target fields;
-- legacy author/display-name and payload/deletion compatibility fields;
-- FK to Tree;
-- an author FK to `users` for the legacy author field;
+- FK to Tree (`tree_comments.tree_id → trees.id`, live);
 - checks that generic target semantics remain Tree-scoped.
 
-**Live reconciliation (2026-08-16):** live `tree_comments` columns are `id`, `tree_id`, `owner_id`, `body`, `target_kind`, nullable `target_id`, timestamps — all `text NOT NULL` except `target_id`. Live FK `tree_comments.tree_id → trees.id` exists; **there is no `users` table live, so no author→users FK is present** (the legacy author-field shape belongs to the historical snapshot). 0 rows live in both databases.
+Historical snapshot evidence only (`HISTORICAL_NOT_REPRODUCED` — absent from the live catalog):
+
+- legacy author/display-name and payload/deletion compatibility fields;
+- an author FK to `users` for the legacy author field (no `users` table exists live, so no author→users FK is present).
 
 LoveTree has the simpler modern surface but no actual Tree-comment data (live-verified).
 
@@ -352,18 +353,20 @@ Decision:
 Tree-comment authority = LOVEBUD_CANONICAL
 ```
 
-Simplification should happen only after runtime contracts have stopped using legacy compatibility fields.
+Any simplification of the transitional compatibility surface should happen only after runtime contracts have stopped relying on legacy compatibility semantics.
 
 ## 4.7 Social counts / dedup / idempotency / audit
 
-LoveBud contains the more mature operational lineage:
+**Live current (2026-08-16): no triggers exist in the live LoveBud catalog** — the documented `trg_social_audit_log_sync_generic_target` and `trg_social_idempotency_sync_generic_target` triggers are not present (`pg_trigger` returns none). The live schema is FK- and index-driven only:
 
 - additional generic-target synchronization constraints;
-- triggers that synchronize legacy/generic social target representation for audit/idempotency rows;
 - more operational indexes;
-- current production rows/history.
+- FK-driven social/idempotency/audit/dedup tables with identical constraint/index sets in both databases.
 
-**Live reconciliation (2026-08-16): no triggers exist in the live LoveBud catalog** — the documented `trg_social_audit_log_sync_generic_target` and `trg_social_idempotency_sync_generic_target` triggers are not present (`pg_trigger` returns none). The live schema is FK- and index-driven only.
+Historical snapshot evidence only (`HISTORICAL_NOT_REPRODUCED` — absent from the live catalog):
+
+- triggers that synchronize legacy/generic social target representation for audit/idempotency rows;
+- the earlier "current production rows/history" characterization (live social/audit/idempotency/rate-limit/dedup tables have 0 rows; `tree_social_counts` has 6 live rows).
 
 LoveTree uses more direct FK-oriented schema definitions (live-verified; identical constraint/index sets to LoveBud).
 
@@ -387,19 +390,19 @@ No private text/content was emitted during classification. IDs and owner subject
 
 The seven LoveTree Trees are owned by three distinct owner subjects (live-verified: 3 distinct non-null `owner_id` values, 0 null).
 
-- Owner group A: 1 Tree, 0 Memories; owner subject does **not** currently match a canonical LoveBud `users.id`.
-- Owner group B: 2 Trees, 1 Memory; owner subject matches a canonical LoveBud user.
-- Owner group C: 4 Trees, 3 Memories; owner subject matches a canonical LoveBud user.
+- Owner group A: 1 Tree, 0 Memories; owner subject does **not** match a canonical LoveBud `users.id` (historical snapshot match result).
+- Owner group B: 2 Trees, 1 Memory; owner subject matches a canonical LoveBud `users.id` (historical snapshot match result).
+- Owner group C: 4 Trees, 3 Memories; owner subject matches a canonical LoveBud `users.id` (historical snapshot match result).
 
-Therefore:
+Therefore (historical snapshot lineage match result — the live catalog has no `users` table; pending #4006 stable-account verification):
 
 ```text
-6 / 7 LoveTree Trees map to existing canonical LoveBud user identities.
+6 / 7 LoveTree Trees map to existing canonical LoveBud user identities (historical snapshot match result).
 4 / 4 LoveTree Memories belong to those matched-owner Trees.
 1 / 7 LoveTree Trees has unresolved owner mapping and has no Memory rows.
 ```
 
-**Live reconciliation (2026-08-16):** the 7/4 row counts and 3-distinct-owner claim are live-verified. The "maps to canonical `users.id`" matching was derived from the historical snapshot lineage (the live catalog has no `users` table); it remains a documented-match result pending #4006 stable-account verification against the current lineage.
+**Live reconciliation (2026-08-16):** the 7/4 row counts and 3-distinct-owner claim are live-verified. The `users.id`-match statements are **historical snapshot match results only** — they were derived from the historical snapshot lineage (the live catalog has no `users` table) and remain pending #4006 stable-account verification against the current lineage; they are not current-live identity facts.
 
 ### 5.2 Collision / duplicate signals
 
@@ -413,7 +416,7 @@ owner + client_key matches in canonical LoveBud: 0 / 7
 
 This means the records are **not proven duplicates** of canonical records by the strongest existing stable keys checked.
 
-It also means they must not be silently discarded merely because two owner subjects already exist in the canonical user table.
+It also means they must not be silently discarded merely because two owner subjects already exist in the historical canonical user-table snapshot (no `users` table exists live).
 
 ### 5.3 Structural health
 
@@ -598,7 +601,7 @@ LoveTree ┘
 
 It also strengthens the requirement in #4006 that authentication-provider IDs must stop being the permanent business-account identity.
 
-The fact that two of three LoveTree owner subjects already match canonical `users.id` is useful migration evidence, but it is **not** sufficient to skip a stable account/identity mapping layer.
+The fact that two of three LoveTree owner subjects matched canonical `users.id` in the historical snapshot lineage (the live catalog has no `users` table) is useful migration evidence, but it is a **historical snapshot match result pending #4006 stable-account verification** — not a current-live identity fact — and it is **not** sufficient to skip a stable account/identity mapping layer.
 
 ---
 
