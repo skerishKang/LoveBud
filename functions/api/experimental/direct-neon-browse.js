@@ -1,8 +1,11 @@
 // Bounded experimental / Preview-only seam for the #4003 direct-Neon Browse
 // summary prototype.
 //
-// This route is intentionally NOT on the Production Browse path
-// (`/api/community/trees?view=summary`, owned by `../[[path]].js` -> Modal).
+// This route is intentionally NOT on the Production Browse path.
+// Post-#4052, `/api/community/trees?view=summary` is owned by the exact Pages
+// Function `functions/api/community/trees.js`, which reuses `buildModalUrl()`
+// from `../[[path]].js` and proxies to Modal. This experimental seam does not
+// modify or replace that Production authority.
 // It lives at `/api/experimental/direct-neon-browse` and is reachable ONLY when
 // both:
 //   1. the explicit opt-in gate `LB_EXPERIMENTAL_DIRECT_NEON_BROWSE === 'true'`
