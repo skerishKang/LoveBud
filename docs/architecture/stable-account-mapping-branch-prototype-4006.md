@@ -19,7 +19,7 @@ parent: br-little-fire-a18brh25
 
 Neon Auth was provisioned only on this non-default child branch. The parent/default production database remains without the `neon_auth` schema.
 
-The branch retains the canonical product snapshot:
+At prototype execution time, the branch retained the historical non-default-child 36/45/287 snapshot used for this prototype (not current default/deployed authority):
 
 ```text
 public.users     36
@@ -27,7 +27,7 @@ public.trees     45
 public.memories 287
 ```
 
-Neon Auth initially has zero user/account/session rows, so provisioning did not reinterpret or replace the existing 36 product identities.
+Neon Auth initially has zero user/account/session rows, so provisioning did not reinterpret or replace the 36 product identities present in that historical child snapshot.
 
 ## Stable account mapping model
 
@@ -52,7 +52,7 @@ Core invariants:
 
 ## Legacy Firebase bootstrap result
 
-Each current `public.users.id` was registered as a Firebase-provider identity attached to a new stable application account on the child branch only.
+Each `public.users.id` present in that historical 36-user child snapshot was registered as a Firebase-provider identity attached to a new stable application account on the child branch only.
 
 Verification:
 
@@ -70,7 +70,7 @@ No `public.users.id`, `trees.owner_id`, Memory ownership, or social ownership va
 
 ## Legacy social identity exception
 
-Historical social tables contain owner subjects no longer represented in `public.users`.
+The historical snapshot's social tables contain owner subjects not represented in that snapshot's `public.users`.
 
 Observed unresolved rows:
 

@@ -59,9 +59,9 @@ default: false
 protected: false
 ```
 
-The branch inherits the canonical product data snapshot.
+At prototype execution time, the isolated non-default child branch carried the historical 36/45/287 Product snapshot, later reclassified by #4043/#4005 lineage forensics as non-default-child evidence rather than current deployed/default authority.
 
-Verified after Neon Auth provisioning:
+Verified after Neon Auth provisioning (historical-at-execution-time snapshot of this non-default child; distinct from the current default `neondb` lineage of 7 Trees / 5 Memories with no `users` table):
 
 ```text
 public.users:    36
@@ -130,7 +130,7 @@ This is sufficient evidence to continue auth experiments without provisioning th
 
 ## 7. Neon Auth identity shape observed
 
-The branch schema confirms that Neon Auth user IDs are UUID-based and separate from the existing product `public.users.id` values.
+The branch schema confirms that Neon Auth user IDs are UUID-based and separate from the `public.users.id` values present in that historical 36-user child snapshot.
 
 Key observed relationships:
 
@@ -203,7 +203,7 @@ Do not use email to reconcile issuer/namespace collisions.
 
 ## 9. Why direct ID replacement is unsafe
 
-Current canonical data already has active ownership keyed by existing user IDs. #4005 confirmed that the LoveBud lineage has real account/product data and that current non-null Tree owners resolve against `public.users`.
+The historical 36-user child snapshot used for this prototype had active ownership keyed by existing user IDs, and the #4005 lineage forensics confirmed that snapshot's non-null Tree owners resolve against that snapshot's `public.users`. The current default/deployed `neondb` lineage (7 Trees / 5 Memories) has no `users` table, so owner resolution against `public.users` is historical non-default-child evidence, not current live authority (see #4005).
 
 Neon Auth generated a distinct UUID-oriented identity schema.
 
@@ -386,7 +386,7 @@ Reason:
 
 ```text
 PASS: branch-local Neon Auth provisioning
-PASS: canonical public data preserved on child branch
+PASS: historical 36/45/287 snapshot preserved on the non-default child branch (historical-at-execution-time evidence, not current default authority)
 PASS: production branch remained without neon_auth
 PASS: stable account / legacy Firebase mapping prototype
 PASS: existing-account compatibility resolver and uniqueness model

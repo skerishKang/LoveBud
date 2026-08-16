@@ -157,10 +157,10 @@ Conceptual projection:
 
 This view is a prototype compatibility boundary only; it is not a Production schema authority yet.
 
-### 6.1 Current-user proof
+### 6.1 Historical child-snapshot user proof
 
 ```text
-current Firebase subjects resolving to themselves as legacy owner: 36 / 36
+Firebase subjects represented in that historical 36-user child snapshot resolving to their corresponding legacy owners: 36 / 36
 ```
 
 ### 6.2 Synthetic cross-provider mapping proof
