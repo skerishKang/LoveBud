@@ -196,7 +196,7 @@ visibility      = private | unlisted | public
 
 This corrects the earlier claim that LoveBud used text/varchar with no enums: the live canonical LoveBud schema is enum-based, and `visibility` already includes `unlisted` on both sides. The enum sets are therefore **not a LoveTree-only difference**; the two databases are enum-identical.
 
-Remaining nuance: the earlier documented legacy blank `source_type` value and legacy null-visibility Tree rows belong to the non-reproducible historical snapshot (§3.1/§6); the current live snapshot has 0 null visibility rows and no blank source_type was observed in the 5 live Memories.
+Remaining nuance: the earlier documented legacy blank `source_type` value and legacy null-visibility Tree rows belong to the historical non-default-child lineage evidence (found on `br-bitter-shadow-a13dfg3c`; not present in the current default/deployed lineage, §3.1/§6); the current live snapshot has 0 null visibility rows and no blank source_type was observed in the 5 live Memories.
 
 Decision:
 
@@ -210,7 +210,7 @@ Use existing canonical semantics during initial convergence. Any enum conversion
 
 ### Canonical LoveBud characteristics
 
-- **`owner_id` is `text NOT NULL` in the live catalog** (live-verified 2026-08-16; 2 distinct non-null owner_ids, 0 null); the earlier "nullable owner_id" wording reflected the non-reproducible historical snapshot.
+- **`owner_id` is `text NOT NULL` in the live catalog** (live-verified 2026-08-16; 2 distinct non-null owner_ids, 0 null); the earlier "nullable owner_id" wording reflected the historical non-default-child lineage evidence (found on `br-bitter-shadow-a13dfg3c`; not present in the current default/deployed lineage).
 - `id` is `text NOT NULL` PRIMARY KEY (live-verified; **not** UUID).
 - `title`, `memo`, `artist` are `text NOT NULL`; `visibility` is enum NOT NULL; `keywords` is `jsonb NOT NULL`; timestamps `timestamptz NOT NULL`.
 - `client_key` exists (nullable `text`).
@@ -240,7 +240,7 @@ JSONB keywords                      = SAME_SEMANTIC_CURRENTLY (jsonb NOT NULL in
 unlisted visibility                 = SAME_SEMANTIC_CURRENTLY (enum value present in both; product usage decision remains separate)
 ```
 
-**Live reconciliation (2026-08-16):** the historical "two legacy null Tree rows" belong to the non-reproducible historical snapshot only — the current live catalog has **0 null-owner_id and 0 null-visibility Tree rows** (`trees.owner_id` is `text NOT NULL`, 0 null). They are no longer a current blocker; if the historical snapshot lineage is re-confirmed by the owner, classification of those rows would still not authorize deletion under this audit.
+**Live reconciliation (2026-08-16):** the historical "two legacy null Tree rows" belong to the historical non-default-child lineage evidence only (found on `br-bitter-shadow-a13dfg3c`; not present in the current default/deployed lineage) — the current live catalog has **0 null-owner_id and 0 null-visibility Tree rows** (`trees.owner_id` is `text NOT NULL`, 0 null). They are no longer a current blocker; if the historical snapshot lineage is re-confirmed by the owner, classification of those rows would still not authorize deletion under this audit.
 
 ## 4.4 Memories
 
@@ -308,7 +308,7 @@ sort_order                           = SAME_SEMANTIC_CURRENTLY (present in both 
 (tree_id, client_key) uniqueness     = SAME_SEMANTIC_CURRENTLY (identical live index in both)
 (tree_id, sort_order) uniqueness     = SAME_SEMANTIC_CURRENTLY (identical partial unique in both)
 parent FK                            = PRESENT_LIVE_BOTH (memories.parent_id → memories.id)
-tree FK                              = PRESENT_LIVE_BOTH (memories.tree_id → trees.id); historical orphan classification remains only for the non-reproduced snapshot lineage
+tree FK                              = PRESENT_LIVE_BOTH (memories.tree_id → trees.id); historical orphan classification remains only for the non-default-child lineage (found on `br-bitter-shadow-a13dfg3c`)
 visibility+created index             = SAME_SEMANTIC_CURRENTLY (memories_visibility_created_at_idx in both)
 emotion_tags                         = SAME_SEMANTIC_CURRENTLY (jsonb NOT NULL in both)
 enum visibility/source_type          = SAME_SEMANTIC_CURRENTLY (same 5 enums in both)
@@ -486,7 +486,7 @@ LoveBud visibility-revocation security contracts
 LoveBud generic social target compatibility until runtime is converged
 ```
 
-The earlier "users/account-linked ownership lineage" and "soft-delete Tree-like semantics" bullets reflected the non-reproduced historical snapshot (no `users` table live; `tree_likes` uniqueness is the identical unconditional `(tree_id, owner_id)` index in both live DBs). That snapshot evidence is preserved as historical non-default-child lineage evidence (§4/§6) and is not asserted as current canonical state.
+The earlier "users/account-linked ownership lineage" and "soft-delete Tree-like semantics" bullets reflected the historical non-default-child lineage evidence (found on `br-bitter-shadow-a13dfg3c`; not present in the current default/deployed lineage; no `users` table live; `tree_likes` uniqueness is the identical unconditional `(tree_id, owner_id)` index in both live DBs). That snapshot evidence is preserved as historical non-default-child lineage evidence (§4/§6) and is not asserted as current canonical state.
 
 ### 7.2 Already present in both live databases (no port required)
 
@@ -723,7 +723,7 @@ FINAL_VERDICT                             = GO_CANONICAL_SCHEMA_BRANCH_PROTOTYPE
 CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage) — with owner-action gate: the documented canonical snapshot (36 users / 45 Trees / 287 Memories + users/community/ai_logs tables) is not present in the current default/deployed lineage — it is found on the non-default child lineage (`br-bitter-shadow-a13dfg3c`) — so owner provenance confirmation is REQUIRED before any data-authority acceptance is claimed for the current lineage
 SCHEMA_DIFF_COMPLETENESS                  = COMPLETE (all 18 #4005-required dimensions live-verified 2026-08-16 via dedicated `lb_ro_…` read-only role + owner-role catalog queries; LoveBud `neondb` vs LoveTree `neondb`; see Appendix A)
 EXACT_SCHEMA_DIFF                         = COMPLETE (live fingerprint diff: LoveBud 100 columns vs LoveTree 97 — exactly 3 extra nullable `memories` columns on LoveBud: `connection_reason`, `discovery_date`, `video_offset_seconds`; all other dimensions — constraints, indexes, enums, triggers, views, extensions, RLS, privileges — identical)
-SEMANTIC_DECISION_RECONCILIATION          = PASS (historical-vs-current contradictions removed: client_key/sort_order and their uniqueness dispositions are SAME_SEMANTIC_CURRENTLY (both live DBs); tree_likes uniqueness identical in both live DBs; "two legacy null Tree rows" and 287-Memory references restricted to the non-reproduced historical snapshot)
+SEMANTIC_DECISION_RECONCILIATION          = PASS (historical-vs-current contradictions removed: client_key/sort_order and their uniqueness dispositions are SAME_SEMANTIC_CURRENTLY (both live DBs); tree_likes uniqueness identical in both live DBs; "two legacy null Tree rows" and 287-Memory references restricted to the historical non-default-child lineage evidence found on `br-bitter-shadow-a13dfg3c`)
 CANONICAL_SCHEMA_VNEXT                   = DEFINED (§7 — no pending cross-database schema ports; all previously "LoveTree-to-port" dimensions already present in both live DBs; remaining vNext decisions = product/runtime semantics, LoveBud-only Memory columns, lineage confirmation, PostgreSQL platform decision)
 LIVE_36_45_287_LINEAGE                    = OWNER_CONFIRMATION_REQUIRED (found on non-default child lineage `br-bitter-shadow-a13dfg3c`; not re-asserted as current default/deployed state)
 CURRENT_DEFAULT_APPRECIATION_SCHEMA       = ABSENT (public.tree_appreciation_orders absent live on the production branch — CATALOGUED_BUT_ABSENT_LIVE, §D)
