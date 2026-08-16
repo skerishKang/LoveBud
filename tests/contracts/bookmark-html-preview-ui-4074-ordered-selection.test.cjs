@@ -606,6 +606,17 @@ test('4075: explicit reset while a read is pending supersedes that read', async 
   assert.equal(api.getPreview(), null, 'preview stays null after reset');
 });
 
+// ─── 21c. unsupported-browser read failure keeps correct (negative) message ──
+test('4075: missing file.text() surfaces the negative unsupported-browser error', async () => {
+  const { api, elements } = loadUi();
+  const size = 10;
+  const noTextApi = { name: 'bookmarks.html', size, text: undefined };
+  await api.handleFileSelected(noTextApi);
+  assert.equal(api.getState(), 'ERROR');
+  assert.equal(elements[ERROR_ID].textContent, '이 브라우저에서는 파일을 읽을 수 없어요.', 'error message polarity stays negative');
+  assert.equal(api.getPreview(), null, 'no preview authority on unsupported browser');
+});
+
 // ─── capability guardrail: still no network / storage / HTML-execution ──────
 test('4074: UI module still has no network / upload / storage / HTML-execution capability', () => {
   assert.doesNotMatch(UI_CODE, /\bfetch\s*\(/, 'no fetch');

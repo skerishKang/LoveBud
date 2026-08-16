@@ -466,7 +466,7 @@
       return Promise.resolve();
     }
     if (typeof file.text !== 'function') {
-      failWith('이 브라우저에서는 파일을 읽을 수 있어요.');
+      failWith('이 브라우저에서는 파일을 읽을 수 없어요.');
       return Promise.resolve();
     }
     setState('READING', '파일을 읽는 중...'); // READING also resets selection
