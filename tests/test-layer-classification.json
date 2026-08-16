@@ -4258,6 +4258,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/bookmark-html-preview-ui-4074-ordered-selection.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE extended for #4074) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4074 ordered-selection contract stacked on #4072/#4065 with zero added DOM-XSS sinks (textContent/createElement only): occurrence-based selection by canonical sourceIndex identity (not URL) so duplicate identical URLs stay independently selectable, click order is not canonical import order (buildOrderedBookmarkImportDraft emits selected eligible occurrences in exact ascending sourceIndex order), select-all-eligible and clear controls operate only on eligible occurrences (unsupported scheme / rejected / credential-bearing / null-url occurrences excluded and never silently selected), unsafe URL rows still expose no clickable href (preserves #4072 credential/raw-href non-disclosure), selection resets on new file / READING / parser-read ERROR / EMPTY / explicit reset with no persistent storage (no localStorage/sessionStorage/IndexedDB/cookie, no storage read/write), selected count shown and announced via a role=status aria-live region, and the pure detached builder never mutates the parser/preview result or internal selection state (new frozen objects carrying only occurrenceKey/sourceIndex/title/url/folderPath). No network, no DB, no browser, no Production, no Tree/Moment/Connection write, no backend route.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/youtube-playlist-preview-client-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the production client wrapper (js/api/import-youtube-playlist-preview.js, a browser IIFE) inside a vm sandbox with mocked fetch, timers, and a stubbed auth pipeline. Verifies same-origin route targeting (never a Google endpoint), Authorization acquisition, bounded JSON body, AbortController signal, normalized envelope errors, FAIL-CLOSED handling of non-2xx responses with and without envelopes, FAIL-CLOSED handling of non-canonical 2xx responses, PROVIDER_TIMEOUT on abort, and validateSourceIdentity exactly-one semantics. No network, no DB, no Production.",

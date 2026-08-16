@@ -18,9 +18,12 @@
       <input type="file" id="bookmarkHtmlFileInput" class="bh-file-input" accept=".html,.htm" />
       <label class="bh-file-label" for="bookmarkHtmlFileInput">북마크 HTML 파일 선택</label>
       <button type="button" class="bh-reset-btn" id="bookmarkHtmlResetBtn">초기화</button>
+      <button type="button" class="bh-select-all-btn" id="bookmarkHtmlSelectAllBtn">지원 항목 모두 선택</button>
+      <button type="button" class="bh-clear-btn" id="bookmarkHtmlClearBtn">선택 해제</button>
     </div>
 
     <p class="bh-status" id="bookmarkHtmlStatus" role="status" aria-live="polite" hidden></p>
+    <p class="bh-selected-count" id="bookmarkHtmlSelectedCount" role="status" aria-live="polite" hidden></p>
     <p class="bh-error" id="bookmarkHtmlError" role="alert" aria-live="polite" hidden></p>
     <div class="bh-preview" id="bookmarkHtmlPreview" aria-label="북마크 미리보기 목록"></div>
   </main>

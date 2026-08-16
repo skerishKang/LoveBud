@@ -150,6 +150,45 @@
   padding: 2px 8px;
 }
 
+/* #4074 — selection controls. */
+.bh-select-all-btn,
+.bh-clear-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bh-select-all-btn:focus-visible,
+.bh-clear-btn:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+.bh-selected-count {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.bh-select {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  cursor: pointer;
+}
+
+.bh-select:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
 /* State is never color-only: text label + dashed border for unsupported. */
 .bh-state-supported {
   color: #1b6e3c;
