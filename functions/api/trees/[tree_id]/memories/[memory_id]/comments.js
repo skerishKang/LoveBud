@@ -62,11 +62,18 @@ export async function onRequestGet(context) {
   const { tree_id, memory_id } = context.params;
   const target = new URL(`/modal/public/trees/${tree_id}/memories/${memory_id}/comments`, modalBaseUrl);
 
+  const incomingUrl = new URL(context.request.url);
   const limit = context.request.url.includes('limit=')
-    ? new URL(context.request.url).searchParams.get('limit')
+    ? incomingUrl.searchParams.get('limit')
     : null;
   if (limit) {
     target.searchParams.set('limit', limit);
+  }
+  const cursor = context.request.url.includes('cursor=')
+    ? incomingUrl.searchParams.get('cursor')
+    : null;
+  if (cursor) {
+    target.searchParams.set('cursor', cursor);
   }
 
   let response;

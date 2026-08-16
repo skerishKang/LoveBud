@@ -30,20 +30,22 @@ function createDelegateSandbox() {
   return sandbox;
 }
 
-test('normalizeTree visibility missing fallback is private', () => {
+test('normalizeTree visibility missing fallback is unknown (#3934, not public/private claim)', () => {
   const uiJs = read('js/my-trees/my-trees-ui.js');
-  assert.match(uiJs, /visibility:\s*tree\s*&&\s*tree\.visibility\s*===\s*['"]public['"]\s*\?\s*['"]public['"]\s*:\s*['"]private['"]/,
-    'Fallback object must default visibility to private');
-  assert.match(uiJs, /normalizedTree\.visibility\s*=\s*normalizedTree\.visibility\s*===\s*['"]public['"]\s*\?\s*['"]public['"]\s*:\s*['"]private['"]/,
-    'normalizeTree must canonicalize visibility to public/private');
+  assert.match(uiJs, /visibility:\s*tree\s*&&\s*tree\.visibility\s*===\s*['"]public['"]\s*\?\s*['"]public['"]\s*:\s*\(/,
+    'Fallback object must branch on public literal');
+  assert.match(uiJs, /tree\.visibility\s*===\s*['"]private['"]\s*\?\s*['"]private['"]\s*:\s*['"]unknown['"]/,
+    'Fallback object must fall through to unknown for unresolved (#3934)');
+  assert.match(uiJs, /normalizedTree\.visibility\s*=\s*normalizedTree\.visibility\s*===\s*['"]public['"]\s*\?\s*['"]public['"]\s*:/,
+    'normalizeTree must canonicalize visibility');
 });
 
-test('buildTreeCard dataset.visibility canonicalized to public or private', () => {
+test('buildTreeCard dataset.visibility canonicalized to public/private/unknown (#3934)', () => {
   const uiJs = read('js/my-trees/my-trees-ui.js');
   assert.match(uiJs, /ds\.visibility\s*=\s*normalizedTree\.visibility/,
     'dataset.visibility must be set from normalizedTree');
-  assert.match(uiJs, /normalizedTree\.visibility\s*=\s*normalizedTree\.visibility\s*===\s*['"]public['"]\s*\?\s*['"]public['"]\s*:\s*['"]private['"]/,
-    'visibility must be canonicalized before dataset assignment');
+  assert.match(uiJs, /normalizedTree\.visibility\s*=\s*normalizedTree\.visibility\s*===\s*['"]public['"]\s*\?\s*['"]public['"]\s*:\s*\([^)]*['"]unknown['"]\)/,
+    'visibility must be canonicalized to public/private/unknown before dataset assignment (#3934)');
 });
 
 test('getTreeCardMeta generates visibilityBadgeHtml for both public and private', () => {
@@ -59,10 +61,14 @@ test('getTreeCardMeta generates visibilityBadgeHtml for both public and private'
     'Badge must NOT include visible label span (#3587 demotion)');
 });
 
-test('public badge uses public icon, private badge uses lock icon', () => {
+test('public badge uses public icon, private badge uses lock icon, unknown uses help (#3934)', () => {
   const uiJs = read('js/my-trees/my-trees-ui.js');
-  assert.match(uiJs, /var visibilityIcon\s*=\s*visibility\s*===\s*['"]public['"]\s*\?\s*['"]public['"]\s*:\s*['"]lock['"]/,
-    'public must use public icon, private must use lock icon');
+  assert.match(uiJs, /visibilityIcon\s*=\s*['"]public['"]/,
+    'public must use public icon');
+  assert.match(uiJs, /visibilityIcon\s*=\s*['"]lock['"]/,
+    'private must use lock icon');
+  assert.match(uiJs, /visibilityIcon\s*=\s*['"]help['"]/,
+    'unknown must use neutral help icon (#3934)');
   assert.match(uiJs, /visibilityIcon/,
     'visibilityIcon variable must be used in badge markup');
 });
@@ -182,7 +188,7 @@ test('delegate exists private card builds tree-card-visibility private badge', (
   assert.equal(meta.title, 'Private Tree', 'title must be preserved');
 });
 
-test('delegate exists missing-visibility card defaults to private badge', () => {
+test('delegate exists missing-visibility card shows unknown badge (not private) #3934', () => {
   var sandbox = createDelegateSandbox();
   var i18n = function (key) { return key; };
 
@@ -193,10 +199,16 @@ test('delegate exists missing-visibility card defaults to private badge', () => 
 
   assert.ok(meta, 'meta must be returned');
   assert.ok(meta.visibilityBadgeHtml, 'visibilityBadgeHtml must exist');
-  assert.match(meta.visibilityBadgeHtml, /tree-card-visibility\s+private/,
-    'missing visibility must default to private badge');
-  assert.match(meta.visibilityBadgeHtml, />lock</,
-    'badge icon must be lock for missing visibility');
+  assert.match(meta.visibilityBadgeHtml, /tree-card-visibility\s+unknown/,
+    'missing visibility must show unknown badge (#3934)');
+  assert.ok(!/tree-card-visibility\s+private/.test(meta.visibilityBadgeHtml),
+    'missing visibility must NOT claim a private badge (#3934)');
+  assert.ok(!/tree-card-visibility\s+public/.test(meta.visibilityBadgeHtml),
+    'missing visibility must NOT claim a public badge (#3934)');
+  assert.match(meta.visibilityBadgeHtml, /aria-label="확인 불가"/,
+    'unknown badge must preserve aria-label');
+  assert.match(meta.visibilityBadgeHtml, /title="확인 불가"/,
+    'unknown badge must preserve title tooltip');
   assert.equal(meta.title, 'Empty Vibe', 'title must be preserved');
 });
 

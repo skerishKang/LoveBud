@@ -157,7 +157,7 @@ const FILE_ALLOWLIST = {
   },
   'js/my-trees/my-trees-batch-render.js': {
     count: 2, classification: 'safe',
-    reason: 'clear-container (×2): grid.innerHTML = empty string'
+    reason: 'clear-container (×2): grid.innerHTML = empty string for initial load + resetBatchState; #3944 pagination rebuild uses replaceChildren() and does not introduce an additional innerHTML sink'
   },
   'js/my-trees/my-trees-i18n-refresh.js': {
     count: 5, classification: 'safe',
@@ -174,6 +174,12 @@ const FILE_ALLOWLIST = {
   'js/my-trees/my-trees-ui.js': {
     count: 3, classification: 'safe',
     reason: 'card.innerHTML from buildTreeCard — approved template renderer with escapeHtml; 2 clear-container'
+  },
+
+  // ── Import (YouTube playlist preview) ──────────────────────────────
+  'js/import/youtube-playlist-preview-ui.js': {
+    count: 4, classification: 'safe',
+    reason: 'resultEl.innerHTML bound to approved template renderers (renderLoading, renderPlaylist, renderError) that escapeHtml() every user-controlled field (playlist title, channel title, item titles/descriptions/channels/states, order index, source URLs); plus one clear-container reset (innerHTML = empty string) on popover close. Thumbnail load-failure fallback uses src/class/textContent only. No unescaped user content.'
   },
 
   // ── Search ─────────────────────────────────────────────────────────

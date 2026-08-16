@@ -21,11 +21,14 @@ function sliceBetween(content, startPattern, endPattern) {
   return afterStart.slice(0, end);
 }
 
-test('static contract: functions/api/[[path]].js rejects oversized write requests before reading body via content-length', () => {
+test('static contract: functions/api/[[path]].js delegates Content-Length early rejection to the shared bounded reader', () => {
   const source = readFile(CATCHALL_JS);
 
-  assert.match(source, /function\s+getContentLengthBytes\s*\(/);
-  assert.match(source, /function\s+isWriteContentLengthTooLarge\s*\(/);
+  assert.match(source, /import\s*\{\s*readBoundedRequestBody\s*\}\s*from\s*['"]\.\.\/_shared\/bounded-request-body\.js['"]/);
+  assert.doesNotMatch(source, /function\s+getContentLengthBytes\s*\(/);
+  assert.doesNotMatch(source, /function\s+isWriteContentLengthTooLarge\s*\(/);
+  assert.doesNotMatch(source, /const\s+MAX_WRITE_BODY_BYTES\s*=/);
+  assert.doesNotMatch(source, /async\s+function\s+readBoundedWriteBody\s*\(/);
 
   const writeBlock = sliceBetween(
     source,
@@ -33,13 +36,9 @@ test('static contract: functions/api/[[path]].js rejects oversized write request
     /export\s+async\s+function\s+onRequest\s*\(/
   );
 
-  const idxTooLarge = writeBlock.indexOf('isWriteContentLengthTooLarge(request)');
-  const idxReadBody = writeBlock.indexOf('readBoundedWriteBody(request)');
-
-  assert.notEqual(idxTooLarge, -1, 'isWriteContentLengthTooLarge(request) must be called');
-  assert.notEqual(idxReadBody, -1, 'readBoundedWriteBody(request) must be called');
-  assert.ok(idxTooLarge < idxReadBody, 'isWriteContentLengthTooLarge(request) must be called before readBoundedWriteBody(request)');
+  assert.match(writeBlock, /await\s+readBoundedRequestBody\(request\)/);
   assert.match(writeBlock, /return\s+buildPayloadTooLargeResponse\(requestId\)/);
+  assert.match(writeBlock, /return\s+buildBodyReadFailedResponse\(requestId\)/);
 });
 
 test('runtime: early rejection returns 413 without reading the body when content-length is too large', { timeout: 10_000 }, async () => {

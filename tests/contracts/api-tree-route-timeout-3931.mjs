@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   onRequestGet as getTreeCollection,
@@ -200,8 +203,63 @@ async function testAnonymousDetailRemainsNoStore() {
   assert.equal(response.headers.get('x-lovebud-request-id'), REQUEST_ID);
 }
 
+// ─── SOURCE_STATIC negative control (#3931 regression guard) ───────────────
+// The runtime classification tests above only prove AbortError -> 504 by mocking
+// fetch to throw. They do NOT prove the route actually uses the shared bounded
+// fetchModalWithTimeout authority. This static control fails closed if a route
+// reverts to a raw fetch() that bypasses the Modal timeout authority.
+
+const ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
+
+function readSrc(relativePath) {
+  return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+}
+
+function extractFunctionBlock(content, functionName) {
+  const start = content.indexOf(`async function ${functionName}`);
+  assert.notEqual(start, -1, `${functionName} should exist`);
+  const openBrace = content.indexOf('{', start);
+  assert.notEqual(openBrace, -1, `${functionName} should have body`);
+  let depth = 0;
+  for (let i = openBrace; i < content.length; i += 1) {
+    if (content[i] === '{') depth += 1;
+    if (content[i] === '}') depth -= 1;
+    if (depth === 0) return content.slice(openBrace, i + 1);
+  }
+  assert.fail(`${functionName} body should be closed`);
+}
+
+async function testRouteSourceUsesBoundedFetch() {
+  for (const [label, relPath, importPath] of [
+    ['trees.js', 'functions/api/trees.js', "../_shared/modal-fetch.js"],
+    ['trees/[id].js', 'functions/api/trees/[id].js', "../../_shared/modal-fetch.js"],
+  ]) {
+    const src = readSrc(relPath);
+    assert.ok(src.includes(`from '${importPath}'`), `${label} must import shared modal-fetch.js`);
+    assert.ok(src.includes('fetchModalWithTimeout'), `${label} must reference fetchModalWithTimeout`);
+    assert.ok(src.includes('isModalTimeoutError'), `${label} must reference isModalTimeoutError`);
+    assert.ok(src.includes('await fetchModalWithTimeout('), `${label} must call await fetchModalWithTimeout for Modal upstream`);
+    // Negative control: a raw fetch() that is NOT the bounded helper is a regression.
+    assert.doesNotMatch(src, /await fetch\((?!ModalWithTimeout)/, `${label} must not bypass Modal timeout authority with raw fetch()`);
+  }
+
+  // Shared authority must actually create a bounded timeout (AbortController + timer).
+  const modalFetchSrc = readSrc('functions/_shared/modal-fetch.js');
+  assert.ok(modalFetchSrc.includes('export async function fetchModalWithTimeout'), 'shared modal-fetch must export fetchModalWithTimeout');
+  assert.ok(modalFetchSrc.includes('AbortController'), 'shared fetchModalWithTimeout must create an AbortController');
+  assert.ok(modalFetchSrc.includes('setTimeout'), 'shared fetchModalWithTimeout must set a bounded timeout');
+
+  // Authenticated detail primary + public fallback must each have an independent
+  // bounded call (not one shared unbound wait).
+  const detailSrc = readSrc('functions/api/trees/[id].js');
+  const getBlock = extractFunctionBlock(detailSrc, 'onRequestGet');
+  const boundedCalls = (getBlock.match(/await fetchModalWithTimeout\(/g) || []).length;
+  assert.ok(boundedCalls >= 2, 'onRequestGet must invoke fetchModalWithTimeout independently for primary and public fallback');
+}
+
 await testCollectionClassification();
 await testDetailWriteClassification();
 await testAuthenticatedFallbackHasIndependentBound();
 await testAnonymousDetailRemainsNoStore();
+await testRouteSourceUsesBoundedFetch();
 console.log('PASS #3931 Tree Modal timeout/error parity regression');

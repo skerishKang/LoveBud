@@ -57,7 +57,8 @@
           <div class="sort-control"><select id="sortTreesSelect" class="summary-sort-control" aria-label="정렬 기준"><option id="sortRecentOption" value="recent">최신순</option><option id="sortOldestOption" value="oldest">생성순</option><option id="sortNameOption" value="name">이름순</option></select></div>
           <div id="myTreesViewModeMount" class="my-trees-view-mode-mount"></div>
         </div>
-      </div>            <div id="treesContainer" class="reveal-up" role="region" aria-label="내 러브트리 목록" aria-busy="true">
+      </div>
+      <div id="treesContainer" class="reveal-up" role="region" aria-label="내 러브트리 목록" aria-busy="true">
          <div id="state-loading" class="trees-loading lt-loading-compact" role="status" aria-live="polite">
           <div class="trees-loading-head"><div class="lt-spinner" aria-hidden="true"></div><span class="loading-text" data-i18n="myTrees.loading">러브트리 목록을 불러오는 중...</span></div>
           <div class="trees-skeleton-grid" aria-hidden="true">
@@ -111,6 +112,19 @@
     </aside>
   </main>
 
+  <div class="ypp-fab-root" id="youtubePlaylistPreviewFabRoot">
+    <button type="button" class="ypp-fab" id="youtubePlaylistPreviewOpenBtn" aria-expanded="false" aria-controls="youtubePlaylistPreviewPopover" aria-label="유튜브 재생목록 미리보기"><span class="material-symbols-outlined">playlist_play</span></button>
+    <section class="youtube-playlist-preview-popover" id="youtubePlaylistPreviewPopover" hidden role="dialog" aria-modal="false" aria-label="유튜브 재생목록 미리보기">
+      <div class="ypp-popover-arrow" aria-hidden="true"></div>
+      <div class="ypp-field">
+        <p class="ypp-help">재생목록 페이지에서 주소창의 공개 링크를 복사해 붙여넣으세요. 공개 또는 "링크가 있는 사용자만" 재생목록만 지원해요.</p>
+        <input id="youtubePlaylistPreviewInput" class="search-input ypp-input" type="text" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/playlist?list=..." />
+        <button type="button" class="btn-round btn-primary" id="youtubePlaylistPreviewSubmitBtn"><span class="material-symbols-outlined">preview</span><span>미리보기</span></button>
+      </div>
+      <div id="youtubePlaylistPreviewResult" class="ypp-result" role="region" aria-live="polite"></div>
+    </section>
+  </div>
+
   <div class="create-tree-modal-backdrop" id="createTreeModalBackdrop" aria-hidden="true">
     <div class="create-tree-modal" role="dialog" aria-modal="true" aria-labelledby="createTreeModalTitle">
       <div class="create-tree-modal-header"><div><div class="create-tree-modal-kicker"><span class="material-symbols-outlined create-tree-modal-kicker-icon">favorite</span><span data-i18n="myTrees.create_modal_kicker">새 러브트리 시작</span></div><h2 class="create-tree-modal-title" id="createTreeModalTitle" data-i18n="myTrees.create_modal_title">어떤 러브트리를 남길까요?</h2><p class="create-tree-modal-desc" data-i18n="myTrees.create_modal_desc">이름을 정하고 첫 순간을 남겨요.</p></div><button type="button" class="create-tree-modal-close" id="createTreeModalCloseBtn" aria-label="닫기"><span class="material-symbols-outlined">close</span></button></div>
@@ -123,15 +137,17 @@
   </div>
 
   <script src="../js/observability/journey-outcome-taxonomy.js?v=1"></script>
-  <script src="../js/cache-utils.js?v=20260417-31"></script>
+  <script src="../js/cache-utils.js?v=20260816-4055-1"></script>
   <script src="../js/utils/normalize.js?v=20260422-1"></script>
   <script src="../js/utils/path.js?v=20260418-1"></script>
   <script src="../js/utils/ui.js?v=20260418-1"></script>
   <script src="../js/utils/security.js?v=20260516-1"></script>
   <script src="../js/api/auth-policy.js?v=20260420-1"></script>
   <script src="../js/api/base-api-fetch.js?v=20260715-3517-2"></script>
+  <script src="../js/api/import-youtube-playlist-preview.js?v=20260810-3914-1"></script>
+  <script src="../js/import/youtube-playlist-preview-ui.js?v=20260810-3914-1"></script>
   <script src="../js/api/public-tree-adapter.js?v=20260629-1"></script>
-  <script src="../js/postgres-client.js?v=20260715-3517-2"></script>
+  <script src="../js/postgres-client.js?v=20260816-4055-3"></script>
   <script src="../js/my-trees/my-trees-utils.js?v=20260520-1285-1"></script>
   <script src="../js/my-trees/my-trees-entry-target-resolver.js?v=20260719-3578-1"></script>
   <script src="../js/shared/tree-card-metrics.js?v=20260719-3578-1"></script>
@@ -144,7 +160,7 @@
   <script src="../js/shared/modal-a11y.js?v=20260801-3795-1"></script>
   <script src="../js/observability/reliability-sentinel-taxonomy.js?v=20260803-3855"></script>
   <script src="../js/observability/reliability-write-read-convergence-core.js?v=20260803-3855"></script>
-  <script src="../js/my-trees/my-trees-actions.js?v=20260803-3855-1"></script>
+  <script src="../js/my-trees/my-trees-actions.js?v=20260816-4055-1"></script>
   <script src="../js/my-trees/my-trees-data.js?v=20260716-3551-2"></script>
   <script src="../js/my-trees/my-trees-state.js?v=20260421-4"></script>
   <script src="../js/my-trees/my-trees-page.js?v=20260622-mytrees-create-1"></script>
