@@ -1,6 +1,11 @@
 import { validateWritePayload } from './legacy-key-guard.js';
 import { fetchModalWithTimeout, isModalTimeoutError } from './modal-fetch.js';
 import { readBoundedRequestBody } from './bounded-request-body.js';
+import {
+  buildInvalidPathEncodingResponse,
+  isInvalidPathEncodingError,
+  normalizeEncodedPathSegment
+} from './path-segment.js';
 
 export const MAX_MEMORY_WRITE_BODY_BYTES = 128 * 1024;
 export const MEMORY_ROUTE_REQUEST_ID_HEADER = 'x-lovebud-request-id';
@@ -18,7 +23,7 @@ export function hasAuthorizationHeader(request) {
 }
 
 export function normalizeMemoryId(rawMemoryId) {
-  return encodeURIComponent(decodeURIComponent(String(rawMemoryId || '')));
+  return normalizeEncodedPathSegment(String(rawMemoryId || '')) || '';
 }
 
 export function isMemoryCollectionRequest(request) {
@@ -72,6 +77,11 @@ export function buildMemoryCollectionModalUrl(request, env = {}) {
     const treeId = sourceUrl.searchParams.get('treeId');
     if (treeId) target.searchParams.set('treeId', treeId);
     target.searchParams.set('limit', String(clampCollectionLimit(sourceUrl.searchParams.get('limit'))));
+
+    const pagination = sourceUrl.searchParams.get('pagination');
+    if (pagination) target.searchParams.set('pagination', pagination);
+    const cursor = sourceUrl.searchParams.get('cursor');
+    if (cursor) target.searchParams.set('cursor', cursor);
   }
 
   return target;
@@ -258,7 +268,15 @@ export async function prepareMemoryWriteProxyRequest(request, env = {}, options 
     if (guard) return { response: withMemoryCloudflareHeader(guard, 'legacy-localization-key', requestId) };
   }
 
-  const target = buildMemoryModalUrl(request, env, options);
+  let target;
+  try {
+    target = buildMemoryModalUrl(request, env, options);
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return { response: buildInvalidPathEncodingResponse(requestId, MEMORY_ROUTE_REQUEST_ID_HEADER) };
+    }
+    throw error;
+  }
   if (!target) {
     return { response: buildMemoryMissingModalConfigResponse(requestId) };
   }
@@ -293,7 +311,15 @@ export async function proxyMemoryRouteRequest(context, options = {}) {
   const method = request.method.toUpperCase();
 
   if (method === 'GET') {
-    const target = buildMemoryModalUrl(request, env || {}, options);
+    let target;
+    try {
+      target = buildMemoryModalUrl(request, env || {}, options);
+    } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, MEMORY_ROUTE_REQUEST_ID_HEADER);
+      }
+      throw error;
+    }
     if (!target) {
       return buildMemoryMissingModalConfigResponse(requestId);
     }

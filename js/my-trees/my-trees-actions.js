@@ -80,6 +80,21 @@
     }
   }
 
+  // #4055: after a confirmed public-projection mutation (visibility change,
+  // delete, rename) purge the tree's public Browse/preview projections from
+  // the client cache. Only runs after success — failed/unauthorized mutations
+  // must not falsely invalidate.
+  function clearPublicTreeProjectionCaches(treeId) {
+    if (!treeId) return;
+    try {
+      if (window.apiClient && typeof window.apiClient.clearCommunityCaches === 'function') {
+        window.apiClient.clearCommunityCaches(treeId);
+      }
+    } catch (e) {
+      myTreesDebugLog('[my-trees-actions] Failed to clear public projection caches:', getErrorMessage(e));
+    }
+  }
+
   function buildDom(tag, attrs, children) {
     var el = document.createElement(tag);
     if (attrs) {
@@ -655,6 +670,8 @@
       if (window.apiClient && window.apiClient.updateTree) {
         await window.apiClient.updateTree(treeId, { title: newTitle.trim() });
         clearPersistentTreesCache();
+        // #4055: a renamed Tree's public Browse card projection is stale.
+        clearPublicTreeProjectionCaches(treeId);
         options?.showToast?.(safeText(i18n, 'rename_success', '트리 이름이 변경되었습니다.'), 'success');
         options?.reloadTrees?.();
       } else {
@@ -676,6 +693,8 @@
       if (window.apiClient && window.apiClient.deleteTree) {
         await window.apiClient.deleteTree(treeId);
         clearPersistentTreesCache();
+        // #4055: a deleted Tree must vanish from public Browse caches.
+        clearPublicTreeProjectionCaches(treeId);
         options?.showToast?.(safeText(i18n, 'delete_success', '트리가 삭제되었습니다.'), 'success');
         options?.reloadTrees?.();
       } else {
@@ -695,6 +714,9 @@
       if (window.apiClient && window.apiClient.updateTree) {
         await window.apiClient.updateTree(treeId, { visibility: nextVisibility });
         clearPersistentTreesCache();
+        // #4055: public -> private must immediately purge this tree's public
+        // Browse/preview projections.
+        clearPublicTreeProjectionCaches(treeId);
         options?.showToast?.(
           nextVisibility === 'public'
             ? safeText(i18n, 'visibility_changed_public', '이 트리가 공개로 전환되었습니다.')

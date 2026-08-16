@@ -77,7 +77,7 @@ owner_domain
 approval_reference
 ```
 
-The current canonical list is intentionally empty. Existing files are not copied into `db/migrations/`, and their past execution is not inferred. The first canonical entry may be added only after the adoption baseline and runner design are separately approved.
+The current canonical catalog is populated while the manifest remains `ADOPTION_REQUIRED`: `canonical-migrations.json` contains two catalogued migrations (`20260802094500_bootstrap-migration-ledger`, `20260812213000_add-tree-appreciation-orders`) and the matching SQL files exist under `db/migrations/`. Catalog population is distinct from adoption: runner activation and the `ACTIVE` gate are a separate approval, and past execution of these files is not inferred.
 
 File renames are content changes for provenance purposes: the manifest path, immutable id, and checksum must be reviewed together. Migration content cannot be edited in place after application. A necessary correction is a new forward-fix migration with a new id.
 
@@ -144,7 +144,7 @@ Hard boundaries:
 - candidate `status` is always `ADOPTION_REQUIRED` (never `ACTIVE`)
 - repository-owned fields (`fingerprint_algorithm`, `normalizer_version`, `metadata_contract_path`, `adoption_rule`, `comparison_scope`) come from the committed inactive template, not the caller
 - `critical_objects` are built only from evidence `{ name, fingerprint }` in canonical code-point order
-- committed `expected-schema-manifest.json` and `canonical-migrations.json` remain empty/inactive; the builder must not write them
+- committed `expected-schema-manifest.json` and `canonical-migrations.json` remain inactive (`ADOPTION_REQUIRED`) with catalogued entries; the builder must not write them
 - same-evidence `compareSchema(candidate, evidence)` has no schema mismatch, but overall provenance evaluation remains `GATE_ADOPTION_BASELINE_REQUIRED`
 - evidence paths use repository-bound reads only: lexical confinement plus `realpath` containment so repository-local symlinks cannot escape the real repository root
 - no database driver, `DATABASE_URL`, network, shell, or stdin

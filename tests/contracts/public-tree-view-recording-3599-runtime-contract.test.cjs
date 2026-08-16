@@ -216,17 +216,17 @@ test('1. successful active public tree load → exactly one view POST', async ()
   assert.match(viewPosts[0].url, /\/api\/trees\/tree-A\/views$/);
 });
 
-test('2. view POST payload: actorKey non-empty, actorKind anonymous, source public_tree_detail', async () => {
+test('2. view POST sends no client actor identity body (edge derives authority)', async () => {
   const { ctx, requests } = createCtx({ search: '?treeId=tree-A' });
   installBridgeStub(ctx, {});
   loadModules(ctx);
   await new Promise((r) => setTimeout(r, 50));
   const viewPosts = requests.filter((r) => r.method === 'POST' && /\/views$/.test(r.url));
   assert.equal(viewPosts.length, 1);
-  const body = JSON.parse(viewPosts[0].body);
-  assert.ok(body.actorKey && body.actorKey.length > 0, 'actorKey non-empty');
-  assert.equal(body.actorKind, 'anonymous');
-  assert.equal(body.source, 'public_tree_detail');
+  // No actor identity must ever be sent from the browser (Issue #3917): the
+  // POST carries no body and therefore no actorKey/actorKind/source payload.
+  // The edge (Cloudflare) derives the anonymous actor from trusted context.
+  assert.equal(viewPosts[0].body, null, 'view POST must send no body');
 });
 
 test('3. repeated init via module reload → still one request per page lifecycle', async () => {
@@ -284,35 +284,11 @@ test('8. fetch reject → viewer initialization does not throw', async () => {
   // recorder swallowed the rejection; no unhandled crash
 });
 
-test('9. same browser localStorage → same actorKey across recorder recreation', () => {
-  const { ctx, localStorage } = createCtx({ search: '?treeId=tree-A' });
-  installBridgeStub(ctx, {});
-  loadModules(ctx);
-  const key1 = ctx.window.LoveBudPublicTreeViewRecorder.getOrCreateViewActorKey();
-  const key2 = ctx.window.LoveBudPublicTreeViewRecorder.getOrCreateViewActorKey();
-  assert.equal(key1, key2, 'actorKey reused from localStorage');
-  assert.ok(localStorage.getItem('lovebud_public_tree_view_actor_key_v1'), 'stored in localStorage');
-  assert.ok(key1.startsWith('anon-'));
-  assert.ok(key1.length <= 128, 'actorKey within server length limit');
-});
-
-test('10. localStorage unavailable → non-blocking fallback (no throw)', () => {
-  const { ctx } = createCtx({ search: '?treeId=tree-A' });
-  installBridgeStub(ctx, {});
-  // remove localStorage access to force catch path
-  Object.defineProperty(ctx.window, 'localStorage', {
-    get() { throw new Error('localStorage unavailable'); },
-    configurable: true
-  });
-  loadModules(ctx);
-  let key = null;
-  let threw = false;
-  try {
-    key = ctx.window.LoveBudPublicTreeViewRecorder.getOrCreateViewActorKey();
-  } catch (e) { threw = true; }
-  assert.equal(threw, false, 'must not throw when localStorage unavailable');
-  assert.ok(key && key.startsWith('anon-'), 'ephemeral fallback key generated');
-});
+// Tests 9 and 10 previously asserted a client-chosen localStorage actorKey.
+// That authority is intentionally REMOVED for Issue #3917: the browser must
+// never mint or influence viewer identity. The edge (Cloudflare) derives the
+// anonymous actor from trusted request context instead. See the #3917 edge
+// authority contract and the Modal tree_view_authority tests.
 
 test('11. active pages/view.html → recorder dependency present, legacy public-tree-viewer absent', () => {
   const html = read('pages/view.html');
@@ -382,7 +358,8 @@ test('16. window-global state shape exists and is reused', () => {
   const state = ctx.window.__lovebudPublicTreeViewRecorderState;
   assert.ok(state, 'window-global state object created on first call');
   assert.ok(state.sentTreeIds && typeof state.sentTreeIds === 'object', 'sentTreeIds map present');
-  assert.equal('ephemeralActorKey' in state, true, 'ephemeralActorKey field present');
+  // No client actor key is stored: the browser never mints viewer identity.
+  assert.equal('ephemeralActorKey' in state, false, 'no client actor key stored');
   assert.equal(state.sentTreeIds['tree-A'], true, 'tree-A marked sent in window-global state');
   // duplicate script evaluation reuses the SAME state object (not a fresh one)
   vm.runInContext(read('js/viewer/public-tree-view-recorder.js'), ctx);
@@ -426,20 +403,8 @@ test('19. A → B → A yields exactly two POSTs', async () => {
   assert.ok(trees.includes('tree-B'), 'tree-B posted');
 });
 
-test('20. localStorage throw → ephemeral actor key created once and reused', () => {
-  const { ctx } = createCtx({ search: '?treeId=tree-A' });
-  // force localStorage access to throw on both read and write
-  Object.defineProperty(ctx.window, 'localStorage', {
-    get() { throw new Error('localStorage unavailable'); },
-    configurable: true
-  });
-  vm.runInContext(read('js/viewer/public-tree-view-recorder.js'), ctx);
-  const k1 = ctx.window.LoveBudPublicTreeViewRecorder.getOrCreateViewActorKey();
-  const k2 = ctx.window.LoveBudPublicTreeViewRecorder.getOrCreateViewActorKey();
-  assert.ok(k1 && k1.startsWith('anon-'), 'ephemeral key generated');
-  assert.equal(k1, k2, 'same key reused across calls despite localStorage throw');
-  assert.ok(k1.length <= 128, 'key within 128-char limit');
-});
+// Test 20 previously asserted a client-chosen localStorage/ephemeral actor key.
+// That authority is removed for Issue #3917 (see notes on tests 9/10).
 
 test('21. fetch reject → no automatic retry within lifecycle', async () => {
   const { ctx, requests } = createCtx({ search: '?treeId=tree-A' });
@@ -489,11 +454,8 @@ test('23. production recorder API exposes no test/reset mutation hook', () => {
   assert.deepEqual(
     Object.keys(api).sort(),
     [
-      'VIEW_ACTOR_KEY_STORAGE',
-      'VIEW_ACTOR_KIND',
       'VIEW_SOURCE',
       'buildTreeViewEndpoint',
-      'getOrCreateViewActorKey',
       'recordPublicTreeView'
     ].sort()
   );
@@ -504,7 +466,10 @@ test('23. production recorder API exposes no test/reset mutation hook', () => {
   assert.equal(suspicious.length, 0, 'no test/reset-named key: ' + suspicious.join(','));
   assert.equal(Object.isFrozen(api), true, 'production API is frozen');
 
-  // production source string must not retain the removed hook
+  // production source string must not retain the removed client actor authority
   const src = read('js/viewer/public-tree-view-recorder.js');
   assert.equal(src.includes('_resetForTest'), false, 'source has no _resetForTest');
+  assert.equal(src.includes('getOrCreateViewActorKey'), false, 'source has no client actor authority');
+  assert.equal(src.includes('VIEW_ACTOR_KEY_STORAGE'), false, 'source does not persist a client actor key');
+  assert.equal(src.includes('localStorage'), false, 'source never reads/writes localStorage actor identity');
 });

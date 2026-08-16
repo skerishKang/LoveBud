@@ -76,7 +76,8 @@ test('Cloudflare tree like route proxies only authenticated GET and POST to Moda
   assert.match(cloudflareRoute, /export\s+async\s+function\s+onRequestGet/);
   assert.match(cloudflareRoute, /export\s+async\s+function\s+onRequestPost/);
   assert.match(cloudflareRoute, /Authorization required/);
-  assert.match(cloudflareRoute, /\/modal\/private\/trees\/\$\{encodeURIComponent\(decodeURIComponent\(treeId\)\)\}\/likes/);
+  assert.match(cloudflareRoute, /const treeId = normalizeEncodedPathSegment\(parts\[2\] \|\| ''\)/);
+  assert.match(cloudflareRoute, /\/modal\/private\/trees\/\$\{treeId\}\/likes/);
   assert.match(cloudflareRoute, /allow:\s*'GET, POST'/);
   assert.doesNotMatch(cloudflareRoute, /\/modal\/browse\/latest/);
   assert.doesNotMatch(cloudflareRoute, /sort=likes/);

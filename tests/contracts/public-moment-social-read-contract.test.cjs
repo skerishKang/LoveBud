@@ -182,7 +182,7 @@ test('public Modal comments route does not call require_firebase_user', () => {
     'public comments route should call require_public_memory_membership'
   );
   assert.ok(
-    hasString(routeBlock, 'fetch_public_comments(safe_memory_id, limit=limit)'),
+    hasString(routeBlock, 'fetch_public_comments(safe_memory_id, limit=limit'),
     'public comments route should call fetch_public_comments with limit'
   );
 });
