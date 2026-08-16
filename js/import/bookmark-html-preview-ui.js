@@ -88,6 +88,11 @@
   var renderedCheckboxes = Object.create(null);
   var lastResult = null;
 
+  // Monotonic read-generation token. Each file selection bumps it so that a
+  // superseded (now-stale) File.text() completion can never reclaim preview
+  // authority or trigger a failure against the current surface.
+  var readGeneration = 0;
+
   function setParser(parser) {
     parserApi = parser || null;
   }
@@ -446,6 +451,7 @@
    * File.text().
    */
   function handleFileSelected(file) {
+    readGeneration++; // supersede any pending read from a previous selection
     resetSelection();
     clearPreview(); // new file selection: previous preview + selection are stale
     lastResult = null; // preview authority invalidates with selection (READING)
@@ -460,20 +466,24 @@
       return Promise.resolve();
     }
     if (typeof file.text !== 'function') {
-      failWith('이 브라우저에서는 파일을 읽을 수 없어요.');
+      failWith('이 브라우저에서는 파일을 읽을 수 있어요.');
       return Promise.resolve();
     }
     setState('READING', '파일을 읽는 중...'); // READING also resets selection
+    var myGen = readGeneration; // capture this read's generation
     return file.text()
       .then(function (text) {
+        if (myGen !== readGeneration) return; // superseded read: ignore stale completion
         handleText(text);
       })
       .catch(function () {
+        if (myGen !== readGeneration) return; // stale rejection: do not fail the current surface
         failWith('파일을 읽지 못했어요.');
       });
   }
 
   function resetSurface() {
+    readGeneration++; // supersede any pending read before clearing the surface
     resetSelection();
     lastResult = null; // preview authority invalidates with selection
     var input = $id(FILE_INPUT_ID);

@@ -164,6 +164,24 @@ function fakeFile(size, textFn) {
   return { name: 'bookmarks.html', size, text: textFn };
 }
 
+// A controllable read: text() returns a promise the test resolves/rejects
+// later, so a late fulfillment/rejection can be simulated after supersession.
+function deferredFile(size) {
+  let resolveFn, rejectFn;
+  const p = new Promise((res, rej) => { resolveFn = res; rejectFn = rej; });
+  return {
+    name: 'bookmarks.html',
+    size,
+    text: () => p,
+    resolve: resolveFn,
+    reject: rejectFn,
+  };
+}
+
+function flushMicrotasks() {
+  return new Promise((r) => setImmediate(r));
+}
+
 function rowCheckbox(row) {
   const last = row.children[row.children.length - 1];
   return last && last.tagName === 'INPUT' ? last : null;
@@ -526,6 +544,66 @@ test('4075: ERROR and explicit reset leave getPreview() null and selection empty
   assert.equal(api.getState(), 'IDLE');
   assert.equal(api.getPreview(), null, 'explicit reset drops preview authority');
   assert.equal(api.getSelectedCount(), 0, 'explicit reset empties selection');
+});
+
+// ─── 21b. stale async read completion cannot reclaim preview authority ──────
+// Superseded File.text() fulfillments/rejections must be ignored by the current
+// surface (blocking #4075 STALE_ASYNC_READ_COMPLETION).
+test('4075: stale late fulfillment of a superseded read does not reclaim preview', async () => {
+  const { api } = loadUi();
+  const aHtml = exportedHtml(nBookmarks(2, (i) => `https://a.example.com/${i}`));
+  const bHtml = exportedHtml(nBookmarks(2, (i) => `https://b.example.com/${i}`));
+  const aFile = deferredFile(aHtml.length);
+  const bFile = fakeFile(bHtml.length, () => Promise.resolve(bHtml));
+  api.handleFileSelected(aFile); // do not await: A read stays pending
+  assert.equal(api.getState(), 'READING');
+  await api.handleFileSelected(bFile); // B supersedes A and resolves
+  assert.equal(api.getState(), 'READY');
+  assert.equal(api.getPreview().entries[0].url, 'https://b.example.com/0', 'B preview authoritative');
+  api.selectAllEligible();
+  assert.equal(api.getSelectedCount(), 2, 'B occurrences selected');
+  // A resolves late — must be ignored by the current surface.
+  aFile.resolve(aHtml);
+  await flushMicrotasks();
+  assert.equal(api.getState(), 'READY', 'state stays READY for B');
+  assert.equal(api.getPreview().entries[0].url, 'https://b.example.com/0', 'A late fulfillment cannot steal preview');
+  assert.equal(api.getSelectedCount(), 2, 'selection not replaced/resurrected by A');
+});
+
+test('4075: stale late rejection of a superseded read does not enter ERROR', async () => {
+  const { api } = loadUi();
+  const aHtml = exportedHtml(nBookmarks(2, (i) => `https://a.example.com/${i}`));
+  const bHtml = exportedHtml(nBookmarks(2, (i) => `https://b.example.com/${i}`));
+  const aFile = deferredFile(aHtml.length);
+  const bFile = fakeFile(bHtml.length, () => Promise.resolve(bHtml));
+  api.handleFileSelected(aFile); // A read stays pending
+  assert.equal(api.getState(), 'READING');
+  await api.handleFileSelected(bFile); // B supersedes A and resolves
+  assert.equal(api.getState(), 'READY');
+  assert.equal(api.getPreview().entries[0].url, 'https://b.example.com/0', 'B preview authoritative');
+  api.selectAllEligible();
+  assert.equal(api.getSelectedCount(), 2, 'B occurrences selected');
+  // A rejects late — must be ignored, not fail the current surface.
+  aFile.reject(new Error('read failed'));
+  await flushMicrotasks();
+  assert.equal(api.getState(), 'READY', 'state stays READY');
+  assert.equal(api.getPreview().entries[0].url, 'https://b.example.com/0', 'B preview remains authoritative');
+  assert.equal(api.getSelectedCount(), 2, 'selection not reset by stale A failure');
+});
+
+test('4075: explicit reset while a read is pending supersedes that read', async () => {
+  const { api } = loadUi();
+  const aHtml = exportedHtml(nBookmarks(2, (i) => `https://a.example.com/${i}`));
+  const aFile = deferredFile(aHtml.length);
+  api.handleFileSelected(aFile); // A read pending
+  assert.equal(api.getState(), 'READING');
+  api.resetSurface(); // supersede the pending read
+  assert.equal(api.getState(), 'IDLE');
+  assert.equal(api.getPreview(), null);
+  aFile.resolve(aHtml); // late fulfillment must be ignored
+  await flushMicrotasks();
+  assert.equal(api.getState(), 'IDLE', 'pending read cannot reclaim surface after reset');
+  assert.equal(api.getPreview(), null, 'preview stays null after reset');
 });
 
 // ─── capability guardrail: still no network / storage / HTML-execution ──────
