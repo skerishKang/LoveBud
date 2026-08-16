@@ -233,6 +233,55 @@
   color: var(--on-surface-variant);
   background: color-mix(in srgb, var(--error, #b3261e) 12%, transparent);
 }
+
+/* #4062 — ordered selection controls */
+.ypp-selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-top: 1px solid var(--surface-container-high, rgba(128, 128, 128, 0.25));
+}
+.ypp-selected-count {
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-variant, inherit);
+}
+.ypp-select-all-btn,
+.ypp-clear-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--primary, #8b5cf6);
+  background: transparent;
+  color: var(--primary, #8b5cf6);
+  cursor: pointer;
+}
+.ypp-select-all-btn:hover,
+.ypp-clear-btn:hover {
+  background: color-mix(in srgb, var(--primary, #8b5cf6) 10%, transparent);
+}
+.ypp-select-all-btn:focus-visible,
+.ypp-clear-btn:focus-visible {
+  outline: 2px solid var(--primary, #8b5cf6);
+  outline-offset: 1px;
+}
+.ypp-select-cell {
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+}
+.ypp-select {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary, #8b5cf6);
+  cursor: pointer;
+}
+.ypp-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
 @media (max-width: 600px) {
   .ypp-fab-root {
     right: 14px;

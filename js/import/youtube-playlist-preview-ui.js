@@ -3,11 +3,28 @@
  *
  * Entry point: My Trees page (`/pages/my-trees.html`) — Issue #3914.
  *
- * Flow (read-only preview, no persistence):
+ * Flow (read-only preview + ordered selection, no persistence):
  *   public playlist URL/ID
  *   -> authenticated same-origin preview request (js/api/import-youtube-playlist-preview.js)
  *   -> ordered read-only preview
+ *   -> per-occurrence item selection (occurrence identity = position, NOT videoId)
+ *   -> ordered import draft builder (source order preserved, no DB write)
  *   -> Tree write 0, Moment write 0, Connection write 0
+ *
+ * #4062 selection contract:
+ *   - selection identity is the preview occurrence (position), so duplicate
+ *     videoId occurrences are independently selectable
+ *   - the ordered import draft is always in playlist source order, never the
+ *     user's click order
+ *   - eligibility is derived from the canonical #3914 item state vocabulary:
+ *       PRIVATE_OR_UNAVAILABLE / UNKNOWN  -> not selectable (fail closed)
+ *       AVAILABLE_METADATA / METADATA_PARTIAL / THUMBNAIL_UNAVAILABLE -> selectable
+ *   - THUMBNAIL_UNAVAILABLE is NOT MEDIA_UNAVAILABLE: a missing thumbnail does
+ *     not make an otherwise eligible item unselectable
+ *   - selection is never persisted (no localStorage/sessionStorage/cookie/
+ *     IndexedDB); it resets on new preview request, success, error, and close
+ *   - buildOrderedImportDraft() is pure/deterministic and never mutates the
+ *     preview object
  *
  * Rules enforced here:
  *   - URL-looking input is always sent as `source`; only genuine bare IDs
@@ -45,6 +62,14 @@
   var INPUT_ID = 'youtubePlaylistPreviewInput';
   var SUBMIT_ID = 'youtubePlaylistPreviewSubmitBtn';
   var RESULT_ID = 'youtubePlaylistPreviewResult';
+  var SELECTION_BAR_ID = 'youtubePlaylistSelectionBar';
+  var SELECTED_COUNT_ID = 'youtubePlaylistSelectedCount';
+
+  // #4062 selection state. Occurrence identity is the preview `position`
+  // (0-based), never videoId: the same video can appear at multiple playlist
+  // positions and each occurrence must be independently selectable.
+  var selection = {}; // { position: true } — module-local, never persisted
+  var lastPreviewData = null; // latest successful preview (for draft building)
 
   var PLACEHOLDER_THUMB =
     'data:image/svg+xml;charset=utf-8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="72" height="54" viewBox="0 0 72 54"%3E%3Crect width="72" height="54" fill="rgba(144,73,81,0.08)"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="rgba(144,73,81,0.45)" font-size="12" font-family="system-ui"%3E%EC%9E%AC%EC%83%9D%EB%AA%A9%EB%A1%9D %EC%8D%B8%EB%84%A4%EC%9D%B4%EB%B8%94%3C/text%3E%3C/svg%3E';
@@ -84,10 +109,145 @@
     return { playlistId: value };
   }
 
+  /**
+   * #4062 eligibility — derived from the canonical #3914 item state vocabulary.
+   * THUMBNAIL_UNAVAILABLE is NOT MEDIA_UNAVAILABLE: a missing thumbnail does
+   * not make an otherwise eligible item unselectable. Unknown/unavailable
+   * states fail closed.
+   */
+  function isItemSelectable(item) {
+    if (!item || typeof item !== 'object') return false;
+    var position = item.position;
+    if (position === null || position === undefined || position === '') return false;
+    var state = item.state || 'UNKNOWN';
+    if (state === 'PRIVATE_OR_UNAVAILABLE' || state === 'UNKNOWN') return false;
+    return true; // AVAILABLE_METADATA | METADATA_PARTIAL | THUMBNAIL_UNAVAILABLE
+  }
+
+  /**
+   * #4062 pure ordered import draft builder.
+   * preview result + selection -> ordered draft (source order, selected only).
+   * Never mutates the preview object; the returned draft is detached from
+   * internal selection state and carries only #3914 contract fields.
+   */
+  function buildOrderedImportDraft(previewData, selectedPositions) {
+    var items = (previewData && Array.isArray(previewData.items)) ? previewData.items : [];
+    var selected = {};
+    if (selectedPositions && typeof selectedPositions === 'object') {
+      var keys = Array.isArray(selectedPositions) ? selectedPositions : Object.keys(selectedPositions);
+      for (var i = 0; i < keys.length; i++) {
+        selected[keys[i]] = true;
+      }
+    }
+    var draft = [];
+    for (var j = 0; j < items.length; j++) {
+      var item = items[j];
+      if (!item || !isItemSelectable(item)) continue;
+      var key = String(item.position);
+      if (!selected[key]) continue;
+      draft.push({
+        position: item.position,
+        videoId: item.videoId || '',
+        title: item.title || '',
+        channelTitle: item.channelTitle || '',
+        state: item.state || 'UNKNOWN',
+        thumbnailUrl: item.thumbnailUrl || null,
+        sourceUrl: item.sourceUrl || '',
+      });
+    }
+    // Canonical source order — never click order. Items are emitted in the
+    // same order they appear in the preview (position ascending).
+    draft.sort(function (a, b) {
+      return Number(a.position) - Number(b.position);
+    });
+    return draft;
+  }
+
+  function resetSelection() {
+    selection = {};
+    updateSelectionCount();
+  }
+
+  function updateSelectionCount() {
+    var countEl = $id(SELECTED_COUNT_ID);
+    if (countEl) {
+      countEl.textContent = '선택 ' + Object.keys(selection).length + '개';
+    }
+  }
+
+  function selectionCount() {
+    return Object.keys(selection).length;
+  }
+
+  /** Select every eligible occurrence. `itemsOverride` is for callers/tests
+   *  that want deterministic selection without a preceding render; the UI
+   *  path uses the last successful preview. */
+  function selectAllEligible(itemsOverride) {
+    var items = (itemsOverride && Array.isArray(itemsOverride))
+      ? itemsOverride
+      : ((lastPreviewData && Array.isArray(lastPreviewData.items)) ? lastPreviewData.items : []);
+    var next = {};
+    for (var i = 0; i < items.length; i++) {
+      if (isItemSelectable(items[i])) {
+        next[String(items[i].position)] = true;
+      }
+    }
+    selection = next;
+    syncSelectionUi();
+  }
+
+  function clearSelection() {
+    selection = {};
+    syncSelectionUi();
+  }
+
+  function toggleSelection(position) {
+    if (position === null || position === undefined) return;
+    var key = String(position);
+    // Never allow selecting an item that is not eligible.
+    var items = (lastPreviewData && Array.isArray(lastPreviewData.items)) ? lastPreviewData.items : [];
+    var target = null;
+    for (var i = 0; i < items.length; i++) {
+      if (String(items[i].position) === key) {
+        target = items[i];
+        break;
+      }
+    }
+    if (!target || !isItemSelectable(target)) return;
+    if (selection[key]) {
+      delete selection[key];
+    } else {
+      selection[key] = true;
+    }
+    updateSelectionCount();
+  }
+
+  /** Re-render only the selection UI (checkboxes + count) after a change,
+   *  keeping the rest of the preview surface intact. */
+  function syncSelectionUi() {
+    var result = $id(RESULT_ID);
+    if (!result) {
+      updateSelectionCount();
+      return;
+    }
+    var boxes = result.querySelectorAll('.ypp-select');
+    for (var i = 0; i < boxes.length; i++) {
+      var pos = boxes[i].getAttribute('data-position');
+      boxes[i].checked = pos !== null && selection[pos] === true;
+    }
+    updateSelectionCount();
+  }
+
   function renderRow(item) {
     var state = item.state || 'UNKNOWN';
     var stateClass = stateClassName(state);
     var label = localizeState(state);
+    var selectable = isItemSelectable(item);
+    var pos = item.position !== null && item.position !== undefined ? String(item.position) : '';
+    var checked = pos !== '' && selection[pos] === true ? ' checked' : '';
+    var disabled = selectable ? '' : ' disabled';
+    var selectLabel = (item.position !== null && item.position !== undefined ? (Number(item.position) + 1) + '번 ' : '') +
+      (item.title || '제목 없음') + (selectable ? ' 선택' : ' — 선택 불가');
     var thumbHtml;
     if (item.thumbnailUrl) {
       thumbHtml =
@@ -101,6 +261,10 @@
       : '';
     return (
       '<div class="ypp-row" data-position="' + (item.position != null ? item.position : '') + '" role="row">' +
+        '<span class="ypp-select-cell">' +
+          '<input type="checkbox" class="ypp-select" data-position="' + escapeHtml(pos) + '"' +
+          ' aria-label="' + escapeHtml(selectLabel) + '"' + checked + disabled + ' />' +
+        '</span>' +
         '<span class="ypp-order" aria-hidden="true">#' + escapeHtml(String(item.position != null ? item.position + 1 : '')) + '</span>' +
         '<span class="ypp-thumb">' + thumbHtml + '</span>' +
         '<span class="ypp-meta">' +
@@ -146,6 +310,14 @@
     parts.push('<div class="ypp-head"><h4>' + escapeHtml(title) + '</h4>');
     if (channel) parts.push('<span class="ypp-channel-head">' + escapeHtml(channel) + '</span>');
     parts.push('</div>');
+    // #4062 selection bar: select-all-eligible / clear / live count.
+    parts.push(
+      '<div class="ypp-selection-bar" id="' + SELECTION_BAR_ID + '">' +
+        '<span class="ypp-selected-count" id="' + SELECTED_COUNT_ID + '" aria-live="polite">선택 0개</span>' +
+        '<button type="button" class="ypp-select-all-btn" data-ypp-action="select-all">전체 선택</button>' +
+        '<button type="button" class="ypp-clear-btn" data-ypp-action="clear">선택 해제</button>' +
+      '</div>'
+    );
     if (items.length === 0) {
       parts.push('<div class="ypp-empty">항목이 없어요.</div>');
     } else {
@@ -182,15 +354,21 @@
   var api = (typeof window !== 'undefined' && window.LoveTreeYouTubePlaylistPreview) || null;
 
   function setStateLoading() {
+    resetSelection(); // new preview request: stale selection must not leak
     var result = $id(RESULT_ID);
     if (result) result.innerHTML = renderLoading();
   }
 
   function setStateSuccess(data) {
+    lastPreviewData = data;
+    resetSelection(); // fresh success: stale selection must not leak
     renderPlaylist(data);
+    updateSelectionCount();
   }
 
   function setStateError(code, message) {
+    lastPreviewData = null;
+    resetSelection(); // error: stale selection must not leak
     var result = $id(RESULT_ID);
     if (result) result.innerHTML = renderError(message);
   }
@@ -208,6 +386,8 @@
     if (btn) btn.setAttribute('aria-expanded', 'false');
     var result = $id(RESULT_ID);
     if (result) result.innerHTML = '';
+    lastPreviewData = null;
+    resetSelection(); // close: stale selection must not be silently restored
     if (returnFocus && btn && typeof btn.focus === 'function') {
       btn.focus();
     }
@@ -286,6 +466,45 @@
         }
       });
     }
+    // #4062 selection event delegation: checkboxes + select-all/clear.
+    var result = $id(RESULT_ID);
+    if (result && typeof result.addEventListener === 'function') {
+      result.addEventListener('change', function (event) {
+        var box = event && event.target;
+        if (!box || box.classList === undefined || !box.classList.contains('ypp-select')) return;
+        var pos = box.getAttribute('data-position');
+        if (pos === null || pos === undefined) return;
+        var key = String(pos);
+        var items = (lastPreviewData && Array.isArray(lastPreviewData.items)) ? lastPreviewData.items : [];
+        var target = null;
+        for (var i = 0; i < items.length; i++) {
+          if (String(items[i].position) === key) {
+            target = items[i];
+            break;
+          }
+        }
+        if (!target || !isItemSelectable(target)) {
+          box.checked = false;
+          return;
+        }
+        if (box.checked) {
+          selection[key] = true;
+        } else {
+          delete selection[key];
+        }
+        updateSelectionCount();
+      });
+      result.addEventListener('click', function (event) {
+        var btn = event && event.target;
+        if (!btn || btn.getAttribute === undefined) return;
+        var action = btn.getAttribute('data-ypp-action');
+        if (action === 'select-all') {
+          selectAllEligible();
+        } else if (action === 'clear') {
+          clearSelection();
+        }
+      });
+    }
   }
 
   function init() {
@@ -299,19 +518,33 @@
     window.LoveTreeYouTubePlaylistPreviewUI = {
       init: init,
       buildRequest: buildRequest,
+      isItemSelectable: isItemSelectable,
+      buildOrderedImportDraft: buildOrderedImportDraft,
       renderRow: renderRow,
       renderPlaylist: renderPlaylist,
+      buildPlaylistHtml: buildPlaylistHtml,
       localizeState: localizeState,
+      resetSelection: resetSelection,
+      selectAllEligible: selectAllEligible,
+      clearSelection: clearSelection,
+      selectionCount: selectionCount,
     };
   }
   if (typeof module !== 'undefined' && module && module.exports) {
     module.exports = {
       init: init,
       buildRequest: buildRequest,
+      isItemSelectable: isItemSelectable,
+      buildOrderedImportDraft: buildOrderedImportDraft,
       renderRow: renderRow,
       renderPlaylist: renderPlaylist,
+      buildPlaylistHtml: buildPlaylistHtml,
       localizeState: localizeState,
       escapeHtml: escapeHtml,
+      resetSelection: resetSelection,
+      selectAllEligible: selectAllEligible,
+      clearSelection: clearSelection,
+      selectionCount: selectionCount,
     };
   }
   init();
