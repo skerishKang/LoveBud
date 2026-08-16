@@ -8,6 +8,7 @@
  * - CI_UNAVAILABLE_INFRA: #3642
  * - separated Web roles: #3662
  * - UI Rapid Iteration Lane: #3664
+ * - parallel semantic-authority amendment: #3994
  *
  * SOURCE_STATIC only. This test reads repository guidance; it does not launch
  * browsers, use credentials, access databases/providers, deploy, or mutate data.
@@ -68,16 +69,16 @@ const CURRENT_ENTRYPOINTS = Object.freeze([
 test('canonical governance declares all owner-approved provenance', () => {
   const src = read(PATHS.governance);
   assert.match(src, /canonical source of truth/i);
-  assertContainsAll(src, ['4947327550', '#3642', '#3662', '#3664'], 'governance');
+  assertContainsAll(src, ['4947327550', '#3642', '#3662', '#3664', '#3994'], 'governance');
   assert.ok(src.includes(PATHS.roles));
   assert.ok(src.includes(PATHS.uiLane));
 });
 
-test('canonical governance lists exactly seven hard standing rules', () => {
+test('canonical governance lists exactly eight hard standing rules', () => {
   const src = read(PATHS.governance);
   const hard = section(src, '## Hard standing rules', '## CI classification');
   const numbered = hard.match(/^\d+\./gm) || [];
-  assert.equal(numbered.length, 7, `Expected 7 hard rules, found ${numbered.length}`);
+  assert.equal(numbered.length, 8, `Expected 8 hard rules, found ${numbered.length}`);
 
   assert.match(hard, /secret|credential|private payload/i);
   assert.match(hard, /another worker|other worker/i);
@@ -86,7 +87,15 @@ test('canonical governance lists exactly seven hard standing rules', () => {
   assert.match(hard, /CI_PENDING_EXECUTION/);
   assert.match(hard, /CI_UNAVAILABLE_INFRA/);
   assert.match(hard, /expected PR head|expected.*head/i);
-  assert.match(hard, /squash merge/i);
+  assertContainsAll(hard, [
+    'ONE WRITER PER BRANCH',
+    'ONE WRITER PER FILE',
+    'ONE WRITER PER SEMANTIC AUTHORITY',
+  ], 'parallel writer rule');
+  assert.match(hard, /implementation worker.*must not Ready-transition or merge.*task-specific owner instruction.*delegates/is);
+  assert.match(hard, /independent review/i);
+  assert.match(hard, /expected-head SHA verification|expected.*head/i);
+  assert.match(hard, /squash is the default merge method unless a narrower task contract says otherwise/i);
   assert.match(hard, /Never close #1882/i);
   assert.match(hard, /Refs #1882/);
 });
@@ -118,7 +127,7 @@ test('canonical governance defines evidence levels and browser permission model'
 test('canonical governance defines separated Web roles with conditional Local Validation', () => {
   const src = read(PATHS.governance);
   assertContainsAll(src, ['Web CTO', 'Web Developer', 'Local Validation when required'], 'role model');
-  assert.match(src, /separate Web Developer implementation/i);
+  assert.match(src, /separate Web Developer or implementation owner/i);
   assert.match(src, /Local Validation only when required/i);
   assert.match(src, /Web CTO independent final review/i);
   assert.match(src, /same production change.*implemented and finally approved/is);

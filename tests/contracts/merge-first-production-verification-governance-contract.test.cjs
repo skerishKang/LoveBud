@@ -7,6 +7,7 @@
  * - merge-first workflow: #3513
  * - separated Web roles: #3662
  * - UI Rapid Iteration Lane: #3664
+ * - parallel semantic-authority amendment: #3994
  *
  * SOURCE_STATIC only.
  */
@@ -66,7 +67,7 @@ const CURRENT_POLICY_DOCS = Object.freeze([
 test('merge-first workflow declares current authority and provenance', () => {
   const src = read(PATHS.workflow);
   assert.match(src, /Merge-First Production Verification Workflow/i);
-  assertContainsAll(src, ['#3513', '#3662', '#3664'], 'merge-first workflow');
+  assertContainsAll(src, ['#3513', '#3662', '#3664', '#3994'], 'merge-first workflow');
   assert.ok(src.includes('MVP_AGENT_GOVERNANCE.md'));
   assert.ok(src.includes('UI_RAPID_ITERATION_LANE.md'));
 });
@@ -188,21 +189,24 @@ test('minor U0/U1 misses use micro correction PRs, not destructive rollback', ()
   assert.match(src, /dedicated correction or revert PR/i);
 });
 
-test('merge remains expected-head squash only', () => {
+test('merge keeps expected-head-pinned squash as default with task-contract exception', () => {
   const src = read(PATHS.workflow);
   const merge = section(src, '## 9. Merge rules', '## 10. Role allocation');
   assert.match(merge, /re-read exact head immediately before merge/i);
-  assert.match(merge, /squash merge with expected head pinned/i);
-  assert.match(merge, /Do not use merge\/rebase commit methods/i);
+  assert.match(merge, /squash merge with expected head pinned unless a narrower task contract requires another allowed method/i);
+  assert.match(merge, /Do not use rebase to rewrite published feature history/i);
+  assert.match(merge, /Do not force-update feature PR branches or `main`/i);
+  assert.doesNotMatch(merge, /Do not use merge\/rebase commit methods/i);
 });
 
-test('role allocation keeps Local conditional and CTO final', () => {
+test('role allocation keeps Local conditional, implementation non-final, and integration owner-gated', () => {
   const src = read(PATHS.workflow);
   const roles = section(src, '## 10. Role allocation', '## 11. Issue handling');
   assertContainsAll(roles, ['Web CTO', 'Web Developer', 'Local Validation'], 'role allocation');
   assert.match(roles, /invoked only when required/i);
   assert.match(roles, /does not make final merge decision/i);
-  assert.match(roles, /expected-head squash merge/i);
+  assert.match(roles, /performs integration only when task\/owner authorization delegates that action/i);
+  assert.match(roles, /does not Ready-transition or merge.*unless task-specific owner authorization explicitly delegates that integration authority/is);
 });
 
 test('U0/U1 issue overhead is explicitly reduced', () => {
