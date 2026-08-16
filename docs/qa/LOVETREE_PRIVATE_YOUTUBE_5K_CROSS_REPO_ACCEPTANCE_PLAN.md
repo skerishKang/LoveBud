@@ -11,7 +11,7 @@
 **Baseline at creation:** LoveBud `ba7d470385f8bf21471cb8d5eeb9a4846df7232d`; `lovetree-limone` `5a96861f5bbbdf65fbadeab614d50fd300db69a7`.  
 **Current reconciliation baseline:** LoveBud `main` `e282f610261d2562af51ce7da1506fbe3faa3c90`; `lovetree-limone` `21a39929ba6b6997ce3ad90f51c0ec0bf8f099f5`; `lovetree-limone#172` OPEN.
 **Last updated:** 2026-08-16
-**Blocker corrections applied:** Web CTO reviews `4943690923` (publication stale-preflight matrix), async lease-takeover, ordered-read projection consistency, OAuth reconnect, source-mutation-during-enumeration, and follow-up `5301906011` (Model B publication visibility lifecycle).
+**Blocker corrections applied:** Web CTO reviews `4943690923` (publication stale-preflight matrix), async lease-takeover, ordered-read projection consistency, OAuth reconnect, source-mutation-during-enumeration, follow-up `5301906011` (Model B publication visibility lifecycle), and #4034 review (provider credential generation × async job — J11/CG1–CG14).
 
 ---
 
@@ -360,6 +360,73 @@ PASS:
 An active current-generation lease holder renews and advances normally (item progress, checkpoint, counter, renewal) with zero interference. This proves the fence rejects stale writers without blocking the current one.
 
 Fencing requirement: every authoritative mutation checks the current server/database-controlled fencing generation/epoch inside the same authoritative transaction — a lease owner token plus expiry alone is NOT sufficient fencing.
+
+### J11 — provider credential generation × async job acceptance (per #4034/#4025 credential-generation authority)
+
+Provider credential generation is INDEPENDENT of executor fencing:
+
+```text
+executor_fence_epoch            !=  provider_credential_generation
+(protects job-writer ownership)      (protects provider-credential authority)
+```
+
+A long-running import job must record the provider connection authority + provider credential generation under which it was admitted. Before resume, executor takeover, or provider-authorized work, the server must re-validate that admitted generation against the current canonical provider connection. Both authorities fail closed independently.
+
+Two-authority matrix:
+
+```text
+executor current + credential current → provider work may proceed
+executor current + credential stale  → provider work forbidden until server-validated rebind or bounded fail/requeue
+executor stale  + credential current → authoritative job writes = 0
+executor stale  + credential stale  → both fail closed
+```
+
+Deterministic acceptance cases:
+
+```text
+CG1  Admission binding — server resolves actor → canonical provider connection → current verified credential
+     generation at job admission. Job carries admitted generation as authority metadata. Browser cannot mint a
+     generation; arbitrary client generation is not authority. JOB_PROVIDER_GENERATION_BINDING = REQUIRED.
+CG2  Current executor + current credential (fence E, generation N) → provider work may proceed.
+CG3  Current executor + stale credential (fence E current, admitted N, canonical N+1)
+     → provider requests using stale N = 0; server-side validation/rebind or bounded stop/fail/requeue first.
+     CURRENT_EXECUTOR_DOES_NOT_AUTHORIZE_STALE_PROVIDER_CREDENTIAL.
+CG4  Stale executor + current credential (fence stale E, generation current N+1)
+     → authoritative job mutation = 0. CURRENT_PROVIDER_CREDENTIAL_DOES_NOT_AUTHORIZE_STALE_EXECUTOR.
+CG5  Same-identity rotation — job admitted N, same canonical YouTube identity reconnects, new refresh token,
+     credential rotates N → N+1. PASS: generation N credential use after rotation = 0; server validates same
+     actor, same provider, same canonical identity, active canonical connection, exact current generation, then
+     race-safe rebind N → N+1 allowed. No browser-supplied rebind.
+CG6  Concurrent rotation during rebind — canonical N → N+1 while job tries rebind, then canonical becomes N+2.
+     PASS: job must NOT settle on stale N+1. Compare-and-set / transaction / equivalent server-authoritative
+     current-generation verification required. REBIND_TO_NONCURRENT_GENERATION = FORBIDDEN.
+CG7  Reconnect without new refresh_token — existing usable credential generation N preserved. PASS: reconnect
+     metadata update alone does not automatically stale the job; job may remain on N after bounded validation;
+     generation need not advance merely because reconnect happened.
+     connection metadata revision != credential rotation generation.
+CG8  Disconnect/revoke — canonical provider connection revoked/disconnected after admission at N. PASS:
+     provider calls after revocation = 0; automatic generation rebind = FORBIDDEN; job becomes truthful bounded
+     failure/requeue/reauth-required; new OAuth authority required before provider work resumes.
+     disconnect/revoke != "find latest generation and keep going".
+CG9  Provider identity change — admitted under canonical identity X, current connection resolves to Y. PASS:
+     CROSS_IDENTITY_SILENT_REBIND = FORBIDDEN; job stops/fails/requeues or requires explicit new import authority.
+CG10 Executor takeover after credential rotation — worker A fence E1 + generation N; rotation N → N+1; A pauses;
+     lease expires; worker B claims fence E2. PASS: B validates BOTH executor E2 current AND credential N stale,
+     then server-validated rebind N → N+1 OR bounded fail/requeue before provider work. B cannot reason
+     "I own fence E2, therefore stale generation N is usable".
+CG11 Stale executor resumes after takeover (CG10 aftermath) — A resumes with stale E1 even knowing current N+1.
+     PASS: authoritative mutation = 0. STALE_EXECUTOR + CURRENT_CREDENTIAL = ZERO AUTHORITATIVE JOB WRITE.
+CG12 Normal access-token refresh — short-lived access token expires, same canonical refresh credential authority
+     remains generation N. PASS: normal access-token refresh does NOT necessarily increment provider credential
+     generation. ACCESS_TOKEN_INSTANCE != CANONICAL_PROVIDER_CREDENTIAL_GENERATION (otherwise a long-running 5K
+     import would spuriously invalidate itself).
+CG13 Credential rebind during source enumeration — pages 1–40 processed under N, rotation N → N+1, valid rebind,
+     pages 41–100 continue. PASS: credential rebind does NOT prove source snapshot unchanged; S1/S2/S3 rules
+     still apply; membership + order + count terminal revalidation remains mandatory.
+     CREDENTIAL_REBIND != SOURCE_SNAPSHOT_VERSION_PROOF.
+CG14 Queued job stale before first worker starts — admitted under N, rotation N → N+1 before worker starts. PASS:
+     first provider call under stale N = 0; worker validates/rebinds or fails before provider use.
+```
 
 ---
 
@@ -945,7 +1012,7 @@ STOP immediately when:
 CROSS_REPO_ACCEPTANCE_PLAN = RECONCILED
 SCALE_GATES = 300 → 1000 → 5000
 OAUTH_RECONNECT_ACCEPTANCE = DEFINED (A6a–A6f)
-CREDENTIAL_GENERATION_FENCING_ACCEPTANCE = DEFINED
+CREDENTIAL_GENERATION_FENCING_ACCEPTANCE = DEFINED (A6a–A6f, CG1–CG14)
 EXECUTOR_LEASE_TAKEOVER_ACCEPTANCE = DEFINED (J9/J10)
 STALE_EXECUTOR_AUTHORITATIVE_MUTATION = ZERO_REQUIRED
 SOURCE_SNAPSHOT_COHERENCE_ACCEPTANCE = DEFINED (S1/S2/S3)
