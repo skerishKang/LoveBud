@@ -96,7 +96,7 @@ public.tree_social_counts  6
 comments / reactions / tree_likes / tree_comments / social_audit_log / social_idempotency / social_rate_limits / tree_view_dedup_events  0
 ```
 
-**No `public.users`, `ai_logs`, `community_posts`, `community_comments`, `community_moderation_logs`, `schema_migration_ledger`, or `tree_appreciation_orders` table exists in the live `neondb` or `lovebud` database on the production branch.** The earlier documented snapshot (`36 users / 45 Trees / 287 Memories` with a `users` table and community/ai_logs tables) is **not reproducible from the current live catalog**. It predates the current canonical schema lineage and must be treated as historical/documented evidence only until owner confirmation of the source database that produced it.
+**No `public.users`, `ai_logs`, `community_posts`, `community_comments`, `community_moderation_logs`, `schema_migration_ledger`, or `tree_appreciation_orders` table exists in the live `neondb` or `lovebud` database on the production branch.** The earlier documented snapshot (`36 users / 45 Trees / 287 Memories` with a `users` table and community/ai_logs tables) is **not present in the current default/deployed lineage** — it is **found on the non-default child lineage** (`br-bitter-shadow-a13dfg3c`) — so it is historical non-default-child evidence, not current default/deployed runtime authority. Provenance confirmation is required only for any claim of deployed/default runtime authority.
 
 A separate legacy `lovebud` database on the same branch holds a UUID-id schema (`trees.id uuid`, 174 rows; `memories.id uuid`, 254 rows) with no `users` table; it is not the canonical `/neondb` application database.
 
@@ -126,7 +126,7 @@ The existing LoveBud / `133-relovetree` database lineage is the correct **candid
 Reasons:
 
 1. its live `neondb` catalog (production/default branch `br-little-fire-a18brh25`) is the canonical application database, carrying the 11-table schema the LoveBud product is built on (live-verified 2026-08-16);
-2. its Tree ownership is exercised through `trees.owner_id` (`text NOT NULL`, 2 distinct non-null live owners, 0 null); the earlier "current account/user relation" rationale was based on the 36-user `public.users` snapshot, which is classified **`HISTORICAL_NOT_REPRODUCED`** and requires owner lineage confirmation before any account-relation claim is re-asserted;
+2. its Tree ownership is exercised through `trees.owner_id` (`text NOT NULL`, 2 distinct non-null live owners, 0 null); the earlier "current account/user relation" rationale was based on the 36-user `public.users` snapshot, which is **historical non-default-child lineage evidence** (found on `br-bitter-shadow-a13dfg3c`) — not current default/deployed authority — and requires owner provenance confirmation before any account-relation claim is re-asserted against the current lineage;
 3. it contains the mature social/idempotency/audit/dedup lineage;
 4. current LoveBud product/security contracts are already built around its semantics;
 5. moving authority to the smaller LoveTree database would create unnecessary data migration and security-contract risk.
@@ -246,7 +246,7 @@ unlisted visibility                 = SAME_SEMANTIC_CURRENTLY (enum value presen
 
 ### Canonical LoveBud characteristics (live-verified 2026-08-16)
 
-- **5 rows live** (not 287; the 287-row snapshot is historical and not reproducible from the current live catalog, §3.1);
+- **5 rows live** (not 287; the 287-row snapshot is historical non-default-child evidence found on `br-bitter-shadow-a13dfg3c` — not present in the current default/deployed lineage, §3.1);
 - `emotion_tags` stored as `jsonb NOT NULL`;
 - `source_type` and `visibility` stored as enum values;
 - **`client_key` (`text` nullable) and `sort_order` (`int4` nullable) exist live**, along with unique `memories_tree_client_key_uniq` and partial unique `memories_tree_sort_order_uniq_partial`;
@@ -296,7 +296,7 @@ The **historical** canonical snapshot documented:
 observed orphan-Memory date range: 2026-05-18 through 2026-07-09
 ```
 
-**Live reconciliation (2026-08-16): this orphan condition is not reproducible in the current live `neondb` catalog — all 5 live Memories resolve to an existing `trees.id`, and `memories.tree_id → trees.id` FK is enforced live.** The orphan risk therefore remains a historical-snapshot property pending owner confirmation of the source lineage; it must not be re-asserted as current live state.
+**Live reconciliation (2026-08-16): this orphan condition is not reproducible in the current live `neondb` catalog — all 5 live Memories resolve to an existing `trees.id`, and `memories.tree_id → trees.id` FK is enforced live.** The orphan risk therefore remains a property of the historical non-default-child lineage (`br-bitter-shadow-a13dfg3c`); it must not be re-asserted as current live state.
 
 Therefore any new FK-tightening/constraint-application action aimed at the **historical** snapshot lineage would be unsafe and may fail validation or force destructive handling of historical data; for the **current live catalog** no such action is needed because `memories.tree_id → trees.id` and `memories.parent_id → memories.id` are already enforced live in both databases (live-verified).
 
@@ -338,7 +338,7 @@ The recent LoveBud/LoveTree social implementations already demonstrate that re-l
 - FK to Tree (`tree_comments.tree_id → trees.id`, live);
 - checks that generic target semantics remain Tree-scoped.
 
-Historical snapshot evidence only (`HISTORICAL_NOT_REPRODUCED` — absent from the live catalog):
+Historical snapshot evidence only (non-default-child lineage evidence, found on `br-bitter-shadow-a13dfg3c` — absent from the current live default catalog):
 
 - legacy author/display-name and payload/deletion compatibility fields;
 - an author FK to `users` for the legacy author field (no `users` table exists live, so no author→users FK is present).
@@ -363,7 +363,7 @@ Any simplification of the transitional compatibility surface should happen only 
 - more operational indexes;
 - FK-driven social/idempotency/audit/dedup tables with identical constraint/index sets in both databases.
 
-Historical snapshot evidence only (`HISTORICAL_NOT_REPRODUCED` — absent from the live catalog):
+Historical snapshot evidence only (non-default-child lineage evidence, found on `br-bitter-shadow-a13dfg3c` — absent from the current live default catalog):
 
 - triggers that synchronize legacy/generic social target representation for audit/idempotency rows;
 - the earlier "current production rows/history" characterization (live social/audit/idempotency/rate-limit/dedup tables have 0 rows; `tree_social_counts` has 6 live rows).
@@ -461,7 +461,7 @@ Observed legacy compatibility state (historical snapshot):
 1 Memory with blank source_type
 ```
 
-**Live reconciliation (2026-08-16):** the current live `neondb` snapshot does **not** reproduce any of these legacy conditions — live Trees are 6 public / 1 private with 0 null `owner_id`; all 5 Memories resolve to an existing Tree; and the strict FKs (`memories.tree_id → trees.id`, `memories.parent_id → memories.id`, `tree_likes.tree_id → trees.id`, `tree_comments.tree_id → trees.id`, `tree_social_counts.tree_id → trees.id`, `tree_view_dedup_events.tree_id → trees.id`) are enforced live. The legacy conditions are therefore properties of the historical snapshot lineage and must remain classified as such (owner confirmation of source lineage required) rather than as current live state.
+**Live reconciliation (2026-08-16):** the current live `neondb` snapshot does **not** reproduce any of these legacy conditions — live Trees are 6 public / 1 private with 0 null `owner_id`; all 5 Memories resolve to an existing Tree; and the strict FKs (`memories.tree_id → trees.id`, `memories.parent_id → memories.id`, `tree_likes.tree_id → trees.id`, `tree_comments.tree_id → trees.id`, `tree_social_counts.tree_id → trees.id`, `tree_view_dedup_events.tree_id → trees.id`) are enforced live. The legacy conditions are therefore properties of the historical non-default-child snapshot lineage (`br-bitter-shadow-a13dfg3c`) and must remain classified as such (provenance confirmation required for deployed-runtime claims) rather than as current live state.
 
 This is still the main reason **LoveTree's stricter schema cannot be assumed to replace the LoveBud schema without lineage confirmation** — the live catalogs are structurally near-identical, so the meaningful remaining differences are the three extra nullable LoveBud Memory columns and lineage/provenance questions, not a wholesale constraint gap.
 
@@ -478,7 +478,7 @@ Canonical vNext should begin from the LoveBud production lineage (candidate cano
 ### 7.1 Keep as canonical now
 
 ```text
-LoveBud / 133-relovetree production lineage (candidate canonical authority; 36/45/287 historical snapshot = HISTORICAL_NOT_REPRODUCED, owner lineage confirmation required)
+LoveBud / 133-relovetree production lineage (candidate canonical authority; 36/45/287 historical snapshot = FOUND_ON_NONDEFAULT_CHILD_LINEAGE (`br-bitter-shadow-a13dfg3c`), not current default/deployed authority; provenance confirmation required for deployed-runtime claims)
 LoveBud Tree/Memory IDs and production data
 Tree ownership through trees.owner_id (text NOT NULL live; no users table / owner_id→users FK exists live)
 LoveBud social idempotency/audit/rate-limit contracts
@@ -486,7 +486,7 @@ LoveBud visibility-revocation security contracts
 LoveBud generic social target compatibility until runtime is converged
 ```
 
-The earlier "users/account-linked ownership lineage" and "soft-delete Tree-like semantics" bullets reflected the non-reproduced historical snapshot (no `users` table live; `tree_likes` uniqueness is the identical unconditional `(tree_id, owner_id)` index in both live DBs). That snapshot evidence is preserved only as `HISTORICAL_NOT_REPRODUCED` (§4/§6) and is not asserted as current canonical state.
+The earlier "users/account-linked ownership lineage" and "soft-delete Tree-like semantics" bullets reflected the non-reproduced historical snapshot (no `users` table live; `tree_likes` uniqueness is the identical unconditional `(tree_id, owner_id)` index in both live DBs). That snapshot evidence is preserved as historical non-default-child lineage evidence (§4/§6) and is not asserted as current canonical state.
 
 ### 7.2 Already present in both live databases (no port required)
 
@@ -509,7 +509,7 @@ PostgreSQL 18 as a platform upgrade       = HOLD — separate runtime/operations
 LoveTree database as production authority = NO — canonical direction remains LoveBud / 133-relovetree lineage
 Wholesale NOT NULL / FK tightening and enum/check normalization as a blanket action = HOLD — no live gap exists (Trees core NOT NULL, current FKs, and the 5 enums incl. unlisted are already aligned in both live DBs); blanket tightening is not authorized
 LoveBud-only nullable Memory columns (connection_reason, discovery_date, video_offset_seconds) = HOLD — product decision required (retain/retire); do not silently copy to LoveTree
-Destructive handling of historical orphan/null/soft-delete evidence = HOLD — HISTORICAL_NOT_REPRODUCED pending owner lineage confirmation; no deletion/repair inference
+Destructive handling of historical orphan/null/soft-delete evidence = HOLD — historical non-default-child lineage evidence; provenance confirmation required before destructive action; no deletion/repair inference
 ```
 
 PostgreSQL 17→18 should be a separate platform upgrade with its own compatibility/rollback evidence, not bundled into cross-database convergence.
@@ -648,7 +648,7 @@ The following table documents the completeness of each #4005-required schema dim
 | Privileges/grants | live: no table carries a non-default `relacl`; no custom grants/revokes; dedicated read-only role `lb_ro_709d5f3e68f774d2` exists on LoveBud `neondb` for this audit | COMPLETE (live) |
 | RLS | no RLS policies live (both databases) | SCHEMA_AUTHORITY_CONFIRMED (live) |
 
-All 18 #4005-required dimensions are now backed by fresh live read-only catalog evidence collected 2026-08-16 (`information_schema` + `pg_catalog` via the dedicated `lb_ro_…` read-only role on LoveBud and read-only owner-role catalog queries on LoveTree). Historical claims that the live catalog does not reproduce (users/community/ai_logs tables, pgcrypto, triggers, 36/45/287 snapshot) are explicitly marked historical and require owner lineage confirmation before being re-asserted.
+All 18 #4005-required dimensions are now backed by fresh live read-only catalog evidence collected 2026-08-16 (`information_schema` + `pg_catalog` via the dedicated `lb_ro_…` read-only role on LoveBud and read-only owner-role catalog queries on LoveTree). Historical claims that the live default catalog does not reproduce (users/community/ai_logs tables, pgcrypto, triggers), and the 36/45/287 snapshot (found on the non-default child lineage `br-bitter-shadow-a13dfg3c`), are explicitly marked historical and require owner provenance confirmation before being re-asserted as current/deployed authority.
 
 ## B. Persisted ownership-subject inventory
 
@@ -720,14 +720,14 @@ Therefore `ADOPTION_REQUIRED → catalog must be empty` is incorrect. The curren
 
 ```text
 FINAL_VERDICT                             = GO_CANONICAL_SCHEMA_BRANCH_PROTOTYPE (additive branch prototype proven; see scoping below)
-CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage) — with owner-action gate: the documented canonical snapshot (36 users / 45 Trees / 287 Memories + users/community/ai_logs tables) is NOT reproducible from the live catalog on any LoveBud branch/database; owner lineage confirmation of the snapshot source DB is REQUIRED before data-authority acceptance is claimed
+CANONICAL_DATA_AUTHORITY_DIRECTION        = GO (LoveBud / 133-relovetree lineage) — with owner-action gate: the documented canonical snapshot (36 users / 45 Trees / 287 Memories + users/community/ai_logs tables) is not present in the current default/deployed lineage — it is found on the non-default child lineage (`br-bitter-shadow-a13dfg3c`) — so owner provenance confirmation is REQUIRED before any data-authority acceptance is claimed for the current lineage
 SCHEMA_DIFF_COMPLETENESS                  = COMPLETE (all 18 #4005-required dimensions live-verified 2026-08-16 via dedicated `lb_ro_…` read-only role + owner-role catalog queries; LoveBud `neondb` vs LoveTree `neondb`; see Appendix A)
 EXACT_SCHEMA_DIFF                         = COMPLETE (live fingerprint diff: LoveBud 100 columns vs LoveTree 97 — exactly 3 extra nullable `memories` columns on LoveBud: `connection_reason`, `discovery_date`, `video_offset_seconds`; all other dimensions — constraints, indexes, enums, triggers, views, extensions, RLS, privileges — identical)
 SEMANTIC_DECISION_RECONCILIATION          = PASS (historical-vs-current contradictions removed: client_key/sort_order and their uniqueness dispositions are SAME_SEMANTIC_CURRENTLY (both live DBs); tree_likes uniqueness identical in both live DBs; "two legacy null Tree rows" and 287-Memory references restricted to the non-reproduced historical snapshot)
 CANONICAL_SCHEMA_VNEXT                   = DEFINED (§7 — no pending cross-database schema ports; all previously "LoveTree-to-port" dimensions already present in both live DBs; remaining vNext decisions = product/runtime semantics, LoveBud-only Memory columns, lineage confirmation, PostgreSQL platform decision)
-LIVE_36_45_287_LINEAGE                    = OWNER_CONFIRMATION_REQUIRED (classified HISTORICAL_NOT_REPRODUCED; not re-asserted as current live state)
+LIVE_36_45_287_LINEAGE                    = OWNER_CONFIRMATION_REQUIRED (found on non-default child lineage `br-bitter-shadow-a13dfg3c`; not re-asserted as current default/deployed state)
 CURRENT_DEFAULT_APPRECIATION_SCHEMA       = ABSENT (public.tree_appreciation_orders absent live on the production branch — CATALOGUED_BUT_ABSENT_LIVE, §D)
-ISSUE4005_ACCEPTANCE                      = PARTIAL (exact schema diff now live-satisfied; canonical DATA snapshot 36/45/287 not reproducible live → owner lineage confirmation required before full acceptance)
+ISSUE4005_ACCEPTANCE                      = PARTIAL (exact schema diff now live-satisfied; canonical DATA snapshot 36/45/287 found on non-default child lineage, not in current default/deployed lineage → owner provenance confirmation required before full acceptance)
 OWNERSHIP_SUBJECT_INVENTORY_COMPLETENESS  = COMPLETE (10 tables, 10 subject columns live-verified; no `users` table exists live so no owner_id→users FK; `trees.owner_id` = TEXT NOT NULL; no direct Firebase UID column observed; values inspected via aggregates/column metadata only)
 MEMORY_LINEAGE_SCHEMA_READINESS           = BRANCH_PROVEN (go_additive)
 RUNTIME_IMPLEMENTATION_AUTHORITY          = HOLD (#4007 is docs/audit contract only; runtime implementation requires a separate child issue; sortOrder product/reorder semantics unresolved; canonical migration adoption HOLD; Production apply NOT AUTHORIZED)

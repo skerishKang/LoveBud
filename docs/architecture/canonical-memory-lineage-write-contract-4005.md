@@ -85,7 +85,7 @@ UNIQUE (tree_id, client_key)
 UNIQUE (tree_id, sort_order) WHERE sort_order IS NOT NULL
 ```
 
-The #4005 isolated Neon branch proved that shape can be added to the canonical snapshot present at execution time (287 Memory rows, historical prototype record) without backfill or row loss, and that both uniqueness rules execute as intended. **Live reconciliation (2026-08-16):** the current live catalog does not reproduce the 287-row snapshot (prototype branch `br-bitter-shape-a1yp6iup` now holds 7 trees / 5 memories in `neondb`; no LoveBud database reproduces 36/45/287). The proof remains valid as executed branch evidence; the snapshot reference is historical-at-execution-time until owner confirmation of the snapshot source DB.
+The #4005 isolated Neon branch proved that shape can be added to the canonical snapshot present at execution time (287 Memory rows, historical prototype record) without backfill or row loss, and that both uniqueness rules execute as intended. **Live reconciliation (2026-08-16):** the current live default catalog does not reproduce the 287-row snapshot (prototype branch `br-bitter-shape-a1yp6iup` now holds 7 trees / 5 memories in `neondb`); the 36/45/287 snapshot is **found on the non-default child lineage** (`br-bitter-shadow-a13dfg3c`), not on the current default/deployed lineage. The proof remains valid as executed branch evidence; the snapshot reference is historical-at-execution-time non-default-child evidence.
 
 ## 5. `clientKey` semantic decision
 
