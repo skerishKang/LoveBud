@@ -14,20 +14,34 @@
 //   - provides a query-safety allowlist validator that REJECTS fail-closed any
 //     mutation-capable, chained, commented, or capability-bearing SQL.
 //
-// The catalog distinguishes:
-//   executable descriptors  -> fixed repository-owned aggregate read query
-//   deferred descriptors    -> bounded unavailable descriptor with a fixed
-//                               prerequisite (e.g. CANONICAL_SCHEMA_AUTHORITY_REQUIRED)
-//                               and NO executable SQL.
+// The catalog distinguishes three descriptor modes:
+//   AGGREGATE_COUNT  -> fixed repository-owned aggregate read query
+//                       (executable, one-row `count` result)
+//   PARITY_EVIDENCE  -> bounded canonical parity-evidence signal. It carries NO
+//                       SQL; it declares a fixed bounded parity contract
+//                       (evidence format version, object vocabulary, supported
+//                       authority statuses) and is evaluated ONLY against
+//                       bounded sanitized parity evidence supplied through the
+//                       source-only translation seam. Reuses the #3860 outcome
+//                       vocabulary exactly; never invents synonyms.
+//   DEFERRED         -> bounded unavailable descriptor with a fixed
+//                       prerequisite (e.g. CANONICAL_SCHEMA_AUTHORITY_REQUIRED)
+//                       and NO executable SQL.
 //
 // Refs #3842.
+// Refs #3458 — completed canonical migration identity/order/checksum,
+//              expected-schema authority, adoption/bootstrap rules.
+// Refs #3860 — completed provider-neutral read-only target attribution and
+//              catalog parity core (DISPOSABLE_POSTGRES_REHEARSAL_TARGET /
+//              CI_EPHEMERAL only). This catalog does NOT extend #3860 to
+//              PRODUCTION scope; it only reuses its outcome vocabulary.
 // Refs #3461 — Keep OPEN.
 // Refs #1882 — Keep OPEN.
 
 (function (root) {
   'use strict';
 
-  var CONTRACT_VERSION = '1';
+  var CONTRACT_VERSION = '2';
 
   // ---------------------------------------------------------------------------
   // Deep-freeze helpers (same equivalent immutable boundary as #3835 taxonomy).
@@ -64,6 +78,62 @@
   // ---------------------------------------------------------------------------
   var DEFERRED_PREREQUISITES = Object.freeze({
     CANONICAL_SCHEMA_AUTHORITY_REQUIRED: 'CANONICAL_SCHEMA_AUTHORITY_REQUIRED'
+  });
+
+  // ---------------------------------------------------------------------------
+  // Descriptor modes. Every signal carries exactly one fixed mode.
+  //   AGGREGATE_COUNT  -> executable fixed aggregate read query (count rows)
+  //   PARITY_EVIDENCE  -> bounded canonical parity-evidence signal (no SQL)
+  //   DEFERRED         -> fixed prerequisite, no SQL
+  // ---------------------------------------------------------------------------
+  var DESCRIPTOR_MODES = Object.freeze({
+    AGGREGATE_COUNT: 'AGGREGATE_COUNT',
+    PARITY_EVIDENCE: 'PARITY_EVIDENCE',
+    DEFERRED: 'DEFERRED'
+  });
+
+  // ---------------------------------------------------------------------------
+  // Bounded parity outcome vocabulary — EXACT reuse of the #3860
+  // read-only target attribution & catalog parity core outcome strings (all
+  // eight, including the preflight-validation failure outcomes). No new
+  // synonymous vocabulary is created here.
+  // ---------------------------------------------------------------------------
+  var PARITY_OUTCOMES = Object.freeze({
+    PARITY_CONFIRMED: 'PARITY_CONFIRMED',
+    PARITY_MISMATCH: 'PARITY_MISMATCH',
+    TARGET_ATTRIBUTION_INVALID: 'TARGET_ATTRIBUTION_INVALID',
+    APPROVAL_INVALID: 'APPROVAL_INVALID',
+    AUTHORITY_ADOPTION_REQUIRED: 'AUTHORITY_ADOPTION_REQUIRED',
+    EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
+    CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
+    INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE'
+  });
+
+  // ---------------------------------------------------------------------------
+  // Fixed parity evidence contract for PARITY_EVIDENCE descriptors.
+  //
+  // The seam does NOT implement a second schema/migration parity engine: it
+  // never compares expected vs observed fingerprints and never derives a
+  // parity outcome itself. It consumes ONLY the already-bounded parity outcome
+  // produced by the existing #3860 authority (through the source-only injected
+  // seam) and translates that fixed outcome into the #3835/#3461 public
+  // vocabulary. The contract therefore declares the fixed accepted outcome
+  // vocabulary (exactly the #3860 PARITY_OUTCOMES strings) and the bounded
+  // collection-failure marker accepted from the adapter. A parity descriptor
+  // NEVER carries SQL and NEVER carries provider/database identity.
+  // ---------------------------------------------------------------------------
+  var PARITY_EVIDENCE_CONTRACT = Object.freeze({
+    accepted_outcomes: Object.freeze([
+      PARITY_OUTCOMES.PARITY_CONFIRMED,
+      PARITY_OUTCOMES.PARITY_MISMATCH,
+      PARITY_OUTCOMES.TARGET_ATTRIBUTION_INVALID,
+      PARITY_OUTCOMES.APPROVAL_INVALID,
+      PARITY_OUTCOMES.AUTHORITY_ADOPTION_REQUIRED,
+      PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID,
+      PARITY_OUTCOMES.CATALOG_COLLECTION_FAILED,
+      PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE
+    ]),
+    collection_failed_marker: 'collection_failed'
   });
 
   // ---------------------------------------------------------------------------
@@ -222,6 +292,7 @@
   var DESCRIPTORS = Object.freeze({
     MEMORY_TREE_PARENT_ORPHAN_COUNT: Object.freeze({
       id: 'MEMORY_TREE_PARENT_ORPHAN_COUNT',
+      descriptor_mode: DESCRIPTOR_MODES.AGGREGATE_COUNT,
       operation_class: OPERATION_CLASSES.TREE_PARENT_INTEGRITY_CHECK,
       executable: true,
       query: QUERY_MEMORY_TREE_PARENT_ORPHAN_COUNT,
@@ -232,6 +303,7 @@
     }),
     MEMORY_PARENT_ORPHAN_COUNT: Object.freeze({
       id: 'MEMORY_PARENT_ORPHAN_COUNT',
+      descriptor_mode: DESCRIPTOR_MODES.AGGREGATE_COUNT,
       operation_class: OPERATION_CLASSES.MEMORY_PARENT_INTEGRITY_CHECK,
       executable: true,
       query: QUERY_MEMORY_PARENT_ORPHAN_COUNT,
@@ -242,6 +314,7 @@
     }),
     TREE_SOCIAL_TARGET_ORPHAN_COUNT: Object.freeze({
       id: 'TREE_SOCIAL_TARGET_ORPHAN_COUNT',
+      descriptor_mode: DESCRIPTOR_MODES.DEFERRED,
       operation_class: OPERATION_CLASSES.SOCIAL_TARGET_INTEGRITY_CHECK,
       executable: false,
       deferred_prerequisite: DEFERRED_PREREQUISITES.CANONICAL_SCHEMA_AUTHORITY_REQUIRED,
@@ -250,6 +323,7 @@
     }),
     TREE_COMMENT_TARGET_ORPHAN_COUNT: Object.freeze({
       id: 'TREE_COMMENT_TARGET_ORPHAN_COUNT',
+      descriptor_mode: DESCRIPTOR_MODES.DEFERRED,
       operation_class: OPERATION_CLASSES.SOCIAL_TARGET_INTEGRITY_CHECK,
       executable: false,
       deferred_prerequisite: DEFERRED_PREREQUISITES.CANONICAL_SCHEMA_AUTHORITY_REQUIRED,
@@ -258,6 +332,7 @@
     }),
     PUBLIC_MEMORY_PARENT_ORPHAN_COUNT: Object.freeze({
       id: 'PUBLIC_MEMORY_PARENT_ORPHAN_COUNT',
+      descriptor_mode: DESCRIPTOR_MODES.DEFERRED,
       operation_class: OPERATION_CLASSES.MEMORY_PARENT_INTEGRITY_CHECK,
       executable: false,
       deferred_prerequisite: DEFERRED_PREREQUISITES.CANONICAL_SCHEMA_AUTHORITY_REQUIRED,
@@ -266,6 +341,7 @@
     }),
     BROWSE_ELIGIBLE_ENTITY_COUNT: Object.freeze({
       id: 'BROWSE_ELIGIBLE_ENTITY_COUNT',
+      descriptor_mode: DESCRIPTOR_MODES.DEFERRED,
       operation_class: OPERATION_CLASSES.BROWSE_ELIGIBILITY_BASELINE_CHECK,
       executable: false,
       deferred_prerequisite: DEFERRED_PREREQUISITES.CANONICAL_SCHEMA_AUTHORITY_REQUIRED,
@@ -274,19 +350,23 @@
     }),
     STRUCTURAL_SCHEMA_DRIFT_CHECK: Object.freeze({
       id: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
+      descriptor_mode: DESCRIPTOR_MODES.PARITY_EVIDENCE,
       operation_class: OPERATION_CLASSES.STRUCTURAL_SCHEMA_CHECK,
       executable: false,
-      deferred_prerequisite: DEFERRED_PREREQUISITES.CANONICAL_SCHEMA_AUTHORITY_REQUIRED,
+      deferred_prerequisite: null,
       query: null,
-      result_contract: null
+      result_contract: null,
+      parity_contract: PARITY_EVIDENCE_CONTRACT
     }),
     MIGRATION_LEDGER_CATALOG_PARITY_CHECK: Object.freeze({
       id: 'MIGRATION_LEDGER_CATALOG_PARITY_CHECK',
+      descriptor_mode: DESCRIPTOR_MODES.PARITY_EVIDENCE,
       operation_class: OPERATION_CLASSES.STRUCTURAL_SCHEMA_CHECK,
       executable: false,
-      deferred_prerequisite: DEFERRED_PREREQUISITES.CANONICAL_SCHEMA_AUTHORITY_REQUIRED,
+      deferred_prerequisite: null,
       query: null,
-      result_contract: null
+      result_contract: null,
+      parity_contract: PARITY_EVIDENCE_CONTRACT
     })
   });
 
@@ -322,7 +402,17 @@
     for (var i = 0; i < SIGNAL_IDS.length; i++) {
       var id = SIGNAL_IDS[i];
       var d = DESCRIPTORS[id];
-      if (d && d.executable === false) out.push(id);
+      if (d && d.descriptor_mode === DESCRIPTOR_MODES.DEFERRED) out.push(id);
+    }
+    return makeFrozenArray(out);
+  }
+
+  function getParityEvidenceIds() {
+    var out = [];
+    for (var i = 0; i < SIGNAL_IDS.length; i++) {
+      var id = SIGNAL_IDS[i];
+      var d = DESCRIPTORS[id];
+      if (d && d.descriptor_mode === DESCRIPTOR_MODES.PARITY_EVIDENCE) out.push(id);
     }
     return makeFrozenArray(out);
   }
@@ -339,6 +429,9 @@
   var STRUCTURAL_SENTINEL_QUERY_CATALOG = Object.freeze({
     CONTRACT_VERSION: CONTRACT_VERSION,
     DEFERRED_PREREQUISITES: DEFERRED_PREREQUISITES,
+    DESCRIPTOR_MODES: DESCRIPTOR_MODES,
+    PARITY_OUTCOMES: PARITY_OUTCOMES,
+    PARITY_EVIDENCE_CONTRACT: PARITY_EVIDENCE_CONTRACT,
     OPERATION_CLASSES: OPERATION_CLASSES,
     SIGNAL_IDS: SIGNAL_IDS,
     SIGNAL_ID_SET: SIGNAL_ID_SET,
@@ -348,6 +441,7 @@
     getDescriptor: getDescriptor,
     getExecutableIds: getExecutableIds,
     getDeferredIds: getDeferredIds,
+    getParityEvidenceIds: getParityEvidenceIds,
     getAllIds: getAllIds,
     validateQuerySafety: validateQuerySafety
   });
