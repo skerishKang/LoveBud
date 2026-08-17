@@ -6,9 +6,10 @@ This file is the repository-wide entrypoint for LoveBud work. Detailed rules liv
 
 1. `docs/ops/MVP_AGENT_GOVERNANCE.md` — hard blockers, CI classification, browser permission, expected-head merge, owner-approved role/UI policy.
 2. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md` — separated execution roles.
-3. `docs/project/UI_RAPID_ITERATION_LANE.md` — U0/U1/U2/U3 UI process.
-4. `docs/project/ROLE_SESSION_TEMPLATES.md` — copy-ready role prompts.
-5. Product/design/engineering/ops source-of-truth documents relevant to the task.
+3. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` — owner-approved advanced/frontier autonomous implementation path and CTO post-implementation review behavior.
+4. `docs/project/UI_RAPID_ITERATION_LANE.md` — U0/U1/U2/U3 UI process.
+5. `docs/project/ROLE_SESSION_TEMPLATES.md` — copy-ready role prompts.
+6. Product/design/engineering/ops source-of-truth documents relevant to the task.
 
 When documents conflict, the higher item wins. Historical runbooks and task-specific documents do not create new repo-wide blockers without owner approval.
 
@@ -30,7 +31,7 @@ Web Developer
 Local Validation when required
 ```
 
-Lifecycle:
+Default lifecycle:
 
 ```text
 user request
@@ -41,9 +42,25 @@ user request
 → user decision / expected-head squash merge
 ```
 
+Owner-approved autonomous frontier lifecycle:
+
+```text
+advanced/frontier implementation model
+→ fresh remote / Issue / PR / ownership inspection
+→ select or create a bounded non-conflicting Issue
+→ feature-branch implementation + focused tests + Draft PR
+→ report exact evidence
+→ Web CTO independent post-implementation review
+→ user/task-authorized integration
+```
+
+For the autonomous frontier lane, **lack of a prior Web CTO assignment is not itself an implementation defect**. The Web CTO reviews the submitted implementation on technical, architectural, collision, safety, test, and CI evidence. See `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md`.
+
 ### Web CTO
 
 Owns remote verification, product/architecture/design contract, scope, risk classification, tests/evidence, final review, READY/NOT_READY, and merge judgment.
+
+When an advanced/frontier worker self-selects and implements a bounded Issue before receiving a CTO instruction, the CTO treats the resulting PR as an independently proposed candidate implementation. The CTO must not reject it merely because the CTO did not initiate it; the CTO fresh-verifies whether the work is valid and classifies it on its merits.
 
 ### Web Developer
 
@@ -52,6 +69,8 @@ Works in a separate web context. Owns feature-branch implementation, focused tes
 ### Local Validation
 
 Runs exact-head local/environment/browser/auth/database/provider/OS evidence only when required. It is not the default coder or UI designer.
+
+An explicitly designated advanced/frontier local implementation model may instead use the autonomous frontier lane; that is a separate implementation role from ordinary `Local Validation`.
 
 ## 4. UI Rapid Iteration Lane
 
@@ -167,6 +186,8 @@ Red workflow appearance alone is not enough to classify an executed failure. Ins
 
 For U0/U1, small reversible micro branches/PRs are preferred.
 
+Autonomous frontier implementation does not weaken collision rules. A self-directed worker must fresh-check existing PR/file/semantic-authority ownership before writing and must not create a competing implementation for an already-owned authority.
+
 ## 10. Current local execution environment
 
 - **Primary OS:** Windows.
@@ -188,6 +209,7 @@ Do not print secret files or environment values. Report presence/status only.
 
 - Pasted completion reports, logs, and command results from another executor or model are decision inputs, not automatically trusted completion evidence.
 - The Web CTO or current reviewer independently verifies remote SHA, cumulative diff, changed files, CI, comments, and the underlying evidence.
+- For an advanced/frontier autonomous worker, a completed implementation may legitimately arrive before any CTO instruction. The reviewer should validate the implementation rather than treating the missing prior instruction as a protocol failure.
 - Attached images are analysis, comparison, and review material by default.
 - Generate or transform images only when the user explicitly requests image generation or transformation; mentioning an image alone is not such a request.
 
@@ -220,15 +242,17 @@ Recommended order:
 2. `docs/ops/MVP_AGENT_GOVERNANCE.md`
 3. `docs/project/project_index.md`
 4. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
-5. `docs/project/UI_RAPID_ITERATION_LANE.md` for UI work
-6. relevant product/design/engineering/ops documents
-7. current remote Issue/PR/diff/CI evidence
+5. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` when a worker may self-select/implement before CTO allocation
+6. `docs/project/UI_RAPID_ITERATION_LANE.md` for UI work
+7. relevant product/design/engineering/ops documents
+8. current remote Issue/PR/diff/CI evidence
 
 ## 14. Key detailed documents
 
 - `docs/project/ROLE_SESSION_TEMPLATES.md`
 - `docs/project/BRANCHING_AND_REVIEW.md`
 - `docs/project/LOCAL_MODEL_WORKFLOW.md`
+- `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md`
 - `docs/project/VERIFICATION_AND_EVIDENCE.md`
 - `docs/project/AGENT_OPERATION_GUARDRAILS.md`
 - `docs/ops/PR_CHECKLIST.md`
@@ -242,10 +266,11 @@ Recommended order:
 
 ```text
 verify current remote state
-→ classify real risk
+→ use CTO-first allocation OR the owner-approved autonomous frontier lane
+→ classify real risk and collision authority
 → use the smallest safe implementation/evidence path
 → independently review exact head
-→ squash merge
+→ squash merge when separately authorized
 → confirm affected Production behavior
 ```
 

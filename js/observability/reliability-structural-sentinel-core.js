@@ -14,19 +14,30 @@
 //   - validates strictly one-row aggregate results with exact approved columns;
 //   - reduces exact aggregate counts to the bounded #3835
 //     count/deviation/outcome vocabulary;
-//   - never emits an exact aggregate count, raw row, raw ID, raw SQL, or raw
-//     database error in the public summary;
+//   - evaluates PARITY_EVIDENCE descriptors ONLY as a source-only translation
+//     seam: it consumes the already-bounded parity outcome produced by the
+//     existing #3860 authority (through the source-only injected seam) and
+//     translates that fixed outcome into the bounded #3835 public vocabulary.
+//     It is NOT a second schema/migration parity engine: it never compares
+//     expected vs observed fingerprints and never derives
+//     PARITY_CONFIRMED/PARITY_MISMATCH itself;
+//   - never emits an exact aggregate count, raw row, raw ID, raw SQL, raw
+//     provider identity, or raw database error in the public summary;
 //   - is fail-closed on every privacy and safety boundary.
 //
 // Refs #3842.
 // Refs #3835 — taxonomy authority.
+// Refs #3458 — canonical migration/expected-schema authority (completed).
+// Refs #3860 — read-only parity core authority (completed; NOT extended to
+//              PRODUCTION scope). Its bounded outcome vocabulary is consumed
+//              exactly; the sentinel core implements no second parity engine.
 // Refs #3461 — Keep OPEN.
 // Refs #1882 — Keep OPEN.
 
 (function (root) {
   'use strict';
 
-  var CONTRACT_VERSION = '1';
+  var CONTRACT_VERSION = '2';
 
   // ---------------------------------------------------------------------------
   // Deep-freeze helpers (same equivalent immutable boundary as #3835 taxonomy).
@@ -108,7 +119,11 @@ function readOwnEnumerableDataProperty(object, key) {
     COUNT_INFINITY: 'COUNT_INFINITY',
     COUNT_UNSAFE_BIGINT: 'COUNT_UNSAFE_BIGINT',
     PROXY_OR_ACCESSOR_INPUT: 'PROXY_OR_ACCESSOR_INPUT',
-    INVALID_BASELINE_CLASS: 'INVALID_BASELINE_CLASS'
+    INVALID_BASELINE_CLASS: 'INVALID_BASELINE_CLASS',
+    PARITY_EVIDENCE_MISSING: 'PARITY_EVIDENCE_MISSING',
+    PARITY_EVIDENCE_NOT_OBJECT: 'PARITY_EVIDENCE_NOT_OBJECT',
+    PARITY_ENVELOPE_INVALID: 'PARITY_ENVELOPE_INVALID',
+    PARITY_UNKNOWN_OUTCOME: 'PARITY_UNKNOWN_OUTCOME'
   });
 
   var ERROR_CODE_SET = (function () {
@@ -229,6 +244,18 @@ function readOwnEnumerableDataProperty(object, key) {
   }
 
   // ---------------------------------------------------------------------------
+  // Parity-evidence fixed key sets. A parity evidence envelope is accepted only
+  // when it is an ordinary or null-prototype record with EXACTLY one of the
+  // fixed shapes below:
+  //   { outcome: <one of the fixed #3860 PARITY_OUTCOMES strings> }
+  //   { collection_failed: true }  (bounded collection-failure marker)
+  // Any extra key (including provider/database identity keys) is rejected fail
+  // closed and never echoed.
+  // ---------------------------------------------------------------------------
+  var PARITY_OUTCOME_KEY = 'outcome';
+  var PARITY_FAILURE_KEYS = makeFrozenArray(['collection_failed']);
+
+  // ---------------------------------------------------------------------------
   // Bounded baseline classification boundary.
   //
   // This child never embeds a numeric Production threshold. The evaluator may
@@ -286,6 +313,153 @@ function readOwnEnumerableDataProperty(object, key) {
     return taxonomy.buildBoundedResult(input);
   }
 
+  // Parity-evidence summaries carry NO count_bucket (a parity signal is not an
+  // aggregate count signal). The summary still uses the bounded #3835 public
+  // vocabulary; the #3860 parity outcome is reduced to the mapped public code
+  // and is never echoed as a raw string.
+  function buildParitySummary(taxonomy, descriptor, releaseSha, opts) {
+    var input = {
+      operation_class: descriptor.operation_class,
+      stage: FIXED_STAGE,
+      outcome_code: opts.outcome,
+      release_sha: releaseSha,
+      baseline_deviation: opts.deviation,
+      severity: opts.severity,
+      owner_action: opts.ownerAction,
+      evidence_completeness: opts.evidence
+    };
+    return taxonomy.buildBoundedResult(input);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bounded parity evidence validation. The sentinel core is NOT a second
+  // schema/migration parity engine: it never compares expected vs observed
+  // fingerprints and never derives PARITY_CONFIRMED/PARITY_MISMATCH itself.
+  // It consumes ONLY the already-bounded parity outcome produced by the
+  // existing #3860 authority (or the bounded collection-failure marker from the
+  // adapter) through the source-only injected seam, validates that the outcome
+  // is one of the fixed #3860 PARITY_OUTCOMES strings, and translates it into
+  // the #3835/#3461 public vocabulary.
+  //
+  // Accepted envelopes (exact-key, fail closed on anything else):
+  //   { outcome: <one of the fixed #3860 PARITY_OUTCOMES strings> }
+  //   { collection_failed: true }
+  // Provider/database identity keys are rejected fail closed and never echoed.
+  // ---------------------------------------------------------------------------
+  function validateParityEvidence(catalog, descriptor, parityEvidence) {
+    if (parityEvidence === undefined || parityEvidence === null) {
+      return { ok: false, error: ERROR_CODES.PARITY_EVIDENCE_MISSING };
+    }
+    if (!isPlainRecord(parityEvidence)) {
+      return { ok: false, error: ERROR_CODES.PARITY_EVIDENCE_NOT_OBJECT };
+    }
+
+    var keys;
+    try {
+      keys = Object.keys(parityEvidence);
+    } catch (e) {
+      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+    }
+    if (keys.length !== 1) {
+      return { ok: false, error: ERROR_CODES.PARITY_ENVELOPE_INVALID };
+    }
+
+    var contract = (descriptor && descriptor.parity_contract) || {};
+    var accepted = contract.accepted_outcomes || [];
+
+    // Bounded collection-failure marker (exact #3860 vocabulary mapping).
+    if (keys[0] === PARITY_FAILURE_KEYS[0]) {
+      var flag;
+      try {
+        flag = readOwnEnumerableDataProperty(parityEvidence, 'collection_failed');
+      } catch (e) {
+        return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+      }
+      if (flag !== true) {
+        return { ok: false, error: ERROR_CODES.PARITY_ENVELOPE_INVALID };
+      }
+      return { ok: true, outcome: 'CATALOG_COLLECTION_FAILED' };
+    }
+
+    if (keys[0] !== PARITY_OUTCOME_KEY) {
+      return { ok: false, error: ERROR_CODES.PARITY_ENVELOPE_INVALID };
+    }
+    var outcome;
+    try {
+      outcome = readOwnEnumerableDataProperty(parityEvidence, 'outcome');
+    } catch (e) {
+      return { ok: false, error: ERROR_CODES.PROXY_OR_ACCESSOR_INPUT };
+    }
+    if (typeof outcome !== 'string' || accepted.indexOf(outcome) === -1) {
+      return { ok: false, error: ERROR_CODES.PARITY_UNKNOWN_OUTCOME };
+    }
+    return { ok: true, outcome: outcome };
+  }
+
+  // Map the bounded #3860 parity outcome to the bounded #3835 public
+  // vocabulary. The #3860 outcome string is never echoed; only the fixed
+  // public codes below are emitted.
+  //
+  // Fixed translation contract:
+  //   PARITY_CONFIRMED            -> CONFIRMED
+  //   PARITY_MISMATCH             -> STRUCTURAL_DRIFT_DETECTED
+  //   AUTHORITY_ADOPTION_REQUIRED -> SCHEMA_AUTHORITY_UNAVAILABLE (bounded
+  //                                  non-success; OWNER_DECISION_REQUIRED)
+  //   CATALOG_COLLECTION_FAILED   -> MONITORING_FAILED
+  //   INSUFFICIENT_EVIDENCE       -> INSUFFICIENT_EVIDENCE
+  //   TARGET_ATTRIBUTION_INVALID  -> INSUFFICIENT_EVIDENCE (bounded non-success)
+  //   APPROVAL_INVALID            -> INSUFFICIENT_EVIDENCE (bounded non-success)
+  //   EXPECTED_SCHEMA_INVALID     -> INSUFFICIENT_EVIDENCE (bounded non-success)
+  //   unknown outcome             -> INSUFFICIENT_EVIDENCE (bounded non-success)
+  function parityOutcomeToSummary(taxonomy, descriptor, releaseSha, parityOutcome) {
+    switch (parityOutcome) {
+      case 'PARITY_CONFIRMED':
+        return buildParitySummary(taxonomy, descriptor, releaseSha, {
+          outcome: taxonomy.OUTCOME_CODES.CONFIRMED,
+          deviation: taxonomy.BASELINE_DEVIATION_CLASSES.NONE,
+          severity: taxonomy.SEVERITIES.INFO,
+          ownerAction: taxonomy.OWNER_ACTIONS.NO_ACTION,
+          evidence: taxonomy.EVIDENCE_COMPLETENESS.COMPLETE
+        });
+      case 'PARITY_MISMATCH':
+        return buildParitySummary(taxonomy, descriptor, releaseSha, {
+          outcome: taxonomy.OUTCOME_CODES.STRUCTURAL_DRIFT_DETECTED,
+          deviation: taxonomy.BASELINE_DEVIATION_CLASSES.MATERIAL_DEVIATION,
+          severity: taxonomy.SEVERITIES.WARNING,
+          ownerAction: taxonomy.OWNER_ACTIONS.INVESTIGATE,
+          evidence: taxonomy.EVIDENCE_COMPLETENESS.COMPLETE
+        });
+      case 'AUTHORITY_ADOPTION_REQUIRED':
+        return buildParitySummary(taxonomy, descriptor, releaseSha, {
+          outcome: taxonomy.OUTCOME_CODES.SCHEMA_AUTHORITY_UNAVAILABLE,
+          deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
+          severity: taxonomy.SEVERITIES.WARNING,
+          ownerAction: taxonomy.OWNER_ACTIONS.OWNER_DECISION_REQUIRED,
+          evidence: taxonomy.EVIDENCE_COMPLETENESS.PARTIAL
+        });
+      case 'CATALOG_COLLECTION_FAILED':
+        return buildParitySummary(taxonomy, descriptor, releaseSha, {
+          outcome: taxonomy.OUTCOME_CODES.MONITORING_FAILED,
+          deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
+          severity: taxonomy.SEVERITIES.BLOCKING,
+          ownerAction: taxonomy.OWNER_ACTIONS.INVESTIGATE,
+          evidence: taxonomy.EVIDENCE_COMPLETENESS.MISSING
+        });
+      case 'TARGET_ATTRIBUTION_INVALID':
+      case 'APPROVAL_INVALID':
+      case 'EXPECTED_SCHEMA_INVALID':
+      case 'INSUFFICIENT_EVIDENCE':
+      default:
+        return buildParitySummary(taxonomy, descriptor, releaseSha, {
+          outcome: taxonomy.OUTCOME_CODES.INSUFFICIENT_EVIDENCE,
+          deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
+          severity: taxonomy.SEVERITIES.WARNING,
+          ownerAction: taxonomy.OWNER_ACTIONS.INVESTIGATE,
+          evidence: taxonomy.EVIDENCE_COMPLETENESS.INVALID
+        });
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Evaluator factory. The caller must inject the fixed query catalog and the
   // #3835 taxonomy. The executor is injected per-call; it never accepts
@@ -312,6 +486,7 @@ function readOwnEnumerableDataProperty(object, key) {
       var executor = signalOptions.executor;
       var releaseSha = signalOptions.releaseSha;
       var baselineClass = signalOptions.baselineClass;
+      var parityEvidence = signalOptions.parityEvidence;
 
       if (typeof descriptorId !== 'string') {
         throw new TypeError(ERROR_CODES.UNKNOWN_DESCRIPTOR);
@@ -329,8 +504,15 @@ function readOwnEnumerableDataProperty(object, key) {
         throw new TypeError(baselineCheck.error);
       }
 
+      // PARITY_EVIDENCE descriptor: evaluate ONLY against bounded sanitized
+      // parity evidence through the source-only translation seam. No executor,
+      // no SQL, no count rows.
+      if (descriptor.descriptor_mode === 'PARITY_EVIDENCE') {
+        return evaluateParitySignal(descriptor, releaseSha, parityEvidence);
+      }
+
       // Deferred descriptor: schema/query authority unavailable. Non-success.
-      if (descriptor.executable !== true) {
+      if (descriptor.descriptor_mode === 'DEFERRED' || descriptor.executable !== true) {
         return Promise.resolve(
           buildBoundedSummary(taxonomy, descriptor, releaseSha, {
             outcome: taxonomy.OUTCOME_CODES.SCHEMA_AUTHORITY_UNAVAILABLE,
@@ -403,6 +585,20 @@ function readOwnEnumerableDataProperty(object, key) {
         });
     }
 
+    // Dedicated parity-evidence integration function (source-only translation
+    // seam). Consumes ONLY the already-bounded #3860 parity outcome (or the
+    // bounded collection-failure marker) and translates it into the #3835
+    // public summary. It does NOT compare expected vs observed fingerprints and
+    // does NOT derive a parity outcome itself. Never echoes the #3860 outcome
+    // string, object names, fingerprints, SQL, or provider identity.
+    async function evaluateParitySignal(descriptor, releaseSha, parityEvidence) {
+      var validation = validateParityEvidence(catalog, descriptor, parityEvidence);
+      if (!validation.ok) {
+        return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, 'INSUFFICIENT_EVIDENCE');
+      }
+      return parityOutcomeToSummary(taxonomy, descriptor, releaseSha, validation.outcome);
+    }
+
     return deepFreeze({
       CONTRACT_VERSION: CONTRACT_VERSION,
       FIXED_STAGE: FIXED_STAGE,
@@ -410,6 +606,8 @@ function readOwnEnumerableDataProperty(object, key) {
       validateBaselineClass: validateBaselineClass,
       validateRawResult: validateRawResult,
       validateSafeCount: validateSafeCount,
+      validateParityEvidence: validateParityEvidence,
+      evaluateParitySignal: evaluateParitySignal,
       evaluateSignal: evaluateSignal
     });
   }

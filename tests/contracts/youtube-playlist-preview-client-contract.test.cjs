@@ -209,3 +209,8 @@ test('client wrapper never contains a provider secret or Google endpoint', () =>
   assert.doesNotMatch(CLIENT_SOURCE, /YOUTUBE_DATA_API_KEY|api[_-]?key/i);
   assert.doesNotMatch(CLIENT_SOURCE, /googleapis\.com/);
 });
+
+// #4065 reuses this already-classified EXECUTED_FAKE import contract file to
+// register local bookmark parser cases without introducing a second default-CI
+// inventory entry while parallel #4062 work owns the shared classification file.
+require('../helpers/bookmark-html-preview-parser-4065-cases.cjs');
