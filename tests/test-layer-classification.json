@@ -5061,6 +5061,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Executes the pure #4079 baseline-store and anomaly-evaluator sources with synthetic/injected bounded evidence and current #3835/#4061 structural authorities; proves baseline-independent hard invariants, statistical-signal suppression without baseline, fail-closed non-healthy monitoring/evidence states, privacy-safe bounded output, determinism, frozen/detached results, injected calibration with no embedded Production thresholds, and preservation of the existing #4061 parity translation boundary without a second #3860 parity engine. No network, database, SQL execution, provider, filesystem-write, scheduler, telemetry-sink, Production, or Preview capability (#4079).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/reliability-canary-lifecycle-core-4081.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure #4081 synthetic canary lifecycle core (js/observability/reliability-canary-lifecycle-core.js) in-process with injected fake dependencies (no network, database, browser, provider, or Production access) and proves the deterministic lifecycle state model: normal full-path CLEANUP_CONFIRMED, FIXTURE_RETAINED_DETERMINISTIC, WRITE_STATUS_UNKNOWN fail-closed without blind retry, canonical reread missing, owner reread missing, ownership mismatch => FENCED, fence unavailable/rejected/stale, auth/fixture/dispatch/cleanup/visibility-observer failures, Browse-eligibility trap, privacy leak rejection, classifier unavailability, frozen/canonical results, deterministic repeat, caller-input non-mutation, and fixed synthetic-exclusion marker. No real setTimeout, network, database, browser, auth provider, Production, or Preview capability (#4081).",
+      "capabilities": []
     }
   ],
   "supplemental": [
