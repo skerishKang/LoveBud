@@ -5034,6 +5034,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the real js/cache-utils.js, js/search/search-preview-cache.js, and js/search/search-data.js in an in-process fake browser environment (memory cache + fake sessionStorage) and proves the #4055 visibility-revocation sequences deterministically: per-Tree public-projection purge with unrelated-Tree preservation (Case F), sessionStorage resurrection block on reload (Case D), Browse authority-first render with the revoked Tree never painted (Case A), mutation-purge-then-reload absence (Case A2), network-failure negative control where a failed fresh fetch must not restore a deleted Tree from cache (Case C), and the preview authority gate where a cached old thumbnail/source projection is not returned once fresh Browse excludes the Tree (Case B/B2); plus a source-static assertion that mutation purge wiring in editor-tree-helpers/editor-memory-actions/my-trees-actions/editor-rename-ui runs only after confirmed success (Case E). No real network, browser, auth provider, database, deployment, or Production resource is used (#4055).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-play-mode-core-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/playback/tree-play-mode-core.js in-process in Node with constructed queue inputs and no injected external dependencies, and proves the #4064 one-active-player Tree Play Mode queue core deterministically: ordered occurrence identity by canonical sourceIndex (not mediaId) with duplicate mediaIds remaining distinct, fail-closed segment validation (negative / end<=start / NaN / Infinity / non-numeric bounds), no wrap at queue ends, unavailable occurrences preserved in canonical order with explicit SKIPPED_UNPLAYABLE auto-advance reporting, all-unplayable termination, auto-advance selection separated from PLAYING until adapter confirmation, MANUAL_CONTINUE_REQUIRED on autoplay block distinct from queue failure, frozen/detached snapshots, caller-input non-mutation, reset without prior-state leakage, and a node --check source-static read of js/product/youtube-segment-player-poc.js plus pages/youtube-segment-player-poc.html. No real YouTube/provider/network call, browser, auth provider, database, deployment, or Production resource is used (#4064).",
+      "capabilities": []
     }
   ],
   "supplemental": [
