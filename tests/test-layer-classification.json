@@ -4243,6 +4243,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/youtube-playlist-ordered-selection-4062-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production preview UI module (js/import/youtube-playlist-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM. Verifies the #4062 ordered-selection contract: occurrence-based selection identity (position, not videoId) so duplicate videoId occurrences are independently selectable, canonical source order preserved in the ordered import draft regardless of click order, eligibility derived from the canonical #3914 item-state vocabulary (PRIVATE_OR_UNAVAILABLE/UNKNOWN fail closed; AVAILABLE_METADATA/METADATA_PARTIAL/THUMBNAIL_UNAVAILABLE selectable), THUMBNAIL_UNAVAILABLE is not MEDIA_UNAVAILABLE, select-all-eligible excludes unavailable/private, clear empties deterministically, buildOrderedImportDraft never mutates the preview object and returns a detached draft with only #3914 contract fields (no DB identity minted), selection resets, and accessible checkbox/selection-bar HTML (aria-label, aria-live count, visible disabled state). No network, no DB, no browser, no Production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-private-import-intent-4069-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production preview UI module (js/import/youtube-playlist-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM. Verifies the #4069 private-first import-intent contract: canonical Tree-title bound reused from #3935 validate_tree_title max_length=200 (no new persisted limit), deterministic trim with empty/whitespace-only and over-limit titles failing closed, prepared intent visibility exactly 'private' with no public/import-and-publish shortcut, buildPrivateImportIntent is pure/deterministic (source order preserved, duplicate video occurrences distinct, unavailable occurrences excluded, caller inputs never mutated, returned intent detached with no persisted Tree/Moment/Connection identities and no client-side persistence claim), review state is never cached so new preview/selection/title change invalidates stale review, and no fetch/XMLHttpRequest/write-route capability is introduced. No network, no DB, no browser, no Production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/youtube-playlist-preview-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes the real production preview UI and client wrapper (js/import/youtube-playlist-preview-ui.js, js/api/import-youtube-playlist-preview.js, css/global.css, css/my-trees.css) in Playwright Chromium (desktop + mobile) against a local HTTP server with the preview provider route mocked via a stubbed fetch. Asserts #3914 preview flow: accessible non-permanently-hidden trigger with aria-expanded + focus management, accepted-source restriction (URL-looking input stays source, bare IDs become playlistId), ordered success preview with explicit unavailable/partial states and position preservation, deterministic placeholder for null thumbnails, 404-thumbnail load-failure fallback to the placeholder with explicit THUMBNAIL_UNAVAILABLE state and no multi-host retry, bounded error + edit/retry, and full 50-item reachability via bounded scrolling on desktop and mobile. No real Google API call, no network beyond the in-process static server, no DB, no Production mutation.",
