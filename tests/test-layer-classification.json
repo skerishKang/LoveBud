@@ -4243,6 +4243,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/youtube-playlist-ordered-selection-4062-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production preview UI module (js/import/youtube-playlist-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM. Verifies the #4062 ordered-selection contract: occurrence-based selection identity (position, not videoId) so duplicate videoId occurrences are independently selectable, canonical source order preserved in the ordered import draft regardless of click order, eligibility derived from the canonical #3914 item-state vocabulary (PRIVATE_OR_UNAVAILABLE/UNKNOWN fail closed; AVAILABLE_METADATA/METADATA_PARTIAL/THUMBNAIL_UNAVAILABLE selectable), THUMBNAIL_UNAVAILABLE is not MEDIA_UNAVAILABLE, select-all-eligible excludes unavailable/private, clear empties deterministically, buildOrderedImportDraft never mutates the preview object and returns a detached draft with only #3914 contract fields (no DB identity minted), selection resets, and accessible checkbox/selection-bar HTML (aria-label, aria-live count, visible disabled state). No network, no DB, no browser, no Production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-private-import-intent-4069-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production preview UI module (js/import/youtube-playlist-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM. Verifies the #4069 private-first import-intent contract: canonical Tree-title bound reused from #3935 validate_tree_title max_length=200 (no new persisted limit), deterministic trim with empty/whitespace-only and over-limit titles failing closed, prepared intent visibility exactly 'private' with no public/import-and-publish shortcut, buildPrivateImportIntent is pure/deterministic (source order preserved, duplicate video occurrences distinct, unavailable occurrences excluded, caller inputs never mutated, returned intent detached with no persisted Tree/Moment/Connection identities and no client-side persistence claim), review state is never cached so new preview/selection/title change invalidates stale review, and no fetch/XMLHttpRequest/write-route capability is introduced. No network, no DB, no browser, no Production.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/youtube-playlist-preview-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes the real production preview UI and client wrapper (js/import/youtube-playlist-preview-ui.js, js/api/import-youtube-playlist-preview.js, css/global.css, css/my-trees.css) in Playwright Chromium (desktop + mobile) against a local HTTP server with the preview provider route mocked via a stubbed fetch. Asserts #3914 preview flow: accessible non-permanently-hidden trigger with aria-expanded + focus management, accepted-source restriction (URL-looking input stays source, bare IDs become playlistId), ordered success preview with explicit unavailable/partial states and position preservation, deterministic placeholder for null thumbnails, 404-thumbnail load-failure fallback to the placeholder with explicit THUMBNAIL_UNAVAILABLE state and no multi-host retry, bounded error + edit/retry, and full 50-item reachability via bounded scrolling on desktop and mobile. No real Google API call, no network beyond the in-process static server, no DB, no Production mutation.",
@@ -4250,6 +4262,24 @@
         "playwright",
         "chromium"
       ]
+    },
+    {
+      "path": "tests/contracts/bookmark-html-preview-ui-4072-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4072 local-preview contract: File.text() local read only with oversized-file fail-closed preflight at parser HARD_LIMITS.maxInputBytes (1 MiB), parser authority is #4065 ONLY (no second parser/DOMParser), ordered preview in canonical sourceIndex order with duplicate URL occurrences kept distinct, clickable link only when parser returned supported=true + non-null url (unsupported/credential/rejected entries inert status only, raw href never reconstructed or displayed), textContent/createElement rendering only (zero innerHTML/srcdoc/document.write sinks, user text cannot execute as HTML), IDLE/READING/READY/EMPTY/ERROR state machine with immediate stale-preview invalidation on new file selection and reset clearing input+preview+error, and no fetch/XHR/FormData/backend/storage capability. No network, no DB, no browser, no Production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/bookmark-html-preview-ui-4074-ordered-selection.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE extended for #4074) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4074 ordered-selection contract stacked on #4072/#4065 with zero added DOM-XSS sinks (textContent/createElement only): occurrence-based selection by canonical sourceIndex identity (not URL) so duplicate identical URLs stay independently selectable, click order is not canonical import order (buildOrderedBookmarkImportDraft emits selected eligible occurrences in exact ascending sourceIndex order), select-all-eligible and clear controls operate only on eligible occurrences (unsupported scheme / rejected / credential-bearing / null-url occurrences excluded and never silently selected), unsafe URL rows still expose no clickable href (preserves #4072 credential/raw-href non-disclosure), selection resets on new file / READING / parser-read ERROR / EMPTY / explicit reset with no persistent storage (no localStorage/sessionStorage/IndexedDB/cookie, no storage read/write), selected count shown and announced via a role=status aria-live region, and the pure detached builder never mutates the parser/preview result or internal selection state (new frozen objects carrying only occurrenceKey/sourceIndex/title/url/folderPath). No network, no DB, no browser, no Production, no Tree/Moment/Connection write, no backend route.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/bookmark-html-preview-ui-4076-private-import-intent.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE extended for #4074/#4076) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4076 private-first pre-write import intent review stacked on #4072/#4065/#4074 with zero added DOM-XSS sinks (textContent/createElement only): Tree-title input with deterministic trim and canonical max length 200 reused from modal_compute/validation.py::validate_tree_title (empty/whitespace-only/over-length fail closed, title is plain text/data only), buildBookmarkImportIntent(draft, normalizedTreeTitle) is a pure detached frozen NOT_PERSISTED builder that always sets visibility='private' (no public toggle / import-and-publish shortcut), carries only occurrenceKey/sourceIndex/title/url/folderPath + treeTitle/visibility/source/count and never Tree/Memory/Moment/Connection/owner IDs or server acknowledgement, preserves canonical source order with duplicate identical URLs kept independent and excludes unsupported-scheme / credential-bearing / null-url entries even if passed directly, the bounded role=status aria-live review declares the normalized title / selected count / private visibility / not-yet-saved state and becomes stale/non-actionable on any authority input change (new file / READING / ERROR / EMPTY / reset / selection / select-all / clear / title), the #4075 async supersession lifecycle is preserved (a stale late File.text() fulfillment cannot restore an old review, a late rejection cannot destroy the current review, reset-while-pending cannot be resurrected), and the intent carries no raw bookmark HTML / browser filesystem path / credentials with no fetch/XHR/FormData/storage capability added. No network, no DB, no browser, no Production, no Tree/Moment/Connection write, no backend route, no publication.",
+      "capabilities": []
     },
     {
       "path": "tests/contracts/youtube-playlist-preview-client-contract.test.cjs",
@@ -5004,6 +5034,33 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the real js/cache-utils.js, js/search/search-preview-cache.js, and js/search/search-data.js in an in-process fake browser environment (memory cache + fake sessionStorage) and proves the #4055 visibility-revocation sequences deterministically: per-Tree public-projection purge with unrelated-Tree preservation (Case F), sessionStorage resurrection block on reload (Case D), Browse authority-first render with the revoked Tree never painted (Case A), mutation-purge-then-reload absence (Case A2), network-failure negative control where a failed fresh fetch must not restore a deleted Tree from cache (Case C), and the preview authority gate where a cached old thumbnail/source projection is not returned once fresh Browse excludes the Tree (Case B/B2); plus a source-static assertion that mutation purge wiring in editor-tree-helpers/editor-memory-actions/my-trees-actions/editor-rename-ui runs only after confirmed success (Case E). No real network, browser, auth provider, database, deployment, or Production resource is used (#4055).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/write-outcome-classifier-4080-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure write-outcome classifier core (js/observability/reliability-write-outcome-classifier-core.js) in a node:vm sandbox and the edge-facts adapter (functions/_shared/write-outcome-edge-facts.js) via dynamic import, proving the #4080 provider-neutral write-boundary decision table: five distinct ordered stages, WRITE_ACKNOWLEDGED != CANONICAL_REREAD_CONFIRMED, provider-neutral vocabulary, WRITE_STATUS_UNKNOWN on undecidable timeout/network-error/unknown-commit with retry_safe=false, WRITE_REJECTED_VALIDATION before any DB side effect, TRANSPORT_FAILED, CONFIRMED at FOLLOWUP_REREAD_VISIBLE/CLIENT_VISIBLE_SUCCESS, WRITE_COMMITTED_REREAD_MISSING/MISMATCH, WRITE_COMMITTED_ROW_RETURNED, ACKNOWLEDGED_REREAD_MISSING, INSUFFICIENT_EVIDENCE, frozen canonical results, and privacy rejection of token/email/owner/tree/memory/title/url/payload/sql/raw_error/provider/database_url/secret keys. No network, database, browser, provider, or Production access (#4080).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/write-reread-canonical-postgres-rehearsal-4080.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Collision-safe disposable PostgreSQL commit/reread-divergence rehearsal for #4080. Runs the production classifier core in-process against the deterministic parity matrix. When loopback LB_TEST_PG* env is present, additionally exercises the real disposable harness for commit/reread divergence; bounded-skips otherwise. Zero edits to shared package.json/ci.yml/reporter/registry surface (avoids collision with open PR #4045). Refs #4080, #3461, #3457, #3835, #1882.",
+      "capabilities": [
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/contracts/tree-play-mode-core-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/playback/tree-play-mode-core.js in-process in Node with constructed queue inputs and no injected external dependencies, and proves the #4064 one-active-player Tree Play Mode queue core deterministically: ordered occurrence identity by canonical sourceIndex (not mediaId) with duplicate mediaIds remaining distinct, fail-closed segment validation (negative / end<=start / NaN / Infinity / non-numeric bounds), no wrap at queue ends, unavailable occurrences preserved in canonical order with explicit SKIPPED_UNPLAYABLE auto-advance reporting, all-unplayable termination, auto-advance selection separated from PLAYING until adapter confirmation, MANUAL_CONTINUE_REQUIRED on autoplay block distinct from queue failure, frozen/detached snapshots, caller-input non-mutation, reset without prior-state leakage, and a node --check source-static read of js/product/youtube-segment-player-poc.js plus pages/youtube-segment-player-poc.html. No real YouTube/provider/network call, browser, auth provider, database, deployment, or Production resource is used (#4064).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/reliability-baseline-anomaly-core-4079.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the pure #4079 baseline-store and anomaly-evaluator sources with synthetic/injected bounded evidence and current #3835/#4061 structural authorities; proves baseline-independent hard invariants, statistical-signal suppression without baseline, fail-closed non-healthy monitoring/evidence states, privacy-safe bounded output, determinism, frozen/detached results, injected calibration with no embedded Production thresholds, and preservation of the existing #4061 parity translation boundary without a second #3860 parity engine. No network, database, SQL execution, provider, filesystem-write, scheduler, telemetry-sink, Production, or Preview capability (#4079).",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -5230,6 +5287,13 @@
         "postgresql",
         "network"
       ]
+    },
+    {
+      "path": "tests/contracts/test_write_outcome_classification_4080.py",
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "defaultCi": false,
+      "rationale": "Python unit tests for the pure modal_compute/write_outcome_classification.py authority executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script. No DB connection, network, or modal runtime import (#4080).",
+      "capabilities": []
     }
   ]
 }

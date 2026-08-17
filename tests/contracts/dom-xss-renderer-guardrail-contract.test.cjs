@@ -178,8 +178,8 @@ const FILE_ALLOWLIST = {
 
   // ── Import (YouTube playlist preview) ──────────────────────────────
   'js/import/youtube-playlist-preview-ui.js': {
-    count: 4, classification: 'safe',
-    reason: 'resultEl.innerHTML bound to approved template renderers (renderLoading, renderPlaylist, renderError) that escapeHtml() every user-controlled field (playlist title, channel title, item titles/descriptions/channels/states, order index, source URLs); plus one clear-container reset (innerHTML = empty string) on popover close. Thumbnail load-failure fallback uses src/class/textContent only. No unescaped user content.'
+    count: 10, classification: 'safe',
+    reason: 'resultEl.innerHTML bound to approved template renderers (renderLoading, renderPlaylist, renderError) that escapeHtml() every user-controlled field (playlist title, channel title, item titles/descriptions/channels/states, order index, source URLs); plus clear-container resets (innerHTML = empty string) on popover close and review reset (#4069); #4069 review.innerHTML is bound to a static Korean-text review template where the only user-controlled field (normalized Tree title) is escapeHtml()-escaped, with empty/static validation prompts otherwise. Thumbnail load-failure fallback uses src/class/textContent only. No unescaped user content.'
   },
 
   // ── Search ─────────────────────────────────────────────────────────
