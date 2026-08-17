@@ -882,6 +882,25 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
         `http://127.0.0.1:${port}`,
         health.sameOriginFailures
       );
+      // Issue #4083: filter-chip key activations are intentional client-side
+      // re-renders. They cancel in-flight per-card /api/community/memories
+      // preview fetches, which the browser reports as net::ERR_ABORTED. Per the
+      // same-origin tracker contract (mirrors the #3899 page.goto case in
+      // section L), aborts of requests already pending when an intentional
+      // operation begins are benign and must not be reported as same-origin
+      // failures. Exact request identity + exact net::ERR_ABORTED matching keep
+      // this allowance tightly bounded; real failures (same-origin 4xx/5xx via
+      // the response handler, non-abort requestfailed, pageerrors, cross-origin
+      // escape, genuine navigation failure, keyboard a11y regression) remain
+      // fully caught.
+      const intentionalKey = async (key) => {
+        navigationFailureTracker.beginIntentionalNavigation();
+        try {
+          await page.keyboard.press(key);
+        } finally {
+          navigationFailureTracker.endIntentionalNavigation();
+        }
+      };
       page.on('pageerror', (err) => health.pageErrors.push(String((err && err.message) || err)));
       page.on('console', (msg) => { if (msg.type() === 'error') health.consoleErrors.push(msg.text()); });
       page.on('response', (response) => {
@@ -987,7 +1006,7 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       assert.ok(focusInfo.right <= focusInfo.vw + 1, `${vp.name}: focused chip right within viewport`);
 
       // ── D. ArrowLeft: previous (성장 -> 입덕) with full sync ──
-      await page.keyboard.press('ArrowLeft');
+      await intentionalKey('ArrowLeft');
       await waitActive(page, '입덕');
       const sD = await read();
       assertInvariant(`${vp.name} ArrowLeft->입덕`, sD, '입덕');
@@ -995,12 +1014,12 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       assertCards(`${vp.name} ArrowLeft->입덕`, sD, 2, '입덕 트리');
 
       // ── E. ArrowLeft prev (입덕 -> 전체) then wrap prev (전체 -> 최애) ──
-      await page.keyboard.press('ArrowLeft');
+      await intentionalKey('ArrowLeft');
       await waitActive(page, '전체');
       let sE = await read();
       assertInvariant(`${vp.name} ArrowLeft->전체`, sE, '전체');
       assert.equal(sE.cardCount, 6, `${vp.name}: 전체 cards`);
-      await page.keyboard.press('ArrowLeft');
+      await intentionalKey('ArrowLeft');
       await waitActive(page, '최애');
       sE = await read();
       assertInvariant(`${vp.name} ArrowLeft wrap->최애`, sE, '최애');
@@ -1008,28 +1027,28 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       assertCards(`${vp.name} ArrowLeft wrap->최애`, sE, 2, '최애 트리');
 
       // ── F. ArrowRight wrap (최애 -> 전체) ──
-      await page.keyboard.press('ArrowRight');
+      await intentionalKey('ArrowRight');
       await waitActive(page, '전체');
       const sF = await read();
       assertInvariant(`${vp.name} ArrowRight wrap->전체`, sF, '전체');
       assert.equal(sF.cardCount, 6, `${vp.name}: wrap back to 전체`);
 
       // ── G. End / Home ──
-      await page.keyboard.press('End');
+      await intentionalKey('End');
       await waitActive(page, '최애');
       let sG = await read();
       assertInvariant(`${vp.name} End->최애`, sG, '최애');
-      await page.keyboard.press('Home');
+      await intentionalKey('Home');
       await waitActive(page, '전체');
       sG = await read();
       assertInvariant(`${vp.name} Home->전체`, sG, '전체');
 
       // ── H. ArrowDown / ArrowUp ──
-      await page.keyboard.press('ArrowDown');
+      await intentionalKey('ArrowDown');
       await waitActive(page, '입덕');
       let sH = await read();
       assertInvariant(`${vp.name} ArrowDown->입덕`, sH, '입덕');
-      await page.keyboard.press('ArrowUp');
+      await intentionalKey('ArrowUp');
       await waitActive(page, '전체');
       sH = await read();
       assertInvariant(`${vp.name} ArrowUp->전체`, sH, '전체');
@@ -1041,13 +1060,13 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
         return chip.getAttribute('data-category');
       });
       assert.equal(enterCat, '성장', `${vp.name}: Enter focus target`);
-      await page.keyboard.press('Enter');
+      await intentionalKey('Enter');
       await waitActive(page, '성장');
       let sI = await read();
       assertInvariant(`${vp.name} Enter->성장`, sI, '성장');
       assert.equal(sI.category, '성장', `${vp.name}: Enter URL sync`);
       assertCards(`${vp.name} Enter->성장`, sI, 2, '성장 트리');
-      await page.keyboard.press('Enter');
+      await intentionalKey('Enter');
       await waitActive(page, '성장');
       sI = await read();
       assertInvariant(`${vp.name} Enter again (no toggle)`, sI, '성장');
@@ -1060,13 +1079,13 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
         return chip.getAttribute('data-category');
       });
       assert.equal(spaceCat, '최애', `${vp.name}: Space focus target`);
-      await page.keyboard.press('Space');
+      await intentionalKey('Space');
       await waitActive(page, '최애');
       let sJ = await read();
       assertInvariant(`${vp.name} Space->최애`, sJ, '최애');
       assert.equal(sJ.category, '최애', `${vp.name}: Space URL sync`);
       assertCards(`${vp.name} Space->최애`, sJ, 2, '최애 트리');
-      await page.keyboard.press('Space');
+      await intentionalKey('Space');
       await waitActive(page, '최애');
       sJ = await read();
       assertInvariant(`${vp.name} Space again (no toggle)`, sJ, '최애');
