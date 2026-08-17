@@ -1,9 +1,8 @@
 'use strict';
 
-// Issue #4079 — focused explicit contract for the baseline-aware anomaly core.
-// This file intentionally uses `.contract.cjs` rather than `.test.cjs` while
-// PR #4084 owns tests/test-layer-classification.json. Run explicitly with:
-//   node --test tests/contracts/reliability-baseline-anomaly-core-4079.contract.cjs
+// Issue #4079 — canonical default-CI contract for the baseline-aware anomaly core.
+// Registered in tests/test-layer-classification.json and enumerated by the
+// repository default tests/contracts/*.test.cjs path.
 // It performs no network/DB/provider/Production activity.
 
 const { test } = require('node:test');
