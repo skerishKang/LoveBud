@@ -1,9 +1,9 @@
 # MVP Agent Governance
 
 > **Status:** canonical source of truth — owner-approved
-> **Approval provenance:** Issue #3442 comment `4947327550`; CI amendment #3642; separated execution roles #3662; UI Rapid Iteration Lane #3664; parallel semantic-authority amendment #3994 / owner direction 2026-08-12
+> **Approval provenance:** Issue #3442 comment `4947327550`; CI amendment #3642; separated execution roles #3662; UI Rapid Iteration Lane #3664; parallel semantic-authority amendment #3994 / owner direction 2026-08-12; autonomous advanced/frontier implementation amendment / owner direction 2026-08-17
 
-This document is the canonical source of truth for LoveBud hard blockers, CI classification, browser permission, role-allocation authority, parallel writer ownership, and merge governance. Conflicting historical documents are non-normative outside their named original context.
+This document is the canonical source of truth for LoveBud hard blockers, CI classification, browser permission, role-allocation authority, parallel writer ownership, autonomous advanced/frontier implementation entry, and merge governance. Conflicting historical documents are non-normative outside their named original context.
 
 ## Authority
 
@@ -12,11 +12,15 @@ This document is the canonical source of truth for LoveBud hard blockers, CI cla
 - Web CTO / Web Developer / Local Validation model: #3662;
 - risk-proportional UI Rapid Iteration Lane: #3664;
 - current multi-model semantic-authority coordination: #3994;
+- autonomous advanced/frontier implementation lane: owner direction 2026-08-17;
 - focused role source: `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`;
+- focused autonomous implementation source: `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md`;
 - focused parallel-work source: `docs/ops/PARALLEL_WORKTREE_AGENT_POLICY.md`;
 - focused UI source: `docs/project/UI_RAPID_ITERATION_LANE.md`.
 
 A restriction in a repository document is not automatically a hard blocker. New hard blockers require traceable owner approval. The #3994 parallelism amendment is authoritative for active multi-model work because it was explicitly owner-directed to prevent competing implementations while the platform migration and independent Web CTO work proceed in parallel.
+
+The 2026-08-17 autonomous implementation amendment is also owner-approved. It adds a valid alternative implementation entry path for advanced/frontier-capability models: a capable model may discover and implement a bounded, non-conflicting Issue before receiving a Web CTO instruction, then submit the exact result for independent CTO verification. Lack of a prior CTO assignment is not itself a defect under that lane.
 
 ## Hard standing rules
 
@@ -30,6 +34,8 @@ Only these are mandatory enforced blockers:
 6. An implementation worker must not Ready-transition or merge its own active PR unless a task-specific owner instruction explicitly delegates that integration authority. Any authorized merge requires independent review, expected-head SHA verification, and acceptable CI/evidence; squash is the default merge method unless a narrower task contract says otherwise.
 7. During multi-model/parallel implementation, enforce `ONE WRITER PER BRANCH`, `ONE WRITER PER FILE`, and `ONE WRITER PER SEMANTIC AUTHORITY`. YELLOW/RED authority overlap blocks competing implementation until sequencing or ownership transfer is explicit.
 8. Never close #1882; use `Refs #1882` only.
+
+Autonomous advanced/frontier implementation does not weaken any hard standing rule. In particular, it does not grant Ready, merge, protected-Issue close, Production/provider/config/secret mutation, real-user mutation, destructive git, or competing semantic-authority permission.
 
 ## CI classification
 
@@ -55,12 +61,15 @@ The following are allowed without special approval:
 
 - ordinary branch/worktree code, docs, and test work within assigned authority;
 - direct feature-branch implementation by a separate Web Developer or designated implementation owner;
+- owner-approved autonomous advanced/frontier implementation of a bounded, non-conflicting Issue after fresh remote/ownership inspection, including selecting or creating the bounded Issue, feature-branch source/docs/test work, additive commits, normal push, Draft PR creation, and correction of self-introduced CI failures;
 - read-only remote review, CI forensic work, and review findings on another worker's active authority;
 - browser start/restart, tabs, navigation, login/logout/re-authentication;
 - localhost, Production, PR/branch preview, fixed slot, disposable environments when the task permits that evidence source;
 - DevTools, CDP, Playwright, screenshots, console/network/API inspection;
 - ordinary in-scope test-data creation/edit/deletion when the task permits it;
 - PR creation, normal additive commits, push, and Draft PR maintenance within the assigned branch/authority.
+
+For the autonomous frontier lane, “assigned authority” may be established by the worker's fresh collision-safe selection of an unowned bounded Issue or by creating a bounded child Issue, provided no existing branch/file/semantic authority is being competed with. That self-selection remains provisional implementation ownership, not final product acceptance.
 
 Ready transition and merge are integration actions, not ordinary implementation actions in an active multi-model lane. They require the applicable task/owner authorization and the independent-review gate above.
 
@@ -74,7 +83,7 @@ Web Developer / designated implementation owner
 Local Validation when required
 ```
 
-Lifecycle:
+Default lifecycle:
 
 ```text
 user request
@@ -85,9 +94,25 @@ user request
 → user decision / authorized expected-head merge
 ```
 
+Owner-approved autonomous advanced/frontier lifecycle:
+
+```text
+advanced/frontier implementation model
+→ fresh current-main / Issue / PR / ownership inspection
+→ select or create a bounded non-conflicting Issue
+→ feature-branch implementation + focused tests
+→ Draft PR + exact evidence
+→ Web CTO independent post-implementation review
+→ user decision / authorized expected-head merge
+```
+
+The second lifecycle is not a protocol violation merely because the CTO did not allocate the work first. The Web CTO must judge the resulting implementation on its actual technical, architectural, collision, safety, test, and CI evidence.
+
 The same production change should not be implemented and finally approved in the same context. Web CTO may create designs, prototypes, exact copy, state contracts, patch drafts, remote forensic findings, or non-overlapping backlog corrections; a separate implementation owner implements active platform/runtime changes and reports a new exact head for independent review.
 
-Older references to TF Leads, `UI Local`, `Feature Local`, or a generic local executor as the default production coder are superseded for current role allocation.
+An advanced/frontier autonomous worker may itself be that separate implementation owner. Its completion report is evidence input, not final CTO acceptance.
+
+Older references to TF Leads, `UI Local`, `Feature Local`, or a generic local executor as the default production coder are superseded for current role allocation. This does not prohibit a specifically designated advanced/frontier local implementation model from operating under `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md`.
 
 ## Parallel multi-model authority
 
@@ -127,6 +152,8 @@ When an active writer exists:
 - they must not create a competing implementation for the same authority;
 - blocking findings are corrected by the active writer on that writer's branch unless ownership is explicitly transferred;
 - after a dependency merges, dependent branches re-check current main, file overlap, semantic overlap, and exact-head CI before proceeding.
+
+An autonomous advanced/frontier worker must perform this same authority check before self-selecting work. “I found the Issue myself” never overrides an existing writer lock.
 
 This rule is the highest-priority coordination rule for an explicitly declared multi-model parallel lane. It exists to preserve development parallelism without creating two sources of implementation authority.
 
@@ -173,7 +200,8 @@ The following may be useful but are not automatic blockers unless the task contr
 - new child Issue for every U0/U1 change;
 - narrow diff/minimal-change preference;
 - module-size/refactor guidance;
-- a safe reported deviation from the default role flow.
+- a safe reported deviation from the default role flow;
+- prior CTO assignment when a designated advanced/frontier worker validly used the autonomous implementation lane.
 
 Within an explicitly declared multi-model lane, writer ownership and no-competing-implementation rules are not advisory; they are the lane's active coordination authority.
 
@@ -186,6 +214,8 @@ PRODUCTION_EVIDENCE
 ```
 
 Environment controls evidence strength, not permission. If evidence is limited, report the limitation rather than inventing a blocker.
+
+For autonomous implementation, the worker's own completion report remains an evidence input. The Web CTO independently fresh-verifies current `main`, Issue/PR purpose, exact head/base/diff, writer ownership, tests, CI, and relevant architecture/safety boundaries before classification.
 
 ## Dirty worktree
 
@@ -221,9 +251,10 @@ RECOMMENDATION_ONLY
 
 The following supersede conflicting historical process language:
 
-- this document for hard blockers, CI classification, multi-model writer authority, and merge governance;
+- this document for hard blockers, CI classification, multi-model writer authority, autonomous advanced/frontier implementation entry, and merge governance;
 - `docs/ops/PARALLEL_WORKTREE_AGENT_POLICY.md` for the operational branch/path/semantic-authority lock procedure;
-- `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md` for role allocation;
+- `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md` for default role allocation;
+- `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` for the owner-approved self-directed implementation exception and CTO post-implementation review behavior;
 - `docs/project/UI_RAPID_ITERATION_LANE.md` for UI process weight;
 - `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md` for current browser/Production evidence flow;
 - `docs/ops/TEST_PREVIEW_SLOTS.md` only for explicitly assigned ephemeral fixed-slot update/restore operations.
