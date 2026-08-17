@@ -1,7 +1,11 @@
 # Schema Orphan Read-Only Structural Sentinel — Contract
 
 > Issue: #3842 (Reliability & Observability child of parent #3461).
+> Issue: #4060 (Structural schema / migration-parity sentinel integration).
 > Prerequisite: #3835 (taxonomy/policy, completed) and #3834 (boundary audit, completed).
+> Reactivation authorities: #3458 (canonical migration/expected-schema authority,
+> completed) and #3860 (read-only target attribution & catalog parity core,
+> completed — reused for vocabulary only, never extended to Production scope).
 > This document is a **source-only** contract for a fixed, privacy-safe,
 > read-only structural sentinel query and evaluation authority.
 
@@ -79,14 +83,91 @@ TREE_SOCIAL_TARGET_ORPHAN_COUNT
 TREE_COMMENT_TARGET_ORPHAN_COUNT
 PUBLIC_MEMORY_PARENT_ORPHAN_COUNT
 BROWSE_ELIGIBLE_ENTITY_COUNT
-STRUCTURAL_SCHEMA_DRIFT_CHECK
-MIGRATION_LEDGER_CATALOG_PARITY_CHECK
 ```
 
 Source authority is not sufficiently established to invent SQL for these
-signals. `STRUCTURAL_SCHEMA_DRIFT_CHECK` and
-`MIGRATION_LEDGER_CATALOG_PARITY_CHECK` remain deferred until #3458 provides an
-active canonical schema authority.
+signals. They stay in the fixed `DEFERRED` descriptor mode.
+
+## 4.1 Parity-evidence signal classes (reactivated by #4060)
+
+`STRUCTURAL_SCHEMA_DRIFT_CHECK` and `MIGRATION_LEDGER_CATALOG_PARITY_CHECK` are
+no longer merely `CANONICAL_SCHEMA_AUTHORITY_REQUIRED`-deferred. They are
+`PARITY_EVIDENCE` descriptor mode: they carry **no SQL** and are evaluated
+through the source-only translation seam. They are NOT converted into aggregate
+count-row queries; a parity signal is a canonical-parity evidence signal, not a
+count signal.
+
+Architecture boundary (never crossed):
+
+```text
+#3458 / #3860 canonical parity authority
+        ↓
+bounded parity outcome (already computed by #3860)
+        ↓
+source-only translation seam (this sentinel core)
+        ↓
+#3461 structural sentinel result (#3835 taxonomy)
+```
+
+**The sentinel core is NOT a second schema/migration parity engine.** It never
+compares expected vs observed fingerprints, never validates object
+vocabularies, and never derives `PARITY_CONFIRMED`/`PARITY_MISMATCH` itself.
+The existing #3860 authority (read-only target attribution & catalog parity
+core) already produces the bounded parity outcome; the seam consumes that
+outcome through the source-only injected boundary and translates it into the
+#3835 public vocabulary. #3860 remains `DISPOSABLE_POSTGRES_REHEARSAL_TARGET` /
+`CI_EPHEMERAL` only and is NOT extended to Production scope.
+
+Each parity descriptor carries a fixed frozen `parity_contract` declaring the
+accepted outcome vocabulary (exactly the eight #3860 `PARITY_OUTCOMES` strings:
+`PARITY_CONFIRMED`, `PARITY_MISMATCH`, `TARGET_ATTRIBUTION_INVALID`,
+`APPROVAL_INVALID`, `AUTHORITY_ADOPTION_REQUIRED`, `EXPECTED_SCHEMA_INVALID`,
+`CATALOG_COLLECTION_FAILED`, `INSUFFICIENT_EVIDENCE`) and the bounded
+collection-failure marker accepted from the adapter.
+
+### Outcome mapping (exact reuse of the #3860 vocabulary)
+
+The sentinel consumes #3860's bounded outcome strings and maps them to the
+bounded #3835 public vocabulary. No new synonymous vocabulary is created:
+
+```text
+PARITY_CONFIRMED            -> CONFIRMED (structural evidence success)
+PARITY_MISMATCH             -> STRUCTURAL_DRIFT_DETECTED (bounded non-success)
+AUTHORITY_ADOPTION_REQUIRED -> SCHEMA_AUTHORITY_UNAVAILABLE (never live-applied
+                               success; owner decision required)
+CATALOG_COLLECTION_FAILED   -> MONITORING_FAILED (sanitized failure)
+INSUFFICIENT_EVIDENCE       -> INSUFFICIENT_EVIDENCE (never success)
+TARGET_ATTRIBUTION_INVALID  -> INSUFFICIENT_EVIDENCE (bounded non-success)
+APPROVAL_INVALID            -> INSUFFICIENT_EVIDENCE (bounded non-success)
+EXPECTED_SCHEMA_INVALID     -> INSUFFICIENT_EVIDENCE (bounded non-success)
+unknown outcome             -> INSUFFICIENT_EVIDENCE (bounded non-success)
+```
+
+`CATALOG_COLLECTION_FAILED` is an existing #3860 state and is explicitly mapped
+to the public sentinel `MONITORING_FAILED` state.
+
+### Fixed semantics (contract)
+
+```text
+CATALOGUED != APPLIED
+  A repository migration entry / committed critical object existing in the
+  repository authority is NEVER by itself evidence that the object exists in
+  the observed live catalog. The #3860 authority determines parity from
+  observed evidence; the seam only translates the resulting outcome.
+
+ADOPTION_REQUIRED != LIVE_APPLIED
+  An authority status of ADOPTION_REQUIRED (or the
+  AUTHORITY_ADOPTION_REQUIRED outcome) is never mapped to a healthy
+  live-applied success.
+
+fail closed on:
+  malformed bounded evidence, unknown outcome, unsupported outcome,
+  collection failure marker misuse, missing result, unexpected extra fields,
+  provider/database identity in input (never echoed).
+```
+
+Parity summaries carry no `count_bucket` (they are not count signals). The
+parity path never invokes the fixed aggregate-count executor.
 
 ## 5. Query safety contract
 
@@ -249,13 +330,21 @@ synthetic write:0
   rehearsal script; no dependency, lockfile, provider, or release-health
   change is introduced.
 - #3461 remains OPEN.
+- #4060 reactivates `STRUCTURAL_SCHEMA_DRIFT_CHECK` and
+  `MIGRATION_LEDGER_CATALOG_PARITY_CHECK` as `PARITY_EVIDENCE` descriptors with
+  the #3860 vocabulary mapping above. #3860 itself is NOT extended to
+  Production scope: it remains `DISPOSABLE_POSTGRES_REHEARSAL_TARGET` /
+  `CI_EPHEMERAL` only; the sentinel never connects to a database, provider, or
+  deployment target.
 - Child 3 (write-acknowledgement vs canonical-reread instrumentation), Child 4
   (provider/deployment/alert delivery), and Child 5 (Production synthetic
   canary) remain separately authorized.
 
 Refs #3842.
+Refs #4060.
 Refs #3835 — completed.
 Refs #3834 — completed.
-Refs #3458 — Keep OPEN.
+Refs #3458 — completed.
+Refs #3860 — completed.
 Refs #3461 — Keep OPEN.
 Refs #1882 — Keep OPEN.
