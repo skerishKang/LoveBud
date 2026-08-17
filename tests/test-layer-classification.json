@@ -5055,6 +5055,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the real js/playback/tree-play-mode-core.js in-process in Node with constructed queue inputs and no injected external dependencies, and proves the #4064 one-active-player Tree Play Mode queue core deterministically: ordered occurrence identity by canonical sourceIndex (not mediaId) with duplicate mediaIds remaining distinct, fail-closed segment validation (negative / end<=start / NaN / Infinity / non-numeric bounds), no wrap at queue ends, unavailable occurrences preserved in canonical order with explicit SKIPPED_UNPLAYABLE auto-advance reporting, all-unplayable termination, auto-advance selection separated from PLAYING until adapter confirmation, MANUAL_CONTINUE_REQUIRED on autoplay block distinct from queue failure, frozen/detached snapshots, caller-input non-mutation, reset without prior-state leakage, and a node --check source-static read of js/product/youtube-segment-player-poc.js plus pages/youtube-segment-player-poc.html. No real YouTube/provider/network call, browser, auth provider, database, deployment, or Production resource is used (#4064).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/reliability-baseline-anomaly-core-4079.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the pure #4079 baseline-store and anomaly-evaluator sources with synthetic/injected bounded evidence and current #3835/#4061 structural authorities; proves baseline-independent hard invariants, statistical-signal suppression without baseline, fail-closed non-healthy monitoring/evidence states, privacy-safe bounded output, determinism, frozen/detached results, injected calibration with no embedded Production thresholds, and preservation of the existing #4061 parity translation boundary without a second #3860 parity engine. No network, database, SQL execution, provider, filesystem-write, scheduler, telemetry-sink, Production, or Preview capability (#4079).",
+      "capabilities": []
     }
   ],
   "supplemental": [
