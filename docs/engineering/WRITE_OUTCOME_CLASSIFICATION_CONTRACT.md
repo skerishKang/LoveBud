@@ -95,6 +95,36 @@ Optional:
 - `retry_safe` — boolean; always `false` for `WRITE_STATUS_UNKNOWN`.
 - `evidence_completeness` ∈ `complete | partial | missing | invalid`.
 
+## Authoritative bounded facts
+
+`validation_rejected=true` is an AUTHORITATIVE BOUNDED FACT. It must be
+supplied only by a source that actually observed the pre-DB validation
+rejection. A 4xx upstream status alone is NEVER sufficient to infer a
+validation rejection or that the DB was never reached, because the edge
+cannot distinguish a rejection that happened before the DB from one that
+happened after reaching it. The edge-facts adapter therefore never sets
+`validation_rejected=true` from status alone, and never emits
+`commit=not_reached` from a 4xx-only observation.
+
+## Cross-field consistency (contradiction) validator
+
+Individually valid enum values that cannot all be true at once are rejected
+fail-closed as `CONTRADICTORY_FACTS`. Only present, enum-valid fields
+participate. Conservative set (a statement may execute, return a row, and
+still be rolled back afterwards — rollback-on-mismatch checks the RETURNING
+row before commit — so `returning=row_returned` is NOT contradictory with
+`rolled_back`):
+
+- `transport=not_dispatched` with any executed/committed evidence
+  (`commit=committed`, `returning=row_returned/no_row`, `reread=visible`);
+- `commit=not_reached` with executed evidence
+  (`returning=row_returned/no_row`, `reread=visible`);
+- `commit=rolled_back` with `reread=visible` (a rolled-back write's row
+  cannot be canonically visible);
+- `reread=visible` without a returned row (`returning=not_reached/no_row`);
+- `validation_rejected=true` with `commit=committed`;
+- `client_visible=true` without `reread=visible`.
+
 ## Privacy invariants
 
 No emitted result or accepted fact may contain tokens, email/UID,
@@ -104,13 +134,13 @@ rejected on input; results carry only the four bounded fields.
 
 ## Deterministic decision rules (first match wins)
 
-1. `validation_rejected` → `WRITE_REJECTED_VALIDATION` @ `REQUEST_ACCEPTED`.
+1. `validation_rejected=true` (authoritative) → `WRITE_REJECTED_VALIDATION` @ `REQUEST_ACCEPTED`.
 2. `transport=not_dispatched` → `ACKNOWLEDGEMENT_MISSING` @ `REQUEST_ACCEPTED`.
 3. `transport=timeout` ∧ `commit=unknown` → `WRITE_STATUS_UNKNOWN` (retry_safe=false).
 4. transport failed ∧ commit ∈ {rolled_back, not_reached} → `TRANSPORT_FAILED`.
 5. `transport=network_error` ∧ `commit=unknown` → `WRITE_STATUS_UNKNOWN` (retry_safe=false).
 6. `commit=unknown` → `WRITE_STATUS_UNKNOWN` (retry_safe=false).
-7. commit ∈ {rolled_back, not_reached}: 4xx → `WRITE_REJECTED_VALIDATION`, else `ACKNOWLEDGEMENT_MISSING`.
+7. commit ∈ {rolled_back, not_reached} → `ACKNOWLEDGEMENT_MISSING` (a 4xx status alone never infers `WRITE_REJECTED_VALIDATION`; that requires the authoritative `validation_rejected=true` fact in Rule 1).
 8. `commit=committed`:
    - `returning=row_returned` ∧ `reread=visible` → `CONFIRMED` @ `FOLLOWUP_REREAD_VISIBLE` (or `CLIENT_VISIBLE_SUCCESS` when `client_visible`).
    - `returning=row_returned` ∧ `reread=missing` → `WRITE_COMMITTED_REREAD_MISSING`.
@@ -125,13 +155,14 @@ rejected on input; results carry only the four bounded fields.
 - Does NOT require raw error logging.
 - Does NOT introduce retry-on-unknown semantics without proven
   idempotency/reconciliation authority (#4058/PR #4059).
-- The disposable PostgreSQL rehearsal for controlled commit/reread divergence
-  is intentionally deferred: it requires the shared `package.json` /
-  `ci.yml` / `tests/ci-test-group-registry.json` /
-  `scripts/report-ci-test-groups.cjs` surface, which is currently owned by
-  open PR #4045 and seven concurrent layer-registry PRs. The classifier is
-  pure (no DB/network capability), so its deterministic and privacy contracts
-  are fully provable without a database.
+- The disposable PostgreSQL commit/reread-divergence rehearsal is provided as
+  a COLLISION-SAFE `EXECUTED_REAL_LOCAL` contract test under
+  `tests/contracts/` (covered by the existing default-CI glob
+  `tests/contracts/*.test.cjs`). It reuses the shared disposable harness and
+  bounded-skips when no loopback `LB_TEST_PG*` Postgres is present, so it
+  touches NO shared `package.json` / `ci.yml` / `tests/ci-test-group-registry.json`
+  / `scripts/report-ci-test-groups.cjs` surface currently owned by open PR
+  #4045 and concurrent layer-registry PRs.
 
 ## Refs
 

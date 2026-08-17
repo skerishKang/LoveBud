@@ -19,7 +19,14 @@
 //     (WRITE_ACKNOWLEDGED != CANONICAL_REREAD_CONFIRMED);
 //   - classifies every undecidable timeout / unavailable commit state as
 //     WRITE_STATUS_UNKNOWN with retry_safe=false so an unknown write is never
-//     blindly retried (reread/reconciliation is required first).
+//     blindly retried (reread/reconciliation is required first);
+//   - treats validation_rejected=true as an AUTHORITATIVE BOUNDED FACT that
+//     must be supplied by a source that actually observed the pre-DB
+//     validation rejection; a 4xx upstream status alone is never sufficient to
+//     infer a validation rejection;
+//   - rejects contradictory fact tuples (cross-field consistency) as
+//     CONTRADICTORY_FACTS so individually valid but mutually impossible enum
+//     combinations can never be classified.
 //
 // This file intentionally does NOT modify, import, or duplicate the existing
 // reliability-sentinel-taxonomy.js (#3835) or the write-read convergence core
@@ -93,6 +100,7 @@
     PRIVATE_FIELD_REJECTED: 'PRIVATE_FIELD_REJECTED',
     MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
     UNKNOWN_ENUM: 'UNKNOWN_ENUM',
+    CONTRADICTORY_FACTS: 'CONTRADICTORY_FACTS',
     NON_CANONICAL_RESULT: 'NON_CANONICAL_RESULT'
   });
 
@@ -294,6 +302,88 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Cross-field consistency validator. Detects contradictory fact tuples where
+  // individually valid enum values cannot all be true at once. Only fields
+  // that are present AND enum-valid participate; missing/invalid fields are
+  // already reported by the field-level checks. Returns a fixed ERROR_CODE
+  // array (never a caller-controlled value).
+  //
+  // Conservative contradiction set. A statement may execute and return a row
+  // and still be rolled back afterwards (rollback-on-mismatch checks the
+  // RETURNING row before commit), so returning=row_returned is NOT
+  // contradictory with rolled_back, and returning=no_row is NOT contradictory
+  // with rolled_back either:
+  //   - transport=not_dispatched with any executed/committed evidence
+  //     (commit=committed, returning=row_returned/no_row, reread=visible);
+  //   - commit=not_reached with executed evidence
+  //     (returning=row_returned/no_row, reread=visible);
+  //   - commit=rolled_back with reread=visible (a rolled-back write's row
+  //     cannot be canonically visible);
+  //   - reread=visible without a returned row
+  //     (returning=not_reached/no_row);
+  //   - validation_rejected=true with commit=committed (a pre-DB rejection
+  //     cannot coexist with a committed transaction);
+  //   - client_visible=true without reread=visible.
+  // ---------------------------------------------------------------------------
+  function findContradictions(input) {
+    var contradictions = [];
+
+    var transport = input.transport;
+    var commit = input.commit;
+    var returning = input.returning;
+    var reread = input.reread;
+    var validationRejected = input.validation_rejected === true;
+    var clientVisible = input.client_visible === true;
+
+    var transportValid = enumValid(transport, TRANSPORT_SET);
+    var commitValid = enumValid(commit, COMMIT_SET);
+    var returningValid = enumValid(returning, RETURNING_SET);
+    var rereadValid = enumValid(reread, REREAD_SET);
+
+    var returningExecuted =
+      returning === RETURNING_CLASSES.row_returned || returning === RETURNING_CLASSES.no_row;
+
+    // transport=not_dispatched with any executed/committed evidence.
+    if (transportValid && transport === TRANSPORT_CLASSES.not_dispatched) {
+      if (commitValid && commit === COMMIT_CLASSES.committed) contradictions.push(1);
+      if (returningValid && returningExecuted) contradictions.push(1);
+      if (rereadValid && reread === REREAD_CLASSES.visible) contradictions.push(1);
+    }
+
+    // commit=not_reached with executed evidence.
+    if (commitValid && commit === COMMIT_CLASSES.not_reached) {
+      if (returningValid && returningExecuted) contradictions.push(1);
+      if (rereadValid && reread === REREAD_CLASSES.visible) contradictions.push(1);
+    }
+
+    // commit=rolled_back with reread=visible. A row may be returned and then
+    // rolled back (rollback-on-mismatch), so returning=row_returned is NOT a
+    // contradiction here; only canonical visibility is.
+    if (commitValid && commit === COMMIT_CLASSES.rolled_back) {
+      if (rereadValid && reread === REREAD_CLASSES.visible) contradictions.push(1);
+    }
+
+    // reread=visible without a returned row.
+    if (rereadValid && reread === REREAD_CLASSES.visible) {
+      if (returningValid && (returning === RETURNING_CLASSES.not_reached || returning === RETURNING_CLASSES.no_row)) {
+        contradictions.push(1);
+      }
+    }
+
+    // pre-DB validation rejection cannot coexist with a committed transaction.
+    if (validationRejected && commitValid && commit === COMMIT_CLASSES.committed) {
+      contradictions.push(1);
+    }
+
+    // client_visible=true requires reread=visible.
+    if (clientVisible && rereadValid && reread !== REREAD_CLASSES.visible) {
+      contradictions.push(1);
+    }
+
+    return contradictions.length > 0 ? [ERROR_CODES.CONTRADICTORY_FACTS] : [];
+  }
+
+  // ---------------------------------------------------------------------------
   // Exact-input validator. Fail closed on any unknown/invalid/private/required
   // violation. Returns { ok, errors } where errors is a frozen array of fixed
   // ERROR_CODES (never a caller-controlled key/value).
@@ -347,6 +437,11 @@
     }
     if (hasOwn(input, 'client_visible') && typeof input.client_visible !== 'boolean') {
       errors.push(ERROR_CODES.UNKNOWN_ENUM);
+    }
+
+    var contradictionErrors = findContradictions(input);
+    for (var c = 0; c < contradictionErrors.length; c++) {
+      errors.push(contradictionErrors[c]);
     }
 
     var unique = [];
@@ -440,15 +535,10 @@
     }
 
     // Rule 7 — transaction did not commit (rolled back / not reached).
+    // A 4xx upstream status alone is NOT sufficient to infer a pre-DB
+    // validation rejection; WRITE_REJECTED_VALIDATION is only emitted when the
+    // authoritative bounded fact validation_rejected=true is present (Rule 1).
     if (commit === COMMIT_CLASSES.rolled_back || commit === COMMIT_CLASSES.not_reached) {
-      if (upstreamStatus === UPSTREAM_STATUS_CLASSES.client_error_4xx) {
-        return {
-          stage: WRITE_OUTCOME_STAGES.REQUEST_ACCEPTED,
-          outcome_code: OUTCOME_CODES.WRITE_REJECTED_VALIDATION,
-          retry_safe: true,
-          evidence_completeness: EVIDENCE_COMPLETENESS.COMPLETE
-        };
-      }
       return {
         stage: WRITE_OUTCOME_STAGES.REQUEST_ACCEPTED,
         outcome_code: OUTCOME_CODES.ACKNOWLEDGEMENT_MISSING,

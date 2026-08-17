@@ -18,7 +18,14 @@ This module is a PURE SOURCE AUTHORITY:
   (WRITE_ACKNOWLEDGED != CANONICAL_REREAD_CONFIRMED);
 - it classifies every undecidable timeout / unavailable commit state as
   WRITE_STATUS_UNKNOWN with retry_safe=False so an unknown write is never
-  blindly retried (reread/reconciliation is required first).
+  blindly retried (reread/reconciliation is required first);
+- it treats validation_rejected=True as an AUTHORITATIVE BOUNDED FACT that
+  must be supplied by a source that actually observed the pre-DB validation
+  rejection; a 4xx upstream status alone is never sufficient to infer a
+  validation rejection;
+- it rejects contradictory fact tuples (cross-field consistency) as
+  CONTRADICTORY_FACTS so individually valid but mutually impossible enum
+  combinations can never be classified.
 
 This module does NOT modify, import, or duplicate modal_compute.write
 handlers, owner_reads, or validation. It reuses the bounded outcome semantics
@@ -51,6 +58,7 @@ ERROR_CODES = MappingProxyType(
         "PRIVATE_FIELD_REJECTED": "PRIVATE_FIELD_REJECTED",
         "MISSING_REQUIRED_FIELD": "MISSING_REQUIRED_FIELD",
         "UNKNOWN_ENUM": "UNKNOWN_ENUM",
+        "CONTRADICTORY_FACTS": "CONTRADICTORY_FACTS",
         "NON_CANONICAL_RESULT": "NON_CANONICAL_RESULT",
     }
 )
@@ -222,6 +230,93 @@ def _is_plain_mapping(value: Any) -> bool:
     return isinstance(value, Mapping) and not isinstance(value, type)
 
 
+def _find_contradictions(facts: Mapping[str, Any]) -> list[str]:
+    """Cross-field consistency validator.
+
+    Detects contradictory fact tuples where individually valid enum values
+    cannot all be true at once. Only fields that are present AND enum-valid
+    participate; missing/invalid fields are already reported by the
+    field-level checks. Returns a list of fixed ERROR_CODE values (never a
+    caller-controlled value).
+
+    Conservative contradiction set. A statement may execute and return a row
+    and still be rolled back afterwards (rollback-on-mismatch checks the
+    RETURNING row before commit), so returning=row_returned is NOT
+    contradictory with rolled_back, and returning=no_row is NOT contradictory
+    with rolled_back either:
+      - transport=not_dispatched with any executed/committed evidence
+        (commit=committed, returning=row_returned/no_row, reread=visible);
+      - commit=not_reached with executed evidence
+        (returning=row_returned/no_row, reread=visible);
+      - commit=rolled_back with reread=visible (a rolled-back write's row
+        cannot be canonically visible);
+      - reread=visible without a returned row
+        (returning=not_reached/no_row);
+      - validation_rejected=True with commit=committed (a pre-DB rejection
+        cannot coexist with a committed transaction);
+      - client_visible=True without reread=visible.
+    """
+    contradictions: list[int] = []
+
+    transport = facts.get("transport")
+    commit = facts.get("commit")
+    returning = facts.get("returning")
+    reread = facts.get("reread")
+    validation_rejected = facts.get("validation_rejected") is True
+    client_visible = facts.get("client_visible") is True
+
+    transport_valid = transport in TRANSPORT_CLASSES.values()
+    commit_valid = commit in COMMIT_CLASSES.values()
+    returning_valid = returning in RETURNING_CLASSES.values()
+    reread_valid = reread in REREAD_CLASSES.values()
+
+    returning_executed = returning in (
+        RETURNING_CLASSES["row_returned"],
+        RETURNING_CLASSES["no_row"],
+    )
+
+    # transport=not_dispatched with any executed/committed evidence.
+    if transport_valid and transport == TRANSPORT_CLASSES["not_dispatched"]:
+        if commit_valid and commit == COMMIT_CLASSES["committed"]:
+            contradictions.append(1)
+        if returning_valid and returning_executed:
+            contradictions.append(1)
+        if reread_valid and reread == REREAD_CLASSES["visible"]:
+            contradictions.append(1)
+
+    # commit=not_reached with executed evidence.
+    if commit_valid and commit == COMMIT_CLASSES["not_reached"]:
+        if returning_valid and returning_executed:
+            contradictions.append(1)
+        if reread_valid and reread == REREAD_CLASSES["visible"]:
+            contradictions.append(1)
+
+    # commit=rolled_back with reread=visible. A row may be returned and then
+    # rolled back (rollback-on-mismatch), so returning=row_returned is NOT a
+    # contradiction here; only canonical visibility is.
+    if commit_valid and commit == COMMIT_CLASSES["rolled_back"]:
+        if reread_valid and reread == REREAD_CLASSES["visible"]:
+            contradictions.append(1)
+
+    # reread=visible without a returned row.
+    if reread_valid and reread == REREAD_CLASSES["visible"]:
+        if returning_valid and returning in (
+            RETURNING_CLASSES["not_reached"],
+            RETURNING_CLASSES["no_row"],
+        ):
+            contradictions.append(1)
+
+    # pre-DB validation rejection cannot coexist with a committed transaction.
+    if validation_rejected and commit_valid and commit == COMMIT_CLASSES["committed"]:
+        contradictions.append(1)
+
+    # client_visible=True requires reread=visible.
+    if client_visible and reread_valid and reread != REREAD_CLASSES["visible"]:
+        contradictions.append(1)
+
+    return [ERROR_CODES["CONTRADICTORY_FACTS"]] if contradictions else []
+
+
 def validate_write_outcome_facts(
     facts: Any,
 ) -> tuple[bool, tuple[str, ...]]:
@@ -260,6 +355,8 @@ def validate_write_outcome_facts(
         value = facts.get(bool_field)
         if value is not None and not isinstance(value, bool):
             errors.append(ERROR_CODES["UNKNOWN_ENUM"])
+
+    errors.extend(_find_contradictions(facts))
 
     unique = tuple(sorted(set(errors)))
     return len(unique) == 0, unique
@@ -338,14 +435,10 @@ def _decide(facts: Mapping[str, Any]) -> dict[str, Any]:
         }
 
     # Rule 7 — transaction did not commit (rolled back / not reached).
+    # A 4xx upstream status alone is NOT sufficient to infer a pre-DB
+    # validation rejection; WRITE_REJECTED_VALIDATION is only emitted when the
+    # authoritative bounded fact validation_rejected=True is present (Rule 1).
     if commit in (COMMIT_CLASSES["rolled_back"], COMMIT_CLASSES["not_reached"]):
-        if upstream_status == UPSTREAM_STATUS_CLASSES["client_error_4xx"]:
-            return {
-                "stage": WRITE_OUTCOME_STAGES["REQUEST_ACCEPTED"],
-                "outcome_code": OUTCOME_CODES["WRITE_REJECTED_VALIDATION"],
-                "retry_safe": True,
-                "evidence_completeness": EVIDENCE_COMPLETENESS["COMPLETE"],
-            }
         return {
             "stage": WRITE_OUTCOME_STAGES["REQUEST_ACCEPTED"],
             "outcome_code": OUTCOME_CODES["ACKNOWLEDGEMENT_MISSING"],

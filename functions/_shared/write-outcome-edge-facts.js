@@ -155,9 +155,18 @@ function upstreamStatusClass(status) {
  * At the Cloudflare proxy boundary the DB commit state is never directly
  * observable. An upstream 2xx only proves the upstream accepted the request
  * (REQUEST_ACCEPTED); the commit/RETURNING/reread facts remain unknown at the
- * edge and are classified by the Modal-side authority. An upstream 4xx proves
- * the write was rejected before any DB side effect. A timeout, network error,
- * or upstream 5xx leaves the commit state undecidable.
+ * edge and are classified by the Modal-side authority.
+ *
+ * An upstream 4xx is NOT sufficient to infer a pre-DB validation rejection or
+ * that the DB was never reached. A 4xx may be produced by the upstream before
+ * or after reaching the DB, and the edge cannot distinguish the two. The
+ * authoritative bounded fact validation_rejected=true must be supplied by a
+ * source that actually observed the pre-DB validation rejection; the edge
+ * never sets it from status alone. Therefore a 4xx maps to the same
+ * "transport ok, DB state unknown" facts as 2xx/5xx.
+ *
+ * A timeout, network error, or any status leaves the commit state undecidable
+ * at the edge.
  *
  * Throws TypeError with a single fixed EDGE_ERROR_CODE on invalid input.
  */
@@ -209,20 +218,9 @@ export function buildEdgeWriteFacts(observation) {
     });
   }
 
-  if (statusClass === 'client_error_4xx') {
-    return Object.freeze({
-      transport: 'ok',
-      commit: 'not_reached',
-      returning: 'not_reached',
-      reread: 'not_attempted',
-      validation_rejected: true,
-      upstream_status_class: statusClass,
-      client_visible: false
-    });
-  }
-
-  // Upstream 2xx / 5xx / unknown: transport reached the upstream, but the DB
-  // commit state is not observable at the edge.
+  // Upstream 2xx / 4xx / 5xx / unknown: transport reached the upstream, but the
+  // DB commit state is not observable at the edge. A 4xx is NOT treated as a
+  // pre-DB validation rejection and does NOT imply commit=not_reached.
   return Object.freeze({
     transport: 'ok',
     commit: 'unknown',

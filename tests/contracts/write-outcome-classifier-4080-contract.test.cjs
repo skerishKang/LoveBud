@@ -272,13 +272,27 @@ test('23. committed without returning evidence yields INSUFFICIENT_EVIDENCE', ()
   assert.equal(result.outcome_code, 'INSUFFICIENT_EVIDENCE');
 });
 
-test('24. rolled back with 4xx upstream yields WRITE_REJECTED_VALIDATION', () => {
+test('24. rolled back with 4xx upstream alone yields ACKNOWLEDGEMENT_MISSING (status never infers validation rejection)', () => {
   const core = loadClassifierCore();
   const result = core.classifyWriteOutcome(
     committedFacts({ commit: 'rolled_back', returning: 'not_reached', reread: 'not_attempted', upstream_status_class: 'client_error_4xx' })
   );
-  assert.equal(result.outcome_code, 'WRITE_REJECTED_VALIDATION');
+  assert.equal(result.outcome_code, 'ACKNOWLEDGEMENT_MISSING');
   assert.equal(result.retry_safe, true);
+});
+
+test('24b. WRITE_REJECTED_VALIDATION only via authoritative validation_rejected=true, never via status alone', () => {
+  const core = loadClassifierCore();
+  // Authoritative bounded fact → WRITE_REJECTED_VALIDATION.
+  const authoritative = core.classifyWriteOutcome(
+    committedFacts({ validation_rejected: true, commit: 'not_reached', returning: 'not_reached', reread: 'not_attempted', upstream_status_class: 'client_error_4xx' })
+  );
+  assert.equal(authoritative.outcome_code, 'WRITE_REJECTED_VALIDATION');
+  // Status-only (no validation_rejected fact) → NOT WRITE_REJECTED_VALIDATION.
+  const statusOnly = core.classifyWriteOutcome(
+    committedFacts({ commit: 'not_reached', returning: 'not_reached', reread: 'not_attempted', upstream_status_class: 'client_error_4xx' })
+  );
+  assert.notEqual(statusOnly.outcome_code, 'WRITE_REJECTED_VALIDATION');
 });
 
 test('25. results are frozen, canonical, and carry only bounded fields', () => {
@@ -325,13 +339,23 @@ test('29. edge-facts adapter maps bounded observations to facts', async () => {
   const notDispatched = adapter.buildEdgeWriteFacts({ dispatched: false, timedOut: false, networkError: false });
   assert.equal(notDispatched.transport, 'not_dispatched');
 
-  const rejected = adapter.buildEdgeWriteFacts({ dispatched: true, timedOut: false, networkError: false, upstreamStatus: 400 });
-  assert.equal(rejected.validation_rejected, true);
-  assert.equal(rejected.upstream_status_class, 'client_error_4xx');
-
   const accepted = adapter.buildEdgeWriteFacts({ dispatched: true, timedOut: false, networkError: false, upstreamStatus: 201 });
   assert.equal(accepted.transport, 'ok');
   assert.equal(accepted.commit, 'unknown', 'upstream 2xx proves acceptance only, not commit');
+});
+
+test('29b. edge-facts adapter 4xx-only never infers commit=not_reached or validation_rejected', async () => {
+  const adapter = await import('../../functions/_shared/write-outcome-edge-facts.js');
+  const rejected = adapter.buildEdgeWriteFacts({ dispatched: true, timedOut: false, networkError: false, upstreamStatus: 400 });
+  assert.equal(rejected.transport, 'ok');
+  assert.equal(rejected.commit, 'unknown', '4xx-only must not infer commit=not_reached');
+  assert.equal(rejected.validation_rejected, false, '4xx-only must not set the authoritative validation_rejected fact');
+  assert.equal(rejected.upstream_status_class, 'client_error_4xx', 'status class is still recorded as a bounded observation');
+
+  const core = loadClassifierCore();
+  const result = core.classifyWriteOutcome(rejected);
+  assert.equal(result.outcome_code, 'WRITE_STATUS_UNKNOWN', '4xx-only edge observation classifies as undecidable');
+  assert.equal(result.retry_safe, false);
 });
 
 test('30. edge-facts adapter + classifier prove WRITE_STATUS_UNKNOWN on undecidable timeout', async () => {
@@ -361,4 +385,99 @@ test('31. edge-facts adapter rejects private and unknown observation keys', asyn
     () => adapter.buildEdgeWriteFacts({ dispatched: 'yes', timedOut: false, networkError: false }),
     /INVALID_OBSERVATION_VALUE/
   );
+});
+
+test('32. canonical parity matrix: JS authority matches the shared matrix exactly', () => {
+  const core = loadClassifierCore();
+  const matrix = JSON.parse(read('tests/contracts/write-outcome-parity-matrix-4080.json'));
+  assert.equal(matrix.schemaVersion, '1');
+  assert.ok(Array.isArray(matrix.cases) && matrix.cases.length >= 30, 'parity matrix must carry the full case set');
+
+  const seen = new Set();
+  for (const c of matrix.cases) {
+    assert.ok(!seen.has(c.id), `duplicate parity case id: ${c.id}`);
+    seen.add(c.id);
+
+    if (c.expected) {
+      const result = core.classifyWriteOutcome(c.facts);
+      assert.deepEqual(
+        {
+          stage: result.stage,
+          outcome_code: result.outcome_code,
+          retry_safe: result.retry_safe,
+          evidence_completeness: result.evidence_completeness
+        },
+        c.expected,
+        `parity case ${c.id} (${c.name}) mismatch`
+      );
+    } else if (c.expected_error) {
+      const validation = core.validateWriteOutcomeFacts(c.facts);
+      assert.equal(validation.ok, false, `parity case ${c.id} (${c.name}) must fail closed`);
+      assert.equal(
+        validation.errors[0],
+        c.expected_error,
+        `parity case ${c.id} (${c.name}) first sorted error must be ${c.expected_error}`
+      );
+      assert.throws(() => core.classifyWriteOutcome(c.facts), new RegExp(c.expected_error));
+    } else {
+      assert.fail(`parity case ${c.id} has neither expected nor expected_error`);
+    }
+  }
+});
+
+test('33. contradictory tuples are rejected with CONTRADICTORY_FACTS', () => {
+  const core = loadClassifierCore();
+  const contradictory = [
+    { transport: 'not_dispatched', commit: 'committed', returning: 'unknown', reread: 'unknown' },
+    { transport: 'not_dispatched', commit: 'unknown', returning: 'row_returned', reread: 'unknown' },
+    { transport: 'not_dispatched', commit: 'unknown', returning: 'unknown', reread: 'visible' },
+    { transport: 'ok', commit: 'not_reached', returning: 'row_returned', reread: 'unknown' },
+    { transport: 'ok', commit: 'not_reached', returning: 'no_row', reread: 'unknown' },
+    { transport: 'ok', commit: 'not_reached', returning: 'unknown', reread: 'visible' },
+    { transport: 'ok', commit: 'rolled_back', returning: 'row_returned', reread: 'visible' },
+    { transport: 'ok', commit: 'committed', returning: 'no_row', reread: 'visible' },
+    { transport: 'ok', commit: 'committed', returning: 'not_reached', reread: 'visible' },
+    { transport: 'ok', commit: 'committed', returning: 'row_returned', reread: 'visible', validation_rejected: true },
+    { transport: 'ok', commit: 'committed', returning: 'row_returned', reread: 'missing', client_visible: true }
+  ];
+  for (const facts of contradictory) {
+    const validation = core.validateWriteOutcomeFacts(facts);
+    assert.equal(validation.ok, false, `contradictory tuple must fail: ${JSON.stringify(facts)}`);
+    assert.ok(validation.errors.includes('CONTRADICTORY_FACTS'));
+    assert.throws(() => core.classifyWriteOutcome(facts), /CONTRADICTORY_FACTS/);
+  }
+});
+
+test('34. rollback-on-mismatch tuples are NOT contradictory (row returned then rolled back)', () => {
+  const core = loadClassifierCore();
+  const allowed = [
+    { transport: 'ok', commit: 'rolled_back', returning: 'row_returned', reread: 'missing' },
+    { transport: 'ok', commit: 'rolled_back', returning: 'no_row', reread: 'missing' },
+    { transport: 'ok', commit: 'rolled_back', returning: 'row_returned', reread: 'not_attempted' }
+  ];
+  for (const facts of allowed) {
+    const validation = core.validateWriteOutcomeFacts(facts);
+    assert.equal(validation.ok, true, `allowed tuple must pass: ${JSON.stringify(facts)} errors=${validation.errors.join(',')}`);
+    const result = core.classifyWriteOutcome(facts);
+    assert.equal(result.outcome_code, 'ACKNOWLEDGEMENT_MISSING');
+    assert.equal(result.retry_safe, true);
+  }
+});
+
+test('35. normal matrix invariants hold (timeout/network_error unknown, retry_safe=false, ACK != reread)', () => {
+  const core = loadClassifierCore();
+  for (const transport of ['timeout', 'network_error']) {
+    const result = core.classifyWriteOutcome({
+      transport,
+      commit: 'unknown',
+      returning: 'unknown',
+      reread: 'unknown'
+    });
+    assert.equal(result.outcome_code, 'WRITE_STATUS_UNKNOWN', `${transport} unknown must be WRITE_STATUS_UNKNOWN`);
+    assert.equal(result.retry_safe, false, `${transport} unknown must never be retry-safe`);
+  }
+  assert.equal(core.WRITE_ACKNOWLEDGED_EQUALS_REREAD_CONFIRMED, false);
+  const confirmed = core.classifyWriteOutcome(committedFacts());
+  assert.equal(confirmed.outcome_code, 'CONFIRMED');
+  assert.notEqual(confirmed.stage, 'REQUEST_ACCEPTED', 'CONFIRMED must never sit at the acknowledgement stage');
 });
