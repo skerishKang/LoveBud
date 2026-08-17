@@ -5034,6 +5034,27 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the real js/cache-utils.js, js/search/search-preview-cache.js, and js/search/search-data.js in an in-process fake browser environment (memory cache + fake sessionStorage) and proves the #4055 visibility-revocation sequences deterministically: per-Tree public-projection purge with unrelated-Tree preservation (Case F), sessionStorage resurrection block on reload (Case D), Browse authority-first render with the revoked Tree never painted (Case A), mutation-purge-then-reload absence (Case A2), network-failure negative control where a failed fresh fetch must not restore a deleted Tree from cache (Case C), and the preview authority gate where a cached old thumbnail/source projection is not returned once fresh Browse excludes the Tree (Case B/B2); plus a source-static assertion that mutation purge wiring in editor-tree-helpers/editor-memory-actions/my-trees-actions/editor-rename-ui runs only after confirmed success (Case E). No real network, browser, auth provider, database, deployment, or Production resource is used (#4055).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/write-outcome-classifier-4080-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure write-outcome classifier core (js/observability/reliability-write-outcome-classifier-core.js) in a node:vm sandbox and the edge-facts adapter (functions/_shared/write-outcome-edge-facts.js) via dynamic import, proving the #4080 provider-neutral write-boundary decision table: five distinct ordered stages, WRITE_ACKNOWLEDGED != CANONICAL_REREAD_CONFIRMED, provider-neutral vocabulary, WRITE_STATUS_UNKNOWN on undecidable timeout/network-error/unknown-commit with retry_safe=false, WRITE_REJECTED_VALIDATION before any DB side effect, TRANSPORT_FAILED, CONFIRMED at FOLLOWUP_REREAD_VISIBLE/CLIENT_VISIBLE_SUCCESS, WRITE_COMMITTED_REREAD_MISSING/MISMATCH, WRITE_COMMITTED_ROW_RETURNED, ACKNOWLEDGED_REREAD_MISSING, INSUFFICIENT_EVIDENCE, frozen canonical results, and privacy rejection of token/email/owner/tree/memory/title/url/payload/sql/raw_error/provider/database_url/secret keys. No network, database, browser, provider, or Production access (#4080).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/write-reread-canonical-postgres-rehearsal-4080.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Collision-safe disposable PostgreSQL commit/reread-divergence rehearsal for #4080. Runs the production classifier core in-process against the deterministic parity matrix. When loopback LB_TEST_PG* env is present, additionally exercises the real disposable harness for commit/reread divergence; bounded-skips otherwise. Zero edits to shared package.json/ci.yml/reporter/registry surface (avoids collision with open PR #4045). Refs #4080, #3461, #3457, #3835, #1882.",
+      "capabilities": [
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/contracts/tree-play-mode-core-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/playback/tree-play-mode-core.js in-process in Node with constructed queue inputs and no injected external dependencies, and proves the #4064 one-active-player Tree Play Mode queue core deterministically: ordered occurrence identity by canonical sourceIndex (not mediaId) with duplicate mediaIds remaining distinct, fail-closed segment validation (negative / end<=start / NaN / Infinity / non-numeric bounds), no wrap at queue ends, unavailable occurrences preserved in canonical order with explicit SKIPPED_UNPLAYABLE auto-advance reporting, all-unplayable termination, auto-advance selection separated from PLAYING until adapter confirmation, MANUAL_CONTINUE_REQUIRED on autoplay block distinct from queue failure, frozen/detached snapshots, caller-input non-mutation, reset without prior-state leakage, and a node --check source-static read of js/product/youtube-segment-player-poc.js plus pages/youtube-segment-player-poc.html. No real YouTube/provider/network call, browser, auth provider, database, deployment, or Production resource is used (#4064).",
+      "capabilities": []
     }
   ],
   "supplemental": [
@@ -5260,6 +5281,13 @@
         "postgresql",
         "network"
       ]
+    },
+    {
+      "path": "tests/contracts/test_write_outcome_classification_4080.py",
+      "layer": "SUPPLEMENTAL_PYTHON",
+      "defaultCi": false,
+      "rationale": "Python unit tests for the pure modal_compute/write_outcome_classification.py authority executed outside the default Node CI chain (separate command/manual run); not enumerated by package.json test script. No DB connection, network, or modal runtime import (#4080).",
+      "capabilities": []
     }
   ]
 }
