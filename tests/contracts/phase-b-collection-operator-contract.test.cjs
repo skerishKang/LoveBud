@@ -899,13 +899,34 @@ describe('Phase B operator collection receipt core', () => {
 
   // ======================== MIGRATION MANIFEST RULES ========================
 
-  it('ADOPTION_REQUIRED + non-empty migrations reject', () => {
+  it('ADOPTION_REQUIRED + non-canonical record shape reject', () => {
+    // #4091: a populated canonical catalog is valid prepared input, but a
+    // minimal {id, checksum}-only record is NOT canonical catalog shape and
+    // remains fail-closed rejected (missing catalog fields).
     assert.throws(() => attestationCore.buildPreparedUnattestedAttestationDraft({
       preparedPlan: buildRealValidatedPlan(),
       migrationManifest: { status: 'ADOPTION_REQUIRED', migrations: [{ id: '20260101000001_x', checksum: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }] },
       expectedSchemaCandidate: buildTestCandidate(),
       catalogEvidence: SYNTHETIC_EVIDENCE,
     }), /INPUT_INVALID/);
+  });
+
+  it('ADOPTION_REQUIRED + populated canonical catalog accepted with empty applied_migrations (#4091)', () => {
+    const fs = require('fs');
+    const canonical = JSON.parse(fs.readFileSync(
+      path.resolve(__dirname, '..', '..', 'db', 'migration-provenance', 'canonical-migrations.json'), 'utf8'
+    ));
+    assert.equal(canonical.status, 'ADOPTION_REQUIRED');
+    assert.ok(canonical.migrations.length > 0);
+    const draft = attestationCore.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: buildRealValidatedPlan(),
+      migrationManifest: canonical,
+      expectedSchemaCandidate: buildTestCandidate(),
+      catalogEvidence: SYNTHETIC_EVIDENCE,
+    });
+    assert.equal(draft.adoption_status, 'UNATTESTED');
+    assert.deepEqual(draft.applied_migrations, []);
+    assert.equal(draft.canonical_manifest_digest, receiptCore.computeObjectDigest(canonical));
   });
 
   it('ADOPTION_REQUIRED + missing migrations field reject', () => {
