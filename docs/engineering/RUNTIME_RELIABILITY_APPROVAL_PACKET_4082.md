@@ -8,9 +8,11 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@7c454785c86a018a65908854c3bd2abd9613a081`
+Current-main reconciliation snapshot: `main@590d22b22bbeaacb7157f402115e873b03ed1743`
 
 Post-#4081 reconciliation: **COMPLETE FOR SOURCE AUTHORITY; RUNTIME ACTIVATION REMAINS UNAUTHORIZED**
+
+Post-#4091 provenance source-model reconciliation: **COMPLETE FOR SOURCE MODEL; RUNNER ADOPTION / PRODUCTION PHASE-B REMAIN SEPARATELY UNAUTHORIZED**
 
 This document is the bounded owner/Web-CTO decision packet requested by #4082. It records what source authority now exists, recommends runtime components, and enumerates every separate approval that still blocks Production capability.
 
@@ -21,7 +23,7 @@ It does **not** grant Production read authority, Production synthetic-write auth
 The following dimensions are independent:
 
 ```text
-SOURCE_AUTHORITY = MERGED_FOR_#4061_#4079_#4080_#4081_#3861_#3874
+SOURCE_AUTHORITY = MERGED_FOR_#4061_#4079_#4080_#4081_#4091_#3861_#3874
 RUNTIME_BINDING_DECISION = RECOMMENDATION_ONLY
 PRODUCTION_ACTIVATION_AUTHORITY = NONE
 ```
@@ -58,11 +60,12 @@ MERGE = NO
 | #4079 / PR #4087 baseline-aware anomaly evaluation | `MERGED_SOURCE_AUTHORITY` | `js/observability/reliability-baseline-store-contract.js` and `js/observability/reliability-anomaly-evaluator-core.js`; pure/dependency-injected, raw measurements stay behind a private-store adapter boundary. |
 | #4080 / PR #4084 write-outcome classification | `MERGED_SOURCE_AUTHORITY` | `js/observability/reliability-write-outcome-classifier-core.js`, `modal_compute/write_outcome_classification.py`, and `functions/_shared/write-outcome-edge-facts.js`; classification only, no write/retry/sink capability. |
 | #4081 / PR #4090 synthetic canary lifecycle | `MERGED_SOURCE_AUTHORITY` | Merged into `main` by `7c454785c86a018a65908854c3bd2abd9613a081`; primary source `js/observability/reliability-canary-lifecycle-core.js`; Production capability remains `NONE`. |
+| #4091 / PR #4092 catalog-populated adoption provenance model | `MERGED_SOURCE_AUTHORITY` | Merged into `main` by `590d22b22bbeaacb7157f402115e873b03ed1743`; `scripts/adoption-attestation-core.cjs` accepts `ADOPTION_REQUIRED + populated canonical catalog` as valid PREPARED/UNATTESTED input, keeps `prepared.applied_migrations = []`, and preserves `CATALOGUED != APPLIED` / `UNATTESTED != ACTIVE`. No runner activation or Phase-B authority is granted. |
 | #3861 provider-neutral alert delivery core | `MERGED_SOURCE_AUTHORITY` | Bounded envelope/delivery-state authority only; no concrete provider. |
 | #3874 provider-unselected transport adapter | `MERGED_SOURCE_AUTHORITY` | `js/observability/reliability-alert-transport-adapter.js`; `PROVIDER_UNSELECTED`, `NOT_BOUND`, Preview/Production transport disabled. |
 | #4007 schema/data convergence documentation | `MERGED_READ_ONLY_EVIDENCE_AUTHORITY` | Live read-only catalog evidence exists, but it does not replace canonical migration provenance/runner adoption authority. |
 | #4059 Memory `clientKey` runtime | `MERGED_CAPABILITY_GATED_RUNTIME_SOURCE` | Runtime source can honor Tree-scoped `clientKey` only when the required schema capability is present; #4059 did not authorize Production schema apply. |
-| #4005 post-#4059 provenance reconciliation | `DEPENDENCY_OPEN` | Current Web-CTO assignment exists, but no completed post-#4059 provenance verdict is authority for #4082 yet. Keep schema/provenance activation blocked. |
+| #4005 post-#4059 provenance governance | `OPEN_GOVERNANCE_AUTHORITY` | The latest central #4005 authority established live schema presence plus canonical provenance/adoption debt and `CANONICAL_RUNNER_ADOPTION = HOLD`. #4091 resolves the source-model composition defect only; no post-#4091 WEB-1/central verdict currently promotes runner adoption or Production Phase-B read authority. |
 
 ### #4061 structural/parity boundary
 
@@ -341,31 +344,43 @@ Current schema/runtime evidence must remain separated into distinct authorities.
 SCHEMA_RUNTIME_AUTHORITY = MERGED_CAPABILITY_GATED_SOURCE_#4059
 LIVE_SCHEMA_AUTHORITY = READ_ONLY_CATALOG_EVIDENCE_PRESENT_#4007
 CANONICAL_MIGRATION_PROVENANCE = ADOPTION_REQUIRED
-RUNNER_ADOPTION = HOLD_NOT_ACTIVE
-POST_#4059_PROVENANCE_AUDIT = DEPENDENCY_OPEN
+POST_#4091_PROVENANCE_MODEL = RESOLVED_SOURCE_CONTRACT
+SOURCE_MODEL_COMPOSITION_DEFECT = RESOLVED
+CATALOG_POPULATED_PREPARED_MODEL = VALID_PREPARED_UNATTESTED_SOURCE_INPUT
+PREPARED_APPLIED_MIGRATIONS = []
+FABRICATED_APPLIED_HISTORY = 0
+CANONICAL_RUNNER_ADOPTION = HOLD_NOT_ACTIVE
+PRODUCTION_PHASE_B_READ_AUTHORITY = NOT_AUTHORIZED
+#4005_RUNTIME_GATE_IMPACT = BLOCKED
 PRODUCTION_SCHEMA_MUTATION_REQUIRED = NO_FOR_THIS_PACKET
 PRODUCTION_SCHEMA_MUTATION_AUTHORITY = NO
-RUNTIME_GATE_IMPACT = BLOCKED
+RUNTIME_ACTIVATION = NO
 ```
 
-Current canonical manifest facts:
+Current canonical/source facts:
 
-- `db/migration-provenance/canonical-migrations.json` is `ADOPTION_REQUIRED`;
-- the catalog is populated with canonical entries, but catalog population is not proof of live application;
-- the activation rule requires separately-approved adoption evidence before the manifest becomes active;
-- #4061 preserves `CATALOGUED != APPLIED` and refuses to translate adoption-required state into live success.
+- `db/migration-provenance/canonical-migrations.json` remains `ADOPTION_REQUIRED` with a populated two-entry canonical catalog;
+- its activation rule still forbids retroactively declaring existing scripts applied and requires a separately approved adoption baseline before `ACTIVE`;
+- #4091 / PR #4092 is merged source authority at `main@590d22b22bbeaacb7157f402115e873b03ed1743`;
+- `scripts/adoption-attestation-core.cjs` now accepts `ADOPTION_REQUIRED + populated canonical migrations` as valid PREPARED/UNATTESTED source input and strictly validates populated catalog records instead of rejecting them solely for being non-empty;
+- the prepared source draft keeps `applied_migrations = []`; canonical catalog membership is not historical execution evidence;
+- therefore `CATALOGUED != APPLIED` and `UNATTESTED != ACTIVE` remain mandatory;
+- #4091 does not change the canonical manifest to `ACTIVE`, attest historical migration execution, approve runner adoption, authorize Production DDL/DML, or approve Production Phase-B collection.
 
-#4007 contains read-only live-catalog evidence and records the Memory-lineage shape as present/proven in current database lineages, while #4059 provides capability-gated runtime source. Neither fact supplies a canonical migration record or runner-adoption decision for that already-observed shape.
+#4007 contains merged read-only live-catalog evidence and #4059 provides capability-gated runtime source. #4091 resolves the previously confirmed **source-model composition defect** between a populated `ADOPTION_REQUIRED` catalog and the prepared-attestation builder. It does not resolve the distinct governance questions of canonical runner adoption or Production Phase-B read approval.
 
-The current #4005 Web-CTO coordination explicitly requested a post-#4059 provenance audit to determine whether the present live shape has adequate canonical provenance or remains a provenance gap. No completed result of that audit is incorporated here. #4082 therefore must not infer the answer.
+The latest #4005 central authority currently available still records `CANONICAL_RUNNER_ADOPTION = HOLD`, and no post-#4091 WEB-1/central verdict is present that promotes that state. Likewise, no separate owner/Web-CTO Production Phase-B read approval is present. This packet therefore records the source blocker as resolved while keeping runner adoption and Production read capability inactive; it does not invent the pending WEB-1 conclusion.
 
 Activation consequence:
 
 ```text
 READ_ONLY_SCHEMA_PARITY_SOURCE = AVAILABLE
+SOURCE_MODEL_BLOCKER_4091 = RESOLVED
+CANONICAL_PROVENANCE_SOURCE_MODEL = VALID_PREPARED_UNATTESTED
+CANONICAL_RUNNER_ADOPTION = HOLD_NOT_ACTIVE
+PRODUCTION_PHASE_B_READ_AUTHORITY = NOT_AUTHORIZED
 PRODUCTION_PARITY_COLLECTION = NOT_AUTHORIZED
-CANONICAL_PROVENANCE_FOR_RUNTIME_ACTIVATION = NOT_YET_APPROVED
-RUNTIME_ACTIVATION = BLOCKED
+RUNTIME_ACTIVATION = NO
 ```
 
 No Production DDL/DML is required or authorized by this packet.
@@ -563,7 +578,7 @@ PRODUCTION_MUTATIONS = NONE
 
 Required before `READ_ONLY_SENTINEL_ACTIVATION = YES` can even be proposed:
 
-- schema/provenance dependency resolved sufficiently for approved live parity interpretation;
+- #4091 source-model composition defect resolved, with canonical runner adoption/attestation still separately required before live provenance can be treated as active authority;
 - dedicated least-privilege SELECT-only role/credential created under separate authority;
 - approved relation/view allowlist;
 - explicit read-only transaction + timeout enforcement;
@@ -571,7 +586,7 @@ Required before `READ_ONLY_SENTINEL_ACTIVATION = YES` can even be proposed:
 - independent dead-man platform/owner decided;
 - Preview/non-Production matrix executed and independently accepted;
 - read-only kill switch proven fail-disabled;
-- explicit owner/Web-CTO Production read approval.
+- explicit owner/Web-CTO Production read Phase-B approval.
 
 ### Synthetic canary
 
@@ -611,6 +626,8 @@ DEAD_MAN_OWNER = OWNER_DECISION_REQUIRED
 ALERT_PROVIDER = OWNER_DECISION_REQUIRED
 ALERT_PROVIDER_SECRET_PLACEMENT = OWNER_DECISION_REQUIRED
 QA_IDENTITY_AND_CREDENTIAL = OWNER_DECISION_REQUIRED
+CANONICAL_RUNNER_ADOPTION = HOLD_NOT_ACTIVE
+POST_#4091_#4005_REEVALUATION = OWNER_WEB_CTO_DECISION_REQUIRED
 PRODUCTION_READ_PHASE_B = OWNER_APPROVAL_REQUIRED
 PRODUCTION_SYNTHETIC_WRITE = OWNER_APPROVAL_REQUIRED
 ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
@@ -618,11 +635,11 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 
 ## 17. Single-document decision summary
 
-1. **What is source-complete?** #4061 structural/parity translation, #4079 baseline/anomaly core, #4080 write-outcome classification, #4081 synthetic lifecycle, #3861 bounded alert delivery core, and #3874 provider-unselected adapter are merged source authorities.
-2. **What still needs owner approval?** Every runtime binding and all three Production activation gates; scheduler/store/dead-man/provider/QA identity/cadence/retention choices remain unactivated.
+1. **What is source-complete?** #4061 structural/parity translation, #4079 baseline/anomaly core, #4080 write-outcome classification, #4081 synthetic lifecycle, #4091 catalog-populated PREPARED/UNATTESTED adoption model, #3861 bounded alert delivery core, and #3874 provider-unselected adapter are merged source authorities.
+2. **What still needs owner approval?** Every runtime binding and all three Production activation gates; canonical runner adoption, Production Phase-B read, scheduler/store/dead-man/provider/QA identity/cadence/retention choices remain unactivated.
 3. **Recommended runtime components?** Dedicated Cloudflare Worker Cron Trigger for the primary runner and a SQLite-backed Durable Object for private bounded reliability state.
 4. **What capability is currently zero?** Production read, Production synthetic write, alert-provider transport, scheduler activation, Durable Object binding, QA identity creation, secret placement, and schema mutation.
-5. **What remains before Production read?** Provenance gate resolution, least-privilege SELECT-only credential/allowlist, read-only transaction/timeouts, runtime bindings, dead-man, rehearsal evidence, and explicit owner approval.
+5. **What remains before Production read?** #4091 has resolved the source-model composition defect, but canonical runner adoption remains HOLD/NOT ACTIVE and Production Phase-B read still requires separate explicit approval; least-privilege SELECT-only credential/allowlist, read-only transaction/timeouts, runtime bindings, dead-man, rehearsal evidence, and owner approval also remain.
 6. **What remains before synthetic write?** QA identity/credential, exact #4081 effect binding, fencing/ownership/cleanup/reconciliation/exclusion rehearsal, independent kill switch, and explicit synthetic-write approval.
 7. **What remains before alert delivery?** Provider selection, runtime/secret binding, delivery/dedupe/retry/health design, rehearsal, kill switch, and explicit alert approval.
 8. **Who detects monitor death?** A separately-approved independent dead-man reader; platform and owner remain an explicit decision, so dead-man activation is not yet complete.
@@ -645,6 +662,13 @@ PRODUCTION_READ_AUTHORITY = NO
 PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
 ALERT_PROVIDER_BINDING = NO
 
+SOURCE_MODEL_BLOCKER_4091 = RESOLVED
+CATALOG_POPULATED_PREPARED_MODEL = VALID_UNATTESTED
+FABRICATED_APPLIED_HISTORY = 0
+CANONICAL_RUNNER_ADOPTION = HOLD_NOT_ACTIVE
+PRODUCTION_PHASE_B_READ_AUTHORITY = NOT_AUTHORIZED
+#4005_RUNTIME_GATE_IMPACT = BLOCKED
+
 SCHEDULER_RECOMMENDATION = CLOUDFLARE_WORKER_CRON_TRIGGER_DEDICATED_RELIABILITY_WORKER
 SCHEDULER_ACTIVATION = NO
 SCHEDULER_OWNER_APPROVAL_REQUIRED = YES
@@ -654,7 +678,7 @@ PRIVATE_STORE_BINDING_AUTHORITY = OWNER_APPROVAL_REQUIRED
 PRIVATE_STORE_ACTIVATION = NO
 
 READ_ONLY_EXECUTOR_DESIGN = READY
-PRODUCTION_READ_PHASE_B = OWNER_APPROVAL_REQUIRED
+PRODUCTION_READ_PHASE_B = NOT_AUTHORIZED__OWNER_APPROVAL_REQUIRED
 
 ALERT_PROVIDER = PROVIDER_UNSELECTED
 ALERT_DELIVERY_ACTIVATION = NO
@@ -667,6 +691,7 @@ RECOMMENDATION = WEB_CTO_FINAL_REVIEW_REQUIRED
 ```
 
 Refs #4082.
+Refs #4091 / PR #4092.
 Refs #4081 / PR #4090.
 Refs #4080 / PR #4084.
 Refs #4079 / PR #4087.
