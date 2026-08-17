@@ -393,12 +393,6 @@
     return value.confirmed === true;
   }
 
-  function isOwnerConfirmation(value) {
-    if (!isPlainRecord(value)) return false;
-    if (hasPrivateKeyIn(value)) return false;
-    return value.owner_match === true;
-  }
-
   // ---------------------------------------------------------------------------
   // Bounded public result record. Frozen; exact key surface; no private keys.
   // ---------------------------------------------------------------------------
@@ -558,12 +552,18 @@
           );
         }
 
-        // 8. Post-write owner confirmation. Requires a bounded positive
-        //    confirmation: owner_match === true at this stage. A non-throw is
-        //    NOT a confirmation.
+        // 8. Post-write owner confirmation. Distinguished fail-closed semantics:
+        //    - effect execution failure (throw/rejection) or a malformed /
+        //      private-bearing record is BOUNDED_STAGE_FAILURE;
+        //    - an authoritative ownership regression (a well-formed bounded
+        //      record whose owner_match is not true) FENCES the fixture so it is
+        //      never cleaned up, with the owner-decision action.
         var ownerConfirm = await invokeEffect(D.ownerRead, 'readOwner', []);
-        if (!ownerConfirm.ok || !isOwnerConfirmation(ownerConfirm.value)) {
+        if (!ownerConfirm.ok || !isPlainRecord(ownerConfirm.value) || hasPrivateKeyIn(ownerConfirm.value)) {
           return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, decisionAction());
+        }
+        if (ownerConfirm.value.owner_match !== true) {
+          return failureRecord(taxonomy, FAILURE_STATES.FENCED, decisionAction());
         }
 
         // 9. Optional visibility observation (ALWAYS PRIVATE; this path only
@@ -576,17 +576,24 @@
         }
 
         // 10. Browse eligibility trap: standard canary must stay non-eligible.
-        //     A configured observer that throws or returns a malformed result
-        //     is a MONITORING failure and fails closed; it is never treated
-        //     as an authoritative eligible=false.
+        //     A configured observer that throws / returns a non-plain / private-
+        //     bearing record is a MONITORING failure and fails closed. An
+        //     authoritative positive result (eligible === true) FENCES. A
+        //     NON-eligible conclusion is only ever accepted as an EXPLICIT bounded
+        //     negative confirmation (eligible === false, or the exact canonical
+        //     browse_eligible === false). Any ambiguous / missing / wrong-type
+        //     observer record is rejected as a monitoring failure.
         var browseEligible = SYNTHETIC_VISIBILITY.BROWSE_ELIGIBLE;
         if (D.browseObserver) {
           var browse = await invokeEffect(D.browseObserver, 'observeBrowseEligibility', []);
-          if (!browse.ok || !isPlainRecord(browse.value)) {
+          if (!browse.ok || !isPlainRecord(browse.value) || hasPrivateKeyIn(browse.value)) {
             return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, stopAction());
           }
           if (browse.value.eligible === true || browse.value.browse_eligible === true) {
             return failureRecord(taxonomy, FAILURE_STATES.FENCED, stopAction());
+          }
+          if (browse.value.eligible !== false && browse.value.browse_eligible !== false) {
+            return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, stopAction());
           }
         }
 

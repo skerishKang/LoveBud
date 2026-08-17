@@ -114,7 +114,8 @@ function fakeOwnerRead(opts) {
       if (o.ownerReadFailure) throw new Error('owner read fail');
       if (Array.isArray(o.ownerResults)) {
         const v = o.ownerResults[Math.min(calls - 1, o.ownerResults.length - 1)];
-        return (v !== null && typeof v === 'object') ? v : { owner_match: v };
+        if (typeof v === 'boolean') return { owner_match: v };
+        return v; // null / non-plain / private-bearing returned verbatim
       }
       const ownerMatch = o.ownerMismatch ? false : true;
       return { owner_match: ownerMatch };
@@ -724,7 +725,7 @@ test('54. canonical reread private-bearing result fails closed even with confirm
   assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
 });
 
-test('55. owner confirmation: pre-write=true then post-write=false fails closed at the confirmation stage', async () => {
+test('55. owner confirmation: pre-write=true then post-write=false FENCES (ownership regression)', async () => {
   const cleanupCalls = { count: 0 };
   const ownerReadCalls = { count: 0 };
   const result = await runLifecycle({
@@ -732,16 +733,25 @@ test('55. owner confirmation: pre-write=true then post-write=false fails closed 
     cleanupCalls,
     ownerReadCalls
   });
-  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.stage, 'FENCED');
   assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
   assert.equal(ownerReadCalls.count, 2, 'failed exactly at the post-write confirmation read');
   assert.equal(cleanupCalls.count, 0, 'no cleanup after ownership regression');
 });
 
-test('56. owner confirmation: null / malformed / private-bearing results fail closed', async () => {
-  for (const ownerResult of [null, {}, { owner_match: 'true' }, { owner_match: false }, { owner_match: true, owner_id: 'leak' }]) {
+test('56. owner confirmation: execution failure / non-plain / private-bearing evidence fails as BOUNDED_STAGE_FAILURE; authoritative ownership loss FENCES', async () => {
+  // Effect execution failure or malformed evidence => BOUNDED_STAGE_FAILURE
+  // (distinct from authoritative ownership loss).
+  for (const ownerResult of [null, { owner_match: true, owner_id: 'leak' }]) {
     const result = await runLifecycle({ ownerResults: [true, ownerResult] });
-    assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE', `owner result ${JSON.stringify(ownerResult)} must fail closed`);
+    assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE', `owner result ${JSON.stringify(ownerResult)} must fail as bounded stage`);
+    assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  }
+  // Well-formed record whose owner_match is not true => authoritative ownership
+  // loss => FENCED (never cleaned up).
+  for (const ownerResult of [{ owner_match: false }, {}, { owner_match: 'false' }, { owner_match: 0 }]) {
+    const result = await runLifecycle({ ownerResults: [true, ownerResult] });
+    assert.equal(result.stage, 'FENCED', `owner result ${JSON.stringify(ownerResult)} must fence`);
     assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
   }
 });
@@ -754,18 +764,24 @@ test('57. browse observer throw is a monitoring failure (fail closed), not eligi
   assert.equal(cleanupCalls.count, 0);
 });
 
-test('58. browse observer malformed result fails closed', async () => {
-  for (const browseResult of [null, true, 'eligible', ['eligible']]) {
+test('58. browse observer non-plain OR ambiguous/empty/missing/wrong-type plain record fails closed (explicit negative confirmation required)', async () => {
+  // Non-plain results and plain records that are NOT an explicit bounded
+  // negative confirmation (eligible === false / browse_eligible === false) are
+  // all monitoring failures: {}, {eligible:null}, {eligible:"false"}, missing
+  // field, wrong type, private-bearing.
+  for (const browseResult of [null, true, 'eligible', ['eligible'], {}, { eligible: null }, { eligible: 'false' }, { browse_eligible: 'no' }, { eligible: true, token: 'leak' }]) {
     const result = await runLifecycle({ browseResult });
     assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE', `browse result ${JSON.stringify(browseResult)} must fail closed`);
     assert.equal(result.owner_action, 'STOP_SYNTHETIC_WRITES');
   }
 });
 
-test('59. browse observer authoritative eligible=false proceeds to CLEANUP_CONFIRMED (distinct from monitoring failure)', async () => {
-  const result = await runLifecycle({ browseResult: { eligible: false } });
-  assert.equal(result.stage, 'CLEANUP_CONFIRMED');
-  assert.equal(result.browse_eligible, 'NON_BROWSE_ELIGIBLE');
+test('59. browse observer authoritative explicit negative confirmation (eligible===false / browse_eligible===false) proceeds to CLEANUP_CONFIRMED', async () => {
+  for (const browseResult of [{ eligible: false }, { browse_eligible: false }]) {
+    const result = await runLifecycle({ browseResult });
+    assert.equal(result.stage, 'CLEANUP_CONFIRMED', `browse result ${JSON.stringify(browseResult)} must proceed as non-eligible`);
+    assert.equal(result.browse_eligible, 'NON_BROWSE_ELIGIBLE');
+  }
 });
 
 test('60. async injected effects: full lifecycle with Promise-returning effects reaches CLEANUP_CONFIRMED', async () => {
@@ -798,7 +814,7 @@ test('63. async injected effects: async reread returning {confirmed:false} fails
   assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
 });
 
-test('64. async injected effects: async owner read pre-write=true then post-write=false fails closed', async () => {
+test('64. async injected effects: async owner read pre-write=true then post-write=false FENCES (ownership regression)', async () => {
   const { taxonomy, lifecycle } = loadAll();
   const deps = buildDeps(taxonomy, loadAll().classifier);
   let ownerCalls = 0;
@@ -810,7 +826,7 @@ test('64. async injected effects: async owner read pre-write=true then post-writ
   };
   const runner = lifecycle.createCanaryLifecycle(deps);
   const result = await runner.run('async-owner-regression', {});
-  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.stage, 'FENCED');
   assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
   assert.equal(ownerCalls, 2);
 });
