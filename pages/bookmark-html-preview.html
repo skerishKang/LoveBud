@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>북마크 미리보기 | LoveTree</title>
+  <link rel="icon" href="/assets/favicon/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../css/global.css?v=20260817-4072-1">
+  <link rel="stylesheet" href="../css/bookmark-html-preview.css?v=20260817-4072-1">
+</head>
+<body class="bokeh-bg">
+  <div class="noise-overlay"></div>
+  <main class="bh-surface">
+    <h1 class="bh-title-heading">북마크 미리보기</h1>
+    <p class="bh-help">브라우저(Chrome/Edge/Firefox)에서 내보낸 북마크 HTML 파일을 선택하면 <strong>로컬에서만</strong> 미리보기해요. 파일은 서버로 전송되지 않아요.</p>
+
+    <div class="bh-tree-title-group">
+      <label class="bh-tree-title-label" for="bookmarkHtmlTreeTitleInput">트리 제목</label>
+      <input type="text" id="bookmarkHtmlTreeTitleInput" class="bh-tree-title-input" autocomplete="off" aria-describedby="bookmarkHtmlTreeTitleError" />
+      <p class="bh-tree-title-error" id="bookmarkHtmlTreeTitleError" role="alert" aria-live="polite" hidden></p>
+      <button type="button" class="bh-review-btn" id="bookmarkHtmlReviewBtn">저장 전 검토</button>
+    </div>
+
+    <div class="bh-controls">
+      <input type="file" id="bookmarkHtmlFileInput" class="bh-file-input" accept=".html,.htm" />
+      <label class="bh-file-label" for="bookmarkHtmlFileInput">북마크 HTML 파일 선택</label>
+      <button type="button" class="bh-reset-btn" id="bookmarkHtmlResetBtn">초기화</button>
+      <button type="button" class="bh-select-all-btn" id="bookmarkHtmlSelectAllBtn">지원 항목 모두 선택</button>
+      <button type="button" class="bh-clear-btn" id="bookmarkHtmlClearBtn">선택 해제</button>
+    </div>
+
+    <p class="bh-status" id="bookmarkHtmlStatus" role="status" aria-live="polite" hidden></p>
+    <p class="bh-selected-count" id="bookmarkHtmlSelectedCount" role="status" aria-live="polite" hidden></p>
+    <p class="bh-error" id="bookmarkHtmlError" role="alert" aria-live="polite" hidden></p>
+    <div class="bh-preview" id="bookmarkHtmlPreview" aria-label="북마크 미리보기 목록"></div>
+
+    <section class="bh-import-review" id="bookmarkHtmlImportReview" role="status" aria-live="polite" aria-label="북마크 가져오기 검토 요약" hidden></section>
+  </main>
+
+  <script src="../js/import/bookmark-html-preview-parser.js?v=20260817-4065-1"></script>
+  <script src="../js/import/bookmark-html-preview-ui.js?v=20260817-4072-1"></script>
+</body>
+</html>

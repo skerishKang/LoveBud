@@ -1,0 +1,228 @@
+{
+  "schemaVersion": "1",
+  "description": "Canonical JS/Python parity matrix for the #4080 write-outcome classifier. Every case is consumed verbatim by tests/contracts/write-outcome-classifier-4080-contract.test.cjs and tests/contracts/test_write_outcome_classification_4080.py so both authorities must produce identical results for identical facts. Cases with 'expected' must classify to exactly that bounded result; cases with 'expected_error' must fail closed with that fixed ERROR_CODE as the first (alphabetically sorted) error. Refs #4080. Refs #3461 — Keep OPEN. Refs #3457. Refs #3835. Refs #1882 — Keep OPEN.",
+  "cases": [
+    {
+      "id": "M01",
+      "name": "authoritative pre-DB validation rejection",
+      "facts": { "transport": "ok", "commit": "not_reached", "returning": "not_reached", "reread": "not_attempted", "validation_rejected": true },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "WRITE_REJECTED_VALIDATION", "retry_safe": true, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M02",
+      "name": "never dispatched",
+      "facts": { "transport": "not_dispatched", "commit": "not_reached", "returning": "not_reached", "reread": "not_attempted" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "ACKNOWLEDGEMENT_MISSING", "retry_safe": true, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M03",
+      "name": "undecidable timeout",
+      "facts": { "transport": "timeout", "commit": "unknown", "returning": "unknown", "reread": "unknown" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "WRITE_STATUS_UNKNOWN", "retry_safe": false, "evidence_completeness": "partial" }
+    },
+    {
+      "id": "M04",
+      "name": "undecidable network error",
+      "facts": { "transport": "network_error", "commit": "unknown", "returning": "unknown", "reread": "unknown" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "WRITE_STATUS_UNKNOWN", "retry_safe": false, "evidence_completeness": "partial" }
+    },
+    {
+      "id": "M05",
+      "name": "transport ok but commit unknown",
+      "facts": { "transport": "ok", "commit": "unknown", "returning": "unknown", "reread": "unknown" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "WRITE_STATUS_UNKNOWN", "retry_safe": false, "evidence_completeness": "partial" }
+    },
+    {
+      "id": "M06",
+      "name": "decidable network error with rollback",
+      "facts": { "transport": "network_error", "commit": "rolled_back", "returning": "not_reached", "reread": "not_attempted" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "TRANSPORT_FAILED", "retry_safe": true, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M07",
+      "name": "decidable timeout with not reached",
+      "facts": { "transport": "timeout", "commit": "not_reached", "returning": "not_reached", "reread": "not_attempted" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "TRANSPORT_FAILED", "retry_safe": true, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M08",
+      "name": "committed + row returned + reread visible",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "visible" },
+      "expected": { "stage": "FOLLOWUP_REREAD_VISIBLE", "outcome_code": "CONFIRMED", "retry_safe": false, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M09",
+      "name": "committed + row returned + reread visible + client visible",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "visible", "client_visible": true },
+      "expected": { "stage": "CLIENT_VISIBLE_SUCCESS", "outcome_code": "CONFIRMED", "retry_safe": false, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M10",
+      "name": "committed + row returned + reread missing",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "missing" },
+      "expected": { "stage": "CANONICAL_ROW_RETURNED", "outcome_code": "WRITE_COMMITTED_REREAD_MISSING", "retry_safe": false, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M11",
+      "name": "committed + row returned + reread mismatch",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "mismatch" },
+      "expected": { "stage": "CANONICAL_ROW_RETURNED", "outcome_code": "WRITE_COMMITTED_REREAD_MISMATCH", "retry_safe": false, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M12",
+      "name": "committed + row returned + reread not attempted",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "not_attempted" },
+      "expected": { "stage": "CANONICAL_ROW_RETURNED", "outcome_code": "WRITE_COMMITTED_ROW_RETURNED", "retry_safe": false, "evidence_completeness": "partial" }
+    },
+    {
+      "id": "M13",
+      "name": "committed + row returned + reread unknown",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "unknown" },
+      "expected": { "stage": "CANONICAL_ROW_RETURNED", "outcome_code": "WRITE_COMMITTED_ROW_RETURNED", "retry_safe": false, "evidence_completeness": "partial" }
+    },
+    {
+      "id": "M14",
+      "name": "committed + no row returned",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "no_row", "reread": "missing" },
+      "expected": { "stage": "DB_TRANSACTION_COMMITTED", "outcome_code": "ACKNOWLEDGED_REREAD_MISSING", "retry_safe": false, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M15",
+      "name": "committed without returning evidence",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "unknown", "reread": "unknown" },
+      "expected": { "stage": "DB_TRANSACTION_COMMITTED", "outcome_code": "INSUFFICIENT_EVIDENCE", "retry_safe": false, "evidence_completeness": "partial" }
+    },
+    {
+      "id": "M16",
+      "name": "rolled back with 4xx status alone never infers validation rejection",
+      "facts": { "transport": "ok", "commit": "rolled_back", "returning": "not_reached", "reread": "not_attempted", "upstream_status_class": "client_error_4xx" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "ACKNOWLEDGEMENT_MISSING", "retry_safe": true, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M17",
+      "name": "commit not reached",
+      "facts": { "transport": "ok", "commit": "not_reached", "returning": "not_reached", "reread": "not_attempted" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "ACKNOWLEDGEMENT_MISSING", "retry_safe": true, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "M18",
+      "name": "rollback-on-mismatch: row returned then rolled back is allowed",
+      "facts": { "transport": "ok", "commit": "rolled_back", "returning": "row_returned", "reread": "missing" },
+      "expected": { "stage": "REQUEST_ACCEPTED", "outcome_code": "ACKNOWLEDGEMENT_MISSING", "retry_safe": true, "evidence_completeness": "complete" }
+    },
+    {
+      "id": "C01",
+      "name": "not_dispatched with committed",
+      "facts": { "transport": "not_dispatched", "commit": "committed", "returning": "unknown", "reread": "unknown" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C02",
+      "name": "not_dispatched with row_returned",
+      "facts": { "transport": "not_dispatched", "commit": "unknown", "returning": "row_returned", "reread": "unknown" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C03",
+      "name": "not_dispatched with reread visible",
+      "facts": { "transport": "not_dispatched", "commit": "unknown", "returning": "unknown", "reread": "visible" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C04",
+      "name": "commit not_reached with row_returned",
+      "facts": { "transport": "ok", "commit": "not_reached", "returning": "row_returned", "reread": "unknown" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C05",
+      "name": "commit not_reached with no_row",
+      "facts": { "transport": "ok", "commit": "not_reached", "returning": "no_row", "reread": "unknown" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C06",
+      "name": "commit not_reached with reread visible",
+      "facts": { "transport": "ok", "commit": "not_reached", "returning": "unknown", "reread": "visible" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C07",
+      "name": "rolled_back with reread visible",
+      "facts": { "transport": "ok", "commit": "rolled_back", "returning": "row_returned", "reread": "visible" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C08",
+      "name": "reread visible with no_row returned",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "no_row", "reread": "visible" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C09",
+      "name": "reread visible with returning not_reached",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "not_reached", "reread": "visible" },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C10",
+      "name": "validation_rejected with committed",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "visible", "validation_rejected": true },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "C11",
+      "name": "client_visible without reread visible",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "missing", "client_visible": true },
+      "expected_error": "CONTRADICTORY_FACTS"
+    },
+    {
+      "id": "P01",
+      "name": "token key rejected",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "visible", "token": "leak" },
+      "expected_error": "PRIVATE_FIELD_REJECTED"
+    },
+    {
+      "id": "P02",
+      "name": "provider key rejected",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "visible", "provider": "leak" },
+      "expected_error": "PRIVATE_FIELD_REJECTED"
+    },
+    {
+      "id": "P03",
+      "name": "sql key rejected",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "visible", "sql": "leak" },
+      "expected_error": "PRIVATE_FIELD_REJECTED"
+    },
+    {
+      "id": "P04",
+      "name": "database_url key rejected",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "visible", "database_url": "leak" },
+      "expected_error": "PRIVATE_FIELD_REJECTED"
+    },
+    {
+      "id": "I01",
+      "name": "unknown enum value",
+      "facts": { "transport": "ok", "commit": "maybe_committed", "returning": "row_returned", "reread": "visible" },
+      "expected_error": "UNKNOWN_ENUM"
+    },
+    {
+      "id": "I02",
+      "name": "missing required field",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned" },
+      "expected_error": "MISSING_REQUIRED_FIELD"
+    },
+    {
+      "id": "I03",
+      "name": "unknown field",
+      "facts": { "transport": "ok", "commit": "committed", "returning": "row_returned", "reread": "visible", "bogus_field": 1 },
+      "expected_error": "UNKNOWN_FIELD"
+    },
+    {
+      "id": "I04",
+      "name": "non-object input",
+      "facts": null,
+      "expected_error": "INPUT_NOT_OBJECT"
+    }
+  ]
+}
