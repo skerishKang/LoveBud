@@ -47,7 +47,7 @@ test('request context is provider-neutral and propagates a bounded safe request 
 test('unsafe and overlong request ids are never propagated', async () => {
   const { core } = await loadFoundation();
 
-  for (const unsafeId of ['contains spaces', 'x'.repeat(81), 'line\nbreak']) {
+  for (const unsafeId of ['contains spaces', 'x'.repeat(81), 'bad/slash']) {
     const request = new Request('https://platform.invalid/', {
       headers: { 'x-lovebud-request-id': unsafeId }
     });
