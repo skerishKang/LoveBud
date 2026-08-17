@@ -176,6 +176,39 @@ Current main runtime state:
 - Public read paths retain parent tree visibility guards.
 - Public visibility remains separate from Browse/Search eligibility.
 
+### 3.4 Memory `clientKey` idempotency contract (#4058, #4004, #4005)
+
+`POST /api/memories` (owner-scoped, via Modal `create_owner_memory`) accepts an
+optional Tree-scoped stable `clientKey` for one logical Memory create.
+
+Canonical Memory identity remains the server-generated Memory UUID. `clientKey`
+is a client-origin idempotency hint, tree-scoped.
+
+| Case | Behavior |
+|------|----------|
+| `clientKey` omitted / `null` / `""` | Legacy-compatible create; `client_key` persists as `NULL`. |
+| valid `clientKey` (bounded string, max 100 chars) | Persisted on create; owner reread returns the exact `clientKey` (flat camelCase). |
+| non-string `clientKey` | HTTP 400 before any DB mutation (no silent coercion). |
+| oversized `clientKey` (> 100 chars) | HTTP 400 before any DB mutation. |
+| same `treeId` + same `clientKey` retry | Returns the already-persisted canonical Memory (one logical Memory). |
+| concurrent same `treeId` + same `clientKey` | Converges to exactly one canonical Memory via DB unique constraint + conflict recovery. |
+| same `clientKey` across different `treeId`s | Independent success (tree-scoped uniqueness). |
+| `clientKey` on ordinary Memory update (`PUT`) | Rejected as an unsupported field (immutable after create). |
+| legacy `client_key = NULL` row read | `clientKey` is **omitted** from the response — never fabricated. |
+| fork / copy | Does **not** inherit the source Memory `clientKey` (fork INSERT omits the column). |
+
+Schema-activation safety: the runtime detects the `client_key` column via
+`table_has_column` capability detection. If the canonical migration has not been
+applied in the active environment, an **explicit** `clientKey` request is
+rejected with HTTP 501 (`MEMORY_CLIENT_KEY_SCHEMA_NOT_ACTIVATED`) — it is never
+silently ignored and a new Memory is never created under a schema that cannot
+honor the idempotency contract. Reads are similarly capability-safe (the column
+is selected only when present), so legacy environments keep returning rows
+without a `clientKey` field.
+
+The bounded 100-char policy aligns with the LoveTree portability reference
+(`maxLength=100`) where current LoveBud contract/governance does not conflict.
+
 ### 3.2 목표 정책 계약
 
 CTO 결정 기준 목표 정책은 **public-first + Plus private**입니다.
