@@ -46,9 +46,26 @@
 //     acquire(runKey, boundedExpiry) / assertCurrent(fence) / renew(fence) /
 //     release(fence). A stale or superseded runner can neither write nor clean
 //     up. Fencing authority unavailable => fail closed (mutation = 0).
-//   - WRITE_STATUS_UNKNOWN (#4080) is retry_safe=false: no blind retry; a
-//     canonical reread/reconciliation must run first. Residual ambiguity =>
-//     STOP_SYNTHETIC_WRITES + OWNER_DECISION_REQUIRED.
+//   - WRITE_STATUS_UNKNOWN (#4080) is retry_safe=false: no blind retry and no
+//     immediate abort. A canonical reread/reconciliation is attempted first
+//     (without any second dispatch); only residual ambiguity after the reread
+//     fails closed => STOP_SYNTHETIC_WRITES + OWNER_DECISION_REQUIRED.
+//   - The #4080 classifier result is the write-outcome authority: only
+//     CONFIRMED may proceed to lifecycle success. Every failed/rejected or
+//     undetermined classification (ACKNOWLEDGEMENT_MISSING, TRANSPORT_FAILED,
+//     WRITE_REJECTED_VALIDATION, WRITE_COMMITTED_*, ACKNOWLEDGED_REREAD_MISSING,
+//     MONITORING_FAILED, INSUFFICIENT_EVIDENCE, WRITE_STATUS_UNKNOWN, or any
+//     unknown code) can never be promoted to CLEANUP_CONFIRMED.
+//   - Canonical reread and post-write owner confirmation require a BOUNDED
+//     POSITIVE confirmation record (reread: confirmed === true; owner read:
+//     owner_match === true). A non-throw is NOT a confirmation. null / false /
+//     missing / malformed / private-bearing results fail closed.
+//   - A configured browse observer that throws or returns a malformed result
+//     is a MONITORING failure and fails closed; it is never treated as an
+//     authoritative eligible=false.
+//   - Injected effect methods are AWAIT-SAFE: run() awaits every effect, so
+//     effects may return plain values or Promises; a rejected Promise is a
+//     bounded failure exactly like a synchronous throw.
 //   - The standard canary is ALWAYS PRIVATE and NON_BROWSE_ELIGIBLE; there is
 //     no API to self-promote. Unexpected observed Browse eligibility fails
 //     closed (STOP_SYNTHETIC_WRITES). Deep Browse/publication behavior is a
@@ -226,6 +243,20 @@
   var SYNTHETIC_EXCLUSION = 'SYNTHETIC_CANARY_EXCLUDED';
 
   // ---------------------------------------------------------------------------
+  // #4080 classification gate. The classifier result is the write-outcome
+  // authority: ONLY CONFIRMED may proceed toward lifecycle success. Every
+  // other #4080 outcome (failed, rejected, undetermined, or partial evidence)
+  // is terminal for this run and can never be promoted to CLEANUP_CONFIRMED.
+  // WRITE_STATUS_UNKNOWN is the only code that first attempts a canonical
+  // reread/reconciliation (no second dispatch); residual ambiguity fails
+  // closed with STOP_SYNTHETIC_WRITES + OWNER_DECISION_REQUIRED.
+  // ---------------------------------------------------------------------------
+  var CLASSIFICATION_GATE = Object.freeze({
+    WRITE_SUCCESS: 'CONFIRMED',
+    WRITE_STATUS_UNKNOWN: 'WRITE_STATUS_UNKNOWN'
+  });
+
+  // ---------------------------------------------------------------------------
   // Release SHA (mirrors #3835) + opaque bounded run key.
   // ---------------------------------------------------------------------------
   var RELEASE_SHA_PATTERN = /^[0-9a-f]{40}$/;
@@ -351,6 +382,24 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Bounded POSITIVE confirmation validators. A non-throw from an injected
+  // effect is NOT a confirmation: the result must be a plain record carrying
+  // the exact positive boolean, and must not carry any private key.
+  // null / false / missing / malformed / private-bearing => fail closed.
+  // ---------------------------------------------------------------------------
+  function isRereadConfirmation(value) {
+    if (!isPlainRecord(value)) return false;
+    if (hasPrivateKeyIn(value)) return false;
+    return value.confirmed === true;
+  }
+
+  function isOwnerConfirmation(value) {
+    if (!isPlainRecord(value)) return false;
+    if (hasPrivateKeyIn(value)) return false;
+    return value.owner_match === true;
+  }
+
+  // ---------------------------------------------------------------------------
   // Bounded public result record. Frozen; exact key surface; no private keys.
   // ---------------------------------------------------------------------------
   function buildRecord(fields) {
@@ -394,22 +443,36 @@
       return taxonomyPath(taxonomy, 'OWNER_ACTIONS.OWNER_DECISION_REQUIRED') || 'OWNER_DECISION_REQUIRED';
     }
 
-    // Invoke an injected effect and wrap any throw as a bounded sentinel value.
-    function call(effect, method, args) {
+    // Invoke an injected effect AWAIT-SAFE. Injected effects may return a
+    // plain value or a Promise (the #4081 runtime-bindable effect contract);
+    // a synchronous throw and a rejected Promise are both bounded failures.
+    // The result is always a bounded sentinel record, never a raw value.
+    async function invokeEffect(effect, method, args) {
+      var value;
       try {
-        return { ok: true, value: effect[method].apply(effect, args) };
+        value = effect[method].apply(effect, args);
       } catch (e) {
         return { ok: false };
       }
+      if (value !== null && typeof value === 'object' && typeof value.then === 'function') {
+        try {
+          value = await value;
+        } catch (e) {
+          return { ok: false };
+        }
+      }
+      return { ok: true, value: value };
     }
 
-    // Fence-current + QA ownership gate. Re-run before every mutation and cleanup.
+    // Fence-current + QA ownership gate. Re-run before every mutation and
+    // cleanup. Requires owner_match === true as a bounded positive
+    // confirmation; a non-throw is NOT a confirmation.
     async function assertMutationAuthority(fence) {
-      var current = call(D.fence, 'assertCurrent', [fence]);
+      var current = await invokeEffect(D.fence, 'assertCurrent', [fence]);
       if (!current.ok || current.value !== true) {
         return { ok: false };
       }
-      var own = call(D.ownerRead, 'readOwner', []);
+      var own = await invokeEffect(D.ownerRead, 'readOwner', []);
       if (!own.ok || !isPlainRecord(own.value) || own.value.owner_match !== true) {
         return { ok: false };
       }
@@ -423,7 +486,7 @@
       var opts = (options && isPlainRecord(options)) ? options : {};
 
       // 1. Bounded-expiry fence acquire. Unavailable -> FENCED, mutation = 0.
-      var fenceAcquire = call(D.fence, 'acquire', [runKey, fenceExpiry(opts)]);
+      var fenceAcquire = await invokeEffect(D.fence, 'acquire', [runKey, fenceExpiry(opts)]);
       if (!fenceAcquire.ok || fenceAcquire.value === null || fenceAcquire.value === undefined || fenceAcquire.value === false) {
         return failureRecord(taxonomy, FAILURE_STATES.FENCED, decisionAction());
       }
@@ -431,13 +494,13 @@
 
       try {
         // 2. QA auth seam: opaque capability only.
-        var auth = call(D.qaAuth, 'acquireAuth', []);
+        var auth = await invokeEffect(D.qaAuth, 'acquireAuth', []);
         if (!auth.ok || !isPlainRecord(auth.value)) {
           return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, stopAction());
         }
 
         // 3. Deterministic bounded fixture identity.
-        var fixture = call(D.fixture, 'prepareFixture', [auth.value]);
+        var fixture = await invokeEffect(D.fixture, 'prepareFixture', [auth.value]);
         if (!fixture.ok || !isPlainRecord(fixture.value) || hasPrivateKeyIn(fixture.value)) {
           return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, stopAction());
         }
@@ -450,50 +513,80 @@
 
         // 5. Synthetic memory write dispatch. Dispatch result is a #4080 fact
         //    tuple (already bounded names); passed to the classifier seam.
-        var dispatch = call(D.writeDispatch, 'dispatchMemory', [fixture.value]);
+        var dispatch = await invokeEffect(D.writeDispatch, 'dispatchMemory', [fixture.value]);
         if (!dispatch.ok || !isPlainRecord(dispatch.value)) {
           return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, stopAction());
         }
 
-        // 6. Classify via #4080 seam (by value). WRITE_STATUS_UNKNOWN => no
-        //    blind retry; canonical reread/reconciliation required first.
-        var classification = call(D.classifier, 'classifyWriteOutcome', [dispatch.value.facts || dispatch.value]);
+        // 6. Classify via the #4080 seam (by value). The classifier result is
+        //    the write-outcome authority for this run.
+        var classification = await invokeEffect(D.classifier, 'classifyWriteOutcome', [dispatch.value.facts || dispatch.value]);
         if (!classification.ok || !isPlainRecord(classification.value) || !hasOwn(classification.value, 'outcome_code')) {
           return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, decisionAction());
         }
-        if (classification.value.outcome_code === 'WRITE_STATUS_UNKNOWN') {
+        var classifiedOutcome = classification.value.outcome_code;
+
+        // 7. Canonical reread (ACK != reread confirmation). Requires a bounded
+        //    positive confirmation record: confirmed === true. A non-throw is
+        //    NOT a confirmation; null / false / missing / malformed /
+        //    private-bearing results fail closed.
+        //
+        //    WRITE_STATUS_UNKNOWN (retry_safe=false): no blind retry and no
+        //    immediate abort. The canonical reread/reconciliation is attempted
+        //    first — WITHOUT any second dispatch — and its bounded positive
+        //    confirmation resolves the ambiguity. Residual ambiguity fails
+        //    closed: STOP_SYNTHETIC_WRITES.
+        //
+        //    Any failed / rejected / undetermined classification (e.g.
+        //    ACKNOWLEDGEMENT_MISSING, TRANSPORT_FAILED,
+        //    WRITE_REJECTED_VALIDATION, WRITE_COMMITTED_*,
+        //    ACKNOWLEDGED_REREAD_MISSING, MONITORING_FAILED,
+        //    INSUFFICIENT_EVIDENCE, or any unknown code) is terminal here and
+        //    can never fall through to reread or be promoted to
+        //    CLEANUP_CONFIRMED.
+        var isUnknown = classifiedOutcome === CLASSIFICATION_GATE.WRITE_STATUS_UNKNOWN;
+        var isWriteSuccess = classifiedOutcome === CLASSIFICATION_GATE.WRITE_SUCCESS;
+        if (!isUnknown && !isWriteSuccess) {
           return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, decisionAction());
         }
-
-        // 7. Canonical reread (ACK != reread confirmation).
-        var reread = call(D.canonicalReread, 'reread', [fixture.value]);
-        if (!reread.ok) {
-          return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, decisionAction());
+        var reread = await invokeEffect(D.canonicalReread, 'reread', [fixture.value]);
+        if (!reread.ok || !isRereadConfirmation(reread.value)) {
+          return failureRecord(
+            taxonomy,
+            FAILURE_STATES.BOUNDED_STAGE_FAILURE,
+            isUnknown ? stopAction() : decisionAction()
+          );
         }
 
-        // 8. Owner read confirmation.
-        var ownerConfirm = call(D.ownerRead, 'readOwner', []);
-        if (!ownerConfirm.ok) {
+        // 8. Post-write owner confirmation. Requires a bounded positive
+        //    confirmation: owner_match === true at this stage. A non-throw is
+        //    NOT a confirmation.
+        var ownerConfirm = await invokeEffect(D.ownerRead, 'readOwner', []);
+        if (!ownerConfirm.ok || !isOwnerConfirmation(ownerConfirm.value)) {
           return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, decisionAction());
         }
 
         // 9. Optional visibility observation (ALWAYS PRIVATE; this path only
         //    records it, never promotes).
         if (D.visibilityObserver) {
-          var vis = call(D.visibilityObserver, 'observeVisibility', []);
+          var vis = await invokeEffect(D.visibilityObserver, 'observeVisibility', []);
           if (!vis.ok) {
             return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, stopAction());
           }
         }
 
         // 10. Browse eligibility trap: standard canary must stay non-eligible.
+        //     A configured observer that throws or returns a malformed result
+        //     is a MONITORING failure and fails closed; it is never treated
+        //     as an authoritative eligible=false.
         var browseEligible = SYNTHETIC_VISIBILITY.BROWSE_ELIGIBLE;
         if (D.browseObserver) {
-          var browse = call(D.browseObserver, 'observeBrowseEligibility', []);
-          if (browse.ok && isPlainRecord(browse.value)) {
-            if (browse.value.eligible === true || browse.value.browse_eligible === true) {
-              return failureRecord(taxonomy, FAILURE_STATES.FENCED, stopAction());
-            }
+          var browse = await invokeEffect(D.browseObserver, 'observeBrowseEligibility', []);
+          if (!browse.ok || !isPlainRecord(browse.value)) {
+            return failureRecord(taxonomy, FAILURE_STATES.BOUNDED_STAGE_FAILURE, stopAction());
+          }
+          if (browse.value.eligible === true || browse.value.browse_eligible === true) {
+            return failureRecord(taxonomy, FAILURE_STATES.FENCED, stopAction());
           }
         }
 
@@ -502,7 +595,7 @@
         if (!authority2.ok) {
           return failureRecord(taxonomy, FAILURE_STATES.FENCED, decisionAction());
         }
-        var cleanup = call(D.cleanup, 'cleanup', [fixture.value]);
+        var cleanup = await invokeEffect(D.cleanup, 'cleanup', [fixture.value]);
         if (!cleanup.ok) {
           return buildRecord({
             stage: FAILURE_STATES.CLEANUP_FAILED,
@@ -536,11 +629,8 @@
           synthetic_exclusion: SYNTHETIC_EXCLUSION
         });
       } finally {
-        try {
-          D.fence.release(fence);
-        } catch (e) {
-          // best-effort, sanitized
-        }
+        // Best-effort, sanitized, await-safe release (async effect contract).
+        await invokeEffect(D.fence, 'release', [fence]);
       }
     }
 
@@ -568,6 +658,7 @@
     FAILURE_STATES: FAILURE_STATES,
     SYNTHETIC_VISIBILITY: SYNTHETIC_VISIBILITY,
     SYNTHETIC_EXCLUSION: SYNTHETIC_EXCLUSION,
+    CLASSIFICATION_GATE: CLASSIFICATION_GATE,
     ERROR_CODES: ERROR_CODES,
     PRIVATE_KEYS: PRIVATE_KEYS,
     PRIVATE_KEY_SET: PRIVATE_KEY_SET,

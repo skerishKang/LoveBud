@@ -31,8 +31,11 @@ function loadAll() {
 }
 
 // Injected effect methods return RAW values (not wrapped in {ok,value}).
-// The lifecycle's internal `call()` helper catches throws and wraps the result.
-// A throw is how an effect signals failure; a non-throw return is success.
+// The lifecycle's internal `invokeEffect()` seam is await-safe: an effect may
+// return a plain value or a Promise; a synchronous throw and a rejected
+// Promise are both bounded failures. Confirmation stages (canonical reread,
+// post-write owner read) additionally require a bounded POSITIVE confirmation
+// record — a non-throw is never a confirmation.
 
 function fakeQaAuth(authFailure) {
   return {
@@ -44,22 +47,26 @@ function fakeQaAuth(authFailure) {
 }
 
 function fakeFixture(opts) {
+  const o = opts || {};
   return {
     prepareFixture(auth) {
       if (!auth || !auth.opaque) throw new Error('no auth');
-      if (opts && opts.fixturePrivateLeak) return { opaque: 'fixture', token: 'leak' };
-      if (opts && opts.fixtureFailure) throw new Error('fixture fail');
+      if (o.fixturePrivateLeak) return { opaque: 'fixture', token: 'leak' };
+      if (o.fixtureFailure) throw new Error('fixture fail');
       return { opaque: 'fixture' };
     }
   };
 }
 
 function fakeWriteDispatch(opts) {
+  const o = opts || {};
   return {
     dispatchMemory(fixture) {
+      if (o.dispatchCalls) o.dispatchCalls.count += 1;
       if (!fixture || !fixture.opaque) throw new Error('no fixture');
-      if (opts && opts.dispatchFailure) throw new Error('dispatch fail');
-      if (opts && opts.dispatchUnknown) {
+      if (o.dispatchFailure) throw new Error('dispatch fail');
+      if (o.dispatchFacts) return { facts: o.dispatchFacts };
+      if (o.dispatchUnknown) {
         return { facts: { transport: 'timeout', commit: 'unknown', returning: 'unknown', reread: 'unknown' } };
       }
       return { facts: { transport: 'ok', commit: 'committed', returning: 'row_returned', reread: 'visible' } };
@@ -72,54 +79,74 @@ function fakeClassifier(classifierCore, classifierFailure) {
     classifyWriteOutcome(facts) {
       if (classifierFailure) throw new Error('classifier fail');
       // The classifier core expects a facts object WITHOUT a wrapping layer.
-      // But it was called via `call()`, so facts is whatever dispatchMemory returned.
+      // But it was called via `invokeEffect()`, so facts is whatever
+      // dispatchMemory returned.
       return classifierCore.classifyWriteOutcome(facts);
     }
   };
 }
 
 function fakeCanonicalReread(opts) {
+  const o = opts || {};
+  let calls = 0;
   return {
     reread(fixture) {
+      calls += 1;
+      if (o.rereadCalls) o.rereadCalls.count = calls;
       if (!fixture || !fixture.opaque) throw new Error('no fixture');
-      if (opts && opts.rereadMissing) throw new Error('reread missing');
+      if (o.rereadMissing) throw new Error('reread missing');
+      if (Array.isArray(o.rereadResults)) {
+        return o.rereadResults[Math.min(calls - 1, o.rereadResults.length - 1)];
+      }
+      if (o.rereadResult !== undefined) return o.rereadResult;
       return { confirmed: true };
     }
   };
 }
 
 function fakeOwnerRead(opts) {
-  const ownerMatch = (opts && opts.ownerMismatch) ? false : true;
+  const o = opts || {};
+  let calls = 0;
   return {
     readOwner() {
-      if (opts && opts.ownerReadFailure) throw new Error('owner read fail');
+      calls += 1;
+      if (o.ownerReadCalls) o.ownerReadCalls.count = calls;
+      if (o.ownerReadFailure) throw new Error('owner read fail');
+      if (Array.isArray(o.ownerResults)) {
+        const v = o.ownerResults[Math.min(calls - 1, o.ownerResults.length - 1)];
+        return (v !== null && typeof v === 'object') ? v : { owner_match: v };
+      }
+      const ownerMatch = o.ownerMismatch ? false : true;
       return { owner_match: ownerMatch };
     }
   };
 }
 
 function fakeCleanup(opts) {
+  const o = opts || {};
   return {
     cleanup(fixture) {
+      if (o.cleanupCalls) o.cleanupCalls.count += 1;
       if (!fixture || !fixture.opaque) throw new Error('no fixture');
-      if (opts && opts.cleanupFailure) throw new Error('cleanup fail');
-      if (opts && opts.cleanupRetained) return { disposition: 'retained' };
+      if (o.cleanupFailure) throw new Error('cleanup fail');
+      if (o.cleanupRetained) return { disposition: 'retained' };
       return { disposition: 'cleaned' };
     }
   };
 }
 
 function fakeFence(opts) {
-  const fenceToken = (opts && opts.fenceToken !== undefined) ? opts.fenceToken : 'fence-abc';
+  const o = opts || {};
+  const fenceToken = (o.fenceToken !== undefined) ? o.fenceToken : 'fence-abc';
   return {
     acquire(runKey, expiry) {
-      if (opts && opts.fenceUnavailable) return null;
-      if (opts && opts.fenceRejected) return false;
-      if (opts && opts.fenceThrow) throw new Error('fence fail');
+      if (o.fenceUnavailable) return null;
+      if (o.fenceRejected) return false;
+      if (o.fenceThrow) throw new Error('fence fail');
       return fenceToken;
     },
     assertCurrent(fence) {
-      if (opts && opts.fenceStale) return false;
+      if (o.fenceStale) return false;
       return true;
     },
     renew() { return true; },
@@ -127,19 +154,23 @@ function fakeFence(opts) {
   };
 }
 
-function fakeVisibilityObserver(observeFailure) {
+function fakeVisibilityObserver(opts) {
+  const o = opts || {};
   return {
     observeVisibility() {
-      if (observeFailure) throw new Error('visibility observe fail');
+      if (o.visibilityObserveFailure) throw new Error('visibility observe fail');
       return { visibility: 'PRIVATE' };
     }
   };
 }
 
-function fakeBrowseObserver(detectEligible) {
+function fakeBrowseObserver(opts) {
+  const o = opts || {};
   return {
     observeBrowseEligibility() {
-      if (detectEligible) return { eligible: true };
+      if (o.browseObserveFailure) throw new Error('browse observe fail');
+      if (o.browseEligibleDetected) return { eligible: true };
+      if (o.browseResult !== undefined) return o.browseResult;
       return { eligible: false };
     }
   };
@@ -158,10 +189,28 @@ function buildDeps(taxonomy, classifier, opts) {
     taxonomy
   };
   if (!(opts && opts.noVisibilityObserver)) {
-    deps.visibilityObserver = fakeVisibilityObserver(opts && opts.visibilityObserveFailure);
+    deps.visibilityObserver = fakeVisibilityObserver(opts);
   }
   if (!(opts && opts.noBrowseObserver)) {
-    deps.browseObserver = fakeBrowseObserver(opts && opts.browseEligibleDetected);
+    deps.browseObserver = fakeBrowseObserver(opts);
+  }
+  return deps;
+}
+
+// Wrap every injected effect method so it returns a Promise, exercising the
+// await-safe effect seam (the #4081 runtime-bindable effect contract).
+function asyncifyDeps(deps) {
+  for (const key of Object.keys(deps)) {
+    if (key === 'taxonomy') continue;
+    const effect = deps[key];
+    if (!effect || typeof effect !== 'object') continue;
+    for (const m of Object.keys(effect)) {
+      const fn = effect[m];
+      if (typeof fn !== 'function') continue;
+      effect[m] = function (...args) {
+        return Promise.resolve().then(() => fn.apply(this, args));
+      };
+    }
   }
   return deps;
 }
@@ -169,6 +218,7 @@ function buildDeps(taxonomy, classifier, opts) {
 async function runLifecycle(opts) {
   const { taxonomy, classifier, lifecycle } = loadAll();
   const deps = buildDeps(taxonomy, classifier, opts);
+  if (opts && opts.asyncEffects) asyncifyDeps(deps);
   const runner = lifecycle.createCanaryLifecycle(deps);
   return await runner.run('test-run-key-4081', {});
 }
@@ -294,10 +344,23 @@ test('11. lifecycle with retained cleanup reaches FIXTURE_RETAINED_DETERMINISTIC
   assert.equal(result.outcome_code, 'CONFIRMED');
 });
 
-test('12. WRITE_STATUS_UNKNOWN leads to BOUNDED_STAGE_FAILURE with OWNER_DECISION_REQUIRED', async () => {
-  const result = await runLifecycle({ dispatchUnknown: true });
+test('12. WRITE_STATUS_UNKNOWN: reconciliation reread first, residual ambiguity fails closed with STOP_SYNTHETIC_WRITES, no blind retry', async () => {
+  const dispatchCalls = { count: 0 };
+  const rereadCalls = { count: 0 };
+  const cleanupCalls = { count: 0 };
+  // Reread does not throw but returns { confirmed: false } => residual ambiguity.
+  const result = await runLifecycle({
+    dispatchUnknown: true,
+    rereadResult: { confirmed: false },
+    dispatchCalls,
+    rereadCalls,
+    cleanupCalls
+  });
   assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
-  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  assert.equal(result.owner_action, 'STOP_SYNTHETIC_WRITES');
+  assert.equal(dispatchCalls.count, 1, 'no blind retry: exactly one dispatch');
+  assert.equal(rereadCalls.count, 1, 'canonical reread/reconciliation attempted first');
+  assert.equal(cleanupCalls.count, 0, 'no promotion to cleanup success');
 });
 
 test('13. canonical reread missing leads to BOUNDED_STAGE_FAILURE', async () => {
@@ -550,4 +613,230 @@ test('45. bounded expiry options are accepted', async () => {
   await assert.doesNotReject(() => runner.run('exp-test', { bounded_expiry_ms: 100 }));
   await assert.doesNotReject(() => runner.run('exp-test-2', { bounded_expiry_ms: 600000 }));
   await assert.doesNotReject(() => runner.run('exp-test-3', {}));
+});
+
+// =============================================================================
+// Correction regressions (Web CTO review 4952277661, CORRECTION_REQUIRED).
+// =============================================================================
+
+test('46. WRITE_STATUS_UNKNOWN resolved by positive reconciliation reread reaches CLEANUP_CONFIRMED without a second dispatch', async () => {
+  const dispatchCalls = { count: 0 };
+  const rereadCalls = { count: 0 };
+  const result = await runLifecycle({ dispatchUnknown: true, dispatchCalls, rereadCalls });
+  assert.equal(result.stage, 'CLEANUP_CONFIRMED');
+  assert.equal(result.owner_action, 'NO_ACTION');
+  assert.equal(dispatchCalls.count, 1, 'no blind retry: exactly one dispatch');
+  assert.equal(rereadCalls.count, 1, 'canonical reread is the reconciliation; exactly one reread');
+});
+
+test('47. classifier gate: ACKNOWLEDGEMENT_MISSING can never be promoted to CLEANUP_CONFIRMED', async () => {
+  const rereadCalls = { count: 0 };
+  const cleanupCalls = { count: 0 };
+  const result = await runLifecycle({
+    dispatchFacts: { transport: 'not_dispatched', commit: 'not_reached', returning: 'not_reached', reread: 'not_attempted' },
+    rereadCalls,
+    cleanupCalls
+  });
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  assert.equal(rereadCalls.count, 0, 'failed classification never falls through to reread');
+  assert.equal(cleanupCalls.count, 0, 'failed classification never reaches cleanup');
+});
+
+test('48. classifier gate: TRANSPORT_FAILED can never be promoted to CLEANUP_CONFIRMED', async () => {
+  const rereadCalls = { count: 0 };
+  const cleanupCalls = { count: 0 };
+  const result = await runLifecycle({
+    dispatchFacts: { transport: 'network_error', commit: 'rolled_back', returning: 'not_reached', reread: 'not_attempted' },
+    rereadCalls,
+    cleanupCalls
+  });
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  assert.equal(rereadCalls.count, 0);
+  assert.equal(cleanupCalls.count, 0);
+});
+
+test('49. classifier gate: WRITE_REJECTED_VALIDATION can never be promoted to CLEANUP_CONFIRMED', async () => {
+  const rereadCalls = { count: 0 };
+  const cleanupCalls = { count: 0 };
+  const result = await runLifecycle({
+    dispatchFacts: { transport: 'ok', commit: 'not_reached', returning: 'not_reached', reread: 'not_attempted', validation_rejected: true },
+    rereadCalls,
+    cleanupCalls
+  });
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  assert.equal(rereadCalls.count, 0);
+  assert.equal(cleanupCalls.count, 0);
+});
+
+test('50. classifier gate: all partial/committed-without-confirmation outcomes fail closed', async () => {
+  const gatedFacts = [
+    { transport: 'ok', commit: 'committed', returning: 'row_returned', reread: 'missing' },
+    { transport: 'ok', commit: 'committed', returning: 'row_returned', reread: 'mismatch' },
+    { transport: 'ok', commit: 'committed', returning: 'row_returned', reread: 'not_attempted' },
+    { transport: 'ok', commit: 'committed', returning: 'no_row', reread: 'not_attempted' },
+    { transport: 'ok', commit: 'committed', returning: 'unknown', reread: 'unknown' }
+  ];
+  for (const facts of gatedFacts) {
+    const rereadCalls = { count: 0 };
+    const cleanupCalls = { count: 0 };
+    const result = await runLifecycle({ dispatchFacts: facts, rereadCalls, cleanupCalls });
+    assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE', `facts ${JSON.stringify(facts)} must fail closed`);
+    assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+    assert.equal(rereadCalls.count, 0, 'no reread fall-through');
+    assert.equal(cleanupCalls.count, 0, 'no cleanup promotion');
+  }
+});
+
+test('51. classifier gate: unknown/out-of-vocabulary outcome_code fails closed', async () => {
+  const { taxonomy, lifecycle } = loadAll();
+  const deps = buildDeps(taxonomy, null);
+  deps.classifier = {
+    classifyWriteOutcome() { return { outcome_code: 'NOT_A_REAL_CODE', retry_safe: true }; }
+  };
+  const runner = lifecycle.createCanaryLifecycle(deps);
+  const result = await runner.run('gate-unknown-code', {});
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+});
+
+test('52. canonical reread {confirmed:false} without throwing fails closed (non-throw != confirmation)', async () => {
+  const cleanupCalls = { count: 0 };
+  const result = await runLifecycle({ rereadResult: { confirmed: false }, cleanupCalls });
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  assert.equal(cleanupCalls.count, 0);
+});
+
+test('53. canonical reread null / missing-field / malformed results fail closed', async () => {
+  for (const rereadResult of [null, {}, { confirmed: 'true' }, { confirmed: 1 }, true, 'confirmed', ['confirmed']]) {
+    const result = await runLifecycle({ rereadResult });
+    assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE', `reread result ${JSON.stringify(rereadResult)} must fail closed`);
+    assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  }
+});
+
+test('54. canonical reread private-bearing result fails closed even with confirmed:true', async () => {
+  const result = await runLifecycle({ rereadResult: { confirmed: true, token: 'leak' } });
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+});
+
+test('55. owner confirmation: pre-write=true then post-write=false fails closed at the confirmation stage', async () => {
+  const cleanupCalls = { count: 0 };
+  const ownerReadCalls = { count: 0 };
+  const result = await runLifecycle({
+    ownerResults: [true, false],
+    cleanupCalls,
+    ownerReadCalls
+  });
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  assert.equal(ownerReadCalls.count, 2, 'failed exactly at the post-write confirmation read');
+  assert.equal(cleanupCalls.count, 0, 'no cleanup after ownership regression');
+});
+
+test('56. owner confirmation: null / malformed / private-bearing results fail closed', async () => {
+  for (const ownerResult of [null, {}, { owner_match: 'true' }, { owner_match: false }, { owner_match: true, owner_id: 'leak' }]) {
+    const result = await runLifecycle({ ownerResults: [true, ownerResult] });
+    assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE', `owner result ${JSON.stringify(ownerResult)} must fail closed`);
+    assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  }
+});
+
+test('57. browse observer throw is a monitoring failure (fail closed), not eligible=false', async () => {
+  const cleanupCalls = { count: 0 };
+  const result = await runLifecycle({ browseObserveFailure: true, cleanupCalls });
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'STOP_SYNTHETIC_WRITES');
+  assert.equal(cleanupCalls.count, 0);
+});
+
+test('58. browse observer malformed result fails closed', async () => {
+  for (const browseResult of [null, true, 'eligible', ['eligible']]) {
+    const result = await runLifecycle({ browseResult });
+    assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE', `browse result ${JSON.stringify(browseResult)} must fail closed`);
+    assert.equal(result.owner_action, 'STOP_SYNTHETIC_WRITES');
+  }
+});
+
+test('59. browse observer authoritative eligible=false proceeds to CLEANUP_CONFIRMED (distinct from monitoring failure)', async () => {
+  const result = await runLifecycle({ browseResult: { eligible: false } });
+  assert.equal(result.stage, 'CLEANUP_CONFIRMED');
+  assert.equal(result.browse_eligible, 'NON_BROWSE_ELIGIBLE');
+});
+
+test('60. async injected effects: full lifecycle with Promise-returning effects reaches CLEANUP_CONFIRMED', async () => {
+  const result = await runLifecycle({ asyncEffects: true });
+  assert.equal(result.stage, 'CLEANUP_CONFIRMED');
+  assert.equal(result.outcome_code, 'CONFIRMED');
+  assert.equal(result.owner_action, 'NO_ACTION');
+  assert.ok(Object.isFrozen(result));
+});
+
+test('61. async injected effects: rejected Promise is a bounded failure (dispatch)', async () => {
+  const result = await runLifecycle({ asyncEffects: true, dispatchFailure: true });
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+});
+
+test('62. async injected effects: rejected Promise on fence acquire leads to FENCED', async () => {
+  const result = await runLifecycle({ asyncEffects: true, fenceThrow: true });
+  assert.equal(result.stage, 'FENCED');
+});
+
+test('63. async injected effects: async reread returning {confirmed:false} fails closed', async () => {
+  const { taxonomy, lifecycle } = loadAll();
+  const deps = buildDeps(taxonomy, loadAll().classifier);
+  deps.canonicalReread = {
+    reread: async () => ({ confirmed: false })
+  };
+  const runner = lifecycle.createCanaryLifecycle(deps);
+  const result = await runner.run('async-reread-false', {});
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+});
+
+test('64. async injected effects: async owner read pre-write=true then post-write=false fails closed', async () => {
+  const { taxonomy, lifecycle } = loadAll();
+  const deps = buildDeps(taxonomy, loadAll().classifier);
+  let ownerCalls = 0;
+  deps.ownerRead = {
+    readOwner: async () => {
+      ownerCalls += 1;
+      return { owner_match: ownerCalls === 1 };
+    }
+  };
+  const runner = lifecycle.createCanaryLifecycle(deps);
+  const result = await runner.run('async-owner-regression', {});
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  assert.equal(ownerCalls, 2);
+});
+
+test('65. async injected effects: async browse observer rejection fails closed as monitoring failure', async () => {
+  const { taxonomy, lifecycle } = loadAll();
+  const deps = buildDeps(taxonomy, loadAll().classifier);
+  deps.browseObserver = {
+    observeBrowseEligibility: async () => { throw new Error('async browse observe fail'); }
+  };
+  const runner = lifecycle.createCanaryLifecycle(deps);
+  const result = await runner.run('async-browse-fail', {});
+  assert.equal(result.stage, 'BOUNDED_STAGE_FAILURE');
+  assert.equal(result.owner_action, 'STOP_SYNTHETIC_WRITES');
+});
+
+test('66. async injected effects: WRITE_STATUS_UNKNOWN reconciliation works with Promise-returning reread', async () => {
+  const dispatchCalls = { count: 0 };
+  const result = await runLifecycle({ asyncEffects: true, dispatchUnknown: true, dispatchCalls });
+  assert.equal(result.stage, 'CLEANUP_CONFIRMED');
+  assert.equal(dispatchCalls.count, 1, 'no blind retry under async effects');
+});
+
+test('67. CLASSIFICATION_GATE exposes the bounded write-authority vocabulary and is frozen', () => {
+  const { lifecycle } = loadAll();
+  assert.ok(Object.isFrozen(lifecycle.CLASSIFICATION_GATE));
+  assert.equal(lifecycle.CLASSIFICATION_GATE.WRITE_SUCCESS, 'CONFIRMED');
+  assert.equal(lifecycle.CLASSIFICATION_GATE.WRITE_STATUS_UNKNOWN, 'WRITE_STATUS_UNKNOWN');
 });
