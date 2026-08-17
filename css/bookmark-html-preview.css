@@ -1,0 +1,280 @@
+/* #4072 / #4074 / #4076 — Local bookmark HTML preview surface. */
+
+.bh-surface {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 20px 64px;
+}
+
+.bh-title-heading {
+  margin: 0 0 8px;
+  font-size: 22px;
+  color: var(--on-surface);
+}
+
+.bh-help {
+  margin: 0 0 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--on-surface-variant);
+}
+
+.bh-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+/* Visually hidden but keyboard-reachable file input (focus ring via label). */
+.bh-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.bh-file-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 999px;
+  background: var(--surface-container, #fff);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bh-file-input:focus-visible + .bh-file-label {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+.bh-reset-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bh-reset-btn:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+.bh-status {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--on-surface-variant);
+}
+
+.bh-error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--error, #b3261e);
+  line-height: 1.5;
+}
+
+.bh-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bh-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 10px;
+  background: var(--surface-container, #fff);
+}
+
+.bh-row-unsupported {
+  border-style: dashed;
+}
+
+.bh-order {
+  flex: 0 0 auto;
+  min-width: 28px;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.bh-meta {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bh-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+}
+
+.bh-path {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.bh-link {
+  flex: 0 1 auto;
+  font-size: 12px;
+  color: var(--primary, #904951);
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.bh-state {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+/* #4074 — selection controls. */
+.bh-select-all-btn,
+.bh-clear-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bh-select-all-btn:focus-visible,
+.bh-clear-btn:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+.bh-selected-count {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.bh-select {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  cursor: pointer;
+}
+
+.bh-select:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+/* #4076 — Tree title input + private-first pre-write import intent review. */
+.bh-tree-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.bh-tree-title-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.bh-tree-title-input {
+  flex: 1 1 240px;
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 10px;
+  background: var(--surface-container, #fff);
+  color: var(--on-surface);
+  font: inherit;
+  font-size: 14px;
+}
+
+.bh-tree-title-input:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+/* Error state is never color-only: it is announced via role=alert. */
+.bh-tree-title-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--error, #b3261e);
+  line-height: 1.5;
+}
+
+.bh-review-btn {
+  padding: 9px 16px;
+  border: 1px solid var(--primary, #904951);
+  border-radius: 999px;
+  background: var(--primary, #904951);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bh-review-btn:focus-visible {
+  outline: 2px solid var(--primary, #904951);
+  outline-offset: 2px;
+}
+
+.bh-import-review {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--outline-variant, #e4e1ec);
+  border-radius: 12px;
+  background: var(--surface-container, #fff);
+}
+
+.bh-import-review p {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--on-surface);
+}
+
+.bh-import-review p:last-child {
+  margin-bottom: 0;
+  color: var(--on-surface-variant);
+}
+
+/* State is never color-only: text label + dashed border for unsupported.
+   Restored parent #4072/#4075 visual state representation. */
+.bh-state-supported {
+  color: #1b6e3c;
+  background: rgba(27, 110, 60, 0.08);
+  border: 1px solid rgba(27, 110, 60, 0.25);
+}
+
+.bh-state-unsupported {
+  color: var(--error, #b3261e);
+  background: rgba(179, 38, 30, 0.06);
+  border: 1px solid rgba(179, 38, 30, 0.25);
+}
