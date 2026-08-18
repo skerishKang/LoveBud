@@ -13,6 +13,7 @@ SECOND_CANONICAL_LOVETREE_BACKEND = FORBIDDEN
 DOCUMENT_CURRENT_STATE_DRIFT = FOUND
 E2E_TEST_ISOLATION_VS_PRODUCT_AUTHORITY_AMBIGUITY = FOUND
 PRODUCTION_TARGET_ATTRIBUTION_DRIFT = FOUND
+OPEN_AUTH_PROTOTYPE_FRESHNESS_WORDING_BLOCKER = FOUND
 AGENT_ENTRYPOINT_ARCHITECTURE_GATE = ADDED
 REMEDIATION_REQUIRED = YES
 ```
@@ -28,6 +29,7 @@ REMEDIATION_REQUIRED = YES
 | `canonical-memory-lineage-write-contract-4005.md` | `HISTORICAL_CONTRACT_EVIDENCE` | Useful semantic design, but its descriptions of current runtime support predate later #4058/#4059 work and must not be treated as current runtime truth without fresh source inspection. | Preserve as provenance; current runtime claims require fresh source/issue re-read. |
 | `cloudflare-neon-runtime-feasibility-audit-4000.md` | `HISTORICAL_FORENSIC_RECONCILED_BY_4004` | Correctly says #4004 superseded dual-backend direction, but its reconciliation section still repeats the old 36/45/287 data-authority snapshot as though current. | Treat that data line as historical; #4005 is current data reconciliation authority. |
 | LoveBud #4006 | `AUTH_MIGRATION_AUTHORITY` with stale DB evidence | Shared Firebase → staged Neon Auth architecture is correct. Original body’s 36 `public.users` / 34-owner current-state claim is stale for current default/deployed lineage. | Issue body rewritten; stable-account/provider mapping and staged migration model retained. |
+| LoveBud PR #4008 | `AUTH_PROTOTYPE_DOCUMENTATION` with residual freshness wording blocker | The PR correctly reclassifies 36/45/287 as historical child evidence, but repeatedly calls the 2026-08-16 `7 Trees / 5 Memories` observation current default/deployed state. Replacing one pinned “current” count with another repeats the same failure mode. | Merge-blocker comment `5322993132` posted. Before Ready/Merge, reword 7/5, table presence/absence, and deployed-lineage identity as dated observations; current state must be fresh-queried. |
 | LoveBud #4043 | `PRODUCTION_OPS` with unsafe stale target attribution | Original body asserted Production/default `neondb` had 45 Trees / 287 Memories and `tree_appreciation_orders`. Later #4005 evidence contradicts that target attribution and table claim for the live default `neondb` it inspected. | Issue retitled `HOLD`; Production mutation blocked until exact deployed DB/branch/database, binding and table capability are fresh re-established. |
 | LoveTree #152 | `LOVETREE_PLATFORM_GUARDRAIL` with stale comparative evidence | Core rule is correct. `LoveBud materially more live state` and `LoveTree newer schema refinements` were no longer safe current claims after #4005 reconciliation. | Issue body rewritten; canonical choice no longer depends on row-count rhetoric. |
 | LoveTree #202 | `TRANSITIONAL_MVP_BRIDGE_AUTHORITY` | Architecture is sound: LoveTree bridge is bounded and portable to shared platform. Embedded SHAs are explicitly historical. | Preserve completed issue; post-completion preflight clarification added. |
@@ -51,13 +53,14 @@ LOVETREE_SEPARATE_DB = TRANSITIONAL_BRIDGE_NONCANONICAL
 
 ## Snapshot rule
 
-The following is **not** a current-default architecture fact:
+Neither of these is a timeless current-state architecture fact:
 
 ```text
 36 users / 45 Trees / 287 Memories
+7 Trees / 5 Memories
 ```
 
-It is historical non-default-child lineage evidence. Any future document using those numbers must label the exact branch/resource and observation date.
+The first is historical non-default-child lineage evidence. The second is a dated 2026-08-16 default-lineage observation from later forensics. Any future document using either must label the exact branch/resource and observation date.
 
 Likewise, current row counts must never decide architecture. The canonical/shared authority decision comes from #4004/#152 and security/runtime convergence evidence, not whichever database happens to contain more rows on a given day.
 
@@ -111,6 +114,7 @@ Any ambiguity = zero mutation.
 8. Historical/prototype docs stay as provenance but are not current authority.
 9. Issue bodies containing stale `current` claims are corrected rather than relying only on later comments.
 10. Current Production Ops issues fail closed when exact target attribution conflicts with newer evidence.
+11. A newer count must never be promoted to timeless `current` merely because it superseded an older count; all provider/database state is a dated observation unless freshly reverified.
 
 ## Required worker report fields
 
