@@ -4,8 +4,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
+const MODAL_AUTH = path.join(ROOT, 'modal_compute', 'auth.py');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
 const OWNER_READS = path.join(ROOT, 'modal_compute', 'owner_reads.py');
+
+function readModalAuth() {
+  return fs.readFileSync(MODAL_AUTH, 'utf8');
+}
 
 function readModalApp() {
   return fs.readFileSync(MODAL_APP, 'utf8');
@@ -101,37 +106,134 @@ test('fetch_owner_memories keeps owner boundary, optional tree filter, limit, pa
   );
 });
 
-test('get_private_trees authenticates and reads trees for the Firebase uid', () => {
+test('canonical Modal principal projects only the verified Firebase uid owner semantics', () => {
+  const body = getTopLevelFunction(readModalAuth(), 'require_authenticated_principal');
+  const normalized = compact(body);
+  const returnStart = normalized.indexOf('return{');
+
+  assert.match(normalized, /user=require_firebase_user\(authorization\)/, 'principal must delegate to the existing Firebase verifier');
+  assert.match(normalized, /uid=user\["uid"\]/, 'principal authority must come from the verified Firebase uid');
+  assert.ok(returnStart >= 0, 'principal must return an explicit projection');
+
+  const projection = normalized.slice(returnStart);
+  assert.match(projection, /"provider":"firebase"/, 'provider must be fixed to firebase');
+  assert.match(projection, /"providersubject":uid/, 'providerSubject must equal the verified Firebase uid');
+  assert.match(projection, /"legacyownerid":uid/, 'legacyOwnerId must equal the verified Firebase uid');
+  assert.doesNotMatch(projection, /accountid|email|decoded|token|neon/, 'principal projection must not expose unresolved/private/provider-alternate fields');
+  assert.doesNotMatch(normalized, /\btry:/, 'principal projection must preserve verifier HTTPException behavior without remapping it');
+});
+
+test('existing Firebase verifier keeps current missing-invalid and dependency-unavailable HTTP behavior', () => {
+  const body = getTopLevelFunction(readModalAuth(), 'require_firebase_user');
+  const normalized = compact(body);
+
+  assert.match(normalized, /status_code=401,detail="authenticationrequired"/, 'missing Firebase auth must remain 401');
+  assert.match(normalized, /status_code=401,detail="invalididtoken"/, 'invalid Firebase ID token must remain 401');
+  assert.match(
+    normalized,
+    /status_code=503,detail="authenticationservicetemporarilyunavailable"/,
+    'Firebase certificate dependency failure must remain sanitized 503'
+  );
+  assert.doesNotMatch(normalized, /neon/, 'Modal verifier must remain Firebase-only');
+});
+
+test('get_private_trees authenticates through the canonical principal and keeps the same Firebase uid owner authority', () => {
   const body = getTopLevelFunction(readModalApp(), 'get_private_trees');
   const normalized = compact(body);
 
-  assert.match(normalized, /require_firebase_user\(authorization\)/, 'get_private_trees must require Firebase auth');
-  assert.match(normalized, /fetch_user_trees\(user\["uid"\],limit=limit\)/, 'get_private_trees must fetch trees by user uid');
+  assert.match(normalized, /principal=require_authenticated_principal\(authorization\)/, 'get_private_trees must require canonical authenticated principal');
+  assert.match(
+    normalized,
+    /page_user_trees\(principal\["legacyownerid"\],limit=limit,cursor=cursor\)/,
+    'cursor Tree list must use principal.legacyOwnerId'
+  );
+  assert.match(
+    normalized,
+    /fetch_user_trees\(principal\["legacyownerid"\],limit=limit\)/,
+    'Tree list must use principal.legacyOwnerId'
+  );
+  assert.doesNotMatch(normalized, /user\["uid"\]/, 'Tree list must not bypass principal owner authority');
+  assert.match(normalized, /auth_dependency_unavailable/, 'existing auth dependency error category must remain');
+  assert.match(normalized, /auth_failed/, 'existing auth failure error category must remain');
 });
 
-test('get_private_tree_detail authenticates, validates tree id, fetches owner tree, and returns 404 when missing', () => {
+test('get_private_tree_detail authenticates through the canonical principal and preserves leak-safe owner lookup', () => {
   const body = getTopLevelFunction(readModalApp(), 'get_private_tree_detail');
   const normalized = compact(body);
 
-  assert.match(normalized, /require_firebase_user\(authorization\)/, 'get_private_tree_detail must require Firebase auth');
+  assert.match(normalized, /principal=require_authenticated_principal\(authorization\)/, 'get_private_tree_detail must require canonical authenticated principal');
   assert.match(normalized, /validate_required_uuid\(tree_id,"treeid"\)/, 'get_private_tree_detail must validate required treeId');
-  assert.match(normalized, /fetch_owner_tree\(safe_tree_id,user\["uid"\]\)/, 'get_private_tree_detail must fetch owner tree by safe tree id and uid');
+  assert.match(
+    normalized,
+    /fetch_owner_tree\(safe_tree_id,principal\["legacyownerid"\]\)/,
+    'get_private_tree_detail must fetch owner tree by safe tree id and principal.legacyOwnerId'
+  );
   assert.match(
     normalized,
     /httpexception\(status_code=404,detail="treenotfound"\)/,
     'get_private_tree_detail must return 404 when the owner tree is missing'
   );
+  assert.doesNotMatch(normalized, /user\["uid"\]/, 'Tree detail must not bypass principal owner authority');
 });
 
-test('get_private_memories authenticates, validates optional tree id, and reads owner memories', () => {
+test('get_private_memories authenticates through the canonical principal and keeps list/cursor owner authority', () => {
   const body = getTopLevelFunction(readModalApp(), 'get_private_memories');
   const normalized = compact(body);
 
-  assert.match(normalized, /require_firebase_user\(authorization\)/, 'get_private_memories must require Firebase auth');
+  assert.match(normalized, /principal=require_authenticated_principal\(authorization\)/, 'get_private_memories must require canonical authenticated principal');
   assert.match(normalized, /validate_optional_uuid\(treeid,"treeid"\)/, 'get_private_memories must validate optional treeId');
   assert.match(
     normalized,
-    /fetch_owner_memories\(user\["uid"\],tree_id=safe_tree_id,limit=limit\)/,
-    'get_private_memories must fetch owner memories by uid, optional safe tree id, and limit'
+    /page_owner_memories\(principal\["legacyownerid"\],safe_tree_id,limit=limit,cursor=cursor\)/,
+    'cursor Memory list must use principal.legacyOwnerId'
   );
+  assert.match(
+    normalized,
+    /fetch_owner_memories\(principal\["legacyownerid"\],tree_id=safe_tree_id,limit=limit\)/,
+    'Memory list must use principal.legacyOwnerId, optional safe tree id, and limit'
+  );
+  assert.doesNotMatch(normalized, /user\["uid"\]/, 'Memory list must not bypass principal owner authority');
+});
+
+test('get_private_memory_detail uses the canonical principal owner id and preserves normalization', () => {
+  const body = getTopLevelFunction(readModalApp(), 'get_private_memory_detail');
+  const normalized = compact(body);
+
+  assert.match(normalized, /principal=require_authenticated_principal\(authorization\)/, 'get_private_memory_detail must require canonical authenticated principal');
+  assert.match(normalized, /validate_required_id\(memory_id,"memoryid"\)/, 'get_private_memory_detail must validate memoryId');
+  assert.match(
+    normalized,
+    /require_memory_owner\(safe_memory_id,principal\["legacyownerid"\]\)/,
+    'Memory detail ownership check must use principal.legacyOwnerId'
+  );
+  assert.match(normalized, /returnnormalize_memory_row\(memory\)/, 'Memory detail must preserve normalization');
+  assert.doesNotMatch(normalized, /user\["uid"\]/, 'Memory detail must not bypass principal owner authority');
+});
+
+test('write routes remain on the existing Firebase user contract and are not migrated in #4096', () => {
+  const source = readModalApp();
+  const writeFunctions = [
+    'post_private_tree',
+    'put_private_tree',
+    'delete_private_tree',
+    'post_private_memory',
+    'put_private_memory',
+    'delete_private_memory',
+  ];
+
+  for (const functionName of writeFunctions) {
+    const body = getTopLevelFunction(source, functionName);
+    const normalized = compact(body);
+    assert.match(normalized, /user=require_firebase_user\(authorization\)/, `${functionName} must preserve existing Firebase user auth`);
+    assert.doesNotMatch(normalized, /require_authenticated_principal/, `${functionName} must remain outside the #4096 owner-read migration`);
+  }
+});
+
+test('non-core owner capability route remains outside the bounded owner-read migration', () => {
+  const body = getTopLevelFunction(readModalApp(), 'get_private_tree_capability');
+  const normalized = compact(body);
+
+  assert.match(normalized, /user=require_firebase_user\(authorization\)/, 'capability route must preserve existing Firebase auth behavior');
+  assert.match(normalized, /fetch_owner_tree\(safe_tree_id,user\["uid"\]\)/, 'capability route must preserve current Firebase uid behavior');
+  assert.doesNotMatch(normalized, /require_authenticated_principal/, 'capability route must stay outside #4096 exact owner-read scope');
 });

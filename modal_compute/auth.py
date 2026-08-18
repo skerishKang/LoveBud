@@ -246,3 +246,21 @@ def require_firebase_user(authorization: str | None) -> dict[str, Any]:
         raise HTTPException(status_code=401, detail="Invalid ID token")
 
     return {"uid": uid, "email": decoded.get("email") or "", "decoded": decoded}
+
+
+def require_authenticated_principal(authorization: str | None) -> dict[str, str]:
+    """Project the verified Firebase UID into the canonical owner-read principal.
+
+    Firebase remains the only accepted token issuer in this boundary.  The
+    legacy owner authority is intentionally the same verified Firebase UID;
+    accountId remains unresolved/non-authoritative and is therefore omitted.
+    Raw token text, email, decoded claims, and provider SDK payloads are never
+    copied into the principal.
+    """
+    user = require_firebase_user(authorization)
+    uid = user["uid"]
+    return {
+        "provider": "firebase",
+        "providerSubject": uid,
+        "legacyOwnerId": uid,
+    }
