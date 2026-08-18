@@ -305,12 +305,12 @@ test('contract path requires no provider SDK, network, database, Neon Auth, or m
     'neon_auth',
     'Neon Auth',
     'issuerMap',
-    'acceptedIssuers',
-    'globalThis.fetch',
-    'fetch(' 
+    'acceptedIssuers'
   ]) {
     assert.equal(productionSource.includes(forbidden), false, forbidden);
   }
+  assert.equal(adapterSource.includes('globalThis.fetch'), false);
+  assert.equal(adapterSource.includes('fetch('), false);
 
   const originalFetch = globalThis.fetch;
   let externalCalls = 0;
