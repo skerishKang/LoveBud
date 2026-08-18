@@ -5057,6 +5057,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-tree-embed-projection-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure js/playback/public-tree-embed-projection.js in-process with constructed effective-public Tree/Moment records and the merged #4064 core, proving #4098 strict allowlist projection, exact public visibility fail-closed behavior, private-Moment omission without existence signal, trusted YouTube normalization and unsafe/malformed-source bounded unavailability, duplicate occurrence preservation, dense regenerated sourceIndex, caller-order preservation with no sorting authority, bounded optional startSeconds, endSeconds=null, owner/internal/clientKey/auth/moderation/raw-provider field stripping, caller-input non-mutation, and #4064 queue compatibility. Static source checks prove no network, DOM, Firebase/Auth, DB, storage, provider runtime, route, or external capability. No real network, browser, database, auth/provider, deployment, or Production resource is used (#4098, #4088, #4064).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/reliability-baseline-anomaly-core-4079.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Executes the pure #4079 baseline-store and anomaly-evaluator sources with synthetic/injected bounded evidence and current #3835/#4061 structural authorities; proves baseline-independent hard invariants, statistical-signal suppression without baseline, fail-closed non-healthy monitoring/evidence states, privacy-safe bounded output, determinism, frozen/detached results, injected calibration with no embedded Production thresholds, and preservation of the existing #4061 parity translation boundary without a second #3860 parity engine. No network, database, SQL execution, provider, filesystem-write, scheduler, telemetry-sink, Production, or Preview capability (#4079).",
