@@ -9,9 +9,10 @@ This file is the repository-wide entrypoint for LoveBud work. Detailed rules liv
 3. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` — owner-approved advanced/frontier autonomous implementation path and CTO post-implementation review behavior.
 4. `docs/project/UI_RAPID_ITERATION_LANE.md` — U0/U1/U2/U3 UI process.
 5. `docs/project/ROLE_SESSION_TEMPLATES.md` — copy-ready role prompts.
-6. Product/design/engineering/ops source-of-truth documents relevant to the task.
+6. `docs/architecture/SHARED_LOVE_PLATFORM_AUTHORITY.md` — cross-repository LoveBud/LoveTree Product auth/backend/data authority and mandatory provider-mutation preflight.
+7. Product/design/engineering/ops source-of-truth documents relevant to the task.
 
-When documents conflict, the higher item wins. Historical runbooks and task-specific documents do not create new repo-wide blockers without owner approval.
+When documents conflict, the higher item wins. Historical runbooks and task-specific documents do not create new repo-wide blockers without owner approval. For LoveBud/LoveTree shared Auth/DB/backend/provider work, the latest explicit Product Owner decision plus `LoveBud#4004` / `LoveTree#152` remains controlling architecture authority even when a lower-level child issue describes a test or prototype resource.
 
 ## 2. Hard standing rules
 
@@ -22,6 +23,69 @@ When documents conflict, the higher item wins. Historical runbooks and task-spec
 - `CI_UNAVAILABLE_INFRA` is not a code failure; use the documented alternative-evidence path.
 - Verify exact expected head and squash merge.
 - Never close #1882; use `Refs #1882` only.
+
+### Shared Love platform hard gate
+
+For any work involving Auth, Firebase, Neon, Cloudflare Worker, DB/schema/data, shared API, provider config, Preview/Production routing, or mutable E2E infrastructure, read first:
+
+```text
+LoveBud#4004
+LoveTree#152
+LoveBud#4005 when DB/schema/data is involved
+LoveBud#4006 when auth/identity is involved
+```
+
+Current Product architecture during migration is:
+
+```text
+LoveBud + LoveTree
+= ONE Product authentication authority
+= ONE shared backend/API authority
+= ONE canonical writable Tree/Memory/social data authority
+
+current Product auth = shared Firebase Auth
+target auth = staged Neon Auth migration through stable account mapping
+LoveTree separate DB = TRANSITIONAL_BRIDGE_NONCANONICAL
+```
+
+Before creating, configuring, binding, deploying, deleting, or reusing any provider/database/auth resource, classify it exactly once:
+
+```text
+CANONICAL_PRODUCT_AUTHORITY
+TRANSITIONAL_BRIDGE_NONCANONICAL
+TEST_ISOLATION_ONLY
+PROTOTYPE_ONLY
+HISTORICAL_EVIDENCE_ONLY
+UNKNOWN_STOP
+```
+
+`UNKNOWN_STOP` means zero mutation.
+
+Explicit invariants:
+
+```text
+DEDICATED_E2E_FIREBASE != NEW_PRODUCT_AUTHORITY
+ISOLATED_E2E_WORKER != NEW_SHARED_BACKEND
+DISPOSABLE_NEON_BRANCH != NEW_CANONICAL_DB
+```
+
+The worker must report before mutation:
+
+```text
+PARENT_4004_READ = YES
+LOVETREE_152_READ = YES
+DATA_4005_READ_IF_RELEVANT = YES/NA
+AUTH_4006_READ_IF_RELEVANT = YES/NA
+CURRENT_REMOTE_FRESH = YES
+CURRENT_PROVIDER_IDENTITY_FRESH = YES/NA
+RESOURCE_CLASS = <classification>
+SECOND_CANONICAL_WRITER_CREATED = NO
+SECOND_PRODUCT_AUTHORITY_CREATED = NO
+TEST_RESOURCE_PROMOTED_TO_PRODUCT = NO
+ARCHITECTURE_CONSISTENCY_GATE = PASS/STOP
+```
+
+`STOP` means zero provider/DB mutation. Historical row counts, branch IDs, SHAs, deployment identities and old issue comments are evidence only; fresh-query the exact current target before acting.
 
 ## 3. Default execution roles
 
@@ -142,6 +206,8 @@ Implementation path names may use `search`; user-facing experience should normal
 - Vercel: secondary/transitional
 - Netlify: legacy artifact, not active fallback
 
+These bullets describe the current LoveBud runtime surface, not the final cross-repository Product authority. Shared-platform convergence is governed by #4004/#152; a current Modal/Neon/Firebase implementation detail must not be mistaken for permission to create a competing LoveTree or LoveBud authority.
+
 Browser requests should use same-origin `/api/*` when possible.
 
 ## 7. Browser and Production verification
@@ -240,15 +306,19 @@ Recommended order:
 
 1. `AGENTS.md`
 2. `docs/ops/MVP_AGENT_GOVERNANCE.md`
-3. `docs/project/project_index.md`
-4. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
-5. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` when a worker may self-select/implement before CTO allocation
-6. `docs/project/UI_RAPID_ITERATION_LANE.md` for UI work
-7. relevant product/design/engineering/ops documents
-8. current remote Issue/PR/diff/CI evidence
+3. `docs/architecture/SHARED_LOVE_PLATFORM_AUTHORITY.md` when Auth/DB/backend/provider/E2E infrastructure may be involved
+4. `docs/project/project_index.md`
+5. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+6. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` when a worker may self-select/implement before CTO allocation
+7. `docs/project/UI_RAPID_ITERATION_LANE.md` for UI work
+8. relevant product/design/engineering/ops documents
+9. current remote Issue/PR/diff/CI evidence
+
+For shared-platform work, repository docs do not replace fresh connected reads of LoveBud#4004 / LoveTree#152 / #4005 / #4006 as relevant.
 
 ## 14. Key detailed documents
 
+- `docs/architecture/SHARED_LOVE_PLATFORM_AUTHORITY.md`
 - `docs/project/ROLE_SESSION_TEMPLATES.md`
 - `docs/project/BRANCHING_AND_REVIEW.md`
 - `docs/project/LOCAL_MODEL_WORKFLOW.md`
@@ -265,7 +335,8 @@ Recommended order:
 ## 15. One-line operating rule
 
 ```text
-verify current remote state
+verify current remote + shared-platform authority
+→ classify target resource and architecture consistency
 → use CTO-first allocation OR the owner-approved autonomous frontier lane
 → classify real risk and collision authority
 → use the smallest safe implementation/evidence path
