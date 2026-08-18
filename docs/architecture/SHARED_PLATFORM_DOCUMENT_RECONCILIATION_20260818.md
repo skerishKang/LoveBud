@@ -1,6 +1,6 @@
 # Shared Platform Document Reconciliation — 2026-08-18
 
-Scope: LoveBud/LoveTree shared Auth, backend, DB, Runtime E2E, and convergence authority.
+Scope: LoveBud/LoveTree shared Auth, backend, DB, Runtime E2E, Production Ops, and convergence authority.
 
 This audit separates **architecture decisions** from **dated runtime/provider snapshots**. The architecture is stable; several old `current` state statements are not.
 
@@ -12,6 +12,8 @@ FIREBASE_TO_NEON_AUTH_STAGED_DIRECTION = CONSISTENT
 SECOND_CANONICAL_LOVETREE_BACKEND = FORBIDDEN
 DOCUMENT_CURRENT_STATE_DRIFT = FOUND
 E2E_TEST_ISOLATION_VS_PRODUCT_AUTHORITY_AMBIGUITY = FOUND
+PRODUCTION_TARGET_ATTRIBUTION_DRIFT = FOUND
+AGENT_ENTRYPOINT_ARCHITECTURE_GATE = ADDED
 REMEDIATION_REQUIRED = YES
 ```
 
@@ -19,17 +21,21 @@ REMEDIATION_REQUIRED = YES
 
 | Source | Classification | Finding | Action |
 |---|---|---|---|
-| LoveBud #4004 | `ARCHITECTURE_DECISION` + stale dated evidence | Shared platform decision is correct. The embedded `36 users / 45 Trees / 287 Memories` and related `public.users` rationale are not current default/deployed DB facts after #4005 reconciliation. | Keep architecture; mark old data snapshot historical and point current data claims to #4005 fresh reconciliation. |
-| LoveBud #4005 issue body | `DATA_CONVERGENCE_AUTHORITY` with stale initial snapshot | Body still describes the original 36/45/287 database and LoveTree-only `client_key`/`sort_order` differences. The later #4005 audit found the current default LoveBud `neondb` does not match that snapshot and already has those schema capabilities. | Rewrite current-state section. Preserve old numbers only as historical child-lineage evidence. |
-| `canonical-neon-schema-data-convergence-audit-4005.md` | `LATEST_DETAILED_DATA_RECONCILIATION` | Best current repository document for the 2026-08-16 DB audit. It explicitly reclassifies 36/45/287 as non-default-child historical evidence and records current-default catalog findings. | Keep; still require fresh provider query for future mutable work. |
-| `canonical-memory-lineage-branch-prototype-4005.md` | `HISTORICAL_PROTOTYPE_EVIDENCE` | Already contains a strong live-reconciliation banner. Prototype result remains valid as executed proof but its snapshot is not current authority. | No destructive edit. Treat as historical prototype. |
+| LoveBud #4004 | `ARCHITECTURE_DECISION` + stale dated evidence | Shared platform decision is correct. The embedded `36 users / 45 Trees / 287 Memories` and related `public.users` rationale are not current default/deployed DB facts after #4005 reconciliation. | Issue body rewritten: keep architecture, mark old data snapshot historical, require fresh provider evidence and architecture gate. |
+| LoveBud #4005 issue body | `DATA_CONVERGENCE_AUTHORITY` with stale initial snapshot | Original body described 36/45/287 and LoveTree-only `client_key`/`sort_order` differences as current. Later #4005 audit found the current default LoveBud `neondb` does not match that snapshot and already has those schema capabilities. | Issue body rewritten: historical/default-child provenance separated; exact current target must be fresh-queried. |
+| `canonical-neon-schema-data-convergence-audit-4005.md` | `LATEST_DETAILED_DATA_RECONCILIATION` | Best repository document for the 2026-08-16 DB audit. It explicitly reclassifies 36/45/287 as non-default-child historical evidence and records current-default catalog findings. | Keep; still require fresh provider query for future mutable work. |
+| `canonical-memory-lineage-branch-prototype-4005.md` | `HISTORICAL_PROTOTYPE_EVIDENCE` | Already contains a strong live-reconciliation banner. Prototype result remains valid as executed proof but its snapshot is not current authority. | Preserve as historical prototype. |
 | `canonical-memory-lineage-write-contract-4005.md` | `HISTORICAL_CONTRACT_EVIDENCE` | Useful semantic design, but its descriptions of current runtime support predate later #4058/#4059 work and must not be treated as current runtime truth without fresh source inspection. | Preserve as provenance; current runtime claims require fresh source/issue re-read. |
 | `cloudflare-neon-runtime-feasibility-audit-4000.md` | `HISTORICAL_FORENSIC_RECONCILED_BY_4004` | Correctly says #4004 superseded dual-backend direction, but its reconciliation section still repeats the old 36/45/287 data-authority snapshot as though current. | Treat that data line as historical; #4005 is current data reconciliation authority. |
-| LoveBud #4006 | `AUTH_MIGRATION_AUTHORITY` with stale DB evidence | Shared Firebase → staged Neon Auth architecture is correct. The body’s 36 `public.users` / 34-owner current-state claim is stale for current default/deployed lineage. | Rewrite evidence section; keep stable-account/provider mapping and staged migration model. |
-| LoveTree #152 | `LOVETREE_PLATFORM_GUARDRAIL` with stale comparative evidence | Core rule is correct. `LoveBud materially more live state` and `LoveTree newer schema refinements` are no longer safe current claims after #4005 reconciliation. | Rewrite data-evidence section; make canonical choice independent of row-count rhetoric. |
-| LoveTree #202 | `TRANSITIONAL_MVP_BRIDGE_AUTHORITY` | Architecture is sound: LoveTree bridge is bounded and portable to shared platform. Embedded SHAs are explicitly historical. | Keep. Add future worker preflight reference where needed. |
-| LoveTree #67 | `TEST_ISOLATION_E2E_AUTHORITY` | Safety requirement for non-Production disposable identity is valid, but wording can be misread as authorization to build a new LoveTree Product Auth/DB/Worker stack. | Reframe dedicated resources as `TEST_ISOLATION_ONLY`; require shared-platform architecture preflight before provider mutation. |
-| LoveTree #201 | `MVP_COORDINATION_AUTHORITY` | Does not choose a second backend, but infrastructure workers can operate from child issues without rereading #4004/#152. | Add mandatory cross-repo architecture gate for Auth/DB/provider work. |
+| LoveBud #4006 | `AUTH_MIGRATION_AUTHORITY` with stale DB evidence | Shared Firebase → staged Neon Auth architecture is correct. Original body’s 36 `public.users` / 34-owner current-state claim is stale for current default/deployed lineage. | Issue body rewritten; stable-account/provider mapping and staged migration model retained. |
+| LoveBud #4043 | `PRODUCTION_OPS` with unsafe stale target attribution | Original body asserted Production/default `neondb` had 45 Trees / 287 Memories and `tree_appreciation_orders`. Later #4005 evidence contradicts that target attribution and table claim for the live default `neondb` it inspected. | Issue retitled `HOLD`; Production mutation blocked until exact deployed DB/branch/database, binding and table capability are fresh re-established. |
+| LoveTree #152 | `LOVETREE_PLATFORM_GUARDRAIL` with stale comparative evidence | Core rule is correct. `LoveBud materially more live state` and `LoveTree newer schema refinements` were no longer safe current claims after #4005 reconciliation. | Issue body rewritten; canonical choice no longer depends on row-count rhetoric. |
+| LoveTree #202 | `TRANSITIONAL_MVP_BRIDGE_AUTHORITY` | Architecture is sound: LoveTree bridge is bounded and portable to shared platform. Embedded SHAs are explicitly historical. | Preserve completed issue; post-completion preflight clarification added. |
+| LoveTree #67 | `TEST_ISOLATION_E2E_AUTHORITY` | Safety requirement for non-Production disposable identity is valid, but old wording could be misread as authorization to build a new LoveTree Product Auth/DB/Worker stack. | Issue title/body rewritten; dedicated resources explicitly `TEST_ISOLATION_ONLY`; automatic provisioning interpretation superseded. |
+| LoveTree #201 | `MVP_COORDINATION_AUTHORITY` | Does not choose a second backend, but infrastructure workers could operate from child issues without rereading #4004/#152. | Mandatory cross-repo architecture gate amendment posted. |
+| LoveBud #4094 / merged #4095 foundation | `SHARED_API_FOUNDATION` | Provider-neutral foundation is consistent with one shared backend, but later children still need explicit inheritance of #4004/#152 before provider/runtime activation. | Architecture-inheritance comment posted; #4095 merge treated as shared-platform foundation, not Product cutover. |
+| LoveBud `AGENTS.md` | `REPOSITORY_AGENT_ENTRYPOINT` | Previously lacked the cross-repo platform authority in session startup/hard gates. | Updated on Draft PR #4102 to require #4004/#152/#4005/#4006 + resource classification before relevant mutation. |
+| LoveTree `AGENTS.md` | `REPOSITORY_AGENT_ENTRYPOINT` | Previously described the local Firebase/Neon/Worker stack without explicitly separating transitional runtime state from shared Product authority. | Updated on Draft PR #257: local runtime is bridge state; shared-platform preflight is mandatory. |
 
 ## Current architecture facts that must not drift
 
@@ -72,16 +78,39 @@ NEW_PERMANENT_LOVETREE_BACKEND
 PRODUCT_CUTOVER
 ```
 
+## Production Ops rule
+
+Production row counts, table presence, deployment identity, secret binding target, and branch/database identity are all **mutable observations**.
+
+A historical count/table snapshot may never be used as a substitute for exact current target attribution before a Production mutation.
+
+Required pattern:
+
+```text
+CURRENT_DEPLOYMENT_FRESH
+CURRENT_PROVIDER_TARGET_FRESH
+RUNTIME_BINDING_TARGET_MATCH
+REQUIRED_CAPABILITY_PRESENT
+EXPLICIT_PRODUCTION_MUTATION_AUTHORITY
+
+all PASS
+→ only then Production mutation may be considered
+```
+
+Any ambiguity = zero mutation.
+
 ## Preventive controls
 
 1. New normative shared-platform authority document in both repositories.
 2. Machine-readable authority manifest in both repositories.
-3. Mandatory `ARCHITECTURE_CONSISTENCY_GATE` before Auth/DB/provider/E2E infrastructure mutation.
-4. Mandatory resource classification before mutation.
-5. Fresh-query requirement for provider state, row counts, branch IDs, SHAs, PR heads, and deployment identities.
-6. Worker prompts must explicitly read #4004/#152 and #4005/#4006 when relevant.
-7. Historical/prototype docs stay as provenance but are not current authority.
-8. Issue bodies containing stale `current` claims should be corrected rather than relying only on later comments.
+3. Shared-platform gate added to both repository `AGENTS.md` entrypoints.
+4. Mandatory `ARCHITECTURE_CONSISTENCY_GATE` before Auth/DB/provider/E2E infrastructure mutation.
+5. Mandatory resource classification before mutation.
+6. Fresh-query requirement for provider state, row counts, branch IDs, SHAs, PR heads, deployments, bindings, and target databases.
+7. Worker prompts must explicitly read #4004/#152 and #4005/#4006 when relevant.
+8. Historical/prototype docs stay as provenance but are not current authority.
+9. Issue bodies containing stale `current` claims are corrected rather than relying only on later comments.
+10. Current Production Ops issues fail closed when exact target attribution conflicts with newer evidence.
 
 ## Required worker report fields
 
