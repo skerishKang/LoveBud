@@ -5073,6 +5073,18 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the provider-neutral love-platform-api foundation core and unrouted Worker boundary in-process with constructed Request inputs and injected fake Query/Transaction capabilities, while reading the foundation sources to lock no Product-route/auth-provider/DB-driver/Production-secret coupling. Verifies request-context shape, bounded/sanitized request-id propagation, canonical streamed body-size guard reuse, fixed leak-safe error categories, fail-closed unsupported capabilities, and that Query capability never implies Transaction capability. No real network, database, browser, provider, deployment, runtime binding, Production secret, or Production resource is used (#4094).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-public-growing-read.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared love-platform-api Growing public-read route in-process with constructed Request inputs and an injected fake Query capability, proving the current LoveBud public Tree + public Memory count 1–2 projection, bounded 3..12 limit behavior, canonical request-id/no-store response, public-only DTO allowlist, fail-closed missing capability/invalid route behavior, bounded error redaction, no Transaction implication, and zero external fetch/DB-driver/Product-route/auth-provider capability. No real external network, database, browser, provider, deployment, Production secret, or Production resource is used (#4099).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-firebase-read-principal.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the love-platform-api Firebase read-principal adapter in-process with constructed Request inputs and an injected fake Firebase verifier, proving deterministic source-only resolution of the read principal, bounded claim/attribute projection, canonical request-id/no-store response, public-only DTO allowlist, fail-closed missing capability/invalid token behavior, bounded error redaction, and no external provider SDK coupling. No real provider SDK, external network, database, browser, deployment, Production secret, or live provider capability is used (#4100).",
+      "capabilities": []
     }
   ],
   "supplemental": [
