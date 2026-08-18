@@ -37,8 +37,8 @@ function check(name, fn) {
 }
 
 const BENCH_TOKEN = 'synthetic-bench-token';
-const NEON_URL = 'postgresql://synthetic:synthetic@ep-synthetic-4093.us-east-1.neon.tech/neondb?sslmode=require';
-const HYPERDRIVE_URL = 'postgresql://synthetic:synthetic@hyperdrive.invalid/neondb';
+const NEON_URL = 'postgresql://ep-synthetic-4093.us-east-1.neon.tech/neondb?sslmode=require';
+const HYPERDRIVE_URL = 'postgresql://hyperdrive.invalid/neondb';
 
 function baseEnv(extra = {}) {
   return {
