@@ -295,7 +295,7 @@ test('#4116 cursor mode preserves keyset predicate, created_at/id ordering, limi
     ]
   });
   const first = await direct.handleOwnerTreesDirectNeon(
-    directRequest('?pagination=cursor&limit=2'), directEnv(), 'req-page-1',
+    directRequest('?pagination=cursor&cursor=&limit=2'), directEnv(), 'req-page-1',
     { executorOverride: firstFixture.executor, verifyTokenOverride: async () => ({ uid: 'owner-a' }) }
   );
   assert.equal(first.status, 200);

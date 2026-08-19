@@ -366,8 +366,9 @@ export async function handleOwnerTreesDirectNeon(
   const limit = normalizeOwnerTreeLimit(sourceUrl.searchParams.get('limit'));
   const cursorMode = sourceUrl.searchParams.get('pagination') === 'cursor';
   let cursor = null;
-  if (cursorMode && sourceUrl.searchParams.has('cursor')) {
-    cursor = decodeOwnerTreeCursor(sourceUrl.searchParams.get('cursor'));
+  const rawCursor = sourceUrl.searchParams.get('cursor');
+  if (cursorMode && rawCursor) {
+    cursor = decodeOwnerTreeCursor(rawCursor);
     if (!cursor) {
       return jsonResponse({ detail: 'Invalid pagination cursor' }, 400, requestId, 'invalid-cursor');
     }
