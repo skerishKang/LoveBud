@@ -9,6 +9,10 @@ import {
   handleOwnerTreesDirectNeon,
   isOwnerTreesDirectNeonSelected
 } from '../_shared/owner-tree-list-direct-neon.js';
+import {
+  buildIntegerLimitValidationBody,
+  hasFractionalOwnerTreeLimit
+} from '../_shared/owner-tree-list-limit-parity.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -118,6 +122,24 @@ function buildModalConfigMissingResponse(requestId = null) {
   });
 }
 
+function buildDirectOwnerLimitValidationResponse(rawLimit, requestId = null) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-lovebud-upstream': 'direct-neon',
+    'x-lovebud-runtime': 'direct_neon',
+    'x-lovebud-route-status': 'invalid-limit'
+  };
+  if (requestId) {
+    headers[REQUEST_ID_HEADER] = requestId;
+    headers['Access-Control-Expose-Headers'] = REQUEST_ID_HEADER;
+  }
+  return new Response(JSON.stringify(buildIntegerLimitValidationBody(rawLimit)), {
+    status: 422,
+    headers
+  });
+}
+
 function clampOwnerTreesLimit(rawLimit) {
   return Math.min(Math.max(Number(rawLimit || 100) || 100, 1), 200);
 }
@@ -143,6 +165,10 @@ export async function onRequestGet(context) {
   const requestId = getOrCreateRequestId(request);
 
   if (isOwnerTreesDirectNeonSelected(context.env)) {
+    const rawLimit = new URL(request.url).searchParams.get('limit');
+    if (hasFractionalOwnerTreeLimit(rawLimit)) {
+      return buildDirectOwnerLimitValidationResponse(rawLimit, requestId);
+    }
     return handleOwnerTreesDirectNeon(request, context.env, requestId);
   }
 

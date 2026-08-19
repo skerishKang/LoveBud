@@ -285,6 +285,39 @@ test('#4116 limit/default/min/max and legacy ordering match Modal owner list', a
   }
 });
 
+test('#4116 fractional finite limit preserves FastAPI integer validation and avoids auth/DB work', async () => {
+  const treesRoute = await import('../../functions/api/trees.js');
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    throw new Error('fractional limit must fail before Firebase metadata or DB work');
+  };
+  try {
+    const response = await treesRoute.onRequestGet({
+      request: directRequest('?limit=1.5'),
+      env: directEnv()
+    });
+    assert.equal(response.status, 422);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(response.headers.get('x-lovebud-route-status'), 'invalid-limit');
+    assert.equal(response.headers.get('x-lovebud-request-id'), 'req-4116-safe');
+    assert.deepEqual(await response.json(), {
+      detail: [{
+        type: 'int_parsing',
+        loc: ['query', 'limit'],
+        msg: 'Input should be a valid integer, unable to parse string as an integer',
+        input: '1.5'
+      }]
+    });
+    assert.equal(fetchCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('#4116 cursor mode preserves keyset predicate, created_at/id ordering, limit+1, and nextCursor', async () => {
   const direct = await import('../../functions/_shared/owner-tree-list-direct-neon.js');
   const firstFixture = makeExecutor({
