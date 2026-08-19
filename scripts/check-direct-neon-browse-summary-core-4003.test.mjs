@@ -152,4 +152,126 @@ await (async () => {
   console.log('PASS injected executor path performs capability + data query without network');
 })();
 
-console.log(`DIRECT_NEON_BROWSE_CORE_4003 PASS ${passed}/13`);
+// ─────────────────────────────────────────────────────────────────────────────
+// Timestamp strict-parity regression (COMP3 #4003)
+//
+// The direct-Neon Browse path previously serialized `createdAt` / `updatedAt`
+// through `@neondatabase/serverless` (JS Date -> Date.toISOString()), producing
+// a millisecond `.000Z` form that diverged from the Modal/Python canonical
+// DTO microsecond `+00:00` form. The query now casts the columns to `text` so
+// the driver returns the raw Postgres textual timestamp, and
+// `normalizeDirectNeonTimestamp` normalizes it to the canonical Modal/Python
+// `isoformat` form. These checks prove the wire-format parity without any
+// fabricated precision.
+// ─────────────────────────────────────────────────────────────────────────────
+
+check('timestamp: PG textual microsecond precision preserved and normalized to canonical Modal/Python form', () => {
+  const row = normalizeDirectNeonBrowseRow({
+    id: 't', visibility: 'public', memory_count: 3,
+    created_at: '2026-07-01 12:34:56.123456+00',
+    updated_at: '2026-07-01 12:34:56.123456+00',
+  });
+  assert.equal(row.createdAt, '2026-07-01T12:34:56.123456+00:00');
+  assert.equal(row.updatedAt, '2026-07-01T12:34:56.123456+00:00');
+});
+
+check('timestamp: createdAt and updatedAt both use the canonical form (parity)', () => {
+  const row = normalizeDirectNeonBrowseRow({
+    id: 't', visibility: 'public', memory_count: 3,
+    created_at: '2026-07-01 09:08:07.000007+00',
+    updated_at: '2026-07-01 09:08:07.000007+00',
+  });
+  assert.equal(row.createdAt, row.updatedAt);
+  assert.equal(row.createdAt, '2026-07-01T09:08:07.000007+00:00');
+});
+
+check('timestamp: null timestamps normalize to null (no fabricated value)', () => {
+  const row = normalizeDirectNeonBrowseRow({
+    id: 't', visibility: 'public', memory_count: 3,
+    created_at: null, updated_at: null,
+  });
+  assert.equal(row.createdAt, null);
+  assert.equal(row.updatedAt, null);
+});
+
+check('timestamp: exact-second value omits fractional part (matches Python isoformat, no fabricated .000000)', () => {
+  const row = normalizeDirectNeonBrowseRow({
+    id: 't', visibility: 'public', memory_count: 3,
+    created_at: '2026-07-01 12:34:56+00',
+    updated_at: '2026-07-01 12:34:56+00',
+  });
+  assert.equal(row.createdAt, '2026-07-01T12:34:56+00:00');
+  assert.equal(row.updatedAt, '2026-07-01T12:34:56+00:00');
+  assert.doesNotMatch(row.createdAt, /\.\d/);
+});
+
+check('timestamp: sub-millisecond digits padded to 6-digit microsecond canonical (no fabrication)', () => {
+  const row = normalizeDirectNeonBrowseRow({
+    id: 't', visibility: 'public', memory_count: 3,
+    created_at: '2026-07-01 12:34:56.123+00',
+  });
+  assert.equal(row.createdAt, '2026-07-01T12:34:56.123000+00:00');
+});
+
+check('timestamp: non-timestamp fields unaffected by timestamp normalization', () => {
+  const row = normalizeDirectNeonBrowseRow({
+    id: 'tree-9', title: 'Keep', visibility: 'public',
+    created_at: '2026-07-01 12:34:56.123456+00',
+    updated_at: '2026-07-01 12:34:56.123456+00',
+    memory_count: 5, all_tags: [['joy']], like_count: 4, view_count: 9,
+    raw_thumbnail: '', raw_source_url: 'https://e.invalid/v',
+  });
+  assert.equal(row.id, 'tree-9');
+  assert.equal(row.title, 'Keep');
+  assert.equal(row.memoryCount, 5);
+  assert.deepEqual(row.emotionTags, ['joy']);
+  assert.equal(row.likeCount, 4);
+  assert.equal(row.viewCount, 9);
+  assert.equal(row.stage, '최애');
+});
+
+check('query: Browse SELECT casts created_at/updated_at to text to preserve raw PG precision at driver boundary', () => {
+  const query = buildDirectNeonBrowseSummaryQuery({ sort: 'latest', limit: 12 });
+  assert.match(query.text, /t\.created_at::text AS created_at/);
+  assert.match(query.text, /t\.updated_at::text AS updated_at/);
+  // The ORDER BY still references the real column, not the text cast.
+  assert.match(query.text, /ORDER BY t\.created_at DESC/);
+});
+
+check('timestamp: already-canonical ISO string is idempotent (no double normalization)', () => {
+  const row = normalizeDirectNeonBrowseRow({
+    id: 't', visibility: 'public', memory_count: 3,
+    created_at: '2026-08-01T00:00:00+00:00',
+    updated_at: '2026-08-02T00:00:00+00:00',
+  });
+  assert.equal(row.createdAt, '2026-08-01T00:00:00+00:00');
+  assert.equal(row.updatedAt, '2026-08-02T00:00:00+00:00');
+});
+
+check('timestamp: JS Date input fails closed without fabricating microsecond precision', () => {
+  // A JS Date has already lost sub-millisecond PostgreSQL precision; presenting
+  // it as a canonical six-digit microsecond timestamp would fabricate precision
+  // that cannot be proven from the source. The function must fail closed and
+  // must not emit a fabricated `.123000+00:00` form.
+  const dateValue = new Date('2026-07-01T12:34:56.123Z');
+  for (const which of ['created_at', 'updated_at']) {
+    const row = {
+      id: 't', visibility: 'public', memory_count: 3,
+      created_at: '2026-07-01 12:34:56.123456+00',
+      updated_at: '2026-07-01 12:34:56.123456+00',
+    };
+    row[which] = dateValue;
+    let caught;
+    try {
+      normalizeDirectNeonBrowseRow(row);
+      assert.fail(`expected ${which} Date input to fail closed`);
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught instanceof TypeError, 'expected TypeError');
+    assert.equal(caught.message, 'DIRECT_NEON_TIMESTAMP_PRECISION_LOST');
+    assert.doesNotMatch(caught.message, /\.\d{3,6}\+00:00/);
+  }
+});
+
+console.log(`DIRECT_NEON_BROWSE_CORE_4003 PASS ${passed}/22`);

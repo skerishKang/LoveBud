@@ -86,8 +86,8 @@ SELECT
   t.id,
   t.title,
   t.visibility,
-  t.created_at,
-  t.updated_at,
+  t.created_at::text AS created_at,
+  t.updated_at::text AS updated_at,
   c.memory_count,
   c.all_tags,
   COALESCE(s.like_count, 0) AS like_count,
@@ -130,11 +130,79 @@ LIMIT $1
   });
 }
 
-function toIsoLike(value) {
+// Normalize a Postgres timestamp value into the canonical Modal/Python
+// `isoformat` wire form used by the canonical Browse DTO:
+//   'YYYY-MM-DDTHH:MM:SS[.ffffff][+HH:MM]'
+//
+// Why this exists: the `@neondatabase/serverless` HTTP driver materializes
+// `timestamp` / `timestamptz` columns as JS `Date` objects at the driver
+// boundary, which discards sub-millisecond precision and emits a millisecond
+// `.000Z` form via `Date.toISOString()`. To preserve strict wire parity with
+// the Modal/Python canonical DTO (which keeps full microsecond precision and a
+// `+HH:MM` UTC offset), the Browse query casts `created_at` / `updated_at` to
+// `text` so the driver returns the raw Postgres textual representation (e.g.
+// `2026-07-01 12:34:56.123456+00`). This function converts that textual form
+// into the canonical Modal/Python form.
+//
+// Rules (no fabricated precision):
+//   - null / undefined => null
+//   - a JS Date input fails closed (throws DIRECT_NEON_TIMESTAMP_PRECISION_LOST)
+//     because it has already lost sub-millisecond PostgreSQL precision and cannot
+//     be reproduced as strict microsecond parity; no raw value is echoed.
+//   - already-canonical ISO strings are returned unchanged (idempotent)
+//   - sub-second digits are padded to 6 (microsecond) to match
+//     `datetime.isoformat()`; this is canonical, not fabricated, because e.g.
+//     `.123` === 123000us === `.123000`.
+//   - when microsecond == 0 the fractional part is omitted entirely, exactly
+//     like `datetime.isoformat()` (never emit `.000000`).
+//   - offset is normalized to `+HH:MM` (or `-HH:MM`); `Z` => `+00:00`.
+function normalizeDirectNeonTimestamp(value) {
   if (value == null) return null;
-  if (typeof value === 'string') return value;
-  if (value instanceof Date) return value.toISOString();
-  return String(value);
+  if (value instanceof Date) {
+    // A JS Date has already lost sub-millisecond PostgreSQL precision at the
+    // driver boundary (Date is millisecond-only). The original `.123456` and
+    // `.123000` both collapse to the same Date value, so any six-digit
+    // microsecond form derived from a Date would fabricate precision that cannot
+    // be proven from the source. The authoritative path is the SQL `::text` cast
+    // (see buildDirectNeonBrowseSummaryQuery), which preserves the raw Postgres
+    // textual timestamp before the driver can materialize a Date. An unexpected
+    // Date here means precision loss already occurred upstream; fail closed
+    // rather than silently manufacturing strict-parity evidence. No raw value,
+    // ID, secret, or URL is included in the message.
+    throw new TypeError('DIRECT_NEON_TIMESTAMP_PRECISION_LOST');
+  }
+  if (typeof value !== 'string') return String(value);
+
+  const text = value.trim();
+  // Separate a trailing offset: +HH, +HH:MM, -HH, -HH:MM, or Z.
+  const offsetMatch = text.match(/([+-]\d{2}(?::?\d{2})?|Z)$/);
+  let offset = '';
+  let body = text;
+  if (offsetMatch) {
+    offset = offsetMatch[1];
+    body = text.slice(0, offsetMatch.index);
+  }
+  // Normalize date/time separator (PG uses a space, ISO uses T).
+  body = body.replace(' ', 'T');
+  // Normalize fractional seconds to 6-digit microseconds (canonical).
+  body = body.replace(/(\.\d+)$/, (m) => {
+    const digits = m.slice(1);
+    return '.' + (digits + '000000').slice(0, 6);
+  });
+  // Normalize offset to +HH:MM (or -HH:MM). No offset (naive `timestamp`) is
+  // left undecorated to match a naive Modal `isoformat` and to avoid fabricating
+  // a timezone. The timestamptz columns used here always carry an offset.
+  let normalizedOffset;
+  if (offset === 'Z') {
+    normalizedOffset = '+00:00';
+  } else if (offset) {
+    const sign = offset[0];
+    const rest = offset.slice(1);
+    normalizedOffset = rest.includes(':') ? offset : `${sign}${rest}:00`;
+  } else {
+    normalizedOffset = '';
+  }
+  return body + normalizedOffset;
 }
 
 export function estimateBrowseStage(memoryCount) {
@@ -174,8 +242,8 @@ export function normalizeDirectNeonBrowseRow(row = {}) {
     id: String(row.id ?? ''),
     title: row.title || '나의 Lovetree',
     visibility: row.visibility || 'public',
-    createdAt: toIsoLike(row.created_at),
-    updatedAt: toIsoLike(row.updated_at),
+    createdAt: normalizeDirectNeonTimestamp(row.created_at),
+    updatedAt: normalizeDirectNeonTimestamp(row.updated_at),
     representativeThumbnail: rawThumbnail || rawSourceUrl || '',
     memoryCount,
     emotionTags: parseBrowseEmotionTags(row.all_tags),
