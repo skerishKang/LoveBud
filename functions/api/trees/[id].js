@@ -4,6 +4,7 @@ import {
 } from '../../_shared/request-id.js';
 import { fetchModalWithTimeout, isModalTimeoutError } from '../../_shared/modal-fetch.js';
 import { readBoundedRequestBody } from '../../_shared/bounded-request-body.js';
+import { handlePublicTreeDetailDirectNeon } from '../../_shared/public-tree-detail-neon-query.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -94,17 +95,17 @@ function withPublicTreeCacheStatus(response, status) {
 export async function onRequestGet(context) {
   const { request, env } = context;
   const requestId = getOrCreateRequestId(request);
-
-  const modalBaseUrl = stripTrailingSlash(env?.MODAL_BASE_URL);
-  if (!modalBaseUrl) {
-    return buildModalConfigMissingResponse(requestId);
-  }
-
   const treeId = context.params?.id;
   const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
 
-  // Authenticated requests: route through owner/private authority, cache-independent
+  // Authenticated requests: route through owner/private authority, cache-independent.
+  // This branch deliberately remains ahead of the anonymous direct-Neon gate.
   if (authHeader) {
+    const modalBaseUrl = stripTrailingSlash(env?.MODAL_BASE_URL);
+    if (!modalBaseUrl) {
+      return buildModalConfigMissingResponse(requestId);
+    }
+
     const primaryTarget = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
     let response;
     try {
@@ -134,7 +135,25 @@ export async function onRequestGet(context) {
     return await withUpstreamHeaderAndId(finalResp, 'modal', requestId);
   }
 
-  // Anonymous requests: reach the current public Modal authority on every request.
+  // Anonymous requests may use the route-specific direct-Neon candidate only
+  // behind the explicit gate. The helper returns null for absent/modal/unknown
+  // gate values, preserving Modal as the rollback/default authority.
+  const directResponse = await handlePublicTreeDetailDirectNeon(
+    request,
+    treeId,
+    env || {},
+    requestId,
+  );
+  if (directResponse) {
+    return directResponse;
+  }
+
+  const modalBaseUrl = stripTrailingSlash(env?.MODAL_BASE_URL);
+  if (!modalBaseUrl) {
+    return buildModalConfigMissingResponse(requestId);
+  }
+
+  // Default anonymous authority: current public Modal read on every request.
   // No explicit Cache API persistence: a Tree's visibility may be revoked at any
   // time, and a POP-local cache entry could keep serving a stale public body.
   const targetUrl = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
