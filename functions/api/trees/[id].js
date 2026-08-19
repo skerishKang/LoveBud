@@ -5,6 +5,10 @@ import {
 import { fetchModalWithTimeout, isModalTimeoutError } from '../../_shared/modal-fetch.js';
 import { readBoundedRequestBody } from '../../_shared/bounded-request-body.js';
 import { handlePublicTreeDetailDirectNeon } from '../../_shared/public-tree-detail-neon-query.js';
+import {
+  handleOwnerTreeDetailDirectNeon,
+  isOwnerTreeDetailPublicFallbackResponse
+} from '../../_shared/owner-tree-detail-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -98,31 +102,55 @@ export async function onRequestGet(context) {
   const treeId = context.params?.id;
   const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
 
-  // Authenticated requests: route through owner/private authority, cache-independent.
-  // This branch deliberately remains ahead of the anonymous direct-Neon gate.
+  // Authenticated requests remain owner/private-first and cache-independent.
+  // #4121 may migrate only this owner read behind its independent gate; the
+  // anonymous #4115 branch below remains unchanged.
   if (authHeader) {
+    const ownerDirectResponse = await handleOwnerTreeDetailDirectNeon(
+      request,
+      treeId,
+      env || {},
+      requestId,
+    );
+
+    if (ownerDirectResponse && !isOwnerTreeDetailPublicFallbackResponse(ownerDirectResponse)) {
+      return ownerDirectResponse;
+    }
+
     const modalBaseUrl = stripTrailingSlash(env?.MODAL_BASE_URL);
     if (!modalBaseUrl) {
       return buildModalConfigMissingResponse(requestId);
     }
 
-    const primaryTarget = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
     let response;
     try {
-      response = await fetchModalWithTimeout(primaryTarget.toString(), {
-        headers: {
-          accept: 'application/json',
-          authorization: authHeader
-        }
-      });
-
-      if (response.status === 404) {
+      if (ownerDirectResponse) {
+        // Current authenticated contract: an owner/private 404 gets exactly one
+        // public Tree lookup. This is the only direct->Modal compatibility
+        // fallback permitted under the explicit owner direct gate.
         const publicTarget = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
         response = await fetchModalWithTimeout(publicTarget.toString(), {
           headers: {
             accept: 'application/json'
           }
         });
+      } else {
+        const primaryTarget = new URL(`/modal/private/trees/${treeId}`, modalBaseUrl);
+        response = await fetchModalWithTimeout(primaryTarget.toString(), {
+          headers: {
+            accept: 'application/json',
+            authorization: authHeader
+          }
+        });
+
+        if (response.status === 404) {
+          const publicTarget = new URL(`/modal/trees/${treeId}`, modalBaseUrl);
+          response = await fetchModalWithTimeout(publicTarget.toString(), {
+            headers: {
+              accept: 'application/json'
+            }
+          });
+        }
       }
     } catch (error) {
       if (isModalTimeoutError(error)) {
