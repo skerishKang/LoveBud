@@ -5103,6 +5103,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the Cloudflare->Neon Growing Product runtime adapter in-process with constructed Request/env inputs and injected fake query executor, proving explicit gate activation (LB_GROWING_READ_RUNTIME=direct_neon), dedicated DB config validation (LOVE_PLATFORM_DATABASE_URL), fail-closed missing/invalid config behavior with zero Modal fallback, static parameterized SQL mapping, public eligibility preservation (1-2 public memories), ordering and limit parity, leak-safe error sanitization, and driver verification without real network or DB access (#4109).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/neon-ws-transaction-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Neon WS transaction adapter against an injected in-memory fake Client/transport to verify request-scoped single-client affinity, parameterized-query validation, adapter-owned transaction control, advisory/row-lock helpers, rollback and rollback-failure behavior, unknown COMMIT outcome with no rollback or automatic whole-transaction retry, concurrent client isolation, canonical reread ordering, and sanitized errors. No real network, Neon database, browser, provider mutation, or Production resource is used (#4093/#4132).",
+      "capabilities": []
     }
   ],
   "supplemental": [
