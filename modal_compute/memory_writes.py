@@ -4,17 +4,20 @@ import hashlib
 import uuid
 from typing import Any
 
+import psycopg
 from fastapi import HTTPException
 
 from modal_compute.auth import require_plus_for_private_storage
 from modal_compute.db import get_db_connection
 from modal_compute.owner_reads import fetch_owner_tree
+from modal_compute.schema_capabilities import table_has_column
 from modal_compute.write_validation import (
     fetch_memory_for_owner_check,
     require_memory_owner,
 )
 from modal_compute.validation import (
     normalize_memory_row,
+    validate_client_key,
     validate_explicit_visibility,
     validate_optional_memory_string,
     validate_optional_string,
@@ -82,20 +85,21 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
 
     emotion_tags = validate_emotion_tags(payload["emotionTags"]) if "emotionTags" in payload else []
 
-    query = """
-        INSERT INTO memories (
-            id, tree_id, parent_id, title, memo, artist, source, source_url,
-            source_type, thumbnail, emotion_tags, timestamp, visibility,
-            channel_id, channel_name, channel_url,
-            created_at, updated_at
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
-        RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
-                  source_type, thumbnail, emotion_tags, timestamp, visibility,
-                  channel_id, channel_name, channel_url,
-                  created_at, updated_at;
-    """
-    params = (
+    # Issue #4058: Tree-scoped Memory clientKey idempotency.
+    # validate_client_key returns None for omitted/empty (legacy-compatible),
+    # raises HTTP 400 for non-string/oversized BEFORE any DB mutation.
+    client_key = validate_client_key(payload.get("clientKey"))
+
+    # Shared column list / params (without client_key — added conditionally below).
+    base_columns = (
+        "id, tree_id, parent_id, title, memo, artist, source, source_url, "
+        "source_type, thumbnail, emotion_tags, timestamp, visibility, "
+        "channel_id, channel_name, channel_url, created_at, updated_at"
+    )
+    base_values = (
+        "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW()"
+    )
+    base_params = (
         str(uuid.uuid4()),
         tree_id,
         parent_id,
@@ -142,14 +146,101 @@ def create_owner_memory(owner_id: str, payload: dict[str, Any]) -> dict[str, Any
                         detail={"code": "INVALID_PARENT_ID"},
                     )
 
-            # --- INSERT ---
-            cur.execute(query, params)
-            row = cur.fetchone()
-        conn.commit()
+            # --- Capability detection: does the canonical schema carry client_key? ---
+            has_client_key_column = table_has_column(cur, "memories", "client_key")
 
-    if not row:
-        raise HTTPException(status_code=404, detail="Memory not found")
-    return normalize_memory_row(row)
+            if has_client_key_column:
+                # Idempotency path: same Tree + same clientKey already persisted?
+                if client_key is not None:
+                    cur.execute(
+                        """
+                        SELECT id, tree_id, parent_id, title, memo, artist, source, source_url,
+                               source_type, thumbnail, emotion_tags, timestamp, visibility,
+                               channel_id, channel_name, channel_url, client_key,
+                               created_at, updated_at
+                        FROM memories
+                        WHERE tree_id = %s AND client_key = %s
+                        LIMIT 1
+                        FOR KEY SHARE
+                        """,
+                        (tree_id, client_key),
+                    )
+                    existing = cur.fetchone()
+                    if existing:
+                        # Convergence: return the already-persisted canonical Memory.
+                        conn.commit()
+                        return normalize_memory_row(existing)
+
+                insert_columns = f"{base_columns}, client_key"
+                insert_values = f"{base_values}, %s"
+                insert_params: tuple[Any, ...] = base_params + (client_key,)
+            else:
+                # Compatibility path: column not yet activated in this environment.
+                # Issue #4058 / #4007: NEVER silently ignore an explicitly supplied
+                # clientKey and create a NEW Memory under a schema that cannot honor
+                # it — that would violate the idempotency contract. Reject explicitly
+                # so the caller can retry after the canonical migration is applied.
+                if client_key is not None:
+                    raise HTTPException(
+                        status_code=501,
+                        detail={
+                            "code": "MEMORY_CLIENT_KEY_SCHEMA_NOT_ACTIVATED",
+                            "reason": "client_key column unavailable; cannot honor idempotency",
+                        },
+                    )
+                insert_columns = base_columns
+                insert_values = base_values
+                insert_params = base_params
+
+            query = f"""
+                INSERT INTO memories (
+                    {insert_columns}
+                )
+                VALUES ({insert_values})
+                RETURNING id, tree_id, parent_id, title, memo, artist, source, source_url,
+                          source_type, thumbnail, emotion_tags, timestamp, visibility,
+                          channel_id, channel_name, channel_url,
+                          {("client_key, " if has_client_key_column else "")}
+                          created_at, updated_at;
+            """
+            try:
+                cur.execute(query, insert_params)
+                row = cur.fetchone()
+            except psycopg.errors.UniqueViolation:
+                # Concurrent same Tree + same clientKey: the other transaction won
+                # the race. Reread the canonical existing row and return it — never
+                # echo the request payload as if it were a freshly created Memory.
+                # Roll back the failed insert, then open a FRESH cursor (the existing
+                # one is invalid after rollback) to reread the winning row.
+                conn.rollback()
+                reread_cur = conn.cursor()
+                reread_cur.execute(
+                    """
+                    SELECT id, tree_id, parent_id, title, memo, artist, source, source_url,
+                           source_type, thumbnail, emotion_tags, timestamp, visibility,
+                           channel_id, channel_name, channel_url, client_key,
+                           created_at, updated_at
+                    FROM memories
+                    WHERE tree_id = %s AND client_key = %s
+                    LIMIT 1
+                    """,
+                    (tree_id, client_key),
+                )
+                row = reread_cur.fetchone()
+                if not row:
+                    # Should not happen: the conflicting row vanished between the
+                    # insert and the reread. Surface a bounded, non-raw error.
+                    raise HTTPException(
+                        status_code=409,
+                        detail={"code": "MEMORY_CLIENT_KEY_CONFLICT_UNRESOLVED"},
+                    )
+                conn.commit()
+                return normalize_memory_row(row)
+
+            conn.commit()
+            if not row:
+                raise HTTPException(status_code=404, detail="Memory not found")
+            return normalize_memory_row(row)
 
 
 # Source-identity fields the update path can bind to SQL. Maps the request key
@@ -242,6 +333,9 @@ def update_owner_memory(owner_id: str, memory_id: str, payload: dict[str, Any]) 
         "channelName",
         "channelUrl",
         "parentId",
+        # NOTE (#4058): clientKey is intentionally NOT in this allowlist. A Memory's
+        # clientKey is immutable after create; any update attempt carrying it is
+        # rejected as an unsupported field (no silent mutation of idempotency key).
     }
 
     # Check for unsupported fields

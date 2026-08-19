@@ -222,22 +222,30 @@ def fetch_owner_memories(owner_id: str, tree_id: str | None = None, limit: int =
         filters.append("m.tree_id = %s")
 
     params.append(limit)
-    query = f"""
-        SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
-               m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
-               m.channel_id, m.channel_name, m.channel_url,
-               m.created_at, m.updated_at
-        FROM memories m
-        INNER JOIN trees t
-          ON t.id = m.tree_id
-        WHERE {' AND '.join(filters)}
-        ORDER BY m.created_at DESC
-        LIMIT %s;
-    """
 
     def operation():
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                # Issue #4058: client_key is selected only when the canonical
+                # schema carries the column. This keeps the read path
+                # capability-safe — when the migration has not been applied, we
+                # never issue a query against a missing column.
+                client_key_select = (
+                    "m.client_key," if _table_has_column(cur, "memories", "client_key") else ""
+                )
+                query = f"""
+                    SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
+                           m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
+                           m.channel_id, m.channel_name, m.channel_url,
+                           {client_key_select}
+                           m.created_at, m.updated_at
+                    FROM memories m
+                    INNER JOIN trees t
+                      ON t.id = m.tree_id
+                    WHERE {' AND '.join(filters)}
+                    ORDER BY m.created_at DESC
+                    LIMIT %s;
+                """
                 cur.execute(query, tuple(params))
                 return cur.fetchall()
 
@@ -364,10 +372,14 @@ def _run_owner_page_query(build_query_and_params):
                 has_social_counts = _table_exists(cur, "tree_social_counts")
                 has_like_count = _table_has_column(cur, "tree_social_counts", "like_count") if has_social_counts else False
                 has_view_count = _table_has_column(cur, "tree_social_counts", "view_count") if has_social_counts else False
+                # Issue #4058: detect the canonical client_key column so the
+                # memory page query stays capability-safe (no query against a
+                # missing column before the migration is applied).
+                has_client_key = _table_has_column(cur, "memories", "client_key")
                 social_counts_source = _build_owner_social_counts_source(
                     has_social_counts, has_like_count, has_view_count,
                 )
-                query, params = build_query_and_params(social_counts_source, has_like_count, has_view_count)
+                query, params = build_query_and_params(social_counts_source, has_like_count, has_view_count, has_client_key)
                 try:
                     cur.execute(query, tuple(params))
                     return cur.fetchall(), has_like_count, has_view_count
@@ -426,7 +438,7 @@ def page_user_trees(owner_id: str, limit: int, cursor: str | None = None) -> tup
     if cursor is not None:
         decoded = _decode_owner_list_cursor(cursor, _TREE_CURSOR_KIND)
 
-    def build(social_counts_source, _like, _view):
+    def build(social_counts_source, _like, _view, has_client_key):
         params: list[Any] = [owner_id]
         cursor_predicate = ""
         if decoded is not None:
@@ -447,6 +459,7 @@ _MEMORY_PAGE_QUERY = """
     SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
            m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
            m.channel_id, m.channel_name, m.channel_url,
+           {client_key_select}
            m.created_at, m.updated_at
     FROM memories m
     INNER JOIN trees t
@@ -475,7 +488,7 @@ def page_owner_memories(
             if cursor_tree_id is not None:
                 raise OwnerListCursorError("tree_scope_required")
 
-    def build(social_counts_source, _like, _view):
+    def build(social_counts_source, _like, _view, has_client_key):
         filters = ["t.owner_id = %s"]
         params: list[Any] = [owner_id]
         if tree_id:
@@ -486,9 +499,11 @@ def page_owner_memories(
             cursor_predicate = "AND ((m.created_at < %s) OR (m.created_at = %s AND m.id < %s))"
             params.extend([decoded["created_at"], decoded["created_at"], decoded["id"]])
         params.append(limit + 1)
+        client_key_select = "m.client_key," if has_client_key else ""
         query = _MEMORY_PAGE_QUERY.format(
             filters=" AND ".join(filters),
             cursor_predicate=cursor_predicate,
+            client_key_select=client_key_select,
         )
         return query, params
 

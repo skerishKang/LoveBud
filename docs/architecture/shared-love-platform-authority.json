@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "status": "NORMATIVE_CROSS_REPOSITORY_ARCHITECTURE_GUARDRAIL",
+  "authority": {
+    "platform_parent": "skerishKang/LoveBud#4004",
+    "lovetree_guardrail": "skerishKang/lovetree-limone#152",
+    "data_schema": "skerishKang/LoveBud#4005",
+    "auth_identity": "skerishKang/LoveBud#4006",
+    "shared_api_foundation": "skerishKang/LoveBud#4094"
+  },
+  "product_invariants": {
+    "authentication_authorities": 1,
+    "backend_api_authorities": 1,
+    "canonical_writable_tree_memory_social_data_authorities": 1,
+    "current_auth_provider_during_migration": "firebase",
+    "target_auth_provider": "neon_auth",
+    "auth_migration_mode": "STAGED_PROVIDER_NEUTRAL_ACCOUNT_MAPPING",
+    "target_backend": "shared_love_platform_api",
+    "lovetree_separate_database": "TRANSITIONAL_BRIDGE_NONCANONICAL"
+  },
+  "resource_classes": [
+    "CANONICAL_PRODUCT_AUTHORITY",
+    "TRANSITIONAL_BRIDGE_NONCANONICAL",
+    "TEST_ISOLATION_ONLY",
+    "PROTOTYPE_ONLY",
+    "HISTORICAL_EVIDENCE_ONLY",
+    "UNKNOWN_STOP"
+  ],
+  "test_isolation_invariants": {
+    "dedicated_e2e_firebase_is_product_authority": false,
+    "isolated_e2e_worker_is_shared_backend_authority": false,
+    "disposable_neon_branch_is_canonical_database": false,
+    "test_resource_may_implicitly_authorize_product_cutover": false
+  },
+  "authority_resolution_order": [
+    "LATEST_EXPLICIT_PRODUCT_OWNER_ARCHITECTURE_DECISION",
+    "PLATFORM_PARENT_4004_AND_LOVETREE_152",
+    "FRESH_CURRENT_PROVIDER_AND_REPOSITORY_EVIDENCE",
+    "SPECIALIZED_4005_4006_SHARED_API_AUTHORITY",
+    "LATEST_EXPLICIT_SUPERSEDING_CORRECTION",
+    "NONSTALE_ISSUE_BODY",
+    "HISTORICAL_REPORTS_SNAPSHOTS_AND_PROTOTYPES"
+  ],
+  "agent_entrypoint": {
+    "shared_platform_preflight_required_for_auth_db_backend_provider_or_mutable_e2e": true,
+    "repository_entrypoint": "AGENTS.md"
+  },
+  "required_pre_mutation_gate": [
+    "PARENT_4004_READ",
+    "LOVETREE_152_READ",
+    "DATA_4005_READ_IF_RELEVANT",
+    "AUTH_4006_READ_IF_RELEVANT",
+    "CURRENT_REMOTE_FRESH",
+    "CURRENT_PROVIDER_IDENTITY_FRESH_IF_RELEVANT",
+    "RESOURCE_CLASS_RESOLVED",
+    "SECOND_CANONICAL_WRITER_CREATED_EQ_NO",
+    "SECOND_PRODUCT_AUTHORITY_CREATED_EQ_NO",
+    "TEST_RESOURCE_PROMOTED_TO_PRODUCT_EQ_NO",
+    "ARCHITECTURE_CONSISTENCY_GATE_PASS"
+  ],
+  "production_mutation_gate": {
+    "current_deployment_fresh": true,
+    "current_provider_target_fresh": true,
+    "runtime_binding_target_match": true,
+    "required_capability_present": true,
+    "explicit_production_mutation_authority": true,
+    "any_ambiguity_means_zero_mutation": true
+  },
+  "historical_snapshot_warning": {
+    "snapshot": "36 users / 45 Trees / 287 Memories",
+    "classification": "HISTORICAL_NON_DEFAULT_CHILD_LINEAGE_EVIDENCE_NOT_CURRENT_DEFAULT_DEPLOYED_AUTHORITY"
+  }
+}
