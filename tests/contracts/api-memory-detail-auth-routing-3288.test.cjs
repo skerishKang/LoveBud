@@ -755,3 +755,517 @@ test('#4114 unrelated Memory writes remain on the shared proxy and route ownersh
     assert.ok(fs.existsSync(path.join(root, relative)), `${relative} remains present and owned by its existing lane`);
   }
 });
+
+// ─── #4123 authenticated owner Memory detail direct-Neon candidate ─────────
+
+const OWNER_MEMORY_DETAIL_NEON_TEST_URL = 'postgresql://test@ep-owner-memory-detail-test.us-east-1.neon.tech/neondb?sslmode=require';
+const OWNER_MEMORY_DETAIL_REQUEST_ID = 'req-owner-memory-detail-4123';
+const OWNER_MEMORY_UID = 'firebase-owner-4123';
+
+async function loadOwnerMemoryDetailDirectModule() {
+  return import('../../functions/_shared/owner-memory-detail-direct-neon.js');
+}
+
+function make4123Context({
+  memoryId = 'mem-owner-123',
+  auth = 'Bearer owner-token-4123',
+  ownerGate,
+  publicGate,
+  databaseUrl,
+  modalBaseUrl = 'https://modal.example.com',
+  extraEnv = {},
+  extraHeaders = {}
+} = {}) {
+  const headers = new Headers({
+    'x-lovebud-request-id': OWNER_MEMORY_DETAIL_REQUEST_ID,
+    ...extraHeaders
+  });
+  if (auth) headers.set('authorization', auth);
+  const env = { ...extraEnv };
+  if (modalBaseUrl !== null) env.MODAL_BASE_URL = modalBaseUrl;
+  if (ownerGate !== undefined) env.LB_OWNER_MEMORY_DETAIL_RUNTIME = ownerGate;
+  if (publicGate !== undefined) env.LB_PUBLIC_MEMORY_DETAIL_RUNTIME = publicGate;
+  if (databaseUrl !== undefined) env.LOVE_PLATFORM_DATABASE_URL = databaseUrl;
+  return {
+    env,
+    params: { id: memoryId },
+    request: new Request(`https://api.example.com/api/memories/${memoryId}`, {
+      method: 'GET',
+      headers
+    })
+  };
+}
+
+function make4123OwnerRow(overrides = {}) {
+  return {
+    id: 'mem-owner-123',
+    tree_id: 'tree-owner-456',
+    parent_id: 'parent-1',
+    title: 'Owner Memory',
+    memo: 'Owner note',
+    artist: 'Artist',
+    source: 'YouTube',
+    source_url: 'https://example.test/watch/owner',
+    source_type: 'youtube',
+    thumbnail: 'https://example.test/thumb/owner.jpg',
+    emotion_tags: ['calm', 'hope'],
+    timestamp: '02:34',
+    visibility: 'private',
+    channel_id: 'owner-channel',
+    channel_name: 'Owner Channel',
+    channel_url: 'https://example.test/channel/owner',
+    client_key: 'client-key-4123',
+    created_at: '2026-08-03 10:11:12.123456+00',
+    updated_at: '2026-08-04T11:12:13.654321Z',
+    tree_owner_id: OWNER_MEMORY_UID,
+    tree_visibility: 'private',
+    ...overrides
+  };
+}
+
+function make4123Executor({ row = make4123OwnerRow(), hasClientKey = true, fail = null } = {}) {
+  const calls = [];
+  const executor = async (sql, values) => {
+    calls.push({ sql, values });
+    if (fail) throw fail;
+    if (/information_schema\.columns/i.test(sql)) {
+      return [{ has_client_key: hasClientKey }];
+    }
+    if (row == null) return [];
+    const projectedRow = { ...row };
+    if (!hasClientKey) delete projectedRow.client_key;
+    return [projectedRow];
+  };
+  return { calls, executor };
+}
+
+async function run4123Direct({
+  memoryId = 'mem-owner-123',
+  row = make4123OwnerRow(),
+  hasClientKey = true,
+  executor,
+  uid = OWNER_MEMORY_UID,
+  contextOverrides = {}
+} = {}) {
+  const fake = executor ? { calls: [], executor } : make4123Executor({ row, hasClientKey });
+  const verifierTokens = [];
+  const verifyTokenOverride = async (token) => {
+    verifierTokens.push(token);
+    return { uid };
+  };
+  const response = await handleMemoryDetailGet(
+    make4123Context({
+      memoryId,
+      ownerGate: 'direct_neon',
+      databaseUrl: OWNER_MEMORY_DETAIL_NEON_TEST_URL,
+      modalBaseUrl: null,
+      ...contextOverrides
+    }),
+    {
+      executorOverride: fake.executor,
+      verifyTokenOverride
+    }
+  );
+  return { response, calls: fake.calls, verifierTokens };
+}
+
+test('#4123 anonymous request ignores owner gate and preserves #4114 anonymous route authority', async () => {
+  const cap = installFetchCapture();
+  try {
+    const response = await onRequestGet(make4123Context({
+      auth: null,
+      ownerGate: 'direct_neon',
+      databaseUrl: OWNER_MEMORY_DETAIL_NEON_TEST_URL
+    }));
+    assert.equal(response.status, 200);
+    assert.equal(cap.calls.length, 1);
+    assert.equal(new URL(cap.calls[0].url).pathname, '/modal/memories/mem-owner-123');
+    assert.equal(cap.calls[0].opts.headers.authorization, undefined);
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4123 anonymous request with both direct gates still uses the #4114 public projection', async () => {
+  let verifierCalls = 0;
+  const response = await handleMemoryDetailGet(
+    make4123Context({
+      auth: null,
+      ownerGate: 'direct_neon',
+      publicGate: 'direct_neon',
+      databaseUrl: OWNER_MEMORY_DETAIL_NEON_TEST_URL,
+      modalBaseUrl: null
+    }),
+    {
+      executorOverride: async () => [make4114PublicRow({ id: 'mem-owner-123' })],
+      verifyTokenOverride: async () => {
+        verifierCalls += 1;
+        return { uid: OWNER_MEMORY_UID };
+      }
+    }
+  );
+  assert.equal(response.status, 200);
+  assert.equal(verifierCalls, 0, 'anonymous #4114 path must never invoke owner principal verification');
+  const body = await response.json();
+  assert.equal(body.visibility, 'public');
+  assert.ok(body.reactionCounts, '#4114 public decoration remains intact');
+  assert.equal(Object.prototype.hasOwnProperty.call(body, 'clientKey'), false);
+});
+
+test('#4123 authenticated absent/default gate remains on current private Modal authority', async () => {
+  const cap = installFetchCapture();
+  try {
+    const response = await onRequestGet(make4123Context());
+    assert.equal(response.status, 200);
+    assert.equal(cap.calls.length, 1);
+    assert.equal(new URL(cap.calls[0].url).pathname, '/modal/private/memories/mem-owner-123');
+    assert.equal(cap.calls[0].opts.headers.authorization, 'Bearer owner-token-4123');
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4123 authenticated unknown owner gate remains on current private Modal authority', async () => {
+  const cap = installFetchCapture();
+  try {
+    await onRequestGet(make4123Context({ ownerGate: 'future-provider' }));
+    assert.equal(cap.calls.length, 1);
+    assert.equal(new URL(cap.calls[0].url).pathname, '/modal/private/memories/mem-owner-123');
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4123 authenticated direct gate verifies Firebase principal and returns exact private DTO', async () => {
+  const cap = installFetchCapture();
+  try {
+    const { response, calls, verifierTokens } = await run4123Direct();
+    assert.equal(response.status, 200);
+    assert.equal(cap.calls.length, 0, 'explicit direct path must not fall back to Modal');
+    assert.deepEqual(verifierTokens, ['owner-token-4123']);
+    assert.equal(calls.length, 2, 'capability read plus one bounded detail read');
+    assert.deepEqual(calls[0].values, []);
+    assert.deepEqual(calls[1].values, ['mem-owner-123']);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(response.headers.get('x-lovebud-request-id'), OWNER_MEMORY_DETAIL_REQUEST_ID);
+    assert.deepEqual(await response.json(), {
+      id: 'mem-owner-123',
+      treeId: 'tree-owner-456',
+      parentId: 'parent-1',
+      title: 'Owner Memory',
+      memo: 'Owner note',
+      artist: 'Artist',
+      source: 'YouTube',
+      sourceUrl: 'https://example.test/watch/owner',
+      sourceType: 'youtube',
+      thumbnail: 'https://example.test/thumb/owner.jpg',
+      emotionTags: ['calm', 'hope'],
+      timestamp: '02:34',
+      visibility: 'private',
+      channelId: 'owner-channel',
+      channelName: 'Owner Channel',
+      channelUrl: 'https://example.test/channel/owner',
+      createdAt: '2026-08-03T10:11:12.123456+00:00',
+      updatedAt: '2026-08-04T11:12:13.654321+00:00',
+      clientKey: 'client-key-4123'
+    });
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4123 owner can read both private and public Memory regardless of parent Tree visibility', async () => {
+  for (const [memoryVisibility, treeVisibility] of [
+    ['private', 'public'],
+    ['public', 'private']
+  ]) {
+    const { response, calls } = await run4123Direct({
+      row: make4123OwnerRow({ visibility: memoryVisibility, tree_visibility: treeVisibility })
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).visibility, memoryVisibility);
+    assert.doesNotMatch(calls[1].sql, /(?:m|t)\.visibility\s*=\s*'public'/i);
+  }
+});
+
+test('#4123 non-owner is rejected with current explicit 403 semantics through parent Tree ownership', async () => {
+  const { response } = await run4123Direct({
+    row: make4123OwnerRow({
+      tree_owner_id: 'different-owner',
+      visibility: 'public',
+      tree_visibility: 'public'
+    })
+  });
+  assert.equal(response.status, 403);
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'forbidden');
+  assert.deepEqual(await response.json(), { detail: 'Access denied: not your memory' });
+});
+
+test('#4123 caller-controlled owner headers cannot replace verified Firebase legacyOwnerId', async () => {
+  const { response } = await run4123Direct({
+    row: make4123OwnerRow({ tree_owner_id: 'header-owner' }),
+    contextOverrides: {
+      extraHeaders: {
+        'x-owner-id': 'header-owner',
+        'x-user-id': 'header-owner',
+        'x-user-email': 'header-owner@example.test'
+      }
+    }
+  });
+  assert.equal(response.status, 403);
+  assert.deepEqual(await response.json(), { detail: 'Access denied: not your memory' });
+});
+
+test('#4123 missing or deleted Memory preserves current 404 semantics', async () => {
+  const { response } = await run4123Direct({ row: null });
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await response.json(), { detail: 'Memory not found' });
+});
+
+test('#4123 clientKey capability present selects/returns clientKey; legacy capability omits column and field', async () => {
+  const present = await run4123Direct({ hasClientKey: true });
+  assert.match(present.calls[1].sql, /m\.client_key/i);
+  assert.equal((await present.response.json()).clientKey, 'client-key-4123');
+
+  const legacy = await run4123Direct({ hasClientKey: false });
+  assert.doesNotMatch(legacy.calls[1].sql, /m\.client_key/i);
+  assert.equal(Object.prototype.hasOwnProperty.call(await legacy.response.json(), 'clientKey'), false);
+
+  const nullKey = await run4123Direct({
+    hasClientKey: true,
+    row: make4123OwnerRow({ client_key: null })
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(await nullKey.response.json(), 'clientKey'), false);
+});
+
+test('#4123 owner projection strips parent ownership/internal fields and does not invent public reaction decoration', async () => {
+  const { response } = await run4123Direct({
+    row: make4123OwnerRow({
+      reaction_counts: { like: 99 },
+      email: 'owner@example.test',
+      auth_subject: 'private-subject'
+    })
+  });
+  const body = await response.json();
+  for (const key of ['tree_owner_id', 'tree_visibility', 'ownerId', 'owner_id', 'email', 'auth_subject', 'reactionCounts']) {
+    assert.equal(Object.prototype.hasOwnProperty.call(body, key), false, `${key} must not be in private DTO`);
+  }
+});
+
+test('#4123 preserves non-UUID/encoded ID semantics and rejects malformed path before auth/DB work', async () => {
+  const encoded = await run4123Direct({
+    memoryId: '%E2%9C%93-owner-memory',
+    row: make4123OwnerRow({ id: '✓-owner-memory' })
+  });
+  assert.equal(encoded.response.status, 200);
+  assert.deepEqual(encoded.calls[1].values, ['✓-owner-memory']);
+
+  let verifierCalls = 0;
+  let executorCalls = 0;
+  const malformed = await handleMemoryDetailGet(
+    make4123Context({
+      memoryId: '%E0%A4%A',
+      ownerGate: 'direct_neon',
+      databaseUrl: OWNER_MEMORY_DETAIL_NEON_TEST_URL,
+      modalBaseUrl: null
+    }),
+    {
+      verifyTokenOverride: async () => {
+        verifierCalls += 1;
+        return { uid: OWNER_MEMORY_UID };
+      },
+      executorOverride: async () => {
+        executorCalls += 1;
+        return [];
+      }
+    }
+  );
+  assert.equal(malformed.status, 400);
+  assert.equal(verifierCalls, 0, 'current edge path classification precedes upstream auth verification');
+  assert.equal(executorCalls, 0);
+  assert.equal(malformed.headers.get('x-lovebud-upstream'), 'cloudflare');
+  assert.deepEqual(await malformed.json(), {
+    error: 'Invalid path encoding',
+    code: 'INVALID_PATH_ENCODING'
+  });
+});
+
+test('#4123 direct gate missing/invalid dedicated DB fails closed after Firebase verification with no Modal fallback', async () => {
+  const cap = installFetchCapture();
+  const verifyTokenOverride = async () => ({ uid: OWNER_MEMORY_UID });
+  try {
+    const missing = await handleMemoryDetailGet(
+      make4123Context({ ownerGate: 'direct_neon', modalBaseUrl: 'https://modal.example.com' }),
+      { verifyTokenOverride }
+    );
+    assert.equal(missing.status, 503);
+    assert.equal(missing.headers.get('x-lovebud-route-status'), 'config-absent');
+    assert.equal((await missing.json()).code, 'DIRECT_NEON_CONFIG_ABSENT');
+
+    const invalid = await handleMemoryDetailGet(
+      make4123Context({
+        ownerGate: 'direct_neon',
+        databaseUrl: 'postgresql://test@db.example.com/lovebud',
+        modalBaseUrl: 'https://modal.example.com'
+      }),
+      { verifyTokenOverride }
+    );
+    assert.equal(invalid.status, 503);
+    assert.equal(cap.calls.length, 0, 'explicit direct config failure must never use Modal');
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4123 generic DB envs cannot satisfy direct configuration', async () => {
+  const cap = installFetchCapture();
+  try {
+    const response = await handleMemoryDetailGet(
+      make4123Context({
+        ownerGate: 'direct_neon',
+        databaseUrl: undefined,
+        modalBaseUrl: 'https://modal.example.com',
+        extraEnv: {
+          DATABASE_URL: OWNER_MEMORY_DETAIL_NEON_TEST_URL,
+          NETLIFY_DATABASE_URL: OWNER_MEMORY_DETAIL_NEON_TEST_URL,
+          NEON_DATABASE_URL: OWNER_MEMORY_DETAIL_NEON_TEST_URL
+        }
+      }),
+      { verifyTokenOverride: async () => ({ uid: OWNER_MEMORY_UID }) }
+    );
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).code, 'DIRECT_NEON_CONFIG_ABSENT');
+    assert.equal(cap.calls.length, 0);
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4123 Firebase verification rejection/unavailability remains bounded and no-store', async () => {
+  const rejected = await handleMemoryDetailGet(
+    make4123Context({
+      ownerGate: 'direct_neon',
+      databaseUrl: OWNER_MEMORY_DETAIL_NEON_TEST_URL,
+      modalBaseUrl: null
+    }),
+    {
+      verifyTokenOverride: async () => null,
+      executorOverride: async () => { throw new Error('DB must not run'); }
+    }
+  );
+  assert.equal(rejected.status, 401);
+  assert.equal(rejected.headers.get('cache-control'), 'no-store');
+  assert.equal((await rejected.json()).error.code, 'FIREBASE_VERIFICATION_FAILED');
+
+  const unavailable = await handleMemoryDetailGet(
+    make4123Context({
+      ownerGate: 'direct_neon',
+      databaseUrl: OWNER_MEMORY_DETAIL_NEON_TEST_URL,
+      modalBaseUrl: null
+    }),
+    {
+      verifyTokenOverride: async () => { throw new Error('provider-private-sentinel'); },
+      executorOverride: async () => { throw new Error('DB must not run'); }
+    }
+  );
+  assert.equal(unavailable.status, 503);
+  assert.equal(unavailable.headers.get('cache-control'), 'no-store');
+  const unavailableText = await unavailable.text();
+  assert.match(unavailableText, /FIREBASE_VERIFIER_UNAVAILABLE/);
+  assert.doesNotMatch(unavailableText, /provider-private-sentinel/);
+});
+
+test('#4123 query/capability failure is sanitized, no-store, and never falls back to Modal', async () => {
+  const cap = installFetchCapture();
+  try {
+    const { response } = await run4123Direct({
+      executor: async () => { throw new Error('private-db-sentinel'); }
+    });
+    assert.equal(response.status, 500);
+    assert.equal(response.headers.get('x-lovebud-route-status'), 'query-failed');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-lovebud-request-id'), OWNER_MEMORY_DETAIL_REQUEST_ID);
+    assert.equal(cap.calls.length, 0);
+    const text = await response.text();
+    assert.deepEqual(JSON.parse(text), { detail: 'Internal server error' });
+    assert.doesNotMatch(text, /private-db-sentinel/);
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4123 SQL is static, parameterized, SELECT-only, owner-authorized through parent Tree, and visibility-independent', async () => {
+  const direct = await loadOwnerMemoryDetailDirectModule();
+  const statements = [
+    direct.OWNER_MEMORY_DETAIL_CLIENT_KEY_CAPABILITY_SQL,
+    direct.OWNER_MEMORY_DETAIL_SQL_WITH_CLIENT_KEY,
+    direct.OWNER_MEMORY_DETAIL_SQL_LEGACY
+  ];
+  for (const sql of statements) {
+    assert.match(sql, /^\s*SELECT\b/i);
+    assert.doesNotMatch(sql, /\b(?:INSERT|UPDATE|DELETE|UPSERT|MERGE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|COMMIT|ROLLBACK|BEGIN|CALL|DO)\b/i);
+  }
+  for (const sql of [direct.OWNER_MEMORY_DETAIL_SQL_WITH_CLIENT_KEY, direct.OWNER_MEMORY_DETAIL_SQL_LEGACY]) {
+    assert.equal((sql.match(/\$1/g) || []).length, 1);
+    assert.match(sql, /INNER\s+JOIN\s+trees\s+t/i);
+    assert.match(sql, /t\.owner_id::text\s+AS\s+tree_owner_id/i);
+    assert.match(sql, /WHERE\s+m\.id\s*=\s*\$1/i);
+    assert.doesNotMatch(sql, /(?:m|t)\.visibility\s*=/i);
+    assert.doesNotMatch(sql, /t\.owner_id\s*=\s*\$2/i);
+  }
+  assert.match(direct.OWNER_MEMORY_DETAIL_SQL_WITH_CLIENT_KEY, /m\.client_key/i);
+  assert.doesNotMatch(direct.OWNER_MEMORY_DETAIL_SQL_LEGACY, /m\.client_key/i);
+});
+
+test('#4123 adapter uses LOVE_PLATFORM_DATABASE_URL only and the source contains no write capability', async () => {
+  const direct = await loadOwnerMemoryDetailDirectModule();
+  assert.equal(direct.isNeonDatabaseUrl(OWNER_MEMORY_DETAIL_NEON_TEST_URL), true);
+  assert.equal(direct.isNeonDatabaseUrl('postgresql://test@db.example.com/lovebud'), false);
+  const root = path.resolve(__dirname, '..', '..');
+  const source = fs.readFileSync(path.join(root, 'functions/_shared/owner-memory-detail-direct-neon.js'), 'utf8');
+  assert.match(source, /LOVE_PLATFORM_DATABASE_URL/);
+  assert.doesNotMatch(source, /env\.(?:DATABASE_URL|NETLIFY_DATABASE_URL|NEON_DATABASE_URL)/);
+  assert.doesNotMatch(source, /process\.env/);
+  assert.doesNotMatch(source, /sql\.(?:insert|update|delete)|\.transaction\s*\(/i);
+});
+
+test('#4123 driver executor uses Neon serverless SQL query path without any write operation', async () => {
+  const direct = await loadOwnerMemoryDetailDirectModule();
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), body: options.body });
+    return new Response(JSON.stringify({
+      rows: [[true]],
+      fields: [{ name: 'has_client_key', dataTypeID: 16 }],
+      command: 'SELECT',
+      rowCount: 1
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  try {
+    const executor = await direct.createOwnerMemoryDetailDirectExecutor({
+      connectionString: OWNER_MEMORY_DETAIL_NEON_TEST_URL
+    });
+    const rows = await executor(direct.OWNER_MEMORY_DETAIL_CLIENT_KEY_CAPABILITY_SQL, []);
+    assert.equal(Array.isArray(rows), true);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /neon\.tech\/sql$/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('#4123 PUT/DELETE remain exactly on the existing Modal proxy and public helper remains unmodified in authority', () => {
+  const root = path.resolve(__dirname, '..', '..');
+  const routeSource = fs.readFileSync(path.join(root, 'functions/api/memories/[id].js'), 'utf8');
+  const publicSource = fs.readFileSync(path.join(root, 'functions/_shared/public-memory-detail-direct-neon.js'), 'utf8');
+  assert.match(routeSource, /LB_OWNER_MEMORY_DETAIL_RUNTIME/);
+  assert.match(routeSource, /LB_PUBLIC_MEMORY_DETAIL_RUNTIME/);
+  assert.match(routeSource, /export async function onRequestPut\(context\)[\s\S]*proxyMemoryRouteRequest\(context, withMemoryId\(context\)\)/);
+  assert.match(routeSource, /export async function onRequestDelete\(context\)[\s\S]*proxyMemoryRouteRequest\(context, withMemoryId\(context\)\)/);
+  assert.match(publicSource, /m\.visibility\s*=\s*'public'/);
+  assert.match(publicSource, /t\.visibility\s*=\s*'public'/);
+  assert.doesNotMatch(publicSource, /LB_OWNER_MEMORY_DETAIL_RUNTIME/);
+});
