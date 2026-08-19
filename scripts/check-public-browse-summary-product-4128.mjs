@@ -7,6 +7,7 @@ import {
   BROWSE_SUMMARY_RUNTIME_ENV,
   handlePublicBrowseSummaryDirectNeon,
   isPublicBrowseSummaryDirectNeonSelected,
+  normalizeProductBrowseLimit,
   readBrowseSummaryDirectConfig,
 } from '../functions/_shared/public-browse-summary-direct-neon.js';
 
@@ -16,7 +17,9 @@ const routeSource = fs.readFileSync(path.join(root, 'functions/api/community/tre
 const helperSource = fs.readFileSync(path.join(root, 'functions/_shared/public-browse-summary-direct-neon.js'), 'utf8');
 const coreSource = fs.readFileSync(path.join(root, 'functions/_shared/direct-neon-browse-summary-core.js'), 'utf8');
 
-const TEST_NEON = 'postgresql://test:test@ep-browse-4128.us-east-1.neon.tech/neondb?sslmode=require';
+// Synthetic URL shape only. No username, password, token, or live endpoint is
+// required because all runtime-query checks below inject an executor.
+const TEST_NEON = 'postgresql://ep-browse-4128.invalid.us-east-1.neon.tech/neondb';
 let passed = 0;
 
 async function check(name, fn) {
@@ -46,6 +49,21 @@ await check('only LOVE_PLATFORM_DATABASE_URL satisfies Product direct config', a
   assert.equal(dedicated.connectionString, TEST_NEON);
   assert.equal(BROWSE_SUMMARY_RUNTIME_ENV.GATE_FLAG, 'LB_BROWSE_SUMMARY_READ_RUNTIME');
   assert.equal(BROWSE_SUMMARY_RUNTIME_ENV.DATABASE_URL, 'LOVE_PLATFORM_DATABASE_URL');
+});
+
+await check('Product limit coercion exactly preserves current Modal edge behavior', async () => {
+  assert.equal(normalizeProductBrowseLimit(undefined), 12);
+  assert.equal(normalizeProductBrowseLimit(null), 12);
+  assert.equal(normalizeProductBrowseLimit(''), 12);
+  assert.equal(normalizeProductBrowseLimit('0'), 12);
+  assert.equal(normalizeProductBrowseLimit('-1'), 1);
+  assert.equal(normalizeProductBrowseLimit('1'), 1);
+  assert.equal(normalizeProductBrowseLimit('60'), 60);
+  assert.equal(normalizeProductBrowseLimit('999'), 60);
+  assert.equal(normalizeProductBrowseLimit('Infinity'), 60);
+  assert.equal(normalizeProductBrowseLimit('-Infinity'), 1);
+  assert.equal(normalizeProductBrowseLimit('not-a-number'), 12);
+  assert.equal(normalizeProductBrowseLimit('1.5'), 1.5);
 });
 
 await check('direct gate with missing dedicated config fails closed', async () => {
@@ -131,7 +149,7 @@ await check('direct route reuses #4003 capability + query core and returns stric
   }
 });
 
-await check('limit clamp and unknown sort stay owned by #4003 core', async () => {
+await check('limit clamp and unknown sort stay bounded before #4003 core query', async () => {
   let dataCall = null;
   const executor = async (text, values) => {
     if (/information_schema\.tables/.test(text)) {
@@ -180,12 +198,12 @@ await check('query failure is sanitized and never exposes DB details', async () 
     req,
     { LB_BROWSE_SUMMARY_READ_RUNTIME: 'direct_neon' },
     'req-4128-error',
-    { executorOverride: async () => { throw new Error(`boom ${TEST_NEON}`); } }
+    { executorOverride: async () => { throw new Error(`synthetic failure ${TEST_NEON}`); } }
   );
   assert.equal(res.status, 500);
   const raw = await res.text();
   assert.match(raw, /DIRECT_NEON_QUERY_FAILED/);
-  assert.doesNotMatch(raw, /postgres|neon\.tech|test:test/i);
+  assert.doesNotMatch(raw, /postgres|neon\.tech/i);
 });
 
 await check('Product route checks direct candidate before Modal fallback', async () => {
