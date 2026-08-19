@@ -5,6 +5,10 @@ import {
 } from '../_shared/request-id.js';
 import { fetchModalWithTimeout, isModalTimeoutError } from '../_shared/modal-fetch.js';
 import { readBoundedRequestBody } from '../_shared/bounded-request-body.js';
+import {
+  handleOwnerTreesDirectNeon,
+  isOwnerTreesDirectNeonSelected
+} from '../_shared/owner-tree-list-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -137,6 +141,10 @@ export function buildPrivateTreesModalUrl(request, env = {}) {
 export async function onRequestGet(context) {
   const request = context.request;
   const requestId = getOrCreateRequestId(request);
+
+  if (isOwnerTreesDirectNeonSelected(context.env)) {
+    return handleOwnerTreesDirectNeon(request, context.env, requestId);
+  }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) {
