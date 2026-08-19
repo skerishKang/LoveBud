@@ -5,8 +5,7 @@ import {
 import { getOrCreateRequestId } from '../../_shared/request-id.js';
 import { handlePublicMemoryDetailDirectNeon } from '../../_shared/public-memory-detail-direct-neon.js';
 import {
-  handleOwnerMemoryDetailDirectNeon,
-  isOwnerMemoryDetailDirectNeonSelected
+  handleOwnerMemoryDetailDirectNeon
 } from '../../_shared/owner-memory-detail-direct-neon.js';
 
 function withMemoryId(context) {
@@ -28,7 +27,12 @@ export async function handleMemoryDetailGet(
   // Explicit direct mode verifies the Firebase principal and authorizes through
   // the parent Tree owner. Anonymous requests never enter this branch.
   if (hasAuthorizationHeader(context.request)) {
-    if (isOwnerMemoryDetailDirectNeonSelected(context.env || {})) {
+    // #4123 owner direct-Neon gate referenced by its explicit runtime flag so
+    // the owner route selection stays visible in source (enforced by contract).
+    const ownerRuntime = typeof context.env?.LB_OWNER_MEMORY_DETAIL_RUNTIME === 'string'
+      ? context.env.LB_OWNER_MEMORY_DETAIL_RUNTIME.trim()
+      : '';
+    if (ownerRuntime === 'direct_neon') {
       const requestId = getOrCreateRequestId(context.request);
       return handleOwnerMemoryDetailDirectNeon(
         context.request,
