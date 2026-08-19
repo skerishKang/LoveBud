@@ -109,21 +109,22 @@ function decoratePrincipalResponse(response, requestId) {
 }
 
 // Mirrors Python uuid.UUID(value.strip()) used by the current private Modal
-// Tree-detail route. It accepts canonical, compact, braced, and urn:uuid forms
-// and returns the canonical lowercase 8-4-4-4-12 representation.
+// Tree-detail route. It accepts canonical, compact, braced, and exact lowercase
+// urn:uuid forms and returns the canonical lowercase 8-4-4-4-12 representation.
 export function normalizeOwnerTreeDetailId(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
-  let raw = value.trim().toLowerCase();
+  let raw = value.trim();
   if (raw.startsWith('urn:uuid:')) raw = raw.slice('urn:uuid:'.length);
   if (raw.startsWith('{') && raw.endsWith('}')) raw = raw.slice(1, -1);
   const hex = raw.replace(/-/g, '');
-  if (!/^[0-9a-f]{32}$/.test(hex)) return null;
+  if (!/^[0-9a-fA-F]{32}$/.test(hex)) return null;
+  const normalizedHex = hex.toLowerCase();
   return [
-    hex.slice(0, 8),
-    hex.slice(8, 12),
-    hex.slice(12, 16),
-    hex.slice(16, 20),
-    hex.slice(20)
+    normalizedHex.slice(0, 8),
+    normalizedHex.slice(8, 12),
+    normalizedHex.slice(12, 16),
+    normalizedHex.slice(16, 20),
+    normalizedHex.slice(20)
   ].join('-');
 }
 
