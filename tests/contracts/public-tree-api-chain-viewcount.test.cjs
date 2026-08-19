@@ -324,6 +324,13 @@ test('#4121 owner UUID/path semantics mirror Modal validate_required_uuid', asyn
     assert.equal(helper.normalizeOwnerTreeDetailId(value), TREE_ID);
   }
 
+  for (const badPrefix of [`URN:UUID:${TREE_ID}`, `urn:UUID:${TREE_ID}`]) {
+    assert.equal(helper.normalizeOwnerTreeDetailId(badPrefix), null);
+    const response = await callOwnerDirect({ helper, treeId: badPrefix });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { detail: 'Invalid treeId' });
+  }
+
   const invalid = await callOwnerDirect({ helper, treeId: 'legacy-tree-string' });
   assert.equal(invalid.status, 400);
   assert.deepEqual(await invalid.json(), { detail: 'Invalid treeId' });
