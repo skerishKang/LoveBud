@@ -1,12 +1,16 @@
 /**
  * Contract tests for Cloudflare Pages Function route-specific detail router's
- * public Tree read boundary (Issue #3933).
+ * public Tree read boundary (Issue #3933, extended by #4115).
  *
  * The explicit Cache API persistence for anonymous Tree detail has been removed:
  * a Tree's visibility may be revoked at any time, and a POP-local cache entry
  * could keep serving a stale public body after revocation. Anonymous Tree
- * detail therefore reaches the current public Modal authority on every request
- * and successful responses are marked Cache-Control: no-store.
+ * detail therefore reaches the current public authority on every request and
+ * successful responses are marked Cache-Control: no-store.
+ *
+ * #4115 adds an independently gated anonymous direct-Neon candidate. Modal is
+ * still the default/rollback authority, and authenticated owner/private reads
+ * remain Modal owner/private-first even when the direct gate is enabled.
  */
 
 const test = require('node:test');
@@ -16,6 +20,7 @@ const fs = require('node:fs');
 
 const MODAL_BASE_URL = 'https://padiemipu--lovebud-browse-snapshot-fastapi-app.modal.run';
 const TEST_HOST = 'https://test5.lovebud.pages.dev';
+const NEON_TEST_URL = 'postgresql://user:pass@ep-tree-detail-test.us-east-1.neon.tech/neondb?sslmode=require';
 
 // Mock Cache implementation (proves the route never touches it)
 class MockCache {
@@ -101,6 +106,10 @@ async function callOnRequestGet(request, params = { id: 'tree-123' }, envOverrid
   });
 }
 
+async function loadDirectTreeDetailQuery() {
+  return import('../../functions/_shared/public-tree-detail-neon-query.js');
+}
+
 function buildPublicTreeResponse() {
   return new Response(JSON.stringify({
     id: 'tree-123',
@@ -124,6 +133,20 @@ function staleCachedPublicTree() {
       'x-lovebud-public-tree-cache-expires-at': String(Date.now() + 60000) // still fresh by old rules
     }
   });
+}
+
+function makeDirectTreeRow(overrides = {}) {
+  return {
+    id: 'tree-123',
+    title: 'Fresh Public Tree',
+    visibility: 'public',
+    created_at: '2026-08-01 10:00:00.123456+00',
+    updated_at: '2026-08-02 12:00:00.654321+00',
+    memory_count: 3,
+    like_count: 4,
+    view_count: 7,
+    ...overrides,
+  };
 }
 
 test('1. anonymous public tree 200: single Modal call, no cache use, no-store', async () => {
@@ -328,5 +351,279 @@ test('9. source guard: no Cache API persistence remains for Tree detail', () => 
   assert.ok(!code.includes('max-age=30'), 'no 30-second cache lifetime');
   assert.ok(!code.includes('cache.put'), 'no cache.put');
   assert.ok(!code.includes('cache.match'), 'no cache.match');
-  assert.ok(code.includes("headers.set('Cache-Control', 'no-store')"), 'anonymous success must be no-store');
+  assert.ok(code.includes("headers.set('Cache-Control', 'no-store')"), 'default Modal success must be no-store');
+});
+
+test('10. absent/modal/unknown direct gate preserves Modal as anonymous default', async () => {
+  const direct = await loadDirectTreeDetailQuery();
+  for (const gate of [undefined, 'modal', 'legacy_v1', ' direct_neon ' .replace('direct_neon', 'DIRECT_NEON')]) {
+    const env = gate === undefined ? {} : { LB_PUBLIC_TREE_DETAIL_RUNTIME: gate };
+    const config = direct.readPublicTreeDetailReadConfig(env);
+    assert.equal(config.isDirect, false, `gate ${String(gate)} must not activate direct mode`);
+  }
+});
+
+test('11. direct gate + missing dedicated DB secret fails closed with zero Modal fallback', async () => {
+  setupMocks();
+  try {
+    fetchHandler = async () => {
+      throw new Error('no upstream should be called');
+    };
+    const request = new Request(`${TEST_HOST}/api/trees/tree-123`);
+    const response = await callOnRequestGet(request, { id: 'tree-123' }, {
+      LB_PUBLIC_TREE_DETAIL_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_WRITER_URL: NEON_TEST_URL,
+      DATABASE_URL: NEON_TEST_URL,
+    });
+
+    assert.equal(response.status, 503);
+    assert.equal(fetchCalls.length, 0, 'missing dedicated config must not fall back to Modal');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(response.headers.get('x-lovebud-route-status'), 'config-absent');
+    const body = await response.json();
+    assert.equal(body.code, 'DIRECT_NEON_CONFIG_ABSENT');
+  } finally {
+    restoreMocks();
+  }
+});
+
+test('12. anonymous direct Neon route returns exact public Tree detail DTO with social-count parity', async () => {
+  setupMocks();
+  try {
+    fetchHandler = async (call) => {
+      assert.match(call.url, /neon\.tech\/sql$/);
+      return new Response(JSON.stringify({
+        rows: [[
+          'tree-123',
+          'Fresh Public Tree',
+          'public',
+          '2026-08-01 10:00:00.123456+00',
+          '2026-08-02 12:00:00.654321+00',
+          3,
+          4,
+          7,
+        ]],
+        fields: [
+          { name: 'id', dataTypeID: 25 },
+          { name: 'title', dataTypeID: 25 },
+          { name: 'visibility', dataTypeID: 25 },
+          { name: 'created_at', dataTypeID: 25 },
+          { name: 'updated_at', dataTypeID: 25 },
+          { name: 'memory_count', dataTypeID: 23 },
+          { name: 'like_count', dataTypeID: 23 },
+          { name: 'view_count', dataTypeID: 23 },
+        ],
+        command: 'SELECT',
+        rowCount: 1,
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+
+    const request = new Request(`${TEST_HOST}/api/trees/tree-123`, {
+      headers: { 'x-lovebud-request-id': 'req-direct-tree-123' },
+    });
+    const response = await callOnRequestGet(request, { id: 'tree-123' }, {
+      MODAL_BASE_URL: undefined,
+      LB_PUBLIC_TREE_DETAIL_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(fetchCalls.length, 1, 'direct route should perform one Neon HTTP query');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(response.headers.get('x-lovebud-request-id'), 'req-direct-tree-123');
+
+    const body = await response.json();
+    assert.deepEqual(Object.keys(body), [
+      'id', 'title', 'visibility', 'createdAt', 'updatedAt', 'memoryCount', 'likeCount', 'viewCount'
+    ]);
+    assert.deepEqual(body, {
+      id: 'tree-123',
+      title: 'Fresh Public Tree',
+      visibility: 'public',
+      createdAt: '2026-08-01T10:00:00.123456+00:00',
+      updatedAt: '2026-08-02T12:00:00.654321+00:00',
+      memoryCount: 3,
+      likeCount: 4,
+      viewCount: 7,
+    });
+    assert.equal(Object.hasOwn(body, 'ownerId'), false);
+    assert.equal(Object.hasOwn(body, 'owner_id'), false);
+    assert.equal(typeof body.memoryCount, 'number');
+    assert.equal(typeof body.likeCount, 'number');
+    assert.equal(typeof body.viewCount, 'number');
+  } finally {
+    restoreMocks();
+  }
+});
+
+test('13. direct private/missing/deleted Tree is leak-safe 404 and never returns a private row', async () => {
+  const direct = await loadDirectTreeDetailQuery();
+  const request = new Request(`${TEST_HOST}/api/trees/private-tree`);
+  const env = {
+    LB_PUBLIC_TREE_DETAIL_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+  };
+
+  const privateResponse = await direct.handlePublicTreeDetailDirectNeon(
+    request,
+    'private-tree',
+    env,
+    'req-private',
+    { executorOverride: async () => [makeDirectTreeRow({ id: 'private-tree', visibility: 'private' })] },
+  );
+  assert.equal(privateResponse.status, 404);
+  assert.equal(privateResponse.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await privateResponse.json(), { detail: 'Tree not found' });
+
+  const deletedResponse = await direct.handlePublicTreeDetailDirectNeon(
+    request,
+    'deleted-tree',
+    env,
+    'req-deleted',
+    { executorOverride: async () => [] },
+  );
+  assert.equal(deletedResponse.status, 404);
+  assert.deepEqual(await deletedResponse.json(), { detail: 'Tree not found' });
+});
+
+test('14. direct visibility revocation cannot serve the previously public body', async () => {
+  const direct = await loadDirectTreeDetailQuery();
+  const request = new Request(`${TEST_HOST}/api/trees/revoked-tree`);
+  const env = {
+    LB_PUBLIC_TREE_DETAIL_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+  };
+  let readCount = 0;
+  const executor = async () => {
+    readCount += 1;
+    return readCount === 1
+      ? [makeDirectTreeRow({ id: 'revoked-tree', title: 'Previously Public' })]
+      : [];
+  };
+
+  const first = await direct.handlePublicTreeDetailDirectNeon(
+    request, 'revoked-tree', env, 'req-revoke-1', { executorOverride: executor },
+  );
+  assert.equal(first.status, 200);
+  assert.equal((await first.json()).title, 'Previously Public');
+
+  const second = await direct.handlePublicTreeDetailDirectNeon(
+    request, 'revoked-tree', env, 'req-revoke-2', { executorOverride: executor },
+  );
+  assert.equal(second.status, 404);
+  assert.equal(readCount, 2, 'every direct detail request must re-read current DB authority');
+  const secondBody = await second.json();
+  assert.equal(secondBody.title, undefined, 'revoked public body must not persist');
+});
+
+test('15. direct path preserves non-UUID string ID acceptance and trims exactly as Modal validate_required_id', async () => {
+  const direct = await loadDirectTreeDetailQuery();
+  const request = new Request(`${TEST_HOST}/api/trees/tree-legacy-id`);
+  const env = {
+    LB_PUBLIC_TREE_DETAIL_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+  };
+  let seenValues;
+  const response = await direct.handlePublicTreeDetailDirectNeon(
+    request,
+    '  tree-legacy-id  ',
+    env,
+    'req-nonuuid',
+    {
+      executorOverride: async (_text, values) => {
+        seenValues = values;
+        return [makeDirectTreeRow({ id: 'tree-legacy-id' })];
+      },
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(seenValues, ['tree-legacy-id']);
+
+  const blank = await direct.handlePublicTreeDetailDirectNeon(
+    request,
+    '   ',
+    env,
+    'req-blank',
+    { executorOverride: async () => { throw new Error('must not query'); } },
+  );
+  assert.equal(blank.status, 400);
+  assert.deepEqual(await blank.json(), { detail: 'treeId is required' });
+});
+
+test('16. direct query errors are bounded and never expose DB URL, credentials, or raw database error', async () => {
+  const direct = await loadDirectTreeDetailQuery();
+  const request = new Request(`${TEST_HOST}/api/trees/tree-123`);
+  const response = await direct.handlePublicTreeDetailDirectNeon(
+    request,
+    'tree-123',
+    {
+      LB_PUBLIC_TREE_DETAIL_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+    },
+    'req-bounded-error',
+    {
+      executorOverride: async () => {
+        throw new Error('password=secret postgresql://admin:secret@ep-private.neon.tech/neondb');
+      },
+    },
+  );
+
+  assert.equal(response.status, 500);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'query-failed');
+  const serialized = JSON.stringify(await response.json());
+  assert.match(serialized, /DIRECT_NEON_QUERY_FAILED/);
+  assert.doesNotMatch(serialized, /password|admin|secret|neon\.tech|postgresql:\/\//i);
+});
+
+test('17. direct SQL is static SELECT-only, parameterized, public-only, bounded, and carries both social counts', async () => {
+  const direct = await loadDirectTreeDetailQuery();
+  const sql = direct.PUBLIC_TREE_DETAIL_SQL;
+
+  assert.match(sql, /^\s*SELECT\b/i);
+  assert.match(sql, /WHERE\s+t\.id\s*=\s*\$1/i);
+  assert.match(sql, /t\.visibility\s*=\s*'public'/i);
+  assert.match(sql, /m\.visibility\s*=\s*'public'/i);
+  assert.match(sql, /COALESCE\(s\.like_count,\s*0\)::int\s+AS\s+like_count/i);
+  assert.match(sql, /COALESCE\(s\.view_count,\s*0\)::int\s+AS\s+view_count/i);
+  assert.match(sql, /LIMIT\s+1/i);
+  assert.doesNotMatch(sql, /\b(?:INSERT|UPDATE|DELETE|UPSERT|MERGE|CREATE|ALTER|DROP|TRUNCATE)\b/i);
+  assert.doesNotMatch(sql, /owner_id|email|auth_subject|firebase/i);
+});
+
+test('18. authenticated GET remains Modal owner/private-first even when direct gate is enabled', async () => {
+  setupMocks();
+  try {
+    fetchHandler = async (call) => {
+      assert.ok(call.url.includes('/modal/private/trees/private-owner-tree'));
+      assert.doesNotMatch(call.url, /neon\.tech/);
+      return new Response(JSON.stringify({
+        id: 'private-owner-tree',
+        title: 'Owner Private Tree',
+        visibility: 'private',
+        ownerId: 'owner-123',
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+
+    const request = new Request(`${TEST_HOST}/api/trees/private-owner-tree`, {
+      headers: { authorization: 'Bearer owner-token' },
+    });
+    const response = await callOnRequestGet(request, { id: 'private-owner-tree' }, {
+      LB_PUBLIC_TREE_DETAIL_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(fetchCalls.length, 1, 'authenticated path must make exactly one Modal owner read');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'modal');
+    assert.equal(response.headers.get('x-lovebud-public-tree-cache'), 'bypass-auth');
+    const body = await response.json();
+    assert.equal(body.visibility, 'private');
+    assert.equal(body.ownerId, 'owner-123');
+  } finally {
+    restoreMocks();
+  }
 });
