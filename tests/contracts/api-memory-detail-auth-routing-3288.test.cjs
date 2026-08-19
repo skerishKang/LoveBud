@@ -1,4 +1,5 @@
 // Synthetic route-contract tests for #3288: align memory-detail GET routing with auth policy.
+// Extended by #4114 for the anonymous public Memory detail direct-Neon candidate.
 //
 // Proves the explicit contract for GET /api/memories/:id:
 //   - signed-in (Authorization header present) detail read -> /modal/private/memories/:id
@@ -15,7 +16,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { buildModalUrl, onRequest: onCatchAllRequest } = require('../../functions/api/[[path]].js');
-const { onRequestGet } = require('../../functions/api/memories/[id].js');
+const { handleMemoryDetailGet, onRequestGet } = require('../../functions/api/memories/[id].js');
 const {
   prepareMemoryWriteProxyRequest,
   proxyMemoryRouteRequest
@@ -375,5 +376,382 @@ test('#4050 source guard: affected routing authorities no longer compose raw dec
       /encodeURIComponent\s*\(\s*decodeURIComponent\s*\(/,
       `${relative} must use the typed shared path-segment decoder`
     );
+  }
+});
+
+// ─── #4114 anonymous public Memory detail direct-Neon candidate ─────────────
+
+const MEMORY_DETAIL_NEON_TEST_URL = 'postgresql://user:pass@ep-memory-detail-test.us-east-1.neon.tech/neondb?sslmode=require';
+const MEMORY_DETAIL_REQUEST_ID = 'req-public-memory-detail-4114';
+
+async function loadPublicMemoryDetailDirectModule() {
+  return import('../../functions/_shared/public-memory-detail-direct-neon.js');
+}
+
+function make4114Context({
+  memoryId = 'mem-123',
+  auth = false,
+  gate,
+  databaseUrl,
+  modalBaseUrl = 'https://modal.example.com'
+} = {}) {
+  const headers = new Headers({ 'x-lovebud-request-id': MEMORY_DETAIL_REQUEST_ID });
+  if (auth) headers.set('authorization', 'Bearer test-token');
+  const env = {};
+  if (modalBaseUrl !== null) env.MODAL_BASE_URL = modalBaseUrl;
+  if (gate !== undefined) env.LB_PUBLIC_MEMORY_DETAIL_RUNTIME = gate;
+  if (databaseUrl !== undefined) env.LOVE_PLATFORM_DATABASE_URL = databaseUrl;
+  return {
+    env,
+    params: { id: memoryId },
+    request: new Request(`https://api.example.com/api/memories/${memoryId}`, {
+      method: 'GET',
+      headers
+    })
+  };
+}
+
+function make4114PublicRow(overrides = {}) {
+  return {
+    id: 'mem-123',
+    tree_id: 'tree-456',
+    parent_id: null,
+    title: 'A public Memory',
+    memo: 'A note',
+    artist: 'Artist',
+    source: 'YouTube',
+    source_url: 'https://www.youtube.com/watch?v=example',
+    source_type: 'youtube',
+    thumbnail: 'https://i.ytimg.com/vi/example/hqdefault.jpg',
+    emotion_tags: ['joy', 'hope'],
+    timestamp: '01:23',
+    visibility: 'public',
+    channel_id: 'channel-1',
+    channel_name: 'Channel',
+    channel_url: 'https://www.youtube.com/@channel',
+    created_at: '2026-08-01 10:11:12.123456+00',
+    updated_at: '2026-08-02T11:12:13.654321Z',
+    reaction_counts: { like: 2 },
+    ...overrides
+  };
+}
+
+async function run4114Direct({ row = make4114PublicRow(), memoryId = 'mem-123', executor } = {}) {
+  const calls = [];
+  const fakeExecutor = executor || (async (sql, values) => {
+    calls.push({ sql, values });
+    return row == null ? [] : [row];
+  });
+  const response = await handleMemoryDetailGet(
+    make4114Context({
+      memoryId,
+      gate: 'direct_neon',
+      databaseUrl: MEMORY_DETAIL_NEON_TEST_URL,
+      modalBaseUrl: null
+    }),
+    { executorOverride: fakeExecutor }
+  );
+  return { response, calls };
+}
+
+test('#4114 anonymous default gate retains existing public Modal authority', async () => {
+  const cap = installFetchCapture();
+  try {
+    const response = await onRequestGet(make4114Context());
+    assert.equal(response.status, 200);
+    assert.equal(cap.calls.length, 1);
+    assert.equal(new URL(cap.calls[0].url).pathname, '/modal/memories/mem-123');
+    assert.equal(cap.calls[0].opts.headers.authorization, undefined);
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4114 unknown gate retains existing public Modal authority', async () => {
+  const cap = installFetchCapture();
+  try {
+    await onRequestGet(make4114Context({ gate: 'future-provider' }));
+    assert.equal(cap.calls.length, 1);
+    assert.equal(new URL(cap.calls[0].url).pathname, '/modal/memories/mem-123');
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4114 anonymous direct gate executes direct Neon and never calls Modal', async () => {
+  const cap = installFetchCapture();
+  try {
+    const { response, calls } = await run4114Direct();
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0].values, ['mem-123']);
+    assert.equal(cap.calls.length, 0, 'direct mode must not fall back to Modal');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-lovebud-request-id'), MEMORY_DETAIL_REQUEST_ID);
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4114 Authorization wins over direct gate and keeps private Modal behavior unchanged', async () => {
+  let executorCalls = 0;
+  const cap = installFetchCapture();
+  try {
+    const response = await handleMemoryDetailGet(
+      make4114Context({ auth: true, gate: 'direct_neon', databaseUrl: MEMORY_DETAIL_NEON_TEST_URL }),
+      { executorOverride: async () => { executorCalls += 1; return []; } }
+    );
+    assert.equal(response.status, 200);
+    assert.equal(executorCalls, 0);
+    assert.equal(cap.calls.length, 1);
+    assert.equal(new URL(cap.calls[0].url).pathname, '/modal/private/memories/mem-123');
+    assert.equal(cap.calls[0].opts.headers.authorization, 'Bearer test-token');
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4114 direct gate with missing or invalid dedicated DB config fails closed', async () => {
+  const cap = installFetchCapture();
+  try {
+    const missing = await onRequestGet(make4114Context({ gate: 'direct_neon' }));
+    assert.equal(missing.status, 503);
+    assert.equal(missing.headers.get('x-lovebud-route-status'), 'config-absent');
+    assert.equal(missing.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(missing.headers.get('cache-control'), 'no-store');
+    assert.equal((await missing.json()).code, 'DIRECT_NEON_CONFIG_ABSENT');
+
+    const invalid = await onRequestGet(make4114Context({
+      gate: 'direct_neon',
+      databaseUrl: 'postgresql://user:pass@db.example.com/lovebud',
+      modalBaseUrl: 'https://modal.example.com'
+    }));
+    assert.equal(invalid.status, 503);
+    assert.equal(cap.calls.length, 0, 'fail-closed direct config must never fall back to Modal');
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4114 public Tree + public Memory returns exact current public detail DTO and reaction decoration', async () => {
+  const { response } = await run4114Direct();
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    id: 'mem-123',
+    treeId: 'tree-456',
+    parentId: null,
+    title: 'A public Memory',
+    memo: 'A note',
+    artist: 'Artist',
+    source: 'YouTube',
+    sourceUrl: 'https://www.youtube.com/watch?v=example',
+    sourceType: 'youtube',
+    thumbnail: 'https://i.ytimg.com/vi/example/hqdefault.jpg',
+    emotionTags: ['joy', 'hope'],
+    timestamp: '01:23',
+    visibility: 'public',
+    channelId: 'channel-1',
+    channelName: 'Channel',
+    channelUrl: 'https://www.youtube.com/@channel',
+    createdAt: '2026-08-01T10:11:12.123456+00:00',
+    updatedAt: '2026-08-02T11:12:13.654321+00:00',
+    reactionCounts: { like: 2, total: 2 }
+  });
+});
+
+test('#4114 static SQL requires both public Memory and public parent Tree', async () => {
+  const direct = await loadPublicMemoryDetailDirectModule();
+  const sql = direct.PUBLIC_MEMORY_DETAIL_SQL;
+  assert.match(sql, /INNER\s+JOIN\s+trees\s+t/i);
+  assert.match(sql, /m\.id\s*=\s*\$1/i);
+  assert.match(sql, /m\.visibility\s*=\s*'public'/i);
+  assert.match(sql, /t\.visibility\s*=\s*'public'/i);
+  assert.match(sql, /LIMIT\s+1/i);
+});
+
+test('#4114 private parent Tree + public Memory is indistinguishable from not found', async () => {
+  const { response } = await run4114Direct({
+    executor: async (sql) => {
+      assert.match(sql, /t\.visibility\s*=\s*'public'/i);
+      return [];
+    }
+  });
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { detail: 'Memory not found' });
+});
+
+test('#4114 public parent Tree + private Memory is indistinguishable from not found', async () => {
+  const { response } = await run4114Direct({
+    executor: async (sql) => {
+      assert.match(sql, /m\.visibility\s*=\s*'public'/i);
+      return [];
+    }
+  });
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { detail: 'Memory not found' });
+});
+
+test('#4114 defense-in-depth refuses a non-public injected row', async () => {
+  const { response } = await run4114Direct({
+    row: make4114PublicRow({ visibility: 'private' })
+  });
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { detail: 'Memory not found' });
+});
+
+test('#4114 missing or deleted Memory preserves current public 404 semantics', async () => {
+  const { response } = await run4114Direct({ row: null });
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await response.json(), { detail: 'Memory not found' });
+});
+
+test('#4114 reactionCounts keeps per-type counts plus current total decoration', async () => {
+  const { response } = await run4114Direct({
+    row: make4114PublicRow({ reaction_counts: { applaud: 1, like: 3 } })
+  });
+  assert.deepEqual((await response.json()).reactionCounts, { applaud: 1, like: 3, total: 4 });
+});
+
+test('#4114 field types, emotion tags, defaults, and microsecond timestamps preserve Modal normalization', async () => {
+  const { response } = await run4114Direct({
+    row: make4114PublicRow({
+      emotion_tags: '["joy",7,"hope"]',
+      source_type: '',
+      channel_id: '',
+      created_at: '2026-08-01 10:11:12+00'
+    })
+  });
+  const body = await response.json();
+  assert.deepEqual(body.emotionTags, ['joy', '7', 'hope']);
+  assert.equal(body.sourceType, 'youtube');
+  assert.equal(body.channelId, null);
+  assert.equal(body.createdAt, '2026-08-01T10:11:12+00:00');
+  assert.equal(typeof body.id, 'string');
+  assert.equal(typeof body.treeId, 'string');
+  assert.equal(typeof body.title, 'string');
+  assert.equal(typeof body.reactionCounts.total, 'number');
+});
+
+test('#4114 public projection never exposes owner/client/private metadata', async () => {
+  const { response } = await run4114Direct({
+    row: make4114PublicRow({
+      owner_id: 'private-owner',
+      client_key: 'private-client-key',
+      email: 'private@example.com',
+      private_metadata: { secret: true }
+    })
+  });
+  const body = await response.json();
+  for (const key of ['ownerId', 'owner_id', 'clientKey', 'client_key', 'email', 'private_metadata']) {
+    assert.equal(Object.prototype.hasOwnProperty.call(body, key), false, `${key} must not leak`);
+  }
+});
+
+test('#4114 preserves current non-UUID string-ID scope and malformed-percent taxonomy', async () => {
+  const valuesSeen = [];
+  const encodedId = '%E2%9C%93-memory';
+  const ok = await handleMemoryDetailGet(
+    make4114Context({
+      memoryId: encodedId,
+      gate: 'direct_neon',
+      databaseUrl: MEMORY_DETAIL_NEON_TEST_URL,
+      modalBaseUrl: null
+    }),
+    {
+      executorOverride: async (_sql, values) => {
+        valuesSeen.push(...values);
+        return [make4114PublicRow({ id: '✓-memory' })];
+      }
+    }
+  );
+  assert.equal(ok.status, 200);
+  assert.deepEqual(valuesSeen, ['✓-memory']);
+
+  let invalidExecutorCalls = 0;
+  const malformed = await handleMemoryDetailGet(
+    make4114Context({
+      memoryId: '%E0%A4%A',
+      gate: 'direct_neon',
+      databaseUrl: MEMORY_DETAIL_NEON_TEST_URL,
+      modalBaseUrl: null
+    }),
+    {
+      executorOverride: async () => {
+        invalidExecutorCalls += 1;
+        return [];
+      }
+    }
+  );
+  assert.equal(malformed.status, 400);
+  assert.equal(invalidExecutorCalls, 0);
+  assert.equal(malformed.headers.get('x-lovebud-upstream'), 'cloudflare');
+  assert.equal(malformed.headers.get('x-lovebud-route-status'), 'invalid-path-encoding');
+  assert.deepEqual(await malformed.json(), {
+    error: 'Invalid path encoding',
+    code: 'INVALID_PATH_ENCODING'
+  });
+});
+
+test('#4114 direct SQL is static, parameterized, read-only, and contains no private owner metadata', async () => {
+  const direct = await loadPublicMemoryDetailDirectModule();
+  const sql = direct.PUBLIC_MEMORY_DETAIL_SQL;
+  assert.match(sql, /^\s*SELECT\b/i);
+  assert.equal((sql.match(/\$1/g) || []).length, 1, 'Memory id must use one positional bind');
+  assert.doesNotMatch(sql, /\b(?:INSERT|UPDATE|DELETE|UPSERT|MERGE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|COMMIT|ROLLBACK|BEGIN|CALL|DO)\b/i);
+  assert.doesNotMatch(sql, /owner_id|client_key/i);
+});
+
+test('#4114 query failure is sanitized, no-store, and never falls back to Modal', async () => {
+  const cap = installFetchCapture();
+  try {
+    const { response } = await run4114Direct({
+      executor: async () => {
+        throw new Error('secret database host password=do-not-leak');
+      }
+    });
+    assert.equal(response.status, 500);
+    assert.equal(cap.calls.length, 0);
+    assert.equal(response.headers.get('x-lovebud-route-status'), 'query-failed');
+    assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    const text = await response.text();
+    assert.match(text, /DIRECT_NEON_QUERY_FAILED/);
+    assert.doesNotMatch(text, /password|do-not-leak|database host/i);
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4114 adapter reads only LOVE_PLATFORM_DATABASE_URL and has no generic DB fallback', async () => {
+  const direct = await loadPublicMemoryDetailDirectModule();
+  assert.equal(direct.isNeonDatabaseUrl('postgresql://user:pass@db.example.com/lovebud'), false);
+  assert.equal(direct.isNeonDatabaseUrl(MEMORY_DETAIL_NEON_TEST_URL), true);
+
+  const source = fs.readFileSync(
+    path.join(path.resolve(__dirname, '..', '..'), 'functions/_shared/public-memory-detail-direct-neon.js'),
+    'utf8'
+  );
+  assert.match(source, /LOVE_PLATFORM_DATABASE_URL/);
+  assert.doesNotMatch(source, /env\.(?:DATABASE_URL|POSTGRES_URL|NEON_DATABASE_URL)/);
+  assert.doesNotMatch(source, /process\.env/);
+});
+
+test('#4114 unrelated Memory writes remain on the shared proxy and route ownership stays narrow', () => {
+  const root = path.resolve(__dirname, '..', '..');
+  const routeSource = fs.readFileSync(path.join(root, 'functions/api/memories/[id].js'), 'utf8');
+  assert.match(routeSource, /export async function onRequestPut\(context\)[\s\S]*proxyMemoryRouteRequest\(context, withMemoryId\(context\)\)/);
+  assert.match(routeSource, /export async function onRequestDelete\(context\)[\s\S]*proxyMemoryRouteRequest\(context, withMemoryId\(context\)\)/);
+
+  const forbiddenTouchedRoutes = [
+    'functions/api/[[path]].js',
+    'functions/api/trees/[id].js',
+    'functions/api/trees.js'
+  ];
+  for (const relative of forbiddenTouchedRoutes) {
+    assert.ok(fs.existsSync(path.join(root, relative)), `${relative} remains present and owned by its existing lane`);
   }
 });
