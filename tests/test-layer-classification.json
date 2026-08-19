@@ -5097,6 +5097,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the love-platform-api public LoveTree-compatible public growing read route in-process with constructed Request inputs and an injected fake Query capability, proving the distinct anonymous Growing Query, exact public DTO projection, normalized limit behavior (default/clamp/whitespace/infinity fail-closed), ambiguous NaN/fractional fail-closed, provider-order preservation with no tertiary sort invention, capability-absent fail-closed, and zero principal/auth/DB/network/provider capability. No real external network, database, browser, provider, deployment, Production secret, or Production resource is used (#4101).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-growing-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Cloudflare->Neon Growing Product runtime adapter in-process with constructed Request/env inputs and injected fake query executor, proving explicit gate activation (LB_GROWING_READ_RUNTIME=direct_neon), dedicated DB config validation (LOVE_PLATFORM_DATABASE_URL), fail-closed missing/invalid config behavior with zero Modal fallback, static parameterized SQL mapping, public eligibility preservation (1-2 public memories), ordering and limit parity, leak-safe error sanitization, and driver verification without real network or DB access (#4109).",
+      "capabilities": []
     }
   ],
   "supplemental": [

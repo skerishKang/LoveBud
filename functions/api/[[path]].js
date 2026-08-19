@@ -13,6 +13,9 @@ import {
   isInvalidPathEncodingError,
   normalizeEncodedPathSegment
 } from '../_shared/path-segment.js';
+import {
+  handlePublicGrowingDirectNeon
+} from '../_shared/love-platform-api-growing-neon-query.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -83,6 +86,12 @@ function isHubLayoutReadRequest(request) {
   if (request.method.toUpperCase() !== 'GET') return false;
   const path = new URL(request.url).pathname.replace(/\/+$/, '');
   return /^\/api\/trees\/[^/]+\/hub-layout$/.test(path);
+}
+
+function isGrowingTreesRequest(request) {
+  if (request.method.toUpperCase() !== 'GET') return false;
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
+  return path === '/api/community/growing-trees';
 }
 
 function buildBrowseCacheRequest(request) {
@@ -517,6 +526,16 @@ export async function onRequest(context) {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // ─── Anonymous Public Growing Trees (Phase-2 Gated Direct Neon Runtime) ──────
+  if (isGrowingTreesRequest(request)) {
+    const runtime = typeof env?.LB_GROWING_READ_RUNTIME === 'string'
+      ? env.LB_GROWING_READ_RUNTIME.trim()
+      : '';
+    if (runtime === 'direct_neon') {
+      return await handlePublicGrowingDirectNeon(request, env || {}, requestId);
+    }
+  }
 
   // ─── Anonymous Public Tree Detail (no explicit Cache API) ───────────────────────
   // A Tree visibility may be revoked at any time; a POP-local Cache API entry could
