@@ -7,7 +7,6 @@
 
 import {
   fetchDirectNeonBrowseSummary,
-  normalizeBrowseLimit,
 } from './direct-neon-browse-summary-core.js';
 
 export const BROWSE_SUMMARY_RUNTIME_ENV = Object.freeze({
@@ -51,6 +50,16 @@ export function readBrowseSummaryDirectConfig(env = {}) {
     configured,
     connectionString: configured ? raw : '',
   });
+}
+
+// Match the existing Product edge coercion in buildModalUrl() exactly before
+// the FastAPI integer validator sees the forwarded value:
+// Number(raw || 12) || 12, then clamp 1..60. This intentionally keeps
+// Infinity -> 60 and -Infinity -> 1 rather than using the #4003 core's
+// prototype-only non-finite fallback.
+export function normalizeProductBrowseLimit(rawLimit) {
+  const parsed = Number(rawLimit || 12) || 12;
+  return Math.min(Math.max(parsed, 1), 60);
 }
 
 export async function createPublicBrowseSummaryDirectExecutor({ connectionString, executor } = {}) {
@@ -112,7 +121,7 @@ export async function handlePublicBrowseSummaryDirectNeon(
 
   const url = new URL(request.url);
   const rawLimit = url.searchParams.get('limit');
-  const limit = normalizeBrowseLimit(rawLimit);
+  const limit = normalizeProductBrowseLimit(rawLimit);
   if (!Number.isInteger(limit)) {
     return jsonResponse(buildIntegerLimitValidationBody(rawLimit), 422, requestId, 'invalid-limit');
   }
