@@ -4,21 +4,48 @@ import {
 } from '../../_shared/memory-route-proxy.js';
 import { getOrCreateRequestId } from '../../_shared/request-id.js';
 import { handlePublicMemoryDetailDirectNeon } from '../../_shared/public-memory-detail-direct-neon.js';
+import {
+  handleOwnerMemoryDetailDirectNeon,
+  isOwnerMemoryDetailDirectNeonSelected
+} from '../../_shared/owner-memory-detail-direct-neon.js';
 
 function withMemoryId(context) {
   return { memoryId: context.params?.id || null };
 }
 
-export async function handleMemoryDetailGet(context, { executorOverride = null } = {}) {
+export async function handleMemoryDetailGet(
+  context,
+  {
+    executorOverride = null,
+    verifyTokenOverride = null,
+    verifierOptions = null
+  } = {}
+) {
   const routeOptions = withMemoryId(context);
 
-  // Preserve the authenticated/private authority exactly: an Authorization
-  // header always stays on the existing Modal-backed owner path, regardless of
-  // the anonymous public runtime gate.
+  // Authenticated/private reads have an independent #4123 runtime gate. With
+  // the gate absent/default/unknown they stay on the existing Modal authority.
+  // Explicit direct mode verifies the Firebase principal and authorizes through
+  // the parent Tree owner. Anonymous requests never enter this branch.
   if (hasAuthorizationHeader(context.request)) {
+    if (isOwnerMemoryDetailDirectNeonSelected(context.env || {})) {
+      const requestId = getOrCreateRequestId(context.request);
+      return handleOwnerMemoryDetailDirectNeon(
+        context.request,
+        context.env || {},
+        routeOptions.memoryId,
+        requestId,
+        {
+          executorOverride,
+          verifyTokenOverride,
+          verifierOptions
+        }
+      );
+    }
     return proxyMemoryRouteRequest(context, routeOptions);
   }
 
+  // #4114 anonymous/public route split remains independent and unchanged.
   const runtime = typeof context.env?.LB_PUBLIC_MEMORY_DETAIL_RUNTIME === 'string'
     ? context.env.LB_PUBLIC_MEMORY_DETAIL_RUNTIME.trim()
     : '';
