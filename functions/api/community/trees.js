@@ -1,4 +1,5 @@
 import { buildModalUrl } from '../[[path]].js';
+import { handlePublicBrowseSummaryDirectNeon } from '../../_shared/public-browse-summary-direct-neon.js';
 
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
@@ -99,6 +100,13 @@ export async function onRequest(context) {
   if (path !== '/api/community/trees' || url.searchParams.get('view') !== 'summary') {
     return buildNotFoundResponse(requestId);
   }
+
+  const directResponse = await handlePublicBrowseSummaryDirectNeon(
+    request,
+    env || {},
+    requestId
+  );
+  if (directResponse) return directResponse;
 
   const modalUrl = buildModalUrl(request, env || {});
   if (!modalUrl) return buildModalUnavailableResponse(requestId);
