@@ -327,3 +327,283 @@ test('15. Ordering preservation: multiple eligible rows retain updated_at/create
   assert.deepEqual(body.map((t) => t.id), ['tree-newest', 'tree-middle', 'tree-oldest']);
 });
 
+// #4113 — public Community Memories direct-Neon source contract.
+async function loadCommunityMemoriesDirect() {
+  return import('../../functions/_shared/public-community-memories-direct-neon.js');
+}
+
+function makeCommunityMemoryRow(overrides = {}) {
+  return {
+    id: 'memory-1',
+    tree_id: 'tree-1',
+    parent_id: null,
+    title: 'Public Memory',
+    memo: 'memo',
+    artist: 'artist',
+    source: 'source',
+    source_url: 'https://example.invalid/source',
+    source_type: 'youtube',
+    thumbnail: 'https://example.invalid/thumb',
+    emotion_tags: ['joy', 'hope'],
+    timestamp: '00:12',
+    visibility: 'public',
+    channel_id: 'channel-1',
+    channel_name: 'Channel',
+    channel_url: 'https://example.invalid/channel',
+    created_at: '2026-08-19 01:02:03.123456+00',
+    updated_at: '2026-08-19 02:03:04+00',
+    ...overrides,
+  };
+}
+
+test('#4113 absent/unknown gate preserves the existing Modal Community Memories route', async () => {
+  const community = await loadCommunityMemoriesDirect();
+  const { pathModule } = await loadModules();
+  const request = new Request('https://lovebud.test/api/community/memories?treeId= tree-a &limit=12');
+
+  assert.equal(community.isPublicCommunityMemoriesDirectNeonSelected({}), false);
+  assert.equal(community.isPublicCommunityMemoriesDirectNeonSelected({ LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'legacy_v1' }), false);
+  assert.equal(community.isPublicCommunityMemoriesDirectNeonSelected({ LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'direct_neon' }), true);
+
+  const modalUrl = pathModule.buildModalUrl(request, { MODAL_BASE_URL: 'https://modal.test' });
+  assert.equal(modalUrl.pathname, '/modal/community/memories');
+  assert.equal(modalUrl.searchParams.get('treeId'), ' tree-a ');
+  assert.equal(modalUrl.searchParams.get('limit'), '12');
+});
+
+test('#4113 direct gate accepts only LOVE_PLATFORM_DATABASE_URL and fails closed when it is absent', async () => {
+  const community = await loadCommunityMemoriesDirect();
+  const request = new Request('https://lovebud.test/api/community/memories');
+
+  assert.equal(community.readCommunityMemoriesDirectConfig({ DATABASE_URL: NEON_TEST_URL }).configured, false);
+  assert.equal(community.readCommunityMemoriesDirectConfig({ NETLIFY_DATABASE_URL: NEON_TEST_URL }).configured, false);
+  assert.equal(community.readCommunityMemoriesDirectConfig({ LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL }).configured, true);
+
+  const response = await community.handlePublicCommunityMemoriesDirectNeon(
+    request,
+    { LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'direct_neon', MODAL_BASE_URL: 'https://modal.test' },
+    'req-4113-config'
+  );
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'config-absent');
+  assert.equal((await response.json()).code, 'DIRECT_NEON_CONFIG_ABSENT');
+});
+
+test('#4113 modern direct query enforces Memory+Tree public intersection, treeId trim, ordering, limit and DTO parity', async () => {
+  const community = await loadCommunityMemoriesDirect();
+  const calls = [];
+  const executor = async (text, values) => {
+    calls.push({ text, values });
+    if (text.includes("to_regclass('public.memories')")) {
+      return [{
+        has_memories: true,
+        has_tree_title: true,
+        has_tree_visibility: true,
+        has_tree_name: false,
+        has_tree_is_public: false,
+      }];
+    }
+    return [makeCommunityMemoryRow()];
+  };
+
+  const response = await community.handlePublicCommunityMemoriesDirectNeon(
+    new Request('https://lovebud.test/api/community/memories?treeId=%20tree-1%20&limit=12'),
+    {
+      LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+    },
+    'req-4113-modern',
+    { executorOverride: executor }
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+  assert.equal(response.headers.get('x-lovebud-request-id'), 'req-4113-modern');
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].text, /m\.visibility = 'public'/);
+  assert.match(calls[1].text, /t\.visibility = 'public'/);
+  assert.match(calls[1].text, /INNER JOIN trees t/);
+  assert.match(calls[1].text, /ORDER BY m\.created_at DESC/);
+  assert.match(calls[1].text, /LIMIT \$2/);
+  assert.deepEqual(calls[1].values, ['tree-1', 12]);
+
+  assert.deepEqual(await response.json(), [{
+    id: 'memory-1',
+    treeId: 'tree-1',
+    parentId: null,
+    title: 'Public Memory',
+    memo: 'memo',
+    artist: 'artist',
+    source: 'source',
+    sourceUrl: 'https://example.invalid/source',
+    sourceType: 'youtube',
+    thumbnail: 'https://example.invalid/thumb',
+    emotionTags: ['joy', 'hope'],
+    timestamp: '00:12',
+    visibility: 'public',
+    channelId: 'channel-1',
+    channelName: 'Channel',
+    channelUrl: 'https://example.invalid/channel',
+    createdAt: '2026-08-19T01:02:03.123456+00:00',
+    updatedAt: '2026-08-19T02:03:04+00:00',
+  }]);
+});
+
+test('#4113 limit parity clamps first and rejects only fractional values that survive the edge clamp', async () => {
+  const community = await loadCommunityMemoriesDirect();
+  assert.equal(community.normalizeCommunityMemoriesLimit(null), 100);
+  assert.equal(community.normalizeCommunityMemoriesLimit('0'), 100);
+  assert.equal(community.normalizeCommunityMemoriesLimit('-1.5'), 1);
+  assert.equal(community.normalizeCommunityMemoriesLimit('0.5'), 1);
+  assert.equal(community.normalizeCommunityMemoriesLimit('200.5'), 200);
+  assert.equal(community.hasFractionalCommunityMemoriesLimit('-1.5'), false);
+  assert.equal(community.hasFractionalCommunityMemoriesLimit('200.5'), false);
+  assert.equal(community.hasFractionalCommunityMemoriesLimit('1.5'), true);
+
+  let executorCalls = 0;
+  const response = await community.handlePublicCommunityMemoriesDirectNeon(
+    new Request('https://lovebud.test/api/community/memories?limit=1.5'),
+    {
+      LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+    },
+    'req-4113-limit',
+    { executorOverride: async () => { executorCalls += 1; return []; } }
+  );
+  assert.equal(response.status, 422);
+  assert.equal(executorCalls, 0);
+  assert.deepEqual(await response.json(), {
+    detail: [{
+      type: 'int_parsing',
+      loc: ['query', 'limit'],
+      msg: 'Input should be a valid integer, unable to parse string as an integer',
+      input: '1.5',
+    }],
+  });
+});
+
+test('#4113 whitespace-only treeId is leak-safe 400 before DB work while non-UUID IDs remain accepted', async () => {
+  const community = await loadCommunityMemoriesDirect();
+  assert.deepEqual(community.normalizeCommunityMemoriesTreeId(' non-uuid-id '), { ok: true, value: 'non-uuid-id' });
+
+  let executorCalls = 0;
+  const response = await community.handlePublicCommunityMemoriesDirectNeon(
+    new Request('https://lovebud.test/api/community/memories?treeId=%20%20%20'),
+    {
+      LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+    },
+    'req-4113-tree-id',
+    { executorOverride: async () => { executorCalls += 1; return []; } }
+  );
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { detail: 'Invalid treeId' });
+  assert.equal(executorCalls, 0);
+});
+
+test('#4113 legacy fallback preserves public-node filtering, per-tree limit and legacy node order', async () => {
+  const community = await loadCommunityMemoriesDirect();
+  const calls = [];
+  const executor = async (text, values) => {
+    calls.push({ text, values });
+    if (text.includes("to_regclass('public.memories')")) {
+      return [{
+        has_memories: false,
+        has_tree_title: true,
+        has_tree_visibility: true,
+        has_tree_name: false,
+        has_tree_is_public: false,
+      }];
+    }
+    return [{
+      id: 'tree-legacy',
+      payload: {
+        nodes: [
+          { id: 'private-node', visibility: 'private', order: 0, title: 'PRIVATE' },
+          { id: 'public-later', visibility: 'public', order: 2, title: 'Later' },
+          { id: 'public-first', order: 1, label: 'First', emotionTags: ['legacy'] },
+        ],
+      },
+      created_at: '2026-08-18 01:00:00+00',
+      updated_at: '2026-08-18 02:00:00+00',
+    }];
+  };
+
+  const response = await community.handlePublicCommunityMemoriesDirectNeon(
+    new Request('https://lovebud.test/api/community/memories?treeId=tree-legacy&limit=1'),
+    {
+      LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+    },
+    'req-4113-legacy',
+    { executorOverride: executor }
+  );
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].text, /t\.visibility = 'public'/);
+  assert.deepEqual(calls[1].values, ['tree-legacy', 1]);
+  const body = await response.json();
+  assert.equal(body.length, 1);
+  assert.equal(body[0].id, 'public-first');
+  assert.equal(body[0].title, 'First');
+  assert.equal(body[0].visibility, 'public');
+  assert.deepEqual(body[0].emotionTags, ['legacy']);
+});
+
+test('#4113 direct query errors are bounded and do not leak DB secret material', async () => {
+  const community = await loadCommunityMemoriesDirect();
+  const response = await community.handlePublicCommunityMemoriesDirectNeon(
+    new Request('https://lovebud.test/api/community/memories'),
+    {
+      LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: NEON_TEST_URL,
+    },
+    'req-4113-error',
+    {
+      executorOverride: async () => {
+        throw new Error('postgresql://private:secret@ep-growing-test.us-east-1.neon.tech/neondb');
+      }
+    }
+  );
+  assert.equal(response.status, 500);
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'query-failed');
+  const text = await response.text();
+  assert.match(text, /DIRECT_NEON_QUERY_FAILED/);
+  assert.doesNotMatch(text, /private|secret|neon\.tech/);
+});
+
+test('#4113 catch-all direct gate fails closed without invoking Modal and unrelated route mapping remains intact', async () => {
+  const { pathModule } = await loadModules();
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    throw new Error('Modal must not be used when direct gate is selected');
+  };
+  try {
+    const response = await pathModule.onRequest({
+      request: new Request('https://lovebud.test/api/community/memories', {
+        headers: { 'x-lovebud-request-id': 'req-4113-route' }
+      }),
+      env: {
+        LB_COMMUNITY_MEMORIES_READ_RUNTIME: 'direct_neon',
+        MODAL_BASE_URL: 'https://modal.test',
+      },
+    });
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(response.headers.get('x-lovebud-request-id'), 'req-4113-route');
+    assert.equal(fetchCalls, 0);
+
+    const growing = pathModule.buildModalUrl(
+      new Request('https://lovebud.test/api/community/growing-trees'),
+      { MODAL_BASE_URL: 'https://modal.test' }
+    );
+    assert.equal(growing.pathname, '/modal/browse/growing');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
