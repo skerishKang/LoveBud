@@ -16,6 +16,7 @@ export const COMMUNITY_MEMORIES_MAX_LIMIT = 200;
 
 const POSTGRES_URL = /^postgres(?:ql)?:\/\//i;
 const NEON_HOST = /(?:^|\.)neon\.tech$/i;
+const LEGACY_SCHEMA_ERROR_CODES = new Set(['42P01', '42703']);
 
 export function isPublicCommunityMemoriesRequest(request) {
   if (!request || request.method.toUpperCase() !== 'GET') return false;
@@ -231,6 +232,20 @@ function readSchemaCapabilities(rows) {
   });
 }
 
+function isLegacySchemaError(error) {
+  return LEGACY_SCHEMA_ERROR_CODES.has(String(error?.code || ''));
+}
+
+function selectLegacyQuery(capabilities) {
+  if (capabilities.hasTreeTitle && capabilities.hasTreeVisibility) {
+    return COMMUNITY_MEMORIES_LEGACY_MODERN_TREE_SQL;
+  }
+  if (capabilities.hasTreeName && capabilities.hasTreeIsPublic) {
+    return COMMUNITY_MEMORIES_LEGACY_OLD_TREE_SQL;
+  }
+  return null;
+}
+
 function readLegacyPayload(rawPayload) {
   if (rawPayload && typeof rawPayload === 'object' && !Array.isArray(rawPayload)) return rawPayload;
   if (typeof rawPayload !== 'string' || !rawPayload) return {};
@@ -393,17 +408,15 @@ export async function handlePublicCommunityMemoriesDirectNeon(
     const capabilities = readSchemaCapabilities(capabilityRows);
 
     if (capabilities.hasMemories) {
-      const rows = await executor(COMMUNITY_MEMORIES_MODERN_SQL, [treeId, limit]);
-      return jsonResponse((Array.isArray(rows) ? rows : []).map(projectCommunityMemoryRow), 200, requestId);
+      try {
+        const rows = await executor(COMMUNITY_MEMORIES_MODERN_SQL, [treeId, limit]);
+        return jsonResponse((Array.isArray(rows) ? rows : []).map(projectCommunityMemoryRow), 200, requestId);
+      } catch (error) {
+        if (!isLegacySchemaError(error)) throw error;
+      }
     }
 
-    let legacyQuery = null;
-    if (capabilities.hasTreeTitle && capabilities.hasTreeVisibility) {
-      legacyQuery = COMMUNITY_MEMORIES_LEGACY_MODERN_TREE_SQL;
-    } else if (capabilities.hasTreeName && capabilities.hasTreeIsPublic) {
-      legacyQuery = COMMUNITY_MEMORIES_LEGACY_OLD_TREE_SQL;
-    }
-
+    const legacyQuery = selectLegacyQuery(capabilities);
     if (!legacyQuery) {
       return jsonResponse([], 200, requestId);
     }
