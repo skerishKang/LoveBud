@@ -79,7 +79,7 @@ def _normalize_stored_visibility(value: Any) -> str | None:
 
 
 def normalize_memory_row(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+    obj: dict[str, Any] = {
         "id": str(row["id"]),
         "treeId": str(row["tree_id"]) if row.get("tree_id") else None,
         "parentId": str(row["parent_id"]) if row.get("parent_id") else None,
@@ -99,6 +99,14 @@ def normalize_memory_row(row: dict[str, Any]) -> dict[str, Any]:
         "createdAt": _to_isoformat(row.get("created_at")),
         "updatedAt": _to_isoformat(row.get("updated_at")),
     }
+    # Issue #4058: expose clientKey as a flat camelCase field only when the
+    # canonical schema carries the column (capability-safe). When the migration
+    # has not been applied, `client_key` is absent from the row and we MUST NOT
+    # fabricate a synthetic key (legacy NULL rows never get fabricated keys).
+    client_key = row.get("client_key")
+    if client_key is not None:
+        obj["clientKey"] = client_key
+    return obj
 
 
 def normalize_tree_row(
@@ -214,6 +222,44 @@ def validate_optional_string(value: Any, max_length: int = 5000) -> str:
     if len(text) > max_length:
         raise HTTPException(status_code=400, detail=f"Field exceeds max {max_length}")
     return text
+
+
+# Tree-scoped Memory clientKey idempotency contract (#4058, #4004, #4005).
+# A bounded 100-char string policy, aligned with LoveTree portability reference
+# (maxLength=100) where current LoveBud contract/governance does not conflict.
+_CLIENT_KEY_MAX_LEN = 100
+
+
+def validate_client_key(value: Any) -> str | None:
+    """Validate an optional Memory clientKey for idempotent create (#4058).
+
+    - omitted / None / ""  -> returns None (legacy-compatible create, client_key NULL)
+    - valid bounded string -> normalized (stripped) value
+    - non-string          -> HTTP 400 BEFORE any DB mutation (no silent coercion)
+    - oversized           -> HTTP 400 BEFORE any DB mutation
+
+    The empty-string case is treated as "omitted" so a caller sending an empty
+    key cannot accidentally reserve a degenerate idempotency slot.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return None
+        if len(stripped) > _CLIENT_KEY_MAX_LEN:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "CLIENT_KEY_TOO_LONG",
+                    "maxLength": _CLIENT_KEY_MAX_LEN,
+                },
+            )
+        return stripped
+    raise HTTPException(
+        status_code=400,
+        detail={"code": "CLIENT_KEY_INVALID_TYPE", "reason": "string_required"},
+    )
 
 
 def validate_optional_memory_string(

@@ -31,6 +31,9 @@ const PKG = path.join(ROOT, 'package.json');
 
 const core = require(CORE);
 const provenance = require(PROVENANCE);
+const planCore = require(path.join(ROOT, 'scripts', 'adoption-baseline-collection-plan-core.cjs'));
+const candidateCore = require(path.join(ROOT, 'scripts', 'expected-schema-candidate-core.cjs'));
+const receiptCore = require(path.join(ROOT, 'scripts', 'phase-b-collection-receipt-core.cjs'));
 
 function readJson(p) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -975,6 +978,335 @@ test('architecture doc describes strict adoption attestation rules', () => {
   assert.ok(design.includes('Keep #1882 OPEN.'));
   assert.doesNotMatch(design, /\b(?:Closes|Fixes|Resolves)\s+#1882\b/i);
   assert.doesNotMatch(design, /\b(?:Closes|Fixes|Resolves)\s+#3458\b/i);
+});
+
+test('prepared UNATTESTED draft accepts populated ADOPTION_REQUIRED canonical catalog (#4091)', () => {
+  const canonical = readJson(CANONICAL);
+  const expected = readJson(EXPECTED_SCHEMA);
+  assert.equal(canonical.status, 'ADOPTION_REQUIRED');
+  assert.ok(canonical.migrations.length > 0);
+
+  const evidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: expected.critical_objects.map((item) => ({
+      name: item.name,
+      fingerprint: item.fingerprint,
+    })),
+  };
+  const plan = planCore.buildPreparedCollectionPlan({
+    baselineCommit: '0000000000000000000000000000000000000000',
+    approvalReference: 'issue:4091',
+  });
+  const candidate = candidateCore.buildExpectedSchemaCandidate(evidence, expected);
+  const draft = core.buildPreparedUnattestedAttestationDraft({
+    preparedPlan: plan,
+    migrationManifest: canonical,
+    expectedSchemaCandidate: candidate,
+    catalogEvidence: evidence,
+  });
+
+  assert.equal(draft.adoption_status, 'UNATTESTED');
+  assert.equal(draft.attestation_scope, 'PRODUCTION_READONLY');
+  assert.equal(draft.environment_class, 'PRODUCTION');
+  const second = core.buildPreparedUnattestedAttestationDraft({
+    preparedPlan: plan,
+    migrationManifest: canonical,
+    expectedSchemaCandidate: candidate,
+    catalogEvidence: evidence,
+  });
+  assert.deepEqual(draft, second);
+});
+
+test('prepared draft never claims catalog membership as applied history (#4091)', () => {
+  const canonical = readJson(CANONICAL);
+  const expected = readJson(EXPECTED_SCHEMA);
+  const evidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: expected.critical_objects.map((item) => ({
+      name: item.name,
+      fingerprint: item.fingerprint,
+    })),
+  };
+  const plan = planCore.buildPreparedCollectionPlan({
+    baselineCommit: '0000000000000000000000000000000000000000',
+    approvalReference: 'issue:4091',
+  });
+  const candidate = candidateCore.buildExpectedSchemaCandidate(evidence, expected);
+  const draft = core.buildPreparedUnattestedAttestationDraft({
+    preparedPlan: plan,
+    migrationManifest: canonical,
+    expectedSchemaCandidate: candidate,
+    catalogEvidence: evidence,
+  });
+
+  // Populated catalog must NEVER materialize as APPLIED execution records.
+  assert.deepEqual(draft.applied_migrations, []);
+  assert.notEqual(draft.adoption_status, 'ATTESTED');
+  const draftText = JSON.stringify(draft.applied_migrations);
+  for (const record of canonical.migrations) {
+    assert.equal(draftText.includes(record.id), false);
+    assert.equal(draftText.includes(record.checksum), false);
+  }
+
+  // Even a manifest carrying an injected applied-history blob cannot populate
+  // the prepared draft's applied_migrations through catalog membership.
+  const injected = JSON.parse(JSON.stringify(canonical));
+  injected.injected_applied_history = canonical.migrations.map((item) => ({
+    id: item.id,
+    checksum: item.checksum,
+  }));
+  const injectedDraft = core.buildPreparedUnattestedAttestationDraft({
+    preparedPlan: plan,
+    migrationManifest: injected,
+    expectedSchemaCandidate: candidate,
+    catalogEvidence: evidence,
+  });
+  assert.deepEqual(injectedDraft.applied_migrations, []);
+});
+
+test('prepared draft canonical_manifest_digest covers full populated manifest (#4091)', () => {
+  const canonical = readJson(CANONICAL);
+  const expected = readJson(EXPECTED_SCHEMA);
+  const evidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: expected.critical_objects.map((item) => ({
+      name: item.name,
+      fingerprint: item.fingerprint,
+    })),
+  };
+  const plan = planCore.buildPreparedCollectionPlan({
+    baselineCommit: '0000000000000000000000000000000000000000',
+    approvalReference: 'issue:4091',
+  });
+  const candidate = candidateCore.buildExpectedSchemaCandidate(evidence, expected);
+  const draft = core.buildPreparedUnattestedAttestationDraft({
+    preparedPlan: plan,
+    migrationManifest: canonical,
+    expectedSchemaCandidate: candidate,
+    catalogEvidence: evidence,
+  });
+
+  // Digest is recomputed from the FULL populated canonical manifest.
+  assert.equal(draft.canonical_manifest_digest, core.computeObjectDigest(canonical));
+
+  // Any populated-catalog change moves the digest.
+  const mutated = JSON.parse(JSON.stringify(canonical));
+  mutated.migrations[0].checksum = provenance.sha256('mutated-catalog-record');
+  const mutatedDraft = core.buildPreparedUnattestedAttestationDraft({
+    preparedPlan: plan,
+    migrationManifest: mutated,
+    expectedSchemaCandidate: candidate,
+    catalogEvidence: evidence,
+  });
+  assert.notEqual(mutatedDraft.canonical_manifest_digest, draft.canonical_manifest_digest);
+});
+
+test('Phase-B production-readonly collection composition succeeds with populated catalog (#4091)', () => {
+  const canonical = readJson(CANONICAL);
+  const expected = readJson(EXPECTED_SCHEMA);
+  const boundaryContractBytes = fs.readFileSync(
+    path.join(ROOT, 'db', 'migration-provenance', 'production-readonly-catalog-boundary-contract.json')
+  );
+  const catalogMetadataContractBytes = fs.readFileSync(
+    path.join(ROOT, 'db', 'migration-provenance', 'catalog-metadata-contract.json')
+  );
+  const evidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: expected.critical_objects.map((item) => ({
+      name: item.name,
+      fingerprint: item.fingerprint,
+    })),
+  };
+  const plan = planCore.buildPreparedCollectionPlan({
+    baselineCommit: '0000000000000000000000000000000000000000',
+    approvalReference: 'issue:4091',
+  });
+  const candidate = candidateCore.buildExpectedSchemaCandidate(evidence, expected);
+
+  // run-production-readonly-catalog-collection.cjs passes the canonical manifest
+  // straight into buildPreparedUnattestedAttestationDraft; a populated
+  // ADOPTION_REQUIRED catalog must not surface as ATTESTATION_DRAFT_FAILED.
+  let draft;
+  assert.doesNotThrow(() => {
+    draft = core.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: plan,
+      migrationManifest: canonical,
+      expectedSchemaCandidate: candidate,
+      catalogEvidence: evidence,
+    });
+  });
+
+  const receipt = receiptCore.buildCollectionReceipt({
+    preparedPlan: plan,
+    boundaryContractBytes,
+    catalogMetadataContractBytes,
+    canonicalManifest: canonical,
+    expectedSchemaManifest: expected,
+    catalogEvidence: evidence,
+    inactiveExpectedSchemaCandidate: candidate,
+    preparedAttestationDraft: draft,
+    collectionSessionCount: 1,
+  });
+  assert.equal(receipt.outcome, 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY');
+  assert.equal(receipt.canonical_manifest_digest, draft.canonical_manifest_digest);
+  assert.equal(receipt.attestation_status, 'UNATTESTED');
+  assert.equal(receipt.manifest_activation, 'NONE');
+});
+
+function populatedCatalogDraftInput(mutations = {}) {
+  const canonical = readJson(CANONICAL);
+  const expected = readJson(EXPECTED_SCHEMA);
+  const manifest = JSON.parse(JSON.stringify(canonical));
+  if (typeof mutations.record === 'function') {
+    mutations.record(manifest.migrations[0], manifest);
+  }
+  if (typeof mutations.manifest === 'function') {
+    mutations.manifest(manifest);
+  }
+  const evidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: expected.critical_objects.map((item) => ({
+      name: item.name,
+      fingerprint: item.fingerprint,
+    })),
+  };
+  return {
+    preparedPlan: planCore.buildPreparedCollectionPlan({
+      baselineCommit: '0000000000000000000000000000000000000000',
+      approvalReference: 'issue:4091',
+    }),
+    migrationManifest: manifest,
+    expectedSchemaCandidate: candidateCore.buildExpectedSchemaCandidate(evidence, expected),
+    catalogEvidence: evidence,
+  };
+}
+
+test('populated catalog records remain strict fail-closed (#4091)', () => {
+  const secondChecksum = 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+  const cases = [
+    ['record is null', { record: (rec, manifest) => { manifest.migrations[0] = null; } }, 'ADOPTION_ATTESTATION_MIGRATION_INVALID'],
+    ['record is string', { record: (rec, manifest) => { manifest.migrations[0] = 'record'; } }, 'ADOPTION_ATTESTATION_MIGRATION_INVALID'],
+    ['missing canonical field', { record: (rec) => { delete rec.name; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['null canonical field', { record: (rec) => { rec.owner_domain = null; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['unknown record field', { record: (rec) => { rec.extra_field = 'bad'; } }, 'ADOPTION_ATTESTATION_UNKNOWN_FIELD'],
+    ['prohibited record field', { record: (rec) => { rec.host = 'db.example'; } }, 'ADOPTION_ATTESTATION_PROHIBITED_FIELD'],
+    ['invalid migration id', { record: (rec) => { rec.id = '20260802094500_Invalid_ID'; rec.path = 'db/migrations/20260802094500_Invalid_ID.sql'; } }, 'ADOPTION_ATTESTATION_MIGRATION_INVALID'],
+    ['non-canonical path', { record: (rec) => { rec.path = 'db/migrations/nested/x.sql'; } }, 'ADOPTION_ATTESTATION_PATH_INVALID'],
+    ['path basename/ID mismatch', { record: (rec) => { rec.path = 'db/migrations/other.sql'; } }, 'ADOPTION_ATTESTATION_PATH_INVALID'],
+    ['invalid checksum', { record: (rec) => { rec.checksum = 'sha256:not_valid_hex'; } }, 'ADOPTION_ATTESTATION_DIGEST_INVALID'],
+    ['duplicate id', { record: (rec, manifest) => {
+      const clone = JSON.parse(JSON.stringify(rec));
+      clone.path = `db/migrations/${clone.id}.sql`;
+      clone.depends_on = [];
+      manifest.migrations.push(clone);
+    } }, 'ADOPTION_ATTESTATION_MIGRATION_INVALID'],
+    ['reordered records (timestamp reversal)', { record: (rec, manifest) => { manifest.migrations.reverse(); } }, 'ADOPTION_ATTESTATION_MIGRATION_INVALID'],
+    ['invalid risk_class', { record: (rec) => { rec.risk_class = 'WILD'; } }, 'ADOPTION_ATTESTATION_ENUM_INVALID'],
+    ['invalid transaction_mode', { record: (rec) => { rec.transaction_mode = 'MAYBE'; } }, 'ADOPTION_ATTESTATION_ENUM_INVALID'],
+    ['unknown destructive operation', { record: (rec) => { rec.destructive_operations = ['NUKE_EVERYTHING']; } }, 'ADOPTION_ATTESTATION_ENUM_INVALID'],
+    ['duplicate destructive operation', { record: (rec) => { rec.destructive_operations = ['DROP_TABLE', 'DROP_TABLE']; } }, 'ADOPTION_ATTESTATION_ENUM_INVALID'],
+    ['unknown precondition check', { record: (rec) => { rec.expected_preconditions = [{ check: 'column_exists', target: 'x', expected: true }]; } }, 'ADOPTION_ATTESTATION_ENUM_INVALID'],
+    ['malformed condition record', { record: (rec) => { rec.expected_postconditions = [{ check: 'table_exists' }]; } }, 'ADOPTION_ATTESTATION_UNKNOWN_FIELD'],
+    ['non-boolean expected condition', { record: (rec) => { rec.expected_postconditions = [{ check: 'table_exists', target: 'x', expected: 'yes' }]; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['self dependency', { record: (rec) => { rec.depends_on = [rec.id]; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['duplicate dependency', { record: (rec) => { rec.depends_on = ['20260802094500_bootstrap-migration-ledger', '20260802094500_bootstrap-migration-ledger']; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['unknown dependency', { record: (rec) => { rec.depends_on = ['20260101000000_missing']; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['forward dependency ordering', { record: (rec) => { rec.depends_on = ['20260812213000_add-tree-appreciation-orders']; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['placeholder approval', { record: (rec) => { rec.approval_reference = 'TBD'; } }, 'ADOPTION_ATTESTATION_APPROVAL_INVALID'],
+    ['malformed approval reference', { record: (rec) => { rec.approval_reference = 'issue:0'; } }, 'ADOPTION_ATTESTATION_APPROVAL_INVALID'],
+    ['empty rollback_support', { record: (rec) => { rec.rollback_support = ''; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+  ];
+  for (const [label, mutations, category] of cases) {
+    assert.throws(
+      () => core.buildPreparedUnattestedAttestationDraft(populatedCatalogDraftInput(mutations)),
+      (error) => {
+        assert.equal(error.category, category, `${label}: expected ${category}, got ${error.category}`);
+        return true;
+      },
+      label
+    );
+  }
+});
+
+test('malformed ADOPTION_REQUIRED manifests remain fail-closed (#4091)', () => {
+  const cases = [
+    ['missing migrations field', { manifest: (m) => { delete m.migrations; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['non-array migrations', { manifest: (m) => { m.migrations = 'not_array'; } }, 'ADOPTION_ATTESTATION_INPUT_INVALID'],
+    ['migrations with holes', { manifest: (m) => { m.migrations.push(undefined); } }, 'ADOPTION_ATTESTATION_VALUE_INVALID'],
+  ];
+  for (const [label, mutations, category] of cases) {
+    assert.throws(
+      () => core.buildPreparedUnattestedAttestationDraft(populatedCatalogDraftInput(mutations)),
+      (error) => {
+        assert.equal(error.category, category, label);
+        return true;
+      },
+      label
+    );
+  }
+  assert.throws(
+    () => core.buildPreparedUnattestedAttestationDraft({
+      preparedPlan: populatedCatalogDraftInput().preparedPlan,
+      migrationManifest: null,
+      expectedSchemaCandidate: populatedCatalogDraftInput().expectedSchemaCandidate,
+      catalogEvidence: populatedCatalogDraftInput().catalogEvidence,
+    }),
+    (error) => error.category === 'ADOPTION_ATTESTATION_INPUT_INVALID'
+  );
+});
+
+test('prepared draft rejects ACTIVE promotion attempts (#4091)', () => {
+  const base = populatedCatalogDraftInput();
+  const draft = core.buildPreparedUnattestedAttestationDraft(base);
+  assert.equal(draft.adoption_status, 'UNATTESTED');
+  assert.ok(['ATTESTED', 'ACTIVE'].includes(draft.adoption_status) === false);
+
+  const activeCandidate = { ...base.expectedSchemaCandidate, status: 'ACTIVE' };
+  assert.throws(
+    () => core.buildPreparedUnattestedAttestationDraft({
+      ...base,
+      expectedSchemaCandidate: activeCandidate,
+    }),
+    (error) => error.category === 'ADOPTION_ATTESTATION_ENUM_INVALID'
+  );
+});
+
+test('ATTESTED evidence cannot fabricate applied history from catalog membership (#4091)', () => {
+  const canonical = readJson(CANONICAL);
+  const baselineCommit = '1111111111111111111111111111111111111111';
+  const attestation = core.buildSyntheticAttestation({
+    baselineCommit,
+    migrationManifest: canonical,
+    expectedSchemaManifest: readJson(EXPECTED_SCHEMA),
+    catalogEvidence: { format_version: '1.0', normalizer_version: '1.0', objects: [] },
+    environmentClass: 'DISPOSABLE_CI',
+    varianceClassification: 'MATCH',
+    approvalReference: 'issue:9999',
+    attestationScope: 'INACTIVE_BASELINE',
+    appliedMigrations: [{ id: canonical.migrations[0].id, checksum: canonical.migrations[0].checksum }],
+  });
+  // Trusted list is empty: catalog membership alone must never attest application.
+  const result = core.validateAdoptionAttestationEvidence(
+    attestation,
+    {
+      baseline_commit: baselineCommit,
+      canonical_manifest_digest: attestation.canonical_manifest_digest,
+      expected_schema_digest: attestation.expected_schema_digest,
+      catalog_evidence_digest: attestation.catalog_evidence_digest,
+      approval_reference: 'issue:9999',
+      environment_class: 'DISPOSABLE_CI',
+      attestation_scope: 'INACTIVE_BASELINE',
+      expected_migrations: [],
+    },
+    contract
+  );
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_UNKNOWN'));
 });
 
 test('post-suite manifests still unchanged', () => {

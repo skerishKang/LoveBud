@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from modal_compute.auth import (
     EntitlementCheckUnavailableError,
     PlusRequiredError,
+    require_authenticated_principal,
     require_firebase_user,
 )
 from modal_compute.config import _allowed_origins as _config_allowed_origins
@@ -362,7 +363,7 @@ def get_private_trees(
         method="GET",
     )
     try:
-        user = require_firebase_user(authorization)
+        principal = require_authenticated_principal(authorization)
     except HTTPException as e:
         if e.status_code >= 500:
             logger.log_error(
@@ -380,12 +381,14 @@ def get_private_trees(
     try:
         if pagination == "cursor":
             try:
-                items, next_cursor = page_user_trees(user["uid"], limit=limit, cursor=cursor)
+                items, next_cursor = page_user_trees(
+                    principal["legacyOwnerId"], limit=limit, cursor=cursor
+                )
             except OwnerListCursorError:
                 raise HTTPException(status_code=400, detail="Invalid pagination cursor")
             logger.log_success(status_code=200)
             return {"items": items, "nextCursor": next_cursor}
-        result = fetch_user_trees(user["uid"], limit=limit)
+        result = fetch_user_trees(principal["legacyOwnerId"], limit=limit)
         logger.log_success(status_code=200)
         return result
     except HTTPException:
@@ -417,9 +420,9 @@ def get_private_tree_detail(
     tree_id: str,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
+    principal = require_authenticated_principal(authorization)
     safe_tree_id = validate_required_uuid(tree_id, "treeId")
-    tree = fetch_owner_tree(safe_tree_id, user["uid"])
+    tree = fetch_owner_tree(safe_tree_id, principal["legacyOwnerId"])
     if not tree:
         raise HTTPException(status_code=404, detail="Tree not found")
     return tree
@@ -536,17 +539,19 @@ def get_private_memories(
     limit: int = Query(default=100, ge=1, le=200),
     authorization: str | None = Header(default=None),
 ) -> list[dict] | dict:
-    user = require_firebase_user(authorization)
+    principal = require_authenticated_principal(authorization)
     safe_tree_id = validate_optional_uuid(treeId, "treeId")
     if pagination == "cursor":
         try:
             items, next_cursor = page_owner_memories(
-                user["uid"], safe_tree_id, limit=limit, cursor=cursor
+                principal["legacyOwnerId"], safe_tree_id, limit=limit, cursor=cursor
             )
         except OwnerListCursorError:
             raise HTTPException(status_code=400, detail="Invalid pagination cursor")
         return {"items": items, "nextCursor": next_cursor}
-    return fetch_owner_memories(user["uid"], tree_id=safe_tree_id, limit=limit)
+    return fetch_owner_memories(
+        principal["legacyOwnerId"], tree_id=safe_tree_id, limit=limit
+    )
 
 
 @web_app.post("/modal/private/memories")
@@ -591,9 +596,9 @@ def get_private_memory_detail(
         method="GET",
     )
     try:
-        user = require_firebase_user(authorization)
+        principal = require_authenticated_principal(authorization)
         safe_memory_id = validate_required_id(memory_id, "memoryId")
-        memory = require_memory_owner(safe_memory_id, user["uid"])
+        memory = require_memory_owner(safe_memory_id, principal["legacyOwnerId"])
         logger.log_success(status_code=200)
         return normalize_memory_row(memory)
     except HTTPException:

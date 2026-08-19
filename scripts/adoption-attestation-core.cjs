@@ -12,6 +12,13 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { validatePreparedCollectionPlan } = require('./adoption-baseline-collection-plan-core.cjs');
+// Repository-owned canonical catalog contracts (single source of truth).
+const {
+  REQUIRED_MIGRATION_FIELDS,
+  DESTRUCTIVE_OPERATION_VOCABULARY,
+  SHA256_PATTERN,
+  isValidApprovalReference,
+} = require('./migration-provenance-core.cjs');
 
 const PROHIBITED_FIELDS = new Set([
   'host', 'hostname', 'port', 'database', 'database_name',
@@ -937,10 +944,14 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
  *   8. final recursive validation
  *
  * baseline_commit and approval_reference come from validated trustedPlan.
- * applied_migrations from repository-owned canonical manifest only —
- * each record is strictly validated.
+ * applied_migrations is always [] for the prepared UNATTESTED draft —
+ * populated canonical catalog membership is never an applied-history claim.
  *
- * ADOPTION_REQUIRED + non-empty migrations → fail closed.
+ * ADOPTION_REQUIRED manifests accept an empty or populated canonical catalog;
+ * every populated catalog record is strictly fail-closed validated for
+ * canonical shape (id, path, checksum, uniqueness, ascending order).
+ * ACTIVE manifests keep strict minimal applied-record validation.
+ * CATALOGUED != APPLIED and UNATTESTED != ACTIVE — no promotion happens here.
  *
  * No database, network, environment fallback, or file write.
  */
@@ -1009,9 +1020,12 @@ function buildPreparedUnattestedAttestationDraft(options) {
       const mig = migrationManifest.migrations;
 
       if (migStatus === 'ADOPTION_REQUIRED') {
-        // migrations field must exist and be an empty array
+        // ADOPTION_REQUIRED + populated canonical catalog is valid prepared input.
+        // Every populated catalog record remains strictly fail-closed validated for
+        // the current canonical format. Catalog membership is never treated as
+        // applied history: the prepared draft's applied_migrations stays [].
         if (!Array.isArray(mig)) fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrations' });
-        if (mig.length !== 0) fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrations_not_empty' });
+        validateCanonicalCatalogRecords(mig);
       } else {
         // Non-ADOPTION_REQUIRED: migrations array must exist, strictly validate each record
         if (!Array.isArray(mig)) fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrations' });
@@ -1040,14 +1054,11 @@ function buildPreparedUnattestedAttestationDraft(options) {
   const expectedDigest = computeObjectDigest(expectedSchemaCandidate);
   const catalogDigest = computeObjectDigest(catalogEvidence);
 
-  // ── applied_migrations from canonical manifest only ──
-  let migrations = [];
-  if (migrationManifest && migrationManifest.status !== 'ADOPTION_REQUIRED') {
-    migrations = migrationManifest.migrations.map((item) => ({
-      id: item.id,
-      checksum: item.checksum,
-    }));
-  }
+  // ── applied_migrations is always [] for the prepared UNATTESTED draft ──
+  // Catalog membership is never evidence of historical execution. Only a
+  // separately trusted historical applied authority could populate this list,
+  // and no such caller-controlled provenance path is accepted here.
+  const migrations = [];
 
   // ── Step 7: Build draft ──
   const draft = {
@@ -1134,7 +1145,201 @@ function scanDraftSensitive(value, depth) {
 }
 
 /**
- * Validate migration manifest record.
+ * Validate populated canonical catalog records of an ADOPTION_REQUIRED manifest.
+ * Fail-closed strict validation against the current committed canonical format
+ * (db/migration-provenance/canonical-migrations.json canonical_path_rule,
+ * ordering_rule, migration_id_rule, identity/order/checksum contract).
+ *
+ * Catalog membership is NEVER treated as applied or executed history: no record
+ * here is copied into prepared.applied_migrations.
+ */
+const CANONICAL_MIGRATION_ID_PATTERN = /^\d{14}_[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CANONICAL_MIGRATIONS_DIRECTORY = 'db/migrations';
+const CANONICAL_RISK_CLASSES = new Set(['ADDITIVE', 'COMPATIBILITY', 'DESTRUCTIVE', 'ADOPTION']);
+const CANONICAL_TRANSACTION_MODES = new Set(['REQUIRED', 'PROHIBITED', 'EXPLICIT']);
+const CATALOG_PRECONDITION_CHECKS = new Set(['table_exists']);
+const CATALOG_CONDITION_TARGET_PATTERN = /^[A-Za-z_][A-Za-z0-9_.]*$/;
+
+function validateCatalogConditionList(condList, condField) {
+  if (!Array.isArray(condList)) {
+    fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: condField });
+  }
+  if (condList.length > 256) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED, { field: condField });
+  for (const cond of condList) {
+    if (!cond || typeof cond !== 'object' || Array.isArray(cond)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: condField });
+    }
+    const condKeys = Object.keys(cond);
+    if (condKeys.length !== 3 || !condKeys.includes('check') || !condKeys.includes('target') || !condKeys.includes('expected')) {
+      fail(FAILURE.ADOPTION_ATTESTATION_UNKNOWN_FIELD, { field: condField });
+    }
+    if (typeof cond.check !== 'string' || !CATALOG_PRECONDITION_CHECKS.has(cond.check)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: condField });
+    }
+    if (typeof cond.target !== 'string' || !CATALOG_CONDITION_TARGET_PATTERN.test(cond.target)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: condField });
+    }
+    if (typeof cond.expected !== 'boolean') {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: condField });
+    }
+  }
+}
+
+function validateCanonicalCatalogRecords(migrations) {
+  if (!Array.isArray(migrations)) fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'migrations' });
+  if (migrations.length > 256) fail(FAILURE.ADOPTION_ATTESTATION_BOUNDS_EXCEEDED, { field: 'migrations' });
+
+  const seenIds = new Set();
+  let previousId = null;
+
+  for (const item of migrations) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'migrations' });
+    }
+    if (Object.getPrototypeOf(item) !== Object.prototype) {
+      fail(FAILURE.ADOPTION_ATTESTATION_VALUE_INVALID, { field: 'migrations' });
+    }
+    // Reject accessor properties without invoking.
+    const descriptors = Object.getOwnPropertyDescriptors(item);
+    for (const key of Object.keys(descriptors)) {
+      const desc = descriptors[key];
+      if (desc && (typeof desc.get === 'function' || typeof desc.set === 'function')) {
+        fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'accessor' });
+      }
+      if (typeof key !== 'string' || !key) {
+        fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'migrations' });
+      }
+      if (PROHIBITED_FIELDS.has(key)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_PROHIBITED_FIELD, { field: key });
+      }
+      if (hasSensitive(key, FALLBACK_SENSITIVE_MARKERS)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER, { field: 'migrations' });
+      }
+    }
+    // Every committed canonical field must be present (current catalog format).
+    for (const field of REQUIRED_MIGRATION_FIELDS) {
+      if (!(field in item) || item[field] === undefined || item[field] === null) {
+        fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: `missing:${field}` });
+      }
+    }
+    // No unknown fields: record shape is repository-anchored, caller-controlled
+    // record extensions carry no authority and fail closed.
+    for (const key of Object.keys(item)) {
+      if (!REQUIRED_MIGRATION_FIELDS.includes(key)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_UNKNOWN_FIELD, { field: key });
+      }
+    }
+
+    // id: canonical format, uniqueness, strict ascending order (timestamp ordering).
+    if (typeof item.id !== 'string' || !CANONICAL_MIGRATION_ID_PATTERN.test(item.id)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'id' });
+    }
+    if (seenIds.has(item.id)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'duplicate_id' });
+    }
+    seenIds.add(item.id);
+    if (previousId !== null && item.id <= previousId) {
+      fail(FAILURE.ADOPTION_ATTESTATION_MIGRATION_INVALID, { field: 'ordering' });
+    }
+    previousId = item.id;
+
+    // name / owner_domain: non-empty strings.
+    if (typeof item.name !== 'string' || item.name.length === 0) {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'name' });
+    }
+    if (typeof item.owner_domain !== 'string' || item.owner_domain.length === 0) {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'owner_domain' });
+    }
+
+    // path: exactly db/migrations/<migration_id>.sql — direct child, no nesting,
+    // traversal, absolute path, duplicate slash, or other extension.
+    if (typeof item.path !== 'string' || item.path !== `${CANONICAL_MIGRATIONS_DIRECTORY}/${item.id}.sql`) {
+      fail(FAILURE.ADOPTION_ATTESTATION_PATH_INVALID, { field: 'path' });
+    }
+
+    // checksum: sha256 digest format.
+    if (typeof item.checksum !== 'string' || !SHA256_PATTERN.test(item.checksum)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_DIGEST_INVALID, { field: 'checksum' });
+    }
+
+    // depends_on: dense non-empty string array, no self-reference/duplicates.
+    if (!Array.isArray(item.depends_on)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'depends_on' });
+    }
+    const seenDeps = new Set();
+    for (const dependency of item.depends_on) {
+      if (typeof dependency !== 'string' || dependency.length === 0) {
+        fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'depends_on' });
+      }
+      if (dependency === item.id || seenDeps.has(dependency)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'depends_on' });
+      }
+      seenDeps.add(dependency);
+    }
+
+    // risk_class / transaction_mode from the committed vocabulary.
+    if (!CANONICAL_RISK_CLASSES.has(item.risk_class)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'risk_class' });
+    }
+    if (!CANONICAL_TRANSACTION_MODES.has(item.transaction_mode)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'transaction_mode' });
+    }
+
+    // destructive_operations: committed vocabulary only, unique declarations.
+    if (!Array.isArray(item.destructive_operations)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'destructive_operations' });
+    }
+    const declared = new Set();
+    for (const operation of item.destructive_operations) {
+      if (!DESTRUCTIVE_OPERATION_VOCABULARY.includes(operation) || declared.has(operation)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_ENUM_INVALID, { field: 'destructive_operations' });
+      }
+      declared.add(operation);
+    }
+
+    // Preconditions/postconditions: fixed condition-record shape.
+    validateCatalogConditionList(item.expected_preconditions, 'expected_preconditions');
+    validateCatalogConditionList(item.expected_postconditions, 'expected_postconditions');
+
+    // rollback_support: non-empty string (corrections are forward-fix migrations).
+    if (typeof item.rollback_support !== 'string' || item.rollback_support.length === 0) {
+      fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'rollback_support' });
+    }
+
+    // approval_reference: structured reference, placeholder-proof (committed grammar).
+    if (!isValidApprovalReference(item.approval_reference)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_APPROVAL_INVALID, { field: 'approval_reference' });
+    }
+
+    // Sensitive markers inside id/name/checksum fail closed.
+    if (hasSensitive(item.id, FALLBACK_SENSITIVE_MARKERS) || hasSensitive(item.checksum, FALLBACK_SENSITIVE_MARKERS)) {
+      fail(FAILURE.ADOPTION_ATTESTATION_SENSITIVE_MARKER, { field: 'migrations' });
+    }
+  }
+
+  // Cross-record dependency resolution: every dependency must exist in the
+  // catalog and appear strictly before its dependent (current ordering rule).
+  const idIndex = new Map();
+  migrations.forEach((item, index) => {
+    if (item && typeof item.id === 'string') idIndex.set(item.id, index);
+  });
+  migrations.forEach((item) => {
+    if (!item || !Array.isArray(item.depends_on)) return;
+    const ownIndex = typeof item.id === 'string' ? idIndex.get(item.id) : undefined;
+    for (const dependency of item.depends_on) {
+      if (typeof dependency !== 'string' || !idIndex.has(dependency)) {
+        fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'depends_on_unknown' });
+      }
+      if (ownIndex !== undefined && idIndex.get(dependency) >= ownIndex) {
+        fail(FAILURE.ADOPTION_ATTESTATION_INPUT_INVALID, { field: 'depends_on_ordering' });
+      }
+    }
+  });
+}
+
+
+/**
+ * Validate migration manifest record (ACTIVE-manifest minimal applied shape).
  * Checks each record: allowed keys, required fields, patterns, duplicate detection.
  */
 function validateMigrationRecords(migrations) {
