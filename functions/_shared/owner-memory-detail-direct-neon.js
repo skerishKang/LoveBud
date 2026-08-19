@@ -280,7 +280,7 @@ export async function handleOwnerMemoryDetailDirectNeon(
   if (!normalizedMemoryId) {
     return jsonResponse({ detail: 'memoryId is required' }, 400, requestId, 'invalid-memory-id');
   }
-  const databaseMemoryId = decodeURIComponent(normalizedMemoryId);
+  const decodedMemoryId = decodeURIComponent(normalizedMemoryId);
 
   const requestWithId = makeRequestWithId(request, requestId);
   let principal;
@@ -303,6 +303,15 @@ export async function handleOwnerMemoryDetailDirectNeon(
         message: 'Authentication verifier unavailable'
       }
     }, 503, requestId, 'auth-unavailable');
+  }
+
+  // Modal validate_required_id() runs after Firebase verification and trims the
+  // decoded dynamic path value. Keep that ordering and accepted-ID semantics:
+  // non-UUID strings stay valid, surrounding whitespace is removed, and a
+  // whitespace-only decoded ID fails validation before any database query.
+  const databaseMemoryId = decodedMemoryId.trim();
+  if (!databaseMemoryId) {
+    return jsonResponse({ detail: 'memoryId is required' }, 400, requestId, 'invalid-memory-id');
   }
 
   const config = readOwnerMemoryDetailDirectConfig(env);
