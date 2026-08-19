@@ -16,6 +16,11 @@ import {
 import {
   handlePublicGrowingDirectNeon
 } from '../_shared/love-platform-api-growing-neon-query.js';
+import {
+  handlePublicCommunityMemoriesDirectNeon,
+  isPublicCommunityMemoriesDirectNeonSelected,
+  isPublicCommunityMemoriesRequest
+} from '../_shared/public-community-memories-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -526,6 +531,11 @@ export async function onRequest(context) {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+
+  // ─── Public Community Memories (Phase-2 Gated Direct Neon Runtime) ──────────
+  if (isPublicCommunityMemoriesRequest(request) && isPublicCommunityMemoriesDirectNeonSelected(env || {})) {
+    return await handlePublicCommunityMemoriesDirectNeon(request, env || {}, requestId);
+  }
 
   // ─── Anonymous Public Growing Trees (Phase-2 Gated Direct Neon Runtime) ──────
   if (isGrowingTreesRequest(request)) {
