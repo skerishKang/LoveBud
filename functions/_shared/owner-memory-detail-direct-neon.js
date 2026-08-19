@@ -62,20 +62,14 @@ export function readOwnerMemoryDetailDirectConfig(env = {}) {
   });
 }
 
-// Capability-safe parity with the existing owner Memory list/normalizer path.
-// This inspection is read-only and determines whether selecting m.client_key is
-// legal on an older schema; it never treats column absence as an error.
-export const OWNER_MEMORY_DETAIL_CLIENT_KEY_CAPABILITY_SQL = `
-SELECT EXISTS (
-  SELECT 1
-  FROM information_schema.columns
-  WHERE table_schema = 'public'
-    AND table_name = 'memories'
-    AND column_name = 'client_key'
-) AS has_client_key;
-`;
-
-const OWNER_MEMORY_DETAIL_BASE_SELECT = `
+// One bounded static SELECT preserves the legacy clientKey capability without a
+// catalog round trip. `to_jsonb(m) ->> 'client_key'` returns the stored value
+// when the column exists and NULL when an older row type has no such key; unlike
+// `m.client_key`, it does not make parsing the statement depend on the column's
+// physical presence. No Memory or Tree visibility predicate is applied because
+// current owner reads are visibility-independent. Ownership is checked after
+// the row read so missing/deleted remains 404 while non-owner remains 403.
+export const OWNER_MEMORY_DETAIL_SQL = `
 SELECT
   m.id::text AS id,
   m.tree_id::text AS tree_id,
@@ -93,27 +87,7 @@ SELECT
   m.channel_id,
   m.channel_name,
   m.channel_url,
-`;
-
-// Keep two fixed static statements rather than interpolating a column name.
-// Neither statement constrains Memory or Tree visibility: current private
-// authority allows an owner to read public/private Memories regardless of the
-// parent Tree visibility. Ownership is checked after this row is read so a
-// non-owner remains a 403 while a missing/deleted Memory remains a 404.
-export const OWNER_MEMORY_DETAIL_SQL_WITH_CLIENT_KEY = `${OWNER_MEMORY_DETAIL_BASE_SELECT}
-  m.client_key,
-  m.created_at::text AS created_at,
-  m.updated_at::text AS updated_at,
-  t.owner_id::text AS tree_owner_id,
-  t.visibility AS tree_visibility
-FROM memories m
-INNER JOIN trees t
-  ON t.id = m.tree_id
-WHERE m.id = $1
-LIMIT 1;
-`;
-
-export const OWNER_MEMORY_DETAIL_SQL_LEGACY = `${OWNER_MEMORY_DETAIL_BASE_SELECT}
+  to_jsonb(m) ->> 'client_key' AS client_key,
   m.created_at::text AS created_at,
   m.updated_at::text AS updated_at,
   t.owner_id::text AS tree_owner_id,
@@ -131,11 +105,8 @@ function normalizeStoredVisibility(value) {
   return null;
 }
 
-export function projectOwnerMemoryDetailRow(row, { hasClientKey = false } = {}) {
-  if (!row || typeof row !== 'object') {
-    throw new TypeError('OWNER_MEMORY_DETAIL_NORMALIZATION_FAILURE');
-  }
-  if (row.id == null) {
+export function projectOwnerMemoryDetailRow(row) {
+  if (!row || typeof row !== 'object' || row.id == null) {
     throw new TypeError('OWNER_MEMORY_DETAIL_NORMALIZATION_FAILURE');
   }
 
@@ -160,9 +131,9 @@ export function projectOwnerMemoryDetailRow(row, { hasClientKey = false } = {}) 
     updatedAt: normalizeDirectNeonTimestamp(row.updated_at)
   };
 
-  // Match normalize_memory_row(): never fabricate a clientKey for an absent
-  // legacy column or a canonical NULL value.
-  if (hasClientKey && row.client_key != null) {
+  // Match normalize_memory_row(): omit rather than fabricate when the legacy
+  // schema has no key or when the canonical stored value is NULL.
+  if (row.client_key != null) {
     memory.clientKey = row.client_key;
   }
 
@@ -240,11 +211,6 @@ export async function createOwnerMemoryDetailDirectExecutor({ connectionString, 
   };
 }
 
-function readClientKeyCapability(rows) {
-  const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-  return row?.has_client_key === true;
-}
-
 export async function handleOwnerMemoryDetailDirectNeon(
   request,
   env = {},
@@ -258,7 +224,7 @@ export async function handleOwnerMemoryDetailDirectNeon(
 ) {
   if (!isOwnerMemoryDetailDirectNeonSelected(env)) return null;
 
-  // The existing edge proxy canonicalizes/validates the dynamic segment before
+  // The current edge proxy canonicalizes/validates the dynamic segment before
   // Modal verifies the token. Preserve that malformed-path taxonomy here.
   let normalizedMemoryId;
   try {
@@ -327,13 +293,7 @@ export async function handleOwnerMemoryDetailDirectNeon(
       connectionString: config.connectionString,
       executor: executorOverride || undefined
     });
-
-    const capabilityRows = await executor(OWNER_MEMORY_DETAIL_CLIENT_KEY_CAPABILITY_SQL, []);
-    const hasClientKey = readClientKeyCapability(capabilityRows);
-    const query = hasClientKey
-      ? OWNER_MEMORY_DETAIL_SQL_WITH_CLIENT_KEY
-      : OWNER_MEMORY_DETAIL_SQL_LEGACY;
-    const rows = await executor(query, [databaseMemoryId]);
+    const rows = await executor(OWNER_MEMORY_DETAIL_SQL, [databaseMemoryId]);
 
     if (!Array.isArray(rows)) {
       throw new TypeError('OWNER_MEMORY_DETAIL_DIRECT_NEON_RESULT_INVALID');
@@ -352,8 +312,7 @@ export async function handleOwnerMemoryDetailDirectNeon(
       );
     }
 
-    const memory = projectOwnerMemoryDetailRow(row, { hasClientKey });
-    return jsonResponse(memory, 200, requestId);
+    return jsonResponse(projectOwnerMemoryDetailRow(row), 200, requestId);
   } catch {
     return jsonResponse({ detail: 'Internal server error' }, 500, requestId, 'query-failed');
   }
@@ -368,5 +327,6 @@ export const OWNER_MEMORY_DETAIL_DIRECT_NEON_CONTRACT = Object.freeze({
   memoryVisibilityConstraint: false,
   treeVisibilityConstraint: false,
   clientKeyCapabilitySafe: true,
+  boundedQueryCount: 1,
   writes: false
 });
