@@ -1,4 +1,11 @@
+// #4114 Phase-2 anonymous public Memory detail direct-Neon read adapter.
+//
+// This module is route-specific and read-only. It preserves the current public
+// Memory DTO, reaction decoration, path validation, and privacy intersection
+// while authenticated/private reads remain on their existing Modal authority.
+
 import { normalizeMemoryId } from './memory-route-proxy.js';
+import { REQUEST_ID_HEADER } from './request-id.js';
 import {
   buildInvalidPathEncodingResponse,
   isInvalidPathEncodingError
@@ -13,11 +20,15 @@ export const PUBLIC_MEMORY_DETAIL_RUNTIME_ENV = Object.freeze({
 const POSTGRES_URL = /^postgres(?:ql)?:\/\//i;
 const NEON_HOST = /(?:^|\.)neon\.tech$/i;
 
+// One bounded, static, parameterized read. The INNER JOIN plus both visibility
+// predicates makes a private parent Tree indistinguishable from a private,
+// missing, deleted, or otherwise non-public Memory at the anonymous edge.
+// Reaction decoration is read in the same statement and performs no write.
 export const PUBLIC_MEMORY_DETAIL_SQL = `
 SELECT
-  m.id,
-  m.tree_id,
-  m.parent_id,
+  m.id::text AS id,
+  m.tree_id::text AS tree_id,
+  m.parent_id::text AS parent_id,
   m.title,
   m.memo,
   m.artist,
@@ -83,6 +94,8 @@ export function readPublicMemoryDetailConfig(env = {}) {
 export function normalizeDirectNeonTimestamp(value) {
   if (value == null) return null;
   if (value instanceof Date) {
+    // PostgreSQL may carry microsecond precision that JS Date would silently
+    // discard, so the SQL text cast remains authoritative.
     throw new TypeError('PUBLIC_MEMORY_DETAIL_TIMESTAMP_PRECISION_LOST');
   }
   if (typeof value !== 'string') return String(value);
@@ -98,7 +111,7 @@ export function normalizeDirectNeonTimestamp(value) {
   body = body.replace(' ', 'T');
   body = body.replace(/(\.\d+)$/, (match) => {
     const digits = match.slice(1);
-    return '.' + (digits + '000000').slice(0, 6);
+    return `.${(digits + '000000').slice(0, 6)}`;
   });
 
   let normalizedOffset = '';
@@ -124,12 +137,6 @@ export function normalizeMemoryEmotionTags(raw) {
     }
   }
   return [];
-}
-
-function normalizeStoredVisibility(value) {
-  if (value === 'public') return 'public';
-  if (value === 'private') return 'private';
-  return null;
 }
 
 export function normalizeReactionCounts(raw) {
@@ -161,13 +168,18 @@ export function normalizeReactionCounts(raw) {
 }
 
 export function mapPublicMemoryDetailRow(row) {
-  if (!row || typeof row !== 'object') {
-    throw new TypeError('PUBLIC_MEMORY_DETAIL_ROW_INVALID');
-  }
+  if (!row || typeof row !== 'object') return null;
+
+  // Defense in depth for future query edits and injected test executors: a
+  // non-public row must never become an anonymous response even if SQL changes.
+  if (row.visibility !== 'public') return null;
+  const id = row.id == null ? '' : String(row.id);
+  const treeId = row.tree_id == null ? '' : String(row.tree_id);
+  if (!id || !treeId) return null;
 
   return {
-    id: String(row.id),
-    treeId: row.tree_id ? String(row.tree_id) : null,
+    id,
+    treeId,
     parentId: row.parent_id ? String(row.parent_id) : null,
     title: row.title || '',
     memo: row.memo || '',
@@ -178,7 +190,7 @@ export function mapPublicMemoryDetailRow(row) {
     thumbnail: row.thumbnail || '',
     emotionTags: normalizeMemoryEmotionTags(row.emotion_tags),
     timestamp: row.timestamp || '',
-    visibility: normalizeStoredVisibility(row.visibility),
+    visibility: 'public',
     channelId: row.channel_id || null,
     channelName: row.channel_name || null,
     channelUrl: row.channel_url || null,
@@ -192,11 +204,13 @@ export async function createPublicMemoryDetailNeonExecutor({ connectionString, n
   if (!isNeonDatabaseUrl(connectionString)) {
     throw new TypeError('PUBLIC_MEMORY_DETAIL_DIRECT_NEON_CONFIG_INVALID');
   }
+
   const { neon } = await import('@neondatabase/serverless');
   const sql = neon(connectionString, {
     disableWarningInBrowsers: true,
     ...(neonOptions && typeof neonOptions === 'object' ? neonOptions : {})
   });
+
   return async function publicMemoryDetailExecutor(text, values) {
     const rows = await sql.query(text, Array.isArray(values) ? values : []);
     if (!Array.isArray(rows)) {
@@ -207,13 +221,17 @@ export async function createPublicMemoryDetailNeonExecutor({ connectionString, n
 }
 
 function directHeaders(requestId = null, routeStatus = null) {
-  const headers = {
+  const headers = new Headers({
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
-    'x-lovebud-upstream': 'direct-neon'
-  };
-  if (routeStatus) headers['x-lovebud-route-status'] = routeStatus;
-  if (requestId) headers['x-lovebud-request-id'] = requestId;
+    'x-lovebud-upstream': 'direct-neon',
+    'x-lovebud-runtime': 'direct_neon'
+  });
+  if (routeStatus) headers.set('x-lovebud-route-status', routeStatus);
+  if (requestId) {
+    headers.set(REQUEST_ID_HEADER, requestId);
+    headers.set('Access-Control-Expose-Headers', REQUEST_ID_HEADER);
+  }
   return headers;
 }
 
@@ -231,22 +249,20 @@ export async function handlePublicMemoryDetailDirectNeon(
   requestId = null,
   { executorOverride = null } = {}
 ) {
+  // Redundant with the route split by design: the direct helper itself cannot
+  // become an authenticated/private authority if called from another path.
+  const authHeader = request?.headers?.get('authorization') || request?.headers?.get('Authorization');
+  if (authHeader) return null;
+
   const config = readPublicMemoryDetailConfig(env);
   if (!config.isDirect) return null;
-
-  if (!config.configured && !executorOverride) {
-    return jsonResponse({
-      error: 'Public Memory detail direct-Neon runtime not configured',
-      code: 'DIRECT_NEON_CONFIG_ABSENT'
-    }, 503, requestId, 'config-absent');
-  }
 
   let normalizedMemoryId;
   try {
     normalizedMemoryId = normalizeMemoryId(rawMemoryId);
   } catch (error) {
     if (isInvalidPathEncodingError(error)) {
-      const response = buildInvalidPathEncodingResponse(requestId, 'x-lovebud-request-id');
+      const response = buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
       const headers = new Headers(response.headers);
       headers.set('cache-control', 'no-store');
       return new Response(response.body, {
@@ -262,6 +278,15 @@ export async function handlePublicMemoryDetailDirectNeon(
     return jsonResponse({ detail: 'memoryId is required' }, 400, requestId, 'invalid-memory-id');
   }
 
+  if (!config.configured && !executorOverride) {
+    return jsonResponse({
+      error: 'Public Memory detail direct-Neon runtime not configured',
+      code: 'DIRECT_NEON_CONFIG_ABSENT'
+    }, 503, requestId, 'config-absent');
+  }
+
+  // normalizeMemoryId returns a canonical encoded path segment. The database
+  // parameter uses the decoded logical ID, matching FastAPI's path semantics.
   const databaseMemoryId = decodeURIComponent(normalizedMemoryId);
 
   try {
@@ -273,25 +298,16 @@ export async function handlePublicMemoryDetailDirectNeon(
       throw new TypeError('PUBLIC_MEMORY_DETAIL_DIRECT_NEON_RESULT_INVALID');
     }
 
-    if (rows.length === 0) {
-      const response = jsonResponse({ detail: 'Memory not found' }, 404, requestId, 'not-found');
-      const headers = new Headers(response.headers);
-      headers.set('x-lovebud-runtime', 'direct_neon');
-      return new Response(response.body, { status: response.status, headers });
+    const memory = rows.length > 0 ? mapPublicMemoryDetailRow(rows[0]) : null;
+    if (!memory) {
+      return jsonResponse({ detail: 'Memory not found' }, 404, requestId, 'not-found');
     }
 
-    const memory = mapPublicMemoryDetailRow(rows[0]);
-    const response = jsonResponse(memory, 200, requestId);
-    const headers = new Headers(response.headers);
-    headers.set('x-lovebud-runtime', 'direct_neon');
-    return new Response(response.body, { status: response.status, headers });
-  } catch (_error) {
-    const response = jsonResponse({
+    return jsonResponse(memory, 200, requestId);
+  } catch {
+    return jsonResponse({
       error: 'Public Memory detail direct-Neon query failed',
       code: 'DIRECT_NEON_QUERY_FAILED'
     }, 500, requestId, 'query-failed');
-    const headers = new Headers(response.headers);
-    headers.set('x-lovebud-runtime', 'direct_neon');
-    return new Response(response.body, { status: response.status, headers });
   }
 }
