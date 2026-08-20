@@ -66,7 +66,7 @@ Production database credential boundary:
 existing Modal `lovebud-db` secret only
 
 external retained storage:
-private Google Drive folder on a dedicated free Google account
+private Google Drive folder on the user-designated Drive account (reuse authorized; no new account)
 
 object API:
 Google Drive API v3 over TLS (resumable upload, files.get/copy/list/delete)
@@ -141,18 +141,19 @@ dependencies, timeout, ephemeral disk allowance, secret list, and schedule decla
 
 ## 5. Why private Google Drive is selected
 
-Google Drive on a dedicated free Google account is selected as the retained-object target
-(#3894) because:
+Google Drive on the user-designated Drive account is selected as the retained-object
+target (#3894). The account is REUSED; authorization does not create, authorize a new
+subscription for, or bill the account. Selection rationale:
 
-- a dedicated Google account provides a fixed free storage quota;
+- the user-designated account provides existing storage subject to its current quota;
 - buying additional Google storage requires a separate Google One subscription decision
   and must not be required by the backup runtime;
 - when the account reaches its storage limit, new Drive uploads fail rather than silently
   expanding storage (fail closed, no usage-based automatic billing);
 - one encrypted backup upload per day is far below normal Drive API request limits;
 - the retained artifact remains outside the Neon provider boundary;
-- no payment method is required merely because retained data or operations exceed a free
-  allowance.
+- no payment method is required merely because retained data or operations exceed the
+  existing quota allowance.
 
 The product-owner hard boundary (#3894) is:
 
@@ -176,8 +177,9 @@ The implementation requires two secret classes in addition to the existing datab
 
 ```text
 Drive OAuth credential:
-OAuth client id + offline refresh token (and client secret when required),
-scoped to drive.file on the dedicated backup account
+OAuth client id + offline refresh token (and client secret when required by the
+selected client type),
+scoped to drive.file on the user-designated backup account
 
 backup encryption key:
 separate authenticated-encryption key, stored only in secret storage
@@ -382,7 +384,7 @@ The implementation child must not:
 - provision R2, Oracle Object Storage, or Backblaze B2.
 
 After source implementation and CI approval, a separately authorized provisioning/activation
-step may create the dedicated Google account, OAuth client, app-owned Drive folder,
+step may reuse the designated Google account, OAuth client, app-owned Drive folder,
 least-privilege credential, encryption key, Modal secrets, and scheduled deployment. Only
 the provider/storage operations that the Web CTO cannot perform with available tools should
 be delegated to Local.

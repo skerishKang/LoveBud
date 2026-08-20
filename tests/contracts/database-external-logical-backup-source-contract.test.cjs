@@ -374,6 +374,17 @@ test('24. Drive OAuth offline refresh-token boundary (no browser login, no passw
   assert.ok(!/chatgpt_token|openai_token|connector_token/.test(DRIVE), 'no ChatGPT connector token usage');
 });
 
+test('24b. Drive client secret is optional; required id/refresh-token/root enforced', () => {
+  const secretsFn = DRIVE.slice(DRIVE.indexOf('def drive_secrets_present'), DRIVE.indexOf('def _retry_drive'));
+  assert.match(secretsFn, /DRIVE_CLIENT_ID_ENV/);
+  assert.match(secretsFn, /DRIVE_REFRESH_TOKEN_ENV/);
+  assert.match(secretsFn, /DRIVE_BACKUP_ROOT_ENV/);
+  assert.ok(!/DRIVE_CLIENT_SECRET_ENV/.test(secretsFn), 'client secret must NOT be in the required set (optional per selected client type)');
+  const exch = DRIVE.slice(DRIVE.indexOf('def _exchange_refresh_token'), DRIVE.indexOf('def build_drive_service'));
+  assert.match(exch, /os\.environ\.get\(DRIVE_CLIENT_SECRET_ENV\)/, 'client secret read without a default value');
+  assert.ok(!/get\(DRIVE_CLIENT_SECRET_ENV,\s*["']/.test(exch), 'client secret must not be defaulted to an empty value');
+});
+
 test('25. Drive scope not broadened beyond drive.file', () => {
   assert.ok(!/drive\.read|drive\.appdata|drive\.metadata|drive\.full/.test(DRIVE), 'no broadened Drive scope');
   assert.ok(!/www\.googleapis\.com\/auth\/drive["']\s/.test(DRIVE), 'no full Drive scope');
@@ -384,7 +395,13 @@ test('26. no real OAuth request in source tests', () => {
   const behaviorPath = path.join(ROOT, 'tests', 'contracts', 'database-external-logical-backup-behavior-contract.test.cjs');
   const behavior = fs.readFileSync(behaviorPath, 'utf8');
   assert.ok(!/oauth2\.googleapis|googleapis\.com\/drive/.test(behavior), 'no real Google endpoint in behavior test');
-  assert.ok(!/oauth2\.googleapis|googleapis\.com\/drive/.test(DRIVE.slice(DRIVE.indexOf('def _exchange_refresh_token'))) || true, 'token URL is symbolic constant only');
+  // Drive authority URLs must live only as module-level symbolic constants; the
+  // runtime request code must reference the constants, never hard-coded literals.
+  assert.match(DRIVE, /DRIVE_TOKEN_URL\s*=\s*['"]https:\/\/oauth2\.googleapis\.com\/token['"]/);
+  assert.match(DRIVE, /DRIVE_UPLOAD_BASE\s*=\s*['"]https:\/\/www\.googleapis\.com\/upload\/drive\/v3['"]/);
+  const runtimeCode = DRIVE.slice(DRIVE.indexOf('def _exchange_refresh_token'));
+  assert.ok(!/https:\/\/oauth2\.googleapis\.com\/token/.test(runtimeCode), 'token URL literal must not appear in runtime code (use constant)');
+  assert.ok(!/https:\/\/www\.googleapis\.com\/drive/.test(runtimeCode), 'API base literal must not appear in runtime code (use constants)');
 });
 
 test('27. Drive auth failure fails closed (DRIVE_AUTH_UNAVAILABLE, zero upload)', () => {
@@ -488,6 +505,18 @@ test('38. app-owned-only delete; newest valid daily protected', () => {
   assert.match(APP, /RETENTION_WEEKLY_KEEP/);
   assert.match(APP, /RETENTION_MONTHLY_KEEP/);
   assert.match(APP, /drive_select_deletions/);
+});
+
+test('38b. delete call sites are caller-bounded (staging-created or scoped-list-derived)', () => {
+  const deleteCalls = (APP.match(/drive_delete_file\(service,\s*\S+?\)/g) || []);
+  assert.ok(deleteCalls.length === 2, 'expected exactly two delete call sites (staging + retention): ' + JSON.stringify(deleteCalls));
+  for (const c of deleteCalls) {
+    assert.ok(
+      /drive_delete_file\(service,\s*staging_file_id\)/.test(c) ||
+        /drive_delete_file\(service,\s*_expired_id\)/.test(c),
+      'delete call site must be staging-created or scoped-list-derived: ' + c
+    );
+  }
 });
 
 test('39. one-per-24h scheduling unchanged', () => {

@@ -90,10 +90,17 @@ TIER_STAGING = "staging"
 
 
 def drive_secrets_present() -> bool:
-    """Symbolic Drive secret presence check; never reads or logs values."""
+    """Symbolic Drive secret presence check; never reads or logs values.
+
+    Requires the offline OAuth client id, refresh token, and app-owned backup root.
+    The client secret is OPTIONAL and bound to the selected client type: when
+    provisioned it is sent in the refresh-token exchange; when absent the run is
+    NOT blocked solely for its absence, and an empty secret is never fabricated.
+    All required OAuth/root values must still be present; missing any of them fails
+    closed as SECRET_BOUNDARY_UNPROVISIONED downstream.
+    """
     required = (
         DRIVE_CLIENT_ID_ENV,
-        DRIVE_CLIENT_SECRET_ENV,
         DRIVE_REFRESH_TOKEN_ENV,
         DRIVE_BACKUP_ROOT_ENV,
     )
@@ -126,10 +133,17 @@ def _exchange_refresh_token() -> dict:
 
     payload = {
         "client_id": os.environ[DRIVE_CLIENT_ID_ENV],
-        "client_secret": os.environ.get(DRIVE_CLIENT_SECRET_ENV, ""),
         "refresh_token": os.environ[DRIVE_REFRESH_TOKEN_ENV],
         "grant_type": "refresh_token",
     }
+    # Client secret is included ONLY when provisioned for the selected client type
+    # (confidential client). It is never fabricated or defaulted to an empty value,
+    # so a public client (no secret) is not blocked by a synthetic empty secret.
+    # Drive never receives an empty/placeholder secret; the exchange request simply
+    # omits client_secret when no real one is provisioned.
+    client_secret = os.environ.get(DRIVE_CLIENT_SECRET_ENV)
+    if client_secret:
+        payload["client_secret"] = client_secret
     resp = requests.post(DRIVE_TOKEN_URL, data=payload, timeout=30)
     if resp.status_code != 200:
         raise RuntimeError("drive token exchange failed")

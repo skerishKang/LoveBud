@@ -29,7 +29,7 @@ lovebud-recovery-encryption
 `lovebud-recovery-drive` replaced the former `lovebud-recovery-r2` symbolic secret when the
 product-owner selected the Modal + Google Drive primary path (#3894 comment 5349825662). The
 Drive secret may contain only the minimum OAuth / user-authorization material required for the
-dedicated backup account:
+user-designated backup account:
 
 ```text
 OAuth client id
@@ -238,8 +238,8 @@ no R2 / Oracle / Backblaze B2 provisioning
 
 Before any scheduled run can execute, a separate provisioning/deployment child must:
 
-1. create the dedicated free Google account with no Google One subscription and no payment
-   method added for storage expansion;
+1. reuse the designated Google Drive account (no new account; no Google One
+   subscription; no billing mutation; see #3894);
 2. create the OAuth client, complete the one-time user consent, obtain the offline refresh
    token, and create the app-owned Drive backup root folder;
 3. provision the Drive OAuth material under the `lovebud-recovery-drive` symbolic secret;

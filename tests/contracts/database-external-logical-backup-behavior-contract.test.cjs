@@ -265,8 +265,232 @@ check('drive-scope-exact', lambda: d.DRIVE_SCOPE)
 check('drive-secret-name', lambda: d.RECOVERY_DRIVE_SECRET_NAME)
 check('drive-within-state', lambda: d.DRIVE_STORAGE_WITHIN_LIMIT if hasattr(d, 'DRIVE_STORAGE_WITHIN_LIMIT') else p.DRIVE_STORAGE_WITHIN_LIMIT)
 
+
+# ---- #3894 / #4137 in-process FAKE Drive transport contract ----
+# NO real Google API, OAuth, or secret. build_drive_service / _exchange_refresh_token
+# (which touch requests + tokens) are bypassed: a _DriveService is built directly
+# with a FakeSession, so the REAL adapter operations execute against deterministic
+# responses. No npm dependency is required (the adapter only uses the stdlib at import).
+
+class FakeResp:
+    def __init__(self, status_code=200, json_body=None, headers=None):
+        self.status_code = status_code
+        self._json = json_body if json_body is not None else {}
+        self.headers = headers if headers is not None else {}
+    def json(self):
+        return self._json
+
+
+class FakeSession:
+    def __init__(self):
+        self.calls = []
+        self.post_queue = []
+        self.put_queue = []
+        self.get_queue = []
+        self.del_queue = []
+    def _maybe_raise(self, item):
+        if isinstance(item, BaseException):
+            raise item
+        return item
+    def post(self, url, params=None, headers=None, data=None, timeout=None):
+        self.calls.append(('POST', url, dict(params or {}), data, dict(headers or {})))
+        return self._maybe_raise(self.post_queue.pop(0) if self.post_queue else FakeResp(200, {}))
+    def put(self, url, data=None, headers=None, timeout=None):
+        data_seen = ('fileobj', None) if hasattr(data, 'read') else data
+        self.calls.append(('PUT', url, None, data_seen, dict(headers or {})))
+        return self._maybe_raise(self.put_queue.pop(0) if self.put_queue else FakeResp(200, {}))
+    def get(self, url, params=None, timeout=None):
+        self.calls.append(('GET', url, dict(params or {}), None, None))
+        return self._maybe_raise(self.get_queue.pop(0) if self.get_queue else FakeResp(200, {}))
+    def delete(self, url, timeout=None):
+        self.calls.append(('DELETE', url, None, None))
+        return self._maybe_raise(self.del_queue.pop(0) if self.del_queue else FakeResp(204, {}))
+
+
+def _tmp_enc(n=4096):
+    fp = '/tmp/lbba-fake-' + os.urandom(8).hex()
+    fd = os.open(fp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.write(fd, bytes(n))
+    os.close(fd)
+    return fp
+
+
+ROOT_FID = 'root-folder-id'
+SESS_URL_A = 'https://upload.drive/v3/sessions/s1'
+SESS_URL_B = 'https://upload.drive/v3/sessions/s2'
+
+
+def _init_count(calls):
+    return len([c for c in calls if c[0] == 'POST' and (c[2] or {}).get('uploadType') == 'resumable'])
+def _puts(calls):
+    return [c for c in calls if c[0] == 'PUT']
+def _copy_count(calls):
+    return len([c for c in calls if c[0] == 'POST' and (c[1] or '').endswith('/copy')])
+
+
+# A. resumable upload: ONE session init; 308 partial Range -> resume SAME session from offset
+def run_resumable_upload():
+    enc = _tmp_enc()
+    try:
+        sess = FakeSession()
+        sess.post_queue.append(FakeResp(201, {'id': 'STAGED'}, {'Location': SESS_URL_A}))
+        sess.put_queue.append(FakeResp(308, {}, {'Range': 'bytes=0-1023'}))   # committed first 1024 bytes
+        sess.put_queue.append(FakeResp(200, {'id': 'FILE_A'}))                  # resume completes
+        svc = d._DriveService(session=sess, backup_root=ROOT_FID)
+        fid = d.create_encrypted_file(svc, 'daily-RKEY', enc, d.TIER_DAILY, 'RKEY')
+        puts = _puts(sess.calls)
+        return {
+            'file_id': fid,
+            'init_post_count': _init_count(sess.calls),
+            'put_count': len(puts),
+            'resume_content_range': puts[1][4].get('Content-Range'),
+            'resume_url_is_session': puts[1][1] == SESS_URL_A,
+        }
+    finally:
+        os.unlink(enc)
+check('resumable-single-session', lambda: run_resumable_upload())
+
+
+# A2. media response ambiguity (network exception) -> SAME session status probe, no second create
+def run_resumable_ambiguity():
+    enc = _tmp_enc()
+    try:
+        sess = FakeSession()
+        sess.post_queue.append(FakeResp(201, {}, {'Location': SESS_URL_B}))
+        sess.put_queue.append(RuntimeError('network-loss'))     # media PUT raises
+        sess.put_queue.append(FakeResp(200, {'id': 'FILE_B'}))   # status probe resolves
+        svc = d._DriveService(session=sess, backup_root=ROOT_FID)
+        fid = d.create_encrypted_file(svc, 'daily-RKEY', enc, d.TIER_DAILY, 'RKEY')
+        puts = _puts(sess.calls)
+        status_put = [c for c in puts if (c[4].get('Content-Range') or '').startswith('bytes */')]
+        return {
+            'file_id': fid,
+            'init_post_count': _init_count(sess.calls),
+            'put_count': len(puts),
+            'status_query_same_session': bool(status_put) and status_put[0][1] == SESS_URL_B,
+            'status_query_content_range': status_put[0][4].get('Content-Range') if status_put else None,
+        }
+    finally:
+        os.unlink(enc)
+check('resumable-ambiguity-same-session', lambda: run_resumable_ambiguity())
+
+
+# B. malformed 308 Range -> fail closed, no second session
+def run_malformed_range():
+    enc = _tmp_enc()
+    try:
+        sess = FakeSession()
+        sess.post_queue.append(FakeResp(201, {}, {'Location': 'https://upload.drive/v3/sessions/s3'}))
+        sess.put_queue.append(FakeResp(308, {}, {'Range': 'bytes=0-abc'}))
+        svc = d._DriveService(session=sess, backup_root=ROOT_FID)
+        raised = False
+        try:
+            d.create_encrypted_file(svc, 'daily-RKEY', enc, d.TIER_DAILY, 'RKEY')
+        except RuntimeError:
+            raised = True
+        return {'raised': raised, 'init_post_count': _init_count(sess.calls)}
+    finally:
+        os.unlink(enc)
+check('malformed-range-fail-closed', lambda: run_malformed_range())
+
+
+# C. files.copy is single-attempt: 500 raises immediately, no second copy; 200 returns id
+def run_copy():
+    sess = FakeSession()
+    sess.post_queue.append(FakeResp(500, {}))
+    svc = d._DriveService(session=sess, backup_root=ROOT_FID)
+    fail_outcome = 'no-raise'
+    try:
+        d.copy_file(svc, 'SRC_ID', 'weekly-RKEY', d.TIER_WEEKLY, 'RKEY')
+    except RuntimeError:
+        fail_outcome = 'raised'
+    sess2 = FakeSession()
+    sess2.post_queue.append(FakeResp(200, {'id': 'COPY_OK'}))
+    svc2 = d._DriveService(session=sess2, backup_root=ROOT_FID)
+    ok_id = d.copy_file(svc2, 'SRC_ID', 'monthly-RKEY', d.TIER_MONTHLY, 'RKEY')
+    return {'failure_outcome': fail_outcome, 'failure_copy_count': _copy_count(sess.calls),
+            'success_id': ok_id, 'success_copy_count': _copy_count(sess2.calls)}
+check('copy-ambiguity-single-attempt', lambda: run_copy())
+
+
+# D. files.get verification: size + format + tier + app-owned root all required; any mismatch => False
+def run_verify():
+    props = {'format-version': 'LBBA1', 'content-kind': 'encrypted-postgresql-dump'}
+    def mk(size, tier, parents, trashed):
+        return FakeResp(200, {'id': 'FID', 'size': size, 'trashed': trashed,
+            'appProperties': dict(props, **{'retention-tier': tier}), 'parents': parents})
+    s1 = d._DriveService(session=FakeSession(), backup_root='R'); s1.session.get_queue.append(mk(4096, 'daily', ['R'], False))
+    s2 = d._DriveService(session=FakeSession(), backup_root='R'); s2.session.get_queue.append(mk(999, 'daily', ['R'], False))
+    s3 = d._DriveService(session=FakeSession(), backup_root='R'); s3.session.get_queue.append(mk(4096, 'daily', ['OTHER'], False))
+    s4 = d._DriveService(session=FakeSession(), backup_root='R'); s4.session.get_queue.append(mk(4096, 'daily', ['R'], True))
+    return {'match': d.verify_uploaded_file(s1, 'FID', 4096, 'daily'),
+            'size_mismatch_false': d.verify_uploaded_file(s2, 'FID', 4096, 'daily'),
+            'parent_mismatch_false': d.verify_uploaded_file(s3, 'FID', 4096, 'daily'),
+            'trashed_false': d.verify_uploaded_file(s4, 'FID', 4096, 'daily')}
+check('verify-metadata-required', lambda: run_verify())
+
+
+# E. list_tier_files: scoped to backup-root parent + exact tier, ordered newest-first, bounded
+def run_list():
+    s = d._DriveService(session=FakeSession(), backup_root='R-ROOT')
+    s.session.get_queue.append(FakeResp(200, {'files': [{'id': 'Z1', 'createdTime': 't1'}, {'id': 'Z2', 'createdTime': 't2'}]}))
+    files = d.list_tier_files(s, 'daily')
+    params = s.session.calls[0][2]
+    q = params.get('q', '')
+    return {'count': len(files), 'q_has_root': "'R-ROOT' in parents" in q,
+            'q_has_tier': "value='daily'" in q,
+            'ordered_desc': params.get('orderBy') == 'createdTime desc',
+            'page_bounded': params.get('pageSize')}
+check('list-scoped', lambda: run_list())
+
+
+# F. delete issues a single DELETE /files/{id} by caller-supplied identity (caller-bounded provenance)
+def run_delete():
+    s = d._DriveService(session=FakeSession(), backup_root=ROOT_FID)
+    s.session.del_queue.append(FakeResp(204, {}))
+    d.delete_file(s, 'expire-XYZ')
+    dels = [c for c in s.session.calls if c[0] == 'DELETE']
+    return {'delete_count': len(dels), 'delete_url': dels[0][1] if dels else None,
+            'delete_url_has_id': bool(dels) and dels[0][1].endswith('/files/expire-XYZ')}
+check('delete-single-by-id', lambda: run_delete())
+
+
+# Quota/auth HTTP boundary (fake about.get): 401 -> AUTH_UNAVAILABLE; valid -> WITHIN_LIMIT
+def run_preflight_auth_fail():
+    s = d._DriveService(session=FakeSession(), backup_root=ROOT_FID)
+    s.session.get_queue.append(FakeResp(401, {}))
+    return d.preflight_storage_quota(s, 100)
+check('preflight-auth-unavailable', lambda: run_preflight_auth_fail())
+
+
+def run_preflight_within():
+    s = d._DriveService(session=FakeSession(), backup_root=ROOT_FID)
+    s.session.get_queue.append(FakeResp(200, {'storageQuota': {'limit': 10000000, 'usage': 1000}}))
+    return d.preflight_storage_quota(s, 5000)
+check('preflight-within-limit', lambda: run_preflight_within())
+
+
+# client_secret optional: absent does not block; missing required id fails closed
+def run_secret_optional():
+    for k in ('DRIVE_CLIENT_ID', 'DRIVE_CLIENT_SECRET', 'DRIVE_REFRESH_TOKEN', 'DRIVE_BACKUP_ROOT'):
+        os.environ.pop(k, None)
+    os.environ['DRIVE_CLIENT_ID'] = 'c'
+    os.environ['DRIVE_REFRESH_TOKEN'] = 'r'
+    os.environ['DRIVE_BACKUP_ROOT'] = 'b'
+    no_secret = d.drive_secrets_present()
+    os.environ['DRIVE_CLIENT_SECRET'] = 'shh'
+    with_secret = d.drive_secrets_present()
+    del os.environ['DRIVE_CLIENT_ID']
+    missing_id = d.drive_secrets_present()
+    for k in ('DRIVE_CLIENT_ID', 'DRIVE_CLIENT_SECRET', 'DRIVE_REFRESH_TOKEN', 'DRIVE_BACKUP_ROOT'):
+        os.environ.pop(k, None)
+    return {'without_client_secret': no_secret, 'with_client_secret': with_secret,
+            'missing_client_id_fails_closed': (not missing_id)}
+check('client-secret-optional', lambda: run_secret_optional())
+
 print(json.dumps(results))
 `;
+
 
 function runScenarios() {
   const tmp = path.join(os.tmpdir(), 'lovebud-backup-behavior-' + process.pid + '.py');
@@ -576,4 +800,86 @@ test('Z3. Drive sanitized state vocabulary present', () => {
   const r = results['drive-within-state'];
   assert.equal(r.status, 'PASS');
   assert.equal(r.value, 'DRIVE_STORAGE_WITHIN_LIMIT');
+});
+
+// --- #4137 FAKE Drive transport execution (no network, no OAuth, no secret) ---
+
+test('AA. resumable upload: one session init, resume from committed offset on SAME session', () => {
+  const r = results['resumable-single-session'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.file_id, 'FILE_A');
+  assert.equal(r.value.init_post_count, 1, 'exactly one files.create (resumable session) initialization');
+  assert.equal(r.value.put_count, 2, 'two media PUTs: partial 308 then resume');
+  assert.equal(r.value.resume_content_range, 'bytes 1024-4095/4096', 'resume Content-Range starts at committed 1024 offset');
+  assert.equal(r.value.resume_url_is_session, true, 'resume PUT targets the SAME session URI');
+});
+
+test('AB. media ambiguity (network exception): SAME session status probe, no second create', () => {
+  const r = results['resumable-ambiguity-same-session'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.file_id, 'FILE_B');
+  assert.equal(r.value.init_post_count, 1, 'no second files.create on network ambiguity');
+  assert.equal(r.value.put_count, 2, 'one failed media PUT + one status-probe PUT');
+  assert.equal(r.value.status_query_same_session, true, 'status probe hits the SAME session URI');
+  assert.equal(r.value.status_query_content_range, 'bytes */4096', 'status probe uses whole-file Content-Range');
+});
+
+test('AC. malformed 308 Range fails closed without a second session', () => {
+  const r = results['malformed-range-fail-closed'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.raised, true, 'malformed Range raises (fail closed)');
+  assert.equal(r.value.init_post_count, 1, 'no second files.create after malformed Range');
+});
+
+test('AD. files.copy is single-attempt: 500 raises with no blind second copy; 200 returns id', () => {
+  const r = results['copy-ambiguity-single-attempt'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.failure_outcome, 'raised');
+  assert.equal(r.value.failure_copy_count, 1, 'exactly one copy attempt on failure (no retry)');
+  assert.equal(r.value.success_id, 'COPY_OK');
+  assert.equal(r.value.success_copy_count, 1);
+});
+
+test('AE. files.get verification requires size + format + tier + app-owned root', () => {
+  const r = results['verify-metadata-required'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.match, true);
+  assert.equal(r.value.size_mismatch_false, false);
+  assert.equal(r.value.parent_mismatch_false, false);
+  assert.equal(r.value.trashed_false, false);
+});
+
+test('AF. list scoped to backup-root parent + exact tier, newest-first, bounded page', () => {
+  const r = results['list-scoped'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.count, 2);
+  assert.equal(r.value.q_has_root, true);
+  assert.equal(r.value.q_has_tier, true);
+  assert.equal(r.value.ordered_desc, true);
+  assert.equal(r.value.page_bounded, 100);
+});
+
+test('AG. delete issues a single DELETE /files/{id} by caller-supplied identity', () => {
+  const r = results['delete-single-by-id'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.delete_count, 1, 'single delete call');
+  assert.equal(r.value.delete_url_has_id, true, 'delete targets /files/{id} exactly');
+});
+
+test('AH. about.get 401 fails closed as DRIVE_AUTH_UNAVAILABLE (zero upload)', () => {
+  assert.equal(results['preflight-auth-unavailable'].status, 'PASS');
+  assert.equal(results['preflight-auth-unavailable'].value, 'DRIVE_AUTH_UNAVAILABLE');
+});
+
+test('AI. about.get within 0.90 ceiling permits upload', () => {
+  assert.equal(results['preflight-within-limit'].status, 'PASS');
+  assert.equal(results['preflight-within-limit'].value, 'DRIVE_STORAGE_WITHIN_LIMIT');
+});
+
+test('AJ. client secret optional: absent does not block; missing client id fails closed', () => {
+  const r = results['client-secret-optional'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.without_client_secret, true, 'absent client secret must not block');
+  assert.equal(r.value.with_client_secret, true);
+  assert.equal(r.value.missing_client_id_fails_closed, true, 'missing required id fails closed');
 });
