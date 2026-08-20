@@ -75,6 +75,45 @@ def _fetch_public_tree_for_view_count(cur, tree_id: str) -> dict[str, Any] | Non
     return None
 
 
+def _lock_public_tree_for_view_write(cur, tree_id: str) -> dict[str, Any] | None:
+    """Authorize and hold public visibility for a view-count mutation.
+
+    Issue #4139: ordinary public count reads remain lock-free, but a view write
+    must keep the Tree's explicit-public state authoritative until COMMIT. FOR
+    SHARE conflicts with the owner's non-key visibility UPDATE; FOR KEY SHARE
+    would not provide that revocation serialization.
+    """
+    if _table_has_column(cur, "trees", "visibility"):
+        cur.execute(
+            """
+            SELECT id
+            FROM trees
+            WHERE id = %s
+              AND visibility = 'public'
+            LIMIT 1
+            FOR SHARE
+            """,
+            (tree_id,),
+        )
+        return cur.fetchone()
+
+    if _table_has_column(cur, "trees", "is_public"):
+        cur.execute(
+            """
+            SELECT id
+            FROM trees
+            WHERE id = %s
+              AND is_public = %s
+            LIMIT 1
+            FOR SHARE
+            """,
+            (tree_id, True),
+        )
+        return cur.fetchone()
+
+    return None
+
+
 def _ensure_tree_social_counts(cur, tree_id: str) -> None:
     cur.execute(
         """
@@ -176,7 +215,10 @@ def record_public_tree_view(
     def operation() -> dict[str, Any] | None:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                tree = _fetch_public_tree_for_view_count(cur, safe_tree_id)
+                # Issue #4139: mutation authorization is transaction-local and
+                # row-locked so public -> private revocation cannot commit after
+                # authorization but before the view event/count mutation commits.
+                tree = _lock_public_tree_for_view_write(cur, safe_tree_id)
                 if not tree:
                     return None
 
