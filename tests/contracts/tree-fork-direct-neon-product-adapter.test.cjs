@@ -410,21 +410,29 @@ test('#4135 read/generic DB env cannot satisfy write config (forbidden fallback)
   assert.equal(body.code, 'DIRECT_NEON_CONFIG_ABSENT');
 });
 
-test('#4135 forbidden fallback present even with dedicated writer fails closed', async () => {
-  const factory = makeFakeClientFactory(publicSourceScript());
+test('#4135 dedicated writer remains authoritative when generic/read DB envs coexist', async () => {
+  const factory = makeFakeClientFactory(publicSourceScript({ memories: [makeMemory(0)], newTreeId: 'nt' }));
   const res = await callAdapter({
     request: makeRequest(),
     env: {
       ...WRITER_ENV,
-      DATABASE_URL: READ_URL // forbidden generic env alongside dedicated writer
+      LOVE_PLATFORM_DATABASE_URL: READ_URL,
+      DATABASE_URL: READ_URL,
+      NETLIFY_DATABASE_URL: READ_URL,
+      DIRECT_NEON_BROWSE_DATABASE_URL: READ_URL
     },
     factory,
     verifyToken: makeVerifyToken()
   });
-  assert.equal(res.status, 503);
-  assert.equal(factory.clients.length, 0);
+  assert.equal(res.status, 200);
+  assert.equal(factory.clients.length, 1, 'one writer client is created');
+  assert.equal(
+    factory.clients[0].config.connectionString,
+    NEON_URL,
+    'dedicated writer URL wins; read/generic DB envs never become writer authority'
+  );
   const body = await res.json();
-  assert.equal(body.code, 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK');
+  assert.equal(body.forked, true);
 });
 
 test('#4135 #4132 adapter reused: exactly one request-scoped Client', async () => {
