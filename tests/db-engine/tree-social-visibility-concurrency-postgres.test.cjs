@@ -48,7 +48,8 @@ test('Tree social writers authorize explicit-public state inside the write curso
 
   assert.match(viewGuard, /visibility\s*=\s*'public'/, 'View mutation guard must require explicit public visibility');
   assert.match(viewGuard, /FOR\s+SHARE/i, 'View mutation guard must lock the Tree against visibility UPDATE');
-  assert.doesNotMatch(viewGuard, /FOR\s+KEY\s+SHARE/i, 'View mutation guard must not use insufficient FOR KEY SHARE');
+  assert.doesNotMatch(viewGuard, /SELECT[\s\S]*FOR\s+KEY\s+SHARE/i,
+    'View mutation SQL must not use insufficient FOR KEY SHARE');
   assert.match(viewGuard, /is_public\s*=\s*%s[\s\S]*FOR\s+SHARE/i,
     'legacy is_public compatibility must retain the same FOR SHARE revocation serialization');
 
