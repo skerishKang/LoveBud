@@ -237,8 +237,9 @@ def create_encrypted_file(
     The Drive file is created inside the app-owned backup root. The request body
     carries only bounded, non-private metadata (format-version, content-kind,
     retention tier, app-owned operational identity). The encrypted file is streamed
-    so the whole artifact is never loaded into memory. Each bounded retry
-    initiates a fresh resumable session with a fresh file cursor.
+    so the whole artifact is never loaded into memory. After media transmission
+    begins, retries remain on the SAME resumable session and query its committed
+    offset before resuming; a response-loss ambiguity never starts a second file.
     """
     metadata = {
         "name": name,
@@ -250,46 +251,148 @@ def create_encrypted_file(
             "run-identity": run_identity,
         },
     }
-    file_id = _retry_drive(lambda: _resumable_upload_attempt(service, metadata, enc_path))
+    file_id = _resumable_upload_attempt(service, metadata, enc_path)
     if not file_id or not isinstance(file_id, str):
         raise RuntimeError("drive upload returned no file id")
     return file_id
 
 
-def _resumable_upload_attempt(service: _DriveService, metadata: dict, enc_path: str) -> str:
-    """Initiate a resumable session, then stream the encrypted file in one PUT.
+def _completed_file_id(resp: Any) -> str | None:
+    """Return a completed-upload file id without exposing response details."""
+    try:
+        body = resp.json() or {}
+    except Exception:
+        return None
+    file_id = body.get("id")
+    return file_id if isinstance(file_id, str) and file_id else None
 
-    A fresh session per attempt keeps the upload idempotent and retry-safe; an
-    incomplete session that never receives its final chunk creates no Drive file.
+
+def _resume_offset(range_header: Any, total_size: int) -> int:
+    """Parse Drive's 308 Range header into the next byte offset, fail closed."""
+    if range_header is None or range_header == "":
+        return 0
+    if not isinstance(range_header, str) or not range_header.startswith("bytes=0-"):
+        raise RuntimeError("drive resumable range invalid")
+    last_raw = range_header[len("bytes=0-") :]
+    if not last_raw.isdigit():
+        raise RuntimeError("drive resumable range invalid")
+    offset = int(last_raw) + 1
+    if offset < 0 or offset > total_size:
+        raise RuntimeError("drive resumable range invalid")
+    return offset
+
+
+def _query_resumable_status(
+    service: _DriveService, session_url: str, total_size: int
+) -> Any:
+    """Query the SAME resumable session after an ambiguous media response."""
+
+    def _query_once():
+        resp = service.session.put(
+            session_url,
+            data=b"",
+            headers={
+                "Content-Length": "0",
+                "Content-Range": f"bytes */{total_size}",
+            },
+            timeout=30,
+        )
+        if resp.status_code >= 500:
+            raise RuntimeError("drive resumable status transient failure")
+        return resp
+
+    return _retry_drive(_query_once)
+
+
+def _resumable_upload_attempt(
+    service: _DriveService, metadata: dict, enc_path: str
+) -> str:
+    """Create one resumable session and resume that same session after ambiguity.
+
+    Session initiation itself may be retried because no media has been committed to
+    an initialized-but-unused session. Once media transmission starts, this helper
+    never creates another session. Network loss or a transient server response is
+    reconciled by querying the same session URI, then resuming from Drive's Range.
     """
-    # 1. initiate resumable session with metadata only
-    session_resp = service.session.post(
-        DRIVE_UPLOAD_BASE + "/files",
-        params={"uploadType": "resumable"},
-        headers={"Content-Type": "application/json; charset=UTF-8"},
-        data=json.dumps(metadata),
-        timeout=30,
-    )
-    if session_resp.status_code not in (200, 201):
-        raise RuntimeError("drive resumable session failed")
+    total_size = os.path.getsize(enc_path)
+    if total_size <= 0:
+        raise RuntimeError("drive encrypted upload is empty")
+
+    def _init_session():
+        resp = service.session.post(
+            DRIVE_UPLOAD_BASE + "/files",
+            params={"uploadType": "resumable"},
+            headers={
+                "Content-Type": "application/json; charset=UTF-8",
+                "X-Upload-Content-Type": "application/octet-stream",
+                "X-Upload-Content-Length": str(total_size),
+            },
+            data=json.dumps(metadata),
+            timeout=30,
+        )
+        if resp.status_code not in (200, 201):
+            raise RuntimeError("drive resumable session failed")
+        return resp
+
+    session_resp = _retry_drive(_init_session)
     session_url = session_resp.headers.get("Location")
     if not session_url:
         raise RuntimeError("drive resumable session url missing")
-    # 2. stream the encrypted file to the session url with a fresh file cursor
-    with open(enc_path, "rb") as body:
-        put_resp = service.session.put(
-            session_url,
-            data=body,
-            headers={"Content-Type": "application/octet-stream"},
-            timeout=600,
-        )
-    if put_resp.status_code not in (200, 201):
-        raise RuntimeError("drive resumable upload failed")
-    created = put_resp.json() or {}
-    file_id = created.get("id")
-    if not file_id:
-        raise RuntimeError("drive upload missing file id")
-    return file_id
+
+    offset = 0
+    for attempt in range(DRIVE_RETRY_MAX):
+        try:
+            with open(enc_path, "rb") as body:
+                body.seek(offset)
+                put_resp = service.session.put(
+                    session_url,
+                    data=body,
+                    headers={
+                        "Content-Type": "application/octet-stream",
+                        "Content-Length": str(total_size - offset),
+                        "Content-Range": f"bytes {offset}-{total_size - 1}/{total_size}",
+                    },
+                    timeout=600,
+                )
+        except Exception:
+            put_resp = _query_resumable_status(service, session_url, total_size)
+
+        if put_resp.status_code in (200, 201):
+            file_id = _completed_file_id(put_resp)
+            if not file_id:
+                raise RuntimeError("drive upload missing file id")
+            return file_id
+
+        if put_resp.status_code == 308:
+            offset = _resume_offset(put_resp.headers.get("Range"), total_size)
+        elif put_resp.status_code >= 500:
+            status_resp = _query_resumable_status(service, session_url, total_size)
+            if status_resp.status_code in (200, 201):
+                file_id = _completed_file_id(status_resp)
+                if not file_id:
+                    raise RuntimeError("drive upload missing file id")
+                return file_id
+            if status_resp.status_code != 308:
+                raise RuntimeError("drive resumable status failed")
+            offset = _resume_offset(status_resp.headers.get("Range"), total_size)
+        else:
+            raise RuntimeError("drive resumable upload failed")
+
+        if offset >= total_size:
+            status_resp = _query_resumable_status(service, session_url, total_size)
+            if status_resp.status_code in (200, 201):
+                file_id = _completed_file_id(status_resp)
+                if not file_id:
+                    raise RuntimeError("drive upload missing file id")
+                return file_id
+            if status_resp.status_code != 308:
+                raise RuntimeError("drive resumable status failed")
+            offset = _resume_offset(status_resp.headers.get("Range"), total_size)
+
+        if attempt < DRIVE_RETRY_MAX - 1:
+            time.sleep(DRIVE_RETRY_BACKOFF_SECONDS)
+
+    raise RuntimeError("drive resumable upload retry budget exhausted")
 
 
 def verify_uploaded_file(
@@ -346,8 +449,9 @@ def copy_file(
     """files.copy promotion of the same encrypted artifact to a retention tier.
 
     Promotion never takes another pg_dump; it copies the verified encrypted
-    artifact. Returns the new file id. The copy inherits the app-owned backup
-    root parent and bounded metadata.
+    artifact. Because files.copy creates a new file, it is intentionally issued
+    once only: an ambiguous/lost response fails closed rather than blindly creating
+    a second copy. Returns the new file id on an unambiguous success.
     """
     body = {
         "name": new_name,
@@ -358,14 +462,12 @@ def copy_file(
             "run-identity": run_identity,
         },
     }
-    resp = _retry_drive(
-        lambda: service.session.post(
-            DRIVE_API_BASE + "/files/" + src_file_id + "/copy",
-            headers={"Content-Type": "application/json; charset=UTF-8"},
-            data=json.dumps(body),
-            params={"fields": "id"},
-            timeout=120,
-        )
+    resp = service.session.post(
+        DRIVE_API_BASE + "/files/" + src_file_id + "/copy",
+        headers={"Content-Type": "application/json; charset=UTF-8"},
+        data=json.dumps(body),
+        params={"fields": "id"},
+        timeout=120,
     )
     if resp.status_code not in (200, 201):
         raise RuntimeError("drive copy failed")
