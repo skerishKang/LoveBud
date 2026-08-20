@@ -1,11 +1,14 @@
 # Database External Logical-Backup Architecture Decision
 
-> **Direct issue:** #3826
+> **Direct issue:** #3826 (original R2 architecture decision)
+> **Provider-target decision:** #3894 — replace R2 with a no-auto-charge encrypted backup
+> target (Google Drive selected). Keep OPEN.
 > **Parent:** #3460 (Keep OPEN)
 > **Predecessor:** #3825 closed `not planned` after the provider-native path proved unavailable under the authorized plan boundary.
 > **Hard governance:** `docs/ops/MVP_AGENT_GOVERNANCE.md`
 
 Refs #3826
+Refs #3894
 Refs #3825
 Refs #3460 — Keep OPEN.
 Refs #3458 — Keep OPEN.
@@ -63,29 +66,51 @@ Production database credential boundary:
 existing Modal `lovebud-db` secret only
 
 external retained storage:
-private Cloudflare R2 Standard bucket
+private Google Drive folder on a dedicated free Google account
 
 object API:
-S3-compatible authenticated API over TLS
+Google Drive API v3 over TLS (resumable upload, files.get/copy/list/delete)
 
 logical backup format:
 PostgreSQL custom-format dump with compression
 
 confidentiality:
 client-side authenticated encryption before upload
-+ R2 encryption at rest
 + TLS in transit
+(Drive receives encrypted artifacts only; no plaintext dump is ever uploaded)
+
+auth boundary:
+one-time OAuth 2.0 user consent + offline refresh token;
+Modal exchanges refresh authority for short-lived access tokens
 
 retention implementation:
-daily / weekly / monthly object prefixes
-+ prefix-specific lifecycle expiry
+daily / weekly / monthly Drive files (copies of the same encrypted artifact)
++ bounded tier-scoped cleanup that never deletes the newest valid daily point
 ```
 
 This architecture is classified **`EXTERNAL_BACKUP_ARCHITECTURE_SELECTED`** and
 **`IMPLEMENTATION_REQUIRED`**.
 
-Actual R2 subscription state, bucket existence, access-token state, Modal secret state, and
-scheduled-function deployment state remain unverified:
+The Google Drive primary path was selected in #3894 (comment 5349825662, 2026-08-20):
+
+```text
+PRIMARY_IMPLEMENTATION_PATH = MODAL_PLUS_GOOGLE_DRIVE
+
+DEFERRED_FALLBACKS =
+- MODAL_PLUS_R2
+- MODAL_PLUS_ORACLE_OBJECT_STORAGE
+- MODAL_PLUS_BACKBLAZE_B2
+```
+
+The former R2 storage adapter surface (`boto3`, `_s3_client`, `put_object`, `head_object`,
+`copy_object`, `delete_object`, and the `lovebud-recovery-r2` symbolic secret) has been
+replaced by a Google Drive adapter (`modal_compute/recovery_drive_storage.py`) under the
+`lovebud-recovery-drive` symbolic secret. The deferred fallbacks are retained for a later
+post-Drive comparison; they are NOT runtime failover targets — Drive failure never falls
+back to R2, Oracle Object Storage, or Backblaze B2.
+
+Actual Google account, OAuth client, refresh-token, Drive folder, Modal secret, and
+scheduled-function deployment states remain unverified:
 
 ```text
 EXTERNAL_STORAGE_UNPROVISIONED
@@ -114,51 +139,68 @@ The implementation must not:
 The backup function must be a separate, non-HTTP Modal function with its own image,
 dependencies, timeout, ephemeral disk allowance, secret list, and schedule declaration.
 
-## 5. Why private Cloudflare R2 Standard is selected
+## 5. Why private Google Drive is selected
 
-Cloudflare R2 is selected as the default retained-object target because:
+Google Drive on a dedicated free Google account is selected as the retained-object target
+(#3894) because:
 
-- the project already operates within the Cloudflare platform boundary;
-- R2 provides an S3-compatible authenticated API;
-- R2 Standard has no minimum object-storage duration;
-- R2 supports lifecycle rules for automatic object expiration;
-- R2 encrypts objects at rest and supports TLS in transit;
-- the included monthly free tier is likely sufficient for an initially small compressed
-  backup set, while actual usage must still be monitored;
-- R2 egress is not charged, reducing restore-drill cost uncertainty;
-- the bucket can remain private and does not require a public `r2.dev` endpoint.
+- a dedicated Google account provides a fixed free storage quota;
+- buying additional Google storage requires a separate Google One subscription decision
+  and must not be required by the backup runtime;
+- when the account reaches its storage limit, new Drive uploads fail rather than silently
+  expanding storage (fail closed, no usage-based automatic billing);
+- one encrypted backup upload per day is far below normal Drive API request limits;
+- the retained artifact remains outside the Neon provider boundary;
+- no payment method is required merely because retained data or operations exceed a free
+  allowance.
 
-This decision does not assert that an R2 subscription or bucket already exists. If account
-provisioning later proves unavailable, the implementation must stop with
+The product-owner hard boundary (#3894) is:
+
+```text
+payment method required: NOT ACCEPTABLE
+usage-based automatic billing: NOT ACCEPTABLE
+silent upgrade to paid storage: NOT ACCEPTABLE
+free quota exhaustion: FAIL CLOSED
+```
+
+The implementation must check current storage usage before upload and fail closed before an
+internal 0.90 hard ceiling is crossed, leaving at least 10% provider quota reserved. This
+decision does not assert that a Google account, OAuth client, or Drive folder already
+exists. If account provisioning later proves unavailable, the implementation must stop with
 `EXTERNAL_STORAGE_UNPROVISIONED`; it must not silently substitute GitHub artifacts, a public
-bucket, repository storage, or local operator disk.
+Drive folder, repository storage, or local operator disk.
 
 ## 6. Secret and least-privilege boundary
 
 The implementation requires two secret classes in addition to the existing database secret:
 
 ```text
-R2 object credential:
-least-privilege access scoped to the dedicated private backup bucket
+Drive OAuth credential:
+OAuth client id + offline refresh token (and client secret when required),
+scoped to drive.file on the dedicated backup account
 
 backup encryption key:
 separate authenticated-encryption key, stored only in secret storage
 ```
 
-The object credential and encryption key must not be the same secret value. Neither may be
+The OAuth credential and encryption key must not be the same secret value. Neither may be
 printed, returned, included in exceptions, persisted in temporary metadata, or recorded in
-GitHub.
+GitHub. ChatGPT Google Drive connector credentials are NOT runtime credentials and MUST NOT
+be reused or exported.
 
-The R2 credential must allow only the minimum operations required for:
+The Drive OAuth credential must allow only the minimum operations required for:
 
-- put encrypted backup objects;
-- head the uploaded object for post-upload verification;
-- copy/promote a verified object between retention prefixes when required;
-- list only the dedicated backup prefixes for retention/freshness verification;
-- delete incomplete temporary objects when cleanup is necessary.
+- exchange the offline refresh token for a short-lived access token;
+- `about.get` for storage-quota preflight;
+- `files.create` (resumable) to upload encrypted backup artifacts;
+- `files.get` to verify an uploaded artifact;
+- `files.copy` to promote a verified artifact between retention tiers;
+- `files.list` only inside the app-owned backup scope for retention inventory;
+- `files.delete` only for positively-identified app-owned expired encrypted artifacts.
 
-Bucket-management, public-access configuration, unrelated bucket access, and account-wide
-permissions are not part of the runtime credential.
+Generic Drive browsing, arbitrary file listing/deletion, public sharing, permission
+mutation, account-wide access, restore/download in the normal backup path, and
+broadening to a full Drive scope are not part of the runtime credential.
 
 ## 7. Backup production and encryption pipeline
 
@@ -281,7 +323,8 @@ It must not contain:
 ```text
 database URL or host
 provider account/project/branch identifiers
-R2 account, bucket, endpoint, object key, or token
+Google account, OAuth client id/secret, refresh token, Drive folder id,
+file id, object key, or token
 exact timestamp
 raw command
 raw stderr containing connection details
@@ -327,20 +370,22 @@ CI registry/classification updates required by repository conventions
 
 The implementation child must not:
 
-- create the R2 subscription or bucket;
-- create object credentials or encryption keys;
+- create the Google account, OAuth client, or Drive folder;
+- create OAuth credentials, refresh tokens, or encryption keys;
 - write Modal secret values;
 - deploy or activate the schedule;
 - connect to Production;
 - execute `pg_dump` against Production;
 - upload an actual backup;
 - run a restore;
-- change the public API or product UI.
+- change the public API or product UI;
+- provision R2, Oracle Object Storage, or Backblaze B2.
 
 After source implementation and CI approval, a separately authorized provisioning/activation
-step may create the private bucket, lifecycle rules, least-privilege credential, encryption
-key, Modal secrets, and scheduled deployment. Only the provider/storage operations that the
-Web CTO cannot perform with available tools should be delegated to Local.
+step may create the dedicated Google account, OAuth client, app-owned Drive folder,
+least-privilege credential, encryption key, Modal secrets, and scheduled deployment. Only
+the provider/storage operations that the Web CTO cannot perform with available tools should
+be delegated to Local.
 
 ## 14. Closure impact
 
@@ -359,6 +404,9 @@ deployment state.
 ## 15. Privacy self-audit
 
 This document contains no provider account/project/branch/snapshot identifier, database URL,
-host, database name, region, credential, token, secret, raw provider response, object key,
-exact Production timestamp, exact private retention value, object size, checksum, HMAC,
-digest, fingerprint, local credential path, or backup content.
+host, database name, region, credential, token, secret value, raw provider response, OAuth
+client secret, refresh token, Drive folder id, file id, object key, exact Production
+timestamp, exact private retention value, exact object size, checksum, HMAC, digest,
+fingerprint, local credential path, or backup content. Only symbolic secret names
+(`lovebud-db`, `lovebud-recovery-drive`, `lovebud-recovery-encryption`) and symbolic
+environment-name patterns appear; their values never appear.

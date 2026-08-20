@@ -23,8 +23,10 @@ const ROOT = path.resolve(__dirname, '..', '..');
 
 const SCENARIO_SCRIPT = `
 import sys, json, base64, os
+sys.path.insert(0, ${JSON.stringify(ROOT)})
 sys.path.insert(0, ${JSON.stringify(path.join(ROOT, 'modal_compute'))})
 import recovery_backup_policy as p
+import modal_compute.recovery_drive_storage as d
 
 OK = dict(dump_success=True, encryption_success=True, plaintext_cleanup_success=True,
           upload_complete=True, post_upload_verified=True, daily_promotion_success=True)
@@ -235,6 +237,34 @@ expect_raise('private-field-rejection', lambda: p.make_sanitized_status(timestam
 expect_raise('raw-field-rejection', lambda: p.make_sanitized_status(checksum='x'), 'RAW_FIELD_REJECTED')
 expect_raise('impossible-state-rejection', lambda: p.reject_impossible_partial({'backup_point_state': p.BACKUP_POINT_MISSING, 'daily_tier': p.DAILY_TIER_VALID, 'weekly_tier': p.WEEKLY_TIER_MISSING, 'monthly_tier': p.MONTHLY_TIER_MISSING}), 'impossible partial rejected')
 
+# ---- #3894 Drive quota preflight classification (pure, deterministic, fail-closed) ----
+# Tests MAY use deterministic fake byte counts; no real quota value is used.
+LIM = 10_000_000
+CEIL = int(LIM * p.INTERNAL_CEILING_RATIO)  # 9_000_000
+check('quota-within', lambda: p.classify_drive_quota(usage_bytes=10_000, limit_bytes=LIM, artifact_size_bytes=5_000))
+check('quota-near', lambda: p.classify_drive_quota(usage_bytes=7_600_000, limit_bytes=LIM, artifact_size_bytes=100_000))
+check('quota-exhausted-over-ceiling', lambda: p.classify_drive_quota(usage_bytes=8_950_000, limit_bytes=LIM, artifact_size_bytes=100_000))
+check('quota-exhausted-missing-usage', lambda: p.classify_drive_quota(usage_bytes=None, limit_bytes=LIM, artifact_size_bytes=100))
+check('quota-exhausted-missing-limit', lambda: p.classify_drive_quota(usage_bytes=100, limit_bytes=None, artifact_size_bytes=100))
+check('quota-exhausted-unbounded', lambda: p.classify_drive_quota(usage_bytes=100, limit_bytes=0, artifact_size_bytes=100))
+check('quota-exhausted-inconsistent', lambda: p.classify_drive_quota(usage_bytes=20_000_000, limit_bytes=LIM, artifact_size_bytes=100))
+check('quota-exhausted-in-margin', lambda: p.classify_drive_quota(usage_bytes=CEIL, limit_bytes=LIM, artifact_size_bytes=1))
+expect_raise('quota-invalid-ceiling-zero', lambda: p.classify_drive_quota(usage_bytes=0, limit_bytes=LIM, artifact_size_bytes=0, ceiling_ratio=0), None)
+expect_raise('quota-invalid-ceiling-one', lambda: p.classify_drive_quota(usage_bytes=0, limit_bytes=LIM, artifact_size_bytes=0, ceiling_ratio=1), None)
+
+# ---- retention selection: newest valid daily point protected ----
+tier_files = [{'id': f'f{i}', 'created_time': f't{i}'} for i in range(5)]
+check('retention-keep3-of5', lambda: d.select_retention_deletions(tier_files, 3))
+check('retention-keep1-protects-newest', lambda: d.select_retention_deletions(tier_files, 1))
+check('retention-keep-all', lambda: d.select_retention_deletions(tier_files, 5))
+expect_raise('retention-keep0-rejected', lambda: d.select_retention_deletions(tier_files, 0), 'keep_count must protect')
+check('retention-empty', lambda: d.select_retention_deletions([], 1))
+
+# ---- Drive OAuth symbolic boundary (no real request) ----
+check('drive-scope-exact', lambda: d.DRIVE_SCOPE)
+check('drive-secret-name', lambda: d.RECOVERY_DRIVE_SECRET_NAME)
+check('drive-within-state', lambda: d.DRIVE_STORAGE_WITHIN_LIMIT if hasattr(d, 'DRIVE_STORAGE_WITHIN_LIMIT') else p.DRIVE_STORAGE_WITHIN_LIMIT)
+
 print(json.dumps(results))
 `;
 
@@ -440,4 +470,110 @@ test('W. workdir creation failure returns cleanup-failed sanitized status with n
   assert.deepEqual(r.value.provider_calls, []);
   assert.deepEqual(r.value.logs, ['phase=cleanup']);
   assert.ok(JSON.stringify(r.value).indexOf('SENTINEL_UNIQUE_TOKEN_7f3a') === -1, 'no raw sentinel');
+});
+
+// --- #3894 Drive quota preflight classification (fail-closed) ---
+
+test('X1. quota within limit permits upload', () => {
+  const r = results['quota-within'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_WITHIN_LIMIT');
+});
+
+test('X2. quota near limit (projected in near-band) still permits upload', () => {
+  const r = results['quota-near'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_NEAR_LIMIT');
+});
+
+test('X3. quota over ceiling is exhausted (zero upload)', () => {
+  const r = results['quota-exhausted-over-ceiling'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_EXHAUSTED');
+});
+
+test('X4. missing usage fails closed as exhausted', () => {
+  const r = results['quota-exhausted-missing-usage'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_EXHAUSTED');
+});
+
+test('X5. missing limit fails closed as exhausted', () => {
+  const r = results['quota-exhausted-missing-limit'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_EXHAUSTED');
+});
+
+test('X6. unbounded limit (0) fails closed as exhausted', () => {
+  const r = results['quota-exhausted-unbounded'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_EXHAUSTED');
+});
+
+test('X7. inconsistent usage > limit fails closed as exhausted', () => {
+  const r = results['quota-exhausted-inconsistent'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_EXHAUSTED');
+});
+
+test('X8. usage at ceiling (reserved margin) fails closed as exhausted', () => {
+  const r = results['quota-exhausted-in-margin'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_EXHAUSTED');
+});
+
+test('X9. invalid ceiling ratio (0 or 1) rejected', () => {
+  assert.equal(results['quota-invalid-ceiling-zero'].status, 'PASS');
+  assert.equal(results['quota-invalid-ceiling-one'].status, 'PASS');
+});
+
+// --- retention selection: newest valid daily protected ---
+
+test('Y1. retention keep 3 of 5 selects the 2 oldest expired', () => {
+  const r = results['retention-keep3-of5'];
+  assert.equal(r.status, 'PASS');
+  assert.deepEqual(r.value, ['f3', 'f4']);
+});
+
+test('Y2. retention keep 1 protects the newest valid daily point', () => {
+  const r = results['retention-keep1-protects-newest'];
+  assert.equal(r.status, 'PASS');
+  assert.deepEqual(r.value, ['f1', 'f2', 'f3', 'f4']);
+  assert.ok(!r.value.includes('f0'), 'newest point f0 protected');
+});
+
+test('Y3. retention keep all selects nothing', () => {
+  const r = results['retention-keep-all'];
+  assert.equal(r.status, 'PASS');
+  assert.deepEqual(r.value, []);
+});
+
+test('Y4. retention keep 0 rejected (must protect newest)', () => {
+  assert.equal(results['retention-keep0-rejected'].status, 'PASS');
+});
+
+test('Y5. retention on empty tier selects nothing', () => {
+  const r = results['retention-empty'];
+  assert.equal(r.status, 'PASS');
+  assert.deepEqual(r.value, []);
+});
+
+// --- Drive OAuth symbolic boundary (no real request) ---
+
+test('Z1. Drive scope is exactly drive.file', () => {
+  const r = results['drive-scope-exact'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'https://www.googleapis.com/auth/drive.file');
+});
+
+test('Z2. Drive secret symbolic name exact', () => {
+  const r = results['drive-secret-name'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'lovebud-recovery-drive');
+});
+
+test('Z3. Drive sanitized state vocabulary present', () => {
+  const r = results['drive-within-state'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value, 'DRIVE_STORAGE_WITHIN_LIMIT');
 });
