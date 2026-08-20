@@ -197,12 +197,46 @@ function extractSourceTreeId(request) {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-function buildForkLockKey(sourceTreeId, ownerId) {
-  // Domain-separated stable string key, mirroring the Modal semantic identity
-  // (sourceTreeId, ownerId). The #4132 advisoryXactLock helper applies
-  // pg_advisory_xact_lock(hashtext($1::text)) so the text key carries the
-  // domain separation; no bigint hashing is duplicated here.
-  return `tree-fork:v1:${sourceTreeId}\x1f${ownerId}`;
+const FORK_LOCK_SQL = 'SELECT pg_advisory_xact_lock($1)';
+const FORK_LOCK_DOMAIN = 'tree-fork:v1:';
+
+// ─── Cross-runtime fork lock key (Modal parity) ───────────────────────────
+//
+// The Modal fork_public_tree serializes the semantic identity
+// (sourceTreeId, ownerId) by computing a domain-separated SHA-256 digest of
+//
+//   `tree-fork:v1:${sourceTreeId}\x1f${ownerId}`
+//
+// taking the first 8 bytes as a big-endian SIGNED int64 and acquiring
+//
+//   SELECT pg_advisory_xact_lock(<bigint>)
+//
+// (modal_compute/tree_writes.py::_tree_fork_lock_key). The direct candidate
+// must acquire the SAME advisory lock identity so that a concurrent Modal
+// request and a direct-Neon request for the same (sourceTreeId, ownerId)
+// pair serialize against one another. This does NOT use the #4132 helper's
+// `pg_advisory_xact_lock(hashtext($1::text))` path because Postgres
+// `hashtext()` produces a different 32-bit identity than SHA-256[0..8] and
+// would therefore NOT interlock with the Modal runtime.
+//
+// The signed 64-bit value is never routed through JS Number (which would lose
+// precision above 2^53). It is carried as a BigInt and passed as a parameter
+// directly to the Neon WS driver, which serializes BigInt as a Postgres
+// numeric/int8 value.
+
+async function computeForkLockKey(sourceTreeId, ownerId) {
+  const text = `${FORK_LOCK_DOMAIN}${sourceTreeId}\x1f${ownerId}`;
+  const encoded = new TextEncoder().encode(text);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoded));
+  let value = 0n;
+  for (let i = 0; i < 8; i += 1) {
+    value = (value << 8n) | BigInt(digest[i]);
+  }
+  // Interpret the 8-byte big-endian value as a SIGNED int64 (two's complement).
+  if (value >= 0x8000000000000000n) {
+    value -= 0x10000000000000000n;
+  }
+  return value;
 }
 
 function buildForkedTitle(sourceTitle) {
@@ -468,9 +502,17 @@ function buildMemoryInsertParams(mem, idMap, newTreeId) {
   ];
 }
 
-async function runForkWork(tx, signal, { sourceTreeId, ownerId }) {
+async function runForkWork(tx, signal, { sourceTreeId, ownerId, forkLockKey }) {
   // A. Semantic advisory transaction lock FIRST (sourceTreeId, ownerId).
-  await tx.advisoryXactLock(buildForkLockKey(sourceTreeId, ownerId));
+  //
+  // Modal parity: SHA-256-derived signed int64 bigint passed directly as
+  // pg_advisory_xact_lock($1). This is the SAME lock identity the Modal
+  // runtime acquires (modal_compute/tree_writes.py::_tree_fork_lock_key), so a
+  // concurrent Modal request and a direct-Neon request for the same
+  // (sourceTreeId, ownerId) pair interlock. The #4132 advisoryXactLock helper
+  // (which uses hashtext) is intentionally NOT used here because hashtext
+  // produces a different 32-bit identity than SHA-256[0..8].
+  await tx.query(FORK_LOCK_SQL, [forkLockKey]);
 
   // B. Source Tree SELECT ... FOR SHARE.
   const sourceRows = await tx.forShare(SOURCE_TREE_FOR_SHARE_SQL, [sourceTreeId]);
@@ -672,6 +714,13 @@ export async function handleTreeForkDirectNeon(
     }
   }
 
+  // Compute the cross-runtime fork lock key BEFORE the transaction starts.
+  // The key is a SHA-256-derived signed int64 identical to the Modal runtime's
+  // _tree_fork_lock_key so concurrent Modal/direct requests interlock. This is
+  // deterministic and side-effect free (no DB/network), so computing it outside
+  // the transaction does not change transaction semantics or ordering.
+  const forkLockKey = await computeForkLockKey(sourceTreeId, ownerId);
+
   // Request-local fork work outcome signal. The work callback records its HTTP
   // outcome here immediately before throwing a NeonWsTransactionError (which
   // the #4132 adapter re-wraps, preserving only the status); the catch handler
@@ -690,11 +739,11 @@ export async function handleTreeForkDirectNeon(
       // non-null users columns fail closed.
       await ensureOwnerUserExists(tx, workSignal, ownerId);
 
-      // Fork transaction work (advisory lock -> FOR SHARE source -> authorize
-      // public -> duplicate lookup -> memory snapshot -> >200 reject before
-      // destination insert -> destination insert -> memory copy -> canonical
-      // reread).
-      return await runForkWork(tx, workSignal, { sourceTreeId, ownerId });
+      // Fork transaction work (advisory bigint lock -> FOR SHARE source ->
+      // authorize public -> duplicate lookup -> memory snapshot -> >200 reject
+      // before destination insert -> destination insert -> memory copy ->
+      // canonical reread).
+      return await runForkWork(tx, workSignal, { sourceTreeId, ownerId, forkLockKey });
     });
   } catch (error) {
     if (isForkWorkError(error, workSignal)) {
@@ -754,5 +803,14 @@ export const TREE_FORK_DIRECT_NEON_CONTRACT = Object.freeze({
   writes: true,
   perRequestModalFallbackAfterDirectStart: false,
   automaticWholeTransactionRetry: false,
-  retryOnUnknownCommitOutcome: false
+  retryOnUnknownCommitOutcome: false,
+  forkLockAlgorithm: 'sha256-first8-bytes-signed-int64',
+  forkLockSql: FORK_LOCK_SQL,
+  forkLockUsesHashtext: false
 });
+
+export {
+  computeForkLockKey,
+  FORK_LOCK_SQL,
+  FORK_LOCK_DOMAIN
+};
