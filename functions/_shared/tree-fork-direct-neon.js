@@ -110,9 +110,12 @@ export function readTreeForkWriteConfig(env = {}) {
   });
 }
 
-// Detects whether a generic/read-only env leaked into the writer boundary so a
-// caller can never satisfy the writer config with a forbidden fallback.
+// Generic/read-only DB envs are forbidden only as substitutes for the dedicated
+// writer authority. They may legitimately coexist with a valid dedicated writer
+// binding in the shared Worker environment; in that case the writer URL remains
+// the sole selected connection string.
 export function detectForbiddenWriterFallback(env = {}) {
+  if (readTreeForkWriteConfig(env).configured) return null;
   for (const name of TREE_FORK_FORBIDDEN_FALLBACK_ENVS) {
     const raw = typeof env?.[name] === 'string' ? env[name].trim() : '';
     if (raw && isNeonWsConnectionString(raw)) {
