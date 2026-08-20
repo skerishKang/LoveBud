@@ -21,6 +21,11 @@ import {
   isPublicCommunityMemoriesDirectNeonSelected,
   isPublicCommunityMemoriesRequest
 } from '../_shared/public-community-memories-direct-neon.js';
+import {
+  handleTreeForkDirectNeon,
+  isTreeForkDirectNeonRequest,
+  isTreeForkDirectNeonSelected
+} from '../_shared/tree-fork-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -515,6 +520,19 @@ export async function onRequest(context) {
       return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
     }
     throw error;
+  }
+
+  // ─── Phase-4 Tree Fork (Gated Direct Neon Write Candidate) ────────────────
+  // Only the explicitly-gated direct_neon candidate is intercepted here; the
+  // default/unset/modal/unknown gate falls through to the existing Modal-owned
+  // write route below. After direct execution begins there is NO per-request
+  // direct -> Modal fallback: a config/auth/query/transaction failure fails
+  // closed inside the handler.
+  if (isTreeForkDirectNeonRequest(request) && isTreeForkDirectNeonSelected(env || {})) {
+    const directResponse = await handleTreeForkDirectNeon(request, env || {}, requestId);
+    if (directResponse) {
+      return await withUpstreamHeader(directResponse, 'direct-neon', requestId);
+    }
   }
 
   if (isModalOwnedWrite) {
