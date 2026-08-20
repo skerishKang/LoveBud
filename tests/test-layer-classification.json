@@ -331,7 +331,7 @@
     {
       "path": "tests/contracts/browse-my-trees-compact-geometry-3608-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes real production modules js/tree-view-mode-switcher.js and js/my-trees/my-trees-page-bootstrap.js in Playwright Chromium, loading production CSS chains css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, and css/tree-view-mode.css via a local HTTP server. Asserts #3608 Phase 1 compact defaults (empty/invalid storage \u2192 compact), independent storage keys, desktop/mobile computed compact geometry parity (card height, media, body grid, title/subtitle, CTA count), and obsolete My Trees compact asymmetry removal. No production write/auth/API/DB mutation.",
+      "rationale": "Executes real production modules js/tree-view-mode-switcher.js and js/my-trees/my-trees-page-bootstrap.js in Playwright Chromium, loading production CSS chains css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, and css/tree-view-mode.css via a local HTTP server. Asserts #3608 Phase 1 compact defaults (empty/invalid storage → compact), independent storage keys, desktop/mobile computed compact geometry parity (card height, media, body grid, title/subtitle, CTA count), and obsolete My Trees compact asymmetry removal. No production write/auth/API/DB mutation.",
       "capabilities": []
     },
     {
@@ -1827,7 +1827,7 @@
     {
       "path": "tests/contracts/generic-social-b-db-engine-harness-contract.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Reads package.json, CI workflow, Migration B rehearsal harness/fixture/helper sources and asserts separate package script, PostgreSQL 17.4 job pin, B_PRE\u2192MIG_B\u2192B_POST order, multi-row/empty/second-apply markers, exact B object fingerprints, and supplemental classification without executing PostgreSQL (#3540).",
+      "rationale": "Reads package.json, CI workflow, Migration B rehearsal harness/fixture/helper sources and asserts separate package script, PostgreSQL 17.4 job pin, B_PRE→MIG_B→B_POST order, multi-row/empty/second-apply markers, exact B object fingerprints, and supplemental classification without executing PostgreSQL (#3540).",
       "capabilities": []
     },
     {
@@ -2724,7 +2724,7 @@
     {
       "path": "tests/contracts/public-viewer-appreciation-composer-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the Public Viewer appreciation composer with adapter/presentation spies and the real adapter\u2192canonical\u2192presentation chain in node:vm, proving exact orchestration order, fail-closed dependency errors, private-sentinel exclusion, and unknown-vs-zero social preservation without a real browser, network, auth provider, database, deployment, or Production resource.",
+      "rationale": "Executes the Public Viewer appreciation composer with adapter/presentation spies and the real adapter→canonical→presentation chain in node:vm, proving exact orchestration order, fail-closed dependency errors, private-sentinel exclusion, and unknown-vs-zero social preservation without a real browser, network, auth provider, database, deployment, or Production resource.",
       "capabilities": []
     },
     {
@@ -3321,7 +3321,7 @@
     {
       "path": "tests/contracts/scout-real-page-link-to-draft-activation-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Loads the real pages/editor.html with the full production CSS/JS chains (js/scout/scout-draft.js, js/scout/scout-suggestion-provider.js, js/scout/scout-draft-ui.js, js/scout/scout-suggestion-endpoint-client.js, js/scout/scout-suggestion-source-selector.js, js/editor/editor-floating-toolbar.js, js/editor/editor-floating-toolbar-dropdown.js, js/editor/editor-mobile-bottom-bar.js, js/shared/modal-a11y.js) in Playwright Chromium via a local 127.0.0.1 HTTP server (issue #3907). Synthetic credential-free owner via page.addInitScript (localStorage + window.firebase mock); synthetic Tree/Moment fixtures with an exact same-origin API GET allowlist (/api/trees/scout-tree-3907, /api/memories?treeId=, per-memory /reactions + /comments) and one intercepted POST /api/memories save. Asserts the real local_stub journey at 1440x900 and 390x844: desktop actual #ftbScoutAction (floating-toolbar dropdown) and mobile actual #mobileScoutAction (bottom-bar secondary) open the same dialog; dialog role=dialog/aria-modal/aria-labelledby=scoutDraftTitle with an <h2 id=scoutDraftTitle>; initial focus enters #scoutSourceUrlInput; actual #scoutDraftSuggestBtn applies deterministic local_stub content (excerpt/memo/emotion tags) with endpoint request 0 and write 0; excerpt/memo/tags/source attribution remain editable; repeat open/suggest keeps exactly one #scoutDraftModal and exactly one modal keydown listener (document listener count instrumented) with no duplicate output; manual save stays user-triggered and delegates exactly once to the existing Moment save boundary via an intercepted synthetic POST /api/memories (health.writeRequests === 1); cancel/close/backdrop/Escape each restore focus to the opening desktop (#ftbMoreBtn fallback) or mobile (#mobileScoutAction) trigger; mobile primary + Scout controls fit 390px with horizontal overflow <= 1px; read-only/view mode exposes no enabled Scout entry. NC1-NC12 negative controls exercise real product events through disposable route-intercepted copies (editor.html order, scout-draft-ui.js, scout-suggestion-provider.js, scout-suggestion-source-selector.js \u2014 never touching product files): NC1 provider script moved after UI + lazy lookup removed -> suggestion unavailable; NC2 provider global absent at click time -> actionable unavailable, no crash/write; NC3 source selector forced to endpoint/live -> no stub content and a Scout endpoint request observed; NC4 actual Scout endpoint POST probe -> unexpected-API guard trips; NC5 #mobileScoutAction removed -> mobile journey cannot open; NC6 forced-visible entry in view mode -> no-enabled-entry contract violated; NC7 role/aria removed -> semantics assertion fails; NC8 initial focus removed -> focus assertion fails; NC9 restoreFocus removed -> desktop and mobile focus-restore assertions fail; NC10 injected duplicate keydown listener -> exact-count assertion trips; NC11 auto-writing suggestion -> write=0 guard trips; NC12 forced 600px element -> overflow >1px geometry assertion trips. Browser health zero pageerror, zero console error, zero same-origin failure, zero unexpected API, zero Scout endpoint in local_stub, zero external, zero Authorization, zero suggestion write. No production write/auth/API/DB mutation.",
+      "rationale": "Loads the real pages/editor.html with the full production CSS/JS chains (js/scout/scout-draft.js, js/scout/scout-suggestion-provider.js, js/scout/scout-draft-ui.js, js/scout/scout-suggestion-endpoint-client.js, js/scout/scout-suggestion-source-selector.js, js/editor/editor-floating-toolbar.js, js/editor/editor-floating-toolbar-dropdown.js, js/editor/editor-mobile-bottom-bar.js, js/shared/modal-a11y.js) in Playwright Chromium via a local 127.0.0.1 HTTP server (issue #3907). Synthetic credential-free owner via page.addInitScript (localStorage + window.firebase mock); synthetic Tree/Moment fixtures with an exact same-origin API GET allowlist (/api/trees/scout-tree-3907, /api/memories?treeId=, per-memory /reactions + /comments) and one intercepted POST /api/memories save. Asserts the real local_stub journey at 1440x900 and 390x844: desktop actual #ftbScoutAction (floating-toolbar dropdown) and mobile actual #mobileScoutAction (bottom-bar secondary) open the same dialog; dialog role=dialog/aria-modal/aria-labelledby=scoutDraftTitle with an <h2 id=scoutDraftTitle>; initial focus enters #scoutSourceUrlInput; actual #scoutDraftSuggestBtn applies deterministic local_stub content (excerpt/memo/emotion tags) with endpoint request 0 and write 0; excerpt/memo/tags/source attribution remain editable; repeat open/suggest keeps exactly one #scoutDraftModal and exactly one modal keydown listener (document listener count instrumented) with no duplicate output; manual save stays user-triggered and delegates exactly once to the existing Moment save boundary via an intercepted synthetic POST /api/memories (health.writeRequests === 1); cancel/close/backdrop/Escape each restore focus to the opening desktop (#ftbMoreBtn fallback) or mobile (#mobileScoutAction) trigger; mobile primary + Scout controls fit 390px with horizontal overflow <= 1px; read-only/view mode exposes no enabled Scout entry. NC1-NC12 negative controls exercise real product events through disposable route-intercepted copies (editor.html order, scout-draft-ui.js, scout-suggestion-provider.js, scout-suggestion-source-selector.js — never touching product files): NC1 provider script moved after UI + lazy lookup removed -> suggestion unavailable; NC2 provider global absent at click time -> actionable unavailable, no crash/write; NC3 source selector forced to endpoint/live -> no stub content and a Scout endpoint request observed; NC4 actual Scout endpoint POST probe -> unexpected-API guard trips; NC5 #mobileScoutAction removed -> mobile journey cannot open; NC6 forced-visible entry in view mode -> no-enabled-entry contract violated; NC7 role/aria removed -> semantics assertion fails; NC8 initial focus removed -> focus assertion fails; NC9 restoreFocus removed -> desktop and mobile focus-restore assertions fail; NC10 injected duplicate keydown listener -> exact-count assertion trips; NC11 auto-writing suggestion -> write=0 guard trips; NC12 forced 600px element -> overflow >1px geometry assertion trips. Browser health zero pageerror, zero console error, zero same-origin failure, zero unexpected API, zero Scout endpoint in local_stub, zero external, zero Authorization, zero suggestion write. No production write/auth/API/DB mutation.",
       "capabilities": []
     },
     {
@@ -4045,15 +4045,15 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/tree-like-hardening-3359.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "path": "tests/contracts/tree-like-direct-neon-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4142 Phase-4 Tree Like direct-Neon candidate adapter in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), and an injected fake Neon WS Client via neonImporter (no real DB/network), proving the explicit route gate, dedicated writer config, auth-first Firebase principal, Tree FOR SHARE -> advisory xact lock -> idempotency reserve/replay -> Like toggle ordering, SELECT-first and INSERT-conflict idempotency re-verification (different-target 409, different-fingerprint 409, completed replay, pending/failed unavailable, no second toggle), count maintenance, COMMIT_OUTCOME_UNKNOWN 502 with no blind retry, and sanitized leak-safe errors. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, or Production resource is used (#4142).",
       "capabilities": []
     },
     {
-      "path": "tests/contracts/tree-like-direct-neon-product-adapter.test.cjs",
+      "path": "tests/contracts/tree-like-hardening-3359.test.cjs",
       "layer": "SOURCE_STATIC",
-      "rationale": "Reads functions/_shared/tree-like-direct-neon.js and functions/api/trees/[tree_id]/likes.js source and asserts on strings, regex, structure, gate semantics, and ordering; also executes in-process with injected fake Firebase verifyToken and fake Neon WS Client via neonImporter (no real network, Neon DB, browser, provider mutation, or Production resource) to prove the #4142 Phase-4 Tree Like direct-Neon candidate adapter invariants (FOR SHARE -> advisory lock -> idempotency -> toggle, replay, active/inactive parity, count maintenance, COMMIT_OUTCOME_UNKNOWN, sanitized errors) (#4142).",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
     },
     {
@@ -4814,7 +4814,7 @@
     {
       "path": "tests/contracts/tree-layout-mode-policy-3581-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes real production modules js/editor/editor-canvas-layout-policy.js, editor-canvas-layout-storage.js, editor-canvas-layout-transition.js, editor-canvas-geometry.js in Playwright Chromium via local HTTP fixture. Asserts #3581 appreciation vs owner-edit layout storage isolation using real localStorage (owner appreciation/public ignore free draft; owner edit restores free positions/viewport; view\u2194edit rebinding keeps keys; drag only free+owner-edit; structured-first labels; desktop 1440 and mobile 375 overflow). No production write/auth/API/DB mutation.",
+      "rationale": "Executes real production modules js/editor/editor-canvas-layout-policy.js, editor-canvas-layout-storage.js, editor-canvas-layout-transition.js, editor-canvas-geometry.js in Playwright Chromium via local HTTP fixture. Asserts #3581 appreciation vs owner-edit layout storage isolation using real localStorage (owner appreciation/public ignore free draft; owner edit restores free positions/viewport; view↔edit rebinding keeps keys; drag only free+owner-edit; structured-first labels; desktop 1440 and mobile 375 overflow). No production write/auth/API/DB mutation.",
       "capabilities": []
     },
     {
@@ -4838,7 +4838,7 @@
     {
       "path": "tests/contracts/tree-layout-persistence-3582-editor-route-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free\u2192structured\u2192free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
+      "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free→structured→free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
       "capabilities": []
     },
     {
@@ -4868,7 +4868,7 @@
     {
       "path": "tests/contracts/settings-password-reset-3635-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes js/settings.js resolvePasswordResetMode and passwordResetState in a Node VM sandbox and asserts provider matrix (password\u2192reset, google+password\u2192reset, password-no-email\u2192missingEmail, google-only\u2192googleManaged, unknown\u2192unavailable, null\u2192unavailable), state shape, DOM ID references, button type=button, ARIA attributes, firebase/auth/sendPasswordResetEmail guard patterns, Promise.resolve() async chain, double-click guard, i18n keys with ko/en, no inline bootstrap, no sendPasswordResetEmail in firebase-config/shared-header/settings-bootstrap, no initializeApp/apiKey in settings.js, exactly one onAuthStateChanged, and cache token chain 20260724-3635-1. No real browser/network/DB/Production mutation.",
+      "rationale": "Executes js/settings.js resolvePasswordResetMode and passwordResetState in a Node VM sandbox and asserts provider matrix (password→reset, google+password→reset, password-no-email→missingEmail, google-only→googleManaged, unknown→unavailable, null→unavailable), state shape, DOM ID references, button type=button, ARIA attributes, firebase/auth/sendPasswordResetEmail guard patterns, Promise.resolve() async chain, double-click guard, i18n keys with ko/en, no inline bootstrap, no sendPasswordResetEmail in firebase-config/shared-header/settings-bootstrap, no initializeApp/apiKey in settings.js, exactly one onAuthStateChanged, and cache token chain 20260724-3635-1. No real browser/network/DB/Production mutation.",
       "capabilities": []
     },
     {
@@ -4970,7 +4970,7 @@
     {
       "path": "tests/contracts/browse-my-trees-staged-loading-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject \u2192 showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
+      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject → showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
       "capabilities": []
     },
     {
@@ -5089,7 +5089,7 @@
     {
       "path": "tests/contracts/love-platform-api-public-growing-read.test.cjs",
       "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the shared love-platform-api Growing public-read route in-process with constructed Request inputs and an injected fake Query capability, proving the current LoveBud public Tree + public Memory count 1\u20132 projection, bounded 3..12 limit behavior, canonical request-id/no-store response, public-only DTO allowlist, fail-closed missing capability/invalid route behavior, bounded error redaction, no Transaction implication, and zero external fetch/DB-driver/Product-route/auth-provider capability. No real external network, database, browser, provider, deployment, Production secret, or Production resource is used (#4099).",
+      "rationale": "Executes the shared love-platform-api Growing public-read route in-process with constructed Request inputs and an injected fake Query capability, proving the current LoveBud public Tree + public Memory count 1–2 projection, bounded 3..12 limit behavior, canonical request-id/no-store response, public-only DTO allowlist, fail-closed missing capability/invalid route behavior, bounded error redaction, no Transaction implication, and zero external fetch/DB-driver/Product-route/auth-provider capability. No real external network, database, browser, provider, deployment, Production secret, or Production resource is used (#4099).",
       "capabilities": []
     },
     {
@@ -5255,7 +5255,7 @@
       "path": "tests/db-engine/generic-social-b-postgres.test.cjs",
       "defaultCi": false,
       "layer": "DB_ENGINE_EXECUTION",
-      "rationale": "Independent supported-state Migration B rehearsal on disposable PostgreSQL 17.4: guarded A\u2192STATE_A, non-empty/empty/STATE_B-rerun paths, approved catalog delta, both-table compatibility A\u2013K, second-apply no-op; does not duplicate B guard adversarial matrix (#3540).",
+      "rationale": "Independent supported-state Migration B rehearsal on disposable PostgreSQL 17.4: guarded A→STATE_A, non-empty/empty/STATE_B-rerun paths, approved catalog delta, both-table compatibility A–K, second-apply no-op; does not duplicate B guard adversarial matrix (#3540).",
       "capabilities": [
         "postgresql",
         "child_process",
