@@ -492,3 +492,164 @@ test('23. route file: POST unset gate proxies to Modal', async () => {
   assert.equal(resp.status, 503, 'unset gate -> Modal proxy (unavailable -> 503)');
   assert.equal(resp.headers.get('x-lovebud-upstream'), 'modal');
 });
+
+// ─── INSERT conflict-race tests (CTO blocker 5351303983) ──────────────────
+
+const OTHER_TREE_ID = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+const OTHER_LIKE_URL = `https://lovebud.pages.dev/api/trees/${OTHER_TREE_ID}/likes`;
+
+// Build a script where SELECT misses (no existing row) but INSERT RETURNING
+// produces a conflicting preserved row.
+function makeInsertConflictScript(conflictRow) {
+  return {
+    "FOR SHARE": [{ id: 'cccccccc-cccc-cccc-cccc-cccccccccccc', visibility: 'public' }],
+    "pg_advisory_xact_lock": [],
+    "INSERT INTO tree_social_counts": [],
+    // SELECT-first miss: return no existing row.
+    "SELECT target_kind": [],
+    // INSERT conflict: RETURNING the preserved canonical row.
+    "INSERT INTO social_idempotency": [conflictRow],
+    "INSERT INTO tree_likes": [],
+    "INSERT INTO social_audit_log": [],
+    "UPDATE tree_likes": [],
+    "like_count = like_count + 1": [],
+    "like_count = GREATEST": [],
+    "SELECT like_count FROM tree_social_counts": [],
+    "UPDATE social_idempotency\n     SET result_id": []
+  };
+}
+
+test('24. SELECT miss -> INSERT conflict -> DIFFERENT TREE -> 409, no mutation', async () => {
+  const mod = await loadModule();
+  const crypto = require('node:crypto');
+  const expectedFingerprint = crypto.createHash('sha256').update('{}').digest('hex');
+  const conflictRow = {
+    target_kind: 'tree',
+    target_id: TREE_ID, // different tree than the request (OTHER_TREE_ID)
+    target_memory_id: null,
+    result_id: 'prior-result-id',
+    result_state: 'completed',
+    request_fingerprint: expectedFingerprint,
+    result_payload: { treeId: TREE_ID, active: true, likeCount: 3 }
+  };
+  const fakeFactory = makeFakeClientFactory(makeInsertConflictScript(conflictRow));
+  const req = makeRequest({ url: OTHER_LIKE_URL });
+  const resp = await mod.handleTreeLikeDirectNeon(req, WRITER_ENV, 'rid-24', {
+    verifyTokenOverride: makeVerifyToken(),
+    neonImporter: makeNeonImporter(fakeFactory)
+  });
+  assert.equal(resp.status, 409);
+  const body = await resp.json();
+  assert.equal(body.code, 'IDEMPOTENCY_KEY_REUSED');
+  // No tree_likes INSERT or UPDATE happened.
+  const likeInsert = fakeFactory.logs.find(l => l.text.includes('INSERT INTO tree_likes'));
+  const likeUpdate = fakeFactory.logs.find(l => l.text.includes('UPDATE tree_likes'));
+  assert.ok(!likeInsert, 'no tree_likes INSERT after different-target conflict');
+  assert.ok(!likeUpdate, 'no tree_likes UPDATE after different-target conflict');
+  // No count mutation.
+  const countMutation = fakeFactory.logs.find(l => l.text.includes('like_count = like_count + 1') || l.text.includes('GREATEST(like_count'));
+  assert.ok(!countMutation, 'no count mutation after different-target conflict');
+});
+
+test('25. SELECT miss -> INSERT conflict -> SAME TREE + completed -> stored replay DTO, no second toggle', async () => {
+  const mod = await loadModule();
+  const crypto = require('node:crypto');
+  const expectedFingerprint = crypto.createHash('sha256').update('{}').digest('hex');
+  const storedPayload = { treeId: TREE_ID, active: false, likeCount: 7 };
+  const conflictRow = {
+    target_kind: 'tree',
+    target_id: TREE_ID, // same tree
+    target_memory_id: null,
+    result_id: 'prior-result-id',
+    result_state: 'completed',
+    request_fingerprint: expectedFingerprint,
+    result_payload: storedPayload
+  };
+  const fakeFactory = makeFakeClientFactory(makeInsertConflictScript(conflictRow));
+  const req = makeRequest();
+  const resp = await mod.handleTreeLikeDirectNeon(req, WRITER_ENV, 'rid-25', {
+    verifyTokenOverride: makeVerifyToken(),
+    neonImporter: makeNeonImporter(fakeFactory)
+  });
+  assert.equal(resp.status, 200);
+  const body = await resp.json();
+  assert.equal(body.active, false);
+  assert.equal(body.likeCount, 7);
+  // No tree_likes INSERT (no second toggle).
+  const likeInsert = fakeFactory.logs.find(l => l.text.includes('INSERT INTO tree_likes'));
+  assert.ok(!likeInsert, 'replay must not insert a second like');
+  // Audit for replay was written.
+  const auditInsert = fakeFactory.logs.find(l => l.text.includes('INSERT INTO social_audit_log'));
+  assert.ok(auditInsert, 'replay audit recorded');
+});
+
+test('26. SELECT miss -> genuine fresh INSERT -> normal toggle proceeds', async () => {
+  const mod = await loadModule();
+  const crypto = require('node:crypto');
+  const expectedFingerprint = crypto.createHash('sha256').update('{}').digest('hex');
+  // The fake client must return our generated resultId + pending to signal
+  // a fresh INSERT. We use a function matcher for the INSERT to read $9.
+  const fakeFactory = makeFakeClientFactory({
+    "FOR SHARE": [{ id: TREE_ID, visibility: 'public' }],
+    "pg_advisory_xact_lock": [],
+    "INSERT INTO tree_social_counts": [],
+    "SELECT target_kind": [], // SELECT miss
+    "INSERT INTO social_idempotency": (text, values) => {
+      // values[8] = resultId (9th param, index 8)
+      return [{
+        target_kind: 'tree',
+        target_id: TREE_ID,
+        target_memory_id: null,
+        result_id: values[8], // echo our generated resultId
+        result_state: 'pending',
+        request_fingerprint: expectedFingerprint,
+        result_payload: null
+      }];
+    },
+    "SELECT id\n     FROM tree_likes": [], // no existing like -> insert new
+    "INSERT INTO tree_likes": [],
+    "like_count = like_count + 1": [],
+    "SELECT like_count FROM tree_social_counts": [{ like_count: 1 }],
+    "UPDATE social_idempotency\n     SET result_id": [],
+    "INSERT INTO social_audit_log": []
+  });
+  const req = makeRequest();
+  const resp = await mod.handleTreeLikeDirectNeon(req, WRITER_ENV, 'rid-26', {
+    verifyTokenOverride: makeVerifyToken(),
+    neonImporter: makeNeonImporter(fakeFactory)
+  });
+  assert.equal(resp.status, 200);
+  const body = await resp.json();
+  assert.equal(body.active, true, 'fresh toggle -> active');
+  assert.equal(body.likeCount, 1);
+  // tree_likes INSERT happened (normal toggle).
+  const likeInsert = fakeFactory.logs.find(l => l.text.includes('INSERT INTO tree_likes'));
+  assert.ok(likeInsert, 'fresh INSERT -> normal toggle inserts a like');
+});
+
+test('27. SELECT miss -> INSERT conflict -> pending/failed -> SOCIAL_WRITE_UNAVAILABLE', async () => {
+  const mod = await loadModule();
+  const crypto = require('node:crypto');
+  const expectedFingerprint = crypto.createHash('sha256').update('{}').digest('hex');
+  const conflictRow = {
+    target_kind: 'tree',
+    target_id: TREE_ID,
+    target_memory_id: null,
+    result_id: 'prior-result-id',
+    result_state: 'pending',
+    request_fingerprint: expectedFingerprint,
+    result_payload: null
+  };
+  const fakeFactory = makeFakeClientFactory(makeInsertConflictScript(conflictRow));
+  const req = makeRequest();
+  const resp = await mod.handleTreeLikeDirectNeon(req, WRITER_ENV, 'rid-27', {
+    verifyTokenOverride: makeVerifyToken(),
+    neonImporter: makeNeonImporter(fakeFactory)
+  });
+  assert.equal(resp.status, 500);
+  const body = await resp.json();
+  assert.equal(body.code, 'SOCIAL_WRITE_UNAVAILABLE');
+  // No tree_likes INSERT.
+  const likeInsert = fakeFactory.logs.find(l => l.text.includes('INSERT INTO tree_likes'));
+  assert.ok(!likeInsert, 'pending conflict must not toggle');
+});

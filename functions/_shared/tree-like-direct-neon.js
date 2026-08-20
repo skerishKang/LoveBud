@@ -228,6 +228,85 @@ async function buildLikeLockKeyAsync(actorId, treeId) {
 
 // ─── Like toggle work ─────────────────────────────────────────────────────
 
+// ─── Shared idempotency conflict verification ─────────────────────────────
+// Used by both SELECT-first and INSERT-conflict paths so verification
+// cannot drift. Throws a NeonWsTransactionError with a bounded workSignal
+// outcome for different-target/different-fingerprint/pending/failed conflicts.
+// Returns the replay DTO for completed/replayed rows, or null for a fresh
+// reservation (matching generated resultId + pending state).
+async function verifyIdempotencyRow(
+  tx,
+  row,
+  workSignal,
+  { targetKind, treeId, fingerprint, ownerId, operation, keyHash }
+) {
+  const storedKind = String(row.target_kind);
+  const storedTarget = String(row.target_id);
+  const storedFingerprint = String(row.request_fingerprint);
+  const storedResultId = row.result_id ? String(row.result_id) : null;
+  const storedState = String(row.result_state);
+
+  // Different target -> 409 IDEMPOTENCY_KEY_REUSED.
+  if (storedKind !== targetKind || storedTarget !== treeId) {
+    workSignal.outcome = { status: 409, body: { error: 'Idempotency key was used for a different target', code: 'IDEMPOTENCY_KEY_REUSED' }, routeStatus: 'idempotency-key-reused' };
+    const err = new NeonWsTransactionError(
+      NEON_WS_TRANSACTION_ERROR.WORK_FAILURE,
+      'IDEMPOTENCY_KEY_REUSED'
+    );
+    err.status = 409;
+    throw err;
+  }
+
+  // Different fingerprint -> 409 IDEMPOTENCY_KEY_REUSED.
+  if (storedFingerprint !== fingerprint) {
+    workSignal.outcome = { status: 409, body: { error: 'Idempotency key was used with a different request payload', code: 'IDEMPOTENCY_KEY_REUSED' }, routeStatus: 'idempotency-key-reused' };
+    const err = new NeonWsTransactionError(
+      NEON_WS_TRANSACTION_ERROR.WORK_FAILURE,
+      'IDEMPOTENCY_KEY_REUSED'
+    );
+    err.status = 409;
+    throw err;
+  }
+
+  // Completed/replayed -> canonical replay DTO, no second toggle.
+  if (storedState === 'completed' || storedState === 'replayed') {
+    let storedPayload = row.result_payload;
+    if (storedPayload != null && typeof storedPayload === 'string') {
+      try {
+        storedPayload = JSON.parse(storedPayload);
+      } catch {
+        storedPayload = null;
+      }
+    }
+
+    // Record audit for replay.
+    await tx.query(
+      `INSERT INTO social_audit_log
+          (id, actor_id, target_kind, target_id, memory_id, action, outcome_code, request_key_hash, created_at)
+       VALUES ($1, $2, $3, $4, NULL, $5, 'success', $6, NOW())`,
+      [crypto.randomUUID(), ownerId, targetKind, treeId, 'tree.like.toggle.replay', keyHash]
+    );
+
+    const replayResult = storedPayload || (await readActiveAndCount(tx, treeId, ownerId));
+    workSignal.outcome = { status: 200, body: replayResult, routeStatus: 'like-replay' };
+    return replayResult;
+  }
+
+  // Pending/failed -> 500 SOCIAL_WRITE_UNAVAILABLE.
+  if (storedState === 'pending' || storedState === 'failed') {
+    workSignal.outcome = { status: 500, body: { error: 'Request is already being processed. Please retry with the same key.', code: 'SOCIAL_WRITE_UNAVAILABLE' }, routeStatus: 'social-write-unavailable' };
+    const err = new NeonWsTransactionError(
+      NEON_WS_TRANSACTION_ERROR.WORK_FAILURE,
+      'SOCIAL_WRITE_UNAVAILABLE'
+    );
+    err.status = 500;
+    throw err;
+  }
+
+  // Unknown state falls through to fresh reservation.
+  return null;
+}
+
 async function runLikeWork(tx, workSignal, { treeId, ownerId, idempotencyKey }) {
   const operation = LIKE_OPERATION;
   const targetKind = TARGET_KIND;
@@ -281,65 +360,21 @@ async function runLikeWork(tx, workSignal, { treeId, ownerId, idempotencyKey }) 
 
   if (existingRows && existingRows.length > 0) {
     const existing = existingRows[0];
-    const storedKind = String(existing.target_kind);
-    const storedTarget = String(existing.target_id);
-    const storedFingerprint = String(existing.request_fingerprint);
-    const storedState = String(existing.result_state);
-
-    if (storedKind !== targetKind || storedTarget !== treeId) {
-      workSignal.outcome = { status: 409, body: { error: 'Idempotency key was used for a different target', code: 'IDEMPOTENCY_KEY_REUSED' }, routeStatus: 'idempotency-key-reused' };
-      const err = new NeonWsTransactionError(
-        NEON_WS_TRANSACTION_ERROR.WORK_FAILURE,
-        'IDEMPOTENCY_KEY_REUSED'
-      );
-      err.status = 409;
-      throw err;
-    }
-    if (storedFingerprint !== fingerprint) {
-      workSignal.outcome = { status: 409, body: { error: 'Idempotency key was used with a different request payload', code: 'IDEMPOTENCY_KEY_REUSED' }, routeStatus: 'idempotency-key-reused' };
-      const err = new NeonWsTransactionError(
-        NEON_WS_TRANSACTION_ERROR.WORK_FAILURE,
-        'IDEMPOTENCY_KEY_REUSED'
-      );
-      err.status = 409;
-      throw err;
-    }
-    if (storedState === 'completed' || storedState === 'replayed') {
-      // Replay: return stored canonical result.
-      let storedPayload = existing.result_payload;
-      if (storedPayload != null && typeof storedPayload === 'string') {
-        try {
-          storedPayload = JSON.parse(storedPayload);
-        } catch {
-          storedPayload = null;
-        }
-      }
-
-      // Record audit for replay.
-      await tx.query(
-        `INSERT INTO social_audit_log
-            (id, actor_id, target_kind, target_id, memory_id, action, outcome_code, request_key_hash, created_at)
-         VALUES ($1, $2, $3, $4, NULL, $5, 'success', $6, NOW())`,
-        [crypto.randomUUID(), ownerId, targetKind, treeId, 'tree.like.toggle.replay', keyHash]
-      );
-
-      workSignal.outcome = { status: 200, body: storedPayload || (await readActiveAndCount(tx, treeId, ownerId)), routeStatus: 'like-replay' };
-      return storedPayload || (await readActiveAndCount(tx, treeId, ownerId));
-    }
-    if (storedState === 'pending' || storedState === 'failed') {
-      workSignal.outcome = { status: 500, body: { error: 'Request is already being processed. Please retry with the same key.', code: 'SOCIAL_WRITE_UNAVAILABLE' }, routeStatus: 'social-write-unavailable' };
-      const err = new NeonWsTransactionError(
-        NEON_WS_TRANSACTION_ERROR.WORK_FAILURE,
-        'SOCIAL_WRITE_UNAVAILABLE'
-      );
-      err.status = 500;
-      throw err;
-    }
+    const replayResult = await verifyIdempotencyRow(
+      tx, existing, workSignal,
+      { targetKind, treeId, fingerprint, ownerId, operation, keyHash }
+    );
+    if (replayResult !== null) return replayResult;
+    // Unknown state falls through to a fresh reservation below.
   }
 
-  // Fresh reservation.
+  // Fresh reservation with RETURNING + conflict re-verification.
+  // The SELECT-first lookup may miss a concurrent same-(actor, operation, key)
+  // reservation (same actor + same key + different tree take different advisory
+  // locks). The INSERT ... ON CONFLICT preserves the existing row and RETURNING
+  // exposes it so we re-verify exactly like the SELECT-first path.
   const resultId = crypto.randomUUID();
-  await tx.query(
+  const insertRows = await tx.query(
     `INSERT INTO social_idempotency
         (id, actor_id, operation, idempotency_key, request_fingerprint,
          target_kind, target_id, target_memory_id, result_id, result_state,
@@ -353,9 +388,33 @@ async function runLikeWork(tx, workSignal, { treeId, ownerId, idempotencyKey }) 
        request_fingerprint = social_idempotency.request_fingerprint,
        result_id = social_idempotency.result_id,
        result_state = social_idempotency.result_state,
-       result_payload = social_idempotency.result_payload`,
+       result_payload = social_idempotency.result_payload
+     RETURNING
+       target_kind, target_id, target_memory_id,
+       result_id, result_state, request_fingerprint, result_payload`,
     [crypto.randomUUID(), ownerId, operation, idempotencyKey, fingerprint, targetKind, treeId, null, resultId]
   );
+
+  if (insertRows && insertRows.length > 0) {
+    const returnedRow = insertRows[0];
+    const returnedResultId = returnedRow.result_id ? String(returnedRow.result_id) : null;
+    const returnedState = String(returnedRow.result_state);
+
+    // Fresh INSERT (our generated resultId + pending) -> mutation may proceed.
+    const isFreshInsert = returnedResultId === resultId && returnedState === 'pending';
+    if (!isFreshInsert) {
+      // Conflict: INSERT hit an existing row. Re-verify with the shared helper
+      // so different-target/different-fingerprint/replay/pending cases are
+      // handled identically to the SELECT-first path. NEVER continue to the
+      // Like mutation after a conflicting different-target reservation.
+      const replayResult = await verifyIdempotencyRow(
+        tx, returnedRow, workSignal,
+        { targetKind, treeId, fingerprint, ownerId, operation, keyHash }
+      );
+      if (replayResult !== null) return replayResult;
+      // Unknown state falls through (should not normally happen).
+    }
+  }
 
   // 5. Toggle: fetch active like.
   const activeRows = await tx.query(
