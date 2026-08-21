@@ -23,4 +23,5 @@ SCOUT_SUGGEST_PROVIDER_TRANSPORT_MODE = "api_key"
 
 [env.production.vars]
 LB_GROWING_READ_RUNTIME = "direct_neon"
+LB_COMMUNITY_MEMORIES_READ_RUNTIME = "direct_neon"
 MODAL_BASE_URL = "https://padiemipu--lovebud-browse-snapshot-fastapi-app.modal.run"
