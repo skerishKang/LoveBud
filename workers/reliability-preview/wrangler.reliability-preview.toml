@@ -1,0 +1,36 @@
+# Issue #4148 / #4082 — NONPROD reliability-preview Wrangler contract (source publication only).
+#
+# SOURCE PUBLICATION ONLY. Publishing this file does NOT deploy a Worker, does
+# NOT activate Cron, does NOT provision a Durable Object namespace, does NOT
+# create a Slack webhook, and does NOT place any secret value.
+#
+# Current Cloudflare Wrangler lifecycle contract for a new SQLite Durable
+# Object: declare it via [env.<name>.exports.<ClassName>] with storage="sqlite"
+# and bind it via [[env.<name>.durable_objects.bindings]]. Legacy
+# [[env.<name>.migrations]] are intentionally NOT used together with exports.
+#
+# Refs #4148. Refs #4082. Refs #3461 — Keep OPEN. Refs #1882 — Keep OPEN.
+
+name = "lovebud"
+main = "reliability-preview-worker.mjs"
+compatibility_date = "2025-05-01"
+
+[env.reliability-preview]
+# Dedicated NONPROD Worker identity. Explicitly named so the deployed Worker is
+# exactly "lovebud-reliability-preview" (no duplicated suffix), independent of
+# the top-level name + environment-key append rule.
+name = "lovebud-reliability-preview"
+
+# Dedicated SQLite Durable Object, declared with the current exports model.
+[env.reliability-preview.exports.ReliabilityPreviewStore]
+type = "durable-object"
+storage = "sqlite"
+
+# Environment-specific binding to the SQLite Durable Object class.
+[[env.reliability-preview.durable_objects.bindings]]
+name = "RELIABILITY_PREVIEW_STORE"
+class_name = "ReliabilityPreviewStore"
+
+# Environment-specific Cron trigger (current Wrangler shape: [triggers] + crons).
+[env.reliability-preview.triggers]
+crons = ["*/5 * * * *"]
