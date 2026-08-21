@@ -451,7 +451,7 @@ async function runCommentWork(tx, workSignal, { treeId, ownerId, idempotencyKey,
      RETURNING
        target_kind, target_id, target_memory_id,
        result_id, result_state, request_fingerprint, result_payload`,
-    [crypto.randomUUID(), ownerId, operation, idempotencyKey, fingerprint, targetKind, treeId, null, resultId]
+    [crypto.randomUUID(), ownerId, operation, idempotencyKey, fingerprint, targetKind, treeId, "", resultId]
   );
 
   if (insertRows && insertRows.length > 0) {
