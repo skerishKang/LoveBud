@@ -1033,6 +1033,28 @@ test('Editor real-page structural baseline - negative controls (NC1-NC8)', async
       }, null, { timeout: 5000 });
       const opened = await clickEditMemoryBtnAndAwaitForm(page);
       assert.equal(opened, true, 'NC8: mobile edit form must open (setup)');
+      // Root cause of the NC8 flake ("forced out-of-viewport field must fail
+      // the in-viewport contract" ERR_ASSERTION on main c4464ea8 CI, rerun
+      // clean): enterEditMode defers title-input focus via setTimeout(0)
+      // (js/editor/editor-memory-actions.js), and that focus() performs the
+      // scroll settling the field inside the mobile sheet. Both one-shot
+      // measurements below bracket this asynchronous product step with no
+      // synchronization: measuring before the deferred focus lands can fail
+      // the natural check, and a late deferred focus landing AFTER the forced
+      // marginTop mutation scrolls the field back into view and fails the
+      // forced check in the opposite direction. Wait (bounded) for the
+      // product's own settling point — the deferred focus — before measuring.
+      // If the product ever stops focusing the field, the wait times out and
+      // both original assertions below still enforce the contract unchanged.
+      try {
+        await page.waitForFunction(function() {
+          const editMode = document.getElementById('detailEditMode');
+          const input = document.getElementById('editTitleInput');
+          if (!editMode || !input) return false;
+          if (window.getComputedStyle(editMode).display === 'none') return false;
+          return document.activeElement === input;
+        }, null, { timeout: 3000 });
+      } catch (_) { /* fall through to the exact contract assertions */ }
       const inViewportNatural = await page.evaluate(function() {
         const input = document.getElementById('editTitleInput');
         if (!input) return false;

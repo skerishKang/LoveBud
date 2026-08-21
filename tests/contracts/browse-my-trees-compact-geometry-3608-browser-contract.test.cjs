@@ -901,6 +901,46 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
           navigationFailureTracker.endIntentionalNavigation();
         }
       };
+      // PR #4144 sync-head CI follow-up: section L recorded
+      // "/api/community/memories?treeId=a11y-1&limit=100 - net::ERR_ABORTED"
+      // as a same-origin failure (rerun did not reproduce). Root cause: the
+      // shared tracker excuses only requests already in its pending snapshot
+      // when beginIntentionalNavigation() runs. A preview fetch initiated
+      // shortly before that snapshot whose 'request' event was still in CDP
+      // flight — or initiated inside the begin()->goto() gap — is aborted by
+      // the intentional navigation yet escapes the allowance. Remove the
+      // cause instead of widening the allowance: drain same-origin fetch-like
+      // requests BEFORE the intentional goto so it has no live request to
+      // abort. Each drain exit is confirmed only after a fresh CDP roundtrip,
+      // so "empty" means every request initiated before that roundtrip has
+      // already been delivered to Node-side listeners. Bounded: if a request
+      // never settles, the drain gives up and the unchanged tracker semantics
+      // still report whatever fails. No assertion is weakened.
+      const pendingSameOriginFetches = new Set();
+      const isTrackedPendingFetch = (request) => {
+        try {
+          return (
+            new URL(request.url()).origin === `http://127.0.0.1:${port}` &&
+            (request.resourceType() === 'fetch' || request.resourceType() === 'xhr')
+          );
+        } catch (e) {
+          return false;
+        }
+      };
+      page.on('request', (request) => {
+        if (isTrackedPendingFetch(request)) pendingSameOriginFetches.add(request);
+      });
+      page.on('requestfinished', (request) => pendingSameOriginFetches.delete(request));
+      page.on('requestfailed', (request) => pendingSameOriginFetches.delete(request));
+      const drainSameOriginFetches = async (maxMs) => {
+        const deadline = Date.now() + maxMs;
+        for (;;) {
+          await page.evaluate(() => {});
+          if (pendingSameOriginFetches.size === 0) return true;
+          if (Date.now() > deadline) return false;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      };
       page.on('pageerror', (err) => health.pageErrors.push(String((err && err.message) || err)));
       page.on('console', (msg) => { if (msg.type() === 'error') health.consoleErrors.push(msg.text()); });
       page.on('response', (response) => {
@@ -1124,6 +1164,9 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
           window.LoveBudSearchScrollLoad.isSentinelNearViewport = function () { return false; };
         }
       });
+      // Drain in-flight same-origin fetches first: the intentional navigation
+      // must not have live requests to abort (see the drain rationale above).
+      await drainSameOriginFetches(3000);
       navigationFailureTracker.beginIntentionalNavigation();
       try {
         await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });

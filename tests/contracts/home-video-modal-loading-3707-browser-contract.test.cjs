@@ -245,9 +245,15 @@ async function newModalPage(browser, vp, baseUrl, opts) {
   const pageErrors = [];
   page.on('pageerror', (err) => pageErrors.push(err.message));
   const ctl = await setupIframeControl(page);
+  // Install the fake clock BEFORE navigation (Playwright-documented pattern):
+  // timers scheduled by load-time scripts (hero growth cycle in
+  // js/index-inline-init.js) then become fake-clock-controlled. Installed
+  // after goto, the first cycle timer stays on the wall clock and its firing
+  // shifts with host CPU contention — a parallel-execution-only variance
+  // source this contract hit (solo runs 87/87 PASS, parallel runs flaked).
+  await page.clock.install();
   await page.goto(baseUrl + '/fixture-home.html');
   await page.waitForLoadState('domcontentloaded');
-  await page.clock.install();
   if (options.ff !== 0) {
     await page.clock.fastForward(options.ff == null ? 2000 : options.ff);
   }
@@ -379,7 +385,7 @@ test('home video modal loading states (#3707)', async (t) => {
 
   for (const vp of VIEWPORTS) {
     await t.test(`viewport ${vp.name} (${vp.width}x${vp.height})`, async (t) => {
-      const browser = await playwright.chromium.launch({ headless: true });
+      const browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
 
       t.after(async () => {
         await browser.close();
@@ -862,9 +868,10 @@ test('home video modal loading states (#3707)', async (t) => {
           };
         });
         const ctl = await setupIframeControl(page);
+        // Same install-before-navigate determinism as newModalPage above.
+        await page.clock.install();
         await page.goto(baseUrl + '/fixture-home.html');
         await page.waitForLoadState('domcontentloaded');
-        await page.clock.install();
         try {
           ctl.setMode('pending');
           for (let cycle = 0; cycle < 3; cycle++) {
@@ -929,7 +936,7 @@ test('J. real Home structural baseline (real-page)', async (t) => {
 
   for (const vp of VIEWPORTS) {
     await t.test(`J. viewport ${vp.name} (${vp.width}x${vp.height})`, async (t) => {
-      const browser = await playwright.chromium.launch({ headless: true });
+      const browser = await playwright.chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
       t.after(async () => {
         await browser.close();
       });
