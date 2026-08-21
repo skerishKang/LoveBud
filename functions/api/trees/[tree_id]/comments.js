@@ -5,6 +5,10 @@ import {
   isInvalidPathEncodingError,
   normalizeEncodedPathSegment
 } from '../../../_shared/path-segment.js';
+import {
+  isTreeCommentDirectNeonSelected,
+  handleTreeCommentDirectNeon
+} from '../../../_shared/tree-comment-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -154,7 +158,7 @@ async function fetchWithTimeout(url, options = {}) {
   }
 }
 
-async function proxyTreeCommentCreate(request, env) {
+async function proxyTreeCommentCreateModal(request, env) {
   const method = request.method.toUpperCase();
   const requestId = getOrCreateRequestId(request);
   if (method !== 'POST') return buildMethodNotAllowedResponse(requestId);
@@ -199,6 +203,23 @@ async function proxyTreeCommentCreate(request, env) {
     if (error.name === 'AbortError') return buildModalTimeoutResponse(requestId);
     return buildModalUnavailableResponse(requestId);
   }
+}
+
+// #4145 gated direct-Neon candidate entry. unset/modal/unknown gate keeps the
+// existing Modal POST behavior unchanged; explicit direct_neon selection
+// dispatches to the migration-candidate adapter with no per-request
+// direct -> Modal fallback after direct execution begins.
+async function proxyTreeCommentCreate(request, env) {
+  if (isTreeCommentDirectNeonSelected(env)) {
+    const directResponse = await handleTreeCommentDirectNeon(
+      request,
+      env,
+      getOrCreateRequestId(request)
+    );
+    if (directResponse !== null) return directResponse;
+    // directResponse === null means the adapter deferred; fall through to Modal.
+  }
+  return proxyTreeCommentCreateModal(request, env);
 }
 
 async function proxyTreeCommentRead(request, env) {
