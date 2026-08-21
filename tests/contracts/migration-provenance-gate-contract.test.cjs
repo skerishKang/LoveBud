@@ -86,6 +86,10 @@ function activeFixture() {
     objects: [{ name: 'table:example', fingerprint: schemaFingerprint }]
   };
   const baselineCommit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const appliedMigrations = migrationManifest.migrations.map((item) => ({
+    id: item.id,
+    checksum: item.checksum
+  }));
   const ledgerEvidence = attestation.buildSyntheticAttestation({
     baselineCommit,
     migrationManifest,
@@ -94,7 +98,8 @@ function activeFixture() {
     environmentClass: 'DISPOSABLE_CI',
     varianceClassification: 'MATCH',
     approvalReference: 'issue:9999',
-    attestationScope: 'DISPOSABLE_RECONSTRUCTION'
+    attestationScope: 'DISPOSABLE_RECONSTRUCTION',
+    appliedMigrations
   });
   return {
     migrationManifest,
@@ -407,14 +412,16 @@ test('valid synthetic attestation still fails closed when committed manifests ar
       catalog_evidence_digest: ledgerEvidence.catalog_evidence_digest,
       approval_reference: 'decision:synthetic-attestation-ok',
       environment_class: 'DISPOSABLE_CI',
-      attestation_scope: 'INACTIVE_BASELINE'
+      attestation_scope: 'INACTIVE_BASELINE',
+      proven_applied_migrations: []
     }
   });
   assert.equal(result.decision, 'FAIL_CLOSED');
   assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_REQUIRED'));
+  // Caller-supplied proven_applied_migrations is rejected as injected history.
   assert.equal(
     result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'),
-    false
+    true
   );
   assert.equal(expectedSchema.status, 'ADOPTION_REQUIRED');
   assert.ok(expectedSchema.critical_objects.length >= 1, 'critical_objects >= 1: ' + expectedSchema.critical_objects.length);
@@ -696,4 +703,152 @@ test('architecture document fixes the adoption and issue-boundary rules', () => 
   assert.ok(design.includes('Refs #1882'));
   assert.ok(design.includes('Keep #1882 OPEN.'));
   assert.doesNotMatch(design, /\b(?:Closes|Fixes|Resolves)\s+#1882\b/i);
+});
+
+function legacyBaselineFixture() {
+  const firstChecksum = core.sha256('legacy-catalog-one');
+  const secondChecksum = core.sha256('legacy-catalog-two');
+  const migrationManifest = {
+    status: 'ADOPTION_REQUIRED',
+    migrations: [
+      { id: '20260713090000_example-one', checksum: firstChecksum },
+      { id: '20260713090100_example-two', checksum: secondChecksum }
+    ]
+  };
+  const baselineExpectedSchemaCandidate = {
+    status: 'ADOPTION_REQUIRED',
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      { name: 'table:legacy.one', fingerprint: core.sha256('legacy-one') },
+      { name: 'table:legacy.two', fingerprint: core.sha256('legacy-two') }
+    ]
+  };
+  const postMigrationExpectedSchemaManifest = {
+    status: 'ADOPTION_REQUIRED',
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    metadata_contract_path: 'db/migration-provenance/catalog-metadata-contract.json',
+    critical_objects: [
+      { name: 'table:future.ledger', fingerprint: core.sha256('future-ledger') },
+      { name: 'table:future.appreciation', fingerprint: core.sha256('future-appreciation') }
+    ]
+  };
+  const catalogEvidence = {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects: baselineExpectedSchemaCandidate.critical_objects.map((item) => ({ ...item }))
+  };
+  const baselineCommit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const approvalReference = 'decision:legacy-baseline-test';
+  const attestationEvidence = attestation.buildSyntheticAttestation({
+    baselineCommit,
+    migrationManifest,
+    expectedSchemaManifest: baselineExpectedSchemaCandidate,
+    catalogEvidence,
+    environmentClass: 'PRODUCTION',
+    varianceClassification: 'KNOWN_DRIFT',
+    knownVarianceCodes: ['SCHEMA_COMPAT_KNOWN'],
+    approvalReference,
+    attestationScope: 'PRODUCTION_READONLY',
+    appliedMigrations: []
+  });
+  const adoptionBinding = {
+    baseline_commit: baselineCommit,
+    canonical_manifest_digest: attestation.computeObjectDigest(migrationManifest),
+    expected_schema_digest: attestation.computeObjectDigest(baselineExpectedSchemaCandidate),
+    catalog_evidence_digest: attestation.computeObjectDigest(catalogEvidence),
+    post_migration_expected_schema_digest: attestation.computeObjectDigest(postMigrationExpectedSchemaManifest),
+    approval_reference: approvalReference,
+    environment_class: 'PRODUCTION',
+    attestation_scope: 'PRODUCTION_READONLY',
+    proven_applied_migrations: []
+  };
+  return {
+    migrationManifest,
+    postMigrationExpectedSchemaManifest,
+    baselineExpectedSchemaCandidate,
+    attestationEvidence,
+    catalogEvidence,
+    adoptionBinding
+  };
+}
+
+test('legacy adoption: catalog 2 / proven applied 0 is valid without fabricated history', () => {
+  const fixture = legacyBaselineFixture();
+  const result = core.evaluateLegacyAdoptionBaseline(fixture);
+  assert.equal(result.decision, 'PASS', result.blockers.join('\n'));
+  assert.equal(result.summary.canonical_catalog_migrations, 2);
+  assert.equal(result.summary.proven_applied_migrations, 0);
+  assert.equal(result.summary.expectation_mode, 'LEGACY_ADOPTION_BASELINE');
+  assert.deepEqual(fixture.attestationEvidence.applied_migrations, []);
+});
+
+test('legacy adoption: catalog 2 / applied 1 passes only with exact trusted first prefix', () => {
+  const fixture = legacyBaselineFixture();
+  const first = fixture.migrationManifest.migrations[0];
+  const proven = [{ id: first.id, checksum: first.checksum }];
+  fixture.adoptionBinding.proven_applied_migrations = proven;
+  fixture.attestationEvidence.applied_migrations = proven.map((item) => ({ ...item }));
+  const result = core.evaluateLegacyAdoptionBaseline(fixture);
+  assert.equal(result.decision, 'PASS', result.blockers.join('\n'));
+});
+
+test('legacy adoption: catalog 2 / applied 2 passes only with exact trusted full prefix', () => {
+  const fixture = legacyBaselineFixture();
+  const proven = fixture.migrationManifest.migrations.map((item) => ({ id: item.id, checksum: item.checksum }));
+  fixture.adoptionBinding.proven_applied_migrations = proven;
+  fixture.attestationEvidence.applied_migrations = proven.map((item) => ({ ...item }));
+  const result = core.evaluateLegacyAdoptionBaseline(fixture);
+  assert.equal(result.decision, 'PASS', result.blockers.join('\n'));
+});
+
+test('legacy adoption negative matrix fails closed', () => {
+  const cases = [
+    ['forged applied history', (f) => { f.attestationEvidence.applied_migrations = [{ ...f.migrationManifest.migrations[0] }]; }],
+    ['missing checksum', (f) => { f.adoptionBinding.proven_applied_migrations = [{ id: f.migrationManifest.migrations[0].id }]; }],
+    ['wrong checksum', (f) => { f.adoptionBinding.proven_applied_migrations = [{ id: f.migrationManifest.migrations[0].id, checksum: core.sha256('wrong') }]; f.attestationEvidence.applied_migrations = f.adoptionBinding.proven_applied_migrations.map((x) => ({ ...x })); }],
+    ['unknown migration', (f) => { f.adoptionBinding.proven_applied_migrations = [{ id: '20260713099999_unknown', checksum: core.sha256('unknown') }]; f.attestationEvidence.applied_migrations = f.adoptionBinding.proven_applied_migrations.map((x) => ({ ...x })); }],
+    ['duplicate migration', (f) => { const m = f.migrationManifest.migrations[0]; f.adoptionBinding.proven_applied_migrations = [{ id: m.id, checksum: m.checksum }, { id: m.id, checksum: m.checksum }]; f.attestationEvidence.applied_migrations = f.adoptionBinding.proven_applied_migrations.map((x) => ({ ...x })); }],
+    ['reordered applied prefix', (f) => { f.adoptionBinding.proven_applied_migrations = f.migrationManifest.migrations.slice().reverse().map((m) => ({ id: m.id, checksum: m.checksum })); f.attestationEvidence.applied_migrations = f.adoptionBinding.proven_applied_migrations.map((x) => ({ ...x })); }],
+    ['caller expected_migrations injection', (f) => { f.adoptionBinding.expected_migrations = []; }],
+    ['wrong baseline digest', (f) => { f.adoptionBinding.expected_schema_digest = core.sha256('wrong'); }],
+    ['wrong catalog digest', (f) => { f.adoptionBinding.catalog_evidence_digest = core.sha256('wrong'); }],
+    ['wrong canonical digest', (f) => { f.adoptionBinding.canonical_manifest_digest = core.sha256('wrong'); }],
+    ['wrong environment', (f) => { f.adoptionBinding.environment_class = 'STAGING'; }],
+    ['wrong scope', (f) => { f.adoptionBinding.attestation_scope = 'STAGING_READONLY'; }],
+    ['wrong approval reference', (f) => { f.adoptionBinding.approval_reference = 'decision:other'; }],
+    ['untrusted schema candidate', (f) => { f.baselineExpectedSchemaCandidate.critical_objects[0].fingerprint = core.sha256('tampered'); }],
+    ['unexpected observed baseline object', (f) => { f.catalogEvidence.objects.push({ name: 'table:legacy.unexpected', fingerprint: core.sha256('unexpected') }); f.attestationEvidence.catalog_evidence_digest = attestation.computeObjectDigest(f.catalogEvidence); f.adoptionBinding.catalog_evidence_digest = attestation.computeObjectDigest(f.catalogEvidence); }],
+    ['missing expected baseline object', (f) => { f.catalogEvidence.objects.pop(); f.attestationEvidence.catalog_evidence_digest = attestation.computeObjectDigest(f.catalogEvidence); f.adoptionBinding.catalog_evidence_digest = attestation.computeObjectDigest(f.catalogEvidence); }],
+    ['baseline fingerprint mismatch', (f) => { f.catalogEvidence.objects[0].fingerprint = core.sha256('different'); f.attestationEvidence.catalog_evidence_digest = attestation.computeObjectDigest(f.catalogEvidence); f.adoptionBinding.catalog_evidence_digest = attestation.computeObjectDigest(f.catalogEvidence); }],
+    ['inactive candidate promoted to ACTIVE role', (f) => { f.baselineExpectedSchemaCandidate.status = 'ACTIVE'; f.attestationEvidence.expected_schema_digest = attestation.computeObjectDigest(f.baselineExpectedSchemaCandidate); f.adoptionBinding.expected_schema_digest = attestation.computeObjectDigest(f.baselineExpectedSchemaCandidate); }],
+    ['legacy/post-migration schema mixup', (f) => { f.baselineExpectedSchemaCandidate = f.postMigrationExpectedSchemaManifest; f.attestationEvidence.expected_schema_digest = attestation.computeObjectDigest(f.baselineExpectedSchemaCandidate); f.adoptionBinding.expected_schema_digest = attestation.computeObjectDigest(f.baselineExpectedSchemaCandidate); }]
+  ];
+  for (const [name, mutate] of cases) {
+    const fixture = legacyBaselineFixture();
+    mutate(fixture);
+    const result = core.evaluateLegacyAdoptionBaseline(fixture);
+    assert.equal(result.decision, 'FAIL_CLOSED', name);
+  }
+});
+
+test('active gate rejects caller-supplied proven history even when it matches the catalog', () => {
+  const fixture = activeFixture();
+  fixture.adoptionBinding.proven_applied_migrations = fixture.migrationManifest.migrations.map((item) => ({
+    id: item.id,
+    checksum: item.checksum
+  }));
+  const result = core.evaluateProvenance(fixture);
+  assert.equal(result.decision, 'FAIL_CLOSED');
+  assert.ok(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'));
+});
+
+test('active canonical runner gate still requires the complete canonical sequence', () => {
+  const fixture = activeFixture();
+  fixture.ledgerEvidence.applied_migrations = [fixture.ledgerEvidence.applied_migrations[0]];
+  const result = core.evaluateProvenance(fixture);
+  assert.equal(result.decision, 'FAIL_CLOSED');
+  assert.ok(result.blockers.some((blocker) => blocker.startsWith('GATE_MISSING_APPLIED_MIGRATION:')));
 });
