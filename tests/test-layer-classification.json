@@ -3949,6 +3949,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-comment-direct-neon-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4145 Phase-4 Tree Comment direct-Neon candidate adapter in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), and an injected fake Neon WS Client via neonImporter (no real DB/network), proving the explicit route gate, dedicated writer config with forbidden-fallback detection, auth-first Firebase principal, Tree FOR SHARE -> idempotency reserve/replay -> actor rate limit -> INSERT ... RETURNING ordering with NO advisory lock, body-bearing Python json.dumps canonical fingerprint parity (cross-runtime verified ASCII/Korean/trim/escape/control-char/newline/emoji bytes), SELECT-first and INSERT-conflict idempotency re-verification (different-target 409, different-fingerprint 409, completed replay via original-row reread, missing-original 410, pending/failed unavailable, no second comment), rate-limit taxonomy (tree-comment:actor 10/min minute-bucket params, 429 RATE_LIMITED retryAfterMs/Retry-After, 503 RATE_LIMIT_UNAVAILABLE, replay consumes no slot), completion + audit before COMMIT, rollback on work failure, COMMIT_OUTCOME_UNKNOWN 502 with a single attempt and no blind retry or post-unknown rollback, no direct->Modal fallback after direct start, route fall-through parity for unset gate and GET, and sanitized leak-safe errors. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, or Production resource is used (#4145).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-comment-read-list-route-impl-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -4042,6 +4048,12 @@
       "path": "tests/contracts/tree-like-count-foundation-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-like-direct-neon-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4142 Phase-4 Tree Like direct-Neon candidate adapter in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), and an injected fake Neon WS Client via neonImporter (no real DB/network), proving the explicit route gate, dedicated writer config, auth-first Firebase principal, Tree FOR SHARE -> advisory xact lock -> idempotency reserve/replay -> Like toggle ordering, SELECT-first and INSERT-conflict idempotency re-verification (different-target 409, different-fingerprint 409, completed replay, pending/failed unavailable, no second toggle), count maintenance, COMMIT_OUTCOME_UNKNOWN 502 with no blind retry, and sanitized leak-safe errors. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, or Production resource is used (#4142).",
       "capabilities": []
     },
     {
@@ -5108,6 +5120,12 @@
       "path": "tests/contracts/neon-ws-transaction-adapter.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the Neon WS transaction adapter against an injected in-memory fake Client/transport to verify request-scoped single-client affinity, parameterized-query validation, adapter-owned transaction control, advisory/row-lock helpers, rollback and rollback-failure behavior, unknown COMMIT outcome with no rollback or automatic whole-transaction retry, concurrent client isolation, canonical reread ordering, and sanitized errors. No real network, Neon database, browser, provider mutation, or Production resource is used (#4093/#4132).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-fork-direct-neon-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Phase-4 Tree Fork Cloudflare -> Neon WS interactive transaction candidate adapter in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), and an injected fake Neon WS Client via neonImporter (no real DB/network), proving the explicit route gate (LB_TREE_FORK_WRITE_RUNTIME=direct_neon) with default/unset/modal/unknown remaining Modal-backed, route and method specificity, auth-before-DB with zero transaction/client calls on missing/malformed/invalid/expired/unverified token and sanitized verifier-infrastructure failure, verified Firebase UID as sole owner authority ignoring forged owner headers/email, dedicated symbolic writer config (LOVE_PLATFORM_WRITE_DATABASE_URL) with no generic/read fallback (LOVE_PLATFORM_DATABASE_URL/DATABASE_URL/NETLIFY_DATABASE_URL/DIRECT_NEON_BROWSE_DATABASE_URL rejected) and no per-request Modal fallback after direct start, #4132 adapter reuse with exactly one request-scoped Client, advisory xact lock before source Tree FOR SHARE, source explicit public visibility authorization, missing 404 / private 403 semantics, duplicate lookup after serialization and before destination insert with at-most-one destination Tree and canonical reread, public-only Memory snapshot with FOR SHARE and deterministic ORDER BY created_at ASC, id ASC LIMIT 201, 200 complete copy, 201st row -> 409 FORK_SOURCE_TOO_LARGE before destination insert, fresh destination IDs, parent remap through old->new map, no cross-tree parent FK, owner-user bootstrap parity with schema-capability check and fail-closed unknown required non-null users columns, rollback on work failure, bounded rollback failure, explicit unknown COMMIT outcome with no rollback and no automatic whole-transaction retry (single BEGIN), canonical reread response parity, no-store and request-id response headers, no token/DB URL/JWK/private source leakage, and unchanged unrelated gateway routing. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, writer role, GRANT/REVOKE, or Production resource is used (#4135/#4132/#3924/#3925/#3952/#3956).",
       "capabilities": []
     }
   ],

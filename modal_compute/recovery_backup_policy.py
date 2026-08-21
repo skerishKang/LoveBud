@@ -23,6 +23,30 @@ BACKUP_UPLOAD_INCOMPLETE = "BACKUP_UPLOAD_INCOMPLETE"
 BACKUP_INTEGRITY_UNVERIFIED = "BACKUP_INTEGRITY_UNVERIFIED"
 EXTERNAL_STORAGE_UNPROVISIONED = "EXTERNAL_STORAGE_UNPROVISIONED"
 SECRET_BOUNDARY_UNPROVISIONED = "SECRET_BOUNDARY_UNPROVISIONED"
+
+# --- Drive-specific sanitized states (#3894 / child #4137) ----------------
+# Quota preflight + auth boundary states emitted by the Drive adapter. These are
+# fixed sanitized states only; exact quota byte values never appear in logs or
+# status.
+DRIVE_STORAGE_WITHIN_LIMIT = "DRIVE_STORAGE_WITHIN_LIMIT"
+DRIVE_STORAGE_NEAR_LIMIT = "DRIVE_STORAGE_NEAR_LIMIT"
+DRIVE_STORAGE_EXHAUSTED = "DRIVE_STORAGE_EXHAUSTED"
+DRIVE_AUTH_UNAVAILABLE = "DRIVE_AUTH_UNAVAILABLE"
+DRIVE_UPLOAD_UNVERIFIED = "DRIVE_UPLOAD_UNVERIFIED"
+
+# Internal hard ceiling: at least 10% provider quota remains reserved. The
+# effective ceiling is floor(provider_storage_limit * INTERNAL_CEILING_RATIO).
+INTERNAL_CEILING_RATIO = 0.90
+
+ALL_DRIVE_QUOTA_STATES = frozenset(
+    {
+        DRIVE_STORAGE_WITHIN_LIMIT,
+        DRIVE_STORAGE_NEAR_LIMIT,
+        DRIVE_STORAGE_EXHAUSTED,
+        DRIVE_AUTH_UNAVAILABLE,
+    }
+)
+
 DAILY_TIER_VALID = "DAILY_TIER_VALID"
 WEEKLY_TIER_VALID = "WEEKLY_TIER_VALID"
 MONTHLY_TIER_VALID = "MONTHLY_TIER_VALID"
@@ -172,6 +196,60 @@ def decode_encryption_key(value: str) -> bytes:
     if len(decoded) != 32:
         raise ValueError("invalid encryption key length")
     return decoded
+
+
+def classify_drive_quota(
+    *,
+    usage_bytes: int | None,
+    limit_bytes: int | None,
+    artifact_size_bytes: int,
+    ceiling_ratio: float = INTERNAL_CEILING_RATIO,
+) -> str:
+    """Pure fail-closed Drive quota preflight classifier (#3894 / child #4137).
+
+    The total account usage (not only Drive-file usage) is used. The effective
+    internal hard ceiling is ``floor(limit_bytes * ceiling_ratio)`` so at least
+    ``(1 - ceiling_ratio)`` of provider quota remains reserved (>= 10%).
+
+    Returns:
+      DRIVE_STORAGE_WITHIN_LIMIT  -> current usage + artifact fits under the ceiling
+      DRIVE_STORAGE_NEAR_LIMIT    -> fits, but within the reserved margin band
+      DRIVE_STORAGE_EXHAUSTED     -> would exceed the ceiling OR quota is
+                                     missing/unparseable/unbounded/inconsistent
+                                     (fail closed: NO upload)
+
+    Missing, unparseable, unbounded, or inconsistent quota responses always fail
+    closed as EXHAUSTED. Exact byte values are never emitted here; the caller only
+    sees the sanitized state.
+    """
+    if ceiling_ratio <= 0 or ceiling_ratio >= 1:
+        raise ValueError("ceiling_ratio must be in (0, 1)")
+    if not isinstance(artifact_size_bytes, int) or artifact_size_bytes < 0:
+        return DRIVE_STORAGE_EXHAUSTED
+    # Fail closed on missing or unparseable quota: both usage and limit required.
+    if not isinstance(usage_bytes, int) or usage_bytes < 0:
+        return DRIVE_STORAGE_EXHAUSTED
+    if not isinstance(limit_bytes, int) or limit_bytes <= 0:
+        return DRIVE_STORAGE_EXHAUSTED
+    if usage_bytes > limit_bytes:
+        # inconsistent provider response
+        return DRIVE_STORAGE_EXHAUSTED
+    internal_ceiling = int(limit_bytes * ceiling_ratio)
+    if internal_ceiling <= 0:
+        return DRIVE_STORAGE_EXHAUSTED
+    projected = usage_bytes + artifact_size_bytes
+    if projected > internal_ceiling:
+        return DRIVE_STORAGE_EXHAUSTED
+    # NEAR_LIMIT: usage already within the reserved margin band (>= ceiling).
+    if usage_bytes >= internal_ceiling:
+        return DRIVE_STORAGE_NEAR_LIMIT
+    # Within the operational band but approaching the ceiling (>= 85% of ceiling)
+    # still permits upload; classify as NEAR_LIMIT only when inside the reserved
+    # margin (handled above). Otherwise the upload is safely WITHIN_LIMIT.
+    near_band = int(internal_ceiling * 0.85)
+    if projected >= near_band:
+        return DRIVE_STORAGE_NEAR_LIMIT
+    return DRIVE_STORAGE_WITHIN_LIMIT
 
 
 def _require_bucket(age_bucket: str) -> None:
