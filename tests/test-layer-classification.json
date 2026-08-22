@@ -5139,6 +5139,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes a pure in-memory three-layer account-mapping state machine (verified identities -> stable app_account -> legacy owner projection) implementing docs/architecture/AUTH_THREE_LAYER_MAPPING_CONTRACT_4006.md rules R1-R4: frozen surface with fixed provider/error vocabulary and structurally absent email-based resolvers, verification-before-mapping rejection, deny-by-default resolution matrix (IDENTITY_UNKNOWN/IDENTITY_REVOKED/ACCOUNT_DISABLED/ACCOUNT_MERGED_WITHOUT_POLICY/AMBIGUOUS_OWNER_PROJECTION/HOLD_NEW_NEON_ONLY_PRODUCT_WRITES), dual-provider same-account/legacy-owner parity, email-collision independence across accounts, idempotent re-attach with zero audit delta, cross-account rebinding blocked with zero mutation, one-active-identity-per-provider-per-account enforcement, neon-only HOLD, exactly-one-audit-row-per-mutation semantics, bounded audit field shape with raw-subject exclusion, operator-gated disable/merge/recovery flow with justification requirement and verified relink recovery, frozen caller-input non-mutation, and doc-scope cross-checks. No real setTimeout, network, database engine, browser, auth provider, Production, or Preview capability (#4006/#4157).",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-comment-like-timestamp-cast-audit-4157.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads functions/_shared/tree-comment-direct-neon.js and functions/_shared/tree-like-direct-neon.js to assert the #4157 Comment replay/INSERT timestamp text casts and Like's timestamp-free response surface; pure static source-read only, with no function execution, network, database, auth/provider, or Production resource.",
+      "capabilities": []
     }
   ],
   "supplemental": [
