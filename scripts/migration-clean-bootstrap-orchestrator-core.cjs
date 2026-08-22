@@ -54,7 +54,14 @@ const MANIFEST_PATH = path.join(REPO_ROOT, 'db', 'migration-provenance', 'canoni
 const EXPECTED_SCHEMA_MANIFEST_PATH = path.join(REPO_ROOT, 'db', 'migration-provenance', 'expected-schema-manifest.json');
 
 const BOOTSTRAP_MIGRATION_ID = '20260802094500_bootstrap-migration-ledger';
-const BOOTSTRAP_MIGRATION_PATH = path.join('db', 'migrations', BOOTSTRAP_MIGRATION_ID + '.sql');
+// Manifest path authority is repository-relative and OS-independent: it MUST
+// always be POSIX slash form ("db/migrations/<id>.sql") so the exact-string
+// comparison against canonical-migrations.json behaves identically on Linux CI
+// and Windows-native runs. path.join() would emit backslashes on Windows and
+// break that comparison (#4177). Only real filesystem resolution
+// (resolveSqlPath) converts to native OS paths; traversal protection,
+// realpath containment, and checksum verification are unaffected.
+const BOOTSTRAP_MIGRATION_PATH = path.posix.join('db', 'migrations', BOOTSTRAP_MIGRATION_ID + '.sql');
 const LEDGER_TABLE = 'schema_migration_ledger';
 const EXPECTED_CRITICAL_OBJECT_NAME = 'table:public.schema_migration_ledger';
 
