@@ -378,8 +378,10 @@ test('6. R2 email is never a linking or ownership key', () => {
   const core = createAuthAccountMappingCore();
   const a = core.createAccount().accountId;
   const b = core.createAccount().accountId;
+  const c = core.createAccount().accountId;
   core.bindLegacyOwner({ accountId: a, legacyOwnerId: 'owner-a' });
   core.bindLegacyOwner({ accountId: b, legacyOwnerId: 'owner-b' });
+  core.bindLegacyOwner({ accountId: c, legacyOwnerId: 'owner-c' });
   core.attachVerifiedIdentity({
     targetAccountId: a,
     provider: 'firebase',
@@ -392,20 +394,24 @@ test('6. R2 email is never a linking or ownership key', () => {
     provider: 'neon',
     subject: 'ne-b1',
     verificationMethod: 'id_token_jwks',
-    verifiedEvidence: true
+    verifiedEvidence: true,
+    emailNormalized: 'shared@example.invalid'
   });
   core.attachVerifiedIdentity({
-    targetAccountId: b,
+    targetAccountId: c,
     provider: 'neon',
-    subject: 'ne-b2',
+    subject: 'ne-c1',
     verificationMethod: 'id_token_jwks',
-    verifiedEvidence: true
+    verifiedEvidence: true,
+    emailNormalized: 'shared@example.invalid'
   });
   const r1 = core.resolvePrincipal({ provider: 'neon', subject: 'ne-b1' });
-  const r2 = core.resolvePrincipal({ provider: 'neon', subject: 'ne-b2' });
+  const r2 = core.resolvePrincipal({ provider: 'neon', subject: 'ne-c1' });
   assert.equal(r1.decision, 'ALLOW');
   assert.equal(r2.decision, 'ALLOW');
   assert.notEqual(r1.accountId, r2.accountId, 'shared display email across accounts creates zero coupling');
+  assert.equal(r1.accountId, b);
+  assert.equal(r2.accountId, c);
 });
 
 test('7. R2 re-attach of an identical active pair is an idempotent no-op', () => {
@@ -544,10 +550,6 @@ test('12. every successful mutation appends exactly one audit row; failures appe
     verifiedEvidence: true
   });
   assert.equal(core.getAuditLog().length - base, 1, 'attach writes exactly one row');
-  core.revokeIdentity({ provider: 'firebase', subject: 'fb-audit' });
-  assert.equal(core.getAuditLog().length - base, 2, 'revoke writes exactly one row');
-  core.revokeIdentity({ provider: 'firebase', subject: 'fb-audit' });
-  assert.equal(core.getAuditLog().length - base, 2, 'duplicate revoke stays idempotent');
   assertCodeThrows(
     () =>
       core.attachVerifiedIdentity({
@@ -559,7 +561,11 @@ test('12. every successful mutation appends exactly one audit row; failures appe
       }),
     core.ERR.ONE_ACTIVE_IDENTITY_PER_PROVIDER_PER_ACCOUNT
   );
-  assert.equal(core.getAuditLog().length - base, 2, 'rejected mutation writes zero rows');
+  assert.equal(core.getAuditLog().length - base, 1, 'rejected mutation writes zero rows');
+  core.revokeIdentity({ provider: 'firebase', subject: 'fb-audit' });
+  assert.equal(core.getAuditLog().length - base, 2, 'revoke writes exactly one row');
+  core.revokeIdentity({ provider: 'firebase', subject: 'fb-audit' });
+  assert.equal(core.getAuditLog().length - base, 2, 'duplicate revoke stays idempotent');
 });
 
 test('13. audit rows carry bounded fields only and never raw provider subjects', () => {
@@ -576,7 +582,7 @@ test('13. audit rows carry bounded fields only and never raw provider subjects',
   assert.equal(log.length, 1);
   assert.deepEqual(
     Object.keys(log[0]).sort(),
-    ['account_id', 'actor_class', 'action', 'details', 'identity_provider', 'request_id']
+    ['account_id', 'action', 'actor_class', 'details', 'identity_provider', 'request_id']
   );
   const serialized = JSON.stringify(core.getAuditLog());
   assert.ok(!serialized.includes('ne-shape'), 'raw subject must not leak into audit payload');
