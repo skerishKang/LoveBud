@@ -181,7 +181,7 @@ Intentionally unbound seams (#4175): `previewCollectEffect()` remains `Promise.r
 
 Dead-man reader status: `createPreviewDeadManReader()` remains a source factory only; no external owner or control plane invokes it anywhere in this package (`DEAD_MAN_READER = OWNER_DECISION_REQUIRED` unchanged).
 
-Provider Preview preparation ladder — seven separate stages, each requiring its own owner/Web-CTO approval; none executed by the source-only lane:
+Provider Preview preparation ladder — stage 1 source validation completed locally with zero provider mutation; stages 2–7 remain separate owner/Web-CTO approvals and were not executed by the source-only lane:
 
 ```text
 1. source validation .................... focused tests + pinned-Wrangler `deploy --dry-run --outdir <temp>`

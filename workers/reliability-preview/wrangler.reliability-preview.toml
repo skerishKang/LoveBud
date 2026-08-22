@@ -14,8 +14,9 @@
 # Durable Object lifecycle changes — only `wrangler deploy` does.
 #
 # #4175 reconciliation — Provider Preview preparation is documented as
-# SEPARATE approval stages. None of the commands below are executed by the
-# source-only lane; each requires its own owner/Web-CTO approval:
+# SEPARATE stages. Stage 1 source validation (including the dry-run command)
+# was completed locally with zero provider mutation. Stages 2-7 were not
+# executed by the source-only lane; each requires owner/Web-CTO approval:
 #
 #   1. source validation ............ local focused tests + pinned-Wrangler
 #                                     `deploy --dry-run --outdir <temp>` only
