@@ -175,7 +175,7 @@ PRODUCTION AUTHORITY = NO
 
 Release provenance (#4175): the exact deployed source revision is injected externally through `RELIABILITY_PREVIEW_RELEASE_SHA` — precisely one 40-character hexadecimal full SHA (lowercase normalization allowed); missing/malformed/non-hex/all-zero values classify `INVALID_RELEASE_SHA` and fail closed BEFORE any collector, store, or transport invocation. No SHA is hard-coded in source and there is no current-main fallback. The variable is plain deploy configuration, not a secret, so no value is recorded in this packet.
 
-Kill-switch env wiring (#4175): the NONPROD preview worker passes `env[RELIABILITY_READ_ONLY_SENTINEL_ENABLED]` and `env[RELIABILITY_ALERT_DELIVERY_ENABLED]` into `createPreviewConfig(...)`. Exactly `"true"` enables a switch; missing/empty/false/malformed stays DISABLED; the two switches stay independent and both default DISABLED. This wiring creates no Cloudflare variable and activates nothing.
+Kill-switch env wiring (#4175): the NONPROD preview worker passes `env[RELIABILITY_READ_ONLY_SENTINEL_ENABLED]` and `env[RELIABILITY_ALERT_DELIVERY_ENABLED]` into `createPreviewConfig(...)`. Values are trimmed and lowercased; normalized `"true"` enables a switch, while every other value stays DISABLED. The two switches stay independent and both default DISABLED. This wiring creates no Cloudflare variable and activates nothing.
 
 Intentionally unbound seams (#4175): `previewCollectEffect()` remains `Promise.resolve([])` and `calibrationBySignal` remains empty — real Production collector/calibration binding requires separate approval and is outside this reconciliation.
 

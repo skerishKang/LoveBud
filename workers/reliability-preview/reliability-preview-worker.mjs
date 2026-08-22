@@ -13,8 +13,9 @@
 //   transport invocation.
 // - Both kill switches are now wired to their real environment inputs
 //   (RELIABILITY_READ_ONLY_SENTINEL_ENABLED / RELIABILITY_ALERT_DELIVERY_ENABLED).
-//   Missing/empty/false/malformed stays DISABLED; exactly "true" enables; each
-//   switch remains independent and neither defaults to enabled.
+//   Values are trimmed and lowercased; normalized "true" enables and every
+//   other value stays DISABLED. Each switch remains independent and neither
+//   defaults to enabled.
 // - previewCollectEffect() remains an intentionally unbound empty probe and
 //   calibrationBySignal remains intentionally empty: real Production collector
 //   binding is a separate approval and is NOT part of this package.
@@ -103,7 +104,7 @@ function previewCollectEffect() {
 export class ReliabilityPreviewStore {
   constructor(state, env) {
     // Kill switches are wired to their real environment variables through the
-    // symbolic config names; missing/empty/false/malformed classifies DISABLED.
+    // symbolic config names; only normalized "true" classifies ENABLED.
     this.config = configApi.createPreviewConfig({
       kill_switch_sentinel: env[configApi.KILL_SWITCH_NAMES.READ_ONLY_SENTINEL],
       kill_switch_alert: env[configApi.KILL_SWITCH_NAMES.ALERT_DELIVERY],

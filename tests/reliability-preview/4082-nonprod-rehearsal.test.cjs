@@ -844,9 +844,22 @@ test('4175 KILL SWITCH WIRING — env names classify through createPreviewConfig
   assert.equal(enabledConfig.kill_switches.read_only_sentinel, 'DISABLED');
   assert.equal(enabledConfig.kill_switches.alert_delivery, 'ENABLED');
 
-  const disabledValues = [undefined, '', 'false', 'FALSE', 'False', '0', 'yes', 'on', 'true ', ' true'];
-  for (const value of disabledValues) {
-    const expected = String(value).trim().toLowerCase() === 'true' ? 'ENABLED' : 'DISABLED';
+  const classificationCases = [
+    [undefined, 'DISABLED'],
+    [null, 'DISABLED'],
+    ['', 'DISABLED'],
+    ['false', 'DISABLED'],
+    ['FALSE', 'DISABLED'],
+    ['False', 'DISABLED'],
+    ['0', 'DISABLED'],
+    ['yes', 'DISABLED'],
+    ['on', 'DISABLED'],
+    ['true', 'ENABLED'],
+    ['TRUE', 'ENABLED'],
+    ['true ', 'ENABLED'],
+    [' true', 'ENABLED']
+  ];
+  for (const [value, expected] of classificationCases) {
     const config = previewConfig.createPreviewConfig({
       kill_switch_sentinel: value,
       kill_switch_alert: value
