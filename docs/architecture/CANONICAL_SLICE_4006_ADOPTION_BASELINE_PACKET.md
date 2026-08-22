@@ -152,7 +152,76 @@ DROP TABLE IF EXISTS public.app_account;
 
 This document carries the standard preflight block (section 0) in the #4006/#4157 form. Evidence artifacts referenced: probe JSON (section 2), bounded collector outcome (section 2, PHASE_B_COLLECTOR_STATUS).
 
+## 5. G3 EXECUTION RECORD + G4 POST-PROBE (2026-08-22, added post-GO)
+
+Authorization: G1 EXECUTION_GO @ #4006 issuecomment-5379078679 (expected head `8fd6f70ff030f61771ce79ce01e5844b792c158c`, checksum binding, actor constraint: app writer role FORBIDDEN for DDL).
+
+### 5.1 Gate verification at T0
+
+```text
+V1 PASS  origin/main == 8fd6f70ff030f61771ce79ce01e5844b792c158c (re-fetched; no drift)
+V2 PASS  sha256(slice bytes) == fb05785492bb0f0414a0d85d2e08743dc95d0a4136b073dac2254b3926d03151
+         (verified on Windows worktree AND re-verified on ext4 execution copy)
+V3 PASS  main CI green at G1 head (16 check runs, zero non-passing)
+V4 PASS  pre-execution probe: users/app_account/app_auth_identity/auth_audit_log/view all ABSENT
+V5 PASS  migration credential identity = neondb_owner @ neondb
+         (DATABASE_URL from .secrets/lovebud-runtime.env resolves to OWNER_CLASS per
+         lovebud-production-role-mapping.json; NOT the app writer role)
+V6 PASS  clean worktree branch feat/4006-execution-g3-kilo1 cut from origin/main;
+         /mnt/g never used as execution source
+```
+
+### 5.2 G3 transaction record
+
+```json
+{
+  "g3": "EXECUTED",
+  "execution_actor": "neondb_owner",
+  "database": "neondb",
+  "transaction": "COMMITTED_SINGLE",
+  "statement_batches": 9,
+  "started_utc": "2026-08-22T08:09:53.985Z",
+  "ended_utc": "2026-08-22T08:09:55.580Z",
+  "checksum_verified": "fb05785492bb0f0414a0d85d2e08743dc95d0a4136b073dac2254b3926d03151"
+}
+```
+
+Exact registered file bytes sent verbatim inside one explicit BEGIN…COMMIT (transaction_mode REQUIRED honored). One-time principle honored: single run, no re-run attempted. No gate variable touched (LB_TREE_FORK_WRITE_RUNTIME unchanged — G5 is a separate authorization). App writer role (`LOVE_PLATFORM_WRITE_DATABASE_URL` → `lb_product_rw_a3f8c2d1`) was NOT used for DDL per the CTO actor constraint.
+
+### 5.3 G4 post-probe evidence
+
+Executed under the dedicated READ ONLY role after commit:
+
+```json
+{
+  "probe": "g4_post_execution",
+  "at_utc": "2026-08-22T08:10:27.556Z",
+  "objects_present": [
+    "app_account:r",
+    "app_auth_identity:r",
+    "app_authenticated_owner_resolution:v",
+    "auth_audit_log:r",
+    "users:r"
+  ],
+  "users_account_id": { "present": true, "attnotnull": false },
+  "indexes_present": [
+    "app_auth_identity_one_active_firebase_per_account",
+    "app_auth_identity_one_active_neon_per_account",
+    "users_one_active_account_binding"
+  ],
+  "new_table_row_counts_estimate": {
+    "app_account": 0,
+    "app_auth_identity": 0,
+    "auth_audit_log": 0,
+    "users": 0
+  }
+}
+```
+
+Data-row invariance: the committed statement set is pure additive DDL (CREATE IF NOT EXISTS ×4 + ADD COLUMN IF NOT EXISTS + 3 indexes + view); all four new tables hold zero rows and no pre-existing table was written. Fork-parity invariant intact: `users.account_id` present and NULLABLE (`attnotnull=false`), so the #4157/#4164 schema-capability bootstrap sees no unknown required-non-null column.
+
+Credentials used once from private ext4 copies (mode 600) and destroyed immediately after the run; no secret values printed or committed.
+
 Refs #4006.
 Refs #4004 — Keep OPEN.
-Refs #4157. Refs #4164. Refs #4166.
-Refs #1882 — Keep OPEN.
+Refs #4157. Refs #1882 — Keep OPEN.
