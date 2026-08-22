@@ -788,6 +788,283 @@ test('4082 FAILURE SEMANTICS — missing nonprod webhook secret inside a run cla
   assert.equal(store.hasActiveLease(), false);
 });
 
+// ---------------------------------------------------------------------------
+// #4175 post-#4149 reconciliation coverage.
+//
+// Proves: env sentinel classification, alert-switch independence, release
+// provenance fail-closed ordering, zero capability use under invalid
+// provenance, no hard-coded historical MAIN_SHA, packet inventory parity with
+// post-#4149 reality, and absence of secret values / provider mutation
+// commands in the authored source. Everything remains LOCAL source-only.
+
+const WORKER_SOURCE_PATH = path.join(ROOT, 'workers', 'reliability-preview', 'reliability-preview-worker.mjs');
+const WRANGLER_CONFIG_PATH = path.join(ROOT, 'workers', 'reliability-preview', 'wrangler.reliability-preview.toml');
+const PACKET_DOC_PATH = path.join(ROOT, 'docs', 'engineering', 'RUNTIME_RELIABILITY_APPROVAL_PACKET_4082.md');
+
+function makeEnv(overrides) {
+  return Object.assign({}, overrides || {});
+}
+
+test('4175 RELEASE PROVENANCE — config contract classifies injected SHA values fail closed', function () {
+  assert.equal(previewConfig.RELEASE_SHA_VAR_NAME, 'RELIABILITY_PREVIEW_RELEASE_SHA');
+  const valid = previewConfig.normalizeReleaseSha('FB4826E32DB520DBAA4DB1B2E4A3FF30230DBC99'.toLowerCase());
+  assert.equal(valid, 'fb4826e32db520dbaa4db1b2e4a3ff30230dbc99');
+
+  const invalidInputs = [
+    undefined,
+    null,
+    '',
+    '   ',
+    123,
+    {},
+    true,
+    '88389cd',                                             // truncated historical SHA
+    '88389cd4c80f8ec0af737dfb3b54d65afeb620e',             // 39 chars
+    '88389cd4c80f8ec0af737dfb3b54d65afeb620e22',           // 41 chars
+    '88389CD4C80F8EC0AF737DFB3B54D65AFEB620ZZ',            // non-hex
+    'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz',
+    '0000000000000000000000000000000000000000'              // all-zero placeholder
+  ];
+  for (const bad of invalidInputs) {
+    assert.equal(previewConfig.normalizeReleaseSha(bad), null, 'expected invalid: ' + String(bad));
+    const config = previewConfig.createPreviewConfig({ release_sha_env: bad });
+    assert.equal(config.release_provenance.status, 'INVALID_RELEASE_SHA');
+    assert.equal(config.release_provenance.release_sha, null);
+  }
+
+  const missing = previewConfig.createPreviewConfig();
+  assert.equal(missing.release_provenance.status, 'INVALID_RELEASE_SHA');
+});
+
+test('4175 KILL SWITCH WIRING — env names classify through createPreviewConfig exactly like documented', function () {
+  const enabledConfig = previewConfig.createPreviewConfig({
+    kill_switch_sentinel: makeEnv({})['RELIABILITY_READ_ONLY_SENTINEL_ENABLED'],
+    kill_switch_alert: makeEnv({ RELIABILITY_READ_ONLY_SENTINEL_ENABLED: 'true' })['RELIABILITY_READ_ONLY_SENTINEL_ENABLED']
+  });
+  assert.equal(enabledConfig.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(enabledConfig.kill_switches.alert_delivery, 'ENABLED');
+
+  const disabledValues = [undefined, '', 'false', 'FALSE', 'False', '0', 'yes', 'on', 'true ', ' true'];
+  for (const value of disabledValues) {
+    const expected = String(value).trim().toLowerCase() === 'true' ? 'ENABLED' : 'DISABLED';
+    const config = previewConfig.createPreviewConfig({
+      kill_switch_sentinel: value,
+      kill_switch_alert: value
+    });
+    assert.equal(config.kill_switches.read_only_sentinel, expected, 'sentinel for ' + JSON.stringify(value));
+    assert.equal(config.kill_switches.alert_delivery, expected, 'alert for ' + JSON.stringify(value));
+  }
+});
+
+test('4175 KILL SWITCH INDEPENDENCE — alert enablement never implies sentinel enablement', function () {
+  const config = previewConfig.createPreviewConfig({ kill_switch_sentinel: false, kill_switch_alert: true });
+  assert.equal(config.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(config.kill_switches.alert_delivery, 'ENABLED');
+
+  const defaults = previewConfig.createPreviewConfig();
+  assert.equal(defaults.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(defaults.kill_switches.alert_delivery, 'DISABLED');
+});
+
+test('4175 FAIL-CLOSED RUNNER GATE — invalid provenance short-circuits with zero collector/store/transport use', async function () {
+  const clock = makeClock(20_500_000);
+  const store = makeStore(clock);
+  let collectorInvocations = 0;
+  let leaseAttempts = 0;
+  let transportCalls = 0;
+  const guardedStore = Object.freeze(Object.assign({}, store, {
+    acquireLease: function () { leaseAttempts += 1; return store.acquireLease.apply(store, arguments); }
+  }));
+  const runnerWithInvalidSha = function (releaseSha) {
+    return previewRunner.createPreviewRunner({
+      clock,
+      config: previewConfig.createPreviewConfig(),
+      store: guardedStore,
+      collector: makeCollector(function () { collectorInvocations += 1; return []; }),
+      evaluator: makeEvaluator(store),
+      taxonomy,
+      alertCore: alertDeliveryCoreApi,
+      transport: makeTransport(function () {
+        transportCalls += 1;
+        return acceptedFetch();
+      }, []),
+      releaseSha,
+      calibrationBySignal: {}
+    });
+  };
+  // Runner-layer contract (reused, unchanged): any non-40-hex value throws
+  // INVALID_RELEASE_SHA before construction completes.
+  for (const invalid of ['', 'not-a-sha', undefined]) {
+    assert.throws(function () { runnerWithInvalidSha(invalid); }, /INVALID_RELEASE_SHA/);
+  }
+  // All-zero is rejected one layer earlier at config classification — the
+  // exact gate the worker consumes before ever building a runner.
+  assert.equal(previewConfig.createPreviewConfig({ release_sha_env: '0'.repeat(40) }).release_provenance.status, 'INVALID_RELEASE_SHA');
+  assert.equal(collectorInvocations, 0);
+  assert.equal(leaseAttempts, 0);
+  assert.equal(transportCalls, 0);
+  assert.equal(store.countHeartbeatRows(), 0);
+
+  // Valid provenance still runs normally under an enabled sentinel.
+  seedStableBaseline(store, clock);
+  const validRunner = previewRunner.createPreviewRunner({
+    clock,
+    config: previewConfig.createPreviewConfig({ kill_switch_sentinel: true }),
+    store,
+    collector: makeCollector(function () { collectorInvocations += 1; return []; }),
+    evaluator: makeEvaluator(store),
+    taxonomy,
+    alertCore: alertDeliveryCoreApi,
+    transport: makeTransport(function () {
+      transportCalls += 1;
+      return acceptedFetch();
+    }, []),
+    releaseSha: previewConfig.normalizeReleaseSha('A'.repeat(40)),
+    calibrationBySignal: {}
+  });
+  const record = await validRunner.run('CRON_TRIGGER');
+  assert.equal(record.run_class, 'RUN_COMPLETED');
+  assert.equal(collectorInvocations, 1);
+  assert.equal(store.hasActiveLease(), false);
+});
+
+test('4175 NO HARDCODED HISTORICAL MAIN SHA — worker/config sources carry no fixed full SHA constant', function () {
+  const workerSource = fs.readFileSync(WORKER_SOURCE_PATH, 'utf8');
+  const workerCodeOnly = workerSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.equal(/[0-9a-f]{40}/.test(workerCodeOnly), false, 'worker must not embed any 40-hex literal');
+  assert.equal(workerSource.includes("'use strict';"), false); // sanity: file read correctly
+  assert.equal(workerSource.includes('RELIABILITY_PREVIEW_RELEASE_SHA') ||
+    workerSource.includes('configApi.RELEASE_SHA_VAR_NAME'), true);
+  assert.equal(workerSource.includes('release_provenance'), true);
+
+  const configSource = fs.readFileSync(
+    path.join(ROOT, 'workers', 'reliability-preview', 'reliability-preview-config.cjs'), 'utf8');
+  const configCodeOnly = configSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.equal(/[0-9a-fA-F]{40}/.test(configCodeOnly), false, 'config must not embed any 40-hex literal');
+});
+
+test('4175 PACKET INVENTORY PARITY — packet distinguishes SOURCE DECLARATION EXISTS from NOT CREATED / NOT DONE / NOT RUN / NO authority', function () {
+  const packet = fs.readFileSync(PACKET_DOC_PATH, 'utf8');
+  assert.equal(packet.includes('SOURCE DECLARATION = EXISTS'), true);
+  assert.equal(packet.includes('PROVIDER RESOURCE  = NOT CREATED'), true);
+  assert.equal(packet.includes('CRON ACTIVATION    = NOT DONE'), true);
+  assert.equal(packet.includes('PROVIDER PREVIEW   = NOT RUN'), true);
+  assert.equal(packet.includes('PRODUCTION AUTHORITY = NO'), true);
+  assert.equal(packet.includes('#4149'), true);
+  assert.equal(packet.includes('RELIABILITY_PREVIEW_RELEASE_SHA'), true);
+  assert.equal(packet.includes('wrangler versions upload'), true);
+  assert.equal(packet.includes('wrangler triggers deploy'), true);
+  // Stale pre-#4149 claims must not survive unqualified.
+  assert.equal(packet.includes('- no repository reliability `scheduled()` handler or Cron binding exists;'), false);
+  assert.equal(packet.includes('- no repository Durable Object reliability namespace/binding exists;'), false);
+});
+
+test('4175 SECRET AND MUTATION AUDIT — authored sources carry no secret values or provider mutation commands', function () {
+  const surfaces = [
+    ['worker', fs.readFileSync(WORKER_SOURCE_PATH, 'utf8')],
+    ['config', fs.readFileSync(path.join(ROOT, 'workers', 'reliability-preview', 'reliability-preview-config.cjs'), 'utf8')],
+    ['wrangler', fs.readFileSync(WRANGLER_CONFIG_PATH, 'utf8')]
+  ];
+  const forbiddenExact = [
+    'hooks.slack.com',
+    'xoxb-',
+    'postgres://',
+    'postgresql://',
+    'supabase',
+    'firebase-token',
+    'BEGIN PRIVATE KEY'
+  ];
+  for (const [label, source] of surfaces) {
+    for (const marker of forbiddenExact) {
+      assert.equal(source.toLowerCase().includes(marker.toLowerCase()), false, label + ' contains ' + marker);
+    }
+  }
+  // The wrangler contract may DOCUMENT commands but must not execute them;
+  // execution belongs to separately approved lanes outside this package.
+  const wranglerSource = surfaces[2][1];
+  assert.equal(wranglerSource.includes('wrangler versions upload'), true);
+  assert.equal(wranglerSource.includes('wrangler triggers deploy'), true);
+  assert.equal(/^deploy\s*=|^\[scripts\]/m.test(wranglerSource), false, 'no executable command hooks in toml');
+});
+
+test('4175 DEFAULT CONFIG REMAINS FAIL CLOSED — unchanged bounds, disabled switches, invalid provenance by default', function () {
+  const config = previewConfig.createPreviewConfig();
+  assert.equal(config.RUNTIME_BOUNDS.SCHEDULE_CADENCE_MS, 5 * 60 * 1000);
+  assert.equal(config.RUNTIME_BOUNDS.COLLECTOR_TIMEOUT_MS, 5000);
+  assert.equal(config.RUNTIME_BOUNDS.FULL_RUN_TIMEOUT_MS, 30000);
+  assert.equal(config.RUNTIME_BOUNDS.LEASE_DURATION_MS, 90000);
+  assert.equal(config.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(config.kill_switches.alert_delivery, 'DISABLED');
+  assert.equal(config.release_provenance.status, 'INVALID_RELEASE_SHA');
+  assert.equal(Object.freeze(previewConfig.CAPABILITIES).length, 0);
+});
+
+test('4175 COLLECTOR AND CALIBRATION REMAIN INTENTIONALLY UNBOUND — worker stub stays empty and calibration map stays frozen empty', async function () {
+  const workerSource = fs.readFileSync(WORKER_SOURCE_PATH, 'utf8');
+  assert.equal(workerSource.includes('previewCollectEffect'), true);
+  assert.equal(workerSource.includes('calibrationBySignal: Object.freeze({})'), true);
+  assert.equal(/previewCollectEffect\s*\(\s*\)\s*{\s*return Promise\.resolve\(\[\]\);\s*}/.test(workerSource), true);
+
+  // The dead-man reader remains a source factory with no external owner wired
+  // anywhere in the worker package.
+  assert.equal(workerSource.includes('createPreviewDeadManReader'), false);
+  const runnerApi = require(path.join(ROOT, 'workers', 'reliability-preview', 'reliability-preview-runner.cjs'));
+  assert.equal(typeof runnerApi.createPreviewDeadManReader, 'function');
+});
+
+test('4175 WRANGLER CONTRACT — exports-only DO declaration, cron shape, observability schema, pinned compatibility_date', function () {
+  const toml = fs.readFileSync(WRANGLER_CONFIG_PATH, 'utf8');
+  assert.equal(toml.includes('[env.reliability-preview.exports.ReliabilityPreviewStore]'), true);
+  assert.equal(toml.includes('type = "durable-object"'), true);
+  assert.equal(toml.includes('storage = "sqlite"'), true);
+  assert.equal(toml.includes('[[env.reliability-preview.durable_objects.bindings]]'), true);
+  assert.equal(toml.includes('class_name = "ReliabilityPreviewStore"'), true);
+  assert.equal(/\[\[env\.reliability-preview\.migrations\]\]/.test(toml), false, 'exports and migrations are mutually exclusive');
+  assert.equal(toml.includes('[env.reliability-preview.triggers]'), true);
+  assert.equal(toml.includes('crons = ["*/5 * * * *"]'), true);
+  assert.equal(toml.includes('[env.reliability-preview.observability]'), true);
+  assert.equal(toml.includes('enabled = true'), true);
+  assert.equal(toml.includes('head_sampling_rate = 1'), true);
+  assert.equal(toml.includes('compatibility_date = "2025-05-01"'), true);
+});
+
+test('4175 SCHEDULER SURFACE — scheduled() gates on provenance before any Durable Object resolution', async function () {
+  const { default: workerModule } = await import('file://' + WORKER_SOURCE_PATH.split('\\').join('/'));
+  assert.equal(typeof workerModule.fetch, 'function');
+  assert.equal(typeof workerModule.scheduled, 'function');
+
+  const response = await workerModule.fetch();
+  assert.equal(response.status, 404);
+
+  // Missing RELIABILITY_PREVIEW_RELEASE_SHA in env => INVALID_RELEASE_SHA gate
+  // fires BEFORE ns.idFromName is ever reached (ns absent would otherwise throw).
+  const record = await workerModule.scheduled({ cron: '*/5 * * * *' }, makeEnv({}), {});
+  assert.equal(record.failure_class, 'INVALID_RELEASE_SHA');
+  assert.equal(record.run_class, 'RUN_DISABLED');
+  assert.equal(record.collector_outcome, null);
+  assert.equal(record.evaluation_state, null);
+  assert.equal(record.heartbeat_class, null);
+
+  // Malformed SHA behaves identically.
+  const malformedRecord = await workerModule.scheduled(
+    { cron: '*/5 * * * *' },
+    makeEnv({ RELIABILITY_PREVIEW_RELEASE_SHA: 'deadbeef' }),
+    {}
+  );
+  assert.equal(malformedRecord.failure_class, 'INVALID_RELEASE_SHA');
+});
+
+test('4175 PRIVACY AUDIT — reconciliation surfaces stay free of private markers', function () {
+  trackPrivacy('worker-source-audit', { bytes: fs.statSync(WORKER_SOURCE_PATH).size });
+  trackPrivacy('wrangler-contract-audit', { bytes: fs.statSync(WRANGLER_CONFIG_PATH).size });
+  trackPrivacy('packet-doc-audit', { bytes: fs.statSync(PACKET_DOC_PATH).size });
+  for (const surface of privacySurfaces) {
+    for (const marker of PRIVACY_MARKERS) {
+      assert.equal(surface.serialized.includes(marker), false);
+    }
+  }
+});
+
 test('4082 PRIVACY AUDIT — no private marker crosses any rehearsal surface', function () {
   assert.ok(privacySurfaces.length >= 10);
   for (const surface of privacySurfaces) {

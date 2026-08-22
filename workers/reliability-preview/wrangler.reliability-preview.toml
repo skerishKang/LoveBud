@@ -7,9 +7,43 @@
 # Current Cloudflare Wrangler lifecycle contract for a new SQLite Durable
 # Object: declare it via [env.<name>.exports.<ClassName>] with storage="sqlite"
 # and bind it via [[env.<name>.durable_objects.bindings]]. Legacy
-# [[env.<name>.migrations]] are intentionally NOT used together with exports.
+# [[env.<name>.migrations]] are intentionally NOT used together with exports
+# (exports and migrations are mutually exclusive; a config carrying both is
+# rejected at validation). A first deployment of the live exports entry
+# provisions the namespace; `wrangler versions upload` does NOT apply
+# Durable Object lifecycle changes — only `wrangler deploy` does.
 #
-# Refs #4148. Refs #4082. Refs #3461 — Keep OPEN. Refs #1882 — Keep OPEN.
+# #4175 reconciliation — Provider Preview preparation is documented as
+# SEPARATE approval stages. None of the commands below are executed by the
+# source-only lane; each requires its own owner/Web-CTO approval:
+#
+#   1. source validation ............ local focused tests + pinned-Wrangler
+#                                     `deploy --dry-run --outdir <temp>` only
+#   2. version upload approval ...... `wrangler versions upload` (uploads a
+#                                     Version; NO traffic, NO triggers)
+#   3. disabled Provider deployment approval ... first `wrangler deploy` of
+#                                     this config (provisions the SQLite DO
+#                                     namespace; all kill switches still
+#                                     default DISABLED)
+#   4. trigger attachment approval .. `wrangler triggers deploy` (attaches the
+#                                     */5 cron; trigger changes may take up
+#                                     to ~15 minutes to propagate) — a
+#                                     SEPARATE command from version upload,
+#                                     kept as its own explicit gate
+#   5. read-only sentinel approval .. RELIABILITY_READ_ONLY_SENTINEL_ENABLED="true"
+#   6. alert delivery approval ...... RELIABILITY_ALERT_DELIVERY_ENABLED="true"
+#                                     (+ separately approved provider/secret)
+#   7. Production approval .......... explicit owner/Web-CTO authority
+#
+# Stage 2 (`versions upload`) and stage 4 (`triggers deploy`) are distinct
+# Cloudflare commands with a hard boundary between them: uploading a Version
+# never attaches or changes a Cron trigger. The release provenance variable
+# RELIABILITY_PREVIEW_RELEASE_SHA (exact 40-hex full SHA of the deployed
+# revision, injected at deploy time — never hard-coded in source) must carry a
+# VALID value before any enabled run; invalid provenance fails closed.
+#
+# Refs #4148/#4149. Refs #4082. Refs #4175.
+# Refs #3461 — Keep OPEN. Refs #1882 — Keep OPEN.
 
 name = "lovebud"
 main = "reliability-preview-worker.mjs"
@@ -32,5 +66,14 @@ name = "RELIABILITY_PREVIEW_STORE"
 class_name = "ReliabilityPreviewStore"
 
 # Environment-specific Cron trigger (current Wrangler shape: [triggers] + crons).
+# DECLARATION ONLY — attachment is stage 4 above and is NOT performed by this
+# source-only package.
 [env.reliability-preview.triggers]
 crons = ["*/5 * * * *"]
+
+# Workers Logs observability (current schema: [observability] enabled +
+# optional head_sampling_rate 0..1, default 1). DECLARATION ONLY — it takes
+# effect only if/when a separately approved deployment occurs.
+[env.reliability-preview.observability]
+enabled = true
+head_sampling_rate = 1

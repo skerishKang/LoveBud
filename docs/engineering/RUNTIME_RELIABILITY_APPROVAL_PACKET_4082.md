@@ -10,6 +10,8 @@ Packet owner: WEB-3
 
 Current-main reconciliation snapshot: `main@590d22b22bbeaacb7157f402115e873b03ed1743`
 
+Post-#4148/#4149 NONPROD preview source reconciliation (#4175): **SOURCE PACKAGE RECONCILED AT main@fb4826e32db520dbaa4db1b2e4a3ff30230dbbc9; PROVIDER RESOURCE STILL NOT CREATED; PROVIDER PREVIEW STILL NOT RUN**
+
 Post-#4081 reconciliation: **COMPLETE FOR SOURCE AUTHORITY; RUNTIME ACTIVATION REMAINS UNAUTHORIZED**
 
 Post-#4091 provenance source-model reconciliation: **COMPLETE FOR SOURCE MODEL; RUNNER ADOPTION / PRODUCTION PHASE-B REMAIN SEPARATELY UNAUTHORIZED**
@@ -152,11 +154,46 @@ Current repository evidence supports the following placement facts:
 - user-facing same-origin `/api/*` surfaces are under Cloudflare Pages Functions;
 - Modal remains an existing application/background runtime and supports application-side secret injection patterns;
 - repository GitHub Actions workflows are CI/concurrency workflows; no repository-owned scheduled reliability workflow exists;
-- no repository reliability `scheduled()` handler or Cron binding exists;
-- no repository Durable Object reliability namespace/binding exists;
+- since PR #4149 merged, `workers/reliability-preview/reliability-preview-worker.mjs` publishes a dedicated reliability `scheduled()` handler source and `workers/reliability-preview/wrangler.reliability-preview.toml` declares an env-specific Cron trigger shape (`*/5 * * * *`) — SOURCE DECLARATION ONLY;
+- the same Wrangler config declares a SQLite Durable Object class export (`ReliabilityPreviewStore`, storage="sqlite") and its environment binding — SOURCE DECLARATION ONLY;
+- CRON ACTIVATION = NOT DONE and PROVIDER RESOURCE = NOT CREATED: no Cron trigger has been attached, no Durable Object namespace has been provisioned, and no `lovebud-reliability-preview` Worker exists on Cloudflare;
 - #4079, #4080, #4081, #3861, and #3874 source modules are pure/source-only or injected-effect contracts, not live runtime integrations.
 
 Therefore the packet recommends new **isolated reliability runtime components**, but does not create any of them.
+
+### Post-#4149 NONPROD reliability-preview reconciliation (#4175)
+
+PR #4149 published the eight-file NONPROD preview runtime package (#4148). The packet inventory keeps these axes strictly separated:
+
+```text
+SOURCE DECLARATION = EXISTS        (scheduled() entrypoint, SQLite DO export/binding, */5 cron shape, observability declaration)
+PROVIDER RESOURCE  = NOT CREATED   (no DO namespace provisioned, no Worker deployed)
+CRON ACTIVATION    = NOT DONE      (no trigger attached)
+PROVIDER PREVIEW   = NOT RUN       (ACTUAL_PROVIDER_PREVIEW = NOT_EXECUTED)
+PRODUCTION AUTHORITY = NO
+```
+
+Release provenance (#4175): the exact deployed source revision is injected externally through `RELIABILITY_PREVIEW_RELEASE_SHA` — precisely one 40-character hexadecimal full SHA (lowercase normalization allowed); missing/malformed/non-hex/all-zero values classify `INVALID_RELEASE_SHA` and fail closed BEFORE any collector, store, or transport invocation. No SHA is hard-coded in source and there is no current-main fallback. The variable is plain deploy configuration, not a secret, so no value is recorded in this packet.
+
+Kill-switch env wiring (#4175): the NONPROD preview worker passes `env[RELIABILITY_READ_ONLY_SENTINEL_ENABLED]` and `env[RELIABILITY_ALERT_DELIVERY_ENABLED]` into `createPreviewConfig(...)`. Exactly `"true"` enables a switch; missing/empty/false/malformed stays DISABLED; the two switches stay independent and both default DISABLED. This wiring creates no Cloudflare variable and activates nothing.
+
+Intentionally unbound seams (#4175): `previewCollectEffect()` remains `Promise.resolve([])` and `calibrationBySignal` remains empty — real Production collector/calibration binding requires separate approval and is outside this reconciliation.
+
+Dead-man reader status: `createPreviewDeadManReader()` remains a source factory only; no external owner or control plane invokes it anywhere in this package (`DEAD_MAN_READER = OWNER_DECISION_REQUIRED` unchanged).
+
+Provider Preview preparation ladder — seven separate stages, each requiring its own owner/Web-CTO approval; none executed by the source-only lane:
+
+```text
+1. source validation .................... focused tests + pinned-Wrangler `deploy --dry-run --outdir <temp>`
+2. version upload approval .............. `wrangler versions upload` (uploads a Version; NO traffic, NO triggers)
+3. disabled Provider deployment approval . first `wrangler deploy` (provisions the SQLite DO namespace; kill switches still DISABLED)
+4. trigger attachment approval .......... `wrangler triggers deploy` (attaches the cron; SEPARATE command/gate from stage 2; propagation may take up to ~15 minutes)
+5. read-only sentinel approval .......... `RELIABILITY_READ_ONLY_SENTINEL_ENABLED="true"`
+6. alert delivery approval .............. `RELIABILITY_ALERT_DELIVERY_ENABLED="true"` (+ separately approved provider/secret)
+7. Production approval .................. explicit owner/Web-CTO authority
+```
+
+Current Cloudflare contracts honored by this reconciliation: `exports` and legacy `migrations` are mutually exclusive (a config carrying both is rejected at validation); `wrangler versions upload` does NOT apply Durable Object lifecycle changes — only `wrangler deploy` does; first deployment of a live `exports` entry provisions the namespace; version upload and trigger attachment are distinct commands with a hard boundary between them. `compatibility_date` stays pinned at `2025-05-01` pending evidence of runtime semantic drift.
 
 ## 5. Scheduler decision
 
@@ -452,7 +489,7 @@ Until those decisions are made and rehearsed, dead-man readiness is **design-com
 
 ## 11. Three independent kill switches
 
-These are symbolic configuration names only. No Cloudflare env/secret/config is created or changed.
+These are symbolic configuration names only. No Cloudflare env/secret/config is created or changed. As of #4175 the NONPROD preview worker reads these exact names from its environment inputs (source-level wiring only); the variables themselves are not created anywhere and both default DISABLED.
 
 ### A. Read-only sentinel
 
@@ -686,6 +723,12 @@ ALERT_DELIVERY_ACTIVATION = NO
 DEAD_MAN_READER = OWNER_DECISION_REQUIRED
 DEAD_MAN_CONTROL_PLANE_INDEPENDENT = REQUIRED_NOT_BOUND
 DEAD_MAN_OWNER = OWNER_DECISION_REQUIRED
+
+NONPROD_PREVIEW_SOURCE_PACKAGE = PUBLISHED_#4149_RECONCILED_#4175
+RELEASE_SHA_PROVENANCE = INJECTED_FAIL_CLOSED_INVALID_RELEASE_SHA
+KILL_SWITCH_ENV_WIRING = WIRED_SOURCE_LEVEL_DEFAULT_DISABLED
+COLLECTOR_AND_CALIBRATION = INTENTIONALLY_UNBOUND
+ACTUAL_PROVIDER_PREVIEW = NOT_EXECUTED
 
 RECOMMENDATION = WEB_CTO_FINAL_REVIEW_REQUIRED
 ```

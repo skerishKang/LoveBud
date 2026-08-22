@@ -5,7 +5,22 @@
 // Object is provisioned, no Slack webhook is created, and no secret value is
 // placed by publishing this source.
 //
-// Refs #4148. Refs #4082. Refs #3461 — Keep OPEN. Refs #1882 — Keep OPEN.
+// #4175 reconciliation:
+// - The deployed source revision is no longer hard-coded. It is injected
+//   externally through RELIABILITY_PREVIEW_RELEASE_SHA and validated by the
+//   config contract; a missing/malformed/all-zero value classifies as
+//   INVALID_RELEASE_SHA and fails closed BEFORE any collector, store, or
+//   transport invocation.
+// - Both kill switches are now wired to their real environment inputs
+//   (RELIABILITY_READ_ONLY_SENTINEL_ENABLED / RELIABILITY_ALERT_DELIVERY_ENABLED).
+//   Missing/empty/false/malformed stays DISABLED; exactly "true" enables; each
+//   switch remains independent and neither defaults to enabled.
+// - previewCollectEffect() remains an intentionally unbound empty probe and
+//   calibrationBySignal remains intentionally empty: real Production collector
+//   binding is a separate approval and is NOT part of this package.
+//
+// Refs #4148/#4149. Refs #4082. Refs #4175.
+// Refs #3461 — Keep OPEN. Refs #1882 — Keep OPEN.
 
 import configApi from './reliability-preview-config.cjs';
 import storeApi from './reliability-preview-store.cjs';
@@ -28,8 +43,6 @@ const baselineContract = globalThis.LoveBudReliabilityBaselineStoreContract;
 const evaluatorCore = globalThis.LoveBudReliabilityAnomalyEvaluatorCore;
 const alertDeliveryCoreApi = globalThis.LoveBudReliabilityAlertDeliveryCore;
 
-const MAIN_SHA = '88389cd4c80f8ec0af737dfb3b54d65afeb620e2';
-
 const SIGNAL_ID = 'BROWSE_ELIGIBILITY_RATIO';
 const SIGNAL_CLASS = baselineContract.SIGNAL_CLASSES.RATIO_SIGNAL;
 const CALIBRATION = Object.freeze({
@@ -38,6 +51,20 @@ const CALIBRATION = Object.freeze({
   material_deviation_min: 0.15,
   critical_discontinuity_min: 0.30
 });
+
+function invalidProvenanceRecord(triggerClass) {
+  return {
+    run_class: 'RUN_DISABLED',
+    trigger_class: typeof triggerClass === 'string' ? triggerClass : 'CRON_TRIGGER',
+    lease_outcome: null,
+    collector_outcome: null,
+    evaluation_state: null,
+    alert_decision: null,
+    heartbeat_class: null,
+    elapsed_ms: 0,
+    failure_class: 'INVALID_RELEASE_SHA'
+  };
+}
 
 // Bridges the Cloudflare SQLite Durable Object storage seam (state.storage.sql)
 // to the prepare/run/get/all contract the store module is written against, so
@@ -67,15 +94,26 @@ function createSqliteDatabaseAdapter(sql) {
 // Non-product read-only collection probe. Fail-closed: returns an empty bounded
 // signal set on any condition and performs no Product mutation. The real
 // read-only collector wiring is exercised by the runtime modules in rehearsal.
+// Intentionally UNBOUND: replacing this stub with a real Production collector
+// requires a separate owner approval outside this source package.
 function previewCollectEffect() {
   return Promise.resolve([]);
 }
 
 export class ReliabilityPreviewStore {
   constructor(state, env) {
+    // Kill switches are wired to their real environment variables through the
+    // symbolic config names; missing/empty/false/malformed classifies DISABLED.
+    this.config = configApi.createPreviewConfig({
+      kill_switch_sentinel: env[configApi.KILL_SWITCH_NAMES.READ_ONLY_SENTINEL],
+      kill_switch_alert: env[configApi.KILL_SWITCH_NAMES.ALERT_DELIVERY],
+      release_sha_env: env[configApi.RELEASE_SHA_VAR_NAME]
+    });
+    if (this.config.release_provenance.status !== 'VALID') {
+      throw new TypeError('INVALID_RELEASE_SHA');
+    }
     this.state = state;
     this.env = env;
-    this.config = configApi.createPreviewConfig();
     this.database = createSqliteDatabaseAdapter(state.storage.sql);
     this.store = storeApi.createPreviewStore({
       database: this.database,
@@ -107,7 +145,7 @@ export class ReliabilityPreviewStore {
       taxonomy: taxonomy,
       alertCore: alertDeliveryCoreApi,
       transport: this.transport,
-      releaseSha: MAIN_SHA,
+      releaseSha: this.config.release_provenance.release_sha,
       calibrationBySignal: Object.freeze({}),
       webhookUrlProvider: function () { return env.RELIABILITY_PREVIEW_SLACK_WEBHOOK_URL || null; },
       now: function () { return Date.now(); },
@@ -135,17 +173,30 @@ export default {
   },
 
   // scheduled() is the ONLY scheduled reliability entrypoint. It routes to the
-  // dedicated SQLite Durable Object that owns the store and the runner. With
-  // the default kill switches (read_only_sentinel=false, alert_delivery=false)
-  // the run short-circuits to RUN_DISABLED and exercises no capability.
+  // dedicated SQLite Durable Object that owns the store and the runner.
+  //
+  // Fail-closed ordering (#4175): the release provenance gate runs BEFORE any
+  // Durable Object resolution or runner invocation. With invalid provenance —
+  // or with either default-disabled kill switch state — the run short-circuits
+  // to RUN_DISABLED and exercises zero capability (no collector, no store, no
+  // transport).
   async scheduled(controller, env, ctx) {
+    const triggerClass = controller && controller.cron ? controller.cron : 'CRON_TRIGGER';
     try {
+      const config = configApi.createPreviewConfig({
+        kill_switch_sentinel: env[configApi.KILL_SWITCH_NAMES.READ_ONLY_SENTINEL],
+        kill_switch_alert: env[configApi.KILL_SWITCH_NAMES.ALERT_DELIVERY],
+        release_sha_env: env[configApi.RELEASE_SHA_VAR_NAME]
+      });
+      if (config.release_provenance.status !== 'VALID') {
+        return invalidProvenanceRecord(triggerClass);
+      }
       const ns = env.RELIABILITY_PREVIEW_STORE;
       const id = ns.idFromName('reliability-preview');
       const stub = ns.get(id);
-      return await stub.runPreview(controller.cron || 'CRON_TRIGGER');
+      return await stub.runPreview(triggerClass);
     } catch (err) {
-      return { run_class: 'RUN_FINALIZATION_FAILED', trigger_class: 'CRON_TRIGGER' };
+      return { run_class: 'RUN_FINALIZATION_FAILED', trigger_class: triggerClass };
     }
   }
 };
