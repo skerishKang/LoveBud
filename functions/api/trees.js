@@ -13,6 +13,10 @@ import {
   buildIntegerLimitValidationBody,
   hasFractionalOwnerTreeLimit
 } from '../_shared/owner-tree-list-limit-parity.js';
+import {
+  isTreeCreateDirectNeonSelected,
+  handleTreeCreateDirectNeon
+} from '../_shared/tree-create-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -258,6 +262,25 @@ export async function onRequestPost(context) {
       }
       if (guard) return guard;
     } catch (_) { }
+  }
+
+  // #4173 gated public Tree create direct-Neon candidate dispatch. With the
+  // gate unset/modal/unknown the existing Modal POST behavior below is
+  // unchanged. With LB_TREE_CREATE_WRITE_RUNTIME=direct_neon selected, the
+  // adapter owns the visibility route split BEFORE any direct DB connection or
+  // transaction: omitted/explicit-public runs the direct-Neon candidate;
+  // explicit-private returns null here so the request falls through to the
+  // existing Modal authority (Plus/private-storage entitlement stays
+  // Modal-owned). After direct execution begins there is no per-request
+  // direct -> Modal fallback.
+  if (isTreeCreateDirectNeonSelected(context.env)) {
+    const directResponse = await handleTreeCreateDirectNeon(
+      request,
+      context.env || {},
+      requestId,
+      { boundedBodyResult: bodyResult }
+    );
+    if (directResponse !== null) return directResponse;
   }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
