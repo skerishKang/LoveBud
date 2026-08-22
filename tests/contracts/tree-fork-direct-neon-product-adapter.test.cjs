@@ -893,22 +893,28 @@ test('#4157 G5: fork RETURNING and canonical-reread timestamps are ::text-cast (
   };
 
   // RETURNING surface: the INSERT column list legitimately names created_at/
-  // updated_at bare; only the RETURNING clause must carry every timestamp cast.
+  // updated_at bare; the RETURNING clause must carry complete cast+alias pairs
+  // ("X::text AS X") and nothing else timestamp-shaped.
   const returning = extractBody('INSERT_DEST_TREE_SQL');
   assert.ok(returning.includes('created_at::text AS created_at'), 'INSERT DEST: created_at::text AS created_at required');
   assert.ok(returning.includes('updated_at::text AS updated_at'), 'INSERT DEST: updated_at::text AS updated_at required');
-  const returningClause = returning.slice(returning.indexOf('RETURNING')).replace(/::text/g, '');
+  const returningClause = returning.slice(returning.indexOf('RETURNING'))
+    .replace(/created_at::text\s+AS\s+created_at/g, '')
+    .replace(/updated_at::text\s+AS\s+updated_at/g, '');
   const bareReturning = returningClause.match(/\b(created_at|updated_at)\b/g) || [];
   assert.deepEqual(bareReturning, [], 'INSERT DEST: zero uncasted timestamp tokens in RETURNING clause');
 
-  // Canonical rereads: SELECT list must cast; GROUP BY keeps plain column refs.
+  // Canonical rereads: SELECT list must carry the same complete cast+alias pairs;
+  // GROUP BY keeps plain column refs.
   for (const name of ['CANONICAL_REREAD_DEST_TREE_SQL', 'CANONICAL_REREAD_EXISTING_TREE_SQL']) {
     const body = extractBody(name);
-    assert.ok(body.includes('t.created_at::text AS created_at'), name + ': created_at::text AS created_at required');
-    assert.ok(body.includes('t.updated_at::text AS updated_at'), name + ': updated_at::text AS updated_at required');
+    assert.ok(body.includes('t.created_at::text AS created_at'), name + ': t.created_at::text AS created_at required');
+    assert.ok(body.includes('t.updated_at::text AS updated_at'), name + ': t.updated_at::text AS updated_at required');
     const groupBy = body.indexOf('GROUP BY');
     assert.ok(groupBy > 0, name + ': GROUP BY section present');
-    const selectList = body.slice(0, groupBy).replace(/::text/g, '');
+    const selectList = body.slice(0, groupBy)
+      .replace(/t\.created_at::text\s+AS\s+created_at/g, '')
+      .replace(/t\.updated_at::text\s+AS\s+updated_at/g, '');
     const bareSelect = selectList.match(/\b(created_at|updated_at)\b/g) || [];
     assert.deepEqual(bareSelect, [], name + ': zero uncasted timestamp tokens in SELECT list');
   }
