@@ -35,7 +35,7 @@ The following state is read from current main source files. Do not interpret an 
 ### canonical-migrations.json
 
 - Status: ADOPTION_REQUIRED
-- Migrations count: 2 (catalog-populated; catalog population is distinct from runner activation/adoption)
+- Migrations count: 3 (catalog-populated; catalog population is distinct from runner activation/adoption)
 - Source: `db/migration-provenance/canonical-migrations.json`
 
 ### expected-schema-manifest.json

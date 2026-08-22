@@ -63,6 +63,48 @@
       ],
       "owner_domain": "appreciation-order-persistence",
       "approval_reference": "issue:3982"
+    },
+    {
+      "id": "20260822054500_canonical-users-auth-identity",
+      "name": "canonical-users-auth-identity",
+      "path": "db/migrations/20260822054500_canonical-users-auth-identity.sql",
+      "checksum": "sha256:fb05785492bb0f0414a0d85d2e08743dc95d0a4136b073dac2254b3926d03151",
+      "depends_on": [],
+      "risk_class": "ADDITIVE",
+      "transaction_mode": "REQUIRED",
+      "expected_preconditions": [
+        {
+          "check": "table_exists",
+          "target": "app_account",
+          "expected": false
+        }
+      ],
+      "expected_postconditions": [
+        {
+          "check": "table_exists",
+          "target": "app_account",
+          "expected": true
+        },
+        {
+          "check": "table_exists",
+          "target": "app_auth_identity",
+          "expected": true
+        },
+        {
+          "check": "table_exists",
+          "target": "auth_audit_log",
+          "expected": true
+        },
+        {
+          "check": "table_exists",
+          "target": "users",
+          "expected": true
+        }
+      ],
+      "rollback_support": "DROP VIEW public.app_authenticated_owner_resolution; DROP INDEX IF EXISTS users_one_active_account_binding; ALTER TABLE public.users DROP COLUMN IF EXISTS account_id (only where users pre-existed this slice); DROP TABLE public.auth_audit_log; DROP TABLE public.app_auth_identity; DROP TABLE public.app_account",
+      "destructive_operations": [],
+      "owner_domain": "auth-account-mapping",
+      "approval_reference": "issue:4006"
     }
   ],
   "activation_rule": "No existing scripts are retroactively declared applied. A separately approved adoption baseline must be attested before this manifest changes to ACTIVE.",
