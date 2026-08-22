@@ -866,3 +866,56 @@ test('#4135 fork lock: tx.advisoryXactLock NOT used (no hashtext helper path)', 
   const hashtextLogs = factory.logs.filter((l) => l.text.includes('hashtext'));
   assert.equal(hashtextLogs.length, 0, 'no hashtext queries issued by fork path');
 });
+
+// ─── #4157 G5 fix: timestamp text-casting convention (sibling parity) ────
+//
+// node-postgres parses timestamptz to Date instances by default, and
+// normalizeDirectNeonTimestamp() rejects Date inputs
+// (DIRECT_NEON_TIMESTAMP_PRECISION_LOST). Every fork SQL that returns
+// created_at/updated_at must therefore ::text-cast at the boundary, exactly
+// like the six sibling direct-neon adapters. Production smoke evidence:
+// attempt 3 of the 2026-08-22 gate reactivation failed WORK_FAILURE at the
+// first timestamp-bearing RETURNING stage until this cast landed.
+
+test('#4157 G5: fork RETURNING and canonical-reread timestamps are ::text-cast (sibling convention)', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const sourcePath = path.join(__dirname, '..', '..', 'functions', '_shared', 'tree-fork-direct-neon.js');
+  const source = fs.readFileSync(sourcePath, 'utf8');
+
+  const extractBody = (name) => {
+    const marker = 'const ' + name + ' = `';
+    const start = source.indexOf(marker);
+    assert.ok(start >= 0, name + ' constant present');
+    const end = source.indexOf('`;', start);
+    assert.ok(end > start, name + ' constant terminated');
+    return source.slice(start + marker.length, end);
+  };
+
+  // RETURNING surface: the INSERT column list legitimately names created_at/
+  // updated_at bare; the RETURNING clause must carry complete cast+alias pairs
+  // ("X::text AS X") and nothing else timestamp-shaped.
+  const returning = extractBody('INSERT_DEST_TREE_SQL');
+  assert.ok(returning.includes('created_at::text AS created_at'), 'INSERT DEST: created_at::text AS created_at required');
+  assert.ok(returning.includes('updated_at::text AS updated_at'), 'INSERT DEST: updated_at::text AS updated_at required');
+  const returningClause = returning.slice(returning.indexOf('RETURNING'))
+    .replace(/created_at::text\s+AS\s+created_at/g, '')
+    .replace(/updated_at::text\s+AS\s+updated_at/g, '');
+  const bareReturning = returningClause.match(/\b(created_at|updated_at)\b/g) || [];
+  assert.deepEqual(bareReturning, [], 'INSERT DEST: zero uncasted timestamp tokens in RETURNING clause');
+
+  // Canonical rereads: SELECT list must carry the same complete cast+alias pairs;
+  // GROUP BY keeps plain column refs.
+  for (const name of ['CANONICAL_REREAD_DEST_TREE_SQL', 'CANONICAL_REREAD_EXISTING_TREE_SQL']) {
+    const body = extractBody(name);
+    assert.ok(body.includes('t.created_at::text AS created_at'), name + ': t.created_at::text AS created_at required');
+    assert.ok(body.includes('t.updated_at::text AS updated_at'), name + ': t.updated_at::text AS updated_at required');
+    const groupBy = body.indexOf('GROUP BY');
+    assert.ok(groupBy > 0, name + ': GROUP BY section present');
+    const selectList = body.slice(0, groupBy)
+      .replace(/t\.created_at::text\s+AS\s+created_at/g, '')
+      .replace(/t\.updated_at::text\s+AS\s+updated_at/g, '');
+    const bareSelect = selectList.match(/\b(created_at|updated_at)\b/g) || [];
+    assert.deepEqual(bareSelect, [], name + ': zero uncasted timestamp tokens in SELECT list');
+  }
+});
