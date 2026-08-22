@@ -1658,6 +1658,21 @@
       "automation": "manual",
       "ledger_candidate": "no",
       "notes": "PROPOSAL_ONLY_DOCUMENT_ARTIFACT - DO NOT EXECUTE. Issue #4006 CANONICAL users/app_account/app_auth_identity DDL design input for the deferred #4157/#4164 Tree Fork users-table gate. Deliberately outside db/migrations canonical stream; execution authority exists only through a separately approved, separately checksummed canonical slice after CTO review and owner adoption decision."
+    },
+    {
+      "path": "db/migrations/20260822054500_canonical-users-auth-identity.sql",
+      "category": "canonical_stream",
+      "engine": "postgres",
+      "operations": ["CREATE TABLE", "CREATE INDEX", "ALTER TABLE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": true,
+      "owner_or_issue": "auth identity mapping / #4006 #4157",
+      "idempotency": "idempotent in shape (CREATE IF NOT EXISTS + ADD COLUMN IF NOT EXISTS)",
+      "execution_actor": "runner",
+      "automation": "manual",
+      "ledger_candidate": "yes",
+      "notes": "Adopted #4006 canonical slice registered in db/migration-provenance/canonical-migrations.json with byte-exact sha256 checksum and approval_reference issue:4006. ADDITIVE only; stream remains ADOPTION_REQUIRED/inactive - execution requires the separately approved adoption baseline plus the fail-closed canonical runner protocol."
     }
   ]
 }

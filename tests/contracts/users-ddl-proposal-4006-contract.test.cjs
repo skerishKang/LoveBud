@@ -180,16 +180,25 @@ test('8. audit action vocabulary is bounded and includes link lifecycle events',
   assert.ok(actionsBlock.includes("'link_created'"), 'action CHECK block parsed');
 });
 
-test('9. canonical migration stream remains untouched by this proposal', () => {
+test('9. canonical stream carries the adopted #4006 slice; proposal artifacts stay excluded', () => {
   const manifestText = read(MANIFEST_REL);
   const manifest = JSON.parse(manifestText);
   assert.equal(manifest.status, 'ADOPTION_REQUIRED', 'canonical stream stays inactive');
-  assert.equal(manifest.migrations.length, 2, 'exactly two catalogued migrations remain');
   assert.deepEqual(
     manifest.migrations.map((m) => m.id),
-    ['20260802094500_bootstrap-migration-ledger', '20260812213000_add-tree-appreciation-orders']
+    [
+      '20260802094500_bootstrap-migration-ledger',
+      '20260812213000_add-tree-appreciation-orders',
+      '20260822054500_canonical-users-auth-identity'
+    ]
   );
-  assert.ok(!manifestText.includes('app_account'), 'manifest must not reference proposal objects');
+  const adopted = manifest.migrations[2];
+  assert.equal(adopted.risk_class, 'ADDITIVE');
+  assert.deepEqual(adopted.destructive_operations, []);
+  assert.equal(adopted.approval_reference, 'issue:4006');
+  for (const m of manifest.migrations) {
+    assert.ok(m.path.startsWith('db/migrations/'), 'manifest paths stay inside the canonical directory');
+  }
   assert.ok(!manifestText.includes('proposals/'), 'manifest must not reference proposal artifacts');
 });
 
