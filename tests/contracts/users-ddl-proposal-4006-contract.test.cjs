@@ -218,3 +218,16 @@ test('12. this contract is registered SOURCE_STATIC with no capabilities', () =>
   assert.equal(entry.layer, 'SOURCE_STATIC');
   assert.deepEqual(entry.capabilities, []);
 });
+
+test('13. proposal artifact is registered in the #3458 schema-change inventory', () => {
+  const inventory = JSON.parse(read('docs/architecture/db-schema-change-inventory.json'));
+  const entry = inventory.entries.find((e) => e.path === SQL_REL);
+  assert.ok(entry, 'proposal SQL must be registered in db-schema-change-inventory.json');
+  assert.equal(entry.canonical_status, 'UNCLEAR_REQUIRES_DECISION', 'adoption decision stays open');
+  assert.equal(entry.destructive, false);
+  assert.equal(entry.production_capable, false);
+  assert.ok(
+    /PROPOSAL_ONLY_DOCUMENT_ARTIFACT/.test(entry.notes),
+    'inventory notes must carry the do-not-execute classification'
+  );
+});

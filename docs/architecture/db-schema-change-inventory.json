@@ -1643,6 +1643,21 @@
       "automation": "automatic",
       "ledger_candidate": "no",
       "notes": "Executed-fake source-static contract running the real pure gate core with bounded synthetic evidence only; no external capability."
+    },
+    {
+      "path": "db/proposals/4006-canonical-users-auth-identity-proposal.sql",
+      "category": "sql_migration",
+      "engine": "postgres",
+      "operations": ["CREATE TABLE", "CREATE INDEX", "READ_ONLY"],
+      "canonical_status": "UNCLEAR_REQUIRES_DECISION",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "auth identity mapping / #4006 #4157",
+      "idempotency": "idempotent (CREATE IF NOT EXISTS shapes)",
+      "execution_actor": "none",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "PROPOSAL_ONLY_DOCUMENT_ARTIFACT - DO NOT EXECUTE. Issue #4006 CANONICAL users/app_account/app_auth_identity DDL design input for the deferred #4157/#4164 Tree Fork users-table gate. Deliberately outside db/migrations canonical stream; execution authority exists only through a separately approved, separately checksummed canonical slice after CTO review and owner adoption decision."
     }
   ]
 }
