@@ -338,7 +338,9 @@ async function verifyIdempotencyRow(
     }
 
     const commentRows = await tx.query(
-      `SELECT id, tree_id, owner_id, body, created_at, updated_at
+      `SELECT id, tree_id, owner_id, body,
+              created_at::text AS created_at,
+              updated_at::text AS updated_at
        FROM tree_comments
        WHERE id = $1
        LIMIT 1`,
@@ -532,7 +534,9 @@ async function runCommentWork(tx, workSignal, { treeId, ownerId, idempotencyKey,
     `INSERT INTO tree_comments
         (id, tree_id, owner_id, body, target_kind, target_id, created_at, updated_at)
      VALUES ($1, $2, $3, $4, 'tree', $5, NOW(), NOW())
-     RETURNING id, tree_id, owner_id, body, created_at, updated_at`,
+     RETURNING id, tree_id, owner_id, body,
+               created_at::text AS created_at,
+               updated_at::text AS updated_at`,
     [crypto.randomUUID(), treeId, ownerId, safeBody, treeId]
   );
   if (!commentRows || commentRows.length === 0) {
