@@ -29,7 +29,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { EXPECTED_DB_ENGINE_SCRIPTS } = require('../../scripts/report-ci-test-groups.cjs');
-const { createCleanBootstrapRunner, validateCommittedAuthority, selectBootstrapMigration, selectBootstrapCriticalObject, FACTORY_ERRORS } = require('../../scripts/migration-clean-bootstrap-orchestrator-core.cjs');
+const { createCleanBootstrapRunner, validateCommittedAuthority, selectBootstrapMigration, selectBootstrapCriticalObject, FACTORY_ERRORS, BOOTSTRAP_MIGRATION_PATH } = require('../../scripts/migration-clean-bootstrap-orchestrator-core.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
@@ -369,6 +369,58 @@ test('F duplicate ledger critical object fails closed', () => {
   assert.throws(function () { selectBootstrapCriticalObject(schemaManifest); }, function (e) {
     return e.message === FACTORY_ERRORS.CRITICAL_OBJECT_NAME_INVALID;
   });
+});
+
+// ── 5c. Manifest path portability (#4177) ────────────────────────────────────
+//
+// The canonical manifest's repository-relative path authority is POSIX slash
+// form. These tests pin the OS-independence contract: the orchestrator must
+// compare manifest identity paths as forward-slash strings on every platform,
+// while real filesystem resolution stays native and every security invariant
+// (traversal rejection, realpath containment, checksum verification) is
+// preserved. No test-string weakening: the negative controls exercise the
+// real validateCommittedAuthority code path.
+
+test('P1 bootstrap path authority is always POSIX forward-slash regardless of platform', () => {
+  assert.equal(BOOTSTRAP_MIGRATION_PATH, SQL_FILE_PATH,
+    'orchestrator path authority equals the committed POSIX manifest path');
+  assert.ok(!BOOTSTRAP_MIGRATION_PATH.includes('\\'),
+    'path authority never contains a backslash, even on Windows');
+  const manifest = JSON.parse(read(MANIFEST_PATH));
+  const migration = selectBootstrapMigration(manifest);
+  assert.equal(migration.path, BOOTSTRAP_MIGRATION_PATH,
+    'committed manifest entry matches the orchestrator authority byte-for-byte on Windows-native runs');
+});
+
+test('P2 backslash/noncanonical manifest paths still fail closed', () => {
+  const schemaManifest = makeSyntheticSchemaManifest([makeValidLedgerObject()]);
+  const windowsStyle = makeValidBootstrapEntry();
+  windowsStyle.path = 'db\\migrations\\20260802094500_bootstrap-migration-ledger.sql';
+  assert.throws(function () { validateCommittedAuthority(makeSyntheticManifest([windowsStyle]), schemaManifest); },
+    function (e) { return e.message === FACTORY_ERRORS.MIGRATION_PATH_INVALID; },
+    'backslash manifest path is rejected, not silently normalized');
+
+  const traversal = makeValidBootstrapEntry();
+  traversal.path = 'db/migrations/../../secrets/20260802094500_bootstrap-migration-ledger.sql';
+  assert.throws(function () { validateCommittedAuthority(makeSyntheticManifest([traversal]), schemaManifest); },
+    function (e) { return e.message === FACTORY_ERRORS.MIGRATION_PATH_INVALID; },
+    'non-canonical traversal path is rejected before any filesystem access');
+
+  const absolute = makeValidBootstrapEntry();
+  absolute.path = SQL_FILE_PATH.toUpperCase();
+  assert.throws(function () { validateCommittedAuthority(makeSyntheticManifest([absolute]), schemaManifest); },
+    function (e) { return e.message === FACTORY_ERRORS.MIGRATION_PATH_INVALID; },
+    'case-mutated path authority is rejected (exact string identity)');
+});
+
+test('P3 valid POSIX authority passes with all security invariants intact on Windows-native execution', () => {
+  const manifest = JSON.parse(read(MANIFEST_PATH));
+  const schemaManifest = JSON.parse(read(SCHEMA_MANIFEST_PATH));
+  const projection = validateCommittedAuthority(manifest, schemaManifest);
+  assert.equal(projection.migrationPath, SQL_FILE_PATH, 'projection keeps POSIX path identity');
+  assert.equal(projection.checksum, sha256File(SQL_FILE_PATH), 'checksum verification still binds to the real file');
+  assert.ok(fs.realpathSync(path.join(ROOT, projection.migrationPath)).startsWith(fs.realpathSync(ROOT) + path.sep),
+    'realized file stays inside the repository root (containment intact)');
 });
 
 test('G later migration with sentinel bad values never becomes executable authority', () => {
