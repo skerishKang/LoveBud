@@ -21,7 +21,7 @@ test('private memory POST imports and calls create_owner_memory', () => {
 
   assert.match(
     source,
-    /@web_app\.post\("\/modal\/private\/memories"\)[\s\S]*?return create_owner_memory\(user\["uid"\], payload\)/,
-    'private memory POST must call imported create_owner_memory'
+    /@web_app\.post\("\/modal\/private\/memories"\)[\s\S]*?return create_owner_memory\(principal\["legacyOwnerId"\], payload\)/,
+    'private memory POST must call imported create_owner_memory with the principal legacyOwnerId'
   );
 });

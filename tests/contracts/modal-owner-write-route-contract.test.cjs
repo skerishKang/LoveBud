@@ -889,15 +889,20 @@ test('post_private_tree calls create_owner_tree with user uid and payload', () =
   assertRoutePassesPayload(normalized, 'create_owner_tree', 'user.*uid', 'post_private_tree');
 });
 
-test('post_private_memory calls require_firebase_user', () => {
+test('post_private_memory calls require_authenticated_principal', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/memories', 'post');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /require_firebase_user.*authorization/i,
-    'post_private_memory must call require_firebase_user'
+    /require_authenticated_principal.*authorization/i,
+    'post_private_memory must call require_authenticated_principal'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /require_firebase_user/,
+    'post_private_memory must not call require_firebase_user directly (#4181 principal boundary)'
   );
 });
 
@@ -909,12 +914,12 @@ test('post_private_memory handles invalid JSON body with 400', () => {
   assertRouteParsesJsonViaHelper(normalized, 'post_private_memory');
 });
 
-test('post_private_memory calls create_owner_memory with user uid and payload', () => {
+test('post_private_memory calls create_owner_memory with legacyOwnerId and payload', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/memories', 'post');
   const normalized = compact(body);
 
-  assertRoutePassesPayload(normalized, 'create_owner_memory', 'user.*uid', 'post_private_memory');
+  assertRoutePassesPayload(normalized, 'create_owner_memory', 'principal.*legacyOwnerId', 'post_private_memory');
 });
 
 test('put_private_tree calls require_firebase_user', () => {
@@ -969,15 +974,20 @@ test('delete_private_tree calls delete_owner_tree with user uid and tree_id', ()
   );
 });
 
-test('put_private_memory calls require_firebase_user', () => {
+test('put_private_memory calls require_authenticated_principal', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/memories/{memory_id}', 'put');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /require_firebase_user.*authorization/i,
-    'put_private_memory must call require_firebase_user'
+    /require_authenticated_principal.*authorization/i,
+    'put_private_memory must call require_authenticated_principal'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /require_firebase_user/,
+    'put_private_memory must not call require_firebase_user directly (#4181 principal boundary)'
   );
 });
 
@@ -989,35 +999,40 @@ test('put_private_memory handles invalid JSON body with 400', () => {
   assertRouteParsesJsonViaHelper(normalized, 'put_private_memory');
 });
 
-test('put_private_memory calls update_owner_memory with user uid, memory_id, and payload', () => {
+test('put_private_memory calls update_owner_memory with legacyOwnerId, memory_id, and payload', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/memories/{memory_id}', 'put');
   const normalized = compact(body);
 
-  assertRoutePassesPayload(normalized, 'update_owner_memory', 'user.*uid.*memory_id', 'put_private_memory');
+  assertRoutePassesPayload(normalized, 'update_owner_memory', 'principal.*legacyOwnerId.*memory_id', 'put_private_memory');
 });
 
-test('delete_private_memory calls require_firebase_user', () => {
+test('delete_private_memory calls require_authenticated_principal', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/memories/{memory_id}', 'delete');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /require_firebase_user.*authorization/i,
-    'delete_private_memory must call require_firebase_user'
+    /require_authenticated_principal.*authorization/i,
+    'delete_private_memory must call require_authenticated_principal'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /require_firebase_user/,
+    'delete_private_memory must not call require_firebase_user directly (#4181 principal boundary)'
   );
 });
 
-test('delete_private_memory calls delete_owner_memory with user uid and memory_id', () => {
+test('delete_private_memory calls delete_owner_memory with legacyOwnerId and memory_id', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/memories/{memory_id}', 'delete');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /delete_owner_memory.*user.*uid.*memory_id/i,
-    'delete_private_memory must call delete_owner_memory with user uid and memory_id'
+    /delete_owner_memory.*principal.*legacyOwnerId.*memory_id/i,
+    'delete_private_memory must call delete_owner_memory with legacyOwnerId and memory_id'
   );
 });
 // --- #3481 owner binding fail-closed contracts ---
