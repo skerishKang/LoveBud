@@ -2242,6 +2242,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/modal-memory-write-principal-boundary-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/app.py and modal_compute/auth.py source and asserts route/function structure, order, and exact call shapes for the #4181 principal boundary refactor: the three Memory owner-write routes (post/put/delete_private_memory) must call require_authenticated_principal(authorization) with principal[\"legacyOwnerId\"] as sole owner argument to create/update/delete_owner_memory, must not call require_firebase_user directly nor pass uid/email/providerSubject/accountId, authentication must precede parse_json_body and mutation calls, require_authenticated_principal must keep delegating to require_firebase_user with provider firebase/legacyOwnerId=uid and no email/accountId in code, the require_firebase_user error contract (401/503) stays verbatim, the exact remaining direct-caller set of require_firebase_user is pinned, and no other route drifts; does not execute the asserted target runtime behavior (#4181).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/modal-owner-read-route-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

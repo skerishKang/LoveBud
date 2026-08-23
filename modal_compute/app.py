@@ -559,9 +559,9 @@ async def post_private_memory(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
+    principal = require_authenticated_principal(authorization)
     payload = await parse_json_body(request)
-    return create_owner_memory(user["uid"], payload)
+    return create_owner_memory(principal["legacyOwnerId"], payload)
 
 
 @web_app.put("/modal/private/memories/{memory_id}")
@@ -570,9 +570,9 @@ async def put_private_memory(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
+    principal = require_authenticated_principal(authorization)
     payload = await parse_json_body(request)
-    return update_owner_memory(user["uid"], memory_id, payload)
+    return update_owner_memory(principal["legacyOwnerId"], memory_id, payload)
 
 
 @web_app.delete("/modal/private/memories/{memory_id}")
@@ -580,8 +580,8 @@ def delete_private_memory(
     memory_id: str,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
-    return delete_owner_memory(user["uid"], memory_id)
+    principal = require_authenticated_principal(authorization)
+    return delete_owner_memory(principal["legacyOwnerId"], memory_id)
 
 
 @web_app.get("/modal/private/memories/{memory_id}")

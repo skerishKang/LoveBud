@@ -210,22 +210,37 @@ test('get_private_memory_detail uses the canonical principal owner id and preser
   assert.doesNotMatch(normalized, /user\["uid"\]/, 'Memory detail must not bypass principal owner authority');
 });
 
-test('write routes remain on the existing Firebase user contract and are not migrated in #4096', () => {
+test('tree write routes remain on the existing Firebase user contract and are not migrated in #4096', () => {
   const source = readModalApp();
-  const writeFunctions = [
+  const treeWriteFunctions = [
     'post_private_tree',
     'put_private_tree',
     'delete_private_tree',
+  ];
+
+  for (const functionName of treeWriteFunctions) {
+    const body = getTopLevelFunction(source, functionName);
+    const normalized = compact(body);
+    assert.match(normalized, /user=require_firebase_user\(authorization\)/, `${functionName} must preserve existing Firebase user auth`);
+    assert.doesNotMatch(normalized, /require_authenticated_principal/, `${functionName} must remain outside the #4096 owner-read migration`);
+  }
+});
+
+test('memory write routes route through the authenticated principal boundary (#4181)', () => {
+  const source = readModalApp();
+  const memoryWriteFunctions = [
     'post_private_memory',
     'put_private_memory',
     'delete_private_memory',
   ];
 
-  for (const functionName of writeFunctions) {
+  for (const functionName of memoryWriteFunctions) {
     const body = getTopLevelFunction(source, functionName);
     const normalized = compact(body);
-    assert.match(normalized, /user=require_firebase_user\(authorization\)/, `${functionName} must preserve existing Firebase user auth`);
-    assert.doesNotMatch(normalized, /require_authenticated_principal/, `${functionName} must remain outside the #4096 owner-read migration`);
+    assert.match(normalized, /principal=require_authenticated_principal\(authorization\)/, `${functionName} must use the authenticated principal boundary (#4181)`);
+    assert.match(normalized, /principal\["legacyownerid"\]/, `${functionName} must pass principal.legacyOwnerId as the owner authority`);
+    assert.doesNotMatch(normalized, /user=require_firebase_user\(authorization\)/, `${functionName} must not call require_firebase_user directly (#4181)`);
+    assert.doesNotMatch(normalized, /user\["uid"\]/, `${functionName} must not use the raw uid owner shape`);
   }
 });
 
