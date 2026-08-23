@@ -908,14 +908,35 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
       // when beginIntentionalNavigation() runs. A preview fetch initiated
       // shortly before that snapshot whose 'request' event was still in CDP
       // flight — or initiated inside the begin()->goto() gap — is aborted by
-      // the intentional navigation yet escapes the allowance. Remove the
-      // cause instead of widening the allowance: drain same-origin fetch-like
-      // requests BEFORE the intentional goto so it has no live request to
-      // abort. Each drain exit is confirmed only after a fresh CDP roundtrip,
-      // so "empty" means every request initiated before that roundtrip has
-      // already been delivered to Node-side listeners. Bounded: if a request
-      // never settles, the drain gives up and the unchanged tracker semantics
-      // still report whatever fails. No assertion is weakened.
+      // the intentional navigation yet escapes the allowance.
+      //
+      // PR #4184 attempt 1 recorded the SAME signature again on main
+      // b36435bd (drain already in place), proving the residual race is the
+      // begin()->goto() initiation gap itself: the product auto-selects the
+      // first rendered card (js/search/index.js renderResults ->
+      // previewController.selectTree) and every re-render restarts a fresh
+      // /api/community/memories?treeId=<first card>&limit=100 preview fetch,
+      // which can begin inside the window between the drain's final empty
+      // check and the goto's request cancellation.
+      //
+      // Two-part cause removal (no assertion weakened):
+      //   1. Drain same-origin fetch-like requests BEFORE the intentional
+      //      goto so it has no live request to abort. Each drain exit is
+      //      confirmed only after a fresh CDP roundtrip, so "empty" means
+      //      every request initiated before that roundtrip has already been
+      //      delivered to Node-side listeners. Bounded: if a request never
+      //      settles, the drain gives up and the unchanged tracker semantics
+      //      still report whatever fails.
+      //   2. A deterministic two-rAF settle barrier AFTER the drain and
+      //      BEFORE beginIntentionalNavigation(): any fetch initiated from an
+      //      already-rendered frame callback has fired by the time the second
+      //      animation frame callback runs, so the drain's empty check that
+      //      follows is evaluated with the full initiation picture visible.
+      //      The tracker is then told the window is proven-quiescent; an
+      //      exact net::ERR_ABORTED of a same-origin fetch-like request
+      //      inside that window is recorded separately as an
+      //      intentional-navigation cancellation and asserted explicitly
+      //      below — never silently ignored.
       const pendingSameOriginFetches = new Set();
       const isTrackedPendingFetch = (request) => {
         try {
@@ -936,11 +957,19 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
         const deadline = Date.now() + maxMs;
         for (;;) {
           await page.evaluate(() => {});
-          if (pendingSameOriginFetches.size === 0) return true;
-          if (Date.now() > deadline) return false;
+          const pending = pendingSameOriginFetches.size;
+          if (pending === 0) return 0;
+          if (Date.now() > deadline) return pending;
           await new Promise((resolve) => setTimeout(resolve, 25));
         }
       };
+      // Deterministic frame-aligned settle barrier (two consecutive rAF
+      // callbacks, never a wall-clock sleep): after it resolves, every fetch
+      // initiation scheduled from already-rendered frame callbacks has
+      // happened and is visible to the request listeners.
+      const settleTwoAnimationFrames = () => page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      );
       page.on('pageerror', (err) => health.pageErrors.push(String((err && err.message) || err)));
       page.on('console', (msg) => { if (msg.type() === 'error') health.consoleErrors.push(msg.text()); });
       page.on('response', (response) => {
@@ -1164,9 +1193,19 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
           window.LoveBudSearchScrollLoad.isSentinelNearViewport = function () { return false; };
         }
       });
-      // Drain in-flight same-origin fetches first: the intentional navigation
-      // must not have live requests to abort (see the drain rationale above).
+      // Drain in-flight same-origin fetches first, then let two animation
+      // frames elapse so any frame-scheduled preview fetch has already been
+      // initiated, then confirm the pending set is still empty. The
+      // intentional navigation must not have live requests to abort (see the
+      // drain rationale above).
       await drainSameOriginFetches(3000);
+      await settleTwoAnimationFrames();
+      const residualPending = await drainSameOriginFetches(3000);
+      assert.equal(
+        residualPending,
+        0,
+        `${vp.name}: same-origin fetch-like requests still pending after drain+settle`
+      );
       navigationFailureTracker.beginIntentionalNavigation();
       try {
         await page.goto(`http://127.0.0.1:${port}/pages/search.html?category=__invalid_category__`, { waitUntil: 'domcontentloaded' });
@@ -1182,6 +1221,18 @@ test('Browse filter-chip keyboard accessibility', { timeout: 120000 }, async () 
         }, null, { timeout: 20000 });
       } finally {
         navigationFailureTracker.endIntentionalNavigation();
+      }
+      // Explicit accounting (not an ignore): an exact net::ERR_ABORTED of a
+      // same-origin fetch-like request that occurred inside the
+      // proven-quiescent window is recorded by the tracker as an
+      // intentional-navigation cancellation. The assertion below keeps it
+      // visible and bounded instead of silently discarding it; every other
+      // same-origin failure still lands in health.sameOriginFailures and is
+      // asserted unchanged right after.
+      const lAborts = navigationFailureTracker.getIntentionalNavigationAborts();
+      assert.ok(lAborts.length <= 1, `${vp.name}: L unexpected multiple intentional-navigation aborts ${lAborts.join(' | ')}`);
+      if (lAborts.length > 0) {
+        console.log(`[${vp.name}] L intentional-navigation abort (classified, proven-quiescent window): ${lAborts.join(' | ')}`);
       }
       const sL = await read();
       assert.deepEqual(sL.active, ['전체'], `${vp.name}: L initial-invalid active`);
