@@ -20,7 +20,13 @@
 //   calibrationBySignal remains intentionally empty: real Production collector
 //   binding is a separate approval and is NOT part of this package.
 //
-// Refs #4148/#4149. Refs #4082. Refs #4175.
+// #4187 hardening:
+// - The top-level scheduled() entrypoint now enforces the read-only sentinel
+//   kill switch immediately after release-provenance validation. A disabled or
+//   malformed sentinel returns RUN_DISABLED before resolving the Durable Object
+//   namespace/stub, matching the documented zero-capability fail-closed order.
+//
+// Refs #4148/#4149. Refs #4082. Refs #4175. Refs #4187.
 // Refs #3461 — Keep OPEN. Refs #1882 — Keep OPEN.
 
 import configApi from './reliability-preview-config.cjs';
@@ -64,6 +70,19 @@ function invalidProvenanceRecord(triggerClass) {
     heartbeat_class: null,
     elapsed_ms: 0,
     failure_class: 'INVALID_RELEASE_SHA'
+  };
+}
+
+function disabledRunRecord(triggerClass) {
+  return {
+    run_class: 'RUN_DISABLED',
+    trigger_class: typeof triggerClass === 'string' ? triggerClass : 'CRON_TRIGGER',
+    lease_outcome: null,
+    collector_outcome: null,
+    evaluation_state: null,
+    alert_decision: null,
+    heartbeat_class: 'NOT_RECORDED_DISABLED',
+    elapsed_ms: 0
   };
 }
 
@@ -176,11 +195,12 @@ export default {
   // scheduled() is the ONLY scheduled reliability entrypoint. It routes to the
   // dedicated SQLite Durable Object that owns the store and the runner.
   //
-  // Fail-closed ordering (#4175): the release provenance gate runs BEFORE any
-  // Durable Object resolution or runner invocation. With invalid provenance —
-  // or with either default-disabled kill switch state — the run short-circuits
-  // to RUN_DISABLED and exercises zero capability (no collector, no store, no
-  // transport).
+  // Fail-closed ordering (#4175/#4187): release provenance and the read-only
+  // sentinel kill switch are enforced BEFORE any Durable Object resolution or
+  // runner invocation. Invalid provenance or a default-disabled/malformed
+  // sentinel returns RUN_DISABLED with zero capability use (no DO resolution,
+  // collector, store, or transport). Alert enablement never widens sentinel
+  // authority.
   async scheduled(controller, env, ctx) {
     const triggerClass = controller && controller.cron ? controller.cron : 'CRON_TRIGGER';
     try {
@@ -191,6 +211,9 @@ export default {
       });
       if (config.release_provenance.status !== 'VALID') {
         return invalidProvenanceRecord(triggerClass);
+      }
+      if (config.kill_switches.read_only_sentinel !== 'ENABLED') {
+        return disabledRunRecord(triggerClass);
       }
       const ns = env.RELIABILITY_PREVIEW_STORE;
       const id = ns.idFromName('reliability-preview');
