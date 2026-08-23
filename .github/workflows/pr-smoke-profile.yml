@@ -41,9 +41,13 @@ jobs:
       - name: Run route tests
         run: node --test tests/routes/*.test.cjs
 
-  profile-contracts:
+  profile-contracts-shard:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -54,5 +58,19 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
-      - name: Run contract tests
-        run: node --test tests/contracts/*.test.cjs
+      - name: Run contract shard
+        shell: bash
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          mapfile -t files < <(find tests/contracts -maxdepth 1 -type f -name '*.test.cjs' -print | sort)
+          selected=()
+          for i in "${!files[@]}"; do
+            if (( i % 4 == SHARD )); then
+              selected+=("${files[$i]}")
+            fi
+          done
+          printf 'contract shard %s: %s files\n' "$SHARD" "${#selected[@]}"
+          printf '%s\n' "${selected[@]}"
+          test "${#selected[@]}" -gt 0
+          node --test "${selected[@]}"
