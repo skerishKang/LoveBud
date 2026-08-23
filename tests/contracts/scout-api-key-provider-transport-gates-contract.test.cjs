@@ -35,6 +35,16 @@ const MODULE_PATH = path.resolve(
   '../../functions/api/scout/live-provider-api-key-transport.js'
 );
 
+// Repository identity path (#4182): OS-independent canonical form.
+// MODULE_PATH above is a NATIVE absolute filesystem path and stays that way
+// for fs.readFileSync / fs.existsSync / dynamic import. Repository identity
+// comparisons must use this POSIX-slash relative path so Windows-native runs
+// and Linux CI verify the exact same location:
+//   functions/api/scout/live-provider-api-key-transport.js
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const EXPECTED_MODULE_IDENTITY = 'functions/api/scout/live-provider-api-key-transport.js';
+const MODULE_IDENTITY = path.relative(REPO_ROOT, MODULE_PATH).split(path.sep).join('/');
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function buildSatisfiedConfig(overrides) {
@@ -557,12 +567,30 @@ async function run() {
 
   // ── 16. No frontend/browser code touched ────────────────────────────────────
   await suite('16. No frontend/browser code touched by this slice', async () => {
-    // We verify that the new module is a server-side module by checking
-    // it's under functions/api/scout/ (not pages/ or js/).
-    assert.ok(
-      MODULE_PATH.includes('functions/api/scout/'),
-      'module path is under functions/api/scout/'
-    );
+    // Repository identity check (#4182): the module must sit at EXACTLY
+    // functions/api/scout/live-provider-api-key-transport.js, compared as an
+    // OS-independent POSIX relative path (never a native backslash string).
+    assert.ok(!MODULE_IDENTITY.includes('\\'), 'canonical identity contains no backslash');
+    assert.strictEqual(MODULE_IDENTITY, EXPECTED_MODULE_IDENTITY,
+      `module identity must be exactly ${EXPECTED_MODULE_IDENTITY}`);
+    // Exact directory + exact filename, verified independently of the
+    // full-identity equality above.
+    const identityDir = MODULE_IDENTITY.slice(0, MODULE_IDENTITY.lastIndexOf('/'));
+    const identityFile = MODULE_IDENTITY.slice(MODULE_IDENTITY.lastIndexOf('/') + 1);
+    assert.strictEqual(identityDir, 'functions/api/scout', 'exact server-side scout api directory');
+    assert.strictEqual(identityFile, 'live-provider-api-key-transport.js', 'exact transport filename');
+    // Negative controls: lookalike locations/names are NOT this module.
+    const rejectedIdentities = [
+      'functions/api/scout/live-provider-api-key-transport.ts',
+      'functions/api/scout-v2/live-provider-api-key-transport.js',
+      'js/scout/live-provider-api-key-transport.js',
+      'pages/functions/api/scout/live-provider-api-key-transport.js',
+    ];
+    for (const candidate of rejectedIdentities) {
+      assert.notStrictEqual(candidate, MODULE_IDENTITY,
+        `lookalike identity must not pass: ${candidate}`);
+    }
+    pass('module identity is exactly functions/api/scout/live-provider-api-key-transport.js');
     pass('module is under functions/api/scout/ (server-side)');
 
     // The module does not import any browser-only globals
@@ -575,6 +603,16 @@ async function run() {
       );
     }
     pass('module source does NOT use any browser globals');
+
+    // Native filesystem resolution is preserved alongside the canonical
+    // identity: the same file the identity points at must exist and be
+    // readable through the native absolute path on THIS platform.
+    assert.ok(fs.existsSync(MODULE_PATH), 'native MODULE_PATH still resolves to a real file');
+    assert.ok(fs.statSync(MODULE_PATH).isFile(), 'native MODULE_PATH resolves to a regular file');
+    const nativeRelative = path.relative(REPO_ROOT, fs.realpathSync(MODULE_PATH)).split(path.sep).join('/');
+    assert.strictEqual(nativeRelative, EXPECTED_MODULE_IDENTITY,
+      'realized native path maps back to the exact canonical identity');
+    pass('native filesystem resolution agrees with canonical identity');
   });
 
   // ── Summary ─────────────────────────────────────────────────────────────────
