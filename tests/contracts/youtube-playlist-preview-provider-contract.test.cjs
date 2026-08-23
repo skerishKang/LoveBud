@@ -510,11 +510,45 @@ if not all(r for _, r in results):
 print("DRIVER_OK")
 `;
 
+// #4185 — deterministic Python launcher selection for the EXECUTED_FAKE
+// driver. Linux/CI keeps the python3 authority unchanged. Windows-native
+// hosts usually have no `python3` on PATH (only `python` or the `py`
+// launcher), so we probe candidates with spawnSync('-c', ...) and use the
+// first one that actually runs Python 3. No new dependency, no skip, no
+// bypass: whichever launcher wins still executes the same real driver.
+function resolvePythonLauncher() {
+  const probe = (cmd, args) => {
+    const r = spawnSync(cmd, args.concat(['-c', 'import sys; print("%d.%d" % sys.version_info[:2])']), {
+      encoding: 'utf8',
+      timeout: 15000,
+      windowsHide: true,
+    });
+    if (r.error || r.status !== 0) return null;
+    return /^3\.\d+/m.test(String(r.stdout || '')) ? { cmd, args } : null;
+  };
+  if (process.platform === 'win32') {
+    // Windows order: plain `python` first, then the `py` launcher pinned to 3.
+    for (const candidate of [
+      { cmd: 'python', args: [] },
+      { cmd: 'py', args: ['-3'] },
+    ]) {
+      const usable = probe(candidate.cmd, candidate.args);
+      if (usable) return usable;
+    }
+  } else {
+    const usable = probe('python3', []);
+    if (usable) return usable;
+  }
+  return null;
+}
+
 test('executed python driver: parser, states, error normalization, ceilings, ordering, no writes', () => {
+  const launcher = resolvePythonLauncher();
+  assert.ok(launcher, `no usable Python 3 launcher found on ${process.platform} for EXECUTED_FAKE evidence`);
   const driverPath = path.join(os.tmpdir(), `ypp-driver-3914-${process.pid}.py`);
   fs.writeFileSync(driverPath, DRIVER_SOURCE, 'utf8');
   try {
-    const result = spawnSync('python3', [driverPath], {
+    const result = spawnSync(launcher.cmd, launcher.args.concat([driverPath]), {
       cwd: ROOT,
       encoding: 'utf8',
       timeout: 60000,
