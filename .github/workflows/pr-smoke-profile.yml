@@ -58,6 +58,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
       - name: Run contract files independently
         shell: bash
         env:
@@ -79,8 +81,10 @@ jobs:
           for file in "${selected[@]}"; do
             echo "::group::$file"
             started_ms=$(date +%s%3N)
+            set +e
             timeout --signal=TERM --kill-after=5s 60s node --test "$file"
             code=$?
+            set -e
             ended_ms=$(date +%s%3N)
             elapsed_ms=$((ended_ms - started_ms))
 
