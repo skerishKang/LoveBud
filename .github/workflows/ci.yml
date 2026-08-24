@@ -42,7 +42,51 @@ jobs:
       - name: Verify
         run: npm run verify
 
+  db-impact:
+    runs-on: ubuntu-latest
+    outputs:
+      run-db: ${{ steps.classify.outputs.run-db }}
+
+    steps:
+      - name: Checkout PR head for DB impact classification
+        id: checkout
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Classify DB impact
+        id: classify
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -u
+          run_db=true
+
+          if [[ "${EVENT_NAME}" == "pull_request" && "${CHECKOUT_OUTCOME}" == "success" ]]; then
+            if changed_files="$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null)"; then
+              if [[ -n "${changed_files}" ]]; then
+                if decision="$(printf '%s\n' "${changed_files}" | node scripts/ci-db-impact-classifier.cjs 2>/dev/null)" &&
+                   [[ "${decision}" == "true" || "${decision}" == "false" ]]; then
+                  run_db="${decision}"
+                fi
+              fi
+            fi
+          fi
+
+          echo "run-db=${run_db}" >> "${GITHUB_OUTPUT}"
+          echo "DB impact decision: run-db=${run_db}"
+
   db-engine-tree-comments:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -99,6 +143,9 @@ jobs:
         run: npm run test:db-engine:tree-comments
 
   db-engine-trees-schema:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -155,6 +202,9 @@ jobs:
         run: npm run test:db-engine:trees-schema
 
   db-engine-generic-social-a-guard:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -211,6 +261,9 @@ jobs:
         run: npm run test:db-engine:generic-social-a-guard
 
   db-engine-generic-social-a:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -267,6 +320,9 @@ jobs:
         run: npm run test:db-engine:generic-social-a
 
   db-engine-generic-social-b-guard:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -323,6 +379,9 @@ jobs:
         run: npm run test:db-engine:generic-social-b-guard
 
   db-engine-generic-social-b:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -379,6 +438,9 @@ jobs:
         run: npm run test:db-engine:generic-social-b
 
   db-engine-migration-catalog-adapter:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -435,6 +497,9 @@ jobs:
         run: npm run test:db-engine:migration-catalog-adapter
 
   db-engine-precondition-composition-root:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -491,6 +556,9 @@ jobs:
         run: npm run test:db-engine:precondition-composition-root
 
   db-engine-clean-canonical-bootstrap:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -547,6 +615,9 @@ jobs:
         run: npm run test:db-engine:clean-canonical-bootstrap
 
   db-engine-readonly-target-attribution-parity:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -603,6 +674,9 @@ jobs:
         run: npm run test:db-engine:readonly-target-attribution-parity
 
   db-engine-structural-sentinel:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -659,6 +733,9 @@ jobs:
         run: npm run test:db-engine:structural-sentinel
 
   db-engine-fork-public-tree-visibility-concurrency:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -715,6 +792,9 @@ jobs:
         run: npm run test:db-engine:fork-public-tree-visibility-concurrency
 
   db-engine-tree-social-visibility-concurrency:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -771,6 +851,9 @@ jobs:
         run: npm run test:db-engine:tree-social-visibility-concurrency
 
   db-engine-memory-parent-cycle-concurrency:
+    needs: db-impact
+    if: >-
+      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
