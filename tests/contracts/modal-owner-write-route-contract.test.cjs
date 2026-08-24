@@ -588,53 +588,14 @@ test('update_owner_memory only allows specific update fields', () => {
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /title.*in.*payload/i,
-    'update_owner_memory must check title in payload'
-  );
-
-  assert.match(
-    normalized,
-    /memo.*in.*payload/i,
-    'update_owner_memory must check memo in payload'
-  );
-
-  assert.match(
-    normalized,
-    /source.*in.*payload/i,
-    'update_owner_memory must check source in payload'
-  );
-
-  assert.match(
-    normalized,
-    /sourceurl.*in.*payload/i,
-    'update_owner_memory must check sourceUrl in payload'
-  );
-
-  assert.match(
-    normalized,
-    /sourcetype.*in.*payload/i,
-    'update_owner_memory must check sourceType in payload'
-  );
-
-  assert.match(
-    normalized,
-    /thumbnail.*in.*payload/i,
-    'update_owner_memory must check thumbnail in payload'
-  );
-
-  assert.match(
-    normalized,
-    /emotiontags.*in.*payload/i,
-    'update_owner_memory must check emotionTags in payload'
-  );
-
-  assert.match(
-    normalized,
-    /visibility.*in.*payload/i,
-    'update_owner_memory must check visibility in payload'
-  );
+  assert.match(normalized, /title.*in.*payload/i, 'update_owner_memory must check title in payload');
+  assert.match(normalized, /memo.*in.*payload/i, 'update_owner_memory must check memo in payload');
+  assert.match(normalized, /source.*in.*payload/i, 'update_owner_memory must check source in payload');
+  assert.match(normalized, /sourceurl.*in.*payload/i, 'update_owner_memory must check sourceUrl in payload');
+  assert.match(normalized, /sourcetype.*in.*payload/i, 'update_owner_memory must check sourceType in payload');
+  assert.match(normalized, /thumbnail.*in.*payload/i, 'update_owner_memory must check thumbnail in payload');
+  assert.match(normalized, /emotiontags.*in.*payload/i, 'update_owner_memory must check emotionTags in payload');
+  assert.match(normalized, /visibility.*in.*payload/i, 'update_owner_memory must check visibility in payload');
 });
 
 test('update_owner_memory maps source URL payload fields to DB columns', () => {
@@ -677,19 +638,10 @@ test('update_owner_memory guards emotionTags via strict helper', () => {
     'update_owner_memory must persist emotion_tags only when supplied'
   );
 
-  // The strict validation contract lives in the shared helper (#3937).
   const helper = getFunctionBody(source, 'validate_emotion_tags');
   const helperNorm = compact(helper);
-  assert.match(
-    helperNorm,
-    /isinstance\(value,list\)/,
-    'validate_emotion_tags must check emotionTags is list'
-  );
-  assert.match(
-    helperNorm,
-    /len\(value\)>20/,
-    'validate_emotion_tags must guard emotionTags max 20 items'
-  );
+  assert.match(helperNorm, /isinstance\(value,list\)/, 'validate_emotion_tags must check emotionTags is list');
+  assert.match(helperNorm, /len\(value\)>20/, 'validate_emotion_tags must guard emotionTags max 20 items');
   assert.match(
     helperNorm,
     /httpexception\(status_code=400,detail="emotiontagsexceedsmaximumof20items"\)/,
@@ -726,18 +678,12 @@ test('update_owner_memory returns require_memory_owner row when no updates', () 
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /if.*not.*updates/i,
-    'update_owner_memory must check for no updates'
-  );
-
+  assert.match(normalized, /if.*not.*updates/i, 'update_owner_memory must check for no updates');
   assert.match(
     normalized,
     /require_memory_owner.*safe_memory_id.*owner_id/i,
     'update_owner_memory must return require_memory_owner row when no updates'
   );
-
   assert.match(
     normalized,
     /normalize_memory_row.*memory/i,
@@ -768,12 +714,7 @@ test('update_owner_memory raises 404 when memory not found', () => {
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /if.*not.*row/i,
-    'update_owner_memory must check if memory was updated'
-  );
-
+  assert.match(normalized, /if.*not.*row/i, 'update_owner_memory must check if memory was updated');
   assert.match(
     normalized,
     /httpexception.*404.*memory.*not.*found/i,
@@ -835,12 +776,7 @@ test('delete_owner_memory raises 404 when memory not found', () => {
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
-  assert.match(
-    normalized,
-    /if.*not.*row/i,
-    'delete_owner_memory must check if memory was deleted'
-  );
-
+  assert.match(normalized, /if.*not.*row/i, 'delete_owner_memory must check if memory was deleted');
   assert.match(
     normalized,
     /httpexception.*404.*memory.*not.*found/i,
@@ -922,55 +858,69 @@ test('post_private_memory calls create_owner_memory with legacyOwnerId and paylo
   assertRoutePassesPayload(normalized, 'create_owner_memory', 'principal.*legacyOwnerId', 'post_private_memory');
 });
 
-test('put_private_tree calls require_firebase_user', () => {
+test('put_private_tree calls require_authenticated_principal', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'put');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /require_firebase_user.*authorization/i,
-    'put_private_tree must call require_firebase_user'
+    /require_authenticated_principal.*authorization/i,
+    'put_private_tree must call require_authenticated_principal'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /require_firebase_user/,
+    'put_private_tree must not call require_firebase_user directly (#4202 principal boundary)'
   );
 });
 
-test('put_private_tree handles invalid JSON body with 400', () => {
+test('put_private_tree handles invalid JSON body with 400 and authenticates before parsing', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'put');
   const normalized = compact(body);
 
   assertRouteParsesJsonViaHelper(normalized, 'put_private_tree');
+  assert.ok(
+    normalized.indexOf('require_authenticated_principal(authorization)') < normalized.indexOf('awaitparse_json_body(request)'),
+    'put_private_tree must authenticate before parsing the request body'
+  );
 });
 
-test('put_private_tree calls update_owner_tree with user uid, tree_id, and payload', () => {
+test('put_private_tree calls update_owner_tree with legacyOwnerId, tree_id, and payload', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'put');
   const normalized = compact(body);
 
-  assertRoutePassesPayload(normalized, 'update_owner_tree', 'user.*uid.*tree_id', 'put_private_tree');
+  assertRoutePassesPayload(normalized, 'update_owner_tree', 'principal.*legacyOwnerId.*tree_id', 'put_private_tree');
 });
 
-test('delete_private_tree calls require_firebase_user', () => {
+test('delete_private_tree calls require_authenticated_principal', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'delete');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /require_firebase_user.*authorization/i,
-    'delete_private_tree must call require_firebase_user'
+    /require_authenticated_principal.*authorization/i,
+    'delete_private_tree must call require_authenticated_principal'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /require_firebase_user/,
+    'delete_private_tree must not call require_firebase_user directly (#4202 principal boundary)'
   );
 });
 
-test('delete_private_tree calls delete_owner_tree with user uid and tree_id', () => {
+test('delete_private_tree calls delete_owner_tree with legacyOwnerId and tree_id', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'delete');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /delete_owner_tree.*user.*uid.*tree_id/i,
-    'delete_private_tree must call delete_owner_tree with user uid and tree_id'
+    /delete_owner_tree.*principal.*legacyOwnerId.*tree_id/i,
+    'delete_private_tree must call delete_owner_tree with legacyOwnerId and tree_id'
   );
 });
 
@@ -1208,7 +1158,6 @@ test('create_owner_tree verifies returned owner_id before commit and rolls back 
   assert.ok(verifyIndex >= 0, 'owner verification must exist');
   assert.ok(rollbackIndex > verifyIndex, 'rollback must follow failed verification');
   assert.ok(commitIndex > verifyIndex, 'commit must come after verification');
-  // commit must not appear before the mismatch branch ends with rollback+raise
   const mismatchBlock = normalized.slice(verifyIndex, commitIndex);
   assert.match(
     mismatchBlock,
