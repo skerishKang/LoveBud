@@ -588,14 +588,53 @@ test('update_owner_memory only allows specific update fields', () => {
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
-  assert.match(normalized, /title.*in.*payload/i, 'update_owner_memory must check title in payload');
-  assert.match(normalized, /memo.*in.*payload/i, 'update_owner_memory must check memo in payload');
-  assert.match(normalized, /source.*in.*payload/i, 'update_owner_memory must check source in payload');
-  assert.match(normalized, /sourceurl.*in.*payload/i, 'update_owner_memory must check sourceUrl in payload');
-  assert.match(normalized, /sourcetype.*in.*payload/i, 'update_owner_memory must check sourceType in payload');
-  assert.match(normalized, /thumbnail.*in.*payload/i, 'update_owner_memory must check thumbnail in payload');
-  assert.match(normalized, /emotiontags.*in.*payload/i, 'update_owner_memory must check emotionTags in payload');
-  assert.match(normalized, /visibility.*in.*payload/i, 'update_owner_memory must check visibility in payload');
+  assert.match(
+    normalized,
+    /title.*in.*payload/i,
+    'update_owner_memory must check title in payload'
+  );
+
+  assert.match(
+    normalized,
+    /memo.*in.*payload/i,
+    'update_owner_memory must check memo in payload'
+  );
+
+  assert.match(
+    normalized,
+    /source.*in.*payload/i,
+    'update_owner_memory must check source in payload'
+  );
+
+  assert.match(
+    normalized,
+    /sourceurl.*in.*payload/i,
+    'update_owner_memory must check sourceUrl in payload'
+  );
+
+  assert.match(
+    normalized,
+    /sourcetype.*in.*payload/i,
+    'update_owner_memory must check sourceType in payload'
+  );
+
+  assert.match(
+    normalized,
+    /thumbnail.*in.*payload/i,
+    'update_owner_memory must check thumbnail in payload'
+  );
+
+  assert.match(
+    normalized,
+    /emotiontags.*in.*payload/i,
+    'update_owner_memory must check emotionTags in payload'
+  );
+
+  assert.match(
+    normalized,
+    /visibility.*in.*payload/i,
+    'update_owner_memory must check visibility in payload'
+  );
 });
 
 test('update_owner_memory maps source URL payload fields to DB columns', () => {
@@ -638,10 +677,19 @@ test('update_owner_memory guards emotionTags via strict helper', () => {
     'update_owner_memory must persist emotion_tags only when supplied'
   );
 
+  // The strict validation contract lives in the shared helper (#3937).
   const helper = getFunctionBody(source, 'validate_emotion_tags');
   const helperNorm = compact(helper);
-  assert.match(helperNorm, /isinstance\(value,list\)/, 'validate_emotion_tags must check emotionTags is list');
-  assert.match(helperNorm, /len\(value\)>20/, 'validate_emotion_tags must guard emotionTags max 20 items');
+  assert.match(
+    helperNorm,
+    /isinstance\(value,list\)/,
+    'validate_emotion_tags must check emotionTags is list'
+  );
+  assert.match(
+    helperNorm,
+    /len\(value\)>20/,
+    'validate_emotion_tags must guard emotionTags max 20 items'
+  );
   assert.match(
     helperNorm,
     /httpexception\(status_code=400,detail="emotiontagsexceedsmaximumof20items"\)/,
@@ -678,12 +726,18 @@ test('update_owner_memory returns require_memory_owner row when no updates', () 
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
-  assert.match(normalized, /if.*not.*updates/i, 'update_owner_memory must check for no updates');
+  assert.match(
+    normalized,
+    /if.*not.*updates/i,
+    'update_owner_memory must check for no updates'
+  );
+
   assert.match(
     normalized,
     /require_memory_owner.*safe_memory_id.*owner_id/i,
     'update_owner_memory must return require_memory_owner row when no updates'
   );
+
   assert.match(
     normalized,
     /normalize_memory_row.*memory/i,
@@ -714,7 +768,12 @@ test('update_owner_memory raises 404 when memory not found', () => {
   const body = getFunctionBody(source, 'update_owner_memory');
   const normalized = compact(body);
 
-  assert.match(normalized, /if.*not.*row/i, 'update_owner_memory must check if memory was updated');
+  assert.match(
+    normalized,
+    /if.*not.*row/i,
+    'update_owner_memory must check if memory was updated'
+  );
+
   assert.match(
     normalized,
     /httpexception.*404.*memory.*not.*found/i,
@@ -776,7 +835,12 @@ test('delete_owner_memory raises 404 when memory not found', () => {
   const body = getFunctionBody(source, 'delete_owner_memory');
   const normalized = compact(body);
 
-  assert.match(normalized, /if.*not.*row/i, 'delete_owner_memory must check if memory was deleted');
+  assert.match(
+    normalized,
+    /if.*not.*row/i,
+    'delete_owner_memory must check if memory was deleted'
+  );
+
   assert.match(
     normalized,
     /httpexception.*404.*memory.*not.*found/i,
@@ -1158,6 +1222,7 @@ test('create_owner_tree verifies returned owner_id before commit and rolls back 
   assert.ok(verifyIndex >= 0, 'owner verification must exist');
   assert.ok(rollbackIndex > verifyIndex, 'rollback must follow failed verification');
   assert.ok(commitIndex > verifyIndex, 'commit must come after verification');
+  // commit must not appear before the mismatch branch ends with rollback+raise
   const mismatchBlock = normalized.slice(verifyIndex, commitIndex);
   assert.match(
     mismatchBlock,
