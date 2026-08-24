@@ -20,8 +20,9 @@
 //     require_authenticated_principal still delegates to require_firebase_user,
 //     projects provider "firebase", and returns legacyOwnerId === providerSubject
 //     === verified UID with no email/accountId in the principal;
-//   - every OTHER route that previously called require_firebase_user still does
-//     (exact expected caller set pinned), so no unrelated route drifted;
+//   - every OTHER route that remains on the direct require_firebase_user
+//     boundary still does so (exact expected caller set pinned). #4202 moves
+//     only Tree PUT/DELETE out of this direct-caller set; Tree POST remains;
 //   - auth failure status/detail parity is carried by the unchanged
 //     require_firebase_user error contract inside modal_compute/auth.py.
 //
@@ -83,13 +84,12 @@ const MEMORY_WRITE_ROUTES = [
 ];
 
 // Exact set of other routes that must KEEP calling require_firebase_user
-// directly (pinned so the refactor cannot silently drift other surfaces).
+// directly (pinned so principal-boundary refactors cannot silently drift
+// unrelated surfaces). #4202 intentionally removes Tree PUT/DELETE only.
 const OTHER_FIREBASE_USER_ROUTES = [
   ['post_private_tree', 'post', '/modal/private/trees'],
   ['get_private_tree_capability', 'get', '/modal/private/trees/{tree_id}/capability'],
   ['post_fork_tree', 'post', '/modal/private/trees/{tree_id}/fork'],
-  ['put_private_tree', 'put', '/modal/private/trees/{tree_id}'],
-  ['delete_private_tree', 'delete', '/modal/private/trees/{tree_id}'],
   ['post_tree_like', 'post', '/modal/private/trees/{tree_id}/likes'],
   ['get_tree_likes', 'get', '/modal/private/trees/{tree_id}/likes'],
   ['post_tree_comment', 'post', '/modal/private/trees/{tree_id}/comments'],
@@ -225,19 +225,19 @@ test('7. Firebase-only verifier boundary is preserved verbatim in modal_compute/
   assert.match(firebaseUserNormalized, /status_code=503,detail="authenticationservicetemporarilyunavailable"/);
 });
 
-test('8. every other previously-Firebase-user route keeps its direct call (no drift)', () => {
+test('8. every unrelated route that remains on direct Firebase auth keeps its call (no drift)', () => {
   const source = readModalApp();
   for (const [name, method, route] of OTHER_FIREBASE_USER_ROUTES) {
     const normalized = compact(getRouteFunctionBody(source, route, method));
     assert.match(
       normalized,
       /require_firebase_user/,
-      `${name} must keep its direct require_firebase_user call (outside #4181 scope)`
+      `${name} must keep its direct require_firebase_user call (outside #4181/#4202 scope)`
     );
   }
 });
 
-test('9. exactly three require_firebase_user callers were removed from app.py', () => {
+test('9. exact direct require_firebase_user caller set excludes principal-migrated Memory writes and Tree update/delete', () => {
   const source = readModalApp();
   const callerPattern = /@web_app\.(get|post|put|delete)\("([^"]+)"[\s\S]*?(?:async\s+)?def\s+(\w+)\s*\([^)]*\)[\s\S]*?(?=@web_app\.|$)/g;
   const callers = [];
@@ -247,5 +247,5 @@ test('9. exactly three require_firebase_user callers were removed from app.py', 
   }
   const expectedCallers = OTHER_FIREBASE_USER_ROUTES.map(([name]) => name).sort();
   assert.deepEqual(callers.sort(), expectedCallers,
-    'the exact require_firebase_user caller set must be previous set minus the three Memory write routes');
+    'the exact require_firebase_user caller set must exclude #4181 Memory writes and #4202 Tree update/delete');
 });

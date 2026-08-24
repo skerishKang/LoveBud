@@ -462,9 +462,9 @@ async def put_private_tree(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
+    principal = require_authenticated_principal(authorization)
     payload = await parse_json_body(request)
-    return update_owner_tree(user["uid"], tree_id, payload)
+    return update_owner_tree(principal["legacyOwnerId"], tree_id, payload)
 
 
 @web_app.delete("/modal/private/trees/{tree_id}")
@@ -472,8 +472,8 @@ def delete_private_tree(
     tree_id: str,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
-    return delete_owner_tree(user["uid"], tree_id)
+    principal = require_authenticated_principal(authorization)
+    return delete_owner_tree(principal["legacyOwnerId"], tree_id)
 
 
 @web_app.post("/modal/private/trees/{tree_id}/likes")
