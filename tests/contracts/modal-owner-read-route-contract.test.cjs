@@ -210,13 +210,18 @@ test('get_private_memory_detail uses the canonical principal owner id and preser
   assert.doesNotMatch(normalized, /user\["uid"\]/, 'Memory detail must not bypass principal owner authority');
 });
 
-test('Tree create keeps the existing Firebase user contract because verified email metadata is still required', () => {
+test('Tree create uses the canonical authenticated principal without email authority (#4204)', () => {
   const body = getTopLevelFunction(readModalApp(), 'post_private_tree');
   const normalized = compact(body);
 
-  assert.match(normalized, /user=require_firebase_user\(authorization\)/, 'post_private_tree must preserve existing Firebase user auth');
-  assert.match(normalized, /owner_email=user\.get\("email"\)or""/, 'post_private_tree must preserve verified email metadata forwarding');
-  assert.doesNotMatch(normalized, /require_authenticated_principal/, 'Tree create remains outside #4202 until its email metadata boundary is redesigned');
+  assert.match(normalized, /principal=require_authenticated_principal\(authorization\)/, 'post_private_tree must use the authenticated principal boundary (#4204)');
+  assert.match(
+    normalized,
+    /create_owner_tree\(principal\["legacyownerid"\],payload,owner_email="",?\)/,
+    'post_private_tree must use principal.legacyOwnerId and disable opportunistic email refresh'
+  );
+  assert.doesNotMatch(normalized, /require_firebase_user/, 'post_private_tree must not call require_firebase_user directly (#4204)');
+  assert.doesNotMatch(normalized, /user\["uid"\]|providersubject|accountid|\["email"\]/, 'Tree create must not use non-legacy owner authority or email metadata');
 });
 
 test('Tree update/delete writes route through the authenticated principal boundary (#4202)', () => {
