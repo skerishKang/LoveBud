@@ -1,0 +1,39 @@
+name: PR Fast Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pr-fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build check
+        run: npm run build
+
+      - name: Fast smoke and route tests
+        run: node scripts/ci-smoke-runner.cjs node scripts/ci-fast-test-runner.cjs
+
+      - name: Verify
+        run: npm run verify
