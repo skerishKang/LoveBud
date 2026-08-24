@@ -41,9 +41,9 @@ jobs:
       - name: Run route tests
         run: node --test tests/routes/*.test.cjs
 
-  profile-contracts-shard:
+  profile-contract-files:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -58,11 +58,12 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
-      - name: Run contract shard
+      - name: Run contract files independently
         shell: bash
         env:
           SHARD: ${{ matrix.shard }}
         run: |
+          set -uo pipefail
           mapfile -t files < <(find tests/contracts -maxdepth 1 -type f -name '*.test.cjs' -print | sort)
           selected=()
           for i in "${!files[@]}"; do
@@ -70,7 +71,34 @@ jobs:
               selected+=("${files[$i]}")
             fi
           done
-          printf 'contract shard %s: %s files\n' "$SHARD" "${#selected[@]}"
-          printf '%s\n' "${selected[@]}"
-          test "${#selected[@]}" -gt 0
-          node --test "${selected[@]}"
+
+          printf 'contract file-profile shard %s: %s files\n' "$SHARD" "${#selected[@]}"
+          test "${#selected[@]}" -gt 0 || exit 2
+
+          failures=0
+          for file in "${selected[@]}"; do
+            echo "::group::$file"
+            started_ms=$(date +%s%3N)
+            timeout --signal=TERM --kill-after=5s 60s node --test "$file"
+            code=$?
+            ended_ms=$(date +%s%3N)
+            elapsed_ms=$((ended_ms - started_ms))
+
+            if (( code == 0 )); then
+              status=PASS
+            elif (( code == 124 || code == 137 )); then
+              status=TIMEOUT
+              failures=$((failures + 1))
+            else
+              status="EXIT_${code}"
+              failures=$((failures + 1))
+            fi
+
+            printf 'CONTRACT_FILE_PROFILE shard=%s file=%s status=%s exit=%s elapsed_ms=%s\n' \
+              "$SHARD" "$file" "$status" "$code" "$elapsed_ms"
+            echo "::endgroup::"
+          done
+
+          printf 'CONTRACT_FILE_PROFILE_SUMMARY shard=%s files=%s failures=%s\n' \
+            "$SHARD" "${#selected[@]}" "$failures"
+          test "$failures" -eq 0
