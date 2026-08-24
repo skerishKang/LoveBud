@@ -406,12 +406,12 @@ async def post_private_tree(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
+    principal = require_authenticated_principal(authorization)
     payload = await parse_json_body(request)
     return create_owner_tree(
-        user["uid"],
+        principal["legacyOwnerId"],
         payload,
-        owner_email=user.get("email") or "",
+        owner_email="",
     )
 
 
