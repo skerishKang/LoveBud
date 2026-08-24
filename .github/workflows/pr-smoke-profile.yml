@@ -77,9 +77,23 @@ jobs:
           printf 'contract file-profile shard %s: %s files\n' "$SHARD" "${#selected[@]}"
           test "${#selected[@]}" -gt 0 || exit 2
 
+          profile_file="$RUNNER_TEMP/contract-profile-shard-${SHARD}.tsv"
+          printf 'record\tshard\tfile\tstatus\texit\telapsed_ms\n' > "$profile_file"
+          for file in "${selected[@]}"; do
+            printf 'SELECTED\t%s\t%s\t\t\t\n' "$SHARD" "$file" >> "$profile_file"
+          done
+
+          {
+            printf '### Contract file profile — shard %s\n\n' "$SHARD"
+            printf 'Selected files: **%s**\n\n' "${#selected[@]}"
+            printf '| file | status | exit | elapsed_ms |\n'
+            printf '|---|---:|---:|---:|\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
           failures=0
           for file in "${selected[@]}"; do
             echo "::group::$file"
+            printf 'CONTRACT_FILE_PROFILE_START shard=%s file=%s\n' "$SHARD" "$file"
             started_ms=$(date +%s%3N)
             set +e
             timeout --signal=TERM --kill-after=5s 60s node --test "$file"
@@ -100,9 +114,22 @@ jobs:
 
             printf 'CONTRACT_FILE_PROFILE shard=%s file=%s status=%s exit=%s elapsed_ms=%s\n' \
               "$SHARD" "$file" "$status" "$code" "$elapsed_ms"
+            printf 'RESULT\t%s\t%s\t%s\t%s\t%s\n' \
+              "$SHARD" "$file" "$status" "$code" "$elapsed_ms" >> "$profile_file"
+            printf '| `%s` | %s | %s | %s |\n' \
+              "$file" "$status" "$code" "$elapsed_ms" >> "$GITHUB_STEP_SUMMARY"
             echo "::endgroup::"
           done
 
           printf 'CONTRACT_FILE_PROFILE_SUMMARY shard=%s files=%s failures=%s\n' \
             "$SHARD" "${#selected[@]}" "$failures"
+          printf '\nFailures: **%s**\n' "$failures" >> "$GITHUB_STEP_SUMMARY"
           test "$failures" -eq 0
+      - name: Upload contract profile results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-profile-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/contract-profile-shard-${{ matrix.shard }}.tsv
+          if-no-files-found: error
+          retention-days: 7
