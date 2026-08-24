@@ -57,6 +57,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+
       - name: Classify DB impact
         id: classify
         shell: bash
