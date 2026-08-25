@@ -33,9 +33,9 @@
 #                                     credential, no synthetic capability
 #   3. disabled Provider evidence ... prove Worker/DO initialization, fetch 404,
 #                                     and zero read capability while sentinel OFF
-#   4. Cron attachment .............. separate owner-approved trigger/config
-#                                     change to `*/5 * * * *`; never implied by
-#                                     stage 2
+#   4. Cron attachment .............. separate owner-approved config mutation
+#                                     to the target schedule, followed by an
+#                                     explicit deploy; never implied by stage 2
 #   5. read-only sentinel ........... separate approval for
 #                                     RELIABILITY_READ_ONLY_SENTINEL_ENABLED=true
 #   6. alert delivery ............... separate provider/secret approval plus
@@ -43,6 +43,12 @@
 #   7. Production ................... explicit owner/Web-CTO authority only
 #
 # Do NOT use `wrangler versions upload` for this `exports`-based configuration.
+# `wrangler triggers deploy` is the separate trigger command used with the
+# versions-upload flow; it is retained here only as an explicit non-selected
+# compatibility reference and is NOT the #4225 exports-based deployment path.
+# Future owner-approved target config example (COMMENT ONLY; not active):
+# crons = ["*/5 * * * *"]
+#
 # Release provenance remains externally injected through
 # RELIABILITY_PREVIEW_RELEASE_SHA (exact 40-hex full deployed revision) and
 # invalid provenance fails closed before any capability use.
@@ -73,7 +79,7 @@ class_name = "ReliabilityPreviewStore"
 # Fail-closed base Provider deployment state (#4225). A normal Wrangler deploy
 # replaces Cron Triggers with this array, so explicit [] guarantees the initial
 # disabled NONPROD Worker/DO deployment cannot silently attach a schedule.
-# The future `*/5 * * * *` Cron requires a separate owner-approved mutation.
+# The future five-minute Cron requires a separate owner-approved mutation.
 [env.reliability-preview.triggers]
 crons = []
 
