@@ -259,11 +259,14 @@ test('memory write routes route through the authenticated principal boundary (#4
   }
 });
 
-test('non-core owner capability route remains outside the bounded owner-read migration', () => {
+test('Tree capability routes through the authenticated principal boundary (#4206)', () => {
   const body = getTopLevelFunction(readModalApp(), 'get_private_tree_capability');
   const normalized = compact(body);
 
-  assert.match(normalized, /user=require_firebase_user\(authorization\)/, 'capability route must preserve existing Firebase auth behavior');
-  assert.match(normalized, /fetch_owner_tree\(safe_tree_id,user\["uid"\]\)/, 'capability route must preserve current Firebase uid behavior');
-  assert.doesNotMatch(normalized, /require_authenticated_principal/, 'capability route must stay outside #4096 exact owner-read scope');
+  assert.match(normalized, /principal=require_authenticated_principal\(authorization\)/, 'capability route must use the authenticated principal boundary (#4206)');
+  assert.match(normalized, /validate_required_id\(tree_id,"treeid"\)/, 'capability route must preserve treeId validation');
+  assert.match(normalized, /fetch_owner_tree\(safe_tree_id,principal\["legacyownerid"\]\)/, 'capability route must use principal.legacyOwnerId as owner authority');
+  assert.match(normalized, /"viewercanedit":treeisnotnone/, 'capability response contract must remain viewerCanEdit boolean');
+  assert.doesNotMatch(normalized, /require_firebase_user/, 'capability route must not call require_firebase_user directly (#4206)');
+  assert.doesNotMatch(normalized, /user\["uid"\]|providersubject|accountid|email/, 'capability route must not use non-legacy owner authority');
 });

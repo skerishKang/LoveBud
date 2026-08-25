@@ -109,8 +109,12 @@ test('2. authenticated owner capability route lookup structure', () => {
   const fn = getPythonFunction(src, 'get_private_tree_capability');
   assert.ok(fn.length > 0, 'get_private_tree_capability must exist');
   const norm = compact(fn);
-  assert.match(norm, /require_firebase_user\(authorization\)/, 'must authenticate firebase token');
-  assert.match(norm, /fetch_owner_tree\(safe_tree_id,user\["uid"\]\)/, 'must perform owner database query');
+  assert.match(norm, /require_authenticated_principal\(authorization\)/, 'must authenticate through canonical principal');
+  assert.match(norm, /validate_required_id\(tree_id,"treeid"\)/, 'must preserve required treeId validation');
+  assert.match(norm, /fetch_owner_tree\(safe_tree_id,principal\["legacyownerid"\]\)/, 'must perform owner database query with principal.legacyOwnerId');
+  assert.doesNotMatch(norm, /require_firebase_user/, 'capability route must not call require_firebase_user directly');
+  assert.doesNotMatch(norm, /user\["uid"\]/, 'capability route must not use raw Firebase uid owner authority');
+  assert.doesNotMatch(norm, /providersubject|accountid|email/, 'capability route must not use providerSubject/accountId/email as owner authority');
   assert.match(norm, /"viewercanedit":treeisnotnone/, 'must return viewerCanEdit boolean');
 });
 
