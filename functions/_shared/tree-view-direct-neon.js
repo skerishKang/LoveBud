@@ -32,7 +32,6 @@ export const TREE_VIEW_FORBIDDEN_FALLBACK_ENVS = Object.freeze([
   'DIRECT_NEON_BROWSE_DATABASE_URL'
 ]);
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ALLOWED_ACTOR_KIND = 'anonymous';
 const ALLOWED_SOURCE = 'public_tree_detail';
 
@@ -95,12 +94,12 @@ function jsonResponse(body, status, requestId, routeStatus = null) {
 }
 
 function validateTreeId(rawTreeId) {
-  const treeId = String(rawTreeId || '').trim();
-  if (!treeId) return { ok: false, status: 400, detail: 'Tree ID is required' };
-  if (!UUID_PATTERN.test(treeId)) {
-    return { ok: false, status: 400, detail: 'Tree ID must be a valid UUID' };
+  // Preserve Modal validation.py::validate_required_id exactly: Tree IDs are
+  // required non-empty strings, but legacy/non-UUID string IDs remain valid.
+  if (typeof rawTreeId !== 'string' || !rawTreeId.trim()) {
+    return { ok: false, status: 400, detail: 'Tree ID is required' };
   }
-  return { ok: true, value: treeId };
+  return { ok: true, value: rawTreeId.trim() };
 }
 
 function validateAuthority(authority) {
