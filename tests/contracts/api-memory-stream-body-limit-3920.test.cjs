@@ -501,3 +501,383 @@ test('P. invalid-but-parseable Content-Length + small stream accepted, Modal cal
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// #4221 Memory reaction direct-Neon executed-fake coverage
+// ---------------------------------------------------------------------------
+
+const DIRECT_MEMORY_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const DIRECT_MEMORY_ID_HEX = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const DIRECT_REACTION_URL = `https://t.lovebud.pages.dev/api/memories/${DIRECT_MEMORY_ID}/reactions`;
+const DIRECT_WRITE_URL = 'postgresql://ep-reaction-test.us-east-2.aws.neon.tech/neondb?sslmode=require';
+const DIRECT_ENV = Object.freeze({
+  LB_MEMORY_REACTION_WRITE_RUNTIME: 'direct_neon',
+  LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_WRITE_URL,
+});
+
+function reactionRequest({ body = JSON.stringify({ type: 'like' }), memoryId = DIRECT_MEMORY_ID, headers = {} } = {}) {
+  return new Request(`https://t.lovebud.pages.dev/api/memories/${memoryId}/reactions`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer verified-token',
+      'Idempotency-Key': VALID_KEY,
+      ...headers,
+    },
+    body,
+  });
+}
+
+function makeReactionTransaction({
+  ownerId = 'actor-1',
+  treeOwnerId = 'someone-else',
+  memVisibility = 'public',
+  treeVisibility = 'public',
+  targetExists = true,
+  existingReaction = false,
+  counts = [{ type: 'like', count: 1 }],
+  replayPayload = null,
+  replayState = null,
+} = {}) {
+  const logs = [];
+  const tx = {
+    async query(text, values = []) {
+      logs.push({ text, values: Array.isArray(values) ? [...values] : values });
+
+      if (text.includes('pg_advisory_xact_lock')) return [];
+      if (text.includes('FROM memories m') && text.includes('FOR SHARE OF m, t')) {
+        return targetExists
+          ? [{
+              id: DIRECT_MEMORY_ID,
+              tree_id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+              mem_visibility: memVisibility,
+              tree_owner_id: treeOwnerId,
+              tree_visibility: treeVisibility,
+            }]
+          : [];
+      }
+      if (text.includes('INSERT INTO social_idempotency')) {
+        if (replayState) {
+          return [{
+            id: 'idem-existing',
+            target_memory_id: values[5],
+            result_id: 'reaction-stored',
+            result_state: replayState,
+            request_fingerprint: values[4],
+            result_payload: replayPayload,
+          }];
+        }
+        return [{
+          id: values[0],
+          target_memory_id: values[5],
+          result_id: values[6],
+          result_state: 'pending',
+          request_fingerprint: values[4],
+          result_payload: null,
+        }];
+      }
+      if (text.includes('SELECT id FROM reactions')) {
+        return existingReaction ? [{ id: 'reaction-existing' }] : [];
+      }
+      if (text.includes('SELECT type, COUNT(*)::int AS count')) return counts;
+      return [];
+    },
+  };
+  const adapter = {
+    async runTransaction(work) {
+      return { value: await work(tx) };
+    },
+  };
+  return { tx, adapter, logs, ownerId };
+}
+
+function findLog(logs, pattern) {
+  return logs.findIndex((entry) => entry.text.includes(pattern));
+}
+
+async function expectedSha256(text) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Buffer.from(digest).toString('hex');
+}
+
+test('Q. #4221 direct gate is explicit and default/modal/unknown remain non-direct', async () => {
+  const mod = await import('../../functions/_shared/memory-reaction-direct-neon.js');
+  assert.equal(mod.isMemoryReactionDirectNeonSelected({}), false);
+  assert.equal(mod.isMemoryReactionDirectNeonSelected({ LB_MEMORY_REACTION_WRITE_RUNTIME: 'modal' }), false);
+  assert.equal(mod.isMemoryReactionDirectNeonSelected({ LB_MEMORY_REACTION_WRITE_RUNTIME: 'unknown' }), false);
+  assert.equal(mod.isMemoryReactionDirectNeonSelected(DIRECT_ENV), true);
+  assert.equal(mod.isMemoryReactionDirectNeonRequest(reactionRequest()), true);
+  assert.equal(mod.isMemoryReactionDirectNeonRequest(new Request(DIRECT_REACTION_URL, { method: 'GET' })), false);
+});
+
+test('R. #4221 direct POST executes without MODAL_BASE_URL and preserves transaction ordering', async () => {
+  const { onRequestPost } = await loadReactions();
+  const fake = makeReactionTransaction();
+  const request = reactionRequest({ headers: { 'x-owner-id': 'forged-browser-owner' } });
+
+  const { result, captured } = await withMockFetch(() => onRequestPost({
+    request,
+    env: { ...DIRECT_ENV },
+    params: { id: DIRECT_MEMORY_ID },
+    directNeonTestOverrides: {
+      verifyTokenOverride: async () => ({ uid: fake.ownerId }),
+      transactionAdapterOverride: fake.adapter,
+    },
+  }));
+
+  assert.equal(result.status, 200);
+  assert.equal(captured.calls, 0, 'direct mode must not call Modal');
+  assert.deepEqual(await result.json(), { type: 'like', active: true, counts: { like: 1 }, total: 1 });
+  assert.equal(result.headers.get('x-lovebud-runtime'), 'direct_neon');
+
+  const lock = findLog(fake.logs, 'pg_advisory_xact_lock');
+  const auth = findLog(fake.logs, 'FROM memories m');
+  const idem = findLog(fake.logs, 'INSERT INTO social_idempotency');
+  const mutation = findLog(fake.logs, 'INSERT INTO reactions');
+  const count = findLog(fake.logs, 'SELECT type, COUNT(*)::int AS count');
+  const complete = findLog(fake.logs, 'UPDATE social_idempotency');
+  const audit = findLog(fake.logs, 'INSERT INTO social_audit_log');
+  assert.ok(lock >= 0 && auth > lock && idem > auth && mutation > idem && count > mutation && complete > count && audit > complete);
+
+  const idemLog = fake.logs[idem];
+  assert.equal(idemLog.values[1], fake.ownerId, 'verified Firebase UID must be actor authority');
+  assert.notEqual(idemLog.values[1], 'forged-browser-owner');
+});
+
+test('S. #4221 owner may react to own private Memory while non-owner private access is leak-safe 404', async () => {
+  const mod = await import('../../functions/_shared/memory-reaction-direct-neon.js');
+
+  const ownerFake = makeReactionTransaction({
+    treeOwnerId: 'actor-1',
+    memVisibility: 'private',
+    treeVisibility: 'private',
+  });
+  const ownerResponse = await mod.handleMemoryReactionDirectNeon(
+    reactionRequest(),
+    DIRECT_ENV,
+    {
+      memoryIdOverride: DIRECT_MEMORY_ID,
+      idempotencyKeyOverride: VALID_KEY,
+      bodyBytesOverride: Buffer.from(JSON.stringify({ type: 'like' })),
+      verifyTokenOverride: async () => ({ uid: 'actor-1' }),
+      transactionAdapterOverride: ownerFake.adapter,
+    },
+  );
+  assert.equal(ownerResponse.status, 200);
+
+  const nonOwnerFake = makeReactionTransaction({
+    treeOwnerId: 'owner-2',
+    memVisibility: 'private',
+    treeVisibility: 'public',
+  });
+  const nonOwnerResponse = await mod.handleMemoryReactionDirectNeon(
+    reactionRequest(),
+    DIRECT_ENV,
+    {
+      memoryIdOverride: DIRECT_MEMORY_ID,
+      idempotencyKeyOverride: VALID_KEY,
+      bodyBytesOverride: Buffer.from(JSON.stringify({ type: 'like' })),
+      verifyTokenOverride: async () => ({ uid: 'actor-1' }),
+      transactionAdapterOverride: nonOwnerFake.adapter,
+    },
+  );
+  assert.equal(nonOwnerResponse.status, 404);
+  assert.deepEqual(await nonOwnerResponse.json(), { detail: 'Memory not found' });
+  assert.equal(findLog(nonOwnerFake.logs, 'INSERT INTO social_idempotency'), -1, 'inaccessible target must fail before idempotency mutation');
+  assert.equal(findLog(nonOwnerFake.logs, 'INSERT INTO reactions'), -1, 'inaccessible target must fail before reaction mutation');
+});
+
+test('T. #4221 existing reaction toggles off and returns canonical aggregate DTO', async () => {
+  const mod = await import('../../functions/_shared/memory-reaction-direct-neon.js');
+  const fake = makeReactionTransaction({ existingReaction: true, counts: [] });
+  const response = await mod.handleMemoryReactionDirectNeon(
+    reactionRequest(),
+    DIRECT_ENV,
+    {
+      memoryIdOverride: DIRECT_MEMORY_ID,
+      idempotencyKeyOverride: VALID_KEY,
+      bodyBytesOverride: Buffer.from('{"type":"like"}'),
+      verifyTokenOverride: async () => ({ uid: fake.ownerId }),
+      transactionAdapterOverride: fake.adapter,
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { type: 'like', active: false, counts: {}, total: 0 });
+  assert.ok(findLog(fake.logs, 'DELETE FROM reactions') >= 0);
+  assert.equal(findLog(fake.logs, 'INSERT INTO reactions'), -1);
+});
+
+test('U. #4221 same-key completed replay returns stored DTO without second toggle', async () => {
+  const mod = await import('../../functions/_shared/memory-reaction-direct-neon.js');
+  const stored = { type: 'like', active: true, counts: { like: 3 }, total: 3 };
+  const fake = makeReactionTransaction({ replayState: 'completed', replayPayload: stored });
+  const response = await mod.handleMemoryReactionDirectNeon(
+    reactionRequest(),
+    DIRECT_ENV,
+    {
+      memoryIdOverride: DIRECT_MEMORY_ID,
+      idempotencyKeyOverride: VALID_KEY,
+      bodyBytesOverride: Buffer.from('{"type":"like"}'),
+      verifyTokenOverride: async () => ({ uid: fake.ownerId }),
+      transactionAdapterOverride: fake.adapter,
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), stored);
+  assert.equal(findLog(fake.logs, 'SELECT id FROM reactions'), -1, 'replay must not inspect/apply a second toggle');
+  assert.equal(findLog(fake.logs, 'INSERT INTO reactions'), -1);
+  assert.equal(findLog(fake.logs, 'DELETE FROM reactions'), -1);
+  const audit = fake.logs.find((entry) => entry.text.includes('INSERT INTO social_audit_log'));
+  assert.equal(audit.values[3], 'reaction.toggle.replay');
+});
+
+test('V. #4221 Firebase verification failure occurs before DB transaction acquisition', async () => {
+  const mod = await import('../../functions/_shared/memory-reaction-direct-neon.js');
+  let transactionCalls = 0;
+  const response = await mod.handleMemoryReactionDirectNeon(
+    reactionRequest(),
+    DIRECT_ENV,
+    {
+      memoryIdOverride: DIRECT_MEMORY_ID,
+      idempotencyKeyOverride: VALID_KEY,
+      bodyBytesOverride: Buffer.from('{"type":"like"}'),
+      verifyTokenOverride: async () => null,
+      transactionAdapterOverride: {
+        async runTransaction() {
+          transactionCalls += 1;
+          throw new Error('must not run');
+        },
+      },
+    },
+  );
+  assert.equal(response.status, 401);
+  assert.equal(transactionCalls, 0);
+});
+
+test('W. #4221 generic/read DB URL cannot substitute for dedicated writer config', async () => {
+  const mod = await import('../../functions/_shared/memory-reaction-direct-neon.js');
+  const env = {
+    LB_MEMORY_REACTION_WRITE_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_DATABASE_URL: DIRECT_WRITE_URL,
+  };
+  assert.equal(mod.readMemoryReactionWriteConfig(env).configured, false);
+  assert.equal(mod.detectForbiddenMemoryReactionWriterFallback(env).name, 'LOVE_PLATFORM_DATABASE_URL');
+  const response = await mod.handleMemoryReactionDirectNeon(
+    reactionRequest(),
+    env,
+    {
+      memoryIdOverride: DIRECT_MEMORY_ID,
+      idempotencyKeyOverride: VALID_KEY,
+      bodyBytesOverride: Buffer.from('{"type":"like"}'),
+      verifyTokenOverride: async () => ({ uid: 'actor-1' }),
+    },
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK');
+});
+
+test('X. #4221 unknown COMMIT outcome is explicit 502 and never falls back to Modal', async () => {
+  const { onRequestPost } = await loadReactions();
+  const txMod = await import('../../functions/_shared/db/neon-ws-transaction-adapter.js');
+  const request = reactionRequest();
+  const { result, captured } = await withMockFetch(() => onRequestPost({
+    request,
+    env: { ...DIRECT_ENV },
+    params: { id: DIRECT_MEMORY_ID },
+    directNeonTestOverrides: {
+      verifyTokenOverride: async () => ({ uid: 'actor-1' }),
+      transactionAdapterOverride: {
+        async runTransaction() {
+          throw new txMod.NeonWsTransactionError(
+            txMod.NEON_WS_TRANSACTION_ERROR.COMMIT_OUTCOME_UNKNOWN,
+            'COMMIT_OUTCOME_UNKNOWN'
+          );
+        },
+      },
+    },
+  }));
+  assert.equal(result.status, 502);
+  assert.equal((await result.json()).code, 'COMMIT_OUTCOME_UNKNOWN');
+  assert.equal(captured.calls, 0, 'unknown commit must not fall back to Modal');
+});
+
+test('Y. #4221 Python-compatible UUID normalization accepts 32-hex and emits canonical UUID', async () => {
+  const mod = await import('../../functions/_shared/memory-reaction-direct-neon.js');
+  const fake = makeReactionTransaction();
+  const response = await mod.handleMemoryReactionDirectNeon(
+    reactionRequest({ memoryId: DIRECT_MEMORY_ID_HEX }),
+    DIRECT_ENV,
+    {
+      memoryIdOverride: DIRECT_MEMORY_ID_HEX,
+      idempotencyKeyOverride: VALID_KEY,
+      bodyBytesOverride: Buffer.from('{"type":"like"}'),
+      verifyTokenOverride: async () => ({ uid: fake.ownerId }),
+      transactionAdapterOverride: fake.adapter,
+    },
+  );
+  assert.equal(response.status, 200);
+  const auth = fake.logs.find((entry) => entry.text.includes('FROM memories m'));
+  assert.equal(auth.values[0], DIRECT_MEMORY_ID);
+});
+
+test('Z. #4221 idempotency fingerprint matches Python json.dumps spacing, not compact JSON.stringify', async () => {
+  const mod = await import('../../functions/_shared/memory-reaction-direct-neon.js');
+  const fake = makeReactionTransaction();
+  const response = await mod.handleMemoryReactionDirectNeon(
+    reactionRequest(),
+    DIRECT_ENV,
+    {
+      memoryIdOverride: DIRECT_MEMORY_ID,
+      idempotencyKeyOverride: VALID_KEY,
+      bodyBytesOverride: Buffer.from('{"type":"LIKE"}'),
+      verifyTokenOverride: async () => ({ uid: fake.ownerId }),
+      transactionAdapterOverride: fake.adapter,
+    },
+  );
+  assert.equal(response.status, 200);
+  const idem = fake.logs.find((entry) => entry.text.includes('INSERT INTO social_idempotency'));
+  const pythonFingerprint = await expectedSha256('{"type": "like"}');
+  const compactFingerprint = await expectedSha256('{"type":"like"}');
+  assert.equal(idem.values[4], pythonFingerprint);
+  assert.notEqual(idem.values[4], compactFingerprint);
+});
+
+test('AA. #4221 direct gate affects POST only; GET remains the existing Modal path', async () => {
+  const { onRequestGet } = await loadReactions();
+  const request = new Request(DIRECT_REACTION_URL, {
+    method: 'GET',
+    headers: { authorization: 'Bearer test-token' },
+  });
+  const { result, captured } = await withMockFetch(() => onRequestGet({
+    request,
+    env: { ...DIRECT_ENV, MODAL_BASE_URL: 'https://modal.test' },
+    params: { id: DIRECT_MEMORY_ID },
+  }));
+  assert.equal(result.status, 200);
+  assert.equal(captured.calls, 1);
+  assert.ok(captured.url.includes(`/modal/private/memories/${DIRECT_MEMORY_ID}/reactions`));
+});
+
+test('AB. #4221 invalid direct JSON fails after auth but before DB transaction', async () => {
+  const { onRequestPost } = await loadReactions();
+  let transactionCalls = 0;
+  const request = reactionRequest({ body: '{' });
+  const { result, captured } = await withMockFetch(() => onRequestPost({
+    request,
+    env: { ...DIRECT_ENV },
+    params: { id: DIRECT_MEMORY_ID },
+    directNeonTestOverrides: {
+      verifyTokenOverride: async () => ({ uid: 'actor-1' }),
+      transactionAdapterOverride: {
+        async runTransaction() {
+          transactionCalls += 1;
+          throw new Error('must not run');
+        },
+      },
+    },
+  }));
+  assert.equal(result.status, 400);
+  assert.deepEqual(await result.json(), { detail: 'Invalid JSON body' });
+  assert.equal(transactionCalls, 0);
+  assert.equal(captured.calls, 0);
+});
