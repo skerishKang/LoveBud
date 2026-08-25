@@ -10,40 +10,44 @@
 # [[env.<name>.migrations]] are intentionally NOT used together with exports
 # (exports and migrations are mutually exclusive; a config carrying both is
 # rejected at validation). A first deployment of the live exports entry
-# provisions the namespace; `wrangler versions upload` does NOT apply
-# Durable Object lifecycle changes — only `wrangler deploy` does.
+# provisions the namespace. Current Cloudflare semantics also reject
+# `wrangler versions upload` when `exports` entries are present: lifecycle
+# changes must be applied through `wrangler deploy`.
 #
-# #4175 reconciliation — Provider Preview preparation is documented as
-# SEPARATE stages. Stage 1 source validation (including the dry-run command)
-# was completed locally with zero provider mutation. Stages 2-7 were not
-# executed by the source-only lane; each requires owner/Web-CTO approval:
+# #4225 correction — provider resource creation and Cron attachment remain
+# SEPARATE owner gates. A normal `wrangler deploy` applies the config's Cron
+# state, so the checked-in base NONPROD config MUST explicitly declare
+# `crons = []`. Omitting `triggers`/`crons` is not equivalent: undefined leaves
+# previously deployed Cron Triggers in place. The future */5 schedule may only
+# be attached after a separate owner approval and must not be committed as the
+# base deployment state.
 #
-#   1. source validation ............ local focused tests + pinned-Wrangler
+# Corrected Provider Preview ladder:
+#
+#   1. source validation ............ focused tests + pinned-Wrangler
 #                                     `deploy --dry-run --outdir <temp>` only
-#   2. version upload approval ...... `wrangler versions upload` (uploads a
-#                                     Version; NO traffic, NO triggers)
-#   3. disabled Provider deployment approval ... first `wrangler deploy` of
-#                                     this config (provisions the SQLite DO
-#                                     namespace; all kill switches still
-#                                     default DISABLED)
-#   4. trigger attachment approval .. `wrangler triggers deploy` (attaches the
-#                                     */5 cron; trigger changes may take up
-#                                     to ~15 minutes to propagate) — a
-#                                     SEPARATE command from version upload,
-#                                     kept as its own explicit gate
-#   5. read-only sentinel approval .. RELIABILITY_READ_ONLY_SENTINEL_ENABLED="true"
-#   6. alert delivery approval ...... RELIABILITY_ALERT_DELIVERY_ENABLED="true"
-#                                     (+ separately approved provider/secret)
-#   7. Production approval .......... explicit owner/Web-CTO authority
+#   2. disabled Provider deploy ..... owner-approved `wrangler deploy` using
+#                                     this config; SQLite DO lifecycle may be
+#                                     provisioned, but `crons = []`, read-only
+#                                     sentinel OFF, alert OFF, no Production DB
+#                                     credential, no synthetic capability
+#   3. disabled Provider evidence ... prove Worker/DO initialization, fetch 404,
+#                                     and zero read capability while sentinel OFF
+#   4. Cron attachment .............. separate owner-approved trigger/config
+#                                     change to `*/5 * * * *`; never implied by
+#                                     stage 2
+#   5. read-only sentinel ........... separate approval for
+#                                     RELIABILITY_READ_ONLY_SENTINEL_ENABLED=true
+#   6. alert delivery ............... separate provider/secret approval plus
+#                                     RELIABILITY_ALERT_DELIVERY_ENABLED=true
+#   7. Production ................... explicit owner/Web-CTO authority only
 #
-# Stage 2 (`versions upload`) and stage 4 (`triggers deploy`) are distinct
-# Cloudflare commands with a hard boundary between them: uploading a Version
-# never attaches or changes a Cron trigger. The release provenance variable
-# RELIABILITY_PREVIEW_RELEASE_SHA (exact 40-hex full SHA of the deployed
-# revision, injected at deploy time — never hard-coded in source) must carry a
-# VALID value before any enabled run; invalid provenance fails closed.
+# Do NOT use `wrangler versions upload` for this `exports`-based configuration.
+# Release provenance remains externally injected through
+# RELIABILITY_PREVIEW_RELEASE_SHA (exact 40-hex full deployed revision) and
+# invalid provenance fails closed before any capability use.
 #
-# Refs #4148/#4149. Refs #4082. Refs #4175.
+# Refs #4148/#4149. Refs #4082. Refs #4175. Refs #4225.
 # Refs #3461 — Keep OPEN. Refs #1882 — Keep OPEN.
 
 name = "lovebud"
@@ -66,11 +70,12 @@ storage = "sqlite"
 name = "RELIABILITY_PREVIEW_STORE"
 class_name = "ReliabilityPreviewStore"
 
-# Environment-specific Cron trigger (current Wrangler shape: [triggers] + crons).
-# DECLARATION ONLY — attachment is stage 4 above and is NOT performed by this
-# source-only package.
+# Fail-closed base Provider deployment state (#4225). A normal Wrangler deploy
+# replaces Cron Triggers with this array, so explicit [] guarantees the initial
+# disabled NONPROD Worker/DO deployment cannot silently attach a schedule.
+# The future `*/5 * * * *` Cron requires a separate owner-approved mutation.
 [env.reliability-preview.triggers]
-crons = ["*/5 * * * *"]
+crons = []
 
 # Workers Logs observability (current schema: [observability] enabled +
 # optional head_sampling_rate 0..1, default 1). DECLARATION ONLY — it takes
