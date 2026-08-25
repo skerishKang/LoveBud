@@ -441,13 +441,64 @@ test('#4217 payload validator pins revision, mode, manual-position bounds, dupli
       baseRevision: 0,
       manualPositions: [
         {
+          memoryId: 'wrong-type',
+          position: { x: 'nope', y: 0 }
+        }
+      ]
+    }),
+    (error) => error.message ===
+      'manualPositions[0].position x and y must be numbers'
+  );
+  assert.throws(
+    () => direct.validateHubLayoutPayload({
+      baseRevision: 0,
+      manualPositions: [
+        {
           memoryId: 'too-far',
           position: { x: 1_000_001, y: 0 }
         }
       ]
     }),
-    /coordinates exceed limit/
+    (error) => error.message ===
+      'manualPositions[0].position coordinates exceed limit of 1000000'
   );
+});
+
+test('#4217 malformed path encoding remains a 400 boundary before auth/body/DB work', async () => {
+  const direct = await import('../../functions/_shared/hub-layout-direct-neon.js');
+  const fixture = makeHubLayoutTransactionAdapter();
+  let verifierCalls = 0;
+
+  const request = new Request(
+    'https://example.test/api/trees/%ZZ/hub-layout',
+    {
+      method: 'PUT',
+      headers: {
+        'content-type': 'application/json',
+        'x-lovebud-request-id': 'req-4217-malformed'
+      },
+      body: 'z'.repeat(129 * 1024)
+    }
+  );
+
+  const response = await direct.handleHubLayoutDirectNeon(
+    request,
+    hubLayoutEnv(),
+    'req-4217-malformed',
+    {
+      verifyTokenOverride: async () => {
+        verifierCalls += 1;
+        return { uid: 'verified-owner-4217' };
+      },
+      transactionAdapterOverride: fixture.adapter
+    }
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'invalid-path-encoding');
+  assert.equal(verifierCalls, 0);
+  assert.equal(fixture.runCalls, 0);
+  assert.doesNotMatch(await response.text(), /%ZZ|z{10,}/);
 });
 
 test('#4217 owner failure and stale revision fail before INSERT with bounded 404/403/409 parity', async () => {
