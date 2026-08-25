@@ -22,7 +22,8 @@
 //     === verified UID with no email/accountId in the principal;
 //   - every OTHER route that remains on the direct require_firebase_user
 //     boundary still does so (exact expected caller set pinned). #4202 moved
-//     Tree PUT/DELETE and #4204 moves Tree POST out of this direct-caller set;
+//     Tree PUT/DELETE, #4204 moved Tree POST, and #4206 moves Tree capability
+//     out of this direct-caller set;
 //   - auth failure status/detail parity is carried by the unchanged
 //     require_firebase_user error contract inside modal_compute/auth.py.
 //
@@ -85,9 +86,9 @@ const MEMORY_WRITE_ROUTES = [
 
 // Exact set of other routes that must KEEP calling require_firebase_user
 // directly (pinned so principal-boundary refactors cannot silently drift
-// unrelated surfaces). #4202 removes Tree PUT/DELETE; #4204 removes Tree POST.
+// unrelated surfaces). #4202 removes Tree PUT/DELETE; #4204 removes Tree POST;
+// #4206 removes Tree capability.
 const OTHER_FIREBASE_USER_ROUTES = [
-  ['get_private_tree_capability', 'get', '/modal/private/trees/{tree_id}/capability'],
   ['post_fork_tree', 'post', '/modal/private/trees/{tree_id}/fork'],
   ['post_tree_like', 'post', '/modal/private/trees/{tree_id}/likes'],
   ['get_tree_likes', 'get', '/modal/private/trees/{tree_id}/likes'],
@@ -231,12 +232,12 @@ test('8. every unrelated route that remains on direct Firebase auth keeps its ca
     assert.match(
       normalized,
       /require_firebase_user/,
-      `${name} must keep its direct require_firebase_user call (outside #4181/#4202/#4204 scope)`
+      `${name} must keep its direct require_firebase_user call (outside #4181/#4202/#4204/#4206 scope)`
     );
   }
 });
 
-test('9. exact direct require_firebase_user caller set excludes principal-migrated Memory writes and all Tree create/update/delete writes', () => {
+test('9. exact direct require_firebase_user caller set excludes principal-migrated Memory writes and Tree create/update/delete/capability routes', () => {
   const source = readModalApp();
   const callerPattern = /@web_app\.(get|post|put|delete)\("([^"]+)"[\s\S]*?(?:async\s+)?def\s+(\w+)\s*\([^)]*\)[\s\S]*?(?=@web_app\.|$)/g;
   const callers = [];
@@ -246,5 +247,5 @@ test('9. exact direct require_firebase_user caller set excludes principal-migrat
   }
   const expectedCallers = OTHER_FIREBASE_USER_ROUTES.map(([name]) => name).sort();
   assert.deepEqual(callers.sort(), expectedCallers,
-    'the exact require_firebase_user caller set must exclude #4181 Memory writes, #4202 Tree update/delete, and #4204 Tree create');
+    'the exact require_firebase_user caller set must exclude #4181 Memory writes, #4202 Tree update/delete, #4204 Tree create, and #4206 Tree capability');
 });

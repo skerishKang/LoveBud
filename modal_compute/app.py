@@ -434,9 +434,9 @@ def get_private_tree_capability(
     authorization: str | None = Header(default=None),
 ) -> dict:
     try:
-        user = require_firebase_user(authorization)
+        principal = require_authenticated_principal(authorization)
         safe_tree_id = validate_required_id(tree_id, "treeId")
-        tree = fetch_owner_tree(safe_tree_id, user["uid"])
+        tree = fetch_owner_tree(safe_tree_id, principal["legacyOwnerId"])
         return {"viewerCanEdit": tree is not None}
     except HTTPException as e:
         if e.status_code in {401, 403}:
