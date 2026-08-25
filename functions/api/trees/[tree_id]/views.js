@@ -5,25 +5,24 @@ import {
   isInvalidPathEncodingError,
   normalizeEncodedPathSegment
 } from '../../../_shared/path-segment.js';
+import {
+  handleTreeViewDirectNeon,
+  isTreeViewDirectNeonSelected
+} from '../../../_shared/tree-view-direct-neon.js';
 
 /**
- * Public Tree view-count edge proxy (Security slice #3917).
+ * Public Tree view-count edge boundary (#3917 / #4219).
  *
- * This is the single chokepoint for anonymous public tree view counting. It
- * MUST NOT trust any actor identity supplied by the browser. Instead it derives
- * an anonymous, server-authoritative actor from trusted edge context:
+ * Default/unset/unknown runtime gate preserves the existing signed-assertion
+ * Modal path. Only LB_TREE_VIEW_WRITE_RUNTIME=direct_neon selects the bounded
+ * direct-Neon candidate.
  *
- *   CF-Connecting-IP + UTC day + server-only secret (TREE_VIEW_AUTHORITY_SECRET)
+ * Browser bytes are consumed only through the canonical bounded reader and
+ * discarded. Browser body/query/custom headers never supply actor identity.
+ * The actor remains derived from trusted edge context:
  *
- * via a domain-separated HMAC-SHA256, then forwards a FIXED, SIGNED assertion as
- * request headers to Modal. No request body is ever parsed or forwarded.
- *
- * The request stream is still consumed through the canonical bounded reader so
- * oversized or failed body streams cannot bypass the #3920 edge resource bound.
- * Accepted client bytes are discarded and never influence view identity.
- *
- * Fail-closed: if the secret or client IP context is missing, no Modal call is
- * made and no count occurs. The separate public tree read path is unaffected.
+ *   CF-Connecting-IP + UTC day + TREE_VIEW_AUTHORITY_SECRET
+ *   -> domain-separated HMAC-SHA256 anonymous actor key.
  */
 
 const VIEW_SOURCE = 'public_tree_detail';
@@ -128,6 +127,12 @@ function extractTreeId(request) {
   return parts[2] || '';
 }
 
+function normalizeTreeIdForDirect(request) {
+  const raw = extractTreeId(request);
+  if (!raw) return '';
+  return normalizeEncodedPathSegment(raw);
+}
+
 function buildModalUrl(request, env) {
   const modalBaseUrl = stripTrailingSlash(env.MODAL_BASE_URL);
   if (!modalBaseUrl) return null;
@@ -214,7 +219,7 @@ export async function buildSignedAssertionHeaders(request, env, treeId) {
   };
 }
 
-async function proxyTreeView(request, env) {
+export async function proxyTreeView(request, env, directOptions = {}) {
   const method = request.method.toUpperCase();
   const requestId = getOrCreateRequestId(request);
   if (method !== 'POST') return buildMethodNotAllowedResponse(requestId);
@@ -227,9 +232,49 @@ async function proxyTreeView(request, env) {
     return buildBodyReadFailedResponse(requestId);
   }
 
-  const treeId = extractTreeId(request);
-  if (!treeId) return buildModalUnavailableResponse(requestId);
+  const rawTreeId = extractTreeId(request);
+  if (!rawTreeId) return buildModalUnavailableResponse(requestId);
 
+  // Explicit direct mode is independent of MODAL_BASE_URL. Once selected,
+  // every authority/config/DB failure fails closed with no per-request fallback.
+  if (isTreeViewDirectNeonSelected(env || {})) {
+    let treeId;
+    try {
+      treeId = normalizeTreeIdForDirect(request);
+    } catch (error) {
+      if (isInvalidPathEncodingError(error)) {
+        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+      }
+      throw error;
+    }
+    if (!treeId) return buildModalUnavailableResponse(requestId);
+
+    // Preserve #3917: derive the actor at the trusted edge before any DB
+    // capability is acquired. Only values from this freshly derived projection
+    // are passed to the direct adapter.
+    const assertionHeaders = await buildSignedAssertionHeaders(request, env || {}, rawTreeId);
+    if (!assertionHeaders) {
+      return buildViewAuthorityUnavailableResponse(requestId);
+    }
+
+    return handleTreeViewDirectNeon(
+      request,
+      env || {},
+      requestId,
+      {
+        actorKey: assertionHeaders[ACTOR_KEY_HEADER],
+        actorKind: assertionHeaders[ACTOR_KIND_HEADER],
+        source: assertionHeaders[SOURCE_HEADER]
+      },
+      {
+        treeIdOverride: treeId,
+        ...directOptions
+      }
+    );
+  }
+
+  // Default/unset/modal/unknown: preserve the existing Modal path and its
+  // ordering, including Modal config resolution before edge authority signing.
   let modalUrl;
   try {
     modalUrl = buildModalUrl(request, env || {});
@@ -241,9 +286,7 @@ async function proxyTreeView(request, env) {
   }
   if (!modalUrl) return buildModalUnavailableResponse(requestId);
 
-  // Keep the native Request object intact. Its headers/url/method properties
-  // are prototype-backed and must not be copied with Object.assign().
-  const assertionHeaders = await buildSignedAssertionHeaders(request, env || {}, treeId);
+  const assertionHeaders = await buildSignedAssertionHeaders(request, env || {}, rawTreeId);
   if (!assertionHeaders) {
     return buildViewAuthorityUnavailableResponse(requestId);
   }
@@ -259,7 +302,7 @@ async function proxyTreeView(request, env) {
       method: 'POST',
       headers
       // NO body: accepted client bytes are discarded after the bounded read;
-      // only the signed edge assertion reaches Modal (Issues #3917 / #3920).
+      // only the signed edge assertion reaches Modal (#3917 / #3920).
     });
     const responseHeaders = new Headers(response.headers);
     responseHeaders.set('x-lovebud-upstream', 'modal');
