@@ -1,5 +1,9 @@
 import { fetchModalWithTimeout, isModalTimeoutError } from '../../../_shared/modal-fetch.js';
 import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
+import {
+  handleMemoryCommentDirectNeon,
+  isMemoryCommentDirectNeonSelected
+} from '../../../_shared/memory-comment-direct-neon.js';
 
 // Canonical request-body size boundary: 128 KB / 128 KiB (131072 bytes), owned and enforced by the shared reader.
 function stripTrailingSlash(value) {
@@ -142,6 +146,14 @@ export async function onRequestPost(context) {
   const bodyResult = await readBoundedRequestBody(request);
   if (bodyResult.status === 'tooLarge') return buildPayloadTooLargeResponse();
   if (bodyResult.status === 'readError') return buildBodyReadFailureResponse();
+
+  if (isMemoryCommentDirectNeonSelected(context.env || {})) {
+    return handleMemoryCommentDirectNeon(request, context.env || {}, {
+      bodyBytesOverride: bodyResult.body,
+      memoryIdOverride: context.params?.id,
+      idempotencyKeyOverride: idempotencyKey
+    });
+  }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) return buildModalConfigUnavailableResponse();

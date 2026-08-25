@@ -160,15 +160,13 @@ test('#4198 CI keeps all 14 DB jobs behind one cancellation-aware fail-open impa
   assert.match(ci, /node scripts\/ci-db-impact-classifier\.cjs/);
 
   for (const job of DB_JOBS) {
-    const escaped = job.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const block = new RegExp(
-      `^  ${escaped}:\\n` +
-      `    needs: db-impact\\n` +
-      `    if: >-\\n` +
-      `      \\${\\{ always\\(\\) && !cancelled\\(\\) && \\(needs\\.db-impact\\.result != 'success' \\|\\| needs\\.db-impact\\.outputs\\.run-db == 'true'\\) \\}\\}`,
-      'm'
-    );
-    assert.match(ci, block, job);
+    const block = [
+      `  ${job}:`,
+      '    needs: db-impact',
+      '    if: >-',
+      "      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}",
+    ].join('\n');
+    assert.ok(ci.includes(block), job);
   }
 });
 

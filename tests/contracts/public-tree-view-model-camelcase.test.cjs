@@ -113,7 +113,6 @@ test('normalizeViewCount: persisted zero', () => {
 });
 
 test('normalizeViewCount: numeric string zero', () => {
-  // canonical decimal "0" is accepted
   assert.equal(getAdapter()._normalizeBrowseViewCount({ viewCount: '0' }), 0);
 });
 
@@ -183,7 +182,6 @@ test('normalizeViewCount: unsafe integer (over MAX_SAFE_INTEGER)', () => {
 });
 
 test('normalizeViewCount: numeric string with leading zeros', () => {
-  // "01" is not canonical decimal → reject
   assert.equal(getAdapter()._normalizeBrowseViewCount({ viewCount: '01' }), undefined);
 });
 
@@ -253,4 +251,316 @@ test('buildPublicTreeSummaryModels: private tree excluded', () => {
   assert.equal(r.length, 1);
   assert.equal(r[0].id, 'pub');
   assert.equal(r[0].viewCount, 3);
+});
+
+// ============================================================
+// #4219 Phase-4 Tree View direct-Neon candidate
+// ============================================================
+
+const DIRECT_TREE_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+const DIRECT_TREE_URL = `https://lovebud.pages.dev/api/trees/${DIRECT_TREE_ID}/views`;
+const DIRECT_NEON_URL = 'postgresql://ep-tree-view-candidate.us-east-2.aws.neon.tech/neondb?sslmode=require';
+const DIRECT_AUTHORITY = Object.freeze({
+  actorKey: 'a'.repeat(64),
+  actorKind: 'anonymous',
+  source: 'public_tree_detail',
+});
+
+function directRequest(headers = {}) {
+  return new Request(DIRECT_TREE_URL, {
+    method: 'POST',
+    headers,
+  });
+}
+
+function makeDirectFakeClient({
+  publicTree = true,
+  capability = true,
+  counted = true,
+  viewCount = 4,
+  commitUnknown = false,
+} = {}) {
+  const logs = [];
+  class FakeClient {
+    async connect() { logs.push({ text: 'CONNECT', values: [] }); }
+    async query(text, values = []) {
+      logs.push({ text, values: Array.isArray(values) ? [...values] : values });
+      if (text === 'BEGIN') return { rows: [] };
+      if (text === 'ROLLBACK') return { rows: [] };
+      if (text === 'COMMIT') {
+        if (commitUnknown) throw new Error('commit transport failure');
+        return { rows: [] };
+      }
+      if (text.includes('FROM trees') && text.includes('FOR SHARE')) {
+        return { rows: publicTree ? [{ id: DIRECT_TREE_ID, visibility: 'public' }] : [] };
+      }
+      if (text.includes('FROM information_schema.tables')) {
+        return {
+          rows: capability
+            ? [{ table_name: 'tree_social_counts' }, { table_name: 'tree_view_dedup_events' }]
+            : [],
+        };
+      }
+      if (text.includes('INSERT INTO tree_view_dedup_events')) {
+        return { rows: counted ? [{ id: 'event-1' }] : [] };
+      }
+      if (text.includes('SELECT view_count') && text.includes('tree_social_counts')) {
+        return { rows: [{ view_count: viewCount }] };
+      }
+      return { rows: [] };
+    }
+    async end() { logs.push({ text: 'END', values: [] }); }
+  }
+  return { Client: FakeClient, logs };
+}
+
+function makeDirectImporter(factory) {
+  return async () => ({ Client: factory.Client });
+}
+
+test('#4219 gate: unset/modal/unknown stays outside direct-Neon', async () => {
+  const mod = await import('../../functions/_shared/tree-view-direct-neon.js');
+  assert.equal(mod.isTreeViewDirectNeonSelected({}), false);
+  assert.equal(mod.isTreeViewDirectNeonSelected({ LB_TREE_VIEW_WRITE_RUNTIME: 'modal' }), false);
+  assert.equal(mod.isTreeViewDirectNeonSelected({ LB_TREE_VIEW_WRITE_RUNTIME: 'unknown' }), false);
+  const response = await mod.handleTreeViewDirectNeon(
+    directRequest(),
+    {},
+    'rid-4219-gate',
+    DIRECT_AUTHORITY,
+    { treeIdOverride: DIRECT_TREE_ID },
+  );
+  assert.equal(response, null);
+});
+
+test('#4219 dedicated writer config forbids generic/read fallback', async () => {
+  const mod = await import('../../functions/_shared/tree-view-direct-neon.js');
+  const env = {
+    LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_DATABASE_URL: DIRECT_NEON_URL,
+  };
+  assert.equal(mod.readTreeViewWriteConfig(env).configured, false);
+  const forbidden = mod.detectForbiddenTreeViewWriterFallback(env);
+  assert.ok(forbidden);
+  assert.equal(forbidden.name, 'LOVE_PLATFORM_DATABASE_URL');
+});
+
+test('#4219 direct fresh view: FOR SHARE precedes dedup and increments exactly once', async () => {
+  const mod = await import('../../functions/_shared/tree-view-direct-neon.js');
+  const fake = makeDirectFakeClient({ counted: true, viewCount: 4 });
+  const response = await mod.handleTreeViewDirectNeon(
+    directRequest({ 'x-lovebud-tree-view-actor-key': 'forged-browser-actor' }),
+    {
+      LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_NEON_URL,
+    },
+    'rid-4219-fresh',
+    DIRECT_AUTHORITY,
+    {
+      treeIdOverride: DIRECT_TREE_ID,
+      neonImporter: makeDirectImporter(fake),
+    },
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    treeId: DIRECT_TREE_ID,
+    counted: true,
+    viewCount: 4,
+  });
+  assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+
+  const forShare = fake.logs.findIndex((row) => row.text.includes('FROM trees') && row.text.includes('FOR SHARE'));
+  const ensureCount = fake.logs.findIndex((row) => row.text.includes('INSERT INTO tree_social_counts'));
+  const dedup = fake.logs.findIndex((row) => row.text.includes('INSERT INTO tree_view_dedup_events'));
+  const increment = fake.logs.findIndex((row) => row.text.includes('view_count = view_count + 1'));
+  const reread = fake.logs.findIndex((row) => row.text.includes('SELECT view_count'));
+  assert.ok(forShare >= 0 && ensureCount > forShare && dedup > ensureCount && increment > dedup && reread > increment);
+
+  const dedupQuery = fake.logs[dedup];
+  assert.equal(dedupQuery.values[2], DIRECT_AUTHORITY.actorKey);
+  assert.notEqual(dedupQuery.values[2], 'forged-browser-actor');
+  assert.match(dedupQuery.text, /date_trunc\('day', NOW\(\)\)/);
+  assert.match(dedupQuery.text, /ON CONFLICT \(tree_id, actor_key, counted_window_start\) DO NOTHING/);
+});
+
+test('#4219 direct duplicate view does not increment', async () => {
+  const mod = await import('../../functions/_shared/tree-view-direct-neon.js');
+  const fake = makeDirectFakeClient({ counted: false, viewCount: 4 });
+  const response = await mod.handleTreeViewDirectNeon(
+    directRequest(),
+    {
+      LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_NEON_URL,
+    },
+    'rid-4219-dedup',
+    DIRECT_AUTHORITY,
+    {
+      treeIdOverride: DIRECT_TREE_ID,
+      neonImporter: makeDirectImporter(fake),
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    treeId: DIRECT_TREE_ID,
+    counted: false,
+    viewCount: 4,
+  });
+  assert.equal(fake.logs.some((row) => row.text.includes('view_count = view_count + 1')), false);
+});
+
+test('#4219 private/missing Tree rolls back before dedup/count mutation', async () => {
+  const mod = await import('../../functions/_shared/tree-view-direct-neon.js');
+  const fake = makeDirectFakeClient({ publicTree: false });
+  const response = await mod.handleTreeViewDirectNeon(
+    directRequest(),
+    {
+      LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_NEON_URL,
+    },
+    'rid-4219-private',
+    DIRECT_AUTHORITY,
+    {
+      treeIdOverride: DIRECT_TREE_ID,
+      neonImporter: makeDirectImporter(fake),
+    },
+  );
+  assert.equal(response.status, 404);
+  assert.equal(fake.logs.some((row) => row.text.includes('INSERT INTO tree_view_dedup_events')), false);
+  assert.equal(fake.logs.some((row) => row.text === 'ROLLBACK'), true);
+});
+
+test('#4219 missing social/dedup capability returns counted=false without mutation', async () => {
+  const mod = await import('../../functions/_shared/tree-view-direct-neon.js');
+  const fake = makeDirectFakeClient({ capability: false, viewCount: 0 });
+  const response = await mod.handleTreeViewDirectNeon(
+    directRequest(),
+    {
+      LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_NEON_URL,
+    },
+    'rid-4219-capability',
+    DIRECT_AUTHORITY,
+    {
+      treeIdOverride: DIRECT_TREE_ID,
+      neonImporter: makeDirectImporter(fake),
+    },
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    treeId: DIRECT_TREE_ID,
+    counted: false,
+    viewCount: 0,
+  });
+  assert.equal(fake.logs.some((row) => row.text.includes('INSERT INTO tree_social_counts')), false);
+  assert.equal(fake.logs.some((row) => row.text.includes('INSERT INTO tree_view_dedup_events')), false);
+});
+
+test('#4219 unknown COMMIT outcome is explicit and never followed by rollback/retry', async () => {
+  const mod = await import('../../functions/_shared/tree-view-direct-neon.js');
+  const fake = makeDirectFakeClient({ counted: true, viewCount: 5, commitUnknown: true });
+  const response = await mod.handleTreeViewDirectNeon(
+    directRequest(),
+    {
+      LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_NEON_URL,
+    },
+    'rid-4219-unknown',
+    DIRECT_AUTHORITY,
+    {
+      treeIdOverride: DIRECT_TREE_ID,
+      neonImporter: makeDirectImporter(fake),
+    },
+  );
+  assert.equal(response.status, 502);
+  const body = await response.json();
+  assert.equal(body.code, 'COMMIT_OUTCOME_UNKNOWN');
+  const commitIndex = fake.logs.findIndex((row) => row.text === 'COMMIT');
+  assert.ok(commitIndex >= 0);
+  assert.equal(fake.logs.slice(commitIndex + 1).some((row) => row.text === 'ROLLBACK'), false);
+  assert.equal(fake.logs.filter((row) => row.text === 'BEGIN').length, 1);
+});
+
+test('#4219 route direct mode derives edge actor and does not require MODAL_BASE_URL', async () => {
+  const route = await import('../../functions/api/trees/[tree_id]/views.js');
+  const fake = makeDirectFakeClient({ counted: true, viewCount: 2 });
+  const request = directRequest({
+    'CF-Connecting-IP': '203.0.113.42',
+    'x-lovebud-tree-view-actor-key': 'forged-browser-actor',
+  });
+  const response = await route.proxyTreeView(
+    request,
+    {
+      LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_NEON_URL,
+      TREE_VIEW_AUTHORITY_SECRET: 'test-only-secret-4219',
+    },
+    { neonImporter: makeDirectImporter(fake) },
+  );
+  assert.equal(response.status, 200);
+  const dedup = fake.logs.find((row) => row.text.includes('INSERT INTO tree_view_dedup_events'));
+  assert.ok(dedup);
+  assert.notEqual(dedup.values[2], 'forged-browser-actor');
+  assert.match(String(dedup.values[2]), /^[0-9a-f]{64}$/);
+});
+
+test('#4219 direct route missing edge secret fails before DB capability', async () => {
+  const route = await import('../../functions/api/trees/[tree_id]/views.js');
+  let importerCalls = 0;
+  const response = await route.proxyTreeView(
+    directRequest({ 'CF-Connecting-IP': '203.0.113.42' }),
+    {
+      LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_NEON_URL,
+    },
+    {
+      neonImporter: async () => {
+        importerCalls += 1;
+        return { Client: class {} };
+      },
+    },
+  );
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'view-authority-unavailable');
+  assert.equal(importerCalls, 0);
+});
+
+test('#4219 oversized direct view body is rejected before DB capability', async () => {
+  const route = await import('../../functions/api/trees/[tree_id]/views.js');
+  let importerCalls = 0;
+  const request = new Request(DIRECT_TREE_URL, {
+    method: 'POST',
+    headers: { 'CF-Connecting-IP': '203.0.113.42' },
+    body: 'x'.repeat(129 * 1024),
+  });
+  const response = await route.proxyTreeView(
+    request,
+    {
+      LB_TREE_VIEW_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: DIRECT_NEON_URL,
+      TREE_VIEW_AUTHORITY_SECRET: 'test-only-secret-4219',
+    },
+    {
+      neonImporter: async () => {
+        importerCalls += 1;
+        return { Client: class {} };
+      },
+    },
+  );
+  assert.equal(response.status, 413);
+  assert.equal(importerCalls, 0);
+});
+
+test('#4219 source guard reuses #4132 adapter and preserves default Modal branch', () => {
+  const directAdapter = fs.readFileSync(path.join(ROOT, 'functions/_shared/tree-view-direct-neon.js'), 'utf8');
+  const route = fs.readFileSync(path.join(ROOT, 'functions/api/trees/[tree_id]/views.js'), 'utf8');
+  assert.match(directAdapter, /createNeonWsTransactionAdapter/);
+  assert.match(directAdapter, /FOR SHARE/);
+  assert.match(directAdapter, /LOVE_PLATFORM_WRITE_DATABASE_URL/);
+  assert.doesNotMatch(directAdapter, /request\.headers\.get\(['"]x-lovebud-tree-view-actor-key/);
+  assert.match(route, /isTreeViewDirectNeonSelected/);
+  assert.match(route, /buildSignedAssertionHeaders/);
+  assert.match(route, /MODAL_BASE_URL/);
+  assert.match(route, /handleTreeViewDirectNeon/);
 });
