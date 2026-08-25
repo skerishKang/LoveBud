@@ -861,32 +861,50 @@ test('delete_owner_memory returns deleted shape with id', () => {
 });
 
 // Private write route contracts
-test('post_private_tree calls require_firebase_user', () => {
+test('post_private_tree calls require_authenticated_principal', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees', 'post');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /require_firebase_user.*authorization/i,
-    'post_private_tree must call require_firebase_user'
+    /require_authenticated_principal.*authorization/i,
+    'post_private_tree must call require_authenticated_principal'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /require_firebase_user/,
+    'post_private_tree must not call require_firebase_user directly (#4204 principal boundary)'
   );
 });
 
-test('post_private_tree handles invalid JSON body with 400', () => {
+test('post_private_tree handles invalid JSON body with 400 and authenticates before parsing', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees', 'post');
   const normalized = compact(body);
 
   assertRouteParsesJsonViaHelper(normalized, 'post_private_tree');
+  assert.ok(
+    normalized.indexOf('require_authenticated_principal(authorization)') < normalized.indexOf('awaitparse_json_body(request)'),
+    'post_private_tree must authenticate before parsing the request body'
+  );
 });
 
-test('post_private_tree calls create_owner_tree with user uid and payload', () => {
+test('post_private_tree calls create_owner_tree with legacyOwnerId, payload, and empty owner_email', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees', 'post');
   const normalized = compact(body);
 
-  assertRoutePassesPayload(normalized, 'create_owner_tree', 'user.*uid', 'post_private_tree');
+  assert.match(
+    normalized,
+    /create_owner_tree\(principal\["legacyownerid"\],payload,owner_email="",?\)/i,
+    'post_private_tree must pass principal legacyOwnerId and empty owner_email metadata'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /user\["uid"\]|providersubject|accountid|owner_email=.*email/i,
+    'post_private_tree must not use uid/providerSubject/accountId/email as alternate owner authority or metadata input'
+  );
 });
 
 test('post_private_memory calls require_authenticated_principal', () => {
@@ -922,55 +940,69 @@ test('post_private_memory calls create_owner_memory with legacyOwnerId and paylo
   assertRoutePassesPayload(normalized, 'create_owner_memory', 'principal.*legacyOwnerId', 'post_private_memory');
 });
 
-test('put_private_tree calls require_firebase_user', () => {
+test('put_private_tree calls require_authenticated_principal', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'put');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /require_firebase_user.*authorization/i,
-    'put_private_tree must call require_firebase_user'
+    /require_authenticated_principal.*authorization/i,
+    'put_private_tree must call require_authenticated_principal'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /require_firebase_user/,
+    'put_private_tree must not call require_firebase_user directly (#4202 principal boundary)'
   );
 });
 
-test('put_private_tree handles invalid JSON body with 400', () => {
+test('put_private_tree handles invalid JSON body with 400 and authenticates before parsing', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'put');
   const normalized = compact(body);
 
   assertRouteParsesJsonViaHelper(normalized, 'put_private_tree');
+  assert.ok(
+    normalized.indexOf('require_authenticated_principal(authorization)') < normalized.indexOf('awaitparse_json_body(request)'),
+    'put_private_tree must authenticate before parsing the request body'
+  );
 });
 
-test('put_private_tree calls update_owner_tree with user uid, tree_id, and payload', () => {
+test('put_private_tree calls update_owner_tree with legacyOwnerId, tree_id, and payload', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'put');
   const normalized = compact(body);
 
-  assertRoutePassesPayload(normalized, 'update_owner_tree', 'user.*uid.*tree_id', 'put_private_tree');
+  assertRoutePassesPayload(normalized, 'update_owner_tree', 'principal.*legacyOwnerId.*tree_id', 'put_private_tree');
 });
 
-test('delete_private_tree calls require_firebase_user', () => {
+test('delete_private_tree calls require_authenticated_principal', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'delete');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /require_firebase_user.*authorization/i,
-    'delete_private_tree must call require_firebase_user'
+    /require_authenticated_principal.*authorization/i,
+    'delete_private_tree must call require_authenticated_principal'
+  );
+  assert.doesNotMatch(
+    normalized,
+    /require_firebase_user/,
+    'delete_private_tree must not call require_firebase_user directly (#4202 principal boundary)'
   );
 });
 
-test('delete_private_tree calls delete_owner_tree with user uid and tree_id', () => {
+test('delete_private_tree calls delete_owner_tree with legacyOwnerId and tree_id', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees/{tree_id}', 'delete');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /delete_owner_tree.*user.*uid.*tree_id/i,
-    'delete_private_tree must call delete_owner_tree with user uid and tree_id'
+    /delete_owner_tree.*principal.*legacyOwnerId.*tree_id/i,
+    'delete_private_tree must call delete_owner_tree with legacyOwnerId and tree_id'
   );
 });
 
@@ -1092,21 +1124,21 @@ test('auth and tree write sources have no email-domain ownership branches', () =
   );
 });
 
-test('post_private_tree passes verified email only as optional owner_email metadata', () => {
+test('post_private_tree disables opportunistic users.email refresh and keeps legacyOwnerId as sole owner authority', () => {
   const source = readModalApp();
   const body = getRouteFunctionBody(source, '/modal/private/trees', 'post');
   const normalized = compact(body);
 
   assert.match(
     normalized,
-    /create_owner_tree\(user\["uid"\],payload,owner_email=user\.get\("email"\)or"",?\)/i,
-    'post_private_tree must pass verified UID as owner and email only as owner_email metadata'
+    /create_owner_tree\(principal\["legacyownerid"\],payload,owner_email="",?\)/i,
+    'post_private_tree must pass legacyOwnerId as owner and stop opportunistic users.email refresh (#4204)'
   );
 
   assert.doesNotMatch(
     normalized,
-    /create_owner_tree\(\s*user\.get\("email"\)|create_owner_tree\(\s*user\["email"\]/i,
-    'post_private_tree must not use email as the ownership identity argument'
+    /user\.get\("email"\)|\["email"\]|owner_email=.*email|providersubject|accountid|user\["uid"\]/i,
+    'post_private_tree must not source owner identity or metadata from email/providerSubject/accountId/raw uid'
   );
 });
 

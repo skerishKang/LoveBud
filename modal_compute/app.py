@@ -406,12 +406,12 @@ async def post_private_tree(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
+    principal = require_authenticated_principal(authorization)
     payload = await parse_json_body(request)
     return create_owner_tree(
-        user["uid"],
+        principal["legacyOwnerId"],
         payload,
-        owner_email=user.get("email") or "",
+        owner_email="",
     )
 
 
@@ -434,9 +434,9 @@ def get_private_tree_capability(
     authorization: str | None = Header(default=None),
 ) -> dict:
     try:
-        user = require_firebase_user(authorization)
+        principal = require_authenticated_principal(authorization)
         safe_tree_id = validate_required_id(tree_id, "treeId")
-        tree = fetch_owner_tree(safe_tree_id, user["uid"])
+        tree = fetch_owner_tree(safe_tree_id, principal["legacyOwnerId"])
         return {"viewerCanEdit": tree is not None}
     except HTTPException as e:
         if e.status_code in {401, 403}:
@@ -462,9 +462,9 @@ async def put_private_tree(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
+    principal = require_authenticated_principal(authorization)
     payload = await parse_json_body(request)
-    return update_owner_tree(user["uid"], tree_id, payload)
+    return update_owner_tree(principal["legacyOwnerId"], tree_id, payload)
 
 
 @web_app.delete("/modal/private/trees/{tree_id}")
@@ -472,8 +472,8 @@ def delete_private_tree(
     tree_id: str,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
-    return delete_owner_tree(user["uid"], tree_id)
+    principal = require_authenticated_principal(authorization)
+    return delete_owner_tree(principal["legacyOwnerId"], tree_id)
 
 
 @web_app.post("/modal/private/trees/{tree_id}/likes")
