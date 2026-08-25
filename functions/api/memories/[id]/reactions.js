@@ -1,5 +1,9 @@
 import { fetchModalWithTimeout, isModalTimeoutError } from '../../../_shared/modal-fetch.js';
 import { readBoundedRequestBody } from '../../../_shared/bounded-request-body.js';
+import {
+  handleMemoryReactionDirectNeon,
+  isMemoryReactionDirectNeonSelected
+} from '../../../_shared/memory-reaction-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -137,6 +141,23 @@ export async function onRequestPost(context) {
   const bodyResult = await readBoundedRequestBody(request);
   if (bodyResult.status === 'tooLarge') return buildPayloadTooLargeResponse();
   if (bodyResult.status === 'readError') return buildBodyReadFailureResponse();
+
+  // #4221: direct mode is considered only after the existing edge auth-presence,
+  // idempotency-key, and bounded-body precedence. Default/unset/modal/unknown
+  // continues through the exact existing Modal forwarding path below.
+  if (isMemoryReactionDirectNeonSelected(context.env || {})) {
+    const directResponse = await handleMemoryReactionDirectNeon(
+      request,
+      context.env || {},
+      {
+        memoryIdOverride: context.params?.id,
+        idempotencyKeyOverride: idempotencyKey,
+        bodyBytesOverride: bodyResult.body,
+        ...(context.directNeonTestOverrides || {})
+      }
+    );
+    if (directResponse) return directResponse;
+  }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) return buildModalConfigUnavailableResponse();
