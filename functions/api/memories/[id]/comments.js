@@ -100,33 +100,6 @@ function buildModalConfigUnavailableResponse() {
   });
 }
 
-function normalizeComparableUuid(value) {
-  let hex = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (hex.startsWith('urn:uuid:')) hex = hex.slice('urn:uuid:'.length);
-  if (hex.startsWith('{') && hex.endsWith('}')) hex = hex.slice(1, -1);
-  hex = hex.replace(/-/g, '');
-  return /^[0-9a-f]{32}$/.test(hex) ? hex : null;
-}
-
-function buildDirectResultTargetMismatchResponse(response) {
-  const headers = new Headers(response?.headers);
-  headers.set('content-type', 'application/json; charset=utf-8');
-  headers.set('cache-control', 'no-store');
-  const replay = headers.get('x-lovebud-route-status') === 'comment-replay';
-  headers.set(
-    'x-lovebud-route-status',
-    replay ? 'idempotency-result-unavailable' : 'comment-result-target-mismatch'
-  );
-  return new Response(JSON.stringify(
-    replay
-      ? { error: 'The original comment is no longer available', code: 'IDEMPOTENCY_RESULT_UNAVAILABLE' }
-      : { error: 'Comment create failed' }
-  ), {
-    status: replay ? 410 : 500,
-    headers
-  });
-}
-
 function getAuthorization(request) {
   return request.headers.get('authorization') || request.headers.get('Authorization');
 }
@@ -175,25 +148,11 @@ export async function onRequestPost(context) {
   if (bodyResult.status === 'readError') return buildBodyReadFailureResponse();
 
   if (isMemoryCommentDirectNeonSelected(context.env || {})) {
-    const response = await handleMemoryCommentDirectNeon(request, context.env || {}, {
+    return handleMemoryCommentDirectNeon(request, context.env || {}, {
       bodyBytesOverride: bodyResult.body,
       memoryIdOverride: context.params?.id,
       idempotencyKeyOverride: idempotencyKey
     });
-    if (response?.status === 200) {
-      const expectedMemoryId = normalizeComparableUuid(context.params?.id);
-      let payload = null;
-      try {
-        payload = await response.clone().json();
-      } catch {
-        payload = null;
-      }
-      const returnedMemoryId = normalizeComparableUuid(payload?.memoryId);
-      if (expectedMemoryId && returnedMemoryId !== expectedMemoryId) {
-        return buildDirectResultTargetMismatchResponse(response);
-      }
-    }
-    return response;
   }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
