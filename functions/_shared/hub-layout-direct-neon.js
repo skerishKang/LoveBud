@@ -231,18 +231,18 @@ async function parseBoundedJsonObject(request, requestId) {
   return { payload };
 }
 
-function requireFiniteCoordinate(value, label) {
+function requireFiniteCoordinate(value, typeDetail, rangeDetail) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new HubLayoutPayloadError(
       400,
-      `${label} must be numbers`,
+      typeDetail,
       'invalid-manual-positions'
     );
   }
   if (Math.abs(value) > HUB_LAYOUT_MAX_POSITION_VALUE) {
     throw new HubLayoutPayloadError(
       400,
-      `${label} coordinates exceed limit of ${HUB_LAYOUT_MAX_POSITION_VALUE}`,
+      rangeDetail,
       'invalid-manual-positions'
     );
   }
@@ -333,13 +333,19 @@ export function validateHubLayoutPayload(payload) {
       );
     }
 
+    const coordinateTypeDetail =
+      `manualPositions[${index}].position x and y must be numbers`;
+    const coordinateRangeDetail =
+      `manualPositions[${index}].position coordinates exceed limit of ${HUB_LAYOUT_MAX_POSITION_VALUE}`;
     requireFiniteCoordinate(
       position.x,
-      `manualPositions[${index}].position x and y`
+      coordinateTypeDetail,
+      coordinateRangeDetail
     );
     requireFiniteCoordinate(
       position.y,
-      `manualPositions[${index}].position x and y`
+      coordinateTypeDetail,
+      coordinateRangeDetail
     );
   }
 
@@ -532,6 +538,28 @@ export async function handleHubLayoutDirectNeon(
     return null;
   }
 
+  // Preserve the existing catch-all path-encoding boundary: malformed dynamic
+  // segments are rejected before auth/body/DB work.
+  let treeId;
+  try {
+    treeId = extractHubLayoutTreeId(request);
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return buildInvalidPathEncodingResponse(requestId);
+    }
+    throw error;
+  }
+  if (!treeId) {
+    return jsonResponse(
+      { detail: 'Tree not found' },
+      404,
+      requestId,
+      'tree-not-found'
+    );
+  }
+
+  // Auth still precedes body materialization and every database/transaction
+  // boundary.
   let verifyToken = verifyTokenOverride;
   let principal;
   try {
@@ -554,24 +582,6 @@ export async function handleHubLayoutDirectNeon(
       503,
       requestId,
       'verifier-unavailable'
-    );
-  }
-
-  let treeId;
-  try {
-    treeId = extractHubLayoutTreeId(request);
-  } catch (error) {
-    if (isInvalidPathEncodingError(error)) {
-      return buildInvalidPathEncodingResponse(requestId);
-    }
-    throw error;
-  }
-  if (!treeId) {
-    return jsonResponse(
-      { detail: 'Tree not found' },
-      404,
-      requestId,
-      'tree-not-found'
     );
   }
 
