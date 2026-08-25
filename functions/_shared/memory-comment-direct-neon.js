@@ -275,9 +275,9 @@ async function verifyLegacyIdempotencyRow(
               updated_at::text AS updated_at,
               status, deleted_at
        FROM comments
-       WHERE id = $1
+       WHERE id = $1 AND memory_id = $2
        LIMIT 1`,
-      [resultId]
+      [resultId, memoryId]
     );
     const comment = commentRows?.[0];
     if (!comment || String(comment.status || 'visible') !== 'visible' || comment.deleted_at != null) {
