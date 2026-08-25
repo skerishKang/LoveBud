@@ -103,8 +103,12 @@ def _exercise_private_tree_route(body: bytes):
 
     with patch.object(
         app_module,
-        "require_firebase_user",
-        return_value={"uid": "requester-3927", "email": ""},
+        "require_authenticated_principal",
+        return_value={
+            "provider": "firebase",
+            "providerSubject": "requester-3927",
+            "legacyOwnerId": "requester-3927",
+        },
     ):
         with patch.object(app_module, "create_owner_tree", side_effect=fake_create_owner_tree):
             try:
