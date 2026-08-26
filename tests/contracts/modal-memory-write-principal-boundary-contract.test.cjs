@@ -296,7 +296,7 @@ test('11. #4211 preserves hardened fork transaction authority and safety invaria
   assert.match(normalized, /andvisibility='public'/, 'Memory snapshot must remain public-only');
   assert.match(normalized, /limit201forshare;/, 'Memory snapshot must remain LIMIT 201 FOR SHARE');
   assert.match(normalized, /iflen\(source_memories\)>200/, 'over-limit rejection must remain before destination materialization');
-  assert.match(normalized, /cur\.execute\(insert_tree_query,\(new_tree_id,owner_id,new_title,safe_source_id\)\)/, 'destination Tree owner and lineage must remain owner_id/source bound');
+  assert.match(normalized, /cur\.execute\(insert_tree_query,\(new_tree_id,owner_id,new_title,safe_source_id\),?\)/, 'destination Tree owner and lineage must remain owner_id/source bound');
   assert.match(normalized, /new_parent_id=id_map\.get\(old_parent_id\)ifold_parent_idelsenone/, 'parent-ID rewrite must remain intact');
   assert.match(normalized, /conn\.rollback\(\)/, 'fork failures must retain rollback behavior');
   assert.match(normalized, /fetch_owner_tree\(existing_fork_id,owner_id\)/, 'duplicate canonical owner reread must remain owner_id-bound');
