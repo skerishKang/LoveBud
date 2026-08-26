@@ -572,3 +572,268 @@ test('#4217 unknown COMMIT outcome is explicit, sanitized, and never marked retr
   assert.match(text, /"wholeTransactionRetrySafe":false/);
   assert.doesNotMatch(text, /PRIVATE|connection secret/);
 });
+
+// ─── #4230 Tree DELETE direct-Neon candidate ───────────────────────────────
+
+const TREE_DELETE_ROUTE = path.join(ROOT, 'functions/api/trees/[id].js');
+const TREE_DELETE_DIRECT = path.join(ROOT, 'functions/_shared/tree-delete-direct-neon.js');
+const TREE_DELETE_ID = '11111111-1111-4111-8111-111111111111';
+const TREE_DELETE_OWNER = 'verified-owner-4230';
+const TREE_DELETE_URL = `https://lovebud.pages.dev/api/trees/${TREE_DELETE_ID}`;
+const TREE_DELETE_NEON_URL =
+  'postgresql://writer:synthetic@ep-tree-delete-4230.us-east-1.neon.tech/neondb?sslmode=require';
+
+function treeDeleteEnv(extra = {}) {
+  return {
+    LB_TREE_DELETE_WRITE_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_WRITE_DATABASE_URL: TREE_DELETE_NEON_URL,
+    ...extra
+  };
+}
+
+function treeDeleteRequest({ authorization = 'Bearer fake-firebase-token', headers = {} } = {}) {
+  const requestHeaders = new Headers({
+    'x-lovebud-request-id': 'req-4230',
+    ...headers
+  });
+  if (authorization) requestHeaders.set('authorization', authorization);
+  return new Request(TREE_DELETE_URL, { method: 'DELETE', headers: requestHeaders });
+}
+
+function makeTreeDeleteTransactionAdapter({
+  ownerId = TREE_DELETE_OWNER,
+  deletedId = TREE_DELETE_ID
+} = {}) {
+  const calls = [];
+  let runCalls = 0;
+  const adapter = {
+    async runTransaction(work) {
+      runCalls += 1;
+      const tx = {
+        async query(text, values = []) {
+          calls.push({ text, values: Array.isArray(values) ? [...values] : values });
+          if (text.includes('FROM trees')) {
+            return ownerId === null ? [] : [{ id: TREE_DELETE_ID, owner_id: ownerId }];
+          }
+          if (text.includes('UPDATE memories')) return [];
+          if (text.includes('DELETE FROM memories')) return [];
+          if (text.includes('DELETE FROM trees')) {
+            return deletedId === null ? [] : [{ id: deletedId }];
+          }
+          return [];
+        }
+      };
+      return { value: await work(tx), outcome: 'committed' };
+    }
+  };
+  return {
+    adapter,
+    calls,
+    get runCalls() {
+      return runCalls;
+    }
+  };
+}
+
+test('#4230 source shape keeps GET/PUT outside the delete gate and preserves the exact Modal delete sequence', async () => {
+  const route = readFile(TREE_DELETE_ROUTE);
+  const directSource = readFile(TREE_DELETE_DIRECT);
+  const direct = await import('../../functions/_shared/tree-delete-direct-neon.js');
+
+  const putBlock = sliceBetween(
+    route,
+    /export\s+async\s+function\s+onRequestPut\s*\(/,
+    /export\s+async\s+function\s+onRequestDelete\s*\(/
+  );
+  const getBlock = sliceBetween(
+    route,
+    /export\s+async\s+function\s+onRequestGet\s*\(/,
+    /function\s+hasAuthorizationHeader\s*\(/
+  );
+  const deleteStart = route.search(/export\s+async\s+function\s+onRequestDelete\s*\(/);
+  assert.notEqual(deleteStart, -1);
+  const deleteBlock = route.slice(deleteStart);
+
+  assert.doesNotMatch(getBlock, /isTreeDeleteDirectNeonSelected|LB_TREE_DELETE_WRITE_RUNTIME/);
+  assert.doesNotMatch(putBlock, /isTreeDeleteDirectNeonSelected|LB_TREE_DELETE_WRITE_RUNTIME/);
+  assert.match(deleteBlock, /isTreeDeleteDirectNeonSelected\(context\.env\)/);
+  assert.match(deleteBlock, /handleTreeDeleteDirectNeon/);
+  assert.ok(
+    deleteBlock.indexOf('handleTreeDeleteDirectNeon') < deleteBlock.indexOf('MODAL_BASE_URL'),
+    'direct DELETE must execute before Modal configuration is required'
+  );
+
+  assert.deepEqual(direct.TREE_DELETE_DIRECT_NEON_CONTRACT.modalDeleteSequence, [
+    'owner-check',
+    'clear-memory-parent-id',
+    'delete-memories',
+    'delete-owner-tree-returning-id'
+  ]);
+  assert.equal(direct.TREE_DELETE_DIRECT_NEON_CONTRACT.getUnchanged, true);
+  assert.equal(direct.TREE_DELETE_DIRECT_NEON_CONTRACT.putUnchanged, true);
+  assert.equal(direct.TREE_DELETE_DIRECT_NEON_CONTRACT.productionDeletePrivilegeAuthorized, false);
+  assert.equal(direct.TREE_DELETE_DIRECT_NEON_CONTRACT.productionGateActivationAuthorized, false);
+  assert.equal(direct.TREE_DELETE_DIRECT_NEON_CONTRACT.automaticWholeTransactionRetry, false);
+  assert.equal(direct.TREE_DELETE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
+
+  assert.doesNotMatch(
+    directSource,
+    /DELETE\s+FROM\s+(?:tree_hub_layouts|tree_comments|tree_likes|tree_social_counts|tree_view_dedup_events|tree_appreciation_orders)/i,
+    'source candidate must not invent optional child-table cleanup'
+  );
+});
+
+test('#4230 direct DELETE uses verified Firebase legacyOwnerId and exact owner-bounded SQL ordering', async () => {
+  const direct = await import('../../functions/_shared/tree-delete-direct-neon.js');
+  const fixture = makeTreeDeleteTransactionAdapter();
+  let verifiedToken = null;
+
+  const response = await direct.handleTreeDeleteDirectNeon(
+    treeDeleteRequest({
+      headers: {
+        'x-owner-id': 'attacker-owner',
+        'x-user-email': 'attacker@example.invalid'
+      }
+    }),
+    TREE_DELETE_ID,
+    treeDeleteEnv(),
+    'req-4230',
+    {
+      verifyTokenOverride: async (token) => {
+        verifiedToken = token;
+        return { uid: TREE_DELETE_OWNER, email: 'ignored@example.invalid' };
+      },
+      transactionAdapterOverride: fixture.adapter
+    }
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(verifiedToken, 'fake-firebase-token');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+  assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+  assert.equal(response.headers.get('x-lovebud-request-id'), 'req-4230');
+  assert.equal(fixture.runCalls, 1);
+  assert.equal(fixture.calls.length, 4);
+
+  assert.match(fixture.calls[0].text, /SELECT[\s\S]*FROM trees[\s\S]*WHERE id = \$1/i);
+  assert.deepEqual(fixture.calls[0].values, [TREE_DELETE_ID]);
+  assert.match(fixture.calls[1].text, /UPDATE memories[\s\S]*SET parent_id = NULL[\s\S]*WHERE tree_id = \$1/i);
+  assert.deepEqual(fixture.calls[1].values, [TREE_DELETE_ID]);
+  assert.match(fixture.calls[2].text, /DELETE FROM memories[\s\S]*WHERE tree_id = \$1/i);
+  assert.deepEqual(fixture.calls[2].values, [TREE_DELETE_ID]);
+  assert.match(fixture.calls[3].text, /DELETE FROM trees[\s\S]*WHERE id = \$1[\s\S]*AND owner_id = \$2[\s\S]*RETURNING id/i);
+  assert.deepEqual(fixture.calls[3].values, [TREE_DELETE_ID, TREE_DELETE_OWNER]);
+
+  assert.deepEqual(await response.json(), {
+    deleted: true,
+    id: TREE_DELETE_ID
+  });
+});
+
+test('#4230 auth and dedicated-writer config fail before transaction work', async () => {
+  const direct = await import('../../functions/_shared/tree-delete-direct-neon.js');
+
+  const unauthFixture = makeTreeDeleteTransactionAdapter();
+  const unauth = await direct.handleTreeDeleteDirectNeon(
+    treeDeleteRequest({ authorization: null }),
+    TREE_DELETE_ID,
+    treeDeleteEnv(),
+    'req-4230',
+    {
+      verifyTokenOverride: async () => {
+        throw new Error('must not verify an absent bearer token');
+      },
+      transactionAdapterOverride: unauthFixture.adapter
+    }
+  );
+  assert.equal(unauth.status, 401);
+  assert.equal(unauthFixture.runCalls, 0);
+
+  const configFixture = makeTreeDeleteTransactionAdapter();
+  const badConfig = await direct.handleTreeDeleteDirectNeon(
+    treeDeleteRequest(),
+    TREE_DELETE_ID,
+    {
+      LB_TREE_DELETE_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: TREE_DELETE_NEON_URL,
+      DATABASE_URL: TREE_DELETE_NEON_URL
+    },
+    'req-4230',
+    {
+      verifyTokenOverride: async () => ({ uid: TREE_DELETE_OWNER }),
+      transactionAdapterOverride: configFixture.adapter
+    }
+  );
+  assert.equal(badConfig.status, 503);
+  assert.equal(configFixture.runCalls, 0);
+  assert.equal(
+    (await badConfig.json()).code,
+    'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK'
+  );
+});
+
+test('#4230 missing/non-owner Tree fails before destructive SQL and does not leak row content', async () => {
+  const direct = await import('../../functions/_shared/tree-delete-direct-neon.js');
+
+  for (const [ownerId, expectedStatus] of [
+    [null, 404],
+    ['different-owner', 403]
+  ]) {
+    const fixture = makeTreeDeleteTransactionAdapter({ ownerId });
+    const response = await direct.handleTreeDeleteDirectNeon(
+      treeDeleteRequest(),
+      TREE_DELETE_ID,
+      treeDeleteEnv(),
+      'req-4230',
+      {
+        verifyTokenOverride: async () => ({ uid: TREE_DELETE_OWNER }),
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+
+    assert.equal(response.status, expectedStatus);
+    assert.equal(fixture.runCalls, 1);
+    assert.equal(fixture.calls.length, 1);
+    assert.match(fixture.calls[0].text, /FROM trees/);
+    const text = await response.text();
+    assert.doesNotMatch(text, /different-owner|verified-owner-4230|fake-firebase-token|postgresql:/);
+  }
+});
+
+test('#4230 unknown COMMIT outcome is explicit and never falls back or retries', async () => {
+  const direct = await import('../../functions/_shared/tree-delete-direct-neon.js');
+  const transaction = await import('../../functions/_shared/db/neon-ws-transaction-adapter.js');
+  let runCalls = 0;
+
+  const response = await direct.handleTreeDeleteDirectNeon(
+    treeDeleteRequest(),
+    TREE_DELETE_ID,
+    treeDeleteEnv(),
+    'req-4230',
+    {
+      verifyTokenOverride: async () => ({ uid: TREE_DELETE_OWNER }),
+      transactionAdapterOverride: {
+        async runTransaction() {
+          runCalls += 1;
+          throw new transaction.NeonWsTransactionError(
+            transaction.NEON_WS_TRANSACTION_ERROR.COMMIT_OUTCOME_UNKNOWN,
+            'PRIVATE connection secret must never surface',
+            {
+              status: 502,
+              transactionState: transaction.NEON_WS_TRANSACTION_STATE.COMMIT_OUTCOME_UNKNOWN,
+              commitOutcome: transaction.NEON_WS_TRANSACTION_COMMIT_OUTCOME.UNKNOWN
+            }
+          );
+        }
+      }
+    }
+  );
+
+  assert.equal(runCalls, 1);
+  assert.equal(response.status, 502);
+  assert.equal(response.headers.get('x-lovebud-route-status'), 'commit-outcome-unknown');
+  const text = await response.text();
+  assert.match(text, /COMMIT_OUTCOME_UNKNOWN/);
+  assert.doesNotMatch(text, /PRIVATE|connection secret|postgresql:|modal/i);
+});
