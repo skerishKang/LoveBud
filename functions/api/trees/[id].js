@@ -9,6 +9,10 @@ import {
   handleOwnerTreeDetailDirectNeon,
   isOwnerTreeDetailPublicFallbackResponse
 } from '../../_shared/owner-tree-detail-direct-neon.js';
+import {
+  handleTreeUpdateDirectNeon,
+  isTreeUpdateDirectNeonSelected
+} from '../../_shared/tree-update-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -289,6 +293,22 @@ export async function onRequestPut(context) {
   }
   if (bodyResult.status === 'readError') {
     return buildBodyReadFailedResponse(requestId);
+  }
+
+  // #4228 gated owner Tree-update direct-Neon candidate. The direct helper
+  // consumes the already-bounded body bytes, verifies Firebase before DB
+  // acquisition, and returns null only for an explicit visibility='private'
+  // update so the existing Modal Plus/private entitlement authority remains
+  // intact. GET and DELETE never consult this write gate.
+  if (isTreeUpdateDirectNeonSelected(context.env)) {
+    const directResponse = await handleTreeUpdateDirectNeon(
+      request,
+      context.params?.id,
+      context.env || {},
+      requestId,
+      { boundedBodyResult: bodyResult }
+    );
+    if (directResponse !== null) return directResponse;
   }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
