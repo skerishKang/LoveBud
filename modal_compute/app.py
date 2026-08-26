@@ -452,8 +452,11 @@ def post_fork_tree(
     tree_id: str,
     authorization: str | None = Header(default=None),
 ) -> dict:
-    user = require_firebase_user(authorization)
-    return fork_public_tree(user["uid"], tree_id)
+    principal = require_authenticated_principal(authorization)
+    return fork_public_tree(
+        principal["legacyOwnerId"],
+        tree_id,
+    )
 
 
 @web_app.put("/modal/private/trees/{tree_id}")

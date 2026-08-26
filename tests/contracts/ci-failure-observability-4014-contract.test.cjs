@@ -9,8 +9,9 @@
  * 5. Passing tests exit with 0 without degradation.
  * 6. Sensitive tokens / database URLs are redacted.
  * 7. Workflow step ordering (Lint -> Build -> Smoke -> Verify) is preserved.
+ * 8. The #4198 DB-impact classifier remains conservative/fail-open and all DB jobs stay behind one gate.
  *
- * Refs: #4014, #3994, #1882
+ * Refs: #4014, #4198, #3994, #1882
  */
 
 const test = require('node:test');
@@ -23,6 +24,7 @@ const { Writable } = require('node:stream');
 const ROOT = path.resolve(__dirname, '..', '..');
 const RUNNER_PATH = path.join(ROOT, 'scripts', 'ci-smoke-runner.cjs');
 const WORKFLOW_PATH = path.join(ROOT, '.github', 'workflows', 'ci.yml');
+const DB_IMPACT_CLASSIFIER_PATH = path.join(ROOT, 'scripts', 'ci-db-impact-classifier.cjs');
 
 const {
   StreamingTestCollector,
@@ -32,6 +34,28 @@ const {
   sanitizeEvidence,
   runSmokeProcess,
 } = require(RUNNER_PATH);
+
+const {
+  isExplicitlyNonDbPath,
+  shouldRunDbEngine,
+} = require(DB_IMPACT_CLASSIFIER_PATH);
+
+const DB_JOBS = [
+  'db-engine-tree-comments',
+  'db-engine-trees-schema',
+  'db-engine-generic-social-a-guard',
+  'db-engine-generic-social-a',
+  'db-engine-generic-social-b-guard',
+  'db-engine-generic-social-b',
+  'db-engine-migration-catalog-adapter',
+  'db-engine-precondition-composition-root',
+  'db-engine-clean-canonical-bootstrap',
+  'db-engine-readonly-target-attribution-parity',
+  'db-engine-structural-sentinel',
+  'db-engine-fork-public-tree-visibility-concurrency',
+  'db-engine-tree-social-visibility-concurrency',
+  'db-engine-memory-parent-cycle-concurrency',
+];
 
 function createMockStream() {
   const chunks = [];
@@ -55,6 +79,9 @@ test('scripts/ci-smoke-runner.cjs exists and exports required helper functions',
   assert.equal(typeof formatConsoleSummary, 'function', 'formatConsoleSummary must be exported');
   assert.equal(typeof sanitizeEvidence, 'function', 'sanitizeEvidence must be exported');
   assert.equal(typeof runSmokeProcess, 'function', 'runSmokeProcess must be exported');
+  assert.ok(fs.existsSync(DB_IMPACT_CLASSIFIER_PATH), 'ci-db-impact-classifier.cjs must exist');
+  assert.equal(typeof isExplicitlyNonDbPath, 'function', 'isExplicitlyNonDbPath must be exported');
+  assert.equal(typeof shouldRunDbEngine, 'function', 'shouldRunDbEngine must be exported');
 });
 
 // ─── 2. Workflow Definition & Ordering ──────────────────────────────────────
@@ -88,6 +115,59 @@ test('.github/workflows/ci.yml integrates ci-smoke-runner with preserved step se
   const smokeBlock = content.slice(smokeIdx, verifyIdx);
   assert.ok(!smokeBlock.includes('|| true'), 'Smoke test step must not swallow errors with || true');
   assert.ok(!smokeBlock.includes('continue-on-error: true'), 'Smoke test step must not have continue-on-error: true');
+});
+
+test('#4198 DB-impact classifier skips only explicit non-DB paths and otherwise fails open', () => {
+  for (const safePath of [
+    'README.md',
+    'docs/architecture/example.json',
+    'docs/ops/example.txt',
+    'assets/css/home.css',
+    'assets/favicon/favicon.svg',
+  ]) {
+    assert.equal(isExplicitlyNonDbPath(safePath), true, safePath);
+  }
+
+  for (const unsafePath of [
+    '.github/workflows/ci.yml',
+    'package.json',
+    'package-lock.json',
+    'functions/api/trees.js',
+    'scripts/migration.sql',
+    'tests/contracts/example.test.cjs',
+    'tests/db-engine/example.test.cjs',
+    'assets/js/app.js',
+    'unknown/new-surface.txt',
+  ]) {
+    assert.equal(isExplicitlyNonDbPath(unsafePath), false, unsafePath);
+  }
+
+  assert.equal(shouldRunDbEngine([]), true, 'empty diff must fail open to RUN');
+  assert.equal(shouldRunDbEngine(['docs/a.md', 'assets/css/a.css']), false, 'explicit non-DB-only diff may skip');
+  assert.equal(shouldRunDbEngine(['docs/a.md', 'functions/api/a.js']), true, 'mixed diff must run');
+  assert.equal(shouldRunDbEngine(['assets/js/app.js']), true, 'executable frontend source must run');
+  assert.equal(shouldRunDbEngine(['unknown/file.txt']), true, 'unknown path must fail open to RUN');
+});
+
+test('#4198 CI keeps all 14 DB jobs behind one cancellation-aware fail-open impact gate', () => {
+  const ci = fs.readFileSync(WORKFLOW_PATH, 'utf8');
+
+  assert.match(ci, /^\s{2}db-impact:\s*$/m);
+  assert.match(ci, /run-db:\s*\$\{\{\s*steps\.classify\.outputs\.run-db\s*\}\}/);
+  assert.match(ci, /fetch-depth:\s*0/);
+  assert.match(ci, /run_db=true/);
+  assert.match(ci, /EVENT_NAME.*pull_request/);
+  assert.match(ci, /node scripts\/ci-db-impact-classifier\.cjs/);
+
+  for (const job of DB_JOBS) {
+    const block = [
+      `  ${job}:`,
+      '    needs: db-impact',
+      '    if: >-',
+      "      ${{ always() && !cancelled() && (needs.db-impact.result != 'success' || needs.db-impact.outputs.run-db == 'true') }}",
+    ].join('\n');
+    assert.ok(ci.includes(block), job);
+  }
 });
 
 // ─── 3. TAP Parser Unit Tests ───────────────────────────────────────────────
