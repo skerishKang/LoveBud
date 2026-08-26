@@ -267,7 +267,7 @@ test('10. #4211 Tree fork route uses authenticated principal legacyOwnerId as th
   );
   assert.match(
     normalized,
-    /returnfork_public_tree\(principal\["legacyownerid"\],tree_id\)/,
+    /returnfork_public_tree\(principal\["legacyownerid"\],tree_id,?\)/,
     'post_fork_tree must pass principal["legacyOwnerId"] as fork actor authority'
   );
 
