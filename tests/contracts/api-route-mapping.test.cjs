@@ -981,3 +981,402 @@ test('hub-layout 5. unsupported POST method returns 405 with Allow: GET, PUT', a
   }
 });
 
+// ─── TREE UPDATE DIRECT-NEON CONTRACTS (#4228) ────────────────────────────
+
+const TREE_UPDATE_MODULE = '../../functions/_shared/tree-update-direct-neon.js';
+const TREE_DETAIL_ROUTE = '../../functions/api/trees/[id].js';
+const TREE_UPDATE_ID = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+const TREE_UPDATE_OWNER = 'firebase-owner-4228';
+const TREE_UPDATE_NEON_URL = 'postgresql://ep-tree-update-4228.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const TREE_UPDATE_ENV = {
+  LB_TREE_UPDATE_WRITE_RUNTIME: 'direct_neon',
+  LOVE_PLATFORM_WRITE_DATABASE_URL: TREE_UPDATE_NEON_URL
+};
+
+function makeTreeUpdateRequest({ body = {}, authorization = 'Bearer verified-token', headers = {} } = {}) {
+  const requestHeaders = new Headers({ 'content-type': 'application/json', ...headers });
+  if (authorization) requestHeaders.set('authorization', authorization);
+  return new Request(`${TEST_HOST}/api/trees/${TREE_UPDATE_ID}`, {
+    method: 'PUT',
+    headers: requestHeaders,
+    body: typeof body === 'string' ? body : JSON.stringify(body)
+  });
+}
+
+function makeTreeUpdateCanonicalRow(overrides = {}) {
+  return {
+    id: TREE_UPDATE_ID,
+    owner_id: TREE_UPDATE_OWNER,
+    title: 'Updated Tree',
+    visibility: 'public',
+    group_name: 'Group A',
+    keywords: ['alpha', 'beta'],
+    created_at: '2026-08-26 01:02:03.123456+00:00',
+    updated_at: '2026-08-26 02:03:04.654321+00:00',
+    memory_count: 2,
+    ...overrides
+  };
+}
+
+function makeTreeUpdateFakeAdapter({
+  ownerRow = { id: TREE_UPDATE_ID, owner_id: TREE_UPDATE_OWNER },
+  updateRows = [{ id: TREE_UPDATE_ID }],
+  capabilities = { has_social_counts: false, has_like_count: false, has_view_count: false },
+  canonicalRow = makeTreeUpdateCanonicalRow()
+} = {}) {
+  const events = [];
+  let runCount = 0;
+  const adapter = {
+    async runTransaction(work) {
+      runCount += 1;
+      const tx = {
+        async query(text, values = []) {
+          events.push({ type: 'query', text, values: [...values] });
+          if (text.includes('SELECT id::text AS id, owner_id::text AS owner_id')) {
+            return ownerRow ? [ownerRow] : [];
+          }
+          if (text.includes('UPDATE trees')) return updateRows;
+          if (text.includes('information_schema.tables')) return [capabilities];
+          throw new Error(`unexpected fake query: ${text}`);
+        },
+        async canonicalReread(text, values = []) {
+          events.push({ type: 'canonicalReread', text, values: [...values] });
+          return canonicalRow ? [canonicalRow] : [];
+        }
+      };
+      const value = await work(tx);
+      events.push({ type: 'commit' });
+      return { value };
+    }
+  };
+  return { adapter, events, getRunCount: () => runCount };
+}
+
+async function loadTreeUpdateModule() {
+  return import(TREE_UPDATE_MODULE);
+}
+
+test('#4228 gate and dedicated writer config stay bounded', async () => {
+  const mod = await loadTreeUpdateModule();
+  assert.equal(mod.isTreeUpdateDirectNeonSelected({}), false);
+  assert.equal(mod.isTreeUpdateDirectNeonSelected({ LB_TREE_UPDATE_WRITE_RUNTIME: 'modal' }), false);
+  assert.equal(mod.isTreeUpdateDirectNeonSelected({ LB_TREE_UPDATE_WRITE_RUNTIME: 'unknown' }), false);
+  assert.equal(mod.isTreeUpdateDirectNeonSelected({ LB_TREE_UPDATE_WRITE_RUNTIME: ' direct_neon ' }), true);
+  assert.equal(mod.readTreeUpdateWriteConfig(TREE_UPDATE_ENV).configured, true);
+  assert.equal(mod.readTreeUpdateWriteConfig({
+    LB_TREE_UPDATE_WRITE_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_DATABASE_URL: TREE_UPDATE_NEON_URL
+  }).configured, false);
+  assert.equal(
+    mod.detectTreeUpdateForbiddenWriterFallback({ LOVE_PLATFORM_DATABASE_URL: TREE_UPDATE_NEON_URL }).name,
+    'LOVE_PLATFORM_DATABASE_URL'
+  );
+});
+
+test('#4228 missing/invalid Firebase auth fails before transaction capability', async () => {
+  const mod = await loadTreeUpdateModule();
+  const fake = makeTreeUpdateFakeAdapter();
+  const missing = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ authorization: null }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-auth-a',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: fake.adapter }
+  );
+  assert.equal(missing.status, 401);
+  assert.equal(fake.getRunCount(), 0);
+
+  const invalid = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest(),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-auth-b',
+    { verifyTokenOverride: async () => null, transactionAdapterOverride: fake.adapter }
+  );
+  assert.equal(invalid.status, 401);
+  assert.equal(fake.getRunCount(), 0);
+});
+
+test('#4228 explicit private visibility defers to Modal before direct DB transaction', async () => {
+  const mod = await loadTreeUpdateModule();
+  const fake = makeTreeUpdateFakeAdapter();
+  const response = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: { visibility: 'private', title: 'Still Modal' } }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-private',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: fake.adapter }
+  );
+  assert.equal(response, null);
+  assert.equal(fake.getRunCount(), 0, 'private entitlement path acquires no direct transaction');
+  assert.equal(fake.events.length, 0);
+});
+
+test('#4228 Modal ordering is preserved: owner check precedes empty/unsupported payload validation', async () => {
+  const mod = await loadTreeUpdateModule();
+
+  const foreign = makeTreeUpdateFakeAdapter({
+    ownerRow: { id: TREE_UPDATE_ID, owner_id: 'someone-else' }
+  });
+  const foreignResponse = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: { zzz: 1 } }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-owner',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: foreign.adapter }
+  );
+  assert.equal(foreignResponse.status, 403);
+  assert.equal((await foreignResponse.json()).detail, 'Access denied: not your tree');
+  assert.equal(foreign.events.filter((event) => event.text && event.text.includes('UPDATE trees')).length, 0);
+
+  const empty = makeTreeUpdateFakeAdapter();
+  const emptyResponse = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: {} }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-empty',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: empty.adapter }
+  );
+  assert.equal(emptyResponse.status, 400);
+  assert.deepEqual((await emptyResponse.json()).detail, { code: 'EMPTY_TREE_UPDATE' });
+  assert.ok(empty.events[0].text.includes('SELECT id::text AS id'));
+
+  const unknown = makeTreeUpdateFakeAdapter();
+  const unknownResponse = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: { zzz: 1, title: 'x', aaa: 2 } }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-unknown',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: unknown.adapter }
+  );
+  assert.equal(unknownResponse.status, 400);
+  assert.deepEqual((await unknownResponse.json()).detail, {
+    code: 'UNSUPPORTED_TREE_UPDATE_FIELDS',
+    fields: ['aaa', 'zzz']
+  });
+  assert.equal(unknown.events.filter((event) => event.text && event.text.includes('UPDATE trees')).length, 0);
+});
+
+test('#4228 strict Tree field validation rejects malformed input before UPDATE', async () => {
+  const mod = await loadTreeUpdateModule();
+  const cases = [
+    [{ title: 42 }, { code: 'INVALID_TREE_SCALAR_TYPE', field: 'title', expected: 'string' }],
+    [{ groupName: true }, { code: 'INVALID_TREE_SCALAR_TYPE', field: 'groupName', expected: 'string' }],
+    [{ visibility: 'PRIVATE' }, 'visibility: public, private'],
+    [{ keywords: 'not-array' }, 'keywords must be an array'],
+    [{ keywords: ['ok', 7] }, 'each keyword must be a string'],
+    [{ keywords: ['a', 'b', 'c', 'd', 'e', 'f'] }, 'keywords exceeds max 5']
+  ];
+
+  for (const [payload, expectedDetail] of cases) {
+    const fake = makeTreeUpdateFakeAdapter();
+    const response = await mod.handleTreeUpdateDirectNeon(
+      makeTreeUpdateRequest({ body: payload }),
+      TREE_UPDATE_ID,
+      TREE_UPDATE_ENV,
+      'rid-4228-validation',
+      { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: fake.adapter }
+    );
+    assert.equal(response.status, 400, JSON.stringify(payload));
+    assert.deepEqual((await response.json()).detail, expectedDetail, JSON.stringify(payload));
+    assert.equal(fake.events.filter((event) => event.text && event.text.includes('UPDATE trees')).length, 0);
+  }
+});
+
+test('#4228 happy path uses verified owner predicate and returns canonical DB reread', async () => {
+  const mod = await loadTreeUpdateModule();
+  const fake = makeTreeUpdateFakeAdapter({
+    canonicalRow: makeTreeUpdateCanonicalRow({
+      title: 'Updated Tree',
+      group_name: 'Group A',
+      keywords: ['alpha', 'beta']
+    })
+  });
+  const request = makeTreeUpdateRequest({
+    body: {
+      title: '  Updated Tree  ',
+      groupName: '  Group A  ',
+      keywords: [' alpha ', 'alpha', 'beta']
+    },
+    headers: { 'x-owner-id': 'attacker-owner' }
+  });
+  const response = await mod.handleTreeUpdateDirectNeon(
+    request,
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-happy',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: fake.adapter }
+  );
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+  assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const dto = await response.json();
+  assert.equal(dto.ownerId, TREE_UPDATE_OWNER);
+  assert.equal(dto.title, 'Updated Tree');
+  assert.equal(dto.groupName, 'Group A');
+  assert.deepEqual(dto.keywords, ['alpha', 'beta']);
+  assert.equal(dto.memoryCount, 2);
+  assert.equal(dto.createdAt, '2026-08-26T01:02:03.123456+00:00');
+  assert.equal(dto.updatedAt, '2026-08-26T02:03:04.654321+00:00');
+
+  const ownerIndex = fake.events.findIndex((event) => event.text && event.text.includes('SELECT id::text AS id, owner_id::text AS owner_id'));
+  const updateIndex = fake.events.findIndex((event) => event.text && event.text.includes('UPDATE trees'));
+  const capabilityIndex = fake.events.findIndex((event) => event.text && event.text.includes('information_schema.tables'));
+  const rereadIndex = fake.events.findIndex((event) => event.type === 'canonicalReread');
+  const commitIndex = fake.events.findIndex((event) => event.type === 'commit');
+  assert.ok(ownerIndex >= 0 && ownerIndex < updateIndex);
+  assert.ok(updateIndex < capabilityIndex);
+  assert.ok(capabilityIndex < rereadIndex);
+  assert.ok(rereadIndex < commitIndex);
+
+  const updateEvent = fake.events[updateIndex];
+  assert.match(updateEvent.text, /WHERE id = \$4\s+AND owner_id = \$5/);
+  assert.deepEqual(updateEvent.values, [
+    'Updated Tree',
+    'Group A',
+    ['alpha', 'beta'],
+    TREE_UPDATE_ID,
+    TREE_UPDATE_OWNER
+  ]);
+});
+
+test('#4228 canonical UUID and missing/foreign targets fail without mutation', async () => {
+  const mod = await loadTreeUpdateModule();
+  const invalidFake = makeTreeUpdateFakeAdapter();
+  const invalid = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: { title: 'x' } }),
+    '%ZZ',
+    TREE_UPDATE_ENV,
+    'rid-4228-invalid-id',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: invalidFake.adapter }
+  );
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).detail, 'Invalid treeId');
+  assert.equal(invalidFake.getRunCount(), 0);
+
+  const missingFake = makeTreeUpdateFakeAdapter({ ownerRow: null });
+  const missing = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: { title: 'x' } }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-missing',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: missingFake.adapter }
+  );
+  assert.equal(missing.status, 404);
+  assert.equal((await missing.json()).detail, 'Tree not found');
+  assert.equal(missingFake.events.filter((event) => event.text && event.text.includes('UPDATE trees')).length, 0);
+});
+
+test('#4228 direct config absence fails closed after auth with no transaction and no Modal fallback', async () => {
+  const mod = await loadTreeUpdateModule();
+  const fake = makeTreeUpdateFakeAdapter();
+  const response = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: { title: 'x' } }),
+    TREE_UPDATE_ID,
+    { LB_TREE_UPDATE_WRITE_RUNTIME: 'direct_neon', LOVE_PLATFORM_DATABASE_URL: TREE_UPDATE_NEON_URL },
+    'rid-4228-config',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: fake.adapter }
+  );
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).code, 'DIRECT_NEON_CONFIG_ABSENT');
+  assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+  assert.equal(fake.getRunCount(), 0);
+});
+
+test('#4228 explicit unknown COMMIT outcome is bounded and never retried', async () => {
+  const mod = await loadTreeUpdateModule();
+  const txMod = await import('../../functions/_shared/db/neon-ws-transaction-adapter.js');
+  const fake = makeTreeUpdateFakeAdapter();
+  let attempts = 0;
+  const ambiguousAdapter = {
+    async runTransaction(work) {
+      attempts += 1;
+      await fake.adapter.runTransaction(work);
+      throw new txMod.NeonWsTransactionError(
+        txMod.NEON_WS_TRANSACTION_ERROR.COMMIT_OUTCOME_UNKNOWN,
+        'commit outcome unknown',
+        { status: 502 }
+      );
+    }
+  };
+  const response = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: { title: 'Updated Tree' } }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4228-commit',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: ambiguousAdapter }
+  );
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).code, 'COMMIT_OUTCOME_UNKNOWN');
+  assert.equal(attempts, 1);
+});
+
+test('#4228 route wiring keeps unset PUT and DELETE on Modal, and writer gate is PUT-only', async () => {
+  const route = await import(TREE_DETAIL_ROUTE);
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  });
+
+  try {
+    const put = await route.onRequestPut({
+      request: makeTreeUpdateRequest({ body: { title: 'Modal title' } }),
+      params: { id: TREE_UPDATE_ID },
+      env: { MODAL_BASE_URL }
+    });
+    assert.equal(put.status, 200);
+    assert.equal(put.headers.get('x-lovebud-upstream'), 'modal');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].options.method, 'PUT');
+
+    const del = await route.onRequestDelete({
+      request: new Request(`${TEST_HOST}/api/trees/${TREE_UPDATE_ID}`, {
+        method: 'DELETE',
+        headers: { authorization: 'Bearer owner-token' }
+      }),
+      params: { id: TREE_UPDATE_ID },
+      env: { MODAL_BASE_URL, LB_TREE_UPDATE_WRITE_RUNTIME: 'direct_neon' }
+    });
+    assert.equal(del.status, 200);
+    assert.equal(del.headers.get('x-lovebud-upstream'), 'modal');
+    assert.equal(calls.length, 2, 'DELETE remains Modal even when Tree-update gate is direct');
+    assert.equal(calls[1].options.method, 'DELETE');
+  } finally {
+    restore();
+  }
+});
+
+test('#4228 route source dispatches direct Tree update before Modal config while GET/DELETE ignore the gate', () => {
+  const content = readFileContent(TREE_DETAIL_JS);
+  const putStart = content.indexOf('export async function onRequestPut');
+  const deleteStart = content.indexOf('export async function onRequestDelete');
+  assert.ok(putStart >= 0 && deleteStart > putStart);
+  const putBlock = content.slice(putStart, deleteStart);
+  const deleteBlock = content.slice(deleteStart);
+  assert.ok(putBlock.includes('isTreeUpdateDirectNeonSelected(context.env)'));
+  assert.ok(putBlock.includes('handleTreeUpdateDirectNeon('));
+  assert.ok(
+    putBlock.indexOf('handleTreeUpdateDirectNeon(') < putBlock.indexOf('MODAL_BASE_URL'),
+    'direct dispatch must happen before Modal config requirement'
+  );
+  assert.ok(!deleteBlock.includes('isTreeUpdateDirectNeonSelected'));
+  assert.ok(!deleteBlock.includes('handleTreeUpdateDirectNeon'));
+});
+
+test('#4228 contract metadata pins PUT-only, Firebase owner, no retries and no Production cutover', async () => {
+  const mod = await loadTreeUpdateModule();
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.method, 'PUT');
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.gateEnv, 'LB_TREE_UPDATE_WRITE_RUNTIME');
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.databaseEnv, 'LOVE_PLATFORM_WRITE_DATABASE_URL');
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.ownerAuthority, 'verified-firebase-legacyOwnerId');
+  assert.deepEqual([...mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.allowedFields], ['title', 'visibility', 'groupName', 'keywords']);
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.explicitPrivate, 'modal-before-direct-db');
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.getUnchanged, true);
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.deleteUnchanged, true);
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.perRequestModalFallbackAfterDirectStart, false);
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.automaticWholeTransactionRetry, false);
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
+});
