@@ -13,6 +13,10 @@ import {
   handleTreeUpdateDirectNeon,
   isTreeUpdateDirectNeonSelected
 } from '../../_shared/tree-update-direct-neon.js';
+import {
+  handleTreeDeleteDirectNeon,
+  isTreeDeleteDirectNeonSelected
+} from '../../_shared/tree-delete-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -349,6 +353,20 @@ export async function onRequestDelete(context) {
 
   if (!hasAuthorizationHeader(context.request)) {
     return buildMissingAuthorizationResponse(requestId);
+  }
+
+  // #4230 gated owner Tree-delete direct-Neon source candidate. Authentication
+  // presence remains edge-first; the helper performs verified Firebase principal
+  // resolution before DB capability acquisition. Default/modal/unknown still use
+  // the existing Modal path, and GET/PUT never consult this delete gate.
+  if (isTreeDeleteDirectNeonSelected(context.env)) {
+    const directResponse = await handleTreeDeleteDirectNeon(
+      request,
+      context.params?.id,
+      context.env || {},
+      requestId
+    );
+    if (directResponse !== null) return directResponse;
   }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
