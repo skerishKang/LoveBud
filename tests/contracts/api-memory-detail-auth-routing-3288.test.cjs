@@ -884,3 +884,359 @@ test('#4232 source acknowledgement divergence rolls back before COMMIT; unknown 
   assert.match(unknownText, /COMMIT_OUTCOME_UNKNOWN/);
   assert.doesNotMatch(unknownText, /private commit transport sentinel|postgresql:|update-token-4232/);
 });
+
+// ─── #4234 owner Memory DELETE direct-Neon candidate ──────────────────────
+
+const DELETE_MEMORY_ID = '44444444-4444-4444-8444-444444444444';
+const DELETE_TREE_ID = '55555555-5555-4555-8555-555555555555';
+const DELETE_OWNER_UID = 'firebase-owner-4234';
+const DELETE_DB = 'postgresql://ep-memory-delete-4234.us-east-1.neon.tech/neondb?sslmode=require';
+
+function memoryDeleteContext({
+  memoryId = DELETE_MEMORY_ID,
+  auth = 'Bearer delete-token-4234',
+  gate = 'direct_neon',
+  modalBaseUrl = null,
+  extraEnv = {},
+  extraHeaders = {}
+} = {}) {
+  const headers = new Headers({
+    'x-lovebud-request-id': 'req-memory-delete-4234',
+    ...extraHeaders
+  });
+  if (auth) headers.set('authorization', auth);
+  const env = {
+    LB_MEMORY_DELETE_WRITE_RUNTIME: gate,
+    LOVE_PLATFORM_WRITE_DATABASE_URL: DELETE_DB,
+    ...extraEnv
+  };
+  if (modalBaseUrl !== null) env.MODAL_BASE_URL = modalBaseUrl;
+  return {
+    env,
+    params: { id: memoryId },
+    request: new Request(`https://lovebud.pages.dev/api/memories/${memoryId}`, {
+      method: 'DELETE',
+      headers
+    })
+  };
+}
+
+function makeMemoryDeleteAdapter({
+  ownerId = DELETE_OWNER_UID,
+  ownerPresent = true,
+  deletedId = DELETE_MEMORY_ID
+} = {}) {
+  const calls = [];
+  let runCalls = 0;
+  const adapter = {
+    async runTransaction(work) {
+      runCalls += 1;
+      const tx = {
+        async query(text, values = []) {
+          calls.push({ text, values: Array.isArray(values) ? [...values] : values });
+          if (/INNER JOIN trees t ON t\.id = m\.tree_id/i.test(text)) {
+            if (!ownerPresent) return [];
+            return [{
+              id: DELETE_MEMORY_ID,
+              tree_id: DELETE_TREE_ID,
+              tree_owner_id: ownerId
+            }];
+          }
+          if (/UPDATE memories\s+SET parent_id = NULL/i.test(text)) return [];
+          if (/DELETE FROM memories/i.test(text)) {
+            return deletedId ? [{ id: deletedId }] : [];
+          }
+          return [];
+        }
+      };
+      return { value: await work(tx), outcome: 'committed' };
+    }
+  };
+  return {
+    adapter,
+    calls,
+    get runCalls() { return runCalls; }
+  };
+}
+
+function makeDeleteTransactionClientFactory({
+  ownerId = DELETE_OWNER_UID,
+  deleteFails = false,
+  commitFails = false
+} = {}) {
+  const logs = [];
+  const clients = [];
+  class FakeClient {
+    constructor(config) {
+      this.config = config;
+      clients.push(this);
+    }
+    async connect() {
+      logs.push({ text: 'CONNECT', values: [] });
+    }
+    async query(text, values = []) {
+      logs.push({ text, values: Array.isArray(values) ? [...values] : values });
+      if (text === 'BEGIN' || text === 'ROLLBACK') return { rows: [] };
+      if (text === 'COMMIT') {
+        if (commitFails) throw new Error('private delete commit transport sentinel');
+        return { rows: [] };
+      }
+      if (/INNER JOIN trees t ON t\.id = m\.tree_id/i.test(text)) {
+        return { rows: [{
+          id: DELETE_MEMORY_ID,
+          tree_id: DELETE_TREE_ID,
+          tree_owner_id: ownerId
+        }] };
+      }
+      if (/UPDATE memories\s+SET parent_id = NULL/i.test(text)) return { rows: [] };
+      if (/DELETE FROM memories/i.test(text)) {
+        if (deleteFails) throw new Error('private delete query sentinel');
+        return { rows: [{ id: DELETE_MEMORY_ID }] };
+      }
+      return { rows: [] };
+    }
+    async end() {
+      logs.push({ text: 'END', values: [] });
+    }
+  }
+  return { Client: FakeClient, logs, clients };
+}
+
+function makeDeleteNeonImporter(factory) {
+  return async () => ({ Client: factory.Client });
+}
+
+test('#4234 gate/source contract keeps GET+PUT independent and Production/provider/DELETE authority disabled', async () => {
+  const direct = await import('../../functions/_shared/memory-delete-direct-neon.js');
+  const routeSource = fs.readFileSync(path.join(ROOT, 'functions/api/memories/[id].js'), 'utf8');
+
+  assert.equal(direct.isMemoryDeleteDirectNeonSelected({}), false);
+  assert.equal(direct.isMemoryDeleteDirectNeonSelected({ LB_MEMORY_DELETE_WRITE_RUNTIME: 'modal' }), false);
+  assert.equal(direct.isMemoryDeleteDirectNeonSelected({ LB_MEMORY_DELETE_WRITE_RUNTIME: 'unknown' }), false);
+  assert.equal(direct.isMemoryDeleteDirectNeonSelected({ LB_MEMORY_DELETE_WRITE_RUNTIME: ' direct_neon ' }), true);
+  assert.equal(direct.MEMORY_DELETE_DIRECT_NEON_CONTRACT.getUnchanged, true);
+  assert.equal(direct.MEMORY_DELETE_DIRECT_NEON_CONTRACT.putUnchanged, true);
+  assert.equal(direct.MEMORY_DELETE_DIRECT_NEON_CONTRACT.productionDeletePrivilegeAuthorized, false);
+  assert.equal(direct.MEMORY_DELETE_DIRECT_NEON_CONTRACT.productionGateActivationAuthorized, false);
+  assert.equal(direct.MEMORY_DELETE_DIRECT_NEON_CONTRACT.providerMutationAuthorized, false);
+  assert.equal(direct.MEMORY_DELETE_DIRECT_NEON_CONTRACT.automaticWholeTransactionRetry, false);
+  assert.equal(direct.MEMORY_DELETE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
+
+  const getBlock = sliceBetween(routeSource, /export async function handleMemoryDetailGet/, /export async function onRequestGet/);
+  const putBlock = sliceBetween(routeSource, /export async function handleMemoryDetailPut/, /export async function onRequestPut/);
+  assert.doesNotMatch(getBlock, /LB_MEMORY_DELETE_WRITE_RUNTIME|handleMemoryDeleteDirectNeon/);
+  assert.doesNotMatch(putBlock, /LB_MEMORY_DELETE_WRITE_RUNTIME|handleMemoryDeleteDirectNeon/);
+});
+
+test('#4234 direct DELETE verifies Firebase owner and preserves owner-check -> child detach -> owner-predicated delete ordering', async () => {
+  const route = await import('../../functions/api/memories/[id].js');
+  const fixture = makeMemoryDeleteAdapter();
+  let verifiedToken = null;
+  const cap = captureFetch();
+  try {
+    const response = await route.handleMemoryDetailDelete(
+      memoryDeleteContext({
+        extraHeaders: {
+          'x-owner-id': 'attacker-owner',
+          'x-user-email': 'attacker@example.invalid'
+        }
+      }),
+      {
+        verifyTokenOverride: async (token) => {
+          verifiedToken = token;
+          return { uid: DELETE_OWNER_UID, email: 'ignored@example.invalid' };
+        },
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(verifiedToken, 'delete-token-4234');
+    assert.equal(cap.calls.length, 0, 'direct DELETE must never fall back to Modal');
+    assert.equal(fixture.runCalls, 1);
+    assert.equal(fixture.calls.length, 3);
+    assert.match(fixture.calls[0].text, /INNER JOIN trees/);
+    assert.deepEqual(fixture.calls[0].values, [DELETE_MEMORY_ID]);
+    assert.match(fixture.calls[1].text, /UPDATE memories[\s\S]*SET parent_id = NULL[\s\S]*WHERE tree_id = \$1[\s\S]*AND parent_id = \$2/i);
+    assert.deepEqual(fixture.calls[1].values, [DELETE_TREE_ID, DELETE_MEMORY_ID]);
+    assert.match(fixture.calls[2].text, /DELETE FROM memories[\s\S]*AND t\.owner_id = \$2[\s\S]*RETURNING id::text AS id/i);
+    assert.deepEqual(fixture.calls[2].values, [DELETE_MEMORY_ID, DELETE_OWNER_UID]);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.deepEqual(await response.json(), {
+      deleted: true,
+      id: DELETE_MEMORY_ID,
+      treeId: DELETE_TREE_ID
+    });
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4234 missing auth and absent/modal/unknown gate preserve the existing Modal edge path with zero direct transaction', async () => {
+  const route = await import('../../functions/api/memories/[id].js');
+  let verifierCalls = 0;
+  let transactionCalls = 0;
+  const noAuth = await route.handleMemoryDetailDelete(
+    memoryDeleteContext({ auth: null }),
+    {
+      verifyTokenOverride: async () => { verifierCalls += 1; return { uid: DELETE_OWNER_UID }; },
+      transactionAdapterOverride: {
+        async runTransaction() { transactionCalls += 1; throw new Error('must not run'); }
+      }
+    }
+  );
+  assert.equal(noAuth.status, 401);
+  assert.equal(noAuth.headers.get('x-lovebud-route-status'), 'missing-authorization');
+  assert.equal(verifierCalls, 0);
+  assert.equal(transactionCalls, 0);
+
+  for (const gate of [undefined, 'modal', 'future-provider']) {
+    const cap = captureFetch({ deleted: true, id: DELETE_MEMORY_ID, treeId: DELETE_TREE_ID });
+    try {
+      const ctx = memoryDeleteContext({
+        gate,
+        modalBaseUrl: 'https://modal.example'
+      });
+      if (gate === undefined) delete ctx.env.LB_MEMORY_DELETE_WRITE_RUNTIME;
+      const response = await route.onRequestDelete(ctx);
+      assert.equal(response.status, 200);
+      assert.equal(cap.calls.length, 1);
+      assert.equal(new URL(cap.calls[0].url).pathname, `/modal/private/memories/${DELETE_MEMORY_ID}`);
+      assert.equal(cap.calls[0].options.method, 'DELETE');
+    } finally {
+      cap.restore();
+    }
+  }
+});
+
+test('#4234 missing/non-owner Memory fails before destructive SQL and caller ownership metadata cannot override principal', async () => {
+  const direct = await import('../../functions/_shared/memory-delete-direct-neon.js');
+
+  for (const fixture of [
+    makeMemoryDeleteAdapter({ ownerPresent: false }),
+    makeMemoryDeleteAdapter({ ownerId: 'different-owner' })
+  ]) {
+    const response = await direct.handleMemoryDeleteDirectNeon(
+      memoryDeleteContext().request,
+      DELETE_MEMORY_ID,
+      memoryDeleteContext().env,
+      'req-4234-owner',
+      {
+        verifyTokenOverride: async () => ({ uid: DELETE_OWNER_UID }),
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+    assert.ok([403, 404].includes(response.status));
+    assert.equal(fixture.calls.some((call) => /UPDATE memories|DELETE FROM memories/.test(call.text)), false);
+  }
+
+  const forged = makeMemoryDeleteAdapter({ ownerId: 'attacker-owner' });
+  const forgedCtx = memoryDeleteContext({
+    extraHeaders: {
+      'x-owner-id': 'attacker-owner',
+      'x-user-id': 'attacker-owner',
+      'x-user-email': 'attacker@example.invalid'
+    }
+  });
+  const forgedResponse = await direct.handleMemoryDeleteDirectNeon(
+    forgedCtx.request,
+    DELETE_MEMORY_ID,
+    forgedCtx.env,
+    'req-4234-forged',
+    {
+      verifyTokenOverride: async () => ({ uid: DELETE_OWNER_UID }),
+      transactionAdapterOverride: forged.adapter
+    }
+  );
+  assert.equal(forgedResponse.status, 403);
+  assert.equal(forged.calls.some((call) => /UPDATE memories|DELETE FROM memories/.test(call.text)), false);
+});
+
+test('#4234 invalid Memory ID and forbidden generic/read DB fallback fail before transaction work', async () => {
+  const direct = await import('../../functions/_shared/memory-delete-direct-neon.js');
+
+  let invalidRuns = 0;
+  const invalid = await direct.handleMemoryDeleteDirectNeon(
+    memoryDeleteContext({ memoryId: 'not-a-uuid' }).request,
+    'not-a-uuid',
+    memoryDeleteContext().env,
+    'req-4234-invalid',
+    {
+      verifyTokenOverride: async () => ({ uid: DELETE_OWNER_UID }),
+      transactionAdapterOverride: {
+        async runTransaction() { invalidRuns += 1; throw new Error('must not run'); }
+      }
+    }
+  );
+  assert.equal(invalid.status, 400);
+  assert.equal(invalidRuns, 0);
+
+  const configCtx = memoryDeleteContext({
+    extraEnv: {
+      LOVE_PLATFORM_WRITE_DATABASE_URL: '',
+      LOVE_PLATFORM_DATABASE_URL: DELETE_DB,
+      DATABASE_URL: DELETE_DB
+    }
+  });
+  let configRuns = 0;
+  const forbidden = await direct.handleMemoryDeleteDirectNeon(
+    configCtx.request,
+    DELETE_MEMORY_ID,
+    configCtx.env,
+    'req-4234-config',
+    {
+      verifyTokenOverride: async () => ({ uid: DELETE_OWNER_UID }),
+      transactionAdapterOverride: {
+        async runTransaction() { configRuns += 1; throw new Error('must not run'); }
+      }
+    }
+  );
+  assert.equal(forbidden.status, 503);
+  assert.equal((await forbidden.json()).code, 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK');
+  assert.equal(configRuns, 0);
+});
+
+test('#4234 query failure rolls back; unknown COMMIT outcome is explicit with no rollback or blind retry', async () => {
+  const direct = await import('../../functions/_shared/memory-delete-direct-neon.js');
+
+  const failedFactory = makeDeleteTransactionClientFactory({ deleteFails: true });
+  const failedCtx = memoryDeleteContext();
+  const failed = await direct.handleMemoryDeleteDirectNeon(
+    failedCtx.request,
+    DELETE_MEMORY_ID,
+    failedCtx.env,
+    'req-4234-failed',
+    {
+      verifyTokenOverride: async () => ({ uid: DELETE_OWNER_UID }),
+      neonImporter: makeDeleteNeonImporter(failedFactory)
+    }
+  );
+  assert.equal(failed.status, 500);
+  assert.equal(failedFactory.clients.length, 1);
+  assert.equal(failedFactory.logs.filter((entry) => entry.text === 'ROLLBACK').length, 1);
+  assert.equal(failedFactory.logs.filter((entry) => entry.text === 'COMMIT').length, 0);
+  assert.doesNotMatch(await failed.text(), /private delete query sentinel|postgresql:|delete-token-4234/);
+
+  const unknownFactory = makeDeleteTransactionClientFactory({ commitFails: true });
+  const unknownCtx = memoryDeleteContext();
+  const unknown = await direct.handleMemoryDeleteDirectNeon(
+    unknownCtx.request,
+    DELETE_MEMORY_ID,
+    unknownCtx.env,
+    'req-4234-unknown',
+    {
+      verifyTokenOverride: async () => ({ uid: DELETE_OWNER_UID }),
+      neonImporter: makeDeleteNeonImporter(unknownFactory)
+    }
+  );
+  assert.equal(unknown.status, 502);
+  assert.equal(unknown.headers.get('x-lovebud-route-status'), 'commit-outcome-unknown');
+  assert.equal(unknownFactory.clients.length, 1);
+  assert.equal(unknownFactory.logs.filter((entry) => entry.text === 'COMMIT').length, 1);
+  assert.equal(unknownFactory.logs.filter((entry) => entry.text === 'ROLLBACK').length, 0);
+  const unknownText = await unknown.text();
+  assert.match(unknownText, /COMMIT_OUTCOME_UNKNOWN/);
+  assert.doesNotMatch(unknownText, /private delete commit transport sentinel|postgresql:|delete-token-4234/);
+});

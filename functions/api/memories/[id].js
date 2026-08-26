@@ -11,6 +11,10 @@ import {
   handleMemoryUpdateDirectNeon,
   isMemoryUpdateDirectNeonSelected
 } from '../../_shared/memory-update-direct-neon.js';
+import {
+  handleMemoryDeleteDirectNeon,
+  isMemoryDeleteDirectNeonSelected
+} from '../../_shared/memory-delete-direct-neon.js';
 
 function withMemoryId(context) {
   return { memoryId: context.params?.id || null };
@@ -132,6 +136,43 @@ export async function onRequestPut(context) {
   return handleMemoryDetailPut(context);
 }
 
+export async function handleMemoryDetailDelete(
+  context,
+  {
+    verifyTokenOverride = null,
+    neonImporter = null,
+    transactionAdapterOverride = null
+  } = {}
+) {
+  const routeOptions = withMemoryId(context);
+
+  // Preserve the existing Memory proxy auth-presence guard. Missing auth never
+  // reaches Firebase verification or direct DB capability acquisition.
+  if (!hasAuthorizationHeader(context.request)) {
+    return proxyMemoryRouteRequest(context, routeOptions);
+  }
+
+  if (!isMemoryDeleteDirectNeonSelected(context.env || {})) {
+    return proxyMemoryRouteRequest(context, routeOptions);
+  }
+
+  const requestId = getOrCreateRequestId(context.request);
+  return handleMemoryDeleteDirectNeon(
+    context.request,
+    routeOptions.memoryId,
+    context.env || {},
+    requestId,
+    {
+      verifyTokenOverride,
+      neonImporter,
+      transactionAdapterOverride
+    }
+  );
+}
+
 export async function onRequestDelete(context) {
-  return proxyMemoryRouteRequest(context, withMemoryId(context));
+  if (!isMemoryDeleteDirectNeonSelected(context.env || {})) {
+    return proxyMemoryRouteRequest(context, withMemoryId(context));
+  }
+  return handleMemoryDetailDelete(context);
 }
