@@ -20,6 +20,17 @@ async function loadDirect() {
   return import('../../functions/_shared/owner-memory-detail-direct-neon.js');
 }
 
+function sliceBetween(content, startPattern, endPattern) {
+  const start = content.search(startPattern);
+  assert.notEqual(start, -1, `${startPattern} should exist`);
+
+  const afterStart = content.slice(start);
+  const end = afterStart.search(endPattern);
+  assert.notEqual(end, -1, `${endPattern} should exist after ${startPattern}`);
+
+  return afterStart.slice(0, end);
+}
+
 function context({
   memoryId = 'mem-owner-123',
   auth = 'Bearer owner-token-4123',
@@ -445,4 +456,431 @@ test('#4123 Neon serverless executor uses the HTTP SQL query path without a writ
   } finally {
     globalThis.fetch = original;
   }
+});
+
+// ─── #4232 owner Memory update direct-Neon candidate ──────────────────────
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const UPDATE_MEMORY_ID = '11111111-1111-4111-8111-111111111111';
+const UPDATE_TREE_ID = '22222222-2222-4222-8222-222222222222';
+const UPDATE_PARENT_ID = '33333333-3333-4333-8333-333333333333';
+const UPDATE_OWNER_UID = 'firebase-owner-4232';
+const UPDATE_DB = 'postgresql://ep-memory-update-4232.us-east-1.neon.tech/neondb?sslmode=require';
+
+function memoryUpdateContext({
+  body = { title: 'Updated title' },
+  auth = 'Bearer update-token-4232',
+  gate = 'direct_neon',
+  modalBaseUrl = null,
+  extraEnv = {},
+  extraHeaders = {}
+} = {}) {
+  const headers = new Headers({
+    'content-type': 'application/json',
+    'x-lovebud-request-id': 'req-memory-update-4232',
+    ...extraHeaders
+  });
+  if (auth) headers.set('authorization', auth);
+  const env = {
+    LB_MEMORY_UPDATE_WRITE_RUNTIME: gate,
+    LOVE_PLATFORM_WRITE_DATABASE_URL: UPDATE_DB,
+    ...extraEnv
+  };
+  if (modalBaseUrl !== null) env.MODAL_BASE_URL = modalBaseUrl;
+  return {
+    env,
+    params: { id: UPDATE_MEMORY_ID },
+    request: new Request(`https://lovebud.pages.dev/api/memories/${UPDATE_MEMORY_ID}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body)
+    })
+  };
+}
+
+function memoryUpdateRow(overrides = {}) {
+  return {
+    id: UPDATE_MEMORY_ID,
+    tree_id: UPDATE_TREE_ID,
+    parent_id: null,
+    title: 'Updated title',
+    memo: '',
+    artist: '',
+    source: '',
+    source_url: '',
+    source_type: 'youtube',
+    thumbnail: '',
+    emotion_tags: [],
+    timestamp: '',
+    visibility: 'public',
+    channel_id: null,
+    channel_name: null,
+    channel_url: null,
+    created_at: '2026-08-20 01:02:03.123456+00',
+    updated_at: '2026-08-26 05:20:30.654321+00',
+    ...overrides
+  };
+}
+
+function makeMemoryUpdateAdapter({
+  ownerId = UPDATE_OWNER_UID,
+  updateRow = memoryUpdateRow(),
+  targetRow = { id: UPDATE_PARENT_ID, tree_id: UPDATE_TREE_ID, parent_id: null },
+  ancestorRows = [{ parent_id: null }]
+} = {}) {
+  const calls = [];
+  let runCalls = 0;
+  let ancestorIndex = 0;
+  const adapter = {
+    async runTransaction(work) {
+      runCalls += 1;
+      const tx = {
+        async query(text, values = []) {
+          calls.push({ text, values: Array.isArray(values) ? [...values] : values });
+          if (/SELECT pg_advisory_xact_lock\(\$1\)/.test(text)) return [];
+          if (/UPDATE memories\s+SET/i.test(text)) return updateRow ? [{ ...updateRow }] : [];
+          if (/SELECT parent_id::text AS parent_id\s+FROM memories/i.test(text)) {
+            return ancestorRows[ancestorIndex++] || [];
+          }
+          if (/SELECT id::text AS id, tree_id::text AS tree_id, parent_id::text AS parent_id\s+FROM memories/i.test(text)) {
+            return targetRow ? [{ ...targetRow }] : [];
+          }
+          if (/INNER JOIN trees t ON t\.id = m\.tree_id/i.test(text)) {
+            if (ownerId === null) return [];
+            return [{
+              id: UPDATE_MEMORY_ID,
+              tree_id: UPDATE_TREE_ID,
+              parent_id: null,
+              visibility: 'public',
+              tree_owner_id: ownerId
+            }];
+          }
+          return [];
+        }
+      };
+      return { value: await work(tx), outcome: 'committed' };
+    }
+  };
+  return {
+    adapter,
+    calls,
+    get runCalls() { return runCalls; }
+  };
+}
+
+function makeTransactionClientFactory({
+  ownerId = UPDATE_OWNER_UID,
+  updateRow = memoryUpdateRow(),
+  commitFails = false
+} = {}) {
+  const logs = [];
+  const clients = [];
+  class FakeClient {
+    constructor(config) {
+      this.config = config;
+      clients.push(this);
+    }
+    async connect() {
+      logs.push({ text: 'CONNECT', values: [] });
+    }
+    async query(text, values = []) {
+      logs.push({ text, values: Array.isArray(values) ? [...values] : values });
+      if (text === 'BEGIN' || text === 'ROLLBACK') return { rows: [] };
+      if (text === 'COMMIT') {
+        if (commitFails) throw new Error('private commit transport sentinel');
+        return { rows: [] };
+      }
+      if (/UPDATE memories\s+SET/i.test(text)) return { rows: [{ ...updateRow }] };
+      if (/INNER JOIN trees t ON t\.id = m\.tree_id/i.test(text)) {
+        return { rows: ownerId === null ? [] : [{
+          id: UPDATE_MEMORY_ID,
+          tree_id: UPDATE_TREE_ID,
+          parent_id: null,
+          tree_owner_id: ownerId
+        }] };
+      }
+      return { rows: [] };
+    }
+    async end() {
+      logs.push({ text: 'END', values: [] });
+    }
+  }
+  return { Client: FakeClient, logs, clients };
+}
+
+function makeUpdateNeonImporter(factory) {
+  return async () => ({ Client: factory.Client });
+}
+
+test('#4232 gate/source contract keeps GET+DELETE independent and Production/provider activation unauthorized', async () => {
+  const direct = await import('../../functions/_shared/memory-update-direct-neon.js');
+  const routeSource = fs.readFileSync(path.join(ROOT, 'functions/api/memories/[id].js'), 'utf8');
+
+  assert.equal(direct.isMemoryUpdateDirectNeonSelected({}), false);
+  assert.equal(direct.isMemoryUpdateDirectNeonSelected({ LB_MEMORY_UPDATE_WRITE_RUNTIME: 'modal' }), false);
+  assert.equal(direct.isMemoryUpdateDirectNeonSelected({ LB_MEMORY_UPDATE_WRITE_RUNTIME: 'unknown' }), false);
+  assert.equal(direct.isMemoryUpdateDirectNeonSelected({ LB_MEMORY_UPDATE_WRITE_RUNTIME: ' direct_neon ' }), true);
+  assert.equal(direct.MEMORY_UPDATE_DIRECT_NEON_CONTRACT.clientKeyMutable, false);
+  assert.equal(direct.MEMORY_UPDATE_DIRECT_NEON_CONTRACT.getUnchanged, true);
+  assert.equal(direct.MEMORY_UPDATE_DIRECT_NEON_CONTRACT.deleteUnchanged, true);
+  assert.equal(direct.MEMORY_UPDATE_DIRECT_NEON_CONTRACT.productionGateActivationAuthorized, false);
+  assert.equal(direct.MEMORY_UPDATE_DIRECT_NEON_CONTRACT.providerMutationAuthorized, false);
+  assert.equal(direct.MEMORY_UPDATE_DIRECT_NEON_CONTRACT.automaticWholeTransactionRetry, false);
+  assert.equal(direct.MEMORY_UPDATE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
+
+  const getBlock = sliceBetween(routeSource, /export async function handleMemoryDetailGet/, /export async function onRequestGet/);
+  const deleteStart = routeSource.search(/export async function onRequestDelete/);
+  assert.notEqual(deleteStart, -1);
+  const deleteBlock = routeSource.slice(deleteStart);
+  assert.doesNotMatch(getBlock, /LB_MEMORY_UPDATE_WRITE_RUNTIME|handleMemoryUpdateDirectNeon/);
+  assert.doesNotMatch(deleteBlock, /LB_MEMORY_UPDATE_WRITE_RUNTIME|handleMemoryUpdateDirectNeon/);
+});
+
+test('#4232 direct update uses verified Firebase owner, owner-first SQL, and DB-authoritative DTO without Modal', async () => {
+  const route = await import('../../functions/api/memories/[id].js');
+  const fixture = makeMemoryUpdateAdapter();
+  let verifiedToken = null;
+  const cap = captureFetch();
+  try {
+    const response = await route.handleMemoryDetailPut(
+      memoryUpdateContext({
+        body: { title: 'Updated title', visibility: 'public' },
+        extraHeaders: {
+          'x-owner-id': 'attacker-owner',
+          'x-user-email': 'attacker@example.invalid'
+        }
+      }),
+      {
+        verifyTokenOverride: async (token) => {
+          verifiedToken = token;
+          return { uid: UPDATE_OWNER_UID, email: 'ignored@example.invalid' };
+        },
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(verifiedToken, 'update-token-4232');
+    assert.equal(cap.calls.length, 0, 'eligible direct update must never fall back to Modal');
+    assert.equal(fixture.runCalls, 1);
+    assert.equal(fixture.calls.length, 2);
+    assert.match(fixture.calls[0].text, /INNER JOIN trees/);
+    assert.deepEqual(fixture.calls[0].values, [UPDATE_MEMORY_ID]);
+    assert.match(fixture.calls[1].text, /UPDATE memories[\s\S]*AND t\.owner_id = \$\d+/i);
+    assert.equal(fixture.calls[1].values.at(-2), UPDATE_MEMORY_ID);
+    assert.equal(fixture.calls[1].values.at(-1), UPDATE_OWNER_UID);
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.deepEqual(await response.json(), {
+      id: UPDATE_MEMORY_ID,
+      treeId: UPDATE_TREE_ID,
+      parentId: null,
+      title: 'Updated title',
+      memo: '',
+      artist: '',
+      source: '',
+      sourceUrl: '',
+      sourceType: 'youtube',
+      thumbnail: '',
+      emotionTags: [],
+      timestamp: '',
+      visibility: 'public',
+      channelId: null,
+      channelName: null,
+      channelUrl: null,
+      createdAt: '2026-08-20T01:02:03.123456+00:00',
+      updatedAt: '2026-08-26T05:20:30.654321+00:00'
+    });
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4232 missing auth keeps existing edge 401; explicit private visibility preserves Modal body and performs zero direct transaction', async () => {
+  const route = await import('../../functions/api/memories/[id].js');
+
+  let verifierCalls = 0;
+  let transactionCalls = 0;
+  const noAuth = await route.handleMemoryDetailPut(
+    memoryUpdateContext({ auth: null }),
+    {
+      verifyTokenOverride: async () => { verifierCalls += 1; return { uid: UPDATE_OWNER_UID }; },
+      transactionAdapterOverride: {
+        async runTransaction() { transactionCalls += 1; throw new Error('must not run'); }
+      }
+    }
+  );
+  assert.equal(noAuth.status, 401);
+  assert.equal(noAuth.headers.get('x-lovebud-route-status'), 'missing-authorization');
+  assert.equal(verifierCalls, 0);
+  assert.equal(transactionCalls, 0);
+
+  const cap = captureFetch({ id: UPDATE_MEMORY_ID, visibility: 'private' });
+  try {
+    const privateFixture = makeMemoryUpdateAdapter();
+    const privateResponse = await route.handleMemoryDetailPut(
+      memoryUpdateContext({
+        body: { title: 'Private retained', visibility: 'private' },
+        modalBaseUrl: 'https://modal.example'
+      }),
+      {
+        verifyTokenOverride: async () => ({ uid: UPDATE_OWNER_UID }),
+        transactionAdapterOverride: privateFixture.adapter
+      }
+    );
+    assert.equal(privateResponse.status, 200);
+    assert.equal(privateFixture.runCalls, 0);
+    assert.equal(cap.calls.length, 1);
+    assert.equal(new URL(cap.calls[0].url).pathname, `/modal/private/memories/${UPDATE_MEMORY_ID}`);
+    assert.equal(cap.calls[0].options.method, 'PUT');
+    const forwarded = JSON.parse(new TextDecoder().decode(cap.calls[0].options.body));
+    assert.deepEqual(forwarded, { title: 'Private retained', visibility: 'private' });
+  } finally {
+    cap.restore();
+  }
+});
+
+test('#4232 owner failure and unsupported clientKey fail before UPDATE; generic/read DB env cannot substitute', async () => {
+  const direct = await import('../../functions/_shared/memory-update-direct-neon.js');
+
+  for (const [ownerId, expectedStatus] of [[null, 404], ['different-owner', 403]]) {
+    const fixture = makeMemoryUpdateAdapter({ ownerId });
+    const response = await direct.handleMemoryUpdateDirectNeon(
+      memoryUpdateContext().request,
+      UPDATE_MEMORY_ID,
+      memoryUpdateContext().env,
+      'req-4232',
+      {
+        verifyTokenOverride: async () => ({ uid: UPDATE_OWNER_UID }),
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+    assert.equal(response.status, expectedStatus);
+    assert.equal(fixture.calls.some((call) => /UPDATE memories/.test(call.text)), false);
+  }
+
+  const unsupported = makeMemoryUpdateAdapter();
+  const unsupportedContext = memoryUpdateContext({ body: { clientKey: 'immutable-key' } });
+  const unsupportedResponse = await direct.handleMemoryUpdateDirectNeon(
+    unsupportedContext.request,
+    UPDATE_MEMORY_ID,
+    unsupportedContext.env,
+    'req-4232',
+    {
+      verifyTokenOverride: async () => ({ uid: UPDATE_OWNER_UID }),
+      transactionAdapterOverride: unsupported.adapter
+    }
+  );
+  assert.equal(unsupportedResponse.status, 400);
+  assert.equal((await unsupportedResponse.json()).detail.code, 'UNSUPPORTED_MEMORY_UPDATE_FIELDS');
+  assert.equal(unsupported.calls.some((call) => /UPDATE memories/.test(call.text)), false);
+
+  const configContext = memoryUpdateContext({
+    extraEnv: {
+      LOVE_PLATFORM_WRITE_DATABASE_URL: '',
+      LOVE_PLATFORM_DATABASE_URL: UPDATE_DB,
+      DATABASE_URL: UPDATE_DB
+    }
+  });
+  const configFixture = makeMemoryUpdateAdapter();
+  const configResponse = await direct.handleMemoryUpdateDirectNeon(
+    configContext.request,
+    UPDATE_MEMORY_ID,
+    configContext.env,
+    'req-4232',
+    {
+      verifyTokenOverride: async () => ({ uid: UPDATE_OWNER_UID }),
+      transactionAdapterOverride: configFixture.adapter
+    }
+  );
+  assert.equal(configResponse.status, 503);
+  assert.equal((await configResponse.json()).code, 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK');
+  assert.equal(configFixture.runCalls, 0);
+});
+
+test('#4232 non-null reparent uses exact SHA256 signed-int64 tree lock and validates graph before owner-predicated UPDATE', async () => {
+  const crypto = require('node:crypto');
+  const direct = await import('../../functions/_shared/memory-update-direct-neon.js');
+  const fixture = makeMemoryUpdateAdapter();
+  const ctx = memoryUpdateContext({ body: { parentId: UPDATE_PARENT_ID } });
+
+  const response = await direct.handleMemoryUpdateDirectNeon(
+    ctx.request,
+    UPDATE_MEMORY_ID,
+    ctx.env,
+    'req-4232',
+    {
+      verifyTokenOverride: async () => ({ uid: UPDATE_OWNER_UID }),
+      transactionAdapterOverride: fixture.adapter
+    }
+  );
+  assert.equal(response.status, 200);
+
+  const lockIndex = fixture.calls.findIndex((call) => /pg_advisory_xact_lock/.test(call.text));
+  const targetIndex = fixture.calls.findIndex((call) => /SELECT id::text AS id, tree_id::text AS tree_id/.test(call.text));
+  const ancestorIndex = fixture.calls.findIndex((call) => /SELECT parent_id::text AS parent_id/.test(call.text));
+  const updateIndex = fixture.calls.findIndex((call) => /UPDATE memories/.test(call.text));
+  assert.ok(lockIndex > 0);
+  assert.ok(targetIndex > lockIndex);
+  assert.ok(ancestorIndex > targetIndex);
+  assert.ok(updateIndex > ancestorIndex);
+
+  const expectedKey = crypto
+    .createHash('sha256')
+    .update(`memory-parent-graph:${UPDATE_TREE_ID}`, 'utf8')
+    .digest()
+    .readBigInt64BE(0);
+  assert.equal(fixture.calls[lockIndex].values[0], expectedKey);
+  assert.equal(typeof fixture.calls[lockIndex].values[0], 'bigint');
+});
+
+test('#4232 source acknowledgement divergence rolls back before COMMIT; unknown COMMIT is explicit with no rollback/retry', async () => {
+  const direct = await import('../../functions/_shared/memory-update-direct-neon.js');
+
+  const divergentFactory = makeTransactionClientFactory({
+    updateRow: memoryUpdateRow({ source_url: 'persisted-stale-synthetic' })
+  });
+  const divergentCtx = memoryUpdateContext({ body: { sourceUrl: 'requested-new-synthetic' } });
+  const divergent = await direct.handleMemoryUpdateDirectNeon(
+    divergentCtx.request,
+    UPDATE_MEMORY_ID,
+    divergentCtx.env,
+    'req-4232-divergent',
+    {
+      verifyTokenOverride: async () => ({ uid: UPDATE_OWNER_UID }),
+      neonImporter: makeUpdateNeonImporter(divergentFactory)
+    }
+  );
+  assert.equal(divergent.status, 409);
+  const divergentBody = await divergent.json();
+  assert.equal(divergentBody.detail.code, 'SOURCE_WRITE_ACK_DIVERGENCE');
+  assert.equal(divergentBody.detail.field, 'sourceUrl');
+  assert.equal(divergentBody.detail.classification, 'STALE_SOURCE_ACKNOWLEDGEMENT');
+  assert.equal(divergentFactory.logs.filter((entry) => entry.text === 'ROLLBACK').length, 1);
+  assert.equal(divergentFactory.logs.filter((entry) => entry.text === 'COMMIT').length, 0);
+  assert.doesNotMatch(JSON.stringify(divergentBody), /requested-new-synthetic|persisted-stale-synthetic/);
+
+  const unknownFactory = makeTransactionClientFactory({
+    updateRow: memoryUpdateRow({ title: 'Commit ambiguous' }),
+    commitFails: true
+  });
+  const unknownCtx = memoryUpdateContext({ body: { title: 'Commit ambiguous' } });
+  const unknown = await direct.handleMemoryUpdateDirectNeon(
+    unknownCtx.request,
+    UPDATE_MEMORY_ID,
+    unknownCtx.env,
+    'req-4232-unknown',
+    {
+      verifyTokenOverride: async () => ({ uid: UPDATE_OWNER_UID }),
+      neonImporter: makeUpdateNeonImporter(unknownFactory)
+    }
+  );
+  assert.equal(unknown.status, 502);
+  assert.equal(unknown.headers.get('x-lovebud-route-status'), 'commit-outcome-unknown');
+  assert.equal(unknownFactory.clients.length, 1);
+  assert.equal(unknownFactory.logs.filter((entry) => entry.text === 'COMMIT').length, 1);
+  assert.equal(unknownFactory.logs.filter((entry) => entry.text === 'ROLLBACK').length, 0);
+  const unknownText = await unknown.text();
+  assert.match(unknownText, /COMMIT_OUTCOME_UNKNOWN/);
+  assert.doesNotMatch(unknownText, /private commit transport sentinel|postgresql:|update-token-4232/);
 });

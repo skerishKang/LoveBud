@@ -7,6 +7,10 @@ import { handlePublicMemoryDetailDirectNeon } from '../../_shared/public-memory-
 import {
   handleOwnerMemoryDetailDirectNeon
 } from '../../_shared/owner-memory-detail-direct-neon.js';
+import {
+  handleMemoryUpdateDirectNeon,
+  isMemoryUpdateDirectNeonSelected
+} from '../../_shared/memory-update-direct-neon.js';
 
 function withMemoryId(context) {
   return { memoryId: context.params?.id || null };
@@ -73,8 +77,59 @@ export async function onRequestGet(context) {
   return handleMemoryDetailGet(context);
 }
 
+export async function handleMemoryDetailPut(
+  context,
+  {
+    verifyTokenOverride = null,
+    neonImporter = null,
+    transactionAdapterOverride = null
+  } = {}
+) {
+  const routeOptions = withMemoryId(context);
+
+  // Preserve the existing Cloudflare write-auth guard even when the direct
+  // candidate is explicitly selected. Missing Authorization never reaches a
+  // verifier or direct DB capability and keeps the current 401 response shape.
+  if (!hasAuthorizationHeader(context.request)) {
+    return proxyMemoryRouteRequest(context, routeOptions);
+  }
+
+  if (!isMemoryUpdateDirectNeonSelected(context.env || {})) {
+    return proxyMemoryRouteRequest(context, routeOptions);
+  }
+
+  // The direct helper must inspect the bounded JSON body to preserve the
+  // explicit-private entitlement split. Clone BEFORE the direct attempt so a
+  // private update can still be forwarded to the existing Modal proxy with an
+  // untouched body stream. Once direct DB execution begins, the helper never
+  // falls back to Modal.
+  const modalFallbackRequest = context.request.clone();
+  const requestId = getOrCreateRequestId(context.request);
+  const directResponse = await handleMemoryUpdateDirectNeon(
+    context.request,
+    routeOptions.memoryId,
+    context.env || {},
+    requestId,
+    {
+      verifyTokenOverride,
+      neonImporter,
+      transactionAdapterOverride
+    }
+  );
+
+  if (directResponse !== null) return directResponse;
+
+  return proxyMemoryRouteRequest(
+    { ...context, request: modalFallbackRequest },
+    { ...routeOptions, requestId }
+  );
+}
+
 export async function onRequestPut(context) {
-  return proxyMemoryRouteRequest(context, withMemoryId(context));
+  if (!isMemoryUpdateDirectNeonSelected(context.env || {})) {
+    return proxyMemoryRouteRequest(context, withMemoryId(context));
+  }
+  return handleMemoryDetailPut(context);
 }
 
 export async function onRequestDelete(context) {
