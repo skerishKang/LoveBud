@@ -981,6 +981,223 @@ test('hub-layout 5. unsupported POST method returns 405 with Allow: GET, PUT', a
   }
 });
 
+// ─── APPRECIATION-ORDER SAME-ORIGIN GATEWAY CONTRACTS (Issue #4236) ────────
+//
+// GET  /api/trees/:id/appreciation-order -> GET  /modal/private/trees/:id/appreciation-order
+// POST /api/trees/:id/appreciation-order -> POST /modal/private/trees/:id/appreciation-order
+//
+// Both are canonical same-origin methods (no translation). This child is
+// gateway exposure + Modal parity only — no direct-Neon writer, no DB code.
+
+test('cloudflare api catch-all routes /api/trees/:id/appreciation-order to modal private appreciation-order', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(content, "/^\\/api\\/trees\\/([^/]+)\\/appreciation-order$/"),
+    'catch-all should contain regex pattern /^\\/api\\/trees\\/([^/]+)\\/appreciation-order$/ for appreciation-order path'
+  );
+  assert.ok(
+    hasString(content, "`/modal/private/trees/${treeId}/appreciation-order`"),
+    'catch-all should build /modal/private/trees/:id/appreciation-order target'
+  );
+});
+
+test('appreciation-order GET uses path-segment normalization boundary for tree id', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(content, 'const treeId = normalizeEncodedPathSegment(appreciationOrderMatch[1]);'),
+    'catch-all should reuse normalizeEncodedPathSegment for appreciation-order tree id'
+  );
+});
+
+test('isModalOwnedWriteRoute recognises POST /api/trees/:id/appreciation-order as modal-owned write', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(content, "method === 'POST' && path.match(/^\\/api\\/trees\\/[^/]+\\/appreciation-order$/)"),
+    'isModalOwnedWriteRoute should treat POST /api/trees/:id/appreciation-order as modal-owned write'
+  );
+});
+
+test('appreciation-order GET is a modal-owned owner read route (no direct-Neon gate)', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  // GET must be routed through the Modal read path via buildModalUrl, and this
+  // child must NOT introduce an appreciation-order direct-Neon runtime gate.
+  assert.ok(
+    hasString(content, "`/modal/private/trees/${treeId}/appreciation-order`"),
+    'catch-all should map appreciation-order GET to Modal private route'
+  );
+  assert.ok(
+    !hasRegex(content, /appreciation.*DirectNeon|appreciation.*direct.?neon.*selected|LB_.*APPRECIATION/i),
+    'catch-all must not add an appreciation-order direct-Neon gate in this child'
+  );
+});
+
+test('appreciation-order 0. gateway auth-first blocks unauthenticated GET before Modal fetch', () => {
+  const content = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(content, 'isAppreciationOrderRequest'),
+    'catch-all should define isAppreciationOrderRequest helper'
+  );
+  assert.ok(
+    hasRegex(content, /isAppreciationOrderRequest\(request\)\s*&&\s*!hasAuthorizationHeader\(request\)/),
+    'catch-all should auth-first block unauthenticated appreciation-order before tryModalRead'
+  );
+});
+
+test('appreciation-order 0b. unauthenticated GET /api/trees/test-tree-123/appreciation-order returns 401 with zero Modal fetches', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/appreciation-order`, {
+      method: 'GET'
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 401);
+    assert.equal(calls.length, 0);
+    const body = await response.json();
+    assert.equal(body.error, 'Authorization required');
+  } finally {
+    restore();
+  }
+});
+
+test('appreciation-order 1. unauthenticated POST returns 401 before body materialization / Modal fetch', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/appreciation-order`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ order: [] })
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 401);
+    assert.equal(calls.length, 0);
+    const body = await response.json();
+    assert.equal(body.error, 'Authorization required');
+  } finally {
+    restore();
+  }
+});
+
+test('appreciation-order 2. authenticated POST forwards to Modal POST with auth + request-id (no translation)', async () => {
+  const { calls, restore } = mockFetch(async (call) => {
+    return new Response(JSON.stringify({ orderedIds: [] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/appreciation-order`, {
+      method: 'POST',
+      headers: {
+        'authorization': 'Bearer owner-token',
+        'content-type': 'application/json',
+        'x-lovebud-request-id': 'req-incoming-4236'
+      },
+      body: JSON.stringify({ order: ['mem-1'] })
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].url.includes('/modal/private/trees/test-tree-123/appreciation-order'));
+    // No Hub-Layout-style method translation: same-origin POST stays POST.
+    assert.equal(calls[0].options.method, 'POST');
+    assert.equal(calls[0].options.headers.authorization, 'Bearer owner-token');
+    // Request-id preserved (parity) and exposed.
+    assert.equal(calls[0].options.headers['x-lovebud-request-id'], 'req-incoming-4236');
+    assert.equal(response.headers.get('x-lovebud-request-id'), 'req-incoming-4236');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'modal');
+    const body = await response.json();
+    assert.equal(body.orderedIds.length, 0);
+  } finally {
+    restore();
+  }
+});
+
+test('appreciation-order 3. authenticated GET forwards to Modal GET with auth', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ orderedIds: ['mem-1', 'mem-2'] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/appreciation-order`, {
+      method: 'GET',
+      headers: { 'authorization': 'Bearer owner-token' }
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].url.includes('/modal/private/trees/test-tree-123/appreciation-order'));
+    // tryModalRead forwards a plain GET.
+    assert.ok(calls[0].options.method === undefined || calls[0].options.method === 'GET');
+    assert.equal(calls[0].options.headers.authorization, 'Bearer owner-token');
+  } finally {
+    restore();
+  }
+});
+
+test('appreciation-order 4. unsupported PUT returns 405 with Allow: GET, POST', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/appreciation-order`, {
+      method: 'PUT',
+      headers: { 'authorization': 'Bearer owner-token', 'content-type': 'application/json' },
+      body: JSON.stringify({ order: [] })
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 405);
+    assert.equal(calls.length, 0);
+    assert.equal(response.headers.get('allow'), 'GET, POST');
+    const body = await response.json();
+    assert.equal(body.error, 'Method not allowed');
+  } finally {
+    restore();
+  }
+});
+
+test('appreciation-order 5. unsupported DELETE returns 405 with Allow: GET, POST', async () => {
+  const { calls, restore } = mockFetch(async () => {
+    return new Response(JSON.stringify({ error: 'Should not call modal' }), { status: 500 });
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/test-tree-123/appreciation-order`, {
+      method: 'DELETE',
+      headers: { 'authorization': 'Bearer owner-token' }
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 405);
+    assert.equal(calls.length, 0);
+    assert.equal(response.headers.get('allow'), 'GET, POST');
+    const body = await response.json();
+    assert.equal(body.error, 'Method not allowed');
+  } finally {
+    restore();
+  }
+});
+
 // ─── TREE UPDATE DIRECT-NEON CONTRACTS (#4228) ────────────────────────────
 
 const TREE_UPDATE_MODULE = '../../functions/_shared/tree-update-direct-neon.js';
