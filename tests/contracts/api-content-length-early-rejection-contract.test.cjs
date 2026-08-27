@@ -1183,3 +1183,486 @@ test('#4238 unsupported methods retain catch-all 405 / Allow: GET, PUT and the r
   assert.equal(response.status, 405);
   assert.equal(response.headers.get('allow'), 'GET, PUT');
 });
+
+// ─── #4237 Appreciation Order POST direct-Neon candidate ───────────────────
+
+const APPRECIATION_ORDER_ROUTE = path.join(
+  ROOT,
+  'functions/api/trees/[tree_id]/appreciation-order.js'
+);
+const APPRECIATION_ORDER_DIRECT = path.join(
+  ROOT,
+  'functions/_shared/appreciation-order-direct-neon.js'
+);
+const APPRECIATION_ORDER_URL =
+  'https://example.test/api/trees/tree-4237/appreciation-order';
+const APPRECIATION_ORDER_NEON_URL =
+  'postgresql://ep-appreciation-order-4237.us-east-1.neon.tech/neondb?sslmode=require';
+const APPRECIATION_ORDER_OWNER = 'verified-owner-4237';
+
+function appreciationOrderEnv(extra = {}) {
+  return {
+    LB_APPRECIATION_ORDER_WRITE_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_WRITE_DATABASE_URL: APPRECIATION_ORDER_NEON_URL,
+    ...extra
+  };
+}
+
+function appreciationOrderRequest({
+  method = 'POST',
+  body = JSON.stringify({ order: ['memory-a', 'memory-b'] }),
+  authorization = 'Bearer fake-firebase-token',
+  headers = {},
+  url = APPRECIATION_ORDER_URL
+} = {}) {
+  const requestHeaders = new Headers({
+    'content-type': 'application/json',
+    'x-lovebud-request-id': 'req-4237',
+    ...headers
+  });
+  if (authorization) requestHeaders.set('authorization', authorization);
+  const init = { method, headers: requestHeaders };
+  if (!['GET', 'HEAD'].includes(method)) init.body = body;
+  return new Request(url, init);
+}
+
+function makeAppreciationOrderTransactionAdapter({
+  ownerId = APPRECIATION_ORDER_OWNER,
+  foundIds = ['memory-a', 'memory-b'],
+  persistedOrder = null
+} = {}) {
+  const calls = [];
+  let runCalls = 0;
+  const adapter = {
+    async runTransaction(work) {
+      runCalls += 1;
+      const tx = {
+        async forShare(text, values = []) {
+          calls.push({
+            kind: 'forShare',
+            text,
+            values: Array.isArray(values) ? [...values] : values
+          });
+          if (text.includes('FROM trees')) {
+            return ownerId === null
+              ? []
+              : [{ id: 'tree-4237', owner_id: ownerId }];
+          }
+          if (text.includes('FROM memories')) {
+            return foundIds.map((id) => ({ id }));
+          }
+          throw new Error('unexpected FOR SHARE query');
+        },
+        async query(text, values = []) {
+          calls.push({
+            kind: 'query',
+            text,
+            values: Array.isArray(values) ? [...values] : values
+          });
+          if (text.includes('INSERT INTO tree_appreciation_orders')) {
+            const requested = JSON.parse(values[1]);
+            return [{ ordered_ids: persistedOrder ?? requested }];
+          }
+          throw new Error('unexpected write query');
+        }
+      };
+      return { value: await work(tx), outcome: 'committed' };
+    }
+  };
+  return {
+    adapter,
+    calls,
+    get runCalls() {
+      return runCalls;
+    }
+  };
+}
+
+test('#4237 source shape keeps direct interception POST-only and pins the dedicated writer/transaction boundaries', async () => {
+  const routeSource = readFile(APPRECIATION_ORDER_ROUTE);
+  const directSource = readFile(APPRECIATION_ORDER_DIRECT);
+  const direct = await import('../../functions/_shared/appreciation-order-direct-neon.js');
+
+  assert.match(routeSource, /catchAllOnRequest\(context\)/);
+  assert.match(routeSource, /isAppreciationOrderDirectNeonWriteRequest\(request\)/);
+  assert.match(routeSource, /isAppreciationOrderDirectNeonSelected\(env\s*\|\|\s*\{\}\)/);
+  assert.match(directSource, /LB_APPRECIATION_ORDER_WRITE_RUNTIME/);
+  assert.match(directSource, /LOVE_PLATFORM_WRITE_DATABASE_URL/);
+  assert.match(directSource, /readBoundedRequestBody/);
+  assert.match(directSource, /resolveFirebaseReadPrincipal/);
+  assert.match(directSource, /principal\.legacyOwnerId/);
+  assert.match(directSource, /createNeonWsTransactionAdapter/);
+  assert.match(directSource, /FOR SHARE OF t/);
+  assert.match(directSource, /FOR SHARE OF m/);
+  assert.match(directSource, /INSERT INTO tree_appreciation_orders/);
+  assert.match(directSource, /ON CONFLICT \(tree_id\)/);
+  assert.match(directSource, /RETURNING ordered_ids/);
+  assert.doesNotMatch(directSource, /MODAL_BASE_URL/);
+
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.method, 'POST');
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.ownerAuthority, 'principal.legacyOwnerId');
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.maxOrderItems, 500);
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.transaction, true);
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.modalFallbackAfterDirectStart, false);
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.automaticWholeTransactionRetry, false);
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.productionWritePrivilegeAuthorized, false);
+  assert.equal(direct.APPRECIATION_ORDER_DIRECT_NEON_CONTRACT.productionGateActivationAuthorized, false);
+});
+
+test('#4237 exact POST gate selects direct-Neon while GET and unset/modal/unknown POST retain existing Modal behavior', async () => {
+  const route = await import('../../functions/api/trees/[tree_id]/appreciation-order.js');
+  const direct = await import('../../functions/_shared/appreciation-order-direct-neon.js');
+
+  assert.equal(direct.isAppreciationOrderDirectNeonSelected({}), false);
+  assert.equal(direct.isAppreciationOrderDirectNeonSelected({ LB_APPRECIATION_ORDER_WRITE_RUNTIME: 'modal' }), false);
+  assert.equal(direct.isAppreciationOrderDirectNeonSelected({ LB_APPRECIATION_ORDER_WRITE_RUNTIME: 'unknown' }), false);
+  assert.equal(direct.isAppreciationOrderDirectNeonSelected(appreciationOrderEnv()), true);
+  assert.equal(direct.isAppreciationOrderDirectNeonWriteRequest(appreciationOrderRequest()), true);
+  assert.equal(
+    direct.isAppreciationOrderDirectNeonWriteRequest(
+      appreciationOrderRequest({ method: 'GET', body: undefined })
+    ),
+    false
+  );
+
+  const originalFetch = globalThis.fetch;
+  const modalCalls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    modalCalls.push({ url: String(url), options });
+    return new Response(JSON.stringify({ orderedIds: [] }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  };
+
+  try {
+    for (const gate of [undefined, 'modal', 'unknown']) {
+      const env = { MODAL_BASE_URL: 'https://modal.example' };
+      if (gate !== undefined) env.LB_APPRECIATION_ORDER_WRITE_RUNTIME = gate;
+      const response = await route.handleAppreciationOrderRoute({
+        request: appreciationOrderRequest(),
+        env
+      });
+      assert.equal(response.status, 200);
+    }
+
+    const getResponse = await route.handleAppreciationOrderRoute({
+      request: appreciationOrderRequest({ method: 'GET', body: undefined }),
+      env: {
+        ...appreciationOrderEnv(),
+        MODAL_BASE_URL: 'https://modal.example'
+      }
+    });
+    assert.equal(getResponse.status, 200);
+    assert.equal(modalCalls.length, 4);
+
+    const fixture = makeAppreciationOrderTransactionAdapter();
+    const directResponse = await route.handleAppreciationOrderRoute(
+      {
+        request: appreciationOrderRequest(),
+        env: appreciationOrderEnv()
+      },
+      {
+        verifyTokenOverride: async () => ({ uid: APPRECIATION_ORDER_OWNER }),
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+    assert.equal(directResponse.status, 200);
+    assert.equal(directResponse.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(directResponse.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(modalCalls.length, 4, 'direct POST must never fall back to Modal');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('#4237 malformed path and Firebase auth fail before body/DB; verified legacyOwnerId is the sole owner authority', async () => {
+  const direct = await import('../../functions/_shared/appreciation-order-direct-neon.js');
+
+  const malformedFixture = makeAppreciationOrderTransactionAdapter();
+  let verifierCalls = 0;
+  const malformed = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest({
+      url: 'https://example.test/api/trees/%ZZ/appreciation-order',
+      body: 'x'.repeat(129 * 1024)
+    }),
+    appreciationOrderEnv(),
+    'req-4237-malformed',
+    {
+      verifyTokenOverride: async () => {
+        verifierCalls += 1;
+        return { uid: APPRECIATION_ORDER_OWNER };
+      },
+      transactionAdapterOverride: malformedFixture.adapter
+    }
+  );
+  assert.equal(malformed.status, 400);
+  assert.equal(malformed.headers.get('x-lovebud-route-status'), 'invalid-path-encoding');
+  assert.equal(verifierCalls, 0);
+  assert.equal(malformedFixture.runCalls, 0);
+
+  const unauthFixture = makeAppreciationOrderTransactionAdapter();
+  const unauth = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest({
+      authorization: null,
+      body: 'y'.repeat(129 * 1024)
+    }),
+    appreciationOrderEnv(),
+    'req-4237-unauth',
+    {
+      verifyTokenOverride: async () => {
+        throw new Error('must not verify missing bearer token');
+      },
+      transactionAdapterOverride: unauthFixture.adapter
+    }
+  );
+  assert.equal(unauth.status, 401);
+  assert.equal(unauthFixture.runCalls, 0);
+
+  const invalidFixture = makeAppreciationOrderTransactionAdapter();
+  const invalid = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest(),
+    appreciationOrderEnv(),
+    'req-4237-invalid',
+    {
+      verifyTokenOverride: async () => ({ uid: ' invalid-owner ' }),
+      transactionAdapterOverride: invalidFixture.adapter
+    }
+  );
+  assert.equal(invalid.status, 401);
+  assert.equal(invalidFixture.runCalls, 0);
+
+  const ownerFixture = makeAppreciationOrderTransactionAdapter();
+  const owner = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest({
+      headers: {
+        'x-owner-id': 'attacker-owner',
+        'x-user-email': 'attacker@example.invalid',
+        'x-account-id': 'attacker-account'
+      }
+    }),
+    appreciationOrderEnv(),
+    'req-4237-owner',
+    {
+      verifyTokenOverride: async () => ({
+        uid: APPRECIATION_ORDER_OWNER,
+        email: 'ignored@example.invalid'
+      }),
+      transactionAdapterOverride: ownerFixture.adapter
+    }
+  );
+  assert.equal(owner.status, 200);
+  assert.deepEqual(ownerFixture.calls[0].values, ['tree-4237']);
+});
+
+test('#4237 payload parity canonicalizes trim, rejects unknown/duplicate/oversized shapes, and bounds body before DB', async () => {
+  const direct = await import('../../functions/_shared/appreciation-order-direct-neon.js');
+
+  assert.deepEqual(
+    direct.validateAppreciationOrderPayload({ order: [' memory-a ', 'memory-b'] }),
+    ['memory-a', 'memory-b']
+  );
+  assert.deepEqual(direct.validateAppreciationOrderPayload({ order: [] }), []);
+
+  for (const [payload, expectedDetail] of [
+    [null, { code: 'APPRECIATION_ORDER_OBJECT_REQUIRED' }],
+    [{}, { code: 'APPRECIATION_ORDER_REQUIRED', field: 'order' }],
+    [{ order: [], extra: true }, { code: 'APPRECIATION_ORDER_UNKNOWN_FIELD', fields: ['extra'] }]
+  ]) {
+    assert.throws(
+      () => direct.validateAppreciationOrderPayload(payload),
+      (error) => assert.deepEqual(error.detail, expectedDetail) === undefined
+    );
+  }
+  assert.throws(() => direct.validateAppreciationOrderPayload({ order: 'x' }), /payload invalid/);
+  assert.throws(() => direct.validateAppreciationOrderPayload({ order: ['  '] }), /payload invalid/);
+  assert.throws(
+    () => direct.validateAppreciationOrderPayload({ order: ['memory-a', ' memory-a '] }),
+    /payload invalid/
+  );
+  assert.throws(
+    () => direct.validateAppreciationOrderPayload({ order: Array(501).fill('x').map((value, index) => `${value}-${index}`) }),
+    /payload invalid/
+  );
+
+  const fixture = makeAppreciationOrderTransactionAdapter();
+  const oversized = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest({ body: 'z'.repeat(129 * 1024) }),
+    appreciationOrderEnv(),
+    'req-4237-oversized',
+    {
+      verifyTokenOverride: async () => ({ uid: APPRECIATION_ORDER_OWNER }),
+      transactionAdapterOverride: fixture.adapter
+    }
+  );
+  assert.equal(oversized.status, 413);
+  assert.equal(fixture.runCalls, 0);
+  assert.equal(oversized.headers.get('x-lovebud-route-status'), 'payload-too-large');
+});
+
+test('#4237 owner -> membership -> UPSERT ordering is one request transaction and success returns persisted RETURNING order', async () => {
+  const direct = await import('../../functions/_shared/appreciation-order-direct-neon.js');
+  const fixture = makeAppreciationOrderTransactionAdapter({
+    persistedOrder: ['memory-b', 'memory-a']
+  });
+
+  const response = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest({
+      body: JSON.stringify({ order: [' memory-a ', 'memory-b'] })
+    }),
+    appreciationOrderEnv(),
+    'req-4237-success',
+    {
+      verifyTokenOverride: async () => ({ uid: APPRECIATION_ORDER_OWNER }),
+      transactionAdapterOverride: fixture.adapter
+    }
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(fixture.runCalls, 1);
+  assert.equal(fixture.calls.length, 3);
+  assert.equal(fixture.calls[0].kind, 'forShare');
+  assert.match(fixture.calls[0].text, /FROM trees t[\s\S]*LIMIT 1[\s\S]*FOR SHARE OF t/i);
+  assert.deepEqual(fixture.calls[0].values, ['tree-4237']);
+  assert.equal(fixture.calls[1].kind, 'forShare');
+  assert.match(fixture.calls[1].text, /FROM memories m[\s\S]*m\.id = ANY\(\$2\)[\s\S]*FOR SHARE OF m/i);
+  assert.deepEqual(fixture.calls[1].values, ['tree-4237', ['memory-a', 'memory-b']]);
+  assert.equal(fixture.calls[2].kind, 'query');
+  assert.match(fixture.calls[2].text, /INSERT INTO tree_appreciation_orders[\s\S]*ON CONFLICT \(tree_id\)[\s\S]*RETURNING ordered_ids/i);
+  assert.deepEqual(fixture.calls[2].values, ['tree-4237', JSON.stringify(['memory-a', 'memory-b'])]);
+  assert.deepEqual(await response.json(), { orderedIds: ['memory-b', 'memory-a'] });
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
+test('#4237 owner/membership/storage failures stop before unauthorized mutation and empty order intentionally skips membership', async () => {
+  const direct = await import('../../functions/_shared/appreciation-order-direct-neon.js');
+
+  for (const [fixtureOptions, expectedStatus, expectedCalls] of [
+    [{ ownerId: null }, 404, 1],
+    [{ ownerId: 'different-owner' }, 403, 1],
+    [{ foundIds: ['memory-a'] }, 400, 2]
+  ]) {
+    const fixture = makeAppreciationOrderTransactionAdapter(fixtureOptions);
+    const response = await direct.handleAppreciationOrderDirectNeon(
+      appreciationOrderRequest(),
+      appreciationOrderEnv(),
+      'req-4237-failure',
+      {
+        verifyTokenOverride: async () => ({ uid: APPRECIATION_ORDER_OWNER }),
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+    assert.equal(response.status, expectedStatus);
+    assert.equal(fixture.calls.length, expectedCalls);
+    assert.equal(
+      fixture.calls.some((call) => call.text.includes('INSERT INTO tree_appreciation_orders')),
+      false
+    );
+  }
+
+  const emptyFixture = makeAppreciationOrderTransactionAdapter({ foundIds: [] });
+  const empty = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest({ body: JSON.stringify({ order: [] }) }),
+    appreciationOrderEnv(),
+    'req-4237-empty',
+    {
+      verifyTokenOverride: async () => ({ uid: APPRECIATION_ORDER_OWNER }),
+      transactionAdapterOverride: emptyFixture.adapter
+    }
+  );
+  assert.equal(empty.status, 200);
+  assert.equal(emptyFixture.calls.length, 2);
+  assert.match(emptyFixture.calls[0].text, /FROM trees/);
+  assert.match(emptyFixture.calls[1].text, /INSERT INTO tree_appreciation_orders/);
+  assert.deepEqual(await empty.json(), { orderedIds: [] });
+
+  const storageFixture = makeAppreciationOrderTransactionAdapter({ persistedOrder: null });
+  storageFixture.adapter.runTransaction = async (work) => {
+    const tx = {
+      async forShare(text) {
+        if (text.includes('FROM trees')) return [{ id: 'tree-4237', owner_id: APPRECIATION_ORDER_OWNER }];
+        return [{ id: 'memory-a' }, { id: 'memory-b' }];
+      },
+      async query() {
+        return [{ ordered_ids: 'not-an-array' }];
+      }
+    };
+    return { value: await work(tx), outcome: 'committed' };
+  };
+  const storage = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest(),
+    appreciationOrderEnv(),
+    'req-4237-storage',
+    {
+      verifyTokenOverride: async () => ({ uid: APPRECIATION_ORDER_OWNER }),
+      transactionAdapterOverride: storageFixture.adapter
+    }
+  );
+  assert.equal(storage.status, 500);
+  assert.deepEqual(await storage.json(), {
+    detail: { code: 'APPRECIATION_ORDER_STORAGE_INVALID' }
+  });
+});
+
+test('#4237 dedicated writer config cannot substitute read/generic URLs and unknown COMMIT is explicit, sanitized, and non-retryable', async () => {
+  const direct = await import('../../functions/_shared/appreciation-order-direct-neon.js');
+  const transaction = await import('../../functions/_shared/db/neon-ws-transaction-adapter.js');
+
+  const badConfig = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest(),
+    {
+      LB_APPRECIATION_ORDER_WRITE_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_DATABASE_URL: APPRECIATION_ORDER_NEON_URL,
+      DATABASE_URL: APPRECIATION_ORDER_NEON_URL
+    },
+    'req-4237-config',
+    {
+      verifyTokenOverride: async () => ({ uid: APPRECIATION_ORDER_OWNER })
+    }
+  );
+  assert.equal(badConfig.status, 503);
+  assert.equal((await badConfig.json()).code, 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK');
+
+  const unknown = await direct.handleAppreciationOrderDirectNeon(
+    appreciationOrderRequest(),
+    appreciationOrderEnv(),
+    'req-4237-unknown',
+    {
+      verifyTokenOverride: async () => ({ uid: APPRECIATION_ORDER_OWNER }),
+      transactionAdapterOverride: {
+        async runTransaction() {
+          throw new transaction.NeonWsTransactionError(
+            transaction.NEON_WS_TRANSACTION_ERROR.COMMIT_OUTCOME_UNKNOWN,
+            'PRIVATE_DB_SECRET_SHOULD_NOT_LEAK',
+            {
+              status: 502,
+              transactionState: transaction.NEON_WS_TRANSACTION_STATE.COMMIT_OUTCOME_UNKNOWN,
+              commitOutcome: transaction.NEON_WS_TRANSACTION_COMMIT_OUTCOME.UNKNOWN
+            }
+          );
+        }
+      }
+    }
+  );
+  assert.equal(unknown.status, 502);
+  const unknownText = await unknown.text();
+  assert.match(unknownText, /COMMIT_OUTCOME_UNKNOWN/);
+  assert.match(unknownText, /"commitOutcome":"unknown"/);
+  assert.match(unknownText, /"wholeTransactionRetrySafe":false/);
+  assert.doesNotMatch(unknownText, /PRIVATE_DB_SECRET_SHOULD_NOT_LEAK/);
+});
+
+test('#4237 unsupported methods retain catch-all 405 / Allow: GET, POST', async () => {
+  const route = await import('../../functions/api/trees/[tree_id]/appreciation-order.js');
+
+  const response = await route.handleAppreciationOrderRoute({
+    request: appreciationOrderRequest({ method: 'PUT', body: '{}' }),
+    env: {
+      ...appreciationOrderEnv(),
+      MODAL_BASE_URL: 'https://modal.example'
+    }
+  });
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get('allow'), 'GET, POST');
+});
