@@ -98,6 +98,15 @@ function isHubLayoutReadRequest(request) {
   return /^\/api\/trees\/[^/]+\/hub-layout$/.test(path);
 }
 
+// Appreciation-order is a private/owner sub-resource. Both GET and POST are
+// canonical same-origin methods (#4236); both must be auth-first at the edge.
+function isAppreciationOrderRequest(request) {
+  const path = new URL(request.url).pathname.replace(/\/+$/, '');
+  if (!/^\/api\/trees\/[^/]+\/appreciation-order$/.test(path)) return false;
+  const method = request.method.toUpperCase();
+  return method === 'GET' || method === 'POST';
+}
+
 function isGrowingTreesRequest(request) {
   if (request.method.toUpperCase() !== 'GET') return false;
   const path = new URL(request.url).pathname.replace(/\/+$/, '');
@@ -216,6 +225,16 @@ export function buildModalUrl(request, env) {
     return target;
   }
 
+  // Appreciation-order (same-origin GET/POST) → Modal private appreciation-order.
+  // #4236 establishes the stable Modal fallback contract for the future
+  // direct-Neon migration. No method translation (POST stays POST).
+  const appreciationOrderMatch = path.match(/^\/api\/trees\/([^/]+)\/appreciation-order$/);
+  if (appreciationOrderMatch) {
+    const treeId = normalizeEncodedPathSegment(appreciationOrderMatch[1]);
+    target.pathname = `/modal/private/trees/${treeId}/appreciation-order`;
+    return target;
+  }
+
   return null;
 }
 
@@ -271,6 +290,11 @@ function isModalOwnedWriteRoute(request, env) {
 
   // Same-origin PUT /api/trees/:id/hub-layout → Modal POST (translated in tryModalWrite).
   if (method === 'PUT' && path.match(/^\/api\/trees\/[^/]+\/hub-layout$/)) {
+    return buildModalUrl(request, env || {}) !== null;
+  }
+
+  // Same-origin POST /api/trees/:id/appreciation-order → Modal POST (no translation).
+  if (method === 'POST' && path.match(/^\/api\/trees\/[^/]+\/appreciation-order$/)) {
     return buildModalUrl(request, env || {}) !== null;
   }
 
@@ -631,6 +655,12 @@ export async function onRequest(context) {
     if (isHubLayoutReadRequest(request) && !hasAuthorizationHeader(request)) {
       return buildMissingAuthorizationResponse(requestId);
     }
+    // Appreciation-order is a private/owner sub-resource (#4236): block
+    // unauthenticated GET at the edge (auth-first) so it never triggers a
+    // Modal fetch.
+    if (isAppreciationOrderRequest(request) && !hasAuthorizationHeader(request)) {
+      return buildMissingAuthorizationResponse(requestId);
+    }
     try {
       const modalResponse = await tryModalRead(request, env || {}, requestId);
       if (modalResponse) {
@@ -671,7 +701,8 @@ export async function onRequest(context) {
     const isDetail = path.match(/^\/api\/(trees|memories)\/[^/]+$/);
     const isCapability = path.match(/^\/api\/private\/trees\/[^/]+\/capability$/);
     const isHubLayoutPath = path.match(/^\/api\/trees\/[^/]+\/hub-layout$/);
-    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : (isHubLayoutPath ? 'GET, PUT' : 'GET'))));
+    const isAppreciationOrderPath = path.match(/^\/api\/trees\/[^/]+\/appreciation-order$/);
+    const allow = isForkPath ? 'POST' : (isCollection ? 'GET, POST' : (isDetail ? 'GET, PUT, DELETE' : (isCapability ? 'GET' : (isHubLayoutPath ? 'GET, PUT' : (isAppreciationOrderPath ? 'GET, POST' : 'GET')))));
     return buildMethodNotAllowedResponse(allow, requestId);
   }
 
