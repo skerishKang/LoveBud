@@ -224,12 +224,22 @@ export function validateAppreciationOrderPayload(payload) {
 async function readPayload(request) {
   const result = await readBoundedRequestBody(request);
   if (result.status !== 'ok') return result;
+
+  // Modal parse_json_body treats a physically empty body as {}, which then
+  // reaches appreciation-order validation and produces APPRECIATION_ORDER_REQUIRED.
   if (result.body === null) {
-    return { status: 'ok', payload: null };
+    return { status: 'ok', payload: {} };
   }
+
   try {
     const text = new TextDecoder().decode(result.body);
-    return { status: 'ok', payload: JSON.parse(text) };
+    const payload = JSON.parse(text);
+    // Modal parse_json_body rejects any parsed JSON that is not an object before
+    // save_appreciation_order is called. Preserve that externally observable gate.
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return { status: 'nonObject', payload: null };
+    }
+    return { status: 'ok', payload };
   } catch {
     return { status: 'invalidJson', payload: null };
   }
@@ -382,26 +392,36 @@ export async function handleAppreciationOrderDirectNeon(
   const bodyResult = await readPayload(request);
   if (bodyResult.status === 'tooLarge') {
     return jsonResponse(
-      { error: 'Payload too large' },
+      { error: 'Request body too large' },
       413,
       requestId,
       'payload-too-large'
     );
   }
   if (bodyResult.status === 'readError') {
+    // Match the established Cloudflare write boundary: stream-read failures are
+    // availability failures, not client validation failures.
     return jsonResponse(
       { error: 'Request body read failed' },
-      400,
+      503,
       requestId,
       'body-read-failed'
     );
   }
   if (bodyResult.status === 'invalidJson') {
     return jsonResponse(
-      { detail: { code: 'APPRECIATION_ORDER_OBJECT_REQUIRED' } },
+      { detail: 'Invalid JSON body' },
       400,
       requestId,
       'invalid-json'
+    );
+  }
+  if (bodyResult.status === 'nonObject') {
+    return jsonResponse(
+      { detail: { code: 'JSON_OBJECT_REQUIRED' } },
+      400,
+      requestId,
+      'json-object-required'
     );
   }
 
