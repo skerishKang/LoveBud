@@ -837,3 +837,349 @@ test('#4230 unknown COMMIT outcome is explicit and never falls back or retries',
   assert.match(text, /COMMIT_OUTCOME_UNKNOWN/);
   assert.doesNotMatch(text, /PRIVATE|connection secret|postgresql:|modal/i);
 });
+
+// ─── #4238 Hub Layout GET direct-Neon candidate ────────────────────────────
+
+const HUB_LAYOUT_READ_DIRECT = path.join(
+  ROOT,
+  'functions/_shared/hub-layout-read-direct-neon.js'
+);
+const HUB_LAYOUT_READ_NEON_URL =
+  'postgresql://ep-hub-layout-read-4238.us-east-1.neon.tech/neondb?sslmode=require';
+
+function hubLayoutReadEnv(extra = {}) {
+  return {
+    LB_HUB_LAYOUT_READ_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_DATABASE_URL: HUB_LAYOUT_READ_NEON_URL,
+    ...extra
+  };
+}
+
+function makeHubLayoutReadExecutor({
+  ownerId = 'verified-owner-4217',
+  layoutRow = {
+    revision: 7,
+    layout_mode: 'manual',
+    manual_positions: [
+      { memoryId: 'memory-read-a', position: { x: 4, y: -2 } }
+    ],
+    updated_at: '2026-08-27 07:00:00.123456+00'
+  },
+  throwMessage = null
+} = {}) {
+  const calls = [];
+  let callCount = 0;
+  const executor = async (text, values = []) => {
+    callCount += 1;
+    calls.push({ text, values: Array.isArray(values) ? [...values] : values });
+    if (throwMessage) throw new Error(throwMessage);
+    if (text.includes('FROM trees')) {
+      return ownerId === null ? [] : [{ id: 'tree-4217', owner_id: ownerId }];
+    }
+    if (text.includes('FROM tree_hub_layouts')) {
+      return layoutRow === null ? [] : [layoutRow];
+    }
+    throw new Error('unexpected query');
+  };
+  return {
+    executor,
+    calls,
+    get callCount() {
+      return callCount;
+    }
+  };
+}
+
+test('#4238 source shape is GET/read-only, uses the dedicated read DB boundary, and preserves the existing PUT helper', async () => {
+  const routeSource = readFile(HUB_LAYOUT_ROUTE);
+  const directSource = readFile(HUB_LAYOUT_READ_DIRECT);
+  const direct = await import('../../functions/_shared/hub-layout-read-direct-neon.js');
+
+  assert.match(routeSource, /hub-layout-read-direct-neon\.js/);
+  assert.match(routeSource, /isHubLayoutDirectNeonReadRequest\(request\)/);
+  assert.match(routeSource, /isHubLayoutReadDirectNeonSelected\(env\s*\|\|\s*\{\}\)/);
+  assert.match(routeSource, /isHubLayoutDirectNeonWriteRequest\(request\)/);
+  assert.match(routeSource, /isHubLayoutDirectNeonSelected\(env\s*\|\|\s*\{\}\)/);
+
+  assert.match(directSource, /LB_HUB_LAYOUT_READ_RUNTIME/);
+  assert.match(directSource, /LOVE_PLATFORM_DATABASE_URL/);
+  assert.match(directSource, /principal\.legacyOwnerId/);
+  assert.match(directSource, /updated_at::text AS updated_at/);
+  assert.match(directSource, /ORDER BY revision DESC[\s\S]*LIMIT 1/);
+  assert.doesNotMatch(directSource, /readBoundedRequestBody|request\.text\s*\(|request\.json\s*\(/);
+  assert.doesNotMatch(directSource, /createNeonWsTransactionAdapter|pg_advisory_xact_lock/);
+  assert.doesNotMatch(directSource, /\b(?:INSERT|UPDATE|DELETE)\b\s+(?:INTO|FROM|trees|tree_hub_layouts)/i);
+
+  assert.equal(direct.HUB_LAYOUT_READ_DIRECT_NEON_CONTRACT.method, 'GET');
+  assert.equal(direct.HUB_LAYOUT_READ_DIRECT_NEON_CONTRACT.ownerAuthority, 'principal.legacyOwnerId');
+  assert.equal(direct.HUB_LAYOUT_READ_DIRECT_NEON_CONTRACT.selectOnly, true);
+  assert.equal(direct.HUB_LAYOUT_READ_DIRECT_NEON_CONTRACT.transaction, false);
+  assert.equal(direct.HUB_LAYOUT_READ_DIRECT_NEON_CONTRACT.advisoryLock, false);
+  assert.equal(direct.HUB_LAYOUT_READ_DIRECT_NEON_CONTRACT.productionReadPrivilegeAuthorized, false);
+  assert.equal(direct.HUB_LAYOUT_READ_DIRECT_NEON_CONTRACT.productionGateActivationAuthorized, false);
+});
+
+test('#4238 exact GET gate selects direct-Neon; unset/modal/unknown remain on the existing Modal catch-all', async () => {
+  const route = await import('../../functions/api/trees/[tree_id]/hub-layout.js');
+  const direct = await import('../../functions/_shared/hub-layout-read-direct-neon.js');
+
+  assert.equal(direct.isHubLayoutReadDirectNeonSelected({}), false);
+  assert.equal(direct.isHubLayoutReadDirectNeonSelected({ LB_HUB_LAYOUT_READ_RUNTIME: 'modal' }), false);
+  assert.equal(direct.isHubLayoutReadDirectNeonSelected({ LB_HUB_LAYOUT_READ_RUNTIME: 'unknown' }), false);
+  assert.equal(direct.isHubLayoutReadDirectNeonSelected(hubLayoutReadEnv()), true);
+  assert.equal(
+    direct.isHubLayoutDirectNeonReadRequest(hubLayoutRequest({ method: 'GET', body: undefined })),
+    true
+  );
+  assert.equal(direct.isHubLayoutDirectNeonReadRequest(hubLayoutRequest()), false);
+
+  const originalFetch = globalThis.fetch;
+  const modalCalls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    modalCalls.push({ url: String(url), options });
+    return new Response(JSON.stringify({ revision: 3 }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    });
+  };
+
+  try {
+    for (const gate of [undefined, 'modal', 'unknown']) {
+      const env = { MODAL_BASE_URL: 'https://modal.example' };
+      if (gate !== undefined) env.LB_HUB_LAYOUT_READ_RUNTIME = gate;
+      const response = await route.handleHubLayoutRoute({
+        request: hubLayoutRequest({ method: 'GET', body: undefined }),
+        env
+      });
+      assert.equal(response.status, 200);
+    }
+    assert.equal(modalCalls.length, 3);
+    for (const call of modalCalls) {
+      assert.match(call.url, /\/modal\/private\/trees\/tree-4217\/hub-layout$/);
+      assert.ok(call.options.method === undefined || call.options.method === 'GET');
+    }
+
+    const fixture = makeHubLayoutReadExecutor();
+    const directResponse = await route.handleHubLayoutRoute(
+      {
+        request: hubLayoutRequest({ method: 'GET', body: undefined }),
+        env: hubLayoutReadEnv()
+      },
+      {
+        verifyTokenOverride: async () => ({ uid: 'verified-owner-4217' }),
+        executorOverride: fixture.executor
+      }
+    );
+    assert.equal(directResponse.status, 200);
+    assert.equal(directResponse.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(directResponse.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(directResponse.headers.get('cache-control'), 'no-store');
+    assert.equal(modalCalls.length, 3, 'explicit direct GET must not fall back to Modal');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('#4238 malformed path and Firebase failures occur before DB work; verified legacyOwnerId is the sole owner authority', async () => {
+  const direct = await import('../../functions/_shared/hub-layout-read-direct-neon.js');
+
+  const malformedFixture = makeHubLayoutReadExecutor();
+  let malformedVerifierCalls = 0;
+  const malformed = await direct.handleHubLayoutReadDirectNeon(
+    new Request('https://example.test/api/trees/%ZZ/hub-layout', {
+      method: 'GET',
+      headers: { authorization: 'Bearer fake-firebase-token' }
+    }),
+    hubLayoutReadEnv(),
+    'req-4238-malformed',
+    {
+      verifyTokenOverride: async () => {
+        malformedVerifierCalls += 1;
+        return { uid: 'verified-owner-4217' };
+      },
+      executorOverride: malformedFixture.executor
+    }
+  );
+  assert.equal(malformed.status, 400);
+  assert.equal(malformedVerifierCalls, 0);
+  assert.equal(malformedFixture.callCount, 0);
+
+  const unauthFixture = makeHubLayoutReadExecutor();
+  const unauth = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({ method: 'GET', body: undefined, authorization: null }),
+    hubLayoutReadEnv(),
+    'req-4238-unauth',
+    {
+      verifyTokenOverride: async () => {
+        throw new Error('absent bearer token must fail before verifier invocation');
+      },
+      executorOverride: unauthFixture.executor
+    }
+  );
+  assert.equal(unauth.status, 401);
+  assert.equal(unauthFixture.callCount, 0);
+
+  const invalidFixture = makeHubLayoutReadExecutor();
+  const invalid = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({ method: 'GET', body: undefined }),
+    hubLayoutReadEnv(),
+    'req-4238-invalid',
+    {
+      verifyTokenOverride: async () => ({ uid: ' untrusted-owner ' }),
+      executorOverride: invalidFixture.executor
+    }
+  );
+  assert.equal(invalid.status, 401);
+  assert.equal(invalidFixture.callCount, 0);
+
+  const ownerFixture = makeHubLayoutReadExecutor();
+  const owner = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({
+      method: 'GET',
+      body: undefined,
+      headers: {
+        'x-owner-id': 'attacker-owner',
+        'x-user-email': 'attacker@example.invalid',
+        'x-account-id': 'attacker-account'
+      }
+    }),
+    hubLayoutReadEnv(),
+    'req-4238-owner',
+    {
+      verifyTokenOverride: async () => ({
+        uid: 'verified-owner-4217',
+        email: 'ignored@example.invalid'
+      }),
+      executorOverride: ownerFixture.executor
+    }
+  );
+  assert.equal(owner.status, 200);
+  assert.equal(ownerFixture.calls.length, 2);
+  assert.deepEqual(ownerFixture.calls[0].values, ['tree-4217']);
+});
+
+test('#4238 preserves two-stage owner semantics, latest-revision query ordering, exact no-layout 404, and persisted DTO parity', async () => {
+  const direct = await import('../../functions/_shared/hub-layout-read-direct-neon.js');
+
+  const successFixture = makeHubLayoutReadExecutor();
+  const success = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({ method: 'GET', body: undefined }),
+    hubLayoutReadEnv(),
+    'req-4238-success',
+    {
+      verifyTokenOverride: async () => ({ uid: 'verified-owner-4217' }),
+      executorOverride: successFixture.executor
+    }
+  );
+  assert.equal(success.status, 200);
+  assert.equal(successFixture.calls.length, 2);
+  assert.match(successFixture.calls[0].text, /SELECT[\s\S]*id, owner_id[\s\S]*FROM trees[\s\S]*WHERE id = \$1[\s\S]*LIMIT 1/i);
+  assert.match(successFixture.calls[1].text, /FROM tree_hub_layouts[\s\S]*WHERE tree_id = \$1[\s\S]*ORDER BY revision DESC[\s\S]*LIMIT 1/i);
+  assert.match(successFixture.calls[1].text, /updated_at::text AS updated_at/);
+  assert.deepEqual(await success.json(), {
+    revision: 7,
+    layoutMode: 'manual',
+    positions: [
+      { memoryId: 'memory-read-a', position: { x: 4, y: -2 } }
+    ],
+    updatedAt: '2026-08-27T07:00:00.123456+00:00'
+  });
+
+  const missingFixture = makeHubLayoutReadExecutor({ ownerId: null });
+  const missing = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({ method: 'GET', body: undefined }),
+    hubLayoutReadEnv(),
+    'req-4238-missing',
+    {
+      verifyTokenOverride: async () => ({ uid: 'verified-owner-4217' }),
+      executorOverride: missingFixture.executor
+    }
+  );
+  assert.equal(missing.status, 404);
+  assert.deepEqual(await missing.json(), { detail: 'Tree not found' });
+  assert.equal(missingFixture.calls.length, 1);
+
+  const foreignFixture = makeHubLayoutReadExecutor({ ownerId: 'different-owner' });
+  const foreign = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({ method: 'GET', body: undefined }),
+    hubLayoutReadEnv(),
+    'req-4238-foreign',
+    {
+      verifyTokenOverride: async () => ({ uid: 'verified-owner-4217' }),
+      executorOverride: foreignFixture.executor
+    }
+  );
+  assert.equal(foreign.status, 403);
+  assert.deepEqual(await foreign.json(), { detail: 'Access denied: not your tree' });
+  assert.equal(foreignFixture.calls.length, 1);
+
+  const noLayoutFixture = makeHubLayoutReadExecutor({ layoutRow: null });
+  const noLayout = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({ method: 'GET', body: undefined }),
+    hubLayoutReadEnv(),
+    'req-4238-no-layout',
+    {
+      verifyTokenOverride: async () => ({ uid: 'verified-owner-4217' }),
+      executorOverride: noLayoutFixture.executor
+    }
+  );
+  assert.equal(noLayout.status, 404);
+  assert.deepEqual(await noLayout.json(), {
+    error: 'Hub layout not found',
+    code: 'HUB_LAYOUT_NOT_FOUND'
+  });
+  assert.equal(noLayoutFixture.calls.length, 2);
+});
+
+test('#4238 dedicated read config never substitutes writer/generic URLs and query failures are sanitized without Modal fallback', async () => {
+  const direct = await import('../../functions/_shared/hub-layout-read-direct-neon.js');
+
+  const badConfig = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({ method: 'GET', body: undefined }),
+    {
+      LB_HUB_LAYOUT_READ_RUNTIME: 'direct_neon',
+      LOVE_PLATFORM_WRITE_DATABASE_URL: HUB_LAYOUT_READ_NEON_URL,
+      DATABASE_URL: HUB_LAYOUT_READ_NEON_URL
+    },
+    'req-4238-config',
+    {
+      verifyTokenOverride: async () => ({ uid: 'verified-owner-4217' })
+    }
+  );
+  assert.equal(badConfig.status, 503);
+  assert.equal((await badConfig.json()).code, 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK');
+
+  const failingFixture = makeHubLayoutReadExecutor({
+    throwMessage: 'PRIVATE SQL secret postgresql://must-not-leak'
+  });
+  const failed = await direct.handleHubLayoutReadDirectNeon(
+    hubLayoutRequest({ method: 'GET', body: undefined }),
+    hubLayoutReadEnv(),
+    'req-4238-failed',
+    {
+      verifyTokenOverride: async () => ({ uid: 'verified-owner-4217' }),
+      executorOverride: failingFixture.executor
+    }
+  );
+  assert.equal(failed.status, 500);
+  assert.equal(failed.headers.get('x-lovebud-route-status'), 'query-failed');
+  const text = await failed.text();
+  assert.doesNotMatch(text, /PRIVATE|postgresql:|must-not-leak|modal/i);
+});
+
+test('#4238 unsupported methods retain catch-all 405 / Allow: GET, PUT and the read gate never captures PUT', async () => {
+  const route = await import('../../functions/api/trees/[tree_id]/hub-layout.js');
+  const direct = await import('../../functions/_shared/hub-layout-read-direct-neon.js');
+
+  assert.equal(direct.isHubLayoutDirectNeonReadRequest(hubLayoutRequest()), false);
+
+  const response = await route.handleHubLayoutRoute({
+    request: hubLayoutRequest({ method: 'POST', body: '{}' }),
+    env: {
+      ...hubLayoutReadEnv(),
+      MODAL_BASE_URL: 'https://modal.example'
+    }
+  });
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get('allow'), 'GET, PUT');
+});

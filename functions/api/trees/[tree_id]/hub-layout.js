@@ -1,11 +1,17 @@
-// #4217 specific Hub Layout route.
+// #4217/#4238 specific Hub Layout route.
 //
-// The route intercepts only explicitly gated direct-Neon PUT requests. GET,
-// default/unset/modal/unknown PUT, and unsupported methods delegate to the
-// existing catch-all handler so all established Modal/405 semantics stay owned
-// by functions/api/[[path]].js.
+// Exact direct-Neon gates are independent by method:
+// - GET + LB_HUB_LAYOUT_READ_RUNTIME=direct_neon -> #4238 read helper
+// - PUT + LB_HUB_LAYOUT_WRITE_RUNTIME=direct_neon -> existing #4217 writer
+// All default/unset/modal/unknown gates and unsupported methods delegate to the
+// established catch-all so Modal/405 authority remains unchanged.
 
 import { onRequest as catchAllOnRequest } from '../../[[path]].js';
+import {
+  handleHubLayoutReadDirectNeon,
+  isHubLayoutDirectNeonReadRequest,
+  isHubLayoutReadDirectNeonSelected
+} from '../../../_shared/hub-layout-read-direct-neon.js';
 import {
   handleHubLayoutDirectNeon,
   isHubLayoutDirectNeonSelected,
@@ -15,6 +21,20 @@ import { getOrCreateRequestId } from '../../../_shared/request-id.js';
 
 export async function handleHubLayoutRoute(context, directOverrides = {}) {
   const { request, env } = context;
+
+  if (
+    isHubLayoutDirectNeonReadRequest(request)
+    && isHubLayoutReadDirectNeonSelected(env || {})
+  ) {
+    const requestId = getOrCreateRequestId(request);
+    return handleHubLayoutReadDirectNeon(
+      request,
+      env || {},
+      requestId,
+      directOverrides
+    );
+  }
+
   if (
     isHubLayoutDirectNeonWriteRequest(request)
     && isHubLayoutDirectNeonSelected(env || {})
