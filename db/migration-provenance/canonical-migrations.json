@@ -105,6 +105,29 @@
       "destructive_operations": [],
       "owner_domain": "auth-account-mapping",
       "approval_reference": "issue:4006"
+    },
+    {
+      "id": "20260828070000_add-tree-hub-layouts",
+      "name": "add-tree-hub-layouts",
+      "path": "db/migrations/20260828070000_add-tree-hub-layouts.sql",
+      "checksum": "sha256:64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9",
+      "depends_on": [
+        "20260802094500_bootstrap-migration-ledger"
+      ],
+      "risk_class": "DESTRUCTIVE",
+      "transaction_mode": "REQUIRED",
+      "expected_preconditions": [
+        { "check": "table_exists", "target": "tree_hub_layouts", "expected": false }
+      ],
+      "expected_postconditions": [
+        { "check": "table_exists", "target": "tree_hub_layouts", "expected": true }
+      ],
+      "rollback_support": "DROP TABLE tree_hub_layouts",
+      "destructive_operations": [
+        "FK_CASCADE_EXPANSION"
+      ],
+      "owner_domain": "hub-layout-persistence",
+      "approval_reference": "issue:4277"
     }
   ],
   "activation_rule": "No existing scripts are retroactively declared applied. A separately approved adoption baseline must be attested before this manifest changes to ACTIVE.",
