@@ -1213,7 +1213,7 @@ test('#4234 query failure rolls back; unknown COMMIT outcome is explicit with no
       neonImporter: makeDeleteNeonImporter(failedFactory)
     }
   );
-  assert.equal(failed.status, 500);
+  assert.equal(failed.status, 502);
   assert.equal(failedFactory.clients.length, 1);
   assert.equal(failedFactory.logs.filter((entry) => entry.text === 'ROLLBACK').length, 1);
   assert.equal(failedFactory.logs.filter((entry) => entry.text === 'COMMIT').length, 0);
