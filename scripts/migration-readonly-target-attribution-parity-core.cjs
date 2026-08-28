@@ -29,6 +29,7 @@ const PARITY_OUTCOMES = Object.freeze({
   EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
   CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
   INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
+  PARITY_VACUOUS_ACTIVE_TARGETS: 'PARITY_VACUOUS_ACTIVE_TARGETS',
 });
 
 const ALLOWED_CONFIG_KEYS = Object.freeze([
@@ -48,6 +49,16 @@ const ALLOWED_AUTHORITY_KEYS = Object.freeze(['status', 'critical_objects']);
 const ALLOWED_EVIDENCE_KEYS = Object.freeze(['format_version', 'normalizer_version', 'objects']);
 
 const ALLOWED_OBJECT_KEYS = Object.freeze(['name', 'fingerprint']);
+
+const PROVISIONAL_MARKER_KEY = 'provisional_fingerprint';
+
+const ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL = Object.freeze([
+  'name',
+  'fingerprint',
+  PROVISIONAL_MARKER_KEY,
+]);
+
+const ZERO_FINGERPRINT_SENTINEL = 'sha256:' + '0'.repeat(64);
 
 const OBJECT_NAME_PATTERN =
   /^(?:table|view|materialized_view):[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$/;
@@ -172,7 +183,7 @@ function validateCriticalObjectVocabulary(criticalObjects, emptyFailure, objectF
       fail(objectFailure, { field: 'critical_object' });
     }
     const keys = readExactKeys(object, objectFailure);
-    requireExactKeySet(keys, ALLOWED_OBJECT_KEYS, objectFailure);
+    requireKeysSubset(keys, ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL, objectFailure);
     const name = readOwnEnumerableDataProperty(object, 'name', objectFailure);
     const fingerprint = readOwnEnumerableDataProperty(object, 'fingerprint', objectFailure);
     requireNonEmptyString(name, objectFailure, 'name');
@@ -187,7 +198,37 @@ function validateCriticalObjectVocabulary(criticalObjects, emptyFailure, objectF
       fail(objectFailure, { field: 'name' });
     }
     seen.add(name);
-    normalized.push({ name, fingerprint });
+    let isProvisional = false;
+    if (hasOwnSafe(object, PROVISIONAL_MARKER_KEY, objectFailure)) {
+      const markerDescriptor = (() => {
+        try {
+          return Object.getOwnPropertyDescriptor(object, PROVISIONAL_MARKER_KEY);
+        } catch {
+          fail(objectFailure, { field: PROVISIONAL_MARKER_KEY });
+        }
+      })();
+      if (!markerDescriptor) {
+        fail(objectFailure, { field: PROVISIONAL_MARKER_KEY });
+      }
+      if (typeof markerDescriptor.get === 'function' || typeof markerDescriptor.set === 'function') {
+        fail(objectFailure, { field: PROVISIONAL_MARKER_KEY });
+      }
+      if (markerDescriptor.enumerable !== true || !('value' in markerDescriptor)) {
+        fail(objectFailure, { field: PROVISIONAL_MARKER_KEY });
+      }
+      if (markerDescriptor.value !== true) {
+        fail(objectFailure, { field: PROVISIONAL_MARKER_KEY });
+      }
+      if (fingerprint !== ZERO_FINGERPRINT_SENTINEL) {
+        fail(objectFailure, { field: PROVISIONAL_MARKER_KEY });
+      }
+      isProvisional = true;
+    } else {
+      if (fingerprint === ZERO_FINGERPRINT_SENTINEL) {
+        fail(objectFailure, { field: 'fingerprint' });
+      }
+    }
+    normalized.push({ name, fingerprint, provisional_fingerprint: isProvisional });
   }
   return sortByName(normalized);
 }
@@ -338,7 +379,20 @@ function validateObservedEvidence(evidence) {
 }
 
 function compareVocabularies(expected, observed) {
-  const expectedMap = new Map(expected.map((object) => [object.name, object.fingerprint]));
+  const activeExpected = expected.filter((object) => object.provisional_fingerprint !== true);
+  const provisionalExpected = expected.filter((object) => object.provisional_fingerprint === true);
+  if (expected.length > 0 && activeExpected.length === 0) {
+    return {
+      vacuous: true,
+      confirmed: false,
+      mismatchedObjects: [],
+      expectedObjectCount: expected.length,
+      observedObjectCount: observed.length,
+      activeExpectedCount: 0,
+      provisionalExpectedCount: provisionalExpected.length,
+    };
+  }
+  const expectedMap = new Map(activeExpected.map((object) => [object.name, object.fingerprint]));
   const observedMap = new Map(observed.map((object) => [object.name, object.fingerprint]));
   const names = new Set([...expectedMap.keys(), ...observedMap.keys()]);
   const mismatchedObjects = [...names].sort().filter((name) => {
@@ -346,10 +400,13 @@ function compareVocabularies(expected, observed) {
     return observedMap.get(name) !== expectedMap.get(name);
   });
   return {
+    vacuous: false,
     confirmed: mismatchedObjects.length === 0,
     mismatchedObjects,
-    expectedObjectCount: expected.length,
+    expectedObjectCount: activeExpected.length,
     observedObjectCount: observed.length,
+    activeExpectedCount: activeExpected.length,
+    provisionalExpectedCount: provisionalExpected.length,
   };
 }
 
@@ -424,8 +481,17 @@ async function runParityPreflight(config) {
     authorityStatus: committed.status,
     expectedObjectCount: comparison.expectedObjectCount,
     observedObjectCount: comparison.observedObjectCount,
+    activeExpectedCount: comparison.activeExpectedCount,
+    provisionalExpectedCount: comparison.provisionalExpectedCount,
     frozen: true,
   };
+  if (comparison.vacuous) {
+    return freezeResult({
+      ...base,
+      outcome: PARITY_OUTCOMES.PARITY_VACUOUS_ACTIVE_TARGETS,
+      mismatchedObjects: [],
+    });
+  }
   if (comparison.confirmed) {
     return freezeResult({
       ...base,
@@ -451,6 +517,9 @@ module.exports = {
   ALLOWED_AUTHORITY_KEYS,
   ALLOWED_EVIDENCE_KEYS,
   ALLOWED_OBJECT_KEYS,
+  ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL,
+  PROVISIONAL_MARKER_KEY,
+  ZERO_FINGERPRINT_SENTINEL,
   OBJECT_NAME_PATTERN,
   FINGERPRINT_PATTERN,
   RELEASE_SHA_PATTERN,

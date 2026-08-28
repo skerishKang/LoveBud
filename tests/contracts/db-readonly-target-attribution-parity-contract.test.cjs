@@ -84,6 +84,7 @@ test('outcome vocabulary is the exact fixed sanitized set', async () => {
     EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
     CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
     INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
+    PARITY_VACUOUS_ACTIVE_TARGETS: 'PARITY_VACUOUS_ACTIVE_TARGETS',
   });
 });
 
@@ -666,4 +667,289 @@ test('decision doc records Child 4 selected as the only next child, not implemen
   assert.ok(/#3458/.test(decision) && /OPEN/.test(decision), '#3458 remains OPEN');
   assert.ok(/#3460/.test(decision), '#3460 referenced as unauthorized');
   assert.ok(/ADOPTION_REQUIRED/.test(decision), 'manifests remain ADOPTION_REQUIRED');
+});
+
+// ── 11. Provisional expected-schema authority marker contract ──────────────
+
+const ZERO_FINGERPRINT = 'sha256:' + '0'.repeat(64);
+const PROVISIONAL_OBJECT_NAME = 'table:public.provisional_candidate';
+const ACTIVE_OBJECT_NAME = COMMITTED_LEDGER_OBJECT.name;
+
+function activeAuthority(objects) {
+  return { status: 'ADOPTION_REQUIRED', critical_objects: objects };
+}
+
+function evidenceFor(objects) {
+  return {
+    format_version: '1.0',
+    normalizer_version: '1.0',
+    objects,
+  };
+}
+
+test('PRV-1 ordinary expected {name, fingerprint(nonzero)} behavior is unchanged', async () => {
+  const result = await run(() => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) }]), {
+    committedAuthority: activeAuthority([
+      { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) },
+    ]),
+  });
+  assert.equal(result.outcome, 'PARITY_CONFIRMED');
+  assert.equal(result.expectedObjectCount, 1);
+  assert.equal(result.observedObjectCount, 1);
+  assert.equal(result.activeExpectedCount, 1);
+  assert.equal(result.provisionalExpectedCount, 0);
+});
+
+test('PRV-2 provisional marker with exact zero sentinel validates as provisional authority', async () => {
+  const validated = core.validateCommittedAuthority(activeAuthority([
+    { name: PROVISIONAL_OBJECT_NAME, fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: true },
+  ]));
+  assert.equal(validated.status, 'ADOPTION_REQUIRED');
+  assert.equal(validated.critical_objects.length, 1);
+  assert.equal(validated.critical_objects[0].name, PROVISIONAL_OBJECT_NAME);
+  assert.equal(validated.critical_objects[0].fingerprint, ZERO_FINGERPRINT);
+  assert.equal(validated.critical_objects[0].provisional_fingerprint, true);
+  const result = await run(
+    () => evidenceFor([{ name: 'table:public.unrelated', fingerprint: 'sha256:' + 'c'.repeat(64) }]),
+    {
+      committedAuthority: activeAuthority([
+        { name: PROVISIONAL_OBJECT_NAME, fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: true },
+      ]),
+    }
+  );
+  assert.equal(result.outcome, 'PARITY_VACUOUS_ACTIVE_TARGETS', 'all-provisional = vacuous, not PARITY_CONFIRMED');
+  assert.equal(result.activeExpectedCount, 0);
+  assert.equal(result.provisionalExpectedCount, 1);
+});
+
+test('PRV-3 valid provisional expected object is excluded from active fingerprint parity comparison', async () => {
+  const activeFingerprint = 'sha256:' + 'a'.repeat(64);
+  const result = await run(
+    () => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: activeFingerprint }]),
+    {
+      committedAuthority: activeAuthority([
+        { name: ACTIVE_OBJECT_NAME, fingerprint: activeFingerprint },
+        { name: PROVISIONAL_OBJECT_NAME, fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: true },
+      ]),
+    }
+  );
+  assert.equal(result.outcome, 'PARITY_CONFIRMED');
+  assert.equal(result.activeExpectedCount, 1);
+  assert.equal(result.provisionalExpectedCount, 1);
+  assert.deepEqual(result.mismatchedObjects, []);
+});
+
+test('PRV-4 zero sentinel without marker fails closed', async () => {
+  assert.throws(
+    () => core.validateCommittedAuthority(activeAuthority([
+      { name: PROVISIONAL_OBJECT_NAME, fingerprint: ZERO_FINGERPRINT },
+    ])),
+    (err) => err && err.category === 'EXPECTED_SCHEMA_INVALID',
+    'zero sentinel without marker must fail closed at authority validation'
+  );
+  const result = await run(() => evidenceFor([]), {
+    committedAuthority: activeAuthority([
+      { name: PROVISIONAL_OBJECT_NAME, fingerprint: ZERO_FINGERPRINT },
+    ]),
+  });
+  assert.equal(result.outcome, 'EXPECTED_SCHEMA_INVALID');
+  assert.equal(result.collectionEffectCount, 0);
+});
+
+test('PRV-5 marker + nonzero fingerprint fails closed', async () => {
+  assert.throws(
+    () => core.validateCommittedAuthority(activeAuthority([
+      { name: PROVISIONAL_OBJECT_NAME, fingerprint: 'sha256:' + 'b'.repeat(64), provisional_fingerprint: true },
+    ])),
+    (err) => err && err.category === 'EXPECTED_SCHEMA_INVALID',
+    'marker + nonzero fingerprint must fail closed at authority validation'
+  );
+  const result = await run(() => evidenceFor([]), {
+    committedAuthority: activeAuthority([
+      { name: PROVISIONAL_OBJECT_NAME, fingerprint: 'sha256:' + 'b'.repeat(64), provisional_fingerprint: true },
+    ]),
+  });
+  assert.equal(result.outcome, 'EXPECTED_SCHEMA_INVALID');
+  assert.equal(result.collectionEffectCount, 0);
+});
+
+test('PRV-6 marker false / non-boolean / invalid value fails closed', async () => {
+  for (const badMarker of [false, 'true', 1, 0, null, 'yes', {}]) {
+    assert.throws(
+      () => core.validateCommittedAuthority(activeAuthority([
+        { name: PROVISIONAL_OBJECT_NAME, fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: badMarker },
+      ])),
+      (err) => err && err.category === 'EXPECTED_SCHEMA_INVALID',
+      'invalid marker value: ' + JSON.stringify(badMarker)
+    );
+  }
+  for (const badMarker of [false, 'true', 1, 0, null, 'yes', {}]) {
+    const result = await run(() => evidenceFor([]), {
+      committedAuthority: activeAuthority([
+        { name: PROVISIONAL_OBJECT_NAME, fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: badMarker },
+      ]),
+    });
+    assert.equal(result.outcome, 'EXPECTED_SCHEMA_INVALID', 'invalid marker value: ' + JSON.stringify(badMarker));
+    assert.equal(result.collectionEffectCount, 0);
+  }
+});
+
+test('PRV-7 observed evidence containing provisional_fingerprint fails closed', async () => {
+  const result = await run(
+    () => ({
+      format_version: '1.0',
+      normalizer_version: '1.0',
+      objects: [
+        { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64), provisional_fingerprint: true },
+      ],
+    }),
+    {
+      committedAuthority: activeAuthority([
+        { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) },
+      ]),
+    }
+  );
+  assert.equal(result.outcome, 'INSUFFICIENT_EVIDENCE');
+  assert.equal(result.collectionEffectCount, 1);
+});
+
+test('PRV-8 all-expected-provisional / zero active targets fails closed (no vacuous pass)', async () => {
+  const result = await run(
+    () => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) }]),
+    {
+      committedAuthority: activeAuthority([
+        { name: 'table:public.provisional_a', fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: true },
+        { name: 'table:public.provisional_b', fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: true },
+      ]),
+    }
+  );
+  assert.equal(result.outcome, 'PARITY_VACUOUS_ACTIVE_TARGETS');
+  assert.notEqual(result.outcome, 'PARITY_CONFIRMED');
+  assert.equal(result.activeExpectedCount, 0);
+  assert.equal(result.provisionalExpectedCount, 2);
+});
+
+test('PRV-9 active expected missing from observed still fails as before', async () => {
+  const result = await run(
+    () => evidenceFor([{ name: 'table:public.unrelated', fingerprint: 'sha256:' + 'b'.repeat(64) }]),
+    {
+      committedAuthority: activeAuthority([
+        { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) },
+      ]),
+    }
+  );
+  assert.equal(result.outcome, 'PARITY_MISMATCH');
+  assert.ok(result.mismatchedObjects.includes(ACTIVE_OBJECT_NAME), 'missing active is reported');
+  assert.ok(result.mismatchedObjects.includes('table:public.unrelated'), 'observed extra is reported');
+});
+
+test('PRV-10 observed extra active object still fails as before', async () => {
+  const result = await run(
+    () => evidenceFor([
+      { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) },
+      { name: 'table:public.extra_active', fingerprint: 'sha256:' + 'b'.repeat(64) },
+    ]),
+    {
+      committedAuthority: activeAuthority([
+        { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) },
+      ]),
+    }
+  );
+  assert.equal(result.outcome, 'PARITY_MISMATCH');
+  assert.deepEqual(result.mismatchedObjects, ['table:public.extra_active']);
+});
+
+test('PRV-11 active fingerprint mismatch still fails as before', async () => {
+  const result = await run(
+    () => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'b'.repeat(64) }]),
+    {
+      committedAuthority: activeAuthority([
+        { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) },
+      ]),
+    }
+  );
+  assert.equal(result.outcome, 'PARITY_MISMATCH');
+  assert.deepEqual(result.mismatchedObjects, [ACTIVE_OBJECT_NAME]);
+});
+
+test('PRV-12 duplicate and ordering invariants remain deterministic for provisional entries', async () => {
+  const fingerprintA = 'sha256:' + 'a'.repeat(64);
+  const fingerprintB = 'sha256:' + 'b'.repeat(64);
+  const provisionalA = { name: 'table:public.provisional_a', fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: true };
+  const provisionalB = { name: 'table:public.provisional_b', fingerprint: ZERO_FINGERPRINT, provisional_fingerprint: true };
+  const firstResult = await run(() => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: fingerprintA }]), {
+    committedAuthority: activeAuthority([
+      { name: ACTIVE_OBJECT_NAME, fingerprint: fingerprintA },
+      provisionalB,
+      provisionalA,
+    ]),
+  });
+  const secondResult = await run(() => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: fingerprintA }]), {
+    committedAuthority: activeAuthority([
+      provisionalA,
+      { name: ACTIVE_OBJECT_NAME, fingerprint: fingerprintA },
+      provisionalB,
+    ]),
+  });
+  const fingerprintC = 'sha256:' + 'c'.repeat(64);
+  const duplicateResult = await run(() => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: fingerprintA }]), {
+    committedAuthority: activeAuthority([
+      { name: ACTIVE_OBJECT_NAME, fingerprint: fingerprintA },
+      provisionalA,
+      provisionalA,
+    ]),
+  });
+  const thirdMismatchedFingerprint = await run(() => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: fingerprintC }]), {
+    committedAuthority: activeAuthority([
+      { name: ACTIVE_OBJECT_NAME, fingerprint: fingerprintA },
+      provisionalA,
+    ]),
+  });
+  assert.equal(firstResult.outcome, 'PARITY_CONFIRMED');
+  assert.equal(secondResult.outcome, 'PARITY_CONFIRMED');
+  assert.equal(JSON.stringify(firstResult), JSON.stringify(secondResult), 'order-independent byte-stable');
+  assert.equal(duplicateResult.outcome, 'EXPECTED_SCHEMA_INVALID', 'duplicate provisional name rejected');
+  assert.equal(thirdMismatchedFingerprint.outcome, 'PARITY_MISMATCH');
+});
+
+test('PRV-13 marker field descriptor-safety: getter-only marker fails closed', async () => {
+  const object = {};
+  Object.defineProperty(object, 'name', {
+    enumerable: true,
+    configurable: true,
+    value: PROVISIONAL_OBJECT_NAME,
+  });
+  Object.defineProperty(object, 'fingerprint', {
+    enumerable: true,
+    configurable: true,
+    value: ZERO_FINGERPRINT,
+  });
+  Object.defineProperty(object, 'provisional_fingerprint', {
+    enumerable: true,
+    configurable: true,
+    get() {
+      return true;
+    },
+  });
+  assert.throws(
+    () => core.validateCommittedAuthority(activeAuthority([object])),
+    (err) => err && err.category === 'EXPECTED_SCHEMA_INVALID',
+    'getter-only marker must fail closed at authority validation'
+  );
+  const result = await run(() => evidenceFor([]), {
+    committedAuthority: activeAuthority([object]),
+  });
+  assert.equal(result.outcome, 'EXPECTED_SCHEMA_INVALID', 'getter-only marker fails closed');
+  assert.equal(result.collectionEffectCount, 0);
+});
+
+test('PRV-14 PARITY_OUTCOMES includes the new vacuous category exactly', () => {
+  assert.equal(core.PARITY_OUTCOMES.PARITY_VACUOUS_ACTIVE_TARGETS, 'PARITY_VACUOUS_ACTIVE_TARGETS');
+  assert.equal(core.ZERO_FINGERPRINT_SENTINEL, ZERO_FINGERPRINT);
+  assert.equal(core.PROVISIONAL_MARKER_KEY, 'provisional_fingerprint');
+  assert.deepEqual(core.ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL, [
+    'name',
+    'fingerprint',
+    'provisional_fingerprint',
+  ]);
 });
