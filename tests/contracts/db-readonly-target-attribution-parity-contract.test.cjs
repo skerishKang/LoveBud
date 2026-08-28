@@ -84,7 +84,6 @@ test('outcome vocabulary is the exact fixed sanitized set', async () => {
     EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
     CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
     INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
-    PARITY_VACUOUS_ACTIVE_TARGETS: 'PARITY_VACUOUS_ACTIVE_TARGETS',
   });
 });
 
@@ -717,7 +716,7 @@ test('PRV-2 provisional marker with exact zero sentinel validates as provisional
       ]),
     }
   );
-  assert.equal(result.outcome, 'PARITY_VACUOUS_ACTIVE_TARGETS', 'all-provisional = vacuous, not PARITY_CONFIRMED');
+  assert.equal(result.outcome, 'AUTHORITY_ADOPTION_REQUIRED', 'all-provisional = vacuous mapped to AUTHORITY_ADOPTION_REQUIRED, not PARITY_CONFIRMED');
   assert.equal(result.activeExpectedCount, 0);
   assert.equal(result.provisionalExpectedCount, 1);
 });
@@ -794,13 +793,77 @@ test('PRV-6 marker false / non-boolean / invalid value fails closed', async () =
   }
 });
 
-test('PRV-7 observed evidence containing provisional_fingerprint fails closed', async () => {
+test('PRV-7 observed evidence containing provisional_fingerprint fails closed at key boundary (any fingerprint value)', async () => {
+  const nonzeroFingerprint = 'sha256:' + 'a'.repeat(64);
+  const observedFingerprints = [nonzeroFingerprint, ZERO_FINGERPRINT];
+  for (const observedFingerprint of observedFingerprints) {
+    const result = await run(
+      () => ({
+        format_version: '1.0',
+        normalizer_version: '1.0',
+        objects: [
+          {
+            name: ACTIVE_OBJECT_NAME,
+            fingerprint: observedFingerprint,
+            provisional_fingerprint: true,
+          },
+        ],
+      }),
+      {
+        committedAuthority: activeAuthority([
+          { name: ACTIVE_OBJECT_NAME, fingerprint: nonzeroFingerprint },
+        ]),
+      }
+    );
+    assert.equal(
+      result.outcome,
+      'INSUFFICIENT_EVIDENCE',
+      'observed marker with fingerprint=' + observedFingerprint + ' must fail at key boundary, not at marker semantics'
+    );
+    assert.equal(result.collectionEffectCount, 1);
+  }
+});
+
+test('PRV-7b observed evidence with non-boolean marker value still fails closed at key boundary', async () => {
+  for (const badMarker of [false, 'true', 1, 0, null, 'yes', {}]) {
+    const result = await run(
+      () => ({
+        format_version: '1.0',
+        normalizer_version: '1.0',
+        objects: [
+          {
+            name: ACTIVE_OBJECT_NAME,
+            fingerprint: 'sha256:' + 'a'.repeat(64),
+            provisional_fingerprint: badMarker,
+          },
+        ],
+      }),
+      {
+        committedAuthority: activeAuthority([
+          { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) },
+        ]),
+      }
+    );
+    assert.equal(
+      result.outcome,
+      'INSUFFICIENT_EVIDENCE',
+      'observed marker with non-boolean value ' + JSON.stringify(badMarker) + ' must fail at key boundary'
+    );
+    assert.equal(result.collectionEffectCount, 1);
+  }
+});
+
+test('PRV-7c observed evidence with extra unknown key (not provisional_fingerprint) still fails closed at key boundary', async () => {
   const result = await run(
     () => ({
       format_version: '1.0',
       normalizer_version: '1.0',
       objects: [
-        { name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64), provisional_fingerprint: true },
+        {
+          name: ACTIVE_OBJECT_NAME,
+          fingerprint: 'sha256:' + 'a'.repeat(64),
+          owner: 'operator',
+        },
       ],
     }),
     {
@@ -823,7 +886,7 @@ test('PRV-8 all-expected-provisional / zero active targets fails closed (no vacu
       ]),
     }
   );
-  assert.equal(result.outcome, 'PARITY_VACUOUS_ACTIVE_TARGETS');
+  assert.equal(result.outcome, 'AUTHORITY_ADOPTION_REQUIRED');
   assert.notEqual(result.outcome, 'PARITY_CONFIRMED');
   assert.equal(result.activeExpectedCount, 0);
   assert.equal(result.provisionalExpectedCount, 2);
@@ -943,8 +1006,18 @@ test('PRV-13 marker field descriptor-safety: getter-only marker fails closed', a
   assert.equal(result.collectionEffectCount, 0);
 });
 
-test('PRV-14 PARITY_OUTCOMES includes the new vacuous category exactly', () => {
-  assert.equal(core.PARITY_OUTCOMES.PARITY_VACUOUS_ACTIVE_TARGETS, 'PARITY_VACUOUS_ACTIVE_TARGETS');
+test('PRV-14 PARITY_OUTCOMES is the exact 8-string set and exports are stable', () => {
+  assert.deepEqual(core.PARITY_OUTCOMES, {
+    PARITY_CONFIRMED: 'PARITY_CONFIRMED',
+    PARITY_MISMATCH: 'PARITY_MISMATCH',
+    TARGET_ATTRIBUTION_INVALID: 'TARGET_ATTRIBUTION_INVALID',
+    APPROVAL_INVALID: 'APPROVAL_INVALID',
+    AUTHORITY_ADOPTION_REQUIRED: 'AUTHORITY_ADOPTION_REQUIRED',
+    EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
+    CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
+    INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
+  });
+  assert.equal(Object.keys(core.PARITY_OUTCOMES).length, 8);
   assert.equal(core.ZERO_FINGERPRINT_SENTINEL, ZERO_FINGERPRINT);
   assert.equal(core.PROVISIONAL_MARKER_KEY, 'provisional_fingerprint');
   assert.deepEqual(core.ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL, [
