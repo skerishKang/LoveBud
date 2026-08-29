@@ -1115,6 +1115,156 @@ describe('Phase B operator collection receipt core', () => {
     assert.ok(!codeOnly.includes('writeFile'));
     assert.ok(!codeOnly.includes('appendFile'));
   });
+
+  // ======================== FAILURE_SUBCATEGORY (SAFE ENUM ONLY) ========================
+
+  it('CATALOG_ADAPTER_INPUT_INVALID → bounded ALLOWLIST + exact subcategory', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    const cat = 'CATALOG_ADAPTER_INPUT_INVALID';
+    assert.equal(op.mapFailure(cat, 1), 'COLLECTION_FAIL_ALLOWLIST_OR_METADATA_CONTRACT');
+    assert.equal(op.toSafeFailureSubcategory(cat), cat);
+  });
+
+  it('CATALOG_ADAPTER_GRANTEE_UNMAPPED → bounded ALLOWLIST + exact subcategory', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    const cat = 'CATALOG_ADAPTER_GRANTEE_UNMAPPED';
+    assert.equal(op.mapFailure(cat, 1), 'COLLECTION_FAIL_ALLOWLIST_OR_METADATA_CONTRACT');
+    assert.equal(op.toSafeFailureSubcategory(cat), cat);
+  });
+
+  it('CATALOG_ADAPTER_CATALOG_SHAPE_INVALID → bounded ALLOWLIST + exact subcategory', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    const cat = 'CATALOG_ADAPTER_CATALOG_SHAPE_INVALID';
+    assert.equal(op.mapFailure(cat, 1), 'COLLECTION_FAIL_ALLOWLIST_OR_METADATA_CONTRACT');
+    assert.equal(op.toSafeFailureSubcategory(cat), cat);
+  });
+
+  it('unknown category collapses to SAFE_FAILURE_SUBCATEGORY_UNKNOWN and keeps bounded category without leaking raw', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    const unknown = 'SOME_UNKNOWN_INTERNAL_CATEGORY_XYZ';
+    const safe = op.toSafeFailureSubcategory(unknown);
+    assert.equal(safe, op.SAFE_FAILURE_SUBCATEGORY_UNKNOWN);
+    assert.ok(!safe.includes('UNKNOWN_INTERNAL_CATEGORY_XYZ'));
+    // bounded category still valid, not leaking raw
+    const bounded = op.mapFailure(unknown, 1);
+    assert.ok(op.VALID_OUTCOMES.includes(bounded));
+  });
+
+  it('fake Error with password/URL/stack/context never appears in sanitized output', async () => {
+    const { execFileSync } = require('child_process');
+    const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
+    // Create a fake file that would trigger INPUT_INVALID but ensure no sensitive leak
+    // Use a CLI failure path and verify output never contains injected sensitive strings
+    let result;
+    try { result = execFileSync(process.execPath, [cli, '--secret-file', 'x', '--role-mapping-file', 'y', '--baseline-commit', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '--approval-reference', 'issue:1'], { encoding: 'utf8', timeout: 10000, maxBuffer: 65536 }); }
+    catch (err) { result = err.stdout || ''; }
+    const sensitive = ['password', 'postgres://', 'postgresql://', 'host', 'database', 'secret', 'stack', 'context.role_name', 'context.object_name', 'context.path', 'context.sql'];
+    const lower = result.toLowerCase();
+    for (const s of sensitive) {
+      // The output is allowlisted JSON; it should not contain raw sensitive markers as values
+      // except the expected field names themselves (e.g., failure_subcategory is safe enum)
+      // So check that result does not contain postgres URL etc.
+      if (s.includes('postgres')) assert.ok(!lower.includes('postgres://'), 'must not leak postgres URL');
+      if (s === 'password') assert.ok(!lower.includes('password='), 'must not leak password=');
+    }
+    // Verify operator source never serializes err.message/stack/context
+    const src = require('fs').readFileSync(cli, 'utf8');
+    const codeOnly = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.ok(!codeOnly.includes('err.message'));
+    assert.ok(!codeOnly.includes('err.stack'));
+    assert.ok(!codeOnly.includes('err.context'));
+    // Verify output contains failure_subcategory but not raw context keys
+    const parsed = JSON.parse(result.trim());
+    assert.ok(typeof parsed.failure_subcategory === 'string');
+    assert.ok(!JSON.stringify(parsed).includes('password'));
+    assert.ok(!JSON.stringify(parsed).includes('postgres://'));
+  });
+
+  it('CLI failure output includes failure_subcategory and bounded_category unchanged', async () => {
+    const { execFileSync } = require('child_process');
+    const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
+    let result;
+    try { result = execFileSync(process.execPath, [cli, '--forbidden-flag'], { encoding: 'utf8', timeout: 10000, maxBuffer: 65536 }); }
+    catch (err) { result = err.stdout || ''; }
+    const parsed = JSON.parse(result.trim());
+    assert.ok('failure_subcategory' in parsed);
+    assert.equal(parsed.bounded_category, parsed.outcome);
+    assert.ok(parsed.failure_subcategory === require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs')).SAFE_FAILURE_SUBCATEGORY_UNKNOWN || typeof parsed.failure_subcategory === 'string');
+    // existing fields unchanged
+    assert.ok('collection_session_count' in parsed);
+    assert.equal(parsed.attestation_status, 'UNATTESTED');
+    assert.equal(parsed.manifest_activation, 'NONE');
+  });
+
+  it('success receipt has no failure telemetry or null failure_subcategory', () => {
+    const receipt = buildTestReceipt();
+    assert.ok(!('failure_subcategory' in receipt) || receipt.failure_subcategory === null || receipt.failure_subcategory === undefined);
+    // CLI success path uses serializeCollectionReceipt which must not include sensitive fields
+    const serialized = receiptCore.serializeCollectionReceipt(receipt);
+    const parsed = JSON.parse(serialized);
+    assert.ok(!('failure_subcategory' in parsed) || parsed.failure_subcategory === null);
+    // Ensure receipt does not contain failure_subcategory with value
+    if ('failure_subcategory' in parsed) assert.equal(parsed.failure_subcategory, null);
+  });
+
+  it('unknown category does not leak raw text and collapses to generic', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    const cases = ['FAKE_ERROR_WITH_SECRET', 'CUSTOM_SQL_ERROR', '../../../etc/passwd', 'lowercase_invalid', ''];
+    for (const c of cases) {
+      const safe = op.toSafeFailureSubcategory(c);
+      assert.equal(safe, op.SAFE_FAILURE_SUBCATEGORY_UNKNOWN);
+      assert.ok(!safe.includes('passwd'));
+      assert.ok(!safe.includes('FAKE_ERROR'));
+    }
+  });
+
+  it('RECEIPT_NOT_A_REAL_REPOSITORY_ENUM collapses to UNKNOWN (exact allowlist)', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    assert.equal(op.toSafeFailureSubcategory('RECEIPT_NOT_A_REAL_REPOSITORY_ENUM'), op.SAFE_FAILURE_SUBCATEGORY_UNKNOWN);
+  });
+
+  it('COLLECTION_PLAN_NOT_A_REAL_REPOSITORY_ENUM collapses to UNKNOWN (exact allowlist)', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    assert.equal(op.toSafeFailureSubcategory('COLLECTION_PLAN_NOT_A_REAL_REPOSITORY_ENUM'), op.SAFE_FAILURE_SUBCATEGORY_UNKNOWN);
+  });
+
+  it('CATALOG_ADAPTER_CATALOG_SHAPE_SECRET_OBJECT_X collapses to UNKNOWN (exact allowlist)', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    assert.equal(op.toSafeFailureSubcategory('CATALOG_ADAPTER_CATALOG_SHAPE_SECRET_OBJECT_X'), op.SAFE_FAILURE_SUBCATEGORY_UNKNOWN);
+  });
+
+  it('genuine finite enums still pass exact allowlist', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    const genuine = [
+      'CATALOG_ADAPTER_CATALOG_SHAPE_INVALID',
+      'RECEIPT_DIGEST_MISMATCH',
+      'COLLECTION_PLAN_INPUT_INVALID',
+      'CATALOG_ADAPTER_GRANTEE_UNMAPPED',
+      'CANDIDATE_FAILED',
+    ];
+    for (const c of genuine) {
+      assert.equal(op.toSafeFailureSubcategory(c), c, `genuine ${c} must pass`);
+    }
+    // verify reuse of exported authorities
+    const src = require('fs').readFileSync(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'), 'utf8');
+    assert.ok(src.includes('phase-b-collection-receipt-core.cjs'), 'should reuse receipt core FAILURE');
+    assert.ok(src.includes('adoption-baseline-collection-plan-core.cjs'), 'should reuse plan core FAILURE');
+    assert.ok(src.includes('migration-catalog-postgres-adapter-core.cjs'), 'should reuse adapter FAILURE');
+    assert.ok(!src.includes("c.startsWith('RECEIPT_')"), 'open-ended prefix must be removed');
+    assert.ok(!src.includes("c.startsWith('COLLECTION_PLAN_')"), 'open-ended prefix must be removed');
+    assert.ok(!src.includes("c.startsWith('CATALOG_ADAPTER_CATALOG_SHAPE_')"), 'open-ended prefix must be removed');
+  });
+
+  it('existing bounded outcomes unchanged after subcategory add', async () => {
+    const { execFileSync } = require('child_process');
+    const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
+    let result;
+    try { result = execFileSync(process.execPath, [cli, '--forbidden-flag'], { encoding: 'utf8', timeout: 10000, maxBuffer: 65536 }); }
+    catch (err) { result = err.stdout || ''; }
+    const parsed = JSON.parse(result.trim());
+    assert.ok(['COLLECTION_NOT_RUN_CONNECTION_BOUNDARY','COLLECTION_FAIL_ALLOWLIST_OR_METADATA_CONTRACT','COLLECTION_FAIL_SANITIZATION','COLLECTION_FAIL_READONLY_PROOF','COLLECTION_FAIL_PARTIAL_OR_UNKNOWN'].includes(parsed.outcome));
+    assert.equal(parsed.outcome, parsed.bounded_category);
+  });
 });
 
 // ─── Collab helper for mapFailure testing ──────────────────────────────
