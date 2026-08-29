@@ -13,6 +13,7 @@ const RECON_FAILURE = Object.freeze({
   PRIVATE_OUTPUT_PARENT_MISSING: 'PRIVATE_OUTPUT_PARENT_MISSING',
   SECRETS_INPUT_TRAVERSAL: 'SECRETS_INPUT_TRAVERSAL',
   SECRETS_INPUT_OUTSIDE: 'SECRETS_INPUT_OUTSIDE',
+  SECRETS_ROOT_SYMLINK: 'SECRETS_ROOT_SYMLINK',
   BASELINE_MISMATCH: 'BASELINE_MISMATCH',
   HEAD_UNRESOLVABLE: 'HEAD_UNRESOLVABLE',
   ROLE_MAPPING_MUTATED: 'ROLE_MAPPING_MUTATED',
@@ -32,30 +33,67 @@ function fail(category) {
   throw e;
 }
 
+function assertSecretsRootValid(repoRoot) {
+  const secretsDir = path.resolve(repoRoot, '.secrets');
+  // If .secrets does not exist, realpath check not needed (will fail elsewhere)
+  if (!fs.existsSync(secretsDir)) return;
+  try {
+    const st = fs.lstatSync(secretsDir);
+    if (st.isSymbolicLink()) {
+      fail(RECON_FAILURE.SECRETS_ROOT_SYMLINK);
+    }
+  } catch {}
+  try {
+    const real = fs.realpathSync(secretsDir);
+    if (real !== secretsDir) {
+      // If realpath differs and is outside repo or not equal, fail
+      const repoReal = (() => { try { return fs.realpathSync(repoRoot); } catch { return repoRoot; }})();
+      if (!isPathInsideDir(real, repoReal) && real !== repoReal) {
+        // Real secrets outside repo → fail
+        fail(RECON_FAILURE.SECRETS_ROOT_SYMLINK);
+      }
+      // If .secrets is symlink to outside, real will be outside .secrets path
+      if (real !== secretsDir) {
+        // Check if still inside repo but different inode - treat as symlink
+        // On POSIX, symlink will cause real != secretsDir
+        fail(RECON_FAILURE.SECRETS_ROOT_SYMLINK);
+      }
+    }
+  } catch (e) {
+    if (e && e.category) throw e;
+  }
+}
+
 /**
  * Validate --private-output-file strictly under .secrets/**
  * Contract: parent directory MUST already exist, no recursive creation.
- * Fail-closed for outside, traversal, symlink escape, existing file.
- * Checks nearest existing ancestor realpath stays inside .secrets.
+ * Raw traversal segment checked before normalization.
+ * .secrets root itself must not be symlink.
  */
 function validatePrivateOutputPath(repoRoot, relPath) {
+  assertSecretsRootValid(repoRoot);
   if (typeof relPath !== 'string' || !relPath) fail(RECON_FAILURE.PRIVATE_OUTPUT_PATH_INVALID);
   const trimmed = relPath.trim();
   if (!trimmed) fail(RECON_FAILURE.PRIVATE_OUTPUT_PATH_INVALID);
   if (path.isAbsolute(trimmed)) fail(RECON_FAILURE.PRIVATE_OUTPUT_OUTSIDE_SECRETS);
   if (trimmed.includes('\0')) fail(RECON_FAILURE.PRIVATE_OUTPUT_PATH_INVALID);
-  const normalized = path.posix.normalize(trimmed.replace(/\\/g, '/'));
+  // Raw traversal check before normalize (so a/../b is not hidden)
+  const converted = trimmed.replace(/\\/g, '/');
+  const rawParts = converted.split('/');
+  if (rawParts.includes('..')) fail(RECON_FAILURE.PRIVATE_OUTPUT_TRAVERSAL);
+  if (rawParts.includes('.') && rawParts.some((p, i) => p === '.' && i !== 0)) {
+    // Allow leading ./ but not embedded ./ that could be used to obscure? Still reject if contains ..
+    // For strict, also reject single dot segments that hide traversal? Keep simple: only .. is fatal
+  }
+  const normalized = path.posix.normalize(converted);
   if (!normalized.startsWith('.secrets/')) fail(RECON_FAILURE.PRIVATE_OUTPUT_OUTSIDE_SECRETS);
   if (normalized.includes('..')) fail(RECON_FAILURE.PRIVATE_OUTPUT_TRAVERSAL);
   if (normalized === '.secrets' || normalized === '.secrets/') fail(RECON_FAILURE.PRIVATE_OUTPUT_PATH_INVALID);
   const abs = path.resolve(repoRoot, normalized);
   const secretsDir = path.resolve(repoRoot, '.secrets');
   if (!isPathInsideDir(abs, secretsDir)) fail(RECON_FAILURE.PRIVATE_OUTPUT_TRAVERSAL);
-  // Parent must already exist (no recursive mkdir)
   const parent = path.dirname(abs);
   if (!fs.existsSync(parent)) fail(RECON_FAILURE.PRIVATE_OUTPUT_PARENT_MISSING);
-  // Check nearest existing ancestor realpath stays inside .secrets (deep symlink escape)
-  // Walk up from parent to find nearest existing directory
   let cur = parent;
   let nearestExisting = null;
   while (cur && cur.length >= secretsDir.length) {
@@ -71,7 +109,6 @@ function validatePrivateOutputPath(repoRoot, relPath) {
     if (!isPathInsideDir(realNearest, realSecrets) && realNearest !== realSecrets) {
       fail(RECON_FAILURE.PRIVATE_OUTPUT_TRAVERSAL);
     }
-    // If the full parent chain contains symlink that escapes, the realpath of parent itself will be outside
     try {
       const realParent = fs.realpathSync(parent);
       if (!isPathInsideDir(realParent, realSecrets) && realParent !== realSecrets) {
@@ -79,9 +116,7 @@ function validatePrivateOutputPath(repoRoot, relPath) {
       }
     } catch {}
   }
-  // Reject if file already exists (no overwrite)
   if (fs.existsSync(abs)) {
-    // Also check if existing file is symlink outside
     try {
       const realTarget = fs.realpathSync(abs);
       const realSecrets = fs.existsSync(secretsDir) ? fs.realpathSync(secretsDir) : secretsDir;
@@ -94,21 +129,24 @@ function validatePrivateOutputPath(repoRoot, relPath) {
 
 /**
  * Validate input file strictly under .secrets/** with realpath check
- * (for --secret-file and --role-mapping-file)
  */
 function validateSecretsInputPath(repoRoot, relPath) {
+  assertSecretsRootValid(repoRoot);
   if (typeof relPath !== 'string' || !relPath) fail(RECON_FAILURE.INPUT_INVALID);
   const trimmed = relPath.trim();
   if (!trimmed) fail(RECON_FAILURE.INPUT_INVALID);
   if (path.isAbsolute(trimmed)) fail(RECON_FAILURE.SECRETS_INPUT_OUTSIDE);
-  const normalized = path.posix.normalize(trimmed.replace(/\\/g, '/'));
+  if (trimmed.includes('\0')) fail(RECON_FAILURE.INPUT_INVALID);
+  const converted = trimmed.replace(/\\/g, '/');
+  const rawParts = converted.split('/');
+  if (rawParts.includes('..')) fail(RECON_FAILURE.SECRETS_INPUT_TRAVERSAL);
+  const normalized = path.posix.normalize(converted);
   if (!normalized.startsWith('.secrets/')) fail(RECON_FAILURE.SECRETS_INPUT_OUTSIDE);
   if (normalized.includes('..')) fail(RECON_FAILURE.SECRETS_INPUT_TRAVERSAL);
   const abs = path.resolve(repoRoot, normalized);
   const secretsDir = path.resolve(repoRoot, '.secrets');
   if (!isPathInsideDir(abs, secretsDir)) fail(RECON_FAILURE.SECRETS_INPUT_TRAVERSAL);
   if (!fs.existsSync(abs)) fail(RECON_FAILURE.INPUT_INVALID);
-  // lstat each component to detect symlink escape
   const relParts = path.relative(secretsDir, abs).split(path.sep);
   let cur = secretsDir;
   for (const part of relParts) {
@@ -124,10 +162,8 @@ function validateSecretsInputPath(repoRoot, relPath) {
       }
     } catch (e) {
       if (e && e.category) throw e;
-      // if intermediate doesn't exist, already failed exists check above for final, but parent symlink already checked
     }
   }
-  // final realpath check
   try {
     const realAbs = fs.realpathSync(abs);
     const realSecrets = fs.existsSync(secretsDir) ? fs.realpathSync(secretsDir) : secretsDir;
@@ -166,21 +202,17 @@ function computeUnmappedGrantees(grantees, roleMapping) {
 
 /**
  * Build private artifact object (minimal)
- * Fails closed if any identifier has invalid type/size/shape
+ * Preserves raw rolname; validates non-empty, no NUL, byte bound, count bound.
  */
 function buildPrivateArtifact(unmappedGrantees) {
   if (!Array.isArray(unmappedGrantees)) fail(RECON_FAILURE.INPUT_INVALID);
-  const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
   const cleaned = [];
   for (const v of unmappedGrantees) {
-    if (typeof v !== 'string' || !v) fail(RECON_FAILURE.INPUT_INVALID);
+    if (typeof v !== 'string') fail(RECON_FAILURE.INPUT_INVALID);
     if (v.length === 0 || v.length > 64) fail(RECON_FAILURE.INPUT_INVALID);
-    if (!IDENT_RE.test(v) && !/^[A-Za-z0-9_@.\-]+$/.test(v)) {
-      // Allow broader but still fail if not matching identifier-like; keep strict for test fake roles like SUPER_SECRET_ROLE_X
-      if (!/^[A-Za-z0-9_]+$/.test(v)) fail(RECON_FAILURE.INPUT_INVALID);
-    }
+    if (v.includes('\0')) fail(RECON_FAILURE.INPUT_INVALID);
     if (v !== v.trim()) fail(RECON_FAILURE.INPUT_INVALID);
-    // Do NOT silently drop credential-like substrings; preserve identifier
+    // Allow arbitrary PostgreSQL role names (including quoted) – only check NUL and length
     cleaned.push(v);
     if (cleaned.length > 256) fail(RECON_FAILURE.INPUT_INVALID);
   }
@@ -193,7 +225,6 @@ function buildPrivateArtifact(unmappedGrantees) {
 
 /**
  * Exclusive-create write (fail if exists, no overwrite, parent must exist).
- * Uses wx flag, mode 0600. Validates artifact shape only contains allowed keys.
  */
 function writePrivateArtifactExclusive(absPath, artifact) {
   if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact)) fail(RECON_FAILURE.INPUT_INVALID);
@@ -203,14 +234,9 @@ function writePrivateArtifactExclusive(absPath, artifact) {
   }
   if (artifact.format_version !== '1.0') fail(RECON_FAILURE.INPUT_INVALID);
   if (!Array.isArray(artifact.unmapped_grantees)) fail(RECON_FAILURE.INPUT_INVALID);
-  // Ensure no credential/extra fields
-  const json = JSON.stringify(artifact);
-  // Artifact must not contain credential material as fields (but grantee values are identifiers, not fields)
-  // We only check that artifact does not have password/host etc as keys
   for (const k of Object.keys(artifact)) {
     if (/password|host|database|username|url|sql|provider/i.test(k)) fail(RECON_FAILURE.INPUT_INVALID);
   }
-  // No parent mkdir - parent must already exist (validated above)
   const dir = path.dirname(absPath);
   if (!fs.existsSync(dir)) fail(RECON_FAILURE.PRIVATE_OUTPUT_PARENT_MISSING);
   let fd;
@@ -263,4 +289,5 @@ module.exports = {
   buildSharedOutput,
   computeDigest,
   isPathInsideDir,
+  assertSecretsRootValid,
 };

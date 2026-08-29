@@ -5166,8 +5166,8 @@
     },
     {
       "path": "tests/contracts/phase-b-role-mapping-reconciliation-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Source-static contract for private-only unmapped grantee reconciliation helper: validates .secrets/** exclusive-create boundary, outside/traversal/existing-file rejections, shared-output raw-grantee non-leak, private-artifact minimal shape, credential non-leak, role-map immutability, zero-unmapped and unknown-error sanitization, identify-only semantics and exclusive-create behavior using fake role names only (no Production connection, no DB, no secret output).",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes CLI subprocesses and injected fake collector seam writing fake .secrets artifacts with fake role mappings/secret files; no real Production DB/network, no secret output.",
       "capabilities": []
     }
   ],

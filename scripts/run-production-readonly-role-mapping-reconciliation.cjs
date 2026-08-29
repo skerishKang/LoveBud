@@ -128,26 +128,26 @@ async function realCollectRawGrantees(repoRoot, secretFile, roleMappingFile, sta
   const granteesSet = new Set();
   let startedTxn = false;
   try {
-    state.collection_session_count = 1;
     await client.connect();
-    await client.query('BEGIN READ ONLY');
+    state.collection_session_count = 1;
+    await client.query(adapter.Q.BEGIN_RO);
     startedTxn = true;
-    const roRes = await client.query('SHOW transaction_read_only');
+    const roRes = await client.query(adapter.Q.SHOW_RO);
     const roVal = roRes.rows[0] && (roRes.rows[0].transaction_read_only || Object.values(roRes.rows[0])[0]);
     if (String(roVal).toLowerCase() !== 'on') {
       const e = new Error(RECON_FAILURE.UNEXPECTED);
       e.category = adapter.ADAPTER_FAILURE.CATALOG_ADAPTER_READ_ONLY_REQUIRED;
       throw e;
     }
-    const verRes = await client.query('SHOW server_version_num');
+    const verRes = await client.query(adapter.Q.SHOW_VER);
     const verRaw = verRes.rows[0] && (verRes.rows[0].server_version_num || Object.values(verRes.rows[0])[0]);
     boundary.assertSupportedProductionServerVersionNum(verRaw);
 
     // Fixed repository-owned catalog queries only (union of grants + policy roles)
     for (const target of validatedObjects) {
       const relRes = await client.query(adapter.Q.RELATION, [target.schema, target.object_name]);
-      if (!relRes.rows || relRes.rows.length !== 1) continue;
-      const oid = relRes.rows[0].oid;
+      const rel = adapter.classifyRelationRows(relRes.rows, target.object_kind);
+      const oid = rel.oid;
       // grants
       const grRes = await client.query(adapter.Q.GRANTS, [target.schema, target.object_name]);
       for (const r of grRes.rows) {
@@ -183,7 +183,7 @@ async function realCollectRawGrantees(repoRoot, secretFile, roleMappingFile, sta
     return [...granteesSet];
   } finally {
     if (startedTxn) {
-      try { await client.query('ROLLBACK'); } catch {}
+      try { await client.query(adapter.Q.ROLLBACK); } catch {}
     }
     try { await client.end(); } catch {}
     try { boundary.releaseInvocationPlan(plan); } catch {}
