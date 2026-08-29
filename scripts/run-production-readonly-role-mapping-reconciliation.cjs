@@ -25,6 +25,10 @@ const fs = require('node:fs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
+// This PR is SOURCE-ONLY. Enabling Production execution requires a later,
+// separately approved source change; there is intentionally no runtime override.
+const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = false;
+
 const {
   RECON_FAILURE,
   validatePrivateOutputPath,
@@ -77,6 +81,23 @@ function printUnexpected(count) {
     outcome: 'RECONCILIATION_FAIL_UNEXPECTED',
     bounded_category: 'RECONCILIATION_FAIL_UNEXPECTED',
     collection_session_count: typeof count === 'number' ? count : 0,
+    unmapped_grantee_count: 0,
+    private_artifact_written: false,
+    schema_mutation: 'NONE',
+    data_mutation: 'NONE',
+    credential_change: 'NONE',
+    privilege_change: 'NONE',
+  };
+  process.stdout.write(JSON.stringify(out, null, 2) + '\n');
+  process.exitCode = 1;
+}
+
+function printSourceOnlyGate() {
+  const out = {
+    format_version: '1.0',
+    outcome: 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE',
+    bounded_category: 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE',
+    collection_session_count: 0,
     unmapped_grantee_count: 0,
     private_artifact_written: false,
     schema_mutation: 'NONE',
@@ -293,6 +314,12 @@ async function main() {
     actualHead = require('child_process').execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', cwd: REPO_ROOT, timeout: 5000, maxBuffer: 1024 }).trim();
   } catch { printErrorOutcome(0); return; }
   if (actualHead !== baselineCommit) { printErrorOutcome(0); return; }
+
+  // This source-only child cannot perform private-file or Production activity.
+  // Keep this before all .secrets access, artifact handling, and collector code.
+  if (!PRODUCTION_RECONCILIATION_EXECUTION_ENABLED) {
+    printSourceOnlyGate(); return;
+  }
 
   // Validate private output path before any DB
   let absPrivate;

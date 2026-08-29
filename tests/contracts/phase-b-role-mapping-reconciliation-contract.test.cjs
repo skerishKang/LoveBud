@@ -664,6 +664,83 @@ describe('Phase B Role-Mapping Reconciliation Contract', () => {
   });
 
   // T10 session semantics
+  it('SOURCE_ONLY_GATE is immutable and has no override surface', () => {
+    const cliSrc = fs.readFileSync(CLI_PATH, 'utf8');
+    assert.match(cliSrc, /const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = false;/);
+    assert.doesNotMatch(cliSrc, /process\.env\s*\[/);
+    assert.doesNotMatch(cliSrc, /--enable-production|--approved|--force/);
+    assert.match(cliSrc, /if \(!PRODUCTION_RECONCILIATION_EXECUTION_ENABLED\)/);
+    assert.match(cliSrc, /outcome: 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE'/);
+  });
+
+  it('SOURCE_ONLY_GATE blocks issue, decision, and arbitrary approval references', () => {
+    const refs = ['issue:4295', 'issue:4294', 'issue:999999', 'decision:approved-looking-value'];
+    for (const approvalReference of refs) {
+      let stdout = '';
+      try {
+        stdout = execFileSync(process.execPath, [
+          CLI_PATH,
+          '--secret-file', '.secrets/does-not-exist.env',
+          '--role-mapping-file', '.secrets/does-not-exist-map.json',
+          '--private-output-file', `.secrets/test-source-only-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+          '--baseline-commit', BASELINE,
+          '--approval-reference', approvalReference,
+        ], { encoding: 'utf8', cwd: REPO_ROOT, timeout: 10000, env: process.env });
+      } catch (err) {
+        stdout = err.stdout || '';
+      }
+      const parsed = JSON.parse(stdout.trim());
+      assert.equal(parsed.outcome, 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE', approvalReference);
+      assert.equal(parsed.bounded_category, 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE', approvalReference);
+      assert.equal(parsed.collection_session_count, 0, approvalReference);
+      assert.equal(parsed.private_artifact_written, false, approvalReference);
+      assert.ok(!stdout.includes(approvalReference), 'approval reference must not be echoed');
+    }
+  });
+
+  it('SOURCE_ONLY_GATE runs before main secret reads, collector, and artifacts', () => {
+    const cliSrc = fs.readFileSync(CLI_PATH, 'utf8');
+    const mainSrc = cliSrc.slice(cliSrc.indexOf('async function main()'));
+    const gateIndex = mainSrc.indexOf('if (!PRODUCTION_RECONCILIATION_EXECUTION_ENABLED)');
+    assert.ok(gateIndex >= 0);
+    for (const marker of [
+      'validateSecretsInputPath(REPO_ROOT',
+      'fs.readFileSync(mapAbs',
+      'realCollectRawGrantees(REPO_ROOT',
+      'writePrivateArtifactExclusive',
+    ]) {
+      const markerIndex = mainSrc.indexOf(marker);
+      assert.ok(markerIndex >= 0, `main must contain ${marker}`);
+      assert.ok(gateIndex < markerIndex, `source-only gate must precede ${marker}`);
+    }
+    // The dormant collector retains the reviewed boundary/client implementation,
+    // but main has no reachable call to it while the constant is false.
+    assert.match(mainSrc, /realCollectRawGrantees\(REPO_ROOT/);
+  });
+
+  it('SOURCE_ONLY_GATE creates no private artifact with valid output path', () => {
+    const outRel = `.secrets/test-source-only-artifact-${Date.now()}-${Math.random().toString(36).slice(2)}.json`;
+    const absOut = path.resolve(REPO_ROOT, outRel);
+    let stdout = '';
+    try {
+      stdout = execFileSync(process.execPath, [
+        CLI_PATH,
+        '--secret-file', '.secrets/does-not-exist.env',
+        '--role-mapping-file', '.secrets/does-not-exist-map.json',
+        '--private-output-file', outRel,
+        '--baseline-commit', BASELINE,
+        '--approval-reference', 'issue:4295',
+      ], { encoding: 'utf8', cwd: REPO_ROOT, timeout: 10000, env: process.env });
+    } catch (err) {
+      stdout = err.stdout || '';
+    }
+    const parsed = JSON.parse(stdout.trim());
+    assert.equal(parsed.outcome, 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE');
+    assert.equal(parsed.private_artifact_written, false);
+    assert.equal(fs.existsSync(absOut), false);
+    cleanup(absOut);
+  });
+
   it('T10. session count semantics before vs after real session', async () => {
     // Before connection: via runReconciliationWithDeps with fake, session should be 0 (source-only)
     const tmpDir = mkTempDir();
