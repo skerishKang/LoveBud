@@ -1218,6 +1218,43 @@ describe('Phase B operator collection receipt core', () => {
     }
   });
 
+  it('RECEIPT_NOT_A_REAL_REPOSITORY_ENUM collapses to UNKNOWN (exact allowlist)', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    assert.equal(op.toSafeFailureSubcategory('RECEIPT_NOT_A_REAL_REPOSITORY_ENUM'), op.SAFE_FAILURE_SUBCATEGORY_UNKNOWN);
+  });
+
+  it('COLLECTION_PLAN_NOT_A_REAL_REPOSITORY_ENUM collapses to UNKNOWN (exact allowlist)', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    assert.equal(op.toSafeFailureSubcategory('COLLECTION_PLAN_NOT_A_REAL_REPOSITORY_ENUM'), op.SAFE_FAILURE_SUBCATEGORY_UNKNOWN);
+  });
+
+  it('CATALOG_ADAPTER_CATALOG_SHAPE_SECRET_OBJECT_X collapses to UNKNOWN (exact allowlist)', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    assert.equal(op.toSafeFailureSubcategory('CATALOG_ADAPTER_CATALOG_SHAPE_SECRET_OBJECT_X'), op.SAFE_FAILURE_SUBCATEGORY_UNKNOWN);
+  });
+
+  it('genuine finite enums still pass exact allowlist', () => {
+    const op = require(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'));
+    const genuine = [
+      'CATALOG_ADAPTER_CATALOG_SHAPE_INVALID',
+      'RECEIPT_DIGEST_MISMATCH',
+      'COLLECTION_PLAN_INPUT_INVALID',
+      'CATALOG_ADAPTER_GRANTEE_UNMAPPED',
+      'CANDIDATE_FAILED',
+    ];
+    for (const c of genuine) {
+      assert.equal(op.toSafeFailureSubcategory(c), c, `genuine ${c} must pass`);
+    }
+    // verify reuse of exported authorities
+    const src = require('fs').readFileSync(path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs'), 'utf8');
+    assert.ok(src.includes('phase-b-collection-receipt-core.cjs'), 'should reuse receipt core FAILURE');
+    assert.ok(src.includes('adoption-baseline-collection-plan-core.cjs'), 'should reuse plan core FAILURE');
+    assert.ok(src.includes('migration-catalog-postgres-adapter-core.cjs'), 'should reuse adapter FAILURE');
+    assert.ok(!src.includes("c.startsWith('RECEIPT_')"), 'open-ended prefix must be removed');
+    assert.ok(!src.includes("c.startsWith('COLLECTION_PLAN_')"), 'open-ended prefix must be removed');
+    assert.ok(!src.includes("c.startsWith('CATALOG_ADAPTER_CATALOG_SHAPE_')"), 'open-ended prefix must be removed');
+  });
+
   it('existing bounded outcomes unchanged after subcategory add', async () => {
     const { execFileSync } = require('child_process');
     const cli = path.resolve(__dirname, '..', '..', 'scripts', 'run-production-readonly-catalog-collection.cjs');
