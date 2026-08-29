@@ -75,6 +75,52 @@ const VALID_OUTCOMES = Object.freeze([
   'COLLECTION_FAIL_PARTIAL_OR_UNKNOWN',
 ]);
 
+// ─── Safe failure subcategory (sanitized enum only) ──────────────────────────
+// Repository-owned allowlist. Unknown or unapproved categories collapse to
+// SAFE_FAILURE_SUBCATEGORY_UNKNOWN. Never emit err.message/stack/context.
+
+const SAFE_FAILURE_SUBCATEGORY_UNKNOWN = 'SAFE_FAILURE_SUBCATEGORY_UNKNOWN';
+
+const SAFE_FAILURE_SUBCATEGORIES = new Set([
+  'INPUT_INVALID',
+  'HEAD_UNRESOLVABLE',
+  'BASELINE_HEAD_MISMATCH',
+  'CONTRACT_LOAD_FAILED',
+  'CANDIDATE_FAILED',
+  'ATTESTATION_DRAFT_FAILED',
+  'REPEAT_MISMATCH',
+  'COLLECTOR_FAILED',
+  'RECEIPT_SERIALIZATION_FAILED',
+  'UNEXPECTED',
+  'CATALOG_ADAPTER_CONNECTION_CONFIG_INVALID',
+  'CATALOG_ADAPTER_SERVER_VERSION_MISMATCH',
+  'CATALOG_ADAPTER_READ_ONLY_REQUIRED',
+  'CATALOG_ADAPTER_MUTATION_DETECTED',
+  'CATALOG_ADAPTER_INPUT_INVALID',
+  'CATALOG_ADAPTER_GRANTEE_UNMAPPED',
+  'CATALOG_ADAPTER_CATALOG_SHAPE_INVALID',
+  'CATALOG_ADAPTER_OBJECT_MISSING',
+  'CATALOG_ADAPTER_OBJECT_KIND_MISMATCH',
+  'CATALOG_ADAPTER_OBJECT_DUPLICATE',
+  'CATALOG_ADAPTER_SCHEMA_PROHIBITED',
+  'CATALOG_ADAPTER_ROLE_MAPPING_INVALID',
+  'CATALOG_ADAPTER_BOUNDS_EXCEEDED',
+  'CATALOG_ADAPTER_QUERY_FAILED',
+  'CATALOG_ADAPTER_SANITIZATION_FAILED',
+  'CATALOG_ADAPTER_UNSUPPORTED_RELATION',
+]);
+
+function toSafeFailureSubcategory(category) {
+  if (typeof category !== 'string' || !category) return SAFE_FAILURE_SUBCATEGORY_UNKNOWN;
+  const c = category.trim();
+  if (!c || c.length > 64 || !/^[A-Z][A-Z0-9_]+$/.test(c)) return SAFE_FAILURE_SUBCATEGORY_UNKNOWN;
+  if (SAFE_FAILURE_SUBCATEGORIES.has(c)) return c;
+  if (c.startsWith('CATALOG_ADAPTER_CATALOG_SHAPE_') && c.length <= 64) return c;
+  if (c.startsWith('RECEIPT_') && c.length <= 64) return c;
+  if (c.startsWith('COLLECTION_PLAN_') && c.length <= 64) return c;
+  return SAFE_FAILURE_SUBCATEGORY_UNKNOWN;
+}
+
 /**
  * Approved bounded failure mapping table with session context.
  *
@@ -155,12 +201,17 @@ function mapFailure(category, attemptedSessions) {
 
 // ─── Single bounded output writer ───────────────────────────────────────────
 
-function printOutput(outcome, sessionCount) {
+function printOutput(outcome, sessionCount, rawCategory) {
   if (!VALID_OUTCOMES.includes(outcome)) outcome = 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY';
+  const isSuccess = outcome === 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY';
+  const failure_subcategory = isSuccess
+    ? null
+    : toSafeFailureSubcategory(rawCategory);
   const out = {
     format_version: '1.0',
     outcome,
     bounded_category: outcome,
+    failure_subcategory,
     collection_session_count: typeof sessionCount === 'number' ? sessionCount : 0,
     attestation_status: 'UNATTESTED',
     manifest_activation: 'NONE',
@@ -170,7 +221,7 @@ function printOutput(outcome, sessionCount) {
     privilege_change: 'NONE',
   };
   process.stdout.write(JSON.stringify(out, null, 2) + '\n');
-  process.exitCode = outcome === 'COLLECTION_PASS_SANITIZED_EVIDENCE_READY' ? 0 : 1;
+  process.exitCode = isSuccess ? 0 : 1;
 }
 
 // ─── Scoped helpers ─────────────────────────────────────────────────────────
@@ -231,25 +282,25 @@ async function main(state) {
     parseError = true;
   }
   if (parseError) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0, undefined);
     return;
   }
 
   // ── Required fields check ──
   if (!secretFile || !roleMappingFile || !baselineCommit || !approvalReference) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0, undefined);
     return;
   }
 
   // ── Baseline commit validation ──
   if (!/^[a-f0-9]{40}$/.test(baselineCommit)) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0, undefined);
     return;
   }
 
   // ── Approval reference validation ──
   if (!/^(?:issue:\d+|decision:[A-Za-z0-9][A-Za-z0-9._-]{2,63})$/.test(approvalReference)) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0, undefined);
     return;
   }
 
@@ -263,11 +314,11 @@ async function main(state) {
       maxBuffer: 1024,
     }).trim();
   } catch {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0, undefined);
     return;
   }
   if (!/^[a-f0-9]{40}$/.test(actualHead) || actualHead !== baselineCommit) {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0, undefined);
     return;
   }
 
@@ -276,7 +327,7 @@ async function main(state) {
   try {
     preparedPlan = buildPreparedCollectionPlan({ baselineCommit, approvalReference });
   } catch {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0, undefined);
     return;
   }
 
@@ -288,7 +339,7 @@ async function main(state) {
     boundaryContractBytes = readFileBytes('db/migration-provenance/production-readonly-catalog-boundary-contract.json');
     catalogMetadataContractBytes = readFileBytes('db/migration-provenance/catalog-metadata-contract.json');
   } catch {
-    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0);
+    printOutput('COLLECTION_NOT_RUN_CONNECTION_BOUNDARY', 0, undefined);
     return;
   }
 
@@ -302,7 +353,7 @@ async function main(state) {
     });
   } catch (err) {
     const outcome = mapFailure(err && err.category, state.attemptedSessions);
-    printOutput(outcome, state.attemptedSessions);
+    printOutput(outcome, state.attemptedSessions, err && err.category);
     return;
   }
 
@@ -317,7 +368,7 @@ async function main(state) {
       });
     } catch (err) {
       const outcome = mapFailure(err && err.category, state.attemptedSessions);
-      printOutput(outcome, state.attemptedSessions);
+      printOutput(outcome, state.attemptedSessions, err && err.category);
       return;
     }
 
@@ -331,12 +382,12 @@ async function main(state) {
       const dig2 = computeObjectDigest(evidence2);
       // 4: compare
       if (dig1 !== dig2) {
-        printOutput(mapFailure('REPEAT_MISMATCH', state.attemptedSessions), state.attemptedSessions);
+        printOutput(mapFailure('REPEAT_MISMATCH', state.attemptedSessions), state.attemptedSessions, 'REPEAT_MISMATCH');
         return;
       }
     } catch {
       // Any validation/comparison failure keeps session count = 2
-      printOutput('COLLECTION_FAIL_SANITIZATION', state.attemptedSessions);
+      printOutput('COLLECTION_FAIL_SANITIZATION', state.attemptedSessions, undefined);
       return;
     }
   }
@@ -346,7 +397,7 @@ async function main(state) {
   try {
     schemaCandidate = buildExpectedSchemaCandidate(evidence1, expectedSchemaManifest);
   } catch {
-    printOutput(mapFailure('CANDIDATE_FAILED', state.attemptedSessions), state.attemptedSessions);
+    printOutput(mapFailure('CANDIDATE_FAILED', state.attemptedSessions), state.attemptedSessions, 'CANDIDATE_FAILED');
     return;
   }
 
@@ -361,7 +412,7 @@ async function main(state) {
       catalogEvidence: evidence1,
     });
   } catch {
-    printOutput(mapFailure('ATTESTATION_DRAFT_FAILED', state.attemptedSessions), state.attemptedSessions);
+    printOutput(mapFailure('ATTESTATION_DRAFT_FAILED', state.attemptedSessions), state.attemptedSessions, 'ATTESTATION_DRAFT_FAILED');
     return;
   }
 
@@ -382,7 +433,7 @@ async function main(state) {
     });
   } catch (err) {
     const outcome = mapFailure(err && err.category, state.attemptedSessions);
-    printOutput(outcome, state.attemptedSessions);
+    printOutput(outcome, state.attemptedSessions, err && err.category);
     return;
   }
 
@@ -391,16 +442,30 @@ async function main(state) {
     process.stdout.write(serializeCollectionReceipt(receipt));
     process.exitCode = 0;
   } catch {
-    printOutput(mapFailure('RECEIPT_SERIALIZATION_FAILED', state.attemptedSessions), state.attemptedSessions);
+    printOutput(mapFailure('RECEIPT_SERIALIZATION_FAILED', state.attemptedSessions), state.attemptedSessions, 'RECEIPT_SERIALIZATION_FAILED');
   }
 }
 
 const _state = { attemptedSessions: 0 };
-main(_state).catch(() => {
-  printOutput(
-    _state.attemptedSessions > 0
-      ? 'COLLECTION_FAIL_PARTIAL_OR_UNKNOWN'
-      : 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY',
-    _state.attemptedSessions
-  );
-});
+if (require.main === module) {
+  main(_state).catch(() => {
+    printOutput(
+      _state.attemptedSessions > 0
+        ? 'COLLECTION_FAIL_PARTIAL_OR_UNKNOWN'
+        : 'COLLECTION_NOT_RUN_CONNECTION_BOUNDARY',
+      _state.attemptedSessions,
+      undefined
+    );
+  });
+}
+
+module.exports = {
+  VALID_OUTCOMES,
+  SAFE_FAILURE_SUBCATEGORY_UNKNOWN,
+  SAFE_FAILURE_SUBCATEGORIES,
+  toSafeFailureSubcategory,
+  mapFailure,
+  printOutput,
+  main,
+  _state,
+};
