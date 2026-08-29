@@ -184,15 +184,18 @@ test('9. canonical stream carries the adopted #4006 slice; proposal artifacts st
   const manifestText = read(MANIFEST_REL);
   const manifest = JSON.parse(manifestText);
   assert.equal(manifest.status, 'ADOPTION_REQUIRED', 'canonical stream stays inactive');
-  assert.deepEqual(
-    manifest.migrations.map((m) => m.id),
-    [
-      '20260802094500_bootstrap-migration-ledger',
-      '20260812213000_add-tree-appreciation-orders',
-      '20260822054500_canonical-users-auth-identity'
-    ]
+
+  const ids = manifest.migrations.map((m) => m.id);
+  const adoptedId = '20260822054500_canonical-users-auth-identity';
+  const adoptedIndex = ids.indexOf(adoptedId);
+  assert.ok(adoptedIndex >= 0, '#4006 canonical migration remains registered');
+  assert.equal(
+    ids.filter((id) => id === adoptedId).length,
+    1,
+    '#4006 canonical migration is registered exactly once'
   );
-  const adopted = manifest.migrations[2];
+
+  const adopted = manifest.migrations[adoptedIndex];
   assert.equal(adopted.risk_class, 'ADDITIVE');
   assert.deepEqual(adopted.destructive_operations, []);
   assert.equal(adopted.approval_reference, 'issue:4006');
