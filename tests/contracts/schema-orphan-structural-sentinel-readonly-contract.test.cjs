@@ -7,6 +7,12 @@
 // MIGRATION_LEDGER_CATALOG_PARITY_CHECK as PARITY_EVIDENCE descriptors via the
 // source-only translation seam; reuses the #3860 parity outcome vocabulary
 // exactly).
+// Issue #4288 — Cross-contract parity vocabulary parity: the #3860 parity core
+// introduced the bounded 9th outcome PARITY_VACUOUS_ACTIVE_TARGETS (expected
+// authority non-empty but every expected object provisional, so the active
+// expected target count is zero). This contract locks the downstream sentinel
+// catalog/core/test/doc onto that exact 9-outcome vocabulary without promoting
+// the vacuous outcome to any success state.
 //
 // This contract EXECUTES the real query catalog
 // (js/observability/reliability-structural-sentinel-query-catalog.js) and the
@@ -30,6 +36,8 @@
 //   - parity-evidence descriptors: PARITY_CONFIRMED -> CONFIRMED,
 //     PARITY_MISMATCH -> STRUCTURAL_DRIFT_DETECTED,
 //     AUTHORITY_ADOPTION_REQUIRED -> never live-applied success,
+//     PARITY_VACUOUS_ACTIVE_TARGETS -> bounded non-success
+//     SCHEMA_AUTHORITY_UNAVAILABLE (never CONFIRMED),
 //     CATALOG_COLLECTION_FAILED -> MONITORING_FAILED, missing/malformed
 //     evidence -> never success, catalogued-but-absent-live -> mismatch;
 //   - the #3860 parity outcome vocabulary is reused exactly (no new synonyms);
@@ -46,6 +54,7 @@
 //
 // Refs #3842.
 // Refs #4060.
+// Refs #4288.
 // Refs #3835 — taxonomy authority.
 // Refs #3458 — canonical migration/expected-schema authority (completed).
 // Refs #3860 — read-only parity core vocabulary (completed).
@@ -621,6 +630,7 @@ test('only PARITY_CONFIRMED maps to CONFIRMED; all other #3860 outcomes fail clo
   const expectedMappings = {
     PARITY_MISMATCH: 'STRUCTURAL_DRIFT_DETECTED',
     AUTHORITY_ADOPTION_REQUIRED: 'SCHEMA_AUTHORITY_UNAVAILABLE',
+    PARITY_VACUOUS_ACTIVE_TARGETS: 'SCHEMA_AUTHORITY_UNAVAILABLE',
     CATALOG_COLLECTION_FAILED: 'MONITORING_FAILED',
     INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
     TARGET_ATTRIBUTION_INVALID: 'INSUFFICIENT_EVIDENCE',
@@ -648,6 +658,30 @@ test('AUTHORITY_ADOPTION_REQUIRED is bounded non-success with OWNER_DECISION_REQ
   assert.equal(result.outcome_code, 'SCHEMA_AUTHORITY_UNAVAILABLE');
   assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
   assert.notEqual(result.outcome_code, 'CONFIRMED');
+});
+
+test('PARITY_VACUOUS_ACTIVE_TARGETS is accepted and maps to bounded non-success (never CONFIRMED)', async () => {
+  const { evaluator, taxonomy, catalog } = loadEvaluator();
+  // Accepted: the outcome is inside the fixed parity evidence contract.
+  assert.ok(
+    catalog.PARITY_EVIDENCE_CONTRACT.accepted_outcomes.includes('PARITY_VACUOUS_ACTIVE_TARGETS'),
+    'PARITY_VACUOUS_ACTIVE_TARGETS must be an accepted parity evidence outcome'
+  );
+  const result = await evaluator.evaluateSignal({
+    descriptorId: 'STRUCTURAL_SCHEMA_DRIFT_CHECK',
+    releaseSha: VALID_RELEASE_SHA,
+    parityEvidence: parityOutcome('PARITY_VACUOUS_ACTIVE_TARGETS'),
+  });
+  assert.equal(result.outcome_code, 'SCHEMA_AUTHORITY_UNAVAILABLE');
+  assert.equal(result.baseline_deviation, 'UNKNOWN');
+  assert.equal(result.severity, 'WARNING');
+  assert.equal(result.owner_action, 'OWNER_DECISION_REQUIRED');
+  assert.equal(result.evidence_completeness, 'partial');
+  assert.notEqual(result.outcome_code, 'CONFIRMED');
+  assert.notEqual(result.evidence_completeness, 'complete');
+  // The raw #3860 outcome string is never echoed in the public summary.
+  const json = taxonomy.canonicalJson(result);
+  assert.doesNotMatch(json, /PARITY_VACUOUS_ACTIVE_TARGETS/);
 });
 
 test('missing parity evidence is never success (fail closed)', async () => {
@@ -752,14 +786,21 @@ test('parity path never invokes the fixed count executor (count executor calls =
   assert.equal(result.outcome_code, 'CONFIRMED');
 });
 
-test('parity outcome vocabulary exactly reuses all 8 #3860 outcome strings', () => {
+test('parity outcome vocabulary exactly reuses all 9 #3860 outcome strings', () => {
   const parityCore = require(PARITY_CORE_PATH);
   const catalog = loadCatalog();
   const expectedKeys = Object.keys(parityCore.PARITY_OUTCOMES);
-  assert.equal(expectedKeys.length, 8);
+  assert.equal(expectedKeys.length, 9);
+  assert.ok(expectedKeys.includes('PARITY_VACUOUS_ACTIVE_TARGETS'), '#3860 vocabulary must include PARITY_VACUOUS_ACTIVE_TARGETS');
   for (const key of expectedKeys) {
     assert.equal(catalog.PARITY_OUTCOMES[key], parityCore.PARITY_OUTCOMES[key], 'must reuse #3860 ' + key);
   }
+  // AUTHORITY_ADOPTION_REQUIRED and PARITY_VACUOUS_ACTIVE_TARGETS are distinct
+  // upstream parity semantics; they must never collapse into one string.
+  assert.notEqual(
+    catalog.PARITY_OUTCOMES.AUTHORITY_ADOPTION_REQUIRED,
+    catalog.PARITY_OUTCOMES.PARITY_VACUOUS_ACTIVE_TARGETS
+  );
 });
 
 test('sentinel core does not implement a second fingerprint/parity engine', () => {
