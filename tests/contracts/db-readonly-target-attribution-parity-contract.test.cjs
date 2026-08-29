@@ -81,6 +81,7 @@ test('outcome vocabulary is the exact fixed sanitized set', async () => {
     TARGET_ATTRIBUTION_INVALID: 'TARGET_ATTRIBUTION_INVALID',
     APPROVAL_INVALID: 'APPROVAL_INVALID',
     AUTHORITY_ADOPTION_REQUIRED: 'AUTHORITY_ADOPTION_REQUIRED',
+    PARITY_VACUOUS_ACTIVE_TARGETS: 'PARITY_VACUOUS_ACTIVE_TARGETS',
     EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
     CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
     INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
@@ -716,7 +717,9 @@ test('PRV-2 provisional marker with exact zero sentinel validates as provisional
       ]),
     }
   );
-  assert.equal(result.outcome, 'AUTHORITY_ADOPTION_REQUIRED', 'all-provisional = vacuous mapped to AUTHORITY_ADOPTION_REQUIRED, not PARITY_CONFIRMED');
+  assert.equal(result.outcome, 'PARITY_VACUOUS_ACTIVE_TARGETS', 'all-provisional = explicit bounded vacuous outcome, not adoption-required or confirmed');
+  assert.notEqual(result.outcome, 'AUTHORITY_ADOPTION_REQUIRED');
+  assert.notEqual(result.outcome, 'PARITY_CONFIRMED');
   assert.equal(result.activeExpectedCount, 0);
   assert.equal(result.provisionalExpectedCount, 1);
 });
@@ -876,7 +879,7 @@ test('PRV-7c observed evidence with extra unknown key (not provisional_fingerpri
   assert.equal(result.collectionEffectCount, 1);
 });
 
-test('PRV-8 all-expected-provisional / zero active targets fails closed (no vacuous pass)', async () => {
+test('PRV-8 all-expected-provisional / zero active targets returns explicit bounded vacuous outcome', async () => {
   const result = await run(
     () => evidenceFor([{ name: ACTIVE_OBJECT_NAME, fingerprint: 'sha256:' + 'a'.repeat(64) }]),
     {
@@ -886,7 +889,8 @@ test('PRV-8 all-expected-provisional / zero active targets fails closed (no vacu
       ]),
     }
   );
-  assert.equal(result.outcome, 'AUTHORITY_ADOPTION_REQUIRED');
+  assert.equal(result.outcome, 'PARITY_VACUOUS_ACTIVE_TARGETS');
+  assert.notEqual(result.outcome, 'AUTHORITY_ADOPTION_REQUIRED');
   assert.notEqual(result.outcome, 'PARITY_CONFIRMED');
   assert.equal(result.activeExpectedCount, 0);
   assert.equal(result.provisionalExpectedCount, 2);
@@ -1006,18 +1010,19 @@ test('PRV-13 marker field descriptor-safety: getter-only marker fails closed', a
   assert.equal(result.collectionEffectCount, 0);
 });
 
-test('PRV-14 PARITY_OUTCOMES is the exact 8-string set and exports are stable', () => {
+test('PRV-14 PARITY_OUTCOMES is the exact 9-string set and exports are stable', () => {
   assert.deepEqual(core.PARITY_OUTCOMES, {
     PARITY_CONFIRMED: 'PARITY_CONFIRMED',
     PARITY_MISMATCH: 'PARITY_MISMATCH',
     TARGET_ATTRIBUTION_INVALID: 'TARGET_ATTRIBUTION_INVALID',
     APPROVAL_INVALID: 'APPROVAL_INVALID',
     AUTHORITY_ADOPTION_REQUIRED: 'AUTHORITY_ADOPTION_REQUIRED',
+    PARITY_VACUOUS_ACTIVE_TARGETS: 'PARITY_VACUOUS_ACTIVE_TARGETS',
     EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
     CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
     INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
   });
-  assert.equal(Object.keys(core.PARITY_OUTCOMES).length, 8);
+  assert.equal(Object.keys(core.PARITY_OUTCOMES).length, 9);
   assert.equal(core.ZERO_FINGERPRINT_SENTINEL, ZERO_FINGERPRINT);
   assert.equal(core.PROVISIONAL_MARKER_KEY, 'provisional_fingerprint');
   assert.deepEqual(core.ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL, [
