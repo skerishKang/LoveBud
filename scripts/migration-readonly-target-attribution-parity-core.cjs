@@ -49,6 +49,16 @@ const ALLOWED_EVIDENCE_KEYS = Object.freeze(['format_version', 'normalizer_versi
 
 const ALLOWED_OBJECT_KEYS = Object.freeze(['name', 'fingerprint']);
 
+const PROVISIONAL_MARKER_KEY = 'provisional_fingerprint';
+
+const ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL = Object.freeze([
+  'name',
+  'fingerprint',
+  PROVISIONAL_MARKER_KEY,
+]);
+
+const ZERO_FINGERPRINT_SENTINEL = 'sha256:' + '0'.repeat(64);
+
 const OBJECT_NAME_PATTERN =
   /^(?:table|view|materialized_view):[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -158,36 +168,100 @@ function sortByName(list) {
   });
 }
 
-function validateCriticalObjectVocabulary(criticalObjects, emptyFailure, objectFailure) {
-  if (!Array.isArray(criticalObjects)) {
-    fail(objectFailure, { field: 'critical_objects' });
+function validateObservedObjectVocabulary(observedObjects) {
+  if (!Array.isArray(observedObjects)) {
+    fail(PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, { field: 'critical_objects' });
   }
-  if (criticalObjects.length === 0) {
-    fail(emptyFailure, { field: 'critical_objects' });
+  if (observedObjects.length === 0) {
+    fail(PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, { field: 'critical_objects' });
   }
   const seen = new Set();
   const normalized = [];
-  for (const object of criticalObjects) {
+  for (const object of observedObjects) {
     if (!isPlainRecord(object)) {
-      fail(objectFailure, { field: 'critical_object' });
+      fail(PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, { field: 'critical_object' });
     }
-    const keys = readExactKeys(object, objectFailure);
-    requireExactKeySet(keys, ALLOWED_OBJECT_KEYS, objectFailure);
-    const name = readOwnEnumerableDataProperty(object, 'name', objectFailure);
-    const fingerprint = readOwnEnumerableDataProperty(object, 'fingerprint', objectFailure);
-    requireNonEmptyString(name, objectFailure, 'name');
-    requireNonEmptyString(fingerprint, objectFailure, 'fingerprint');
+    const keys = readExactKeys(object, PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE);
+    requireExactKeySet(keys, ALLOWED_OBJECT_KEYS, PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE);
+    const name = readOwnEnumerableDataProperty(object, 'name', PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE);
+    const fingerprint = readOwnEnumerableDataProperty(object, 'fingerprint', PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE);
+    requireNonEmptyString(name, PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, 'name');
+    requireNonEmptyString(fingerprint, PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, 'fingerprint');
     if (!OBJECT_NAME_PATTERN.test(name)) {
-      fail(objectFailure, { field: 'name' });
+      fail(PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, { field: 'name' });
     }
     if (!FINGERPRINT_PATTERN.test(fingerprint)) {
-      fail(objectFailure, { field: 'fingerprint' });
+      fail(PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, { field: 'fingerprint' });
     }
     if (seen.has(name)) {
-      fail(objectFailure, { field: 'name' });
+      fail(PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, { field: 'name' });
     }
     seen.add(name);
     normalized.push({ name, fingerprint });
+  }
+  return sortByName(normalized);
+}
+
+function validateExpectedObjectVocabulary(expectedObjects) {
+  if (!Array.isArray(expectedObjects)) {
+    fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: 'critical_objects' });
+  }
+  if (expectedObjects.length === 0) {
+    fail(PARITY_OUTCOMES.AUTHORITY_ADOPTION_REQUIRED, { field: 'critical_objects' });
+  }
+  const seen = new Set();
+  const normalized = [];
+  for (const object of expectedObjects) {
+    if (!isPlainRecord(object)) {
+      fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: 'critical_object' });
+    }
+    const keys = readExactKeys(object, PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID);
+    requireKeysSubset(keys, ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL, PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID);
+    const name = readOwnEnumerableDataProperty(object, 'name', PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID);
+    const fingerprint = readOwnEnumerableDataProperty(object, 'fingerprint', PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID);
+    requireNonEmptyString(name, PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, 'name');
+    requireNonEmptyString(fingerprint, PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, 'fingerprint');
+    if (!OBJECT_NAME_PATTERN.test(name)) {
+      fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: 'name' });
+    }
+    if (!FINGERPRINT_PATTERN.test(fingerprint)) {
+      fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: 'fingerprint' });
+    }
+    if (seen.has(name)) {
+      fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: 'name' });
+    }
+    seen.add(name);
+    let isProvisional = false;
+    if (hasOwnSafe(object, PROVISIONAL_MARKER_KEY, PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID)) {
+      const markerDescriptor = (() => {
+        try {
+          return Object.getOwnPropertyDescriptor(object, PROVISIONAL_MARKER_KEY);
+        } catch {
+          fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: PROVISIONAL_MARKER_KEY });
+        }
+      })();
+      if (!markerDescriptor) {
+        fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: PROVISIONAL_MARKER_KEY });
+      }
+      if (typeof markerDescriptor.get === 'function' || typeof markerDescriptor.set === 'function') {
+        fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: PROVISIONAL_MARKER_KEY });
+      }
+      if (markerDescriptor.enumerable !== true || !('value' in markerDescriptor)) {
+        fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: PROVISIONAL_MARKER_KEY });
+      }
+      if (markerDescriptor.value !== true) {
+        fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: PROVISIONAL_MARKER_KEY });
+      }
+      if (fingerprint !== ZERO_FINGERPRINT_SENTINEL) {
+        fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: PROVISIONAL_MARKER_KEY });
+      }
+      isProvisional = true;
+    } else {
+      if (fingerprint === ZERO_FINGERPRINT_SENTINEL) {
+        fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: 'fingerprint' });
+      }
+    }
+    normalized.push({ name, fingerprint, provisional_fingerprint: isProvisional });
   }
   return sortByName(normalized);
 }
@@ -209,11 +283,7 @@ function validateCommittedAuthority(committedAuthority) {
   if (status !== ADOPTION_REQUIRED) {
     fail(PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID, { field: 'status' });
   }
-  const normalized = validateCriticalObjectVocabulary(
-    criticalObjects,
-    PARITY_OUTCOMES.AUTHORITY_ADOPTION_REQUIRED,
-    PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID
-  );
+  const normalized = validateExpectedObjectVocabulary(criticalObjects);
   return { status, critical_objects: normalized };
 }
 
@@ -330,15 +400,24 @@ function validateObservedEvidence(evidence) {
   if (formatVersion !== SUPPORTED_FORMAT_VERSION || normalizerVersion !== SUPPORTED_NORMALIZER_VERSION) {
     fail(PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE, { field: 'version' });
   }
-  return validateCriticalObjectVocabulary(
-    objects,
-    PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE,
-    PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE
-  );
+  return validateObservedObjectVocabulary(objects);
 }
 
 function compareVocabularies(expected, observed) {
-  const expectedMap = new Map(expected.map((object) => [object.name, object.fingerprint]));
+  const activeExpected = expected.filter((object) => object.provisional_fingerprint !== true);
+  const provisionalExpected = expected.filter((object) => object.provisional_fingerprint === true);
+  if (expected.length > 0 && activeExpected.length === 0) {
+    return {
+      vacuous: true,
+      confirmed: false,
+      mismatchedObjects: [],
+      expectedObjectCount: expected.length,
+      observedObjectCount: observed.length,
+      activeExpectedCount: 0,
+      provisionalExpectedCount: provisionalExpected.length,
+    };
+  }
+  const expectedMap = new Map(activeExpected.map((object) => [object.name, object.fingerprint]));
   const observedMap = new Map(observed.map((object) => [object.name, object.fingerprint]));
   const names = new Set([...expectedMap.keys(), ...observedMap.keys()]);
   const mismatchedObjects = [...names].sort().filter((name) => {
@@ -346,10 +425,13 @@ function compareVocabularies(expected, observed) {
     return observedMap.get(name) !== expectedMap.get(name);
   });
   return {
+    vacuous: false,
     confirmed: mismatchedObjects.length === 0,
     mismatchedObjects,
-    expectedObjectCount: expected.length,
+    expectedObjectCount: activeExpected.length,
     observedObjectCount: observed.length,
+    activeExpectedCount: activeExpected.length,
+    provisionalExpectedCount: provisionalExpected.length,
   };
 }
 
@@ -424,8 +506,17 @@ async function runParityPreflight(config) {
     authorityStatus: committed.status,
     expectedObjectCount: comparison.expectedObjectCount,
     observedObjectCount: comparison.observedObjectCount,
+    activeExpectedCount: comparison.activeExpectedCount,
+    provisionalExpectedCount: comparison.provisionalExpectedCount,
     frozen: true,
   };
+  if (comparison.vacuous) {
+    return freezeResult({
+      ...base,
+      outcome: PARITY_OUTCOMES.AUTHORITY_ADOPTION_REQUIRED,
+      mismatchedObjects: [],
+    });
+  }
   if (comparison.confirmed) {
     return freezeResult({
       ...base,
@@ -451,6 +542,9 @@ module.exports = {
   ALLOWED_AUTHORITY_KEYS,
   ALLOWED_EVIDENCE_KEYS,
   ALLOWED_OBJECT_KEYS,
+  ALLOWED_OBJECT_KEYS_WITH_OPTIONAL_PROVISIONAL,
+  PROVISIONAL_MARKER_KEY,
+  ZERO_FINGERPRINT_SENTINEL,
   OBJECT_NAME_PATTERN,
   FINGERPRINT_PATTERN,
   RELEASE_SHA_PATTERN,
