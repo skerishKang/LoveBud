@@ -17,72 +17,6 @@
   "classificationBasis": "Content-evidence based. Each file is read; its source-read/execution/fake-env markers determine the primary layer. Filename alone is never used.",
   "entries": [
     {
-      "path": "tests/contracts/comment-pagination-3939-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads modal_compute/comments.py, modal_compute/tree_comments.py, modal_compute/social_cursor.py, modal_compute/app.py, Cloudflare proxy files, postgres-client.js, and tree-comments-client.js to assert comment forward cursor pagination contract across Moment public/authenticated comments and Tree comments (created_at ASC, id ASC, LIMIT limit+1, nextCursor forwarding, privacy DTOs); pure static source-read, no execution (#3939).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/ci-failure-observability-4014-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes in-memory, synthetic subprocess, and mock stream tests for scripts/ci-smoke-runner.cjs to verify non-zero exit code preservation on test failure, parsing of TAP/Spec failure output (failing file, subtest name, assertion error message, location), Step Summary generation, stderr highlight formatting, and credential redaction. Also statically reads .github/workflows/ci.yml to verify step ordering (Lint -> Build check -> Smoke test -> Verify) and integration. No real external network, browser, database, or Production mutation (#4014).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-comment-rate-limit-3940-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads modal_compute/social_rate_limit.py, modal_compute/tree_comments.py, and companion test suite to assert bounded Tree-level comment rate limiting contract (10/min, scope tree-comment:actor, memory_id=None, 429/503 taxonomy, transaction ordering visibility -> idempotency -> rate limit -> insert); pure static source-read only, no execution (#3940).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/ci-browser-hermetic-4013-negative-controls.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes the #4013 hermetic external-network negative controls via the tests/helpers/external-network-hermetic.cjs policy helper in real Playwright Chromium against a local 127.0.0.1 HTTP server. Exercises NC1 hostname-vs-pathname classification regression (fonts.googleapis.com hits the deterministic fixture, not pathname branch), NC2 unexpected external origin abort (example.invalid prevented from reaching the real network with exact URL surfaced), NC3 same-origin 4xx failing loudly, NC4 browser console error capture retained, and NC5 known-external fixture throw aborting without route.continue() or real network fallback. The hermetic helper secures all real-local browser contracts that load production js/ and css/ modules. No Production, auth, provider, DB mutation, or real external-network fallback.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/owner-list-cloudflare-forwarding.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the dedicated Cloudflare route builders (functions/api/trees.js buildPrivateTreesModalUrl and functions/_shared/memory-route-proxy.js buildMemoryCollectionModalUrl) in-process with constructed Request inputs and asserts exact same-origin forwarding of pagination/cursor/limit/treeId for cursor mode and legacy-array passthrough. No real network, browser, auth provider, database, deployment, or Production resource is used (#3944).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/ci-risk-gate-policy-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/fork-visibility-atomic-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree authorizes the source row inside its transaction with SELECT ... FOR SHARE (not the pre-transaction fetch_tree_for_owner_check DTO), forbids FOR KEY SHARE / LOCK TABLE, orders public authorization before the destination INSERT, and keeps public-memory-only copy; static source-read only, no execution.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-fork-idempotency-lock-3925.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree serializes competing creators for the same (source_tree_id, owner_id) tuple with a transaction-scoped pg_advisory_xact_lock acquired before the source visibility lock/authorization and before the duplicate lookup and destination INSERT; verifies the sha256-derived signed-bigint lock key is stable and tuple-scoped with process-local hash() negative control; pure static source-read and crypto key computation, no execution, no network, no DB (#3925).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-fork-completeness-3924.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree snapshots public source Memories with a single bounded ORDER BY created_at ASC, id ASC LIMIT 201 FOR SHARE read before any destination write; 200 supported rows copy in full and a 201st row rejects the fork with 409 FORK_SOURCE_TOO_LARGE / supportedMax 200 BEFORE the destination Tree INSERT; forbids LIMIT 200 restoration, COUNT(*) preflight, and any second DB connection, and verifies the #3925 advisory-lock / #3952 / #3956 ordering survives the snapshot reorder; pure static source-read, no execution, no network, no DB (#3924).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/test-suite-count-authority-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads fixed repository-owned classification/registry/package sources and executes the pure canonical test-suite count authority with synthetic fixtures and negative controls; derives deterministic frozen default-CI counts and supplemental totals without network, child process, filesystem write, database, browser, or Production access (#3838).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/home-i18n-runtime-metadata-3627-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/active-netlify-reference-ban-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -101,48 +35,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/db-migration-provenance-adoption-operator-checklist-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Validates the adoption operator checklist document structure, headings, fail-closed state, operator inputs, abstract role-mapping template, prohibited content, Phase B/C/D/E separation, stop/failure categories, and repository references without database, network, SQL, or Production access (#3622).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Validates the clean-target-first canonical adoption decision document structure, status markers, policy declarations, next child selection, protected issue posture, empty ADOPTION_REQUIRED authority manifests, and layer classification registration without database, network, SQL, Docker, or Production access (#3840).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-precondition-authority-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Validates the precondition registry existence, exact top-level key set, format_version, status=ADOPTION_REQUIRED, empty entries, forbidden content (SQL text, URL, env, credential, operator, hostname, query, text, sql), authority contract document section structure, no-precondition semantics (NOT_EVALUATED not PASS), PASS requirement (defined non-empty checks and authoritative success), all four status definitions, UNAVAILABLE>FAIL precedence, fixed registry path, canonical migration cross-validation, unknown migration ID prohibition, query-reference-only registry, SQL-text-in-registry prohibition, future fixed query catalog, caller override prohibition, manifest unchanged assertion, manifest adapter unchanged assertion, exact future dependency order, absence of Closes/Fixes/Resolves #1882, protected issue references, and registry-document status consistency without database, network, SQL, Docker, or Production access (#3657).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-precondition-authority-loader-resolver-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Validates the precondition authority loader-resolver contract: fixed factory/public key set, frozen detached projections, read-once-parse-once loading, fixed path confinement, ACTIVE/ADOPTION_REQUIRED status resolution, registry-catalog consistency, PROHIBITED/empty/missing query handling, stable check order, and hostile Proxy/accessor/trap/parse failure handling. Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes no SQL, opens no database, uses no network, no SQL execution, no Docker/PostgreSQL container, no Production or staging system, no provider credential, and no secret (#3678).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-precondition-composition-root-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Executes the fail-closed migration precondition composition root (scripts/migration-precondition-composition-root-core.cjs) in a local process with a synthetic pinned-session boundary and a bounded synthetic ACTIVE authority construction-time test seam: exact frozen orchestrator-facing surface (acquireAdvisoryLock/evaluatePrecondition/checkAdvisoryLock/releaseAdvisoryLock) with no queryLockedSession/raw resolver/session/handle/SQL exposure, descriptor-safe factory/config validation with zero getter invocation, one lock-adapter instance ownership with the same-instance broker wiring proven through the composed pinned session, cross-instance handle substitution detection, inactive ADOPTION_REQUIRED authority -> NOT_EVALUATED with zero precondition broker queries (never implicit PASS), opaque lock-handle identity preservation, malformed resolver/evaluator/lock surfaces failing closed before session/query use, no raw error/session/handle/query result in output or console, and no DB/network/driver/retry/environment capability in source. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3809).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-precondition-evaluator-adapter-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Executes the fail-closed evaluatePrecondition adapter (scripts/migration-precondition-evaluator-adapter-core.cjs) in a local process with synthetic resolver/broker fixtures: frozen factory and exact public surface, exact frozen status records, malformed factory bounded failure, hostile/accessor/Proxy/revoked-Proxy call envelopes with zero dependency calls, ADOPTION_REQUIRED/NOT_FOUND/empty-checks -> NOT_EVALUATED, UNAVAILABLE/throw/rejection/malformed -> UNAVAILABLE, BOOLEAN_SINGLE_ROW PASS/FAIL and every malformed row shape -> UNAVAILABLE, multi-check precedence with FAIL-then-UNAVAILABLE and no partial execution, broker query exact 3-key boundary with resultContract stripped and lockHandle identity preserved, detached/frozen query and values, exact dependency call counts, no raw error/evidence/console exposure, no retry/timeout/sleep/driver/network capability, and orchestrator CONDITION_STATUSES compatibility. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3802).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Validates the fixed inactive read-only precondition query catalog, normative authority separation, future ACTIVE entry shape, BOOLEAN_SINGLE_ROW result contract, implementation sequence, prohibited runtime and dynamic authority, exact changed-file boundary, and protected issue references without database, network, SQL execution, Docker, PostgreSQL, or Production access (#3669).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/api-body-size-limit-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -155,12 +47,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/api-memory-stream-body-limit-3920.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the shared streaming request-body primitive and the migrated Memory owner proxy / comment / reaction write routes in a local process with mocked fetch, proving byte-exact 128 KiB acceptance, +1 rejection, missing/invalid/understated Content-Length handling, UTF-8 multibyte byte-based counting, reader.cancel on overflow, read-failure non-413 taxonomy, header/body preservation, DELETE body-read zero, and the static raw request.text()/json() negative control (#3920). No real external system or production resource used.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/api-memory-detail-auth-routing-3288.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -170,6 +56,12 @@
       "path": "tests/contracts/api-memory-route-proxy-contracts-3285.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/api-memory-stream-body-limit-3920.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared streaming request-body primitive and the migrated Memory owner proxy / comment / reaction write routes in a local process with mocked fetch, proving byte-exact 128 KiB acceptance, +1 rejection, missing/invalid/understated Content-Length handling, UTF-8 multibyte byte-based counting, reader.cancel on overflow, read-failure non-413 taxonomy, header/body preservation, DELETE body-read zero, and the static raw request.text()/json() negative control (#3920). No real external system or production resource used.",
       "capabilities": []
     },
     {
@@ -227,6 +119,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/auth-mapping-linking-contract-4006.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes a pure in-memory three-layer account-mapping state machine (verified identities -> stable app_account -> legacy owner projection) implementing docs/architecture/AUTH_THREE_LAYER_MAPPING_CONTRACT_4006.md rules R1-R4: frozen surface with fixed provider/error vocabulary and structurally absent email-based resolvers, verification-before-mapping rejection, deny-by-default resolution matrix (IDENTITY_UNKNOWN/IDENTITY_REVOKED/ACCOUNT_DISABLED/ACCOUNT_MERGED_WITHOUT_POLICY/AMBIGUOUS_OWNER_PROJECTION/HOLD_NEW_NEON_ONLY_PRODUCT_WRITES), dual-provider same-account/legacy-owner parity, email-collision independence across accounts, idempotent re-attach with zero audit delta, cross-account rebinding blocked with zero mutation, one-active-identity-per-provider-per-account enforcement, neon-only HOLD, exactly-one-audit-row-per-mutation semantics, bounded audit field shape with raw-subject exclusion, operator-gated disable/merge/recovery flow with justification requirement and verified relink recovery, frozen caller-input non-mutation, and doc-scope cross-checks. No real setTimeout, network, database engine, browser, auth provider, Production, or Preview capability (#4006/#4157).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/auth-offline-mode.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -269,21 +167,39 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/authenticated-my-trees-load-instrumentation-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the production My Trees data, page, and entry modules with deterministic fake DOM, fake clock, auth, API, cache, cancellation, and sink fixtures to verify bounded journey outcomes without real network, browser, provider, database, Production, or telemetry transport (#3673).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/authenticated-moment-comment-write-boundary-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
     },
     {
+      "path": "tests/contracts/authenticated-my-trees-load-instrumentation-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production My Trees data, page, and entry modules with deterministic fake DOM, fake clock, auth, API, cache, cancellation, and sink fixtures to verify bounded journey outcomes without real network, browser, provider, database, Production, or telemetry transport (#3673).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/base-api-fetch-error-phase-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/bookmark-html-preview-ui-4072-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4072 local-preview contract: File.text() local read only with oversized-file fail-closed preflight at parser HARD_LIMITS.maxInputBytes (1 MiB), parser authority is #4065 ONLY (no second parser/DOMParser), ordered preview in canonical sourceIndex order with duplicate URL occurrences kept distinct, clickable link only when parser returned supported=true + non-null url (unsupported/credential/rejected entries inert status only, raw href never reconstructed or displayed), textContent/createElement rendering only (zero innerHTML/srcdoc/document.write sinks, user text cannot execute as HTML), IDLE/READING/READY/EMPTY/ERROR state machine with immediate stale-preview invalidation on new file selection and reset clearing input+preview+error, and no fetch/XHR/FormData/backend/storage capability. No network, no DB, no browser, no Production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/bookmark-html-preview-ui-4074-ordered-selection.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE extended for #4074) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4074 ordered-selection contract stacked on #4072/#4065 with zero added DOM-XSS sinks (textContent/createElement only): occurrence-based selection by canonical sourceIndex identity (not URL) so duplicate identical URLs stay independently selectable, click order is not canonical import order (buildOrderedBookmarkImportDraft emits selected eligible occurrences in exact ascending sourceIndex order), select-all-eligible and clear controls operate only on eligible occurrences (unsupported scheme / rejected / credential-bearing / null-url occurrences excluded and never silently selected), unsafe URL rows still expose no clickable href (preserves #4072 credential/raw-href non-disclosure), selection resets on new file / READING / parser-read ERROR / EMPTY / explicit reset with no persistent storage (no localStorage/sessionStorage/IndexedDB/cookie, no storage read/write), selected count shown and announced via a role=status aria-live region, and the pure detached builder never mutates the parser/preview result or internal selection state (new frozen objects carrying only occurrenceKey/sourceIndex/title/url/folderPath). No network, no DB, no browser, no Production, no Tree/Moment/Connection write, no backend route.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/bookmark-html-preview-ui-4076-private-import-intent.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE extended for #4074/#4076) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4076 private-first pre-write import intent review stacked on #4072/#4065/#4074 with zero added DOM-XSS sinks (textContent/createElement only): Tree-title input with deterministic trim and canonical max length 200 reused from modal_compute/validation.py::validate_tree_title (empty/whitespace-only/over-length fail closed, title is plain text/data only), buildBookmarkImportIntent(draft, normalizedTreeTitle) is a pure detached frozen NOT_PERSISTED builder that always sets visibility='private' (no public toggle / import-and-publish shortcut), carries only occurrenceKey/sourceIndex/title/url/folderPath + treeTitle/visibility/source/count and never Tree/Memory/Moment/Connection/owner IDs or server acknowledgement, preserves canonical source order with duplicate identical URLs kept independent and excludes unsupported-scheme / credential-bearing / null-url entries even if passed directly, the bounded role=status aria-live review declares the normalized title / selected count / private visibility / not-yet-saved state and becomes stale/non-actionable on any authority input change (new file / READING / ERROR / EMPTY / reset / selection / select-all / clear / title), the #4075 async supersession lifecycle is preserved (a stale late File.text() fulfillment cannot restore an old review, a late rejection cannot destroy the current review, reset-while-pending cannot be resurrected), and the intent carries no raw bookmark HTML / browser filesystem path / credentials with no fetch/XHR/FormData/storage capability added. No network, no DB, no browser, no Production, no Tree/Moment/Connection write, no backend route, no publication.",
       "capabilities": []
     },
     {
@@ -335,18 +251,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/browse-my-trees-large-geometry-3608-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes real production CSS/JS chains (css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, css/tree-view-mode.css, js/tree-view-mode-switcher.js, js/my-trees/my-trees-page-bootstrap.js) in Playwright Chromium via a local HTTP server. Asserts #3608 Phase 2 PR-A large geometry parity: Browse and My Trees large mode share card 380px, media 136px, body 4-row grid with 10px 12px 12px padding, title 1.25rem/900/2-line clamp, subtitle 0.85rem/2-line clamp; My Trees inner thumb fills media without margin; desktop 1440 and mobile 375 keep 2-column large; CTA/edit/visibility containment guards. No production write/auth/API/DB mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/browse-my-trees-list-geometry-3608-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes real production CSS/JS chains (css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, css/tree-view-mode.css, js/tree-view-mode-switcher.js, js/my-trees/my-trees-page-bootstrap.js) in Playwright Chromium via a local HTTP server. Asserts #3608 Phase 2 PR-B list geometry parity: Browse and My Trees list share 1-column gap 14px, card grid 160px+flex (110px tablet, 140px stacked mobile), body display flex/column/center with desktop padding 14px 16px and mobile 12px 14px 14px; My Trees list thumb margin reset and media stretch; CTA/edit/visibility/metadata containment; desktop 1440, tablet 768, mobile 375 measurements. No production write/auth/API/DB mutation.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/browse-my-trees-desktop-geometry-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -365,9 +269,27 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/browse-my-trees-large-geometry-3608-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production CSS/JS chains (css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, css/tree-view-mode.css, js/tree-view-mode-switcher.js, js/my-trees/my-trees-page-bootstrap.js) in Playwright Chromium via a local HTTP server. Asserts #3608 Phase 2 PR-A large geometry parity: Browse and My Trees large mode share card 380px, media 136px, body 4-row grid with 10px 12px 12px padding, title 1.25rem/900/2-line clamp, subtitle 0.85rem/2-line clamp; My Trees inner thumb fills media without margin; desktop 1440 and mobile 375 keep 2-column large; CTA/edit/visibility containment guards. No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/browse-my-trees-list-geometry-3608-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production CSS/JS chains (css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css, css/tree-view-mode.css, js/tree-view-mode-switcher.js, js/my-trees/my-trees-page-bootstrap.js) in Playwright Chromium via a local HTTP server. Asserts #3608 Phase 2 PR-B list geometry parity: Browse and My Trees list share 1-column gap 14px, card grid 160px+flex (110px tablet, 140px stacked mobile), body display flex/column/center with desktop padding 14px 16px and mobile 12px 14px 14px; My Trees list thumb margin reset and media stretch; CTA/edit/visibility/metadata containment; desktop 1440, tablet 768, mobile 375 measurements. No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/browse-my-trees-pattern-alignment-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/browse-my-trees-staged-loading-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject → showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
       "capabilities": []
     },
     {
@@ -467,6 +389,18 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production modules js/tree-view-mode-switcher.js, js/search/search-story-view.js, js/search/search-card-renderer.js, js/search/search-card-events.js and js/my-trees/my-trees-page-bootstrap.js in Playwright Chromium against the production CSS chains css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css and css/tree-view-mode.css served by a local HTTP server. Asserts #3655 Story foundation behaviour with measured geometry and interaction: Browse four-mode capability with stored story restore and compact defaults, My Trees three-mode capability rejecting stored story without rewrite, responsive local group sizes 3/2/1 at 1440x900 / 768x1024 / 375x812 over 7 loaded cards with ordered local sequence, previous/next boundary states, local position indicator, result replacement reset/clamp, skeleton and empty nav hiding, one-card coherence, full restore on mode exit, ArrowLeft/ArrowRight/Home/End keyboard semantics with editable-target and modifier guards, single-movement keydowns, canonical single-CTA card activation (click/Enter/Space) to view.html?treeId= exactly once, hidden-card tab-order exclusion, no duplicate delegated card events, mobile horizontal containment, nav containment inside the main column, and reduced-motion animation removal. Local loaded-results grouping only; no server pagination, no production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/browse-story-view-foundation-3655-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production sources (js/tree-view-mode-switcher.js, js/search/search-story-view.js, js/search/search-page-shell-init.js, js/my-trees/my-trees-page-bootstrap.js, pages/search.html, css/tree-view-mode.css, js/i18n/i18n-search.js, docs/product/lovebud-browse-story-view-foundation-3655-contract.md) and executes the switcher in a local process with an injected fake localStorage/DOM sandbox to lock #3655 surface-specific mode capability (Browse four modes incl. stored story restore; My Trees three modes with story rejected and storage never rewritten), base-mode backward compatibility, frozen exported mode arrays, Story controller boundaries (no fetch/API/DB/auth capability, no framework, no autoplay or looping timer, no server-pagination semantics, no card HTML generation, no per-card listeners), minimal nav contract (previous/next/local position only, no numbered pages), Browse-scoped CSS selectors, reduced-motion CSS, i18n ko/en keys, and parent/child issue references. No real browser, network, or production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/browse-summary-social-schema-fallback-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -527,19 +461,7 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/db-clean-canonical-bootstrap-rehearsal-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/card-surface-parity-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/ci-test-group-registry-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
@@ -569,6 +491,36 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/ci-browser-hermetic-4013-negative-controls.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the #4013 hermetic external-network negative controls via the tests/helpers/external-network-hermetic.cjs policy helper in real Playwright Chromium against a local 127.0.0.1 HTTP server. Exercises NC1 hostname-vs-pathname classification regression (fonts.googleapis.com hits the deterministic fixture, not pathname branch), NC2 unexpected external origin abort (example.invalid prevented from reaching the real network with exact URL surfaced), NC3 same-origin 4xx failing loudly, NC4 browser console error capture retained, and NC5 known-external fixture throw aborting without route.continue() or real network fallback. The hermetic helper secures all real-local browser contracts that load production js/ and css/ modules. No Production, auth, provider, DB mutation, or real external-network fallback.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/ci-failure-observability-4014-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes in-memory, synthetic subprocess, and mock stream tests for scripts/ci-smoke-runner.cjs to verify non-zero exit code preservation on test failure, parsing of TAP/Spec failure output (failing file, subtest name, assertion error message, location), Step Summary generation, stderr highlight formatting, and credential redaction. Also statically reads .github/workflows/ci.yml to verify step ordering (Lint -> Build check -> Smoke test -> Verify) and integration. No real external network, browser, database, or Production mutation (#4014).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/ci-risk-gate-policy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/ci-test-group-registry-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/client-browse-revocation-cache-4055-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/cache-utils.js, js/search/search-preview-cache.js, and js/search/search-data.js in an in-process fake browser environment (memory cache + fake sessionStorage) and proves the #4055 visibility-revocation sequences deterministically: per-Tree public-projection purge with unrelated-Tree preservation (Case F), sessionStorage resurrection block on reload (Case D), Browse authority-first render with the revoked Tree never painted (Case A), mutation-purge-then-reload absence (Case A2), network-failure negative control where a failed fresh fetch must not restore a deleted Tree from cache (Case C), and the preview authority gate where a cached old thumbnail/source projection is not returned once fresh Browse excludes the Tree (Case B/B2); plus a source-static assertion that mutation purge wiring in editor-tree-helpers/editor-memory-actions/my-trees-actions/editor-rename-ui runs only after confirmed success (Case E). No real network, browser, auth provider, database, deployment, or Production resource is used (#4055).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/cloudflare-gateway-route-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -587,30 +539,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/release-health-taxonomy-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Requires the canonical release-health-taxonomy.cjs module and validates its frozen constants and deterministic pure classifiers against latency, HTTP, content-type, release-match, and fail-closed sanitized-error boundaries without network, browser, Production, provider, database, or secret access (#3673).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/release-health-operator-summary-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/release-health-threshold-response-policy-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Requires the canonical release health threshold/response policy document and deterministically locks the exact four health states, five response recommendations, precedence, hard-blocker set, no-success-default evidence completeness, latency diagnostic boundary, full rollback prerequisites, mandatory owner approval, automatic-rollback prohibition, technical/product acceptance separation, privacy exclusions, Step 6 operator-summary handoff, and policy authority without network, browser, Production, provider, database, or secret access (#3824, Step 5 of 6).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/reliability-alert-transport-adapter-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads the real provider-unselected alert transport adapter source (js/observability/reliability-alert-transport-adapter.js) and executes it in a local process with an injected fake transport effect, proving the bounded provider-unselected transport boundary: default provider-unselected posture effect count 0, transport disabled effect 0, operator disabled effect 0, invalid/missing/mismatched release SHA effect 0, unknown/private field rejection effect 0, malformed canonical envelope rejection effect 0, invalid secret state effect 0, invalid dedupe state effect 0, explicit synthetic ACCEPTED/REJECTED/TIMEOUT/UNAVAILABLE exact mapping with effect exactly 1, injected throw/rejection sanitized failure with effect 1, maximum effect count exactly 1, nested accessor/Proxy hostile input getter/trap count 0, raw provider/secret/error leakage 0, deeply frozen/detached input/result/export, byte-stable awaited results, all capability flags false (provider_selected/runtime_bound/secret_read/network_performed/persistence_performed/queue_performed/preview_effect_performed/production_effect_performed), and zero network/env/filesystem/storage/queue/provider SDK capability (#3874, Child 4B boundary after accepted audit #3873). No real external system or production resource used.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/cloudflare-write-auth-guard-dedicated.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -620,6 +548,12 @@
       "path": "tests/contracts/cloudflare-write-auth-guard.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/comment-pagination-3939-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/comments.py, modal_compute/tree_comments.py, modal_compute/social_cursor.py, modal_compute/app.py, Cloudflare proxy files, postgres-client.js, and tree-comments-client.js to assert comment forward cursor pagination contract across Moment public/authenticated comments and Tree comments (created_at ASC, id ASC, LIMIT limit+1, nextCursor forwarding, privacy DTOs); pure static source-read, no execution (#3939).",
       "capabilities": []
     },
     {
@@ -635,9 +569,161 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/database-external-logical-backup-behavior-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes only the pure deterministic policy module modal_compute/recovery_backup_policy.py through a local python3 subprocess (scenario script written to the OS temp directory, never the repository) to lock #3828 status semantics: daily-only/daily+weekly/daily+monthly/daily+weekly+monthly success, dump/encryption/plaintext-cleanup/upload/head-verification/daily-promotion failures, daily-valid-with-weekly/monthly-promotion-failure preservation, stale-daily and missing-weekly/monthly classification, and unknown/private/raw/impossible state rejection. No live provider, R2, Modal, DB, pg_dump, network, secret, or filesystem-backup operation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/database-external-logical-backup-source-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Statically analyzes modal_compute/recovery_backup_app.py and modal_compute/recovery_backup_policy.py to lock #3828 source-only external logical-backup boundaries: separate non-HTTP Modal app name lovebud-recovery-backup, exact three symbolic secret names (lovebud-db, lovebud-recovery-r2, lovebud-recovery-encryption), one-per-24h scheduled function, no @modal.asgi_app/@modal.web_endpoint/FastAPI/Flask, custom-format compressed pg_dump with no-owner/no-privileges, bounded single-attempt dump, streaming authenticated encryption with per-object nonce and stored tag, plaintext deletion before upload, staging upload then head verification then daily/weekly/monthly promotion then staging cleanup, finally cleanup, sanitized-only status via the pure policy module, no restore/reset/branch operation, no import or modification dependency on modal_compute/app.py, and policy-module purity (no modal/boto3/cryptography/psycopg/subprocess/env/network imports). No live provider, R2, Modal, DB, subprocess dump, network, or filesystem mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/database-recovery-gate-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/database-snapshot-retention-restore-drill-policy-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads the fixed repository policy docs/ops/DATABASE_SNAPSHOT_RETENTION_RESTORE_DRILL_POLICY.md and asserts, section by section, the classification vocabulary, RPO/RTO bounds, fail-closed recovery-gate states, isolated-restore-first ordering, restore-drill cadence, privacy allowlist/denylist, recovery-type separation, least-privilege roles, and protected issue references; also confirms its own single SOURCE_STATIC registration. Does not execute SQL, open a database, use network/browser/Docker/PostgreSQL, access Production or a provider, or read secrets (#3777).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-canonical-runner-orchestrator-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-runner-orchestrator-core.cjs (runCanonicalMigration) using only synthetic JavaScript dependency mocks (no database, no PostgreSQL, no Docker, no SQL fixture, no network, no filesystem write, no environment secret) to assert the dependency-injected async orchestration: exact dependency call order, runtime-metadata and 11-dependency validation, source/manifest/lock/ledger/precondition fail-closed gates, protocol preflight/completion binding, NOOP behavior, execution/completion handling, ledger append authorization with the exact 7-field record, append/release failure handling and recovery escalation, lock released exactly once after ACQUIRED, and sanitized results (no lock handle, raw manifest, ledger record, SQL, error message/stack, hostname/URL, credential, or operator identity). Does not implement a real runner or connect to any database.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-canonical-runner-protocol-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-runner-protocol-core.cjs (evaluateMigrationPreflight and evaluateMigrationCompletion) as pure functions over bounded input objects (no database connection, no SQL execution, no ledger write, no advisory lock acquisition, no SQL fixtures) to assert the hardened fail-closed protocol: ACTIVE-manifest requirement, source validation (PASS/FAIL/UNAVAILABLE), ledger evidence availability (never coerced from missing/non-array), the ledger as an exact committed prefix of the manifest (index-by-index order, checksum, COMMITTED outcome; duplicate/unknown/reordered/malformed/missing-middle all fail closed), manifest-derived target binding (caller cannot override checksum/mode/dependencies/destructive), exact-next-migration and dependency rules, NOOP only after a fully valid prefix, requestedAction APPLY_FORWARD with forbidden actions (down migration, auto-rollback, re-apply committed, ledger delete, ledger rewrite) failing closed, explicit authorization flags, and completion bound to a re-evaluated canonical preflight (a forged preflight result never authorizes a ledger append) with recovery escalation including SNAPSHOT_RESTORE_DECISION_REQUIRED for destructive partial/unknown. Does not implement a runner or connect to any database.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-clean-canonical-bootstrap-rehearsal-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-destructive-ddl-approval-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-provenance-core.cjs (detectDestructiveOperations and validateMigrationManifest) against synthetic .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert the static destructive operation vocabulary (DROP_TABLE, TRUNCATE_TABLE, DROP_COLUMN, ALTER_COLUMN_TYPE, SET_NOT_NULL, DROP_CONSTRAINT, DROP_INDEX, DROP_FUNCTION, DROP_TRIGGER, DROP_TYPE, DROP_POLICY, FK_CASCADE_EXPANSION), the actual-vs-declared declaration rule (missing/partial/unknown/duplicate/spurious all fail closed), risk_class=DESTRUCTIVE enforcement, and approval-reference policy (empty and placeholder approvals rejected; real references accepted). Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-fail-closed-deploy-gate-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-canonical-manifest-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-canonical-manifest-adapter-core.cjs (createMigrationCanonicalManifestAdapter and the returned loadManifest) using ONLY synthetic JavaScript mocks and isolated temp-filesystem fixtures (no pg, no PostgreSQL engine, no DB connection, no SQL execution, no network, no environment secret; SQL present only as contract strings with computed checksums) to assert the fixed single-file canonical manifest path (db/migration-provenance/canonical-migrations.json), the existing validateMigrationManifest policy delegation, exact six-field runner-only projection (id, checksum, depends_on, transaction_mode, risk_class, destructive_operations), full manifest order preservation, target-neutral behavior, deep detached frozen output, fixed public error constants (MIGRATION_CANONICAL_MANIFEST_UNAVAILABLE, MIGRATION_CANONICAL_MANIFEST_ADAPTER_INVALID_DEPENDENCY), stack/cause/path sanitization, verified realTarget direct read via realpath confinement, exactly-once read/parse/validator counts, genuine Promise only boundary (Proxy-wrapped Promise and arbitrary thenable rejection), descriptor snapshot boundaries for factory config and call envelope, Promise/Proxy/thenable hostile evidence, ADOPTION_REQUIRED inactive manifest acceptance, and orchestrator compatibility via the real runCanonicalMigration. No DB, SQL, PostgreSQL, Docker, Production, provider, or secret capability. Temp filesystem fixtures with copied adapter and provenance-core modules; default adapter validated against the current repository committed manifest.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-clean-target-adoption-decision-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the clean-target-first canonical adoption decision document structure, status markers, policy declarations, next child selection, protected issue posture, empty ADOPTION_REQUIRED authority manifests, and layer classification registration without database, network, SQL, Docker, or Production access (#3840).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-identity-order-checksum-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-provenance-core.cjs (validateMigrationManifest, evaluateProvenance) against synthetic manifests and .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert canonical migration ID format, strictly ascending ordering, canonical path ownership (db/migrations/<id>.sql), basename/ID agreement, raw-byte SHA-256 checksum semantics (LF/CRLF, trailing newline/space, comment, BOM, single-byte changes all mismatch), checksum-format rejection, and synthetic ledger-evidence mismatch (edited/unknown/missing/reordered/duplicate); also asserts the committed canonical manifest stays ADOPTION_REQUIRED with empty migrations and that the core has no database/network/secret surface. Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-authority-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition registry existence, exact top-level key set, format_version, status=ADOPTION_REQUIRED, empty entries, forbidden content (SQL text, URL, env, credential, operator, hostname, query, text, sql), authority contract document section structure, no-precondition semantics (NOT_EVALUATED not PASS), PASS requirement (defined non-empty checks and authoritative success), all four status definitions, UNAVAILABLE>FAIL precedence, fixed registry path, canonical migration cross-validation, unknown migration ID prohibition, query-reference-only registry, SQL-text-in-registry prohibition, future fixed query catalog, caller override prohibition, manifest unchanged assertion, manifest adapter unchanged assertion, exact future dependency order, absence of Closes/Fixes/Resolves #1882, protected issue references, and registry-document status consistency without database, network, SQL, Docker, or Production access (#3657).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-authority-loader-resolver-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition authority loader-resolver contract: fixed factory/public key set, frozen detached projections, read-once-parse-once loading, fixed path confinement, ACTIVE/ADOPTION_REQUIRED status resolution, registry-catalog consistency, PROHIBITED/empty/missing query handling, stable check order, and hostile Proxy/accessor/trap/parse failure handling. Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes no SQL, opens no database, uses no network, no SQL execution, no Docker/PostgreSQL container, no Production or staging system, no provider credential, and no secret (#3678).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-composition-root-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the fail-closed migration precondition composition root (scripts/migration-precondition-composition-root-core.cjs) in a local process with a synthetic pinned-session boundary and a bounded synthetic ACTIVE authority construction-time test seam: exact frozen orchestrator-facing surface (acquireAdvisoryLock/evaluatePrecondition/checkAdvisoryLock/releaseAdvisoryLock) with no queryLockedSession/raw resolver/session/handle/SQL exposure, descriptor-safe factory/config validation with zero getter invocation, one lock-adapter instance ownership with the same-instance broker wiring proven through the composed pinned session, cross-instance handle substitution detection, inactive ADOPTION_REQUIRED authority -> NOT_EVALUATED with zero precondition broker queries (never implicit PASS), opaque lock-handle identity preservation, malformed resolver/evaluator/lock surfaces failing closed before session/query use, no raw error/session/handle/query result in output or console, and no DB/network/driver/retry/environment capability in source. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3809).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-evaluator-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the fail-closed evaluatePrecondition adapter (scripts/migration-precondition-evaluator-adapter-core.cjs) in a local process with synthetic resolver/broker fixtures: frozen factory and exact public surface, exact frozen status records, malformed factory bounded failure, hostile/accessor/Proxy/revoked-Proxy call envelopes with zero dependency calls, ADOPTION_REQUIRED/NOT_FOUND/empty-checks -> NOT_EVALUATED, UNAVAILABLE/throw/rejection/malformed -> UNAVAILABLE, BOOLEAN_SINGLE_ROW PASS/FAIL and every malformed row shape -> UNAVAILABLE, multi-check precedence with FAIL-then-UNAVAILABLE and no partial execution, broker query exact 3-key boundary with resultContract stripped and lockHandle identity preserved, detached/frozen query and values, exact dependency call counts, no raw error/evidence/console exposure, no retry/timeout/sleep/driver/network capability, and orchestrator CONDITION_STATUSES compatibility. Reads production source and executes it with injected fake/mock/stub dependencies only; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3802).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-precondition-registry-source-validation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the precondition registry schema (format_version, status=ADOPTION_REQUIRED/ACTIVE, entries), entry/check structure, forbidden authority keys, duplicate migration_id/check_id, boolean expected only, getter/Proxy trap safety, null/undefined safety, and cross-binding with canonical migration manifest (ADOPTION_REQUIRED to ADOPTION_REQUIRED, ACTIVE one-to-one, orphan/missing entry rejection) without database, network, SQL, Docker, or Production access (#3659).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-provenance-adoption-operator-checklist-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the adoption operator checklist document structure, headings, fail-closed state, operator inputs, abstract role-mapping template, prohibited content, Phase B/C/D/E separation, stop/failure categories, and repository references without database, network, SQL, or Production access (#3622).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads current-state audit and next-child decision documents and asserts on document structure, status vocabulary, artifact classification vocabulary, test-layer vocabulary, protected issue references, path existence, and prohibition boundaries; does not execute any database, network, or runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-readonly-query-catalog-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates the fixed inactive read-only precondition query catalog, normative authority separation, future ACTIVE entry shape, BOOLEAN_SINGLE_ROW result contract, implementation sequence, prohibited runtime and dynamic authority, exact changed-file boundary, and protected issue references without database, network, SQL execution, Docker, PostgreSQL, or Production access (#3669).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-migration-source-validation-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-source-validation-adapter-core.cjs with injected synthetic fixtures, real default adapter against committed inactive sources, and temp-filesystem isolated repositories (B4/B5/B6 malformed fixed files, I1 per-file read counts); asserts frozen public surface, PASS/FAIL/UNAVAILABLE vocabulary, raw malformed JSON parse tests, loader/validator status mapping, verified realTarget read, safe factory config descriptor snapshot including null config rejection and non-enumerable dependency rejection, Promise identity via node:util types.isPromise (Proxy-wrapped Promise get trap 0, accessor/data-property thenable not assimilated), safe loader result snapshot (reversed key order accepted, non-enumerable rejection), safe validator result snapshot (genuine Promise, Proxy-wrapped result, thenable, non-enumerable ok), call-envelope validation, result sanitization, and orchestrator compatibility; no SQL, database, Docker, network, secret, or manifest mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-postgres-ledger-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-postgres-ledger-adapter-core.cjs (createPostgresMigrationLedgerAdapter and the returned readLedger/appendLedgerRecord) using only synthetic JavaScript query mocks (no pg, no PostgreSQL engine, no DB connection, no actual SQL execution, no real ledger read/write, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed schema_migration_ledger relation and fixed seven-field order, the exact named read query lovebud-migration-ledger-read-v1 (ordered SELECT, no SELECT *, no interpolation, no offset/limit) and the append-only named query lovebud-migration-ledger-append-v1 (INSERT ... ON CONFLICT (migration_id) DO NOTHING RETURNING migration_id, content_checksum; no UPDATE/UPSERT-DO-UPDATE/DELETE/TRUNCATE/retry/multi-row), frozen query definitions, read success (frozen [] for empty ledger, frozen seven-field clones, order preservation, raw-reference isolation, all allowed transaction outcomes), read fixed sanitized rejection POSTGRES_LEDGER_READ_UNAVAILABLE (never [] on failure) across invalid handle/broker throw-reject/malformed QueryResult/malformed row/Proxy traps, append input validation with pre-query snapshot and caller-mutation resistance (zero queries on invalid input -> FAILED), append evidence mapping (exact one matching row -> APPENDED, rows:[] -> FAILED, throw/reject/malformed/multi-row/wrong-id-or-checksum/extra-field/Proxy-trap -> UNKNOWN), orchestrator compatibility via the real runCanonicalMigration, opaque lockHandle opacity, mutation resistance, and sanitized status-only results. Does not connect to any database or perform any real ledger read/write; no Production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Exercises scripts/migration-postgres-session-lock-adapter-core.cjs (createPostgresMigrationSessionLockAdapter and the returned acquireAdvisoryLock/checkAdvisoryLock/releaseAdvisoryLock) using only synthetic JavaScript session/query mocks (no pg, no PostgreSQL engine, no DB connection, no lock acquired, no actual SQL execution, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed two-int lock key pair, exact named/parameterized acquire/check/release queries, pinned-session lifecycle, non-blocking acquisition, current-session pg_locks verification, opaque frozen handle opacity, exactly-once pool release, malformed-evidence classification, orchestrator-compatible status mapping, and sanitized status-only results. Does not connect to any database or acquire any real lock; no Production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-precondition-composition-root-postgres-rehearsal-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for the CI-only disposable PostgreSQL rehearsal (Issue #3816): locks the exact nine-file boundary, the exact package script test:db-engine:precondition-composition-root, the exact CI job db-engine-precondition-composition-root with postgres:17.4-bookworm and server_version_num 170004 assertion, the loopback-only LB_TEST_PG* boundary with no DATABASE_URL/local-Docker/Production/Neon/Modal/provider reference, the plain own-callable dedicated pg.Client session wrapper, the construction-time authorityResolverFactory ACTIVE seam, the SQL boundary (canonical advisory-lock queries, fixed boolean SELECT, read-only residual-lock verification; no DDL/DML/migration/ledger SQL), the SOURCE_STATIC + supplemental DB_ENGINE_EXECUTION(defaultCi:false, capabilities postgresql+network) classification entries, and the parent completion posture (Steps 1-7 complete, Step 8 not authorized). Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3816).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/db-readonly-target-attribution-parity-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": [
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/contracts/db-schema-change-inventory-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads docs/architecture/db-schema-change-inventory.json and db-schema-change-inventory.md plus the repository file tree (fs walk only; no git, network, or database) and asserts inventory structure, enum validity, no duplicate or stale paths, protected issue references, secret-absence patterns, that every detected schema-changing artifact (any *.sql file, any DDL-bearing scripts/modal_compute/functions module, any migration-runner/schema-repair named script, or any operator/runbook markdown under docs/ops|architecture|product embedding a fenced SQL block with DDL) is registered in the inventory, and the hard verified-negative invariants that modal_compute/**/*.py and functions/**/*.{js,cjs,mjs} contain no literal schema-changing DDL (independent of registration); does not connect to any database, execute SQL, or run any migration.",
       "capabilities": []
     },
     {
@@ -1423,6 +1509,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/editor-real-page-structural-baseline-3896-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Loads real pages/editor.html with the full production CSS/JS chains (js/editor/*.js including js/editor/editor-bindings.js, js/editor/editor-detail-ui.js, js/editor/editor-canvas.js, js/shared/canonical-appreciation-detail-presentation.js, js/editor/editor-mobile-bottom-bar.js, js/editor/editor-mobile-panel-hierarchy.js) in Playwright Chromium via a local 127.0.0.1 HTTP server. Synthetic auth via page.addInitScript (localStorage + window.firebase mock + LoveBudAuthBootstrap); synthetic authenticated reads only (GET exact allowlist: /api/trees/editor-tree-3896, /api/memories?treeId=, and per-memory /reactions + /comments) routed with zero Authorization headers, zero writes, zero unexpected same-origin API, and zero real external network. The allowlisted GETs actually issued are recorded (health.allowedApiRequests) and the required minimum set is asserted. Asserts the real user flows on desktop 1440x900 and mobile 390x844: data load (canvas memory-node selection, detailViewMode visible), view mode baseline (shared-header/canvasArea/editorSidebarPanel/detailPanel visibility and geometry, sidebar-canvas non-overlap, horizontal overflow <= 1px), desktop real path into the edit form (real #editorModeTransitionBtn mode control toggling body data-editor-interaction-mode to edit, then real #editMemoryBtn opening detailEditMode, verifying editTitleInput/editMemoInput/editSourceUrlInput/editTagsInput, saveEditBtn presence, cancelEditBtn), cancel back to view with selected-memory identity (#detailCurrentMomentTitle + .memory-node.selected dataset), tree identity, and route (pathname + treeId/lang query) preserved and zero writes, and the mobile real path (canvas node selection, real #mobileModeToggle to edit mode, #mobileDetailPanelToggle opening the .is-mobile-panel-open detail sheet, #editMemoryBtn form inside the scrollable sheet with the primary field in viewport, #cancelEditBtn returning to view with the same preservation checks). NC1-NC8 negative controls exercise real product events through disposable route-intercepted copies of the real js/editor/editor-bindings.js (no product file mutation): NC1 real edit click with editMemoryBtn binding removed -> form not opened; NC2 real edit click with enterEditMode disconnected -> form not opened; NC3 real #cancelEditBtn click with cancelEditBtn binding removed -> view not restored; NC4 real #cancelEditBtn click with exitEditMode wiring disconnected (cancel binding preserved via an instrumented no-op replacement callback that runs exactly once, proving the binding fires while exitEditMode is never invoked) -> view not restored and edit form stays; NC5 forced tree GET 404 -> product tree-load-error UI (#retryOpenTreeBtn) rendered and currentTreeData null; NC6 forced memories GET 404 -> memory load settled to empty and no canvas nodes; NC7 actual same-origin POST to a disposable probe path -> write guard observes exactly one write and trips; NC8 mobile edit field forced out of viewport -> in-viewport contract fails. Browser health zero pageerror, zero console error, zero request-failed/HTTP >=400, zero writes, zero Authorization headers. No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/editor-refresh-memories-bridge-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -1438,12 +1530,6 @@
       "path": "tests/contracts/editor-remaining-html-shell-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/editor-real-page-structural-baseline-3896-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Loads real pages/editor.html with the full production CSS/JS chains (js/editor/*.js including js/editor/editor-bindings.js, js/editor/editor-detail-ui.js, js/editor/editor-canvas.js, js/shared/canonical-appreciation-detail-presentation.js, js/editor/editor-mobile-bottom-bar.js, js/editor/editor-mobile-panel-hierarchy.js) in Playwright Chromium via a local 127.0.0.1 HTTP server. Synthetic auth via page.addInitScript (localStorage + window.firebase mock + LoveBudAuthBootstrap); synthetic authenticated reads only (GET exact allowlist: /api/trees/editor-tree-3896, /api/memories?treeId=, and per-memory /reactions + /comments) routed with zero Authorization headers, zero writes, zero unexpected same-origin API, and zero real external network. The allowlisted GETs actually issued are recorded (health.allowedApiRequests) and the required minimum set is asserted. Asserts the real user flows on desktop 1440x900 and mobile 390x844: data load (canvas memory-node selection, detailViewMode visible), view mode baseline (shared-header/canvasArea/editorSidebarPanel/detailPanel visibility and geometry, sidebar-canvas non-overlap, horizontal overflow <= 1px), desktop real path into the edit form (real #editorModeTransitionBtn mode control toggling body data-editor-interaction-mode to edit, then real #editMemoryBtn opening detailEditMode, verifying editTitleInput/editMemoInput/editSourceUrlInput/editTagsInput, saveEditBtn presence, cancelEditBtn), cancel back to view with selected-memory identity (#detailCurrentMomentTitle + .memory-node.selected dataset), tree identity, and route (pathname + treeId/lang query) preserved and zero writes, and the mobile real path (canvas node selection, real #mobileModeToggle to edit mode, #mobileDetailPanelToggle opening the .is-mobile-panel-open detail sheet, #editMemoryBtn form inside the scrollable sheet with the primary field in viewport, #cancelEditBtn returning to view with the same preservation checks). NC1-NC8 negative controls exercise real product events through disposable route-intercepted copies of the real js/editor/editor-bindings.js (no product file mutation): NC1 real edit click with editMemoryBtn binding removed -> form not opened; NC2 real edit click with enterEditMode disconnected -> form not opened; NC3 real #cancelEditBtn click with cancelEditBtn binding removed -> view not restored; NC4 real #cancelEditBtn click with exitEditMode wiring disconnected (cancel binding preserved via an instrumented no-op replacement callback that runs exactly once, proving the binding fires while exitEditMode is never invoked) -> view not restored and edit form stays; NC5 forced tree GET 404 -> product tree-load-error UI (#retryOpenTreeBtn) rendered and currentTreeData null; NC6 forced memories GET 404 -> memory load settled to empty and no canvas nodes; NC7 actual same-origin POST to a disposable probe path -> write guard observes exactly one write and trips; NC8 mobile edit field forced out of viewport -> in-viewport contract fails. Browser health zero pageerror, zero console error, zero request-failed/HTTP >=400, zero writes, zero Authorization headers. No production write/auth/API/DB mutation.",
       "capabilities": []
     },
     {
@@ -1801,6 +1887,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/fork-visibility-atomic-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree authorizes the source row inside its transaction with SELECT ... FOR SHARE (not the pre-transaction fetch_tree_for_owner_check DTO), forbids FOR KEY SHARE / LOCK TABLE, orders public authorization before the destination INSERT, and keeps public-memory-only copy; static source-read only, no execution.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/frontend-dom-xss-guardrails.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -1876,6 +1968,18 @@
       "path": "tests/contracts/home-growth-stage-visual-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/home-i18n-runtime-metadata-3627-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/home-mixed-artist-spotlight-3625-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source (.html, .css, .js) and asserts on strings, regex, file existence, structure, order, or syntax markers for the #3625 center-spotlight showcase: fixed artist keys, spotlight CSS classes, spotlight JS state machine, FIXED_CARD_MAP, SPOTLIGHT_ORDER, no original flip functions, reduced-motion overrides, FADE phase, and protected Closes/Fixes restrictions. Does not execute the target runtime behavior.",
       "capabilities": []
     },
     {
@@ -2050,6 +2154,36 @@
       "path": "tests/contracts/login-password-reset-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-firebase-read-principal.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the love-platform-api Firebase read-principal adapter in-process with constructed Request inputs and an injected fake Firebase verifier, proving deterministic source-only resolution of the read principal, bounded claim/attribute projection, canonical request-id/no-store response, public-only DTO allowlist, fail-closed missing capability/invalid token behavior, bounded error redaction, and no external provider SDK coupling. No real provider SDK, external network, database, browser, deployment, Production secret, or live provider capability is used (#4100).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-foundation.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the provider-neutral love-platform-api foundation core and unrouted Worker boundary in-process with constructed Request inputs and injected fake Query/Transaction capabilities, while reading the foundation sources to lock no Product-route/auth-provider/DB-driver/Production-secret coupling. Verifies request-context shape, bounded/sanitized request-id propagation, canonical streamed body-size guard reuse, fixed leak-safe error categories, fail-closed unsupported capabilities, and that Query capability never implies Transaction capability. No real network, database, browser, provider, deployment, runtime binding, Production secret, or Production resource is used (#4094).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-growing-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Cloudflare->Neon Growing Product runtime adapter in-process with constructed Request/env inputs and injected fake query executor, proving explicit gate activation (LB_GROWING_READ_RUNTIME=direct_neon), dedicated DB config validation (LOVE_PLATFORM_DATABASE_URL), fail-closed missing/invalid config behavior with zero Modal fallback, static parameterized SQL mapping, public eligibility preservation (1-2 public memories), ordering and limit parity, leak-safe error sanitization, and driver verification without real network or DB access (#4109).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-public-growing-read.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared love-platform-api Growing public-read route in-process with constructed Request inputs and an injected fake Query capability, proving the current LoveBud public Tree + public Memory count 1–2 projection, bounded 3..12 limit behavior, canonical request-id/no-store response, public-only DTO allowlist, fail-closed missing capability/invalid route behavior, bounded error redaction, no Transaction implication, and zero external fetch/DB-driver/Product-route/auth-provider capability. No real external network, database, browser, provider, deployment, Production secret, or Production resource is used (#4099).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-public-lovetree-growing-read.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the love-platform-api public LoveTree-compatible public growing read route in-process with constructed Request inputs and an injected fake Query capability, proving the distinct anonymous Growing Query, exact public DTO projection, normalized limit behavior (default/clamp/whitespace/infinity fail-closed), ambiguous NaN/fractional fail-closed, provider-order preservation with no tertiary sort invention, capability-absent fail-closed, and zero principal/auth/DB/network/provider capability. No real external network, database, browser, provider, deployment, Production secret, or Production resource is used (#4101).",
       "capabilities": []
     },
     {
@@ -2236,15 +2370,15 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/modal-owner-public-guard-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/modal-memory-write-principal-boundary-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads modal_compute/app.py and modal_compute/auth.py source and asserts route/function structure, order, and exact call shapes for the #4181 principal boundary refactor: the three Memory owner-write routes (post/put/delete_private_memory) must call require_authenticated_principal(authorization) with principal[\"legacyOwnerId\"] as sole owner argument to create/update/delete_owner_memory, must not call require_firebase_user directly nor pass uid/email/providerSubject/accountId, authentication must precede parse_json_body and mutation calls, require_authenticated_principal must keep delegating to require_firebase_user with provider firebase/legacyOwnerId=uid and no email/accountId in code, the require_firebase_user error contract (401/503) stays verbatim, the exact remaining direct-caller set of require_firebase_user is pinned, and no other route drifts; does not execute the asserted target runtime behavior (#4181).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/modal-owner-public-guard-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
     },
     {
@@ -2380,6 +2514,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/my-trees-filter-visibility-3934.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production my-trees-filter.js module source and executes it in a local vm context to assert Issue #3934 visibility bucket contracts; no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-flow-stage-cache-bust-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2458,15 +2598,15 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/my-trees-preview-hub-social-spacing-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/my-trees-preview-hub-metric-transition-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/my-trees-preview-hub-social-spacing-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
     },
     {
@@ -2488,21 +2628,36 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/my-trees-story-view-foundation-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes the real pages/my-trees.html and real product modules/CSS (js/my-trees/*, js/search/search-story-view.js, js/tree-view-mode-switcher.js, css/tree-view-mode.css) in Playwright Chromium via a local HTTP server with deterministic authenticated/API stubs (synthetic non-private owner-tree fixtures, inert Firebase). Asserts #3811 My Trees Story behavior: four-mode capability with compact default and stored-story persistence without Browse-key leakage, responsive group sizes 3/2/1 at 1440x900 / 900x900 / 390x844, selected-tree group entry, Next/Previous/Home/End selection + desktop preview-hub sync, mobile group navigation never auto-opening the bottom sheet, preserved card activation and owner actions, filter/result-replacement clamp, no Story rail in loading/empty/error states, leave/re-enter canonical DOM order restore, hidden-card tab/accessibility exclusion, reduced-motion immediate navigation, My Trees-specific localized labels, and zero pageerror/console/requestfailure/HTTP>=400/overflow/leak. No production write/auth/API/DB mutation.",
+      "capabilities": [
+        "playwright",
+        "chromium"
+      ]
+    },
+    {
+      "path": "tests/contracts/my-trees-story-view-foundation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads production sources (js/my-trees/my-trees-story-view.js, js/search/search-story-view.js, js/my-trees/my-trees-page-bootstrap.js, pages/my-trees.html, css/tree-view-mode.css, js/i18n/i18n-my-trees.js, js/tree-view-mode-switcher.js) and asserts the #3811 My Trees Story thin-adapter contract: adapter initializes the shared LoveBudBrowseStoryView (results/navMount/translate/onGroupChange) without copying it, no second grouping/transition authority, no backend pagination, no autoplay/loop/swipe, entry via setMode('story', { initialTreeId }), result replacement via refresh({ preferredTreeId }), settled onGroupChange snapshot driving selection/preview sync with a mobile no-auto-open guard, My Trees-specific surface translation (i18n-my-trees.js story keys only), Story rail loaded-with-cards only, destroy() releasing listeners/observers, exact four modes (large/compact/list/story) with compact default and page-scoped storage key lovebud:myTrees:viewMode, My Trees HTML/script ordering (shared controller + adapter before bootstrap), and CSS geometry-only .trees-grid[data-tree-view-mode=\"story\"] selectors with reduced motion. No real browser, network, or production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/my-trees-visibility-display-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used as truth.",
       "capabilities": []
     },
     {
-      "path": "tests/contracts/my-trees-filter-visibility-3934.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production my-trees-filter.js module source and executes it in a local vm context to assert Issue #3934 visibility bucket contracts; no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/naming-canonical-namespace.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/neon-ws-transaction-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Neon WS transaction adapter against an injected in-memory fake Client/transport to verify request-scoped single-client affinity, parameterized-query validation, adapter-owned transaction control, advisory/row-lock helpers, rollback and rollback-failure behavior, unknown COMMIT outcome with no rollback or automatic whole-transaction retry, concurrent client isolation, canonical reread ordering, and sanitized errors. No real network, Neon database, browser, provider mutation, or Production resource is used (#4093/#4132).",
       "capabilities": []
     },
     {
@@ -2554,6 +2709,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/owner-list-cloudflare-forwarding.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the dedicated Cloudflare route builders (functions/api/trees.js buildPrivateTreesModalUrl and functions/_shared/memory-route-proxy.js buildMemoryCollectionModalUrl) in-process with constructed Request inputs and asserts exact same-origin forwarding of pagination/cursor/limit/treeId for cursor mode and legacy-array passthrough. No real network, browser, auth provider, database, deployment, or Production resource is used (#3944).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/owner-tree-list-observability-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2575,6 +2736,12 @@
       "path": "tests/contracts/phase-b-collection-operator-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Source-static contract for the Phase B operator collection CLI and receipt builder: argv boundary, trusted prepared plan, recomputed digest cross-validation, recursive prohibited field/sensitive value scanning, single bounded JSON output, UNATTESTED attestation draft with fixed environment/scope, ADOPTION_REQUIRED candidate, baseline HEAD binding, actual session counting, and no Production DB session (#3573, replacement for CLOSED PR #3574).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/phase-b-role-mapping-reconciliation-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for private-only unmapped grantee reconciliation helper: validates .secrets/** exclusive-create boundary, outside/traversal/existing-file rejections, shared-output raw-grantee non-leak, private-artifact minimal shape, credential non-leak, role-map immutability, zero-unmapped and unknown-error sanitization, identify-only semantics and exclusive-create behavior using fake role names only (no Production connection, no DB, no secret output).",
       "capabilities": []
     },
     {
@@ -2680,6 +2847,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/public-tree-embed-projection-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure js/playback/public-tree-embed-projection.js in-process with constructed effective-public Tree/Moment records and the merged #4064 core, proving #4098 strict allowlist projection, exact public visibility fail-closed behavior, private-Moment omission without existence signal, trusted YouTube normalization and unsafe/malformed-source bounded unavailability, duplicate occurrence preservation, dense regenerated sourceIndex, caller-order preservation with no sorting authority, bounded optional startSeconds, endSeconds=null, owner/internal/clientKey/auth/moderation/raw-provider field stripping, caller-input non-mutation, and #4064 queue compatibility. Static source checks prove no network, DOM, Firebase/Auth, DB, storage, provider runtime, route, or external capability. No real network, browser, database, auth/provider, deployment, or Production resource is used (#4098, #4088, #4064).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-tree-fallback-boundary.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2704,13 +2877,13 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/public-tree-view-recording-3599-runtime-contract.test.cjs",
+      "path": "tests/contracts/public-tree-view-model-camelcase.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
     },
     {
-      "path": "tests/contracts/public-tree-view-model-camelcase.test.cjs",
+      "path": "tests/contracts/public-tree-view-recording-3599-runtime-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
       "capabilities": []
@@ -2857,6 +3030,51 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/release-health-operator-summary-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/release-health-taxonomy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Requires the canonical release-health-taxonomy.cjs module and validates its frozen constants and deterministic pure classifiers against latency, HTTP, content-type, release-match, and fail-closed sanitized-error boundaries without network, browser, Production, provider, database, or secret access (#3673).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/release-health-threshold-response-policy-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Requires the canonical release health threshold/response policy document and deterministically locks the exact four health states, five response recommendations, precedence, hard-blocker set, no-success-default evidence completeness, latency diagnostic boundary, full rollback prerequisites, mandatory owner approval, automatic-rollback prohibition, technical/product acceptance separation, privacy exclusions, Step 6 operator-summary handoff, and policy authority without network, browser, Production, provider, database, or secret access (#3824, Step 5 of 6).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/release-sha-manifest-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes npm run build / scripts/build-static.js and validates exact SHA resolution (git rev-parse HEAD) against regex ^[0-9a-f]{40}$, emitted JSON schema (exactly release_sha + contract_version), fail-closed behavior in invalid-Git context, Cache-Control: no-store in _headers, and cleanup of generated .well-known/release.json artifact. No network, provider, Production, database, or browser access.",
+      "capabilities": [
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
+      "path": "tests/contracts/reliability-alert-transport-adapter-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Reads the real provider-unselected alert transport adapter source (js/observability/reliability-alert-transport-adapter.js) and executes it in a local process with an injected fake transport effect, proving the bounded provider-unselected transport boundary: default provider-unselected posture effect count 0, transport disabled effect 0, operator disabled effect 0, invalid/missing/mismatched release SHA effect 0, unknown/private field rejection effect 0, malformed canonical envelope rejection effect 0, invalid secret state effect 0, invalid dedupe state effect 0, explicit synthetic ACCEPTED/REJECTED/TIMEOUT/UNAVAILABLE exact mapping with effect exactly 1, injected throw/rejection sanitized failure with effect 1, maximum effect count exactly 1, nested accessor/Proxy hostile input getter/trap count 0, raw provider/secret/error leakage 0, deeply frozen/detached input/result/export, byte-stable awaited results, all capability flags false (provider_selected/runtime_bound/secret_read/network_performed/persistence_performed/queue_performed/preview_effect_performed/production_effect_performed), and zero network/env/filesystem/storage/queue/provider SDK capability (#3874, Child 4B boundary after accepted audit #3873). No real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/reliability-baseline-anomaly-core-4079.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Executes the pure #4079 baseline-store and anomaly-evaluator sources with synthetic/injected bounded evidence and current #3835/#4061 structural authorities; proves baseline-independent hard invariants, statistical-signal suppression without baseline, fail-closed non-healthy monitoring/evidence states, privacy-safe bounded output, determinism, frozen/detached results, injected calibration with no embedded Production thresholds, and preservation of the existing #4061 parity translation boundary without a second #3860 parity engine. No network, database, SQL execution, provider, filesystem-write, scheduler, telemetry-sink, Production, or Preview capability (#4079).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/reliability-canary-lifecycle-core-4081.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure #4081 synthetic canary lifecycle core (js/observability/reliability-canary-lifecycle-core.js) in-process with injected fake dependencies (no network, database, browser, provider, or Production access) and proves the deterministic lifecycle state model: normal full-path CLEANUP_CONFIRMED, FIXTURE_RETAINED_DETERMINISTIC, WRITE_STATUS_UNKNOWN canonical reread/reconciliation without blind retry or immediate abort (positive reread resolves the ambiguity; residual ambiguity fails closed with STOP_SYNTHETIC_WRITES), #4080 classifier result gate (ACKNOWLEDGEMENT_MISSING / TRANSPORT_FAILED / WRITE_REJECTED_VALIDATION / committed-without-confirmation / unknown-code outcomes never fall through to reread or promote to CLEANUP_CONFIRMED), bounded positive canonical-reread confirmation ({confirmed:false} / null / missing / malformed / private-bearing results fail closed), post-write owner confirmation requiring owner_match === true (pre-write=true then post-write=false stateful regression FENCES the fixture; effect-execution-failure / non-plain / private-bearing evidence fails as BOUNDED_STAGE_FAILURE), ownership mismatch => FENCED, fence unavailable/rejected/stale, auth/fixture/dispatch/cleanup/visibility-observer failures, browse observer requiring EXPLICIT bounded negative confirmation (eligible===false | browse_eligible===false) and failing closed as a monitoring failure on throw / non-plain / private-bearing / empty / missing-field / wrong-type results, Browse-eligibility trap (authoritative eligible=false proceeds, eligible=true FENCES), privacy leak rejection, classifier unavailability, await-safe injected effects with Promise-returning and rejected-Promise async fakes, frozen/canonical results, deterministic repeat, caller-input non-mutation, and fixed synthetic-exclusion marker. No real setTimeout, network, database, browser, auth provider, Production, or Preview capability (#4081).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/request-id-sanitization-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2870,6 +3088,18 @@
     },
     {
       "path": "tests/contracts/runtime-boundary-guardrail-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/schema-orphan-structural-sentinel-readonly-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes the real query catalog and evaluation core in a restricted sandbox with synthetic fake executors only, and never connects to any database, network, provider, browser, or deployment target (#3842).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/schema-orphan-write-read-sentinel-taxonomy-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
@@ -3751,18 +3981,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/schema-orphan-write-read-sentinel-taxonomy-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/schema-orphan-structural-sentinel-readonly-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes the real query catalog and evaluation core in a restricted sandbox with synthetic fake executors only, and never connects to any database, network, provider, browser, or deployment target (#3842).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/search-csp-inline-cleanup-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -3859,9 +4077,45 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/settings-display-name-edit-3617-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Actual Playwright Chromium loads actual pages/settings.html under strict CSP (script-src self + gstatic/apis). Controlled Firebase fixture only. Executes actual js/settings.js display-name edit write flow: success updateProfile once with trim, visible success status after form hide, unchanged zero Firebase calls with visible no-change status, 50/51 emoji code-point validation, delayed double-submit single call, Escape-while-saving does not cancel, rejection/sync-throw/missing/non-function fail-closed, cancel/idle Escape, Korean/English labels, mobile overflow. Asserts cache/header/profile sync without renderSharedHeader re-init. No Production account mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-display-name-edit-3617-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes js/settings.js validateDisplayName in a Node VM and asserts Unicode code-point length boundaries (50/51 ASCII, Korean, astral emoji), blank rejection, HTML result-status placement outside the edit form, removal of native maxlength=50, typeof updateProfile function guard, Escape-while-saving early return, and fail-closed write-error path. No real browser/network/DB/Production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-password-reset-3635-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Actual Playwright Chromium loads actual pages/settings.html under strict CSP (script-src self + gstatic/apis). Controlled Firebase fixture only. Executes actual js/settings.js password reset email flow: password/google+password success with single sendPasswordResetEmail call and sent status, google-only managed notice with zero calls, unknown unavailable notice with zero calls, missing-email note with zero calls, rejected/sync-throw/missing-dep/non-function-dep fail-closed with retry, double-click single call, sent-state repeat prevention, KO/EN label and status retranslation on language change, language change during pending preserves sending state, missing firebase/auth global graceful sendFailed with no pageerror, shared header rendered at most once, mobile 375x812 no overflow, ARIA role/aria-live, empty status display:none. No real Firebase network, no Production reset emails sent.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-password-reset-3635-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes js/settings.js resolvePasswordResetMode and passwordResetState in a Node VM sandbox and asserts provider matrix (password→reset, google+password→reset, password-no-email→missingEmail, google-only→googleManaged, unknown→unavailable, null→unavailable), state shape, DOM ID references, button type=button, ARIA attributes, firebase/auth/sendPasswordResetEmail guard patterns, Promise.resolve() async chain, double-click guard, i18n keys with ko/en, no inline bootstrap, no sendPasswordResetEmail in firebase-config/shared-header/settings-bootstrap, no initializeApp/apiKey in settings.js, exactly one onAuthStateChanged, and cache token chain 20260724-3635-1. No real browser/network/DB/Production mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/settings-profile-menu-click-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-readonly-account-3583-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Launches actual Chromium via Playwright to load actual pages/settings.html served by a local HTTP server with controlled auth fixture (no real Firebase). Executes actual js/settings.js, actual js/i18n/i18n-shared.js, actual css/settings.css. Validates Profile/Account sections, displayName fallback, email, uid, provider label, password info, avatar/initials, logout button, shared header, close/escape, no horizontal overflow, no console errors, mobile 375x812 layout. No real Firebase network, no Production login, no Production data.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/settings-readonly-account-3583-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes settings.js helper functions in a local vm context; validates i18n, HTML structure, innerHTML safety, no write API calls, logout path, accessibility. No real browser/network/DB.",
       "capabilities": []
     },
     {
@@ -3886,6 +4140,12 @@
       "path": "tests/contracts/shared-header-nav-spacing-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/shared-loading-state-primitives-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Validates css/global/lovetree-loading-states.css class families, reduced-motion behavior, skeleton aria-hidden convention, error/degraded distinction, import ordering, and 10 shared KO/EN i18n keys; enforces absence of page-specific selectors, runtime behavior, and prohibited functions (#3691).",
       "capabilities": []
     },
     {
@@ -3931,6 +4191,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/test-suite-count-authority-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads fixed repository-owned classification/registry/package sources and executes the pure canonical test-suite count authority with synthetic fixtures and negative controls; derives deterministic frozen default-CI counts and supplemental totals without network, child process, filesystem write, database, browser, or Production access (#3838).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/text-led-media-fallback-theme-safety-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -3940,6 +4206,18 @@
       "path": "tests/contracts/text-led-media-fallback-visual-rhythm-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-card-composition-3578-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Loads REAL production surface modules (js/utils/security.js, js/shared/tree-card-metrics.js, js/shared/tree-card-composition.js, js/search/search-card-renderer.js, js/my-trees/my-trees-ui.js + entry-target-resolver + card-visuals + card-events) in actual Playwright Chromium served from a local HTTP server. Validates Browse and My Trees actual runtime card root structure (.tree-card.love-tree-card, no nesting), mode=edit absence, visibility indicators (public globe / private lock), mobile/keyboard interaction (single navigation, nested action de-dup, desktop selection-only), DOM XSS escaping per sink (title, label, aria-label, URL matrix), dependency fail-closed matrix (8 cases: missing security, missing metrics, throwing renderer, missing composition in surface adapters), metrics contract (authoritative zero, unknown omission, view/like/comment/share order), and media slot contract. No production write / auth / API / DB mutation. page.goto real local HTTP URL (not setContent-only).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-card-composition-3578-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
       "capabilities": []
     },
     {
@@ -3955,21 +4233,21 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/tree-create-write-read-convergence-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the real convergence core and real My Trees create actions runtime with injected fake createTree/getTrees/release-manifest dependencies and proves the bounded tree-create write-read convergence contract: createTree exactly once, REQUEST_DISPATCHED before settlement, SERVER_ACKNOWLEDGED once, canonical reread maximum once, identity-present CONFIRMED vs identity-absent ACKNOWLEDGED_REREAD_MISSING, create rejection TRANSPORT_FAILED, missing ack ACKNOWLEDGEMENT_MISSING, reread rejection MONITORING_FAILED, malformed reread INSUFFICIENT_EVIDENCE, observer failure non-blocking, slow monitoring not delaying redirect, stale cross-save generation suppression, privacy boundary, release SHA validation, memory-create #3852 regression preservation, and the exact two-profile boundary (MEMORY_CREATE_CONVERGENCE -> createMemory/createdMemory, TREE_CREATE_CONVERGENCE -> createTree/createdTree) with non-create taxonomy classes, unknown classes, and mismatched explicit createKey/ackKey tuples rejected as UNKNOWN_OPERATION_CLASS/UNKNOWN_INPUT with zero dispatch, reread, and observer events. No real external system or production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-create-direct-neon-product-adapter.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the #4173 Phase-4 public Tree create direct-Neon candidate adapter and the trees.js POST route in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), an injected fake Neon WS Client via neonImporter (no real DB/network), and a stubbed global fetch, proving the explicit route gate, the public-only route split (omitted/explicit-public -> direct candidate; explicit-private -> null before any direct DB connection or transaction with zero clients/queries), auth-first Firebase principal with zero DB client construction on missing/invalid/unverifiable tokens, UID spoofing rejection with INSERT owner param equal to verified legacyOwnerId, object-only bounded body parsing, strict #3935 scalar validation BEFORE any owner-user upsert or Tree INSERT (title/groupName INVALID_TREE_SCALAR_TYPE, code-point bounds 200/80/24x5, keywords array-only trim dedupe order-preserving), schema-capability-aware owner-user bootstrap fail-closed on unknown required non-null users columns, users->insert->canonical-reread->COMMIT ordering in one request-scoped Neon WS interactive transaction, INSERT RETURNING and canonical reread owner binding with rollback and no COMMIT on mismatch, timestamp ::text projection with normalized text response (no pg Date coercion), exact nine-field response DTO parity, no-store/request-id headers, config-absent and forbidden-fallback bounded 503s with no per-request direct->Modal fallback after direct start, unknown COMMIT outcome 502 with a single attempt and no blind retry, rollback on mid-work failure, sanitized leak-safe errors, route fall-through parity for unset gate, and input object immutability. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, or Production resource is used (#4173).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/tree-comment-direct-neon-product-adapter.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the #4145 Phase-4 Tree Comment direct-Neon candidate adapter in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), and an injected fake Neon WS Client via neonImporter (no real DB/network), proving the explicit route gate, dedicated writer config with forbidden-fallback detection, auth-first Firebase principal, Tree FOR SHARE -> idempotency reserve/replay -> actor rate limit -> INSERT ... RETURNING ordering with NO advisory lock, body-bearing Python json.dumps canonical fingerprint parity (cross-runtime verified ASCII/Korean/trim/escape/control-char/newline/emoji bytes), SELECT-first and INSERT-conflict idempotency re-verification (different-target 409, different-fingerprint 409, completed replay via original-row reread, missing-original 410, pending/failed unavailable, no second comment), rate-limit taxonomy (tree-comment:actor 10/min minute-bucket params, 429 RATE_LIMITED retryAfterMs/Retry-After, 503 RATE_LIMIT_UNAVAILABLE, replay consumes no slot), completion + audit before COMMIT, rollback on work failure, COMMIT_OUTCOME_UNKNOWN 502 with a single attempt and no blind retry or post-unknown rollback, no direct->Modal fallback after direct start, route fall-through parity for unset gate and GET, and sanitized leak-safe errors. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, or Production resource is used (#4145).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-comment-like-timestamp-cast-audit-4157.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads functions/_shared/tree-comment-direct-neon.js and functions/_shared/tree-like-direct-neon.js to assert the #4157 Comment replay/INSERT timestamp text casts and Like's timestamp-free response surface; pure static source-read only, with no function execution, network, database, auth/provider, or Production resource.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-comment-rate-limit-3940-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/social_rate_limit.py, modal_compute/tree_comments.py, and companion test suite to assert bounded Tree-level comment rate limiting contract (10/min, scope tree-comment:actor, memory_id=None, 429/503 taxonomy, transaction ordering visibility -> idempotency -> rate limit -> insert); pure static source-read only, no execution (#3940).",
       "capabilities": []
     },
     {
@@ -4051,6 +4329,66 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-create-direct-neon-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4173 Phase-4 public Tree create direct-Neon candidate adapter and the trees.js POST route in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), an injected fake Neon WS Client via neonImporter (no real DB/network), and a stubbed global fetch, proving the explicit route gate, the public-only route split (omitted/explicit-public -> direct candidate; explicit-private -> null before any direct DB connection or transaction with zero clients/queries), auth-first Firebase principal with zero DB client construction on missing/invalid/unverifiable tokens, UID spoofing rejection with INSERT owner param equal to verified legacyOwnerId, object-only bounded body parsing, strict #3935 scalar validation BEFORE any owner-user upsert or Tree INSERT (title/groupName INVALID_TREE_SCALAR_TYPE, code-point bounds 200/80/24x5, keywords array-only trim dedupe order-preserving), schema-capability-aware owner-user bootstrap fail-closed on unknown required non-null users columns, users->insert->canonical-reread->COMMIT ordering in one request-scoped Neon WS interactive transaction, INSERT RETURNING and canonical reread owner binding with rollback and no COMMIT on mismatch, timestamp ::text projection with normalized text response (no pg Date coercion), exact nine-field response DTO parity, no-store/request-id headers, config-absent and forbidden-fallback bounded 503s with no per-request direct->Modal fallback after direct start, unknown COMMIT outcome 502 with a single attempt and no blind retry, rollback on mid-work failure, sanitized leak-safe errors, route fall-through parity for unset gate, and input object immutability. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, or Production resource is used (#4173).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-create-write-read-convergence-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real convergence core and real My Trees create actions runtime with injected fake createTree/getTrees/release-manifest dependencies and proves the bounded tree-create write-read convergence contract: createTree exactly once, REQUEST_DISPATCHED before settlement, SERVER_ACKNOWLEDGED once, canonical reread maximum once, identity-present CONFIRMED vs identity-absent ACKNOWLEDGED_REREAD_MISSING, create rejection TRANSPORT_FAILED, missing ack ACKNOWLEDGEMENT_MISSING, reread rejection MONITORING_FAILED, malformed reread INSUFFICIENT_EVIDENCE, observer failure non-blocking, slow monitoring not delaying redirect, stale cross-save generation suppression, privacy boundary, release SHA validation, memory-create #3852 regression preservation, and the exact two-profile boundary (MEMORY_CREATE_CONVERGENCE -> createMemory/createdMemory, TREE_CREATE_CONVERGENCE -> createTree/createdTree) with non-create taxonomy classes, unknown classes, and mismatched explicit createKey/ackKey tuples rejected as UNKNOWN_OPERATION_CLASS/UNKNOWN_INPUT with zero dispatch, reread, and observer events. No real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-fork-completeness-3924.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree snapshots public source Memories with a single bounded ORDER BY created_at ASC, id ASC LIMIT 201 FOR SHARE read before any destination write; 200 supported rows copy in full and a 201st row rejects the fork with 409 FORK_SOURCE_TOO_LARGE / supportedMax 200 BEFORE the destination Tree INSERT; forbids LIMIT 200 restoration, COUNT(*) preflight, and any second DB connection, and verifies the #3925 advisory-lock / #3952 / #3956 ordering survives the snapshot reorder; pure static source-read, no execution, no network, no DB (#3924).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-fork-direct-neon-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Phase-4 Tree Fork Cloudflare -> Neon WS interactive transaction candidate adapter in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), and an injected fake Neon WS Client via neonImporter (no real DB/network), proving the explicit route gate (LB_TREE_FORK_WRITE_RUNTIME=direct_neon) with default/unset/modal/unknown remaining Modal-backed, route and method specificity, auth-before-DB with zero transaction/client calls on missing/malformed/invalid/expired/unverified token and sanitized verifier-infrastructure failure, verified Firebase UID as sole owner authority ignoring forged owner headers/email, dedicated symbolic writer config (LOVE_PLATFORM_WRITE_DATABASE_URL) with no generic/read fallback (LOVE_PLATFORM_DATABASE_URL/DATABASE_URL/NETLIFY_DATABASE_URL/DIRECT_NEON_BROWSE_DATABASE_URL rejected) and no per-request Modal fallback after direct start, #4132 adapter reuse with exactly one request-scoped Client, advisory xact lock before source Tree FOR SHARE, source explicit public visibility authorization, missing 404 / private 403 semantics, duplicate lookup after serialization and before destination insert with at-most-one destination Tree and canonical reread, public-only Memory snapshot with FOR SHARE and deterministic ORDER BY created_at ASC, id ASC LIMIT 201, 200 complete copy, 201st row -> 409 FORK_SOURCE_TOO_LARGE before destination insert, fresh destination IDs, parent remap through old->new map, no cross-tree parent FK, owner-user bootstrap parity with schema-capability check and fail-closed unknown required non-null users columns, rollback on work failure, bounded rollback failure, explicit unknown COMMIT outcome with no rollback and no automatic whole-transaction retry (single BEGIN), canonical reread response parity, no-store and request-id response headers, no token/DB URL/JWK/private source leakage, and unchanged unrelated gateway routing. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, writer role, GRANT/REVOKE, or Production resource is used (#4135/#4132/#3924/#3925/#3952/#3956).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-fork-idempotency-lock-3925.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads modal_compute/tree_writes.py source and asserts fork_public_tree serializes competing creators for the same (source_tree_id, owner_id) tuple with a transaction-scoped pg_advisory_xact_lock acquired before the source visibility lock/authorization and before the duplicate lookup and destination INSERT; verifies the sha256-derived signed-bigint lock key is stable and tuple-scoped with process-local hash() negative control; pure static source-read and crypto key computation, no execution, no network, no DB (#3925).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-mode-policy-3581-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "Executes real production modules js/editor/editor-canvas-layout-policy.js, editor-canvas-layout-storage.js, editor-canvas-layout-transition.js, editor-canvas-geometry.js in Playwright Chromium via local HTTP fixture. Asserts #3581 appreciation vs owner-edit layout storage isolation using real localStorage (owner appreciation/public ignore free draft; owner edit restores free positions/viewport; view↔edit rebinding keeps keys; drag only free+owner-edit; structured-first labels; desktop 1440 and mobile 375 overflow). No production write/auth/API/DB mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-mode-policy-3581-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Pure policy matrix and VM localStorage isolation for #3581 resolveLayoutPolicy / storage readOnly boundary / source wiring; does not execute browser canvas runtime.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-browser-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "real Chromium; production canvas modules js/editor/editor-canvas.js + layout/storage/policy/transition/interaction; actual pointer drag; actual localStorage; component-level route simulation via custom fixture; not canonical pages/editor.html boot. Supplemental only for createEditorCanvas restoration, drag persist, layout toggle, tree-key isolation, storage failure, mobile canvas restore. Canonical route/reload owned by editor-route contract.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes production js/editor/editor-canvas-layout-storage.js and editor-canvas-layout.js inside a Node VM with an in-memory localStorage fake. Locks tree-specific key naming, mode/payload validation, structured-does-not-overwrite-free, malformed/getItem/setItem failure fallbacks, read-only/appreciation isolation, and auth source guard that logout does not reference layout keys. No real browser/network/DB/production mutation.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-layout-persistence-3582-editor-route-contract.test.cjs",
+      "layer": "EXECUTED_REAL_LOCAL",
+      "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free→structured→free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-layout-persistence-ownership-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -4090,6 +4428,12 @@
       "path": "tests/contracts/tree-owner-identity-normalization-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/tree-play-mode-core-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/playback/tree-play-mode-core.js in-process in Node with constructed queue inputs and no injected external dependencies, and proves the #4064 one-active-player Tree Play Mode queue core deterministically: ordered occurrence identity by canonical sourceIndex (not mediaId) with duplicate mediaIds remaining distinct, fail-closed segment validation (negative / end<=start / NaN / Infinity / non-numeric bounds), no wrap at queue ends, unavailable occurrences preserved in canonical order with explicit SKIPPED_UNPLAYABLE auto-advance reporting, all-unplayable termination, auto-advance selection separated from PLAYING until adapter confirmation, MANUAL_CONTINUE_REQUIRED on autoplay block distinct from queue failure, frozen/detached snapshots, caller-input non-mutation, reset without prior-state leakage, and a node --check source-static read of js/product/youtube-segment-player-poc.js plus pages/youtube-segment-player-poc.html. No real YouTube/provider/network call, browser, auth provider, database, deployment, or Production resource is used (#4064).",
       "capabilities": []
     },
     {
@@ -4156,6 +4500,12 @@
       "path": "tests/contracts/trees-schema-db-engine-harness-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads package.json, CI workflow, trees-schema db-engine harness source, damaged fixture markers, and classification inventory; asserts loopback guards, seven-column foothold phase markers, and supplemental DB_ENGINE_EXECUTION placement without executing PostgreSQL (#3532).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/users-ddl-proposal-4006-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads db/proposals/4006-canonical-users-auth-identity-proposal.sql, its governing docs/architecture/CANONICAL_USERS_TABLE_DDL_PROPOSAL_4006.md, functions/_shared/tree-fork-direct-neon.js, db/migration-provenance/canonical-migrations.json, the bridge doc, and this registry to assert the #4006/#4157 proposal shape: PROPOSAL_ONLY do-not-execute classification markers, app_account/app_auth_identity/users/auth_audit_log plus app_authenticated_owner_resolution presence, provider+subject uniqueness and one-active-per-provider-per-account partial indexes, users fork-bootstrap parity simulation proving zero unknown required-non-null columns outside the adapter handled set with nullable account_id, verbatim binding invariant wording, additive-only executable surface (zero executable DROP/TRUNCATE/DELETE/UPDATE/ALTER/GRANT/REVOKE/INSERT statements), email never a linking key, bounded audit action vocabulary, untouched ADOPTION_REQUIRED canonical manifest (exactly two catalogued migrations, no proposal references), doc preflight/adoption-sequence markers, bridge view-name parity, and self-registration. Pure static source-read; no SQL execution, network, database, provider, or Production capability (#4006/#4157/#4164).",
       "capabilities": []
     },
     {
@@ -4261,6 +4611,21 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/write-outcome-classifier-4080-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the pure write-outcome classifier core (js/observability/reliability-write-outcome-classifier-core.js) in a node:vm sandbox and the edge-facts adapter (functions/_shared/write-outcome-edge-facts.js) via dynamic import, proving the #4080 provider-neutral write-boundary decision table: five distinct ordered stages, WRITE_ACKNOWLEDGED != CANONICAL_REREAD_CONFIRMED, provider-neutral vocabulary, WRITE_STATUS_UNKNOWN on undecidable timeout/network-error/unknown-commit with retry_safe=false, WRITE_REJECTED_VALIDATION before any DB side effect, TRANSPORT_FAILED, CONFIRMED at FOLLOWUP_REREAD_VISIBLE/CLIENT_VISIBLE_SUCCESS, WRITE_COMMITTED_REREAD_MISSING/MISMATCH, WRITE_COMMITTED_ROW_RETURNED, ACKNOWLEDGED_REREAD_MISSING, INSUFFICIENT_EVIDENCE, frozen canonical results, and privacy rejection of token/email/owner/tree/memory/title/url/payload/sql/raw_error/provider/database_url/secret keys. No network, database, browser, provider, or Production access (#4080).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/write-reread-canonical-postgres-rehearsal-4080.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Collision-safe disposable PostgreSQL commit/reread-divergence rehearsal for #4080. Runs the production classifier core in-process against the deterministic parity matrix. When loopback LB_TEST_PG* env is present, additionally exercises the real disposable harness for commit/reread divergence; bounded-skips otherwise. Zero edits to shared package.json/ci.yml/reporter/registry surface (avoids collision with open PR #4045). Refs #4080, #3461, #3457, #3835, #1882.",
+      "capabilities": [
+        "child_process",
+        "filesystem"
+      ]
+    },
+    {
       "path": "tests/contracts/youtube-channel-source-records-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -4279,12 +4644,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/youtube-playlist-private-import-intent-4069-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the production preview UI module (js/import/youtube-playlist-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM. Verifies the #4069 private-first import-intent contract: canonical Tree-title bound reused from #3935 validate_tree_title max_length=200 (no new persisted limit), deterministic trim with empty/whitespace-only and over-limit titles failing closed, prepared intent visibility exactly 'private' with no public/import-and-publish shortcut, buildPrivateImportIntent is pure/deterministic (source order preserved, duplicate video occurrences distinct, unavailable occurrences excluded, caller inputs never mutated, returned intent detached with no persisted Tree/Moment/Connection identities and no client-side persistence claim), review state is never cached so new preview/selection/title change invalidates stale review, and no fetch/XMLHttpRequest/write-route capability is introduced. No network, no DB, no browser, no Production.",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/youtube-playlist-preview-browser-contract.test.cjs",
       "layer": "EXECUTED_REAL_LOCAL",
       "rationale": "Executes the real production preview UI and client wrapper (js/import/youtube-playlist-preview-ui.js, js/api/import-youtube-playlist-preview.js, css/global.css, css/my-trees.css) in Playwright Chromium (desktop + mobile) against a local HTTP server with the preview provider route mocked via a stubbed fetch. Asserts #3914 preview flow: accessible non-permanently-hidden trigger with aria-expanded + focus management, accepted-source restriction (URL-looking input stays source, bare IDs become playlistId), ordered success preview with explicit unavailable/partial states and position preservation, deterministic placeholder for null thumbnails, 404-thumbnail load-failure fallback to the placeholder with explicit THUMBNAIL_UNAVAILABLE state and no multi-host retry, bounded error + edit/retry, and full 50-item reachability via bounded scrolling on desktop and mobile. No real Google API call, no network beyond the in-process static server, no DB, no Production mutation.",
@@ -4292,24 +4651,6 @@
         "playwright",
         "chromium"
       ]
-    },
-    {
-      "path": "tests/contracts/bookmark-html-preview-ui-4072-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4072 local-preview contract: File.text() local read only with oversized-file fail-closed preflight at parser HARD_LIMITS.maxInputBytes (1 MiB), parser authority is #4065 ONLY (no second parser/DOMParser), ordered preview in canonical sourceIndex order with duplicate URL occurrences kept distinct, clickable link only when parser returned supported=true + non-null url (unsupported/credential/rejected entries inert status only, raw href never reconstructed or displayed), textContent/createElement rendering only (zero innerHTML/srcdoc/document.write sinks, user text cannot execute as HTML), IDLE/READING/READY/EMPTY/ERROR state machine with immediate stale-preview invalidation on new file selection and reset clearing input+preview+error, and no fetch/XHR/FormData/backend/storage capability. No network, no DB, no browser, no Production.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/bookmark-html-preview-ui-4074-ordered-selection.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE extended for #4074) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4074 ordered-selection contract stacked on #4072/#4065 with zero added DOM-XSS sinks (textContent/createElement only): occurrence-based selection by canonical sourceIndex identity (not URL) so duplicate identical URLs stay independently selectable, click order is not canonical import order (buildOrderedBookmarkImportDraft emits selected eligible occurrences in exact ascending sourceIndex order), select-all-eligible and clear controls operate only on eligible occurrences (unsupported scheme / rejected / credential-bearing / null-url occurrences excluded and never silently selected), unsafe URL rows still expose no clickable href (preserves #4072 credential/raw-href non-disclosure), selection resets on new file / READING / parser-read ERROR / EMPTY / explicit reset with no persistent storage (no localStorage/sessionStorage/IndexedDB/cookie, no storage read/write), selected count shown and announced via a role=status aria-live region, and the pure detached builder never mutates the parser/preview result or internal selection state (new frozen objects carrying only occurrenceKey/sourceIndex/title/url/folderPath). No network, no DB, no browser, no Production, no Tree/Moment/Connection write, no backend route.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/bookmark-html-preview-ui-4076-private-import-intent.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the production bookmark HTML preview UI module (js/import/bookmark-html-preview-ui.js, a browser IIFE extended for #4074/#4076) inside a vm sandbox with a stubbed DOM and the real #4065 parser (js/import/bookmark-html-preview-parser.js) injected as the only parsing authority. Verifies the #4076 private-first pre-write import intent review stacked on #4072/#4065/#4074 with zero added DOM-XSS sinks (textContent/createElement only): Tree-title input with deterministic trim and canonical max length 200 reused from modal_compute/validation.py::validate_tree_title (empty/whitespace-only/over-length fail closed, title is plain text/data only), buildBookmarkImportIntent(draft, normalizedTreeTitle) is a pure detached frozen NOT_PERSISTED builder that always sets visibility='private' (no public toggle / import-and-publish shortcut), carries only occurrenceKey/sourceIndex/title/url/folderPath + treeTitle/visibility/source/count and never Tree/Memory/Moment/Connection/owner IDs or server acknowledgement, preserves canonical source order with duplicate identical URLs kept independent and excludes unsupported-scheme / credential-bearing / null-url entries even if passed directly, the bounded role=status aria-live review declares the normalized title / selected count / private visibility / not-yet-saved state and becomes stale/non-actionable on any authority input change (new file / READING / ERROR / EMPTY / reset / selection / select-all / clear / title), the #4075 async supersession lifecycle is preserved (a stale late File.text() fulfillment cannot restore an old review, a late rejection cannot destroy the current review, reset-while-pending cannot be resurrected), and the intent carries no raw bookmark HTML / browser filesystem path / credentials with no fetch/XHR/FormData/storage capability added. No network, no DB, no browser, no Production, no Tree/Moment/Connection write, no backend route, no publication.",
-      "capabilities": []
     },
     {
       "path": "tests/contracts/youtube-playlist-preview-client-contract.test.cjs",
@@ -4329,6 +4670,12 @@
       "path": "tests/contracts/youtube-playlist-preview-route-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Imports the production Cloudflare Pages Function (functions/api/import/youtube/playlist/preview.js, ESM) and executes it with real Request objects and a mocked global fetch to a fake Modal endpoint. Verifies the route is a thin same-origin proxy: exactly-one source/playlistId edge identity rule (no silent precedence), 4KB body bound, content-type/method validation, Authorization header forwarding verbatim (never verified on the edge), fixed Modal preview endpoint targeting, bounded CONFIGURATION_REQUIRED / PROVIDER_UNAVAILABLE / PROVIDER_TIMEOUT failures, and Modal envelope pass-through. Asserts the edge contains no provider endpoint/secret and never fetches the user-supplied URL. No network, no DB, no Production.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/youtube-playlist-private-import-intent-4069-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the production preview UI module (js/import/youtube-playlist-preview-ui.js, a browser IIFE) inside a vm sandbox with a stubbed DOM. Verifies the #4069 private-first import-intent contract: canonical Tree-title bound reused from #3935 validate_tree_title max_length=200 (no new persisted limit), deterministic trim with empty/whitespace-only and over-limit titles failing closed, prepared intent visibility exactly 'private' with no public/import-and-publish shortcut, buildPrivateImportIntent is pure/deterministic (source order preserved, duplicate video occurrences distinct, unavailable occurrences excluded, caller inputs never mutated, returned intent detached with no persisted Tree/Moment/Connection identities and no client-side persistence claim), review state is never cached so new preview/selection/title change invalidates stale review, and no fetch/XMLHttpRequest/write-route capability is introduced. No network, no DB, no browser, no Production.",
       "capabilities": []
     },
     {
@@ -4821,347 +5168,6 @@
       "path": "tests/smoke/routes.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-card-composition-3578-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the shared tree-card-composition.js in a local vm with fake DOM, validates Browse and My Trees surface adapters call the shared helper, common slot structure, three-state metric semantics, surface-specific differences (visibility badge, public metadata, no edit), XSS safety, and fail-closed on missing load order. No real browser/network/DB/production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-card-composition-3578-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Loads REAL production surface modules (js/utils/security.js, js/shared/tree-card-metrics.js, js/shared/tree-card-composition.js, js/search/search-card-renderer.js, js/my-trees/my-trees-ui.js + entry-target-resolver + card-visuals + card-events) in actual Playwright Chromium served from a local HTTP server. Validates Browse and My Trees actual runtime card root structure (.tree-card.love-tree-card, no nesting), mode=edit absence, visibility indicators (public globe / private lock), mobile/keyboard interaction (single navigation, nested action de-dup, desktop selection-only), DOM XSS escaping per sink (title, label, aria-label, URL matrix), dependency fail-closed matrix (8 cases: missing security, missing metrics, throwing renderer, missing composition in surface adapters), metrics contract (authoritative zero, unknown omission, view/like/comment/share order), and media slot contract. No production write / auth / API / DB mutation. page.goto real local HTTP URL (not setContent-only).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-layout-mode-policy-3581-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes real production modules js/editor/editor-canvas-layout-policy.js, editor-canvas-layout-storage.js, editor-canvas-layout-transition.js, editor-canvas-geometry.js in Playwright Chromium via local HTTP fixture. Asserts #3581 appreciation vs owner-edit layout storage isolation using real localStorage (owner appreciation/public ignore free draft; owner edit restores free positions/viewport; view↔edit rebinding keeps keys; drag only free+owner-edit; structured-first labels; desktop 1440 and mobile 375 overflow). No production write/auth/API/DB mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-layout-mode-policy-3581-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Pure policy matrix and VM localStorage isolation for #3581 resolveLayoutPolicy / storage readOnly boundary / source wiring; does not execute browser canvas runtime.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-layout-persistence-3582-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes production js/editor/editor-canvas-layout-storage.js and editor-canvas-layout.js inside a Node VM with an in-memory localStorage fake. Locks tree-specific key naming, mode/payload validation, structured-does-not-overwrite-free, malformed/getItem/setItem failure fallbacks, read-only/appreciation isolation, and auth source guard that logout does not reference layout keys. No real browser/network/DB/production mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-layout-persistence-3582-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "real Chromium; production canvas modules js/editor/editor-canvas.js + layout/storage/policy/transition/interaction; actual pointer drag; actual localStorage; component-level route simulation via custom fixture; not canonical pages/editor.html boot. Supplemental only for createEditorCanvas restoration, drag persist, layout toggle, tree-key isolation, storage failure, mobile canvas restore. Canonical route/reload owned by editor-route contract.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-layout-persistence-3582-editor-route-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "actual pages/editor.html; actual js/editor.js startup (startEditor creates canvas); controlled owner auth/API fixture; URL mode=edit; same-origin route exit/re-entry to canonical editor; page.reload without second goto; no manual createEditorCanvas; actual localStorage; actual pointer drag; tree A/B isolation; free→structured→free; mobile restore. No production/API/DB mutation; no real Firebase login claim.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/settings-readonly-account-3583-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes settings.js helper functions in a local vm context; validates i18n, HTML structure, innerHTML safety, no write API calls, logout path, accessibility. No real browser/network/DB.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/settings-readonly-account-3583-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Launches actual Chromium via Playwright to load actual pages/settings.html served by a local HTTP server with controlled auth fixture (no real Firebase). Executes actual js/settings.js, actual js/i18n/i18n-shared.js, actual css/settings.css. Validates Profile/Account sections, displayName fallback, email, uid, provider label, password info, avatar/initials, logout button, shared header, close/escape, no horizontal overflow, no console errors, mobile 375x812 layout. No real Firebase network, no Production login, no Production data.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/settings-display-name-edit-3617-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes js/settings.js validateDisplayName in a Node VM and asserts Unicode code-point length boundaries (50/51 ASCII, Korean, astral emoji), blank rejection, HTML result-status placement outside the edit form, removal of native maxlength=50, typeof updateProfile function guard, Escape-while-saving early return, and fail-closed write-error path. No real browser/network/DB/Production mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/settings-display-name-edit-3617-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Actual Playwright Chromium loads actual pages/settings.html under strict CSP (script-src self + gstatic/apis). Controlled Firebase fixture only. Executes actual js/settings.js display-name edit write flow: success updateProfile once with trim, visible success status after form hide, unchanged zero Firebase calls with visible no-change status, 50/51 emoji code-point validation, delayed double-submit single call, Escape-while-saving does not cancel, rejection/sync-throw/missing/non-function fail-closed, cancel/idle Escape, Korean/English labels, mobile overflow. Asserts cache/header/profile sync without renderSharedHeader re-init. No Production account mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/settings-password-reset-3635-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes js/settings.js resolvePasswordResetMode and passwordResetState in a Node VM sandbox and asserts provider matrix (password→reset, google+password→reset, password-no-email→missingEmail, google-only→googleManaged, unknown→unavailable, null→unavailable), state shape, DOM ID references, button type=button, ARIA attributes, firebase/auth/sendPasswordResetEmail guard patterns, Promise.resolve() async chain, double-click guard, i18n keys with ko/en, no inline bootstrap, no sendPasswordResetEmail in firebase-config/shared-header/settings-bootstrap, no initializeApp/apiKey in settings.js, exactly one onAuthStateChanged, and cache token chain 20260724-3635-1. No real browser/network/DB/Production mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/settings-password-reset-3635-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Actual Playwright Chromium loads actual pages/settings.html under strict CSP (script-src self + gstatic/apis). Controlled Firebase fixture only. Executes actual js/settings.js password reset email flow: password/google+password success with single sendPasswordResetEmail call and sent status, google-only managed notice with zero calls, unknown unavailable notice with zero calls, missing-email note with zero calls, rejected/sync-throw/missing-dep/non-function-dep fail-closed with retry, double-click single call, sent-state repeat prevention, KO/EN label and status retranslation on language change, language change during pending preserves sending state, missing firebase/auth global graceful sendFailed with no pageerror, shared header rendered at most once, mobile 375x812 no overflow, ARIA role/aria-live, empty status display:none. No real Firebase network, no Production reset emails sent.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-provenance-current-state-audit-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads current-state audit and next-child decision documents and asserts on document structure, status vocabulary, artifact classification vocabulary, test-layer vocabulary, protected issue references, path existence, and prohibition boundaries; does not execute any database, network, or runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-schema-change-inventory-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads docs/architecture/db-schema-change-inventory.json and db-schema-change-inventory.md plus the repository file tree (fs walk only; no git, network, or database) and asserts inventory structure, enum validity, no duplicate or stale paths, protected issue references, secret-absence patterns, that every detected schema-changing artifact (any *.sql file, any DDL-bearing scripts/modal_compute/functions module, any migration-runner/schema-repair named script, or any operator/runbook markdown under docs/ops|architecture|product embedding a fenced SQL block with DDL) is registered in the inventory, and the hard verified-negative invariants that modal_compute/**/*.py and functions/**/*.{js,cjs,mjs} contain no literal schema-changing DDL (independent of registration); does not connect to any database, execute SQL, or run any migration.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-identity-order-checksum-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-provenance-core.cjs (validateMigrationManifest, evaluateProvenance) against synthetic manifests and .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert canonical migration ID format, strictly ascending ordering, canonical path ownership (db/migrations/<id>.sql), basename/ID agreement, raw-byte SHA-256 checksum semantics (LF/CRLF, trailing newline/space, comment, BOM, single-byte changes all mismatch), checksum-format rejection, and synthetic ledger-evidence mismatch (edited/unknown/missing/reordered/duplicate); also asserts the committed canonical manifest stays ADOPTION_REQUIRED with empty migrations and that the core has no database/network/secret surface. Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-source-validation-adapter-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-source-validation-adapter-core.cjs with injected synthetic fixtures, real default adapter against committed inactive sources, and temp-filesystem isolated repositories (B4/B5/B6 malformed fixed files, I1 per-file read counts); asserts frozen public surface, PASS/FAIL/UNAVAILABLE vocabulary, raw malformed JSON parse tests, loader/validator status mapping, verified realTarget read, safe factory config descriptor snapshot including null config rejection and non-enumerable dependency rejection, Promise identity via node:util types.isPromise (Proxy-wrapped Promise get trap 0, accessor/data-property thenable not assimilated), safe loader result snapshot (reversed key order accepted, non-enumerable rejection), safe validator result snapshot (genuine Promise, Proxy-wrapped result, thenable, non-enumerable ok), call-envelope validation, result sanitization, and orchestrator compatibility; no SQL, database, Docker, network, secret, or manifest mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-destructive-ddl-approval-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-provenance-core.cjs (detectDestructiveOperations and validateMigrationManifest) against synthetic .sql fixtures created in the OS temporary directory (removed on completion; none committed to the repository) to assert the static destructive operation vocabulary (DROP_TABLE, TRUNCATE_TABLE, DROP_COLUMN, ALTER_COLUMN_TYPE, SET_NOT_NULL, DROP_CONSTRAINT, DROP_INDEX, DROP_FUNCTION, DROP_TRIGGER, DROP_TYPE, DROP_POLICY, FK_CASCADE_EXPANSION), the actual-vs-declared declaration rule (missing/partial/unknown/duplicate/spurious all fail closed), risk_class=DESTRUCTIVE enforcement, and approval-reference policy (empty and placeholder approvals rejected; real references accepted). Does not connect to any database, execute SQL, add a canonical migration, or activate the canonical stream.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-canonical-runner-protocol-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-runner-protocol-core.cjs (evaluateMigrationPreflight and evaluateMigrationCompletion) as pure functions over bounded input objects (no database connection, no SQL execution, no ledger write, no advisory lock acquisition, no SQL fixtures) to assert the hardened fail-closed protocol: ACTIVE-manifest requirement, source validation (PASS/FAIL/UNAVAILABLE), ledger evidence availability (never coerced from missing/non-array), the ledger as an exact committed prefix of the manifest (index-by-index order, checksum, COMMITTED outcome; duplicate/unknown/reordered/malformed/missing-middle all fail closed), manifest-derived target binding (caller cannot override checksum/mode/dependencies/destructive), exact-next-migration and dependency rules, NOOP only after a fully valid prefix, requestedAction APPLY_FORWARD with forbidden actions (down migration, auto-rollback, re-apply committed, ledger delete, ledger rewrite) failing closed, explicit authorization flags, and completion bound to a re-evaluated canonical preflight (a forged preflight result never authorizes a ledger append) with recovery escalation including SNAPSHOT_RESTORE_DECISION_REQUIRED for destructive partial/unknown. Does not implement a runner or connect to any database.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-canonical-runner-orchestrator-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-runner-orchestrator-core.cjs (runCanonicalMigration) using only synthetic JavaScript dependency mocks (no database, no PostgreSQL, no Docker, no SQL fixture, no network, no filesystem write, no environment secret) to assert the dependency-injected async orchestration: exact dependency call order, runtime-metadata and 11-dependency validation, source/manifest/lock/ledger/precondition fail-closed gates, protocol preflight/completion binding, NOOP behavior, execution/completion handling, ledger append authorization with the exact 7-field record, append/release failure handling and recovery escalation, lock released exactly once after ACQUIRED, and sanitized results (no lock handle, raw manifest, ledger record, SQL, error message/stack, hostname/URL, credential, or operator identity). Does not implement a real runner or connect to any database.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-precondition-composition-root-postgres-rehearsal-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Source-static contract for the CI-only disposable PostgreSQL rehearsal (Issue #3816): locks the exact nine-file boundary, the exact package script test:db-engine:precondition-composition-root, the exact CI job db-engine-precondition-composition-root with postgres:17.4-bookworm and server_version_num 170004 assertion, the loopback-only LB_TEST_PG* boundary with no DATABASE_URL/local-Docker/Production/Neon/Modal/provider reference, the plain own-callable dedicated pg.Client session wrapper, the construction-time authorityResolverFactory ACTIVE seam, the SQL boundary (canonical advisory-lock queries, fixed boolean SELECT, read-only residual-lock verification; no DDL/DML/migration/ledger SQL), the SOURCE_STATIC + supplemental DB_ENGINE_EXECUTION(defaultCi:false, capabilities postgresql+network) classification entries, and the parent completion posture (Steps 1-7 complete, Step 8 not authorized). Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; executes no SQL, opens no database, uses no network, no Docker/PostgreSQL, no Production or staging system, no provider credential, and no secret (#3816).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-postgres-session-lock-adapter-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-postgres-session-lock-adapter-core.cjs (createPostgresMigrationSessionLockAdapter and the returned acquireAdvisoryLock/checkAdvisoryLock/releaseAdvisoryLock) using only synthetic JavaScript session/query mocks (no pg, no PostgreSQL engine, no DB connection, no lock acquired, no actual SQL execution, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed two-int lock key pair, exact named/parameterized acquire/check/release queries, pinned-session lifecycle, non-blocking acquisition, current-session pg_locks verification, opaque frozen handle opacity, exactly-once pool release, malformed-evidence classification, orchestrator-compatible status mapping, and sanitized status-only results. Does not connect to any database or acquire any real lock; no Production mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-postgres-ledger-adapter-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-postgres-ledger-adapter-core.cjs (createPostgresMigrationLedgerAdapter and the returned readLedger/appendLedgerRecord) using only synthetic JavaScript query mocks (no pg, no PostgreSQL engine, no DB connection, no actual SQL execution, no real ledger read/write, no network, no filesystem write, no environment secret; SQL present only as contract strings) to assert the fixed schema_migration_ledger relation and fixed seven-field order, the exact named read query lovebud-migration-ledger-read-v1 (ordered SELECT, no SELECT *, no interpolation, no offset/limit) and the append-only named query lovebud-migration-ledger-append-v1 (INSERT ... ON CONFLICT (migration_id) DO NOTHING RETURNING migration_id, content_checksum; no UPDATE/UPSERT-DO-UPDATE/DELETE/TRUNCATE/retry/multi-row), frozen query definitions, read success (frozen [] for empty ledger, frozen seven-field clones, order preservation, raw-reference isolation, all allowed transaction outcomes), read fixed sanitized rejection POSTGRES_LEDGER_READ_UNAVAILABLE (never [] on failure) across invalid handle/broker throw-reject/malformed QueryResult/malformed row/Proxy traps, append input validation with pre-query snapshot and caller-mutation resistance (zero queries on invalid input -> FAILED), append evidence mapping (exact one matching row -> APPENDED, rows:[] -> FAILED, throw/reject/malformed/multi-row/wrong-id-or-checksum/extra-field/Proxy-trap -> UNKNOWN), orchestrator compatibility via the real runCanonicalMigration, opaque lockHandle opacity, mutation resistance, and sanitized status-only results. Does not connect to any database or perform any real ledger read/write; no Production mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/browse-story-view-foundation-3655-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production sources (js/tree-view-mode-switcher.js, js/search/search-story-view.js, js/search/search-page-shell-init.js, js/my-trees/my-trees-page-bootstrap.js, pages/search.html, css/tree-view-mode.css, js/i18n/i18n-search.js, docs/product/lovebud-browse-story-view-foundation-3655-contract.md) and executes the switcher in a local process with an injected fake localStorage/DOM sandbox to lock #3655 surface-specific mode capability (Browse four modes incl. stored story restore; My Trees three modes with story rejected and storage never rewritten), base-mode backward compatibility, frozen exported mode arrays, Story controller boundaries (no fetch/API/DB/auth capability, no framework, no autoplay or looping timer, no server-pagination semantics, no card HTML generation, no per-card listeners), minimal nav contract (previous/next/local position only, no numbered pages), Browse-scoped CSS selectors, reduced-motion CSS, i18n ko/en keys, and parent/child issue references. No real browser, network, or production resource.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/browse-story-view-foundation-3655-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes real production modules js/tree-view-mode-switcher.js, js/search/search-story-view.js, js/search/search-card-renderer.js, js/search/search-card-events.js and js/my-trees/my-trees-page-bootstrap.js in Playwright Chromium against the production CSS chains css/global.css, css/shared/love-tree-card-composition.css, css/search.css, css/my-trees.css and css/tree-view-mode.css served by a local HTTP server. Asserts #3655 Story foundation behaviour with measured geometry and interaction: Browse four-mode capability with stored story restore and compact defaults, My Trees three-mode capability rejecting stored story without rewrite, responsive local group sizes 3/2/1 at 1440x900 / 768x1024 / 375x812 over 7 loaded cards with ordered local sequence, previous/next boundary states, local position indicator, result replacement reset/clamp, skeleton and empty nav hiding, one-card coherence, full restore on mode exit, ArrowLeft/ArrowRight/Home/End keyboard semantics with editable-target and modifier guards, single-movement keydowns, canonical single-CTA card activation (click/Enter/Space) to view.html?treeId= exactly once, hidden-card tab-order exclusion, no duplicate delegated card events, mobile horizontal containment, nav containment inside the main column, and reduced-motion animation removal. Local loaded-results grouping only; no server pagination, no production write/auth/API/DB mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-canonical-manifest-adapter-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Exercises scripts/migration-canonical-manifest-adapter-core.cjs (createMigrationCanonicalManifestAdapter and the returned loadManifest) using ONLY synthetic JavaScript mocks and isolated temp-filesystem fixtures (no pg, no PostgreSQL engine, no DB connection, no SQL execution, no network, no environment secret; SQL present only as contract strings with computed checksums) to assert the fixed single-file canonical manifest path (db/migration-provenance/canonical-migrations.json), the existing validateMigrationManifest policy delegation, exact six-field runner-only projection (id, checksum, depends_on, transaction_mode, risk_class, destructive_operations), full manifest order preservation, target-neutral behavior, deep detached frozen output, fixed public error constants (MIGRATION_CANONICAL_MANIFEST_UNAVAILABLE, MIGRATION_CANONICAL_MANIFEST_ADAPTER_INVALID_DEPENDENCY), stack/cause/path sanitization, verified realTarget direct read via realpath confinement, exactly-once read/parse/validator counts, genuine Promise only boundary (Proxy-wrapped Promise and arbitrary thenable rejection), descriptor snapshot boundaries for factory config and call envelope, Promise/Proxy/thenable hostile evidence, ADOPTION_REQUIRED inactive manifest acceptance, and orchestrator compatibility via the real runCanonicalMigration. No DB, SQL, PostgreSQL, Docker, Production, provider, or secret capability. Temp filesystem fixtures with copied adapter and provenance-core modules; default adapter validated against the current repository committed manifest.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/db-migration-precondition-registry-source-validation-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Validates the precondition registry schema (format_version, status=ADOPTION_REQUIRED/ACTIVE, entries), entry/check structure, forbidden authority keys, duplicate migration_id/check_id, boolean expected only, getter/Proxy trap safety, null/undefined safety, and cross-binding with canonical migration manifest (ADOPTION_REQUIRED to ADOPTION_REQUIRED, ACTIVE one-to-one, orphan/missing entry rejection) without database, network, SQL, Docker, or Production access (#3659).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/shared-loading-state-primitives-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Validates css/global/lovetree-loading-states.css class families, reduced-motion behavior, skeleton aria-hidden convention, error/degraded distinction, import ordering, and 10 shared KO/EN i18n keys; enforces absence of page-specific selectors, runtime behavior, and prohibited functions (#3691).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/browse-my-trees-staged-loading-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes production createBrowseLoadingManager and createMyTreesLoadingManager in node:vm with fake DOM and deterministic fake clock: timed state transitions (0-499ms hidden, 500ms indicator, 1800ms/2000ms copy, 8s long-wait, 15s error/retry), operation-token stale-response protection, timer cleanup on READY/EMPTY/ERROR, My Trees visible DOM-stage transitions via handleLoadingStage, hub degradation wiring (hydration reject → showDegraded, duplicate prevention, stale rejection protection, recovery on success, showContent clears degraded node), and retry button event dispatch. Source-structure checks (pagehide, retry listener, incremental path, init order) are labeled SOURCE_STATIC within the file. No real setTimeout, network, database, browser, or production resource is used (#3693).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/home-mixed-artist-spotlight-3625-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source (.html, .css, .js) and asserts on strings, regex, file existence, structure, order, or syntax markers for the #3625 center-spotlight showcase: fixed artist keys, spotlight CSS classes, spotlight JS state machine, FIXED_CARD_MAP, SPOTLIGHT_ORDER, no original flip functions, reduced-motion overrides, FADE phase, and protected Closes/Fixes restrictions. Does not execute the target runtime behavior.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/release-sha-manifest-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes npm run build / scripts/build-static.js and validates exact SHA resolution (git rev-parse HEAD) against regex ^[0-9a-f]{40}$, emitted JSON schema (exactly release_sha + contract_version), fail-closed behavior in invalid-Git context, Cache-Control: no-store in _headers, and cleanup of generated .well-known/release.json artifact. No network, provider, Production, database, or browser access.",
-      "capabilities": [
-        "child_process",
-        "filesystem"
-      ]
-    },
-    {
-      "path": "tests/contracts/database-external-logical-backup-source-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Statically analyzes modal_compute/recovery_backup_app.py and modal_compute/recovery_backup_policy.py to lock #3828 source-only external logical-backup boundaries: separate non-HTTP Modal app name lovebud-recovery-backup, exact three symbolic secret names (lovebud-db, lovebud-recovery-r2, lovebud-recovery-encryption), one-per-24h scheduled function, no @modal.asgi_app/@modal.web_endpoint/FastAPI/Flask, custom-format compressed pg_dump with no-owner/no-privileges, bounded single-attempt dump, streaming authenticated encryption with per-object nonce and stored tag, plaintext deletion before upload, staging upload then head verification then daily/weekly/monthly promotion then staging cleanup, finally cleanup, sanitized-only status via the pure policy module, no restore/reset/branch operation, no import or modification dependency on modal_compute/app.py, and policy-module purity (no modal/boto3/cryptography/psycopg/subprocess/env/network imports). No live provider, R2, Modal, DB, subprocess dump, network, or filesystem mutation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/database-external-logical-backup-behavior-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes only the pure deterministic policy module modal_compute/recovery_backup_policy.py through a local python3 subprocess (scenario script written to the OS temp directory, never the repository) to lock #3828 status semantics: daily-only/daily+weekly/daily+monthly/daily+weekly+monthly success, dump/encryption/plaintext-cleanup/upload/head-verification/daily-promotion failures, daily-valid-with-weekly/monthly-promotion-failure preservation, stale-daily and missing-weekly/monthly classification, and unknown/private/raw/impossible state rejection. No live provider, R2, Modal, DB, pg_dump, network, secret, or filesystem-backup operation.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/my-trees-story-view-foundation-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads production sources (js/my-trees/my-trees-story-view.js, js/search/search-story-view.js, js/my-trees/my-trees-page-bootstrap.js, pages/my-trees.html, css/tree-view-mode.css, js/i18n/i18n-my-trees.js, js/tree-view-mode-switcher.js) and asserts the #3811 My Trees Story thin-adapter contract: adapter initializes the shared LoveBudBrowseStoryView (results/navMount/translate/onGroupChange) without copying it, no second grouping/transition authority, no backend pagination, no autoplay/loop/swipe, entry via setMode('story', { initialTreeId }), result replacement via refresh({ preferredTreeId }), settled onGroupChange snapshot driving selection/preview sync with a mobile no-auto-open guard, My Trees-specific surface translation (i18n-my-trees.js story keys only), Story rail loaded-with-cards only, destroy() releasing listeners/observers, exact four modes (large/compact/list/story) with compact default and page-scoped storage key lovebud:myTrees:viewMode, My Trees HTML/script ordering (shared controller + adapter before bootstrap), and CSS geometry-only .trees-grid[data-tree-view-mode=\"story\"] selectors with reduced motion. No real browser, network, or production resource.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/my-trees-story-view-foundation-browser-contract.test.cjs",
-      "layer": "EXECUTED_REAL_LOCAL",
-      "rationale": "Executes the real pages/my-trees.html and real product modules/CSS (js/my-trees/*, js/search/search-story-view.js, js/tree-view-mode-switcher.js, css/tree-view-mode.css) in Playwright Chromium via a local HTTP server with deterministic authenticated/API stubs (synthetic non-private owner-tree fixtures, inert Firebase). Asserts #3811 My Trees Story behavior: four-mode capability with compact default and stored-story persistence without Browse-key leakage, responsive group sizes 3/2/1 at 1440x900 / 900x900 / 390x844, selected-tree group entry, Next/Previous/Home/End selection + desktop preview-hub sync, mobile group navigation never auto-opening the bottom sheet, preserved card activation and owner actions, filter/result-replacement clamp, no Story rail in loading/empty/error states, leave/re-enter canonical DOM order restore, hidden-card tab/accessibility exclusion, reduced-motion immediate navigation, My Trees-specific localized labels, and zero pageerror/console/requestfailure/HTTP>=400/overflow/leak. No production write/auth/API/DB mutation.",
-      "capabilities": [
-        "playwright",
-        "chromium"
-      ]
-    },
-    {
-      "path": "tests/contracts/db-readonly-target-attribution-parity-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
-      "capabilities": [
-        "filesystem"
-      ]
-    },
-    {
-      "path": "tests/contracts/db-fail-closed-deploy-gate-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/database-recovery-gate-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/client-browse-revocation-cache-4055-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the real js/cache-utils.js, js/search/search-preview-cache.js, and js/search/search-data.js in an in-process fake browser environment (memory cache + fake sessionStorage) and proves the #4055 visibility-revocation sequences deterministically: per-Tree public-projection purge with unrelated-Tree preservation (Case F), sessionStorage resurrection block on reload (Case D), Browse authority-first render with the revoked Tree never painted (Case A), mutation-purge-then-reload absence (Case A2), network-failure negative control where a failed fresh fetch must not restore a deleted Tree from cache (Case C), and the preview authority gate where a cached old thumbnail/source projection is not returned once fresh Browse excludes the Tree (Case B/B2); plus a source-static assertion that mutation purge wiring in editor-tree-helpers/editor-memory-actions/my-trees-actions/editor-rename-ui runs only after confirmed success (Case E). No real network, browser, auth provider, database, deployment, or Production resource is used (#4055).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/write-outcome-classifier-4080-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the pure write-outcome classifier core (js/observability/reliability-write-outcome-classifier-core.js) in a node:vm sandbox and the edge-facts adapter (functions/_shared/write-outcome-edge-facts.js) via dynamic import, proving the #4080 provider-neutral write-boundary decision table: five distinct ordered stages, WRITE_ACKNOWLEDGED != CANONICAL_REREAD_CONFIRMED, provider-neutral vocabulary, WRITE_STATUS_UNKNOWN on undecidable timeout/network-error/unknown-commit with retry_safe=false, WRITE_REJECTED_VALIDATION before any DB side effect, TRANSPORT_FAILED, CONFIRMED at FOLLOWUP_REREAD_VISIBLE/CLIENT_VISIBLE_SUCCESS, WRITE_COMMITTED_REREAD_MISSING/MISMATCH, WRITE_COMMITTED_ROW_RETURNED, ACKNOWLEDGED_REREAD_MISSING, INSUFFICIENT_EVIDENCE, frozen canonical results, and privacy rejection of token/email/owner/tree/memory/title/url/payload/sql/raw_error/provider/database_url/secret keys. No network, database, browser, provider, or Production access (#4080).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/write-reread-canonical-postgres-rehearsal-4080.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Collision-safe disposable PostgreSQL commit/reread-divergence rehearsal for #4080. Runs the production classifier core in-process against the deterministic parity matrix. When loopback LB_TEST_PG* env is present, additionally exercises the real disposable harness for commit/reread divergence; bounded-skips otherwise. Zero edits to shared package.json/ci.yml/reporter/registry surface (avoids collision with open PR #4045). Refs #4080, #3461, #3457, #3835, #1882.",
-      "capabilities": [
-        "child_process",
-        "filesystem"
-      ]
-    },
-    {
-      "path": "tests/contracts/tree-play-mode-core-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the real js/playback/tree-play-mode-core.js in-process in Node with constructed queue inputs and no injected external dependencies, and proves the #4064 one-active-player Tree Play Mode queue core deterministically: ordered occurrence identity by canonical sourceIndex (not mediaId) with duplicate mediaIds remaining distinct, fail-closed segment validation (negative / end<=start / NaN / Infinity / non-numeric bounds), no wrap at queue ends, unavailable occurrences preserved in canonical order with explicit SKIPPED_UNPLAYABLE auto-advance reporting, all-unplayable termination, auto-advance selection separated from PLAYING until adapter confirmation, MANUAL_CONTINUE_REQUIRED on autoplay block distinct from queue failure, frozen/detached snapshots, caller-input non-mutation, reset without prior-state leakage, and a node --check source-static read of js/product/youtube-segment-player-poc.js plus pages/youtube-segment-player-poc.html. No real YouTube/provider/network call, browser, auth provider, database, deployment, or Production resource is used (#4064).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/public-tree-embed-projection-contract.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the pure js/playback/public-tree-embed-projection.js in-process with constructed effective-public Tree/Moment records and the merged #4064 core, proving #4098 strict allowlist projection, exact public visibility fail-closed behavior, private-Moment omission without existence signal, trusted YouTube normalization and unsafe/malformed-source bounded unavailability, duplicate occurrence preservation, dense regenerated sourceIndex, caller-order preservation with no sorting authority, bounded optional startSeconds, endSeconds=null, owner/internal/clientKey/auth/moderation/raw-provider field stripping, caller-input non-mutation, and #4064 queue compatibility. Static source checks prove no network, DOM, Firebase/Auth, DB, storage, provider runtime, route, or external capability. No real network, browser, database, auth/provider, deployment, or Production resource is used (#4098, #4088, #4064).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/reliability-baseline-anomaly-core-4079.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Executes the pure #4079 baseline-store and anomaly-evaluator sources with synthetic/injected bounded evidence and current #3835/#4061 structural authorities; proves baseline-independent hard invariants, statistical-signal suppression without baseline, fail-closed non-healthy monitoring/evidence states, privacy-safe bounded output, determinism, frozen/detached results, injected calibration with no embedded Production thresholds, and preservation of the existing #4061 parity translation boundary without a second #3860 parity engine. No network, database, SQL execution, provider, filesystem-write, scheduler, telemetry-sink, Production, or Preview capability (#4079).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/reliability-canary-lifecycle-core-4081.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the pure #4081 synthetic canary lifecycle core (js/observability/reliability-canary-lifecycle-core.js) in-process with injected fake dependencies (no network, database, browser, provider, or Production access) and proves the deterministic lifecycle state model: normal full-path CLEANUP_CONFIRMED, FIXTURE_RETAINED_DETERMINISTIC, WRITE_STATUS_UNKNOWN canonical reread/reconciliation without blind retry or immediate abort (positive reread resolves the ambiguity; residual ambiguity fails closed with STOP_SYNTHETIC_WRITES), #4080 classifier result gate (ACKNOWLEDGEMENT_MISSING / TRANSPORT_FAILED / WRITE_REJECTED_VALIDATION / committed-without-confirmation / unknown-code outcomes never fall through to reread or promote to CLEANUP_CONFIRMED), bounded positive canonical-reread confirmation ({confirmed:false} / null / missing / malformed / private-bearing results fail closed), post-write owner confirmation requiring owner_match === true (pre-write=true then post-write=false stateful regression FENCES the fixture; effect-execution-failure / non-plain / private-bearing evidence fails as BOUNDED_STAGE_FAILURE), ownership mismatch => FENCED, fence unavailable/rejected/stale, auth/fixture/dispatch/cleanup/visibility-observer failures, browse observer requiring EXPLICIT bounded negative confirmation (eligible===false | browse_eligible===false) and failing closed as a monitoring failure on throw / non-plain / private-bearing / empty / missing-field / wrong-type results, Browse-eligibility trap (authoritative eligible=false proceeds, eligible=true FENCES), privacy leak rejection, classifier unavailability, await-safe injected effects with Promise-returning and rejected-Promise async fakes, frozen/canonical results, deterministic repeat, caller-input non-mutation, and fixed synthetic-exclusion marker. No real setTimeout, network, database, browser, auth provider, Production, or Preview capability (#4081).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/love-platform-api-foundation.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the provider-neutral love-platform-api foundation core and unrouted Worker boundary in-process with constructed Request inputs and injected fake Query/Transaction capabilities, while reading the foundation sources to lock no Product-route/auth-provider/DB-driver/Production-secret coupling. Verifies request-context shape, bounded/sanitized request-id propagation, canonical streamed body-size guard reuse, fixed leak-safe error categories, fail-closed unsupported capabilities, and that Query capability never implies Transaction capability. No real network, database, browser, provider, deployment, runtime binding, Production secret, or Production resource is used (#4094).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/love-platform-api-public-growing-read.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the shared love-platform-api Growing public-read route in-process with constructed Request inputs and an injected fake Query capability, proving the current LoveBud public Tree + public Memory count 1–2 projection, bounded 3..12 limit behavior, canonical request-id/no-store response, public-only DTO allowlist, fail-closed missing capability/invalid route behavior, bounded error redaction, no Transaction implication, and zero external fetch/DB-driver/Product-route/auth-provider capability. No real external network, database, browser, provider, deployment, Production secret, or Production resource is used (#4099).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/love-platform-api-firebase-read-principal.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the love-platform-api Firebase read-principal adapter in-process with constructed Request inputs and an injected fake Firebase verifier, proving deterministic source-only resolution of the read principal, bounded claim/attribute projection, canonical request-id/no-store response, public-only DTO allowlist, fail-closed missing capability/invalid token behavior, bounded error redaction, and no external provider SDK coupling. No real provider SDK, external network, database, browser, deployment, Production secret, or live provider capability is used (#4100).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/love-platform-api-public-lovetree-growing-read.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the love-platform-api public LoveTree-compatible public growing read route in-process with constructed Request inputs and an injected fake Query capability, proving the distinct anonymous Growing Query, exact public DTO projection, normalized limit behavior (default/clamp/whitespace/infinity fail-closed), ambiguous NaN/fractional fail-closed, provider-order preservation with no tertiary sort invention, capability-absent fail-closed, and zero principal/auth/DB/network/provider capability. No real external network, database, browser, provider, deployment, Production secret, or Production resource is used (#4101).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/love-platform-api-growing-product-adapter.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the Cloudflare->Neon Growing Product runtime adapter in-process with constructed Request/env inputs and injected fake query executor, proving explicit gate activation (LB_GROWING_READ_RUNTIME=direct_neon), dedicated DB config validation (LOVE_PLATFORM_DATABASE_URL), fail-closed missing/invalid config behavior with zero Modal fallback, static parameterized SQL mapping, public eligibility preservation (1-2 public memories), ordering and limit parity, leak-safe error sanitization, and driver verification without real network or DB access (#4109).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/neon-ws-transaction-adapter.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the Neon WS transaction adapter against an injected in-memory fake Client/transport to verify request-scoped single-client affinity, parameterized-query validation, adapter-owned transaction control, advisory/row-lock helpers, rollback and rollback-failure behavior, unknown COMMIT outcome with no rollback or automatic whole-transaction retry, concurrent client isolation, canonical reread ordering, and sanitized errors. No real network, Neon database, browser, provider mutation, or Production resource is used (#4093/#4132).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-fork-direct-neon-product-adapter.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the Phase-4 Tree Fork Cloudflare -> Neon WS interactive transaction candidate adapter in-process with constructed Request/env inputs, an injected fake Firebase verifyToken (no JWK/network), and an injected fake Neon WS Client via neonImporter (no real DB/network), proving the explicit route gate (LB_TREE_FORK_WRITE_RUNTIME=direct_neon) with default/unset/modal/unknown remaining Modal-backed, route and method specificity, auth-before-DB with zero transaction/client calls on missing/malformed/invalid/expired/unverified token and sanitized verifier-infrastructure failure, verified Firebase UID as sole owner authority ignoring forged owner headers/email, dedicated symbolic writer config (LOVE_PLATFORM_WRITE_DATABASE_URL) with no generic/read fallback (LOVE_PLATFORM_DATABASE_URL/DATABASE_URL/NETLIFY_DATABASE_URL/DIRECT_NEON_BROWSE_DATABASE_URL rejected) and no per-request Modal fallback after direct start, #4132 adapter reuse with exactly one request-scoped Client, advisory xact lock before source Tree FOR SHARE, source explicit public visibility authorization, missing 404 / private 403 semantics, duplicate lookup after serialization and before destination insert with at-most-one destination Tree and canonical reread, public-only Memory snapshot with FOR SHARE and deterministic ORDER BY created_at ASC, id ASC LIMIT 201, 200 complete copy, 201st row -> 409 FORK_SOURCE_TOO_LARGE before destination insert, fresh destination IDs, parent remap through old->new map, no cross-tree parent FK, owner-user bootstrap parity with schema-capability check and fail-closed unknown required non-null users columns, rollback on work failure, bounded rollback failure, explicit unknown COMMIT outcome with no rollback and no automatic whole-transaction retry (single BEGIN), canonical reread response parity, no-store and request-id response headers, no token/DB URL/JWK/private source leakage, and unchanged unrelated gateway routing. No real network, Neon database, browser, Firebase/Neon Auth provider mutation, Production secret, writer role, GRANT/REVOKE, or Production resource is used (#4135/#4132/#3924/#3925/#3952/#3956).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/users-ddl-proposal-4006-contract.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads db/proposals/4006-canonical-users-auth-identity-proposal.sql, its governing docs/architecture/CANONICAL_USERS_TABLE_DDL_PROPOSAL_4006.md, functions/_shared/tree-fork-direct-neon.js, db/migration-provenance/canonical-migrations.json, the bridge doc, and this registry to assert the #4006/#4157 proposal shape: PROPOSAL_ONLY do-not-execute classification markers, app_account/app_auth_identity/users/auth_audit_log plus app_authenticated_owner_resolution presence, provider+subject uniqueness and one-active-per-provider-per-account partial indexes, users fork-bootstrap parity simulation proving zero unknown required-non-null columns outside the adapter handled set with nullable account_id, verbatim binding invariant wording, additive-only executable surface (zero executable DROP/TRUNCATE/DELETE/UPDATE/ALTER/GRANT/REVOKE/INSERT statements), email never a linking key, bounded audit action vocabulary, untouched ADOPTION_REQUIRED canonical manifest (exactly two catalogued migrations, no proposal references), doc preflight/adoption-sequence markers, bridge view-name parity, and self-registration. Pure static source-read; no SQL execution, network, database, provider, or Production capability (#4006/#4157/#4164).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/auth-mapping-linking-contract-4006.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes a pure in-memory three-layer account-mapping state machine (verified identities -> stable app_account -> legacy owner projection) implementing docs/architecture/AUTH_THREE_LAYER_MAPPING_CONTRACT_4006.md rules R1-R4: frozen surface with fixed provider/error vocabulary and structurally absent email-based resolvers, verification-before-mapping rejection, deny-by-default resolution matrix (IDENTITY_UNKNOWN/IDENTITY_REVOKED/ACCOUNT_DISABLED/ACCOUNT_MERGED_WITHOUT_POLICY/AMBIGUOUS_OWNER_PROJECTION/HOLD_NEW_NEON_ONLY_PRODUCT_WRITES), dual-provider same-account/legacy-owner parity, email-collision independence across accounts, idempotent re-attach with zero audit delta, cross-account rebinding blocked with zero mutation, one-active-identity-per-provider-per-account enforcement, neon-only HOLD, exactly-one-audit-row-per-mutation semantics, bounded audit field shape with raw-subject exclusion, operator-gated disable/merge/recovery flow with justification requirement and verified relink recovery, frozen caller-input non-mutation, and doc-scope cross-checks. No real setTimeout, network, database engine, browser, auth provider, Production, or Preview capability (#4006/#4157).",
-      "capabilities": []
-    },
-    {
-      "path": "tests/contracts/tree-comment-like-timestamp-cast-audit-4157.test.cjs",
-      "layer": "SOURCE_STATIC",
-      "rationale": "Reads functions/_shared/tree-comment-direct-neon.js and functions/_shared/tree-like-direct-neon.js to assert the #4157 Comment replay/INSERT timestamp text casts and Like's timestamp-free response surface; pure static source-read only, with no function execution, network, database, auth/provider, or Production resource.",
       "capabilities": []
     }
   ],
