@@ -119,9 +119,10 @@ outcome through the source-only injected boundary and translates it into the
 `CI_EPHEMERAL` only and is NOT extended to Production scope.
 
 Each parity descriptor carries a fixed frozen `parity_contract` declaring the
-accepted outcome vocabulary (exactly the eight #3860 `PARITY_OUTCOMES` strings:
+accepted outcome vocabulary (exactly the nine #3860 `PARITY_OUTCOMES` strings:
 `PARITY_CONFIRMED`, `PARITY_MISMATCH`, `TARGET_ATTRIBUTION_INVALID`,
-`APPROVAL_INVALID`, `AUTHORITY_ADOPTION_REQUIRED`, `EXPECTED_SCHEMA_INVALID`,
+`APPROVAL_INVALID`, `AUTHORITY_ADOPTION_REQUIRED`,
+`PARITY_VACUOUS_ACTIVE_TARGETS`, `EXPECTED_SCHEMA_INVALID`,
 `CATALOG_COLLECTION_FAILED`, `INSUFFICIENT_EVIDENCE`) and the bounded
 collection-failure marker accepted from the adapter.
 
@@ -135,6 +136,10 @@ PARITY_CONFIRMED            -> CONFIRMED (structural evidence success)
 PARITY_MISMATCH             -> STRUCTURAL_DRIFT_DETECTED (bounded non-success)
 AUTHORITY_ADOPTION_REQUIRED -> SCHEMA_AUTHORITY_UNAVAILABLE (never live-applied
                                success; owner decision required)
+PARITY_VACUOUS_ACTIVE_TARGETS -> SCHEMA_AUTHORITY_UNAVAILABLE (bounded
+                               non-success; baseline_deviation UNKNOWN;
+                               severity WARNING; owner decision required;
+                               evidence PARTIAL)
 CATALOG_COLLECTION_FAILED   -> MONITORING_FAILED (sanitized failure)
 INSUFFICIENT_EVIDENCE       -> INSUFFICIENT_EVIDENCE (never success)
 TARGET_ATTRIBUTION_INVALID  -> INSUFFICIENT_EVIDENCE (bounded non-success)
@@ -145,6 +150,27 @@ unknown outcome             -> INSUFFICIENT_EVIDENCE (bounded non-success)
 
 `CATALOG_COLLECTION_FAILED` is an existing #3860 state and is explicitly mapped
 to the public sentinel `MONITORING_FAILED` state.
+
+### PARITY_VACUOUS_ACTIVE_TARGETS semantics (#4288)
+
+The #3860 parity core emits `PARITY_VACUOUS_ACTIVE_TARGETS` when the expected
+authority is non-empty but every expected object is provisional, so the active
+expected target count is zero. This is a bounded non-success outcome:
+
+```text
+PARITY_VACUOUS_ACTIVE_TARGETS != PARITY_CONFIRMED
+PARITY_VACUOUS_ACTIVE_TARGETS != CONFIRMED
+PARITY_VACUOUS_ACTIVE_TARGETS != AUTHORITY_ADOPTION_REQUIRED
+```
+
+It shares the coarse public sentinel state
+(`SCHEMA_AUTHORITY_UNAVAILABLE` / `OWNER_DECISION_REQUIRED` / `PARTIAL`
+evidence / `WARNING` severity / `UNKNOWN` baseline deviation) with
+`AUTHORITY_ADOPTION_REQUIRED`, but the upstream parity semantics remain
+distinct: adoption-pending versus a vacuous active-target set. The translation
+seam implements an explicit case for the vacuous outcome; it never falls
+through to the unknown-outcome default and is never promoted to any success
+state.
 
 ### Fixed semantics (contract)
 
@@ -342,6 +368,7 @@ synthetic write:0
 
 Refs #3842.
 Refs #4060.
+Refs #4288.
 Refs #3835 — completed.
 Refs #3834 — completed.
 Refs #3458 — completed.

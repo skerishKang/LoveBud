@@ -95,7 +95,8 @@
   // ---------------------------------------------------------------------------
   // Bounded parity outcome vocabulary — EXACT reuse of the #3860
   // read-only target attribution & catalog parity core outcome strings (all
-  // eight, including the preflight-validation failure outcomes). No new
+  // nine, including the preflight-validation failure outcomes and the bounded
+  // vacuous-active-targets outcome introduced by #4288). No new
   // synonymous vocabulary is created here.
   // ---------------------------------------------------------------------------
   var PARITY_OUTCOMES = Object.freeze({
@@ -104,6 +105,7 @@
     TARGET_ATTRIBUTION_INVALID: 'TARGET_ATTRIBUTION_INVALID',
     APPROVAL_INVALID: 'APPROVAL_INVALID',
     AUTHORITY_ADOPTION_REQUIRED: 'AUTHORITY_ADOPTION_REQUIRED',
+    PARITY_VACUOUS_ACTIVE_TARGETS: 'PARITY_VACUOUS_ACTIVE_TARGETS',
     EXPECTED_SCHEMA_INVALID: 'EXPECTED_SCHEMA_INVALID',
     CATALOG_COLLECTION_FAILED: 'CATALOG_COLLECTION_FAILED',
     INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE'
@@ -129,6 +131,7 @@
       PARITY_OUTCOMES.TARGET_ATTRIBUTION_INVALID,
       PARITY_OUTCOMES.APPROVAL_INVALID,
       PARITY_OUTCOMES.AUTHORITY_ADOPTION_REQUIRED,
+      PARITY_OUTCOMES.PARITY_VACUOUS_ACTIVE_TARGETS,
       PARITY_OUTCOMES.EXPECTED_SCHEMA_INVALID,
       PARITY_OUTCOMES.CATALOG_COLLECTION_FAILED,
       PARITY_OUTCOMES.INSUFFICIENT_EVIDENCE
