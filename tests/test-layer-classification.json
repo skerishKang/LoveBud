@@ -5163,6 +5163,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads functions/_shared/tree-comment-direct-neon.js and functions/_shared/tree-like-direct-neon.js to assert the #4157 Comment replay/INSERT timestamp text casts and Like's timestamp-free response surface; pure static source-read only, with no function execution, network, database, auth/provider, or Production resource.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/phase-b-role-mapping-reconciliation-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes CLI subprocesses and injected fake collector seam writing fake .secrets artifacts with fake role mappings/secret files; no real Production DB/network, no secret output.",
+      "capabilities": []
     }
   ],
   "supplemental": [
