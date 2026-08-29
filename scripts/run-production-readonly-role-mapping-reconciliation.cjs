@@ -25,9 +25,14 @@ const fs = require('node:fs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-// This PR is SOURCE-ONLY. Enabling Production execution requires a later,
-// separately approved source change; there is intentionally no runtime override.
-const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = false;
+// This PR is the ephemeral execution candidate for #4297. The enabled gate
+// must never be merged to main; source approval is immutable and not overridable.
+const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = true;
+const PRODUCTION_RECONCILIATION_APPROVAL_REFERENCE = 'issue:4297';
+
+function isSourceBoundApprovalReference(approvalReference) {
+  return approvalReference === PRODUCTION_RECONCILIATION_APPROVAL_REFERENCE;
+}
 
 const {
   RECON_FAILURE,
@@ -211,6 +216,14 @@ async function realCollectRawGrantees(repoRoot, secretFile, roleMappingFile, sta
 async function runReconciliationWithDeps(opts) {
   const { repoRoot, secretFile, roleMappingFile, privateOutputFile, baselineCommit, approvalReference, collectGranteesFn } = opts;
   const state = { collection_session_count: 0 };
+  // The injected test seam must honor the same source-bound authority as main.
+  if (!isSourceBoundApprovalReference(approvalReference)) {
+    return {
+      outcome: 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE',
+      collection_session_count: 0,
+      private_artifact_written: false,
+    };
+  }
   // validate private output path
   let absPrivate;
   try {
@@ -309,6 +322,11 @@ async function main() {
   }
   if (!/^[a-f0-9]{40}$/.test(baselineCommit)) { printErrorOutcome(0); return; }
   if (!/^(?:issue:\d+|decision:[A-Za-z0-9][A-Za-z0-9._-]{2,63})$/.test(approvalReference)) { printErrorOutcome(0); return; }
+  // Reject every caller-supplied authority before any .secrets access, boundary,
+  // client construction, or connection. Only this ephemeral source may run.
+  if (!isSourceBoundApprovalReference(approvalReference)) {
+    printSourceOnlyGate(); return;
+  }
   let actualHead;
   try {
     actualHead = require('child_process').execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', cwd: REPO_ROOT, timeout: 5000, maxBuffer: 1024 }).trim();
