@@ -99,40 +99,25 @@ async function realCollectRawGrantees(repoRoot, secretFile, roleMappingFile, sta
   const adapter = require(path.resolve(__dirname, 'migration-catalog-postgres-adapter-core.cjs'));
   const { Client } = require('pg');
   // Build plan via dedicated boundary (same as Phase B collector)
-  const plan = boundary.buildProductionReadonlyInvocationPlan({ secretFile, roleMappingFile });
-  let privateParts;
+  let plan = null;
+  let privateParts, validatedObjects;
+  let pgConfig, objects, roleMapping;
   try {
+    plan = boundary.buildProductionReadonlyInvocationPlan({ secretFile, roleMappingFile });
     privateParts = boundary.getPrivateInvocationParts(plan);
-  } catch (err) {
-    try { boundary.releaseInvocationPlan(plan); } catch {}
-    throw err;
-  }
-  const { pgConfig, objects, roleMapping } = privateParts;
-  // Validate via adapter authority (reuse)
-  // This also ensures roleMapping shape is exact
-  try {
+    pgConfig = privateParts.pgConfig; objects = privateParts.objects; roleMapping = privateParts.roleMapping;
     adapter.validateRoleMapping(roleMapping);
-  } catch (err) {
-    try { boundary.releaseInvocationPlan(plan); } catch {}
-    throw err;
-  }
-  const maxObjects = 256;
-  let validatedObjects;
-  try {
+    const maxObjects = 256;
     validatedObjects = adapter.validateObjectAllowlist(objects, maxObjects);
-  } catch (err) {
-    try { boundary.releaseInvocationPlan(plan); } catch {}
-    throw err;
-  }
-  const client = new Client(pgConfig);
-  const granteesSet = new Set();
-  let startedTxn = false;
-  try {
-    await client.connect();
-    state.collection_session_count = 1;
-    await client.query(adapter.Q.BEGIN_RO);
-    startedTxn = true;
-    const roRes = await client.query(adapter.Q.SHOW_RO);
+    const client = new Client(pgConfig);
+    const granteesSet = new Set();
+    let startedTxn = false;
+    try {
+      await client.connect();
+      state.collection_session_count = 1;
+      await client.query(adapter.Q.BEGIN_RO);
+      startedTxn = true;
+      const roRes = await client.query(adapter.Q.SHOW_RO);
     const roVal = roRes.rows[0] && (roRes.rows[0].transaction_read_only || Object.values(roRes.rows[0])[0]);
     if (String(roVal).toLowerCase() !== 'on') {
       const e = new Error(RECON_FAILURE.UNEXPECTED);
@@ -148,10 +133,16 @@ async function realCollectRawGrantees(repoRoot, secretFile, roleMappingFile, sta
       const relRes = await client.query(adapter.Q.RELATION, [target.schema, target.object_name]);
       const rel = adapter.classifyRelationRows(relRes.rows, target.object_kind);
       const oid = rel.oid;
-      // grants
+      // grants — fail-closed on null/empty/non-string
       const grRes = await client.query(adapter.Q.GRANTS, [target.schema, target.object_name]);
       for (const r of grRes.rows) {
-        if (r.grantee) granteesSet.add(String(r.grantee));
+        const g = r.grantee;
+        if (g == null || g === '' || typeof g !== 'string') {
+          const e = new Error(RECON_FAILURE.GRANTEE_UNRESOLVABLE);
+          e.category = RECON_FAILURE.GRANTEE_UNRESOLVABLE;
+          throw e;
+        }
+        granteesSet.add(String(g));
       }
       // policies
       const pRes = await client.query(adapter.Q.POLICIES, [oid]);
@@ -181,12 +172,14 @@ async function realCollectRawGrantees(repoRoot, secretFile, roleMappingFile, sta
       }
     }
     return [...granteesSet];
-  } finally {
-    if (startedTxn) {
-      try { await client.query(adapter.Q.ROLLBACK); } catch {}
+    } finally {
+      if (startedTxn) {
+        try { await client.query(adapter.Q.ROLLBACK); } catch {}
+      }
+      try { await client.end(); } catch {}
     }
-    try { await client.end(); } catch {}
-    try { boundary.releaseInvocationPlan(plan); } catch {}
+  } finally {
+    if (plan) { try { boundary.releaseInvocationPlan(plan); } catch {} }
   }
 }
 
@@ -335,11 +328,11 @@ async function main() {
     collected = await realCollectRawGrantees(REPO_ROOT, secretFile, roleMappingFile, state);
   } catch (err) {
     const cat = err && err.category;
-    if (cat === RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE) {
+    if (cat === RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE || cat === RECON_FAILURE.GRANTEE_UNRESOLVABLE) {
       const out = {
         format_version: '1.0',
-        outcome: 'ROLE_MAPPING_RECONCILIATION_POLICY_ROLE_UNRESOLVABLE',
-        bounded_category: 'ROLE_MAPPING_RECONCILIATION_POLICY_ROLE_UNRESOLVABLE',
+        outcome: cat,
+        bounded_category: cat,
         collection_session_count: state.collection_session_count,
         unmapped_grantee_count: 0,
         private_artifact_written: false,

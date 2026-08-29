@@ -19,6 +19,7 @@ const RECON_FAILURE = Object.freeze({
   ROLE_MAPPING_MUTATED: 'ROLE_MAPPING_MUTATED',
   ROLE_MAPPING_INVALID: 'ROLE_MAPPING_INVALID',
   POLICY_ROLE_UNRESOLVABLE: 'ROLE_MAPPING_RECONCILIATION_POLICY_ROLE_UNRESOLVABLE',
+  GRANTEE_UNRESOLVABLE: 'ROLE_MAPPING_RECONCILIATION_GRANTEE_UNRESOLVABLE',
   UNEXPECTED: 'UNEXPECTED',
 });
 
@@ -202,17 +203,21 @@ function computeUnmappedGrantees(grantees, roleMapping) {
 
 /**
  * Build private artifact object (minimal)
- * Preserves raw rolname; validates non-empty, no NUL, byte bound, count bound.
+ * Preserves raw rolname; validates non-empty, no NUL, UTF-8 byte bound, count bound.
+ * Allows leading/trailing spaces for quoted PostgreSQL roles.
  */
 function buildPrivateArtifact(unmappedGrantees) {
   if (!Array.isArray(unmappedGrantees)) fail(RECON_FAILURE.INPUT_INVALID);
   const cleaned = [];
+  // PostgreSQL NAMEDATALEN = 64, identifier max bytes = 63 (excluding terminator)
+  const MAX_BYTES = 63;
   for (const v of unmappedGrantees) {
     if (typeof v !== 'string') fail(RECON_FAILURE.INPUT_INVALID);
-    if (v.length === 0 || v.length > 64) fail(RECON_FAILURE.INPUT_INVALID);
+    if (v.length === 0) fail(RECON_FAILURE.INPUT_INVALID);
     if (v.includes('\0')) fail(RECON_FAILURE.INPUT_INVALID);
-    if (v !== v.trim()) fail(RECON_FAILURE.INPUT_INVALID);
-    // Allow arbitrary PostgreSQL role names (including quoted) – only check NUL and length
+    const byteLen = Buffer.byteLength(v, 'utf8');
+    if (byteLen === 0 || byteLen > MAX_BYTES) fail(RECON_FAILURE.INPUT_INVALID);
+    // Do NOT reject leading/trailing spaces – quoted identifiers may contain them
     cleaned.push(v);
     if (cleaned.length > 256) fail(RECON_FAILURE.INPUT_INVALID);
   }
