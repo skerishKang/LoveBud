@@ -1673,6 +1673,21 @@
       "automation": "manual",
       "ledger_candidate": "yes",
       "notes": "Adopted #4006 canonical slice registered in db/migration-provenance/canonical-migrations.json with byte-exact sha256 checksum and approval_reference issue:4006. ADDITIVE only; stream remains ADOPTION_REQUIRED/inactive - execution requires the separately approved adoption baseline plus the fail-closed canonical runner protocol."
+    },
+    {
+      "path": "db/migrations/20260828070000_add-tree-hub-layouts.sql",
+      "category": "sql_migration",
+      "engine": "postgres",
+      "operations": ["CREATE TABLE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": true,
+      "production_capable": false,
+      "owner_or_issue": "hub-layout-persistence / #4277",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "gated",
+      "ledger_candidate": "yes",
+      "notes": "Source authority for the canonical public.tree_hub_layouts relation already consumed by modal_compute/hub_layouts.py and the gated Cloudflare direct-Neon GET/PUT candidate (functions/_shared/hub-layout-direct-neon.js, functions/_shared/hub-layout-read-direct-neon.js). (tree_id, revision) UNIQUE is intentionally NOT declared per #3923 acceptance criteria: the runtime enforces optimistic concurrency via a transaction-scoped pg_advisory_xact_lock + baseRevision comparison, not via a DB-level unique invariant. Adding a DB-level UNIQUE here would change a documented 409 path into a 23505 unique-violation path for any future schema-mutation anomaly; that defense-in-depth change is deferred to a separate owner-reviewed forward migration. RLS, triggers, extra indexes, and sequences are intentionally absent at this stage; refer to the migration file header for the full justification. SHA-256 of the migration file is fixed and recorded in the PR description (sha256:64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9). Merging this PR does NOT imply Production adoption: the canonical stream remains ADOPTION_REQUIRED; activation requires the separately approved adoption baseline plus the fail-closed canonical runner protocol."
     }
   ]
 }

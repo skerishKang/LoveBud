@@ -12,6 +12,11 @@
     {
       "name": "table:public.tree_appreciation_orders",
       "fingerprint": "sha256:e7bae9da3a80a035066525ae3f2d780bf4aa97c1ef400d151604e0e1998b8bb1"
+    },
+    {
+      "name": "table:public.tree_hub_layouts",
+      "fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "provisional_fingerprint": true
     }
   ],
   "adoption_rule": "No live catalog snapshot or historical application record is committed here. A separately approved read-only adoption procedure must create sanitized object fingerprints before ACTIVE status is allowed.",

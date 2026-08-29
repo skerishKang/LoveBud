@@ -118,7 +118,9 @@ test('core confirms parity against the committed authority with matching sanitiz
   const evidence = {
     format_version: '1.0',
     normalizer_version: '1.0',
-    objects: manifest.critical_objects,
+    objects: manifest.critical_objects
+      .filter((object) => object.provisional_fingerprint !== true)
+      .map((object) => ({ name: object.name, fingerprint: object.fingerprint })),
   };
   const result = await core.runParityPreflight(
     baseConfig(() => evidence, { committedAuthority: committed })
