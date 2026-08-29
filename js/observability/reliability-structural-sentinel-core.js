@@ -405,12 +405,19 @@ function readOwnEnumerableDataProperty(object, key) {
   //   PARITY_MISMATCH             -> STRUCTURAL_DRIFT_DETECTED
   //   AUTHORITY_ADOPTION_REQUIRED -> SCHEMA_AUTHORITY_UNAVAILABLE (bounded
   //                                  non-success; OWNER_DECISION_REQUIRED)
+  //   PARITY_VACUOUS_ACTIVE_TARGETS -> SCHEMA_AUTHORITY_UNAVAILABLE (bounded
+  //                                  non-success; OWNER_DECISION_REQUIRED)
   //   CATALOG_COLLECTION_FAILED   -> MONITORING_FAILED
   //   INSUFFICIENT_EVIDENCE       -> INSUFFICIENT_EVIDENCE
   //   TARGET_ATTRIBUTION_INVALID  -> INSUFFICIENT_EVIDENCE (bounded non-success)
   //   APPROVAL_INVALID            -> INSUFFICIENT_EVIDENCE (bounded non-success)
   //   EXPECTED_SCHEMA_INVALID     -> INSUFFICIENT_EVIDENCE (bounded non-success)
   //   unknown outcome             -> INSUFFICIENT_EVIDENCE (bounded non-success)
+  //
+  // AUTHORITY_ADOPTION_REQUIRED and PARITY_VACUOUS_ACTIVE_TARGETS share the
+  // same coarse public sentinel state but remain DISTINCT upstream parity
+  // semantics (adoption-pending vs vacuous active-target set) and both are
+  // bounded non-success states; neither may promote to CONFIRMED.
   function parityOutcomeToSummary(taxonomy, descriptor, releaseSha, parityOutcome) {
     switch (parityOutcome) {
       case 'PARITY_CONFIRMED':
@@ -430,6 +437,14 @@ function readOwnEnumerableDataProperty(object, key) {
           evidence: taxonomy.EVIDENCE_COMPLETENESS.COMPLETE
         });
       case 'AUTHORITY_ADOPTION_REQUIRED':
+        return buildParitySummary(taxonomy, descriptor, releaseSha, {
+          outcome: taxonomy.OUTCOME_CODES.SCHEMA_AUTHORITY_UNAVAILABLE,
+          deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
+          severity: taxonomy.SEVERITIES.WARNING,
+          ownerAction: taxonomy.OWNER_ACTIONS.OWNER_DECISION_REQUIRED,
+          evidence: taxonomy.EVIDENCE_COMPLETENESS.PARTIAL
+        });
+      case 'PARITY_VACUOUS_ACTIVE_TARGETS':
         return buildParitySummary(taxonomy, descriptor, releaseSha, {
           outcome: taxonomy.OUTCOME_CODES.SCHEMA_AUTHORITY_UNAVAILABLE,
           deviation: taxonomy.BASELINE_DEVIATION_CLASSES.UNKNOWN,
