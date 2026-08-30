@@ -350,10 +350,15 @@ async function main() {
   } catch { printErrorOutcome(0); return; }
 
   // Load and normalize through the same boundary contract as the preflight,
-  // while digesting the original bytes for immutability.
+  // while digesting the exact original bytes after the source-only gate so the
+  // gate-ordering contract can prove no private read occurs before activation.
   let beforeDigest, roleMapping;
   try {
-    ({ beforeDigest, roleMapping } = loadRoleMappingWithDigest(REPO_ROOT, roleMappingFile));
+    const boundary = require(path.resolve(__dirname, 'production-readonly-catalog-boundary-core.cjs'));
+    const mapAbs = path.resolve(REPO_ROOT, roleMappingFile);
+    const bytes = fs.readFileSync(mapAbs);
+    beforeDigest = computeDigest(bytes);
+    roleMapping = boundary.loadProductionRoleMapping(REPO_ROOT, roleMappingFile);
   } catch { printErrorOutcome(0); return; }
 
   // Real production collection (no fake)
