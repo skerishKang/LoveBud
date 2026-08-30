@@ -44,6 +44,9 @@ const PREFLIGHT_STAGE = Object.freeze({
   PRIVATE_OUTPUT_PATH: 'PRIVATE_OUTPUT_PATH',
   SECRET_INPUT_PATH: 'SECRET_INPUT_PATH',
   ROLE_MAPPING_INPUT_PATH: 'ROLE_MAPPING_INPUT_PATH',
+  SECRET_BOUNDARY_INPUT: 'SECRET_BOUNDARY_INPUT',
+  ROLE_MAPPING_BOUNDARY_INPUT: 'ROLE_MAPPING_BOUNDARY_INPUT',
+  REPOSITORY_ALLOWLIST_INPUT: 'REPOSITORY_ALLOWLIST_INPUT',
   PRIVATE_BOUNDARY_INPUT: 'PRIVATE_BOUNDARY_INPUT',
 });
 
@@ -185,6 +188,28 @@ function runPreflight(options, dependencies) {
     validateSecretsInputPath(repoRoot, options.roleMappingFile);
   } catch {
     return invalid(PREFLIGHT_STAGE.ROLE_MAPPING_INPUT_PATH);
+  }
+
+  try {
+    const dedicatedUrl = boundary.loadDedicatedProductionReadonlyDatabaseUrl(
+      repoRoot,
+      options.secretFile
+    );
+    boundary.parseProductionReadonlyDatabaseUrl(dedicatedUrl);
+  } catch {
+    return invalid(PREFLIGHT_STAGE.SECRET_BOUNDARY_INPUT);
+  }
+
+  try {
+    boundary.loadProductionRoleMapping(repoRoot, options.roleMappingFile);
+  } catch {
+    return invalid(PREFLIGHT_STAGE.ROLE_MAPPING_BOUNDARY_INPUT);
+  }
+
+  try {
+    boundary.loadFrozenAdoptionAllowlistObjects(repoRoot);
+  } catch {
+    return invalid(PREFLIGHT_STAGE.REPOSITORY_ALLOWLIST_INPUT);
   }
 
   let plan = null;
