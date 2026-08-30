@@ -13,11 +13,15 @@
  * and the on-disk SQL file, validates the committed authority (bootstrap
  * migration selected by exact ID, ledger critical object selected by exact
  * name, raw-byte checksum, catalog-normalizer fingerprint), and returns a
- * frozen projection plus a `run` factory. The `run` factory opens ONE pinned session, validates config and
- * clean-target evidence, executes the required sequence atomically in a single
- * transaction, and closes/rolls back on any pre-commit failure so no ledger
- * relation, ledger row, or partial object remains. Post-commit verification
- * failures are reported truthfully as COMMITTED_POST_VERIFICATION_FAILED.
+ * frozen projection plus a `run` factory. The `run` factory opens ONE pinned
+ * bootstrap session, acquires the repository migration advisory lock on that
+ * same session, validates config and clean-target evidence, executes the
+ * required sequence atomically in a single transaction, verifies the lock is
+ * still held before COMMIT, releases it after post-commit catalog verification,
+ * and then proves no residual state remains. Any pre-commit failure rolls back
+ * so no ledger relation, ledger row, or partial object remains. Post-commit
+ * verification failures are reported truthfully as
+ * COMMITTED_POST_VERIFICATION_FAILED.
  *
  *   validate config
  *   validate committed manifest/source
@@ -25,13 +29,16 @@
  *   validate exact target class
  *   validate exact approval
  *   open one pinned session
+ *   acquire database-scoped advisory lock on that session
  *   verify clean target evidence
  *   BEGIN
  *   execute exact committed SQL
- *   insert exact ledger row
- *   verify relation and row
+ *   insert exact ledger row and verify returned identity/checksum
+ *   verify relation and total row count
+ *   re-check advisory lock
  *   COMMIT
  *   verify catalog fingerprint
+ *   release advisory lock/session
  *   verify post-commit residual state
  *
  * Dependencies (all functions):
@@ -41,13 +48,19 @@
  *   verifyCleanTarget(session, projection) -> boolean
  *   now()                -> ISO timestamp string for the ledger applied_at
  *
- * Refs: #3846, #3840, #3839, #3816, #3809, #3802, #3657, #3458, #3425, #3435,
- * #3437, #1882
+ * Refs: #4299, #3846, #3840, #3839, #3816, #3809, #3802, #3657, #3458,
+ * #3425, #3435, #3437, #1882
  */
 
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const {
+  createPostgresMigrationSessionLockAdapter,
+  POSTGRES_LOCK_ACQUIRE_STATUSES,
+  POSTGRES_LOCK_CHECK_STATUSES,
+  POSTGRES_LOCK_RELEASE_STATUSES,
+} = require('./migration-postgres-session-lock-adapter-core.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const MANIFEST_PATH = path.join(REPO_ROOT, 'db', 'migration-provenance', 'canonical-migrations.json');
@@ -85,6 +98,9 @@ const FACTORY_ERRORS = Object.freeze({
   DEPENDENCY_MISSING: 'CLEAN_BOOTSTRAP_DEPENDENCY_MISSING',
   OPERATION_INVALID: 'OPERATION_INVALID',
   CLEAN_TARGET_VERIFICATION_FAILED: 'CLEAN_TARGET_VERIFICATION_FAILED',
+  ADVISORY_LOCK_REQUIRED: 'CLEAN_BOOTSTRAP_ADVISORY_LOCK_REQUIRED',
+  ADVISORY_LOCK_LOST: 'CLEAN_BOOTSTRAP_ADVISORY_LOCK_LOST',
+  ADVISORY_LOCK_RELEASE_FAILED: 'CLEAN_BOOTSTRAP_ADVISORY_LOCK_RELEASE_FAILED',
   TRANSACTION_FAILED: 'TRANSACTION_FAILED',
   LEDGER_VERIFICATION_FAILED: 'LEDGER_VERIFICATION_FAILED',
   CATALOG_FINGERPRINT_POST_COMMIT_FAILED: 'CATALOG_FINGERPRINT_POST_COMMIT_FAILED',
@@ -339,6 +355,7 @@ const LEDGER_INSERT_SQL = [
   '   transaction_outcome)',
   'VALUES ($1::text, $2::text, $3::timestamptz, $4::text, $5::text, $6::text, $7::text)',
   'ON CONFLICT (migration_id) DO NOTHING',
+  'RETURNING migration_id, content_checksum',
 ].join('\n');
 
 function createCleanBootstrapRunner(config) {
@@ -352,6 +369,10 @@ function createCleanBootstrapRunner(config) {
       let transactionOpen = false;
       let committed = false;
       let fingerprintVerified = false;
+      let lockAdapter = null;
+      let lockHandle = null;
+      let lockAdapterOwnsSession = false;
+      let lockReleaseAttempted = false;
       try {
         validatePlainRecord(config, FACTORY_ERRORS.CONFIG_INVALID);
         let configKeys;
@@ -410,6 +431,18 @@ function createCleanBootstrapRunner(config) {
 
         session = await openSession();
 
+        lockAdapter = createPostgresMigrationSessionLockAdapter({
+          openSession: async function () { return session; },
+        });
+        lockAdapterOwnsSession = true;
+        const acquireResult = await lockAdapter.acquireAdvisoryLock({
+          targetMigrationId: projection.migrationId,
+        });
+        if (!acquireResult || acquireResult.status !== POSTGRES_LOCK_ACQUIRE_STATUSES.ACQUIRED || !acquireResult.handle) {
+          throw new Error(FACTORY_ERRORS.ADVISORY_LOCK_REQUIRED);
+        }
+        lockHandle = acquireResult.handle;
+
         let cleanTargetResult;
         try {
           cleanTargetResult = await verifyCleanTarget(session, projection);
@@ -426,7 +459,7 @@ function createCleanBootstrapRunner(config) {
         await session.query({ text: projection.sqlText, values: [] });
 
         const appliedAt = await now();
-        await session.query({
+        const insertResult = await session.query({
           text: LEDGER_INSERT_SQL,
           values: [
             projection.migrationId,
@@ -438,6 +471,17 @@ function createCleanBootstrapRunner(config) {
             'COMMITTED',
           ],
         });
+        const insertedRows = insertResult && Array.isArray(insertResult.rows)
+          ? insertResult.rows
+          : [];
+        if (
+          insertedRows.length !== 1
+          || !insertedRows[0]
+          || insertedRows[0].migration_id !== projection.migrationId
+          || insertedRows[0].content_checksum !== projection.checksum
+        ) {
+          throw new Error(FACTORY_ERRORS.LEDGER_VERIFICATION_FAILED);
+        }
 
         const relationCheck = await session.query({
           text: 'SELECT to_regclass($1::text) IS NOT NULL AS exists',
@@ -457,6 +501,11 @@ function createCleanBootstrapRunner(config) {
           throw new Error(FACTORY_ERRORS.LEDGER_VERIFICATION_FAILED);
         }
 
+        const lockCheckResult = await lockAdapter.checkAdvisoryLock({ lockHandle });
+        if (!lockCheckResult || lockCheckResult.status !== POSTGRES_LOCK_CHECK_STATUSES.ACQUIRED) {
+          throw new Error(FACTORY_ERRORS.ADVISORY_LOCK_LOST);
+        }
+
         await session.query('COMMIT');
         transactionOpen = false;
         committed = true;
@@ -466,6 +515,14 @@ function createCleanBootstrapRunner(config) {
           throw new Error(FACTORY_ERRORS.CATALOG_FINGERPRINT_POST_COMMIT_FAILED);
         }
         fingerprintVerified = true;
+
+        lockReleaseAttempted = true;
+        const lockReleaseResult = await lockAdapter.releaseAdvisoryLock({ lockHandle });
+        lockHandle = null;
+        session = null;
+        if (!lockReleaseResult || lockReleaseResult.status !== POSTGRES_LOCK_RELEASE_STATUSES.RELEASED) {
+          throw new Error(FACTORY_ERRORS.ADVISORY_LOCK_RELEASE_FAILED);
+        }
 
         const noResidual = await verifyNoResidualState();
         if (noResidual !== true) {
@@ -498,7 +555,10 @@ function createCleanBootstrapRunner(config) {
           postCommitResidualVerified: false,
         };
       } finally {
-        if (session) {
+        if (lockAdapter && lockHandle && !lockReleaseAttempted) {
+          lockReleaseAttempted = true;
+          try { await lockAdapter.releaseAdvisoryLock({ lockHandle }); } catch { /* ignore */ }
+        } else if (session && !lockAdapterOwnsSession) {
           try { await session.release(); } catch { /* ignore */ }
         }
       }
