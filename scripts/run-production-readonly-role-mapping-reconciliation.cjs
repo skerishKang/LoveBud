@@ -17,7 +17,7 @@
  * stdout: sanitized counts only, never raw grantee/OID/credential.
  * private artifact: .secrets/** exclusive-create, minimal identifiers only.
  *
- * Refs #4295, #1882 KEEP OPEN
+ * Refs #4295, #4304, #1882 KEEP OPEN
  */
 
 const path = require('node:path');
@@ -110,6 +110,23 @@ function printSourceOnlyGate() {
 }
 
 /**
+ * Load the private role mapping through the same boundary normalization used by
+ * the no-connect preflight while preserving a digest of the exact original file
+ * bytes for the post-collection immutability check.
+ *
+ * The boundary accepts both the direct mapping object and the reviewed
+ * { role_mapping: { ... } } wrapper and returns one normalized mapping object.
+ */
+function loadRoleMappingWithDigest(repoRoot, roleMappingFile) {
+  const boundary = require(path.resolve(__dirname, 'production-readonly-catalog-boundary-core.cjs'));
+  const mapAbs = path.resolve(repoRoot, roleMappingFile);
+  const bytes = fs.readFileSync(mapAbs);
+  const beforeDigest = computeDigest(bytes);
+  const roleMapping = boundary.loadProductionRoleMapping(repoRoot, roleMappingFile);
+  return { beforeDigest, roleMapping };
+}
+
+/**
  * Real reviewed Production-readonly grantee collector.
  * Reuses boundary and adapter authority, no caller-controlled host/objects/sql.
  * Collects union of ACL grantees and RLS policy role grantees.
@@ -139,60 +156,60 @@ async function realCollectRawGrantees(repoRoot, secretFile, roleMappingFile, sta
       await client.query(adapter.Q.BEGIN_RO);
       startedTxn = true;
       const roRes = await client.query(adapter.Q.SHOW_RO);
-    const roVal = roRes.rows[0] && (roRes.rows[0].transaction_read_only || Object.values(roRes.rows[0])[0]);
-    if (String(roVal).toLowerCase() !== 'on') {
-      const e = new Error(RECON_FAILURE.UNEXPECTED);
-      e.category = adapter.ADAPTER_FAILURE.CATALOG_ADAPTER_READ_ONLY_REQUIRED;
-      throw e;
-    }
-    const verRes = await client.query(adapter.Q.SHOW_VER);
-    const verRaw = verRes.rows[0] && (verRes.rows[0].server_version_num || Object.values(verRes.rows[0])[0]);
-    boundary.assertSupportedProductionServerVersionNum(verRaw);
-
-    // Fixed repository-owned catalog queries only (union of grants + policy roles)
-    for (const target of validatedObjects) {
-      const relRes = await client.query(adapter.Q.RELATION, [target.schema, target.object_name]);
-      const rel = adapter.classifyRelationRows(relRes.rows, target.object_kind);
-      const oid = rel.oid;
-      // grants — fail-closed on null/empty/non-string
-      const grRes = await client.query(adapter.Q.GRANTS, [target.schema, target.object_name]);
-      for (const r of grRes.rows) {
-        const g = r.grantee;
-        if (g == null || g === '' || typeof g !== 'string') {
-          const e = new Error(RECON_FAILURE.GRANTEE_UNRESOLVABLE);
-          e.category = RECON_FAILURE.GRANTEE_UNRESOLVABLE;
-          throw e;
-        }
-        granteesSet.add(String(g));
+      const roVal = roRes.rows[0] && (roRes.rows[0].transaction_read_only || Object.values(roRes.rows[0])[0]);
+      if (String(roVal).toLowerCase() !== 'on') {
+        const e = new Error(RECON_FAILURE.UNEXPECTED);
+        e.category = adapter.ADAPTER_FAILURE.CATALOG_ADAPTER_READ_ONLY_REQUIRED;
+        throw e;
       }
-      // policies
-      const pRes = await client.query(adapter.Q.POLICIES, [oid]);
-      for (const prow of pRes.rows) {
-        const oids = prow.polroles || [];
-        if (oids.length === 0) {
-          granteesSet.add('PUBLIC');
-        } else {
-          for (const oidVal of oids) {
-            const num = Number(oidVal);
-            if (num === 0) { granteesSet.add('PUBLIC'); continue; }
-            const roleRes = await client.query(adapter.Q.ROLE_NAME, [num]);
-            if (!roleRes.rows || roleRes.rows.length !== 1) {
-              const e = new Error(RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE);
-              e.category = RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE;
-              throw e;
+      const verRes = await client.query(adapter.Q.SHOW_VER);
+      const verRaw = verRes.rows[0] && (verRes.rows[0].server_version_num || Object.values(verRes.rows[0])[0]);
+      boundary.assertSupportedProductionServerVersionNum(verRaw);
+
+      // Fixed repository-owned catalog queries only (union of grants + policy roles)
+      for (const target of validatedObjects) {
+        const relRes = await client.query(adapter.Q.RELATION, [target.schema, target.object_name]);
+        const rel = adapter.classifyRelationRows(relRes.rows, target.object_kind);
+        const oid = rel.oid;
+        // grants — fail-closed on null/empty/non-string
+        const grRes = await client.query(adapter.Q.GRANTS, [target.schema, target.object_name]);
+        for (const r of grRes.rows) {
+          const g = r.grantee;
+          if (g == null || g === '' || typeof g !== 'string') {
+            const e = new Error(RECON_FAILURE.GRANTEE_UNRESOLVABLE);
+            e.category = RECON_FAILURE.GRANTEE_UNRESOLVABLE;
+            throw e;
+          }
+          granteesSet.add(String(g));
+        }
+        // policies
+        const pRes = await client.query(adapter.Q.POLICIES, [oid]);
+        for (const prow of pRes.rows) {
+          const oids = prow.polroles || [];
+          if (oids.length === 0) {
+            granteesSet.add('PUBLIC');
+          } else {
+            for (const oidVal of oids) {
+              const num = Number(oidVal);
+              if (num === 0) { granteesSet.add('PUBLIC'); continue; }
+              const roleRes = await client.query(adapter.Q.ROLE_NAME, [num]);
+              if (!roleRes.rows || roleRes.rows.length !== 1) {
+                const e = new Error(RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE);
+                e.category = RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE;
+                throw e;
+              }
+              const rolname = roleRes.rows[0].rolname;
+              if (typeof rolname !== 'string' || !rolname) {
+                const e = new Error(RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE);
+                e.category = RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE;
+                throw e;
+              }
+              granteesSet.add(String(rolname));
             }
-            const rolname = roleRes.rows[0].rolname;
-            if (typeof rolname !== 'string' || !rolname) {
-              const e = new Error(RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE);
-              e.category = RECON_FAILURE.POLICY_ROLE_UNRESOLVABLE;
-              throw e;
-            }
-            granteesSet.add(String(rolname));
           }
         }
       }
-    }
-    return [...granteesSet];
+      return [...granteesSet];
     } finally {
       if (startedTxn) {
         try { await client.query(adapter.Q.ROLLBACK); } catch {}
@@ -229,16 +246,11 @@ async function runReconciliationWithDeps(opts) {
   if (!/^[a-f0-9]{40}$/.test(baselineCommit)) {
     return { outcome: 'RECONCILIATION_NOT_RUN_INPUT_INVALID', collection_session_count: 0 };
   }
-  // load role mapping with immutability digest
-  let beforeDigest, roleMapping, roleMappingBytes;
+  // Load and normalize through the same boundary contract as the preflight,
+  // while digesting the original bytes for immutability.
+  let beforeDigest, roleMapping;
   try {
-    const mapAbs = path.resolve(repoRoot, roleMappingFile);
-    roleMappingBytes = fs.readFileSync(mapAbs);
-    beforeDigest = computeDigest(roleMappingBytes);
-    roleMapping = JSON.parse(roleMappingBytes.toString('utf8'));
-    // Reuse adapter validator
-    const adapter = require(path.resolve(__dirname, 'migration-catalog-postgres-adapter-core.cjs'));
-    adapter.validateRoleMapping(roleMapping);
+    ({ beforeDigest, roleMapping } = loadRoleMappingWithDigest(repoRoot, roleMappingFile));
   } catch (err) {
     return { outcome: 'RECONCILIATION_NOT_RUN_INPUT_INVALID', collection_session_count: 0, errorCategory: err.category || RECON_FAILURE.ROLE_MAPPING_INVALID };
   }
@@ -337,15 +349,16 @@ async function main() {
     validateSecretsInputPath(REPO_ROOT, roleMappingFile);
   } catch { printErrorOutcome(0); return; }
 
-  // Load role mapping with digest for immutability
+  // Load and normalize through the same boundary contract as the preflight,
+  // while digesting the exact original bytes after the source-only gate so the
+  // gate-ordering contract can prove no private read occurs before activation.
   let beforeDigest, roleMapping;
   try {
+    const boundary = require(path.resolve(__dirname, 'production-readonly-catalog-boundary-core.cjs'));
     const mapAbs = path.resolve(REPO_ROOT, roleMappingFile);
     const bytes = fs.readFileSync(mapAbs);
     beforeDigest = computeDigest(bytes);
-    roleMapping = JSON.parse(bytes.toString('utf8'));
-    const adapter = require(path.resolve(__dirname, 'migration-catalog-postgres-adapter-core.cjs'));
-    adapter.validateRoleMapping(roleMapping);
+    roleMapping = boundary.loadProductionRoleMapping(REPO_ROOT, roleMappingFile);
   } catch { printErrorOutcome(0); return; }
 
   // Real production collection (no fake)
@@ -414,6 +427,7 @@ if (require.main === module) {
 
 module.exports = {
   runReconciliationWithDeps,
+  loadRoleMappingWithDigest,
   validatePrivateOutputPath,
   computeUnmappedGrantees,
   buildPrivateArtifact,

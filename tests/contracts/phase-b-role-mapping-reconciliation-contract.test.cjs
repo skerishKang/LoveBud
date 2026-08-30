@@ -957,4 +957,54 @@ describe('Phase B Role-Mapping Reconciliation Contract', () => {
     cleanup(path.resolve(REPO_ROOT, outRel));
     cleanup(tmpDir);
   });
+
+  it('normalizes direct and wrapped private role mappings identically', () => {
+    const tmpDir = mkTempDir();
+    try {
+      const directFile = path.join(tmpDir, 'direct.json');
+      const wrappedFile = path.join(tmpDir, 'wrapped.json');
+      writeFakeRoleMapping(directFile, { alice: 'APPLICATION' });
+      writeFakeRoleMapping(wrappedFile, { role_mapping: { alice: 'APPLICATION' } });
+      const directRel = path.relative(REPO_ROOT, directFile).replace(/\\/g, '/');
+      const wrappedRel = path.relative(REPO_ROOT, wrappedFile).replace(/\\/g, '/');
+      const direct = CLI.loadRoleMappingWithDigest(REPO_ROOT, directRel);
+      const wrapped = CLI.loadRoleMappingWithDigest(REPO_ROOT, wrappedRel);
+      assert.deepEqual(direct.roleMapping, wrapped.roleMapping);
+      assert.equal(direct.roleMapping.alice, 'APPLICATION');
+      assert.equal(direct.roleMapping.public, 'PUBLIC');
+      assert.match(direct.beforeDigest, /^[a-f0-9]{64}$/);
+      assert.match(wrapped.beforeDigest, /^[a-f0-9]{64}$/);
+    } finally {
+      cleanup(tmpDir);
+    }
+  });
+
+  it('accepts wrapped private role mapping in the no-network reconciliation seam', async () => {
+    const tmpDir = mkTempDir();
+    try {
+      const secretFile = path.join(tmpDir, 'secret.env');
+      const mapFile = path.join(tmpDir, 'wrapped.json');
+      writeFakeSecret(secretFile);
+      writeFakeRoleMapping(mapFile, { role_mapping: { alice: 'APPLICATION' } });
+      const secretRel = path.relative(REPO_ROOT, secretFile).replace(/\\/g, '/');
+      const mapRel = path.relative(REPO_ROOT, mapFile).replace(/\\/g, '/');
+      const outRel = `.secrets/test-wrapper-parity-${Date.now()}-${Math.random().toString(36).slice(2)}.json`;
+      const res = await CLI.runReconciliationWithDeps({
+        repoRoot: REPO_ROOT,
+        secretFile: secretRel,
+        roleMappingFile: mapRel,
+        privateOutputFile: outRel,
+        baselineCommit: BASELINE,
+        approvalReference: APPROVAL,
+        collectGranteesFn: async () => ['alice', 'synthetic_unmapped'],
+      });
+      assert.equal(res.outcome, 'ROLE_MAPPING_RECONCILIATION_READY');
+      assert.deepEqual(res.unmapped, ['synthetic_unmapped']);
+      assert.equal(res.collection_session_count, 0);
+      assert.ok(fs.existsSync(path.resolve(REPO_ROOT, outRel)));
+      cleanup(path.resolve(REPO_ROOT, outRel));
+    } finally {
+      cleanup(tmpDir);
+    }
+  });
 });
