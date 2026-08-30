@@ -14,13 +14,13 @@
  * migration selected by exact ID, ledger critical object selected by exact
  * name, raw-byte checksum, catalog-normalizer fingerprint), and returns a
  * frozen projection plus a `run` factory. The `run` factory opens ONE pinned
- * bootstrap session, acquires the repository migration advisory lock on that
- * same session, validates config and clean-target evidence, executes the
- * required sequence atomically in a single transaction, verifies the lock is
- * still held before COMMIT, releases it after post-commit catalog verification,
- * and then proves no residual state remains. Any pre-commit failure rolls back
- * so no ledger relation, ledger row, or partial object remains. Post-commit
- * verification failures are reported truthfully as
+ * bootstrap session, validates config and clean-target evidence, acquires the
+ * repository migration advisory lock on that same session immediately before
+ * the transactional write path, executes the required sequence atomically,
+ * verifies the lock is still held before COMMIT, releases it after post-commit
+ * catalog verification, and then proves no residual state remains. Any
+ * pre-commit failure rolls back so no ledger relation, ledger row, or partial
+ * object remains. Post-commit verification failures are reported truthfully as
  * COMMITTED_POST_VERIFICATION_FAILED.
  *
  *   validate config
@@ -29,8 +29,8 @@
  *   validate exact target class
  *   validate exact approval
  *   open one pinned session
- *   acquire database-scoped advisory lock on that session
  *   verify clean target evidence
+ *   acquire database-scoped advisory lock on that session
  *   BEGIN
  *   execute exact committed SQL
  *   insert exact ledger row and verify returned identity/checksum
@@ -431,6 +431,16 @@ function createCleanBootstrapRunner(config) {
 
         session = await openSession();
 
+        let cleanTargetResult;
+        try {
+          cleanTargetResult = await verifyCleanTarget(session, projection);
+        } catch {
+          throw new Error(FACTORY_ERRORS.CLEAN_TARGET_VERIFICATION_FAILED);
+        }
+        if (cleanTargetResult !== true) {
+          throw new Error(FACTORY_ERRORS.CLEAN_TARGET_VERIFICATION_FAILED);
+        }
+
         lockAdapter = createPostgresMigrationSessionLockAdapter({
           openSession: async function () { return session; },
         });
@@ -442,16 +452,6 @@ function createCleanBootstrapRunner(config) {
           throw new Error(FACTORY_ERRORS.ADVISORY_LOCK_REQUIRED);
         }
         lockHandle = acquireResult.handle;
-
-        let cleanTargetResult;
-        try {
-          cleanTargetResult = await verifyCleanTarget(session, projection);
-        } catch {
-          throw new Error(FACTORY_ERRORS.CLEAN_TARGET_VERIFICATION_FAILED);
-        }
-        if (cleanTargetResult !== true) {
-          throw new Error(FACTORY_ERRORS.CLEAN_TARGET_VERIFICATION_FAILED);
-        }
 
         await session.query('BEGIN');
         transactionOpen = true;
