@@ -21,7 +21,7 @@ function getBaselineCommit() {
 }
 
 const BASELINE = getBaselineCommit();
-const APPROVAL = 'issue:4295';
+const APPROVAL = 'issue:4297';
 
 function mkTempDir() {
   const dir = path.join(REPO_ROOT, '.secrets', `.test-tmp-${Date.now()}-${Math.random().toString(36).slice(2,6)}`);
@@ -663,17 +663,19 @@ describe('Phase B Role-Mapping Reconciliation Contract', () => {
     cleanup(tmpDir);
   });
 
-  // T10 session semantics
-  it('SOURCE_ONLY_GATE is immutable and has no override surface', () => {
+  // T10 session semantics for the ephemeral candidate.
+  it('EPHEMERAL_CANDIDATE_GATE is enabled only on the activation branch', () => {
     const cliSrc = fs.readFileSync(CLI_PATH, 'utf8');
-    assert.match(cliSrc, /const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = false;/);
+    assert.match(cliSrc, /const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = true;/);
+    assert.match(cliSrc, /const PRODUCTION_RECONCILIATION_APPROVAL_REFERENCE = 'issue:4297';/);
+    assert.match(cliSrc, /function isSourceBoundApprovalReference\(approvalReference\)/);
     assert.doesNotMatch(cliSrc, /process\.env\s*\[/);
     assert.doesNotMatch(cliSrc, /--enable-production|--approved|--force/);
     assert.match(cliSrc, /if \(!PRODUCTION_RECONCILIATION_EXECUTION_ENABLED\)/);
     assert.match(cliSrc, /outcome: 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE'/);
   });
 
-  it('SOURCE_ONLY_GATE blocks issue, decision, and arbitrary approval references', () => {
+  it('SOURCE_BOUND_APPROVAL blocks wrong references before private input access', () => {
     const refs = ['issue:4295', 'issue:4294', 'issue:999999', 'decision:approved-looking-value'];
     for (const approvalReference of refs) {
       let stdout = '';
@@ -698,12 +700,13 @@ describe('Phase B Role-Mapping Reconciliation Contract', () => {
     }
   });
 
-  it('SOURCE_ONLY_GATE runs before main secret reads, collector, and artifacts', () => {
+  it('SOURCE_BOUND_APPROVAL runs before private input reads, collector, and artifacts', () => {
     const cliSrc = fs.readFileSync(CLI_PATH, 'utf8');
     const mainSrc = cliSrc.slice(cliSrc.indexOf('async function main()'));
-    const gateIndex = mainSrc.indexOf('if (!PRODUCTION_RECONCILIATION_EXECUTION_ENABLED)');
-    assert.ok(gateIndex >= 0);
+    const approvalIndex = mainSrc.indexOf('if (!isSourceBoundApprovalReference(approvalReference))');
+    assert.ok(approvalIndex >= 0);
     for (const marker of [
+      'validatePrivateOutputPath(REPO_ROOT',
       'validateSecretsInputPath(REPO_ROOT',
       'fs.readFileSync(mapAbs',
       'realCollectRawGrantees(REPO_ROOT',
@@ -711,14 +714,12 @@ describe('Phase B Role-Mapping Reconciliation Contract', () => {
     ]) {
       const markerIndex = mainSrc.indexOf(marker);
       assert.ok(markerIndex >= 0, `main must contain ${marker}`);
-      assert.ok(gateIndex < markerIndex, `source-only gate must precede ${marker}`);
+      assert.ok(approvalIndex < markerIndex, `approval gate must precede ${marker}`);
     }
-    // The dormant collector retains the reviewed boundary/client implementation,
-    // but main has no reachable call to it while the constant is false.
     assert.match(mainSrc, /realCollectRawGrantees\(REPO_ROOT/);
   });
 
-  it('SOURCE_ONLY_GATE creates no private artifact with valid output path', () => {
+  it('SOURCE_BOUND_APPROVAL creates no private artifact with valid output path', () => {
     const outRel = `.secrets/test-source-only-artifact-${Date.now()}-${Math.random().toString(36).slice(2)}.json`;
     const absOut = path.resolve(REPO_ROOT, outRel);
     let stdout = '';
