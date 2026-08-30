@@ -89,7 +89,7 @@ describe('Phase B reconciliation role-mapping wrapper parity', () => {
         collectGranteesFn: async () => ['alice', 'synthetic_unmapped'],
       });
 
-      assert.equal(result.outcome, 'RECONCILIATION_COMPLETE');
+      assert.equal(result.outcome, 'ROLE_MAPPING_RECONCILIATION_READY');
       assert.deepEqual(result.unmapped, ['synthetic_unmapped']);
       assert.equal(result.collection_session_count, 0);
       assert.ok(fs.existsSync(output));
