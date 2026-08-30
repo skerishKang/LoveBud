@@ -1,43 +1,58 @@
 # MVP Agent Governance
 
 > **Status:** canonical source of truth — owner-approved
-> **Approval provenance:** Issue #3442 comment `4947327550`; CI amendment #3642; separated execution roles #3662; UI Rapid Iteration Lane #3664; parallel semantic-authority amendment #3994 / owner direction 2026-08-12; autonomous advanced/frontier implementation amendment / owner direction 2026-08-17
+> **Latest owner amendment:** Production-first / rollback-first operating direction, 2026-08-30
+> **Primary execution policy:** `PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md`
 
-This document is the canonical source of truth for LoveBud hard blockers, CI classification, browser permission, role-allocation authority, parallel writer ownership, autonomous advanced/frontier implementation entry, and merge governance. Conflicting historical documents are non-normative outside their named original context.
+This document defines LoveBud hard blockers, authority, CI interpretation, integration rules, parallel writer ownership, and role governance. The 2026-08-30 owner amendment changes the default order from **pre-Production validation first** to **rollback-ready Production first**.
 
-## Authority
+## 1. Authority and precedence
 
-- MVP implementation governance: #3442 comment `4947327550`;
-- CI infrastructure-unavailable classification: #3642;
-- Web CTO / Web Developer / Local Validation model: #3662;
-- risk-proportional UI Rapid Iteration Lane: #3664;
-- current multi-model semantic-authority coordination: #3994;
-- autonomous advanced/frontier implementation lane: owner direction 2026-08-17;
-- focused role source: `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`;
-- focused autonomous implementation source: `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md`;
-- focused parallel-work source: `docs/ops/PARALLEL_WORKTREE_AGENT_POLICY.md`;
-- focused UI source: `docs/project/UI_RAPID_ITERATION_LANE.md`.
+Current precedence for execution ordering:
 
-A restriction in a repository document is not automatically a hard blocker. New hard blockers require traceable owner approval. The #3994 parallelism amendment is authoritative for active multi-model work because it was explicitly owner-directed to prevent competing implementations while the platform migration and independent Web CTO work proceed in parallel.
+```text
+PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md
+→ this governance document
+→ focused role/UI/test/verification documents
+→ historical runbooks/task reports
+```
 
-The 2026-08-17 autonomous implementation amendment is also owner-approved. It adds a valid alternative implementation entry path for advanced/frontier-capability models: a capable model may discover and implement a bounded, non-conflicting Issue before receiving a Web CTO instruction, then submit the exact result for independent CTO verification. Lack of a prior CTO assignment is not itself a defect under that lane.
+Older language that makes generic tests, Preview, Local Validation, full CI green, or independent review mandatory **before** a rollback-ready Production change is superseded.
 
-## Hard standing rules
+## 2. Hard standing rules
 
-Only these are mandatory enforced blockers:
+Only the following remain universal blockers:
 
-1. Never expose or commit raw secrets, tokens, passwords, cookies, credentials, private keys, database URLs, authorization headers, or private payloads.
-2. Never destructively delete, overwrite, reset, clean, drop, or force-update another worker's branch, worktree, stash, or uncommitted state.
-3. Destructive Production data deletion, destructive Production schema change, or Production security-policy change requires owner approval.
-4. Do not merge on `CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION`.
-5. `CI_UNAVAILABLE_INFRA` is not a code failure and may use the documented alternative-evidence path.
-6. An implementation worker must not Ready-transition or merge its own active PR unless a task-specific owner instruction explicitly delegates that integration authority. Any authorized merge requires independent review, expected-head SHA verification, and acceptable CI/evidence; squash is the default merge method unless a narrower task contract says otherwise.
-7. During multi-model/parallel implementation, enforce `ONE WRITER PER BRANCH`, `ONE WRITER PER FILE`, and `ONE WRITER PER SEMANTIC AUTHORITY`. YELLOW/RED authority overlap blocks competing implementation until sequencing or ownership transfer is explicit.
-8. Never close #1882; use `Refs #1882` only.
+1. Never expose or commit secrets, credentials, cookies, sessions, tokens, private keys, database URLs, authorization headers, or private payloads.
+2. Never destructively delete, overwrite, reset, clean, drop, or force-update another worker's branch, worktree, stash, staged, untracked, or uncommitted state.
+3. Never create competing writers for the same branch, file, or core semantic authority.
+4. Confirm the exact Production/provider/database/account/branch identity before mutation.
+5. Destructive or genuinely irreversible Production data/schema/security/auth/provider changes require either a concrete restoration/containment mechanism or explicit owner authorization for that exact irreversible action.
+6. Do not falsify CI, suppress a failing test, or manipulate evidence to manufacture a PASS.
+7. Never close #1882; use `Refs #1882` only.
 
-Autonomous advanced/frontier implementation does not weaken any hard standing rule. In particular, it does not grant Ready, merge, protected-Issue close, Production/provider/config/secret mutation, real-user mutation, destructive git, or competing semantic-authority permission.
+## 3. Production-first default
 
-## CI classification
+For a bounded change with a credible restoration path:
+
+```text
+fresh target/authority check
+→ capture rollback anchor
+→ implement
+→ integrate/deploy to Production
+→ immediate Production verification
+→ KEEP if correct
+   OR
+→ ROLLBACK first if incorrect
+→ diagnose/fix after restoration
+→ redeploy
+```
+
+`ROLLBACK_READY = YES` is the normal gate.
+
+Pre-Production tests, Preview/fixed slots, Local Validation, browser matrices, full-suite regression, and waiting for all CI lanes are not default prerequisites.
+
+## 4. CI classification
 
 Use exactly:
 
@@ -48,122 +63,114 @@ CI_PENDING_EXECUTION
 CI_UNAVAILABLE_INFRA
 ```
 
-- **CI_GREEN:** required relevant jobs executed and passed.
-- **CI_EXECUTED_FAILURE:** a relevant lint/build/test/verification step executed and failed; merge blocker.
-- **CI_PENDING_EXECUTION:** a relevant job is queued/running; temporary merge blocker.
-- **CI_UNAVAILABLE_INFRA:** no relevant step executed because of billing, outage, runner allocation, or equivalent infrastructure failure; neither PASS nor code failure.
+These remain factual classifications, but they are no longer universal pre-Production merge gates.
 
-A red job shell with no steps/logs may be `CI_UNAVAILABLE_INFRA`. An actually executed failing step is `CI_EXECUTED_FAILURE`.
+For the owner-approved Production-first lane, `CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION` does not automatically block integration when:
 
-## Allowed by default
+```text
+ROLLBACK_READY = YES
+SECRET_PRIVATE_BOUNDARY = SAFE
+DESTRUCTIVE_IRREVERSIBLE_CHANGE = NO
+SEMANTIC_WRITER_COLLISION = NO
+OWNER_OR_TASK_PRODUCTION_AUTHORITY = YES
+```
 
-The following are allowed without special approval:
+If branch protection mechanically requires a check, use an explicit owner/admin-authorized bypass when available. Do not silently weaken global protection. If bypass is unavailable, report the mechanical blocker.
 
-- ordinary branch/worktree code, docs, and test work within assigned authority;
-- direct feature-branch implementation by a separate Web Developer or designated implementation owner;
-- owner-approved autonomous advanced/frontier implementation of a bounded, non-conflicting Issue after fresh remote/ownership inspection, including selecting or creating the bounded Issue, feature-branch source/docs/test work, additive commits, normal push, Draft PR creation, and correction of self-introduced CI failures;
-- read-only remote review, CI forensic work, and review findings on another worker's active authority;
-- browser start/restart, tabs, navigation, login/logout/re-authentication;
-- localhost, Production, PR/branch preview, fixed slot, disposable environments when the task permits that evidence source;
-- DevTools, CDP, Playwright, screenshots, console/network/API inspection;
-- ordinary in-scope test-data creation/edit/deletion when the task permits it;
-- PR creation, normal additive commits, push, and Draft PR maintenance within the assigned branch/authority.
+## 5. Rollback readiness
 
-For the autonomous frontier lane, “assigned authority” may be established by the worker's fresh collision-safe selection of an unowned bounded Issue or by creating a bounded child Issue, provided no existing branch/file/semantic authority is being competed with. That self-selection remains provisional implementation ownership, not final product acceptance.
+A rollback anchor must identify the prior known-good state or deterministic inverse path.
 
-Ready transition and merge are integration actions, not ordinary implementation actions in an active multi-model lane. They require the applicable task/owner authorization and the independent-review gate above.
+Examples:
 
-## Owner-approved execution model
+```text
+code/runtime  = prior Production commit/deployment
+config/flag   = prior exact value/state
+DB data       = transaction, inverse operation, backup, or snapshot
+DB schema     = down migration or restorable snapshot/branch/backup
+provider      = prior exact route/binding/account identity
+```
 
-Default roles:
+If rollback cannot be made credible:
+
+```text
+ROLLBACK_READY = NO
+IRREVERSIBLE_RISK = YES
+```
+
+and exact owner authorization is required before the irreversible mutation.
+
+## 6. Shared Love platform authority
+
+For Auth/Firebase/Neon/Cloudflare Worker/DB/schema/data/shared API/provider/routing work, fresh-read the controlling shared-platform authorities:
+
+```text
+LoveBud#4004
+LoveTree#152
+LoveBud#4005 when DB/schema/data is involved
+LoveBud#4006 when auth/identity is involved
+```
+
+Current architecture remains one Product authentication authority, one shared backend/API authority, and one canonical writable Tree/Memory/social data authority.
+
+Classify provider/database/auth resources as:
+
+```text
+CANONICAL_PRODUCT_AUTHORITY
+TRANSITIONAL_BRIDGE_NONCANONICAL
+TEST_ISOLATION_ONLY
+PROTOTYPE_ONLY
+HISTORICAL_EVIDENCE_ONLY
+UNKNOWN_STOP
+```
+
+`UNKNOWN_STOP` means identify the exact target before mutation. This architecture/identity gate is not a requirement to run tests first.
+
+## 7. Roles
+
+Default roles remain:
 
 ```text
 Web CTO
 Web Developer / designated implementation owner
-Local Validation when required
+Local Validation when useful
 ```
 
-Default lifecycle:
+Roles do not imply a mandatory serial pre-Production chain.
+
+### Web CTO
+
+Owns architecture/target/risk classification, collision control, rollback sufficiency, remote review, Production result judgment, and integration when authorized.
+
+### Web Developer / implementation owner
+
+Implements bounded work and may integrate/deploy when task/owner authority allows it. Focused tests are optional when they materially reduce expected rework.
+
+### Local Validation
+
+Is invoked only when a local/environment reproduction materially helps. It is not a default prerequisite before Production.
+
+### Autonomous frontier implementation
+
+An advanced/frontier-capability worker may self-select a bounded non-conflicting Issue after fresh remote and authority inspection. It must still obey rollback, secret, architecture, and collision rules.
+
+## 8. Parallel multi-model authority
+
+Keep:
 
 ```text
-user request
-→ Web CTO contract / authority allocation
-→ separate Web Developer or implementation owner
-→ Local Validation only when required
-→ Web CTO independent final review
-→ user decision / authorized expected-head merge
+GREEN  = branch/path/semantic authority independent → parallel implementation allowed
+YELLOW = files differ but semantic authority shared → read/review/forensic parallel; writes sequenced
+RED    = same branch/file/core authority → one active writer only
 ```
 
-Owner-approved autonomous advanced/frontier lifecycle:
+Representative semantic authorities include Auth/session/account/token, DB schema/migration/transport, API runtime/routing, Tree/Memory/social writes, visibility, ownership mapping, and shared platform runtime.
 
-```text
-advanced/frontier implementation model
-→ fresh current-main / Issue / PR / ownership inspection
-→ select or create a bounded non-conflicting Issue
-→ feature-branch implementation + focused tests
-→ Draft PR + exact evidence
-→ Web CTO independent post-implementation review
-→ user decision / authorized expected-head merge
-```
+Production-first never authorizes two competing Production mutations for the same authority.
 
-The second lifecycle is not a protocol violation merely because the CTO did not allocate the work first. The Web CTO must judge the resulting implementation on its actual technical, architectural, collision, safety, test, and CI evidence.
+## 9. UI lane
 
-The same production change should not be implemented and finally approved in the same context. Web CTO may create designs, prototypes, exact copy, state contracts, patch drafts, remote forensic findings, or non-overlapping backlog corrections; a separate implementation owner implements active platform/runtime changes and reports a new exact head for independent review.
-
-An advanced/frontier autonomous worker may itself be that separate implementation owner. Its completion report is evidence input, not final CTO acceptance.
-
-Older references to TF Leads, `UI Local`, `Feature Local`, or a generic local executor as the default production coder are superseded for current role allocation. This does not prohibit a specifically designated advanced/frontier local implementation model from operating under `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md`.
-
-## Parallel multi-model authority
-
-Parallel work is encouraged only when implementation authority is non-conflicting. Branch and file separation are necessary but not sufficient.
-
-Always classify the intended write before mutation:
-
-```text
-GREEN  = branch, path, and semantic authority are independent
-          → parallel implementation allowed
-
-YELLOW = files differ but semantic authority is shared
-          → parallel read/review/CI forensic allowed; implementation is sequenced
-
-RED    = same branch, same file, or same core semantic authority
-          → one active writer only
-```
-
-Representative semantic authorities include:
-
-```text
-AUTH / session / account / token
-DB schema / migration / manifest
-DB transport / driver
-API runtime / routing / Service Binding
-Tree write
-Memory write
-social write
-visibility
-owner / entitlement mapping
-Modal contraction / shared-platform runtime
-```
-
-When an active writer exists:
-
-- other agents may inspect, compare, run read-only forensic work, and leave review findings;
-- they must not create a competing implementation for the same authority;
-- blocking findings are corrected by the active writer on that writer's branch unless ownership is explicitly transferred;
-- after a dependency merges, dependent branches re-check current main, file overlap, semantic overlap, and exact-head CI before proceeding.
-
-An autonomous advanced/frontier worker must perform this same authority check before self-selecting work. “I found the Issue myself” never overrides an existing writer lock.
-
-This rule is the highest-priority coordination rule for an explicitly declared multi-model parallel lane. It exists to preserve development parallelism without creating two sources of implementation authority.
-
-Feature-branch history must remain additive. Rebase, published-history amend/rewrite, and force-push are not normal feature-branch alignment tools. Current-main alignment uses normal merge-forward where required.
-
-A separately assigned fixed test-slot branch is ephemeral verification infrastructure, not a feature implementation branch. The limited `--force-with-lease` procedure in `docs/ops/TEST_PREVIEW_SLOTS.md` remains valid only for that explicitly assigned slot and never authorizes force-updating a feature PR branch or `main`.
-
-## UI Rapid Iteration Lane
-
-UI work is classified:
+UI classes remain:
 
 ```text
 U0 copy-only
@@ -172,65 +179,89 @@ U2 structural UI
 U3 runtime-sensitive UI
 ```
 
-Owner-approved defaults:
+The class determines rollback/observation scope. It no longer automatically determines how much pre-Production testing must be completed.
 
-- U0/U1 skip Local Validation by default;
-- U0/U1 do not require a new child Issue for every micro correction;
-- U0/U1 do not require unrelated full-suite tests, fixed slot, pre-merge screenshots, or universal desktop/mobile QA merely because HTML/CSS changed;
-- U2 uses focused structural tests and conditional browser/Local evidence;
-- U3 uses the full relevant runtime path;
-- Production visual confirmation is the normal final loop under merge-first policy.
+For reversible UI work, Production visual/runtime confirmation is the preferred first real acceptance surface.
 
-This is risk-proportional verification, not removal of quality controls. JavaScript behavior, DOM/focus/visibility semantics, auth/API/data/cache/storage, broad global/shared impact, dependencies, privacy, or security escalate to U2/U3.
+## 10. Backend / DB / Auth / security
 
-## Advisory, not automatic blockers
+The UI fast lane does not define these surfaces. However, Production-first still applies when the change is bounded and reversible.
 
-The following may be useful but are not automatic blockers unless the task contract and actual risk require them:
-
-- one task per branch outside a declared multi-model authority lock;
-- Draft PR by default outside a declared lane that explicitly requires Draft;
-- fixed slot or preview;
-- PR-specific browser entrypoint comment;
-- CTO-assigned URL;
-- clean worktree;
-- Local Validation for every change;
-- full lint/build/test/verify suite for every PR;
-- pre-merge screenshots for every UI change;
-- desktop+375px checks when one viewport cannot be affected;
-- new child Issue for every U0/U1 change;
-- narrow diff/minimal-change preference;
-- module-size/refactor guidance;
-- a safe reported deviation from the default role flow;
-- prior CTO assignment when a designated advanced/frontier worker validly used the autonomous implementation lane.
-
-Within an explicitly declared multi-model lane, writer ownership and no-competing-implementation rules are not advisory; they are the lane's active coordination authority.
-
-## Evidence model
+Preferred DB pattern:
 
 ```text
-LOCAL_EVIDENCE
-PRE_MERGE_EVIDENCE
-PRODUCTION_EVIDENCE
+fresh Production identity
+→ transaction/snapshot/inverse-operation ready
+→ bounded Production mutation
+→ immediate readback
+→ COMMIT/KEEP or ROLLBACK/RESTORE
 ```
 
-Environment controls evidence strength, not permission. If evidence is limited, report the limitation rather than inventing a blocker.
+Stronger preparation is required for destructive/one-way schema changes, un-restorable secret rotation, identity migrations that can strand users, payment/billing, privacy/security reductions, provider deletion, and any no-rollback mutation.
 
-For autonomous implementation, the worker's own completion report remains an evidence input. The Web CTO independently fresh-verifies current `main`, Issue/PR purpose, exact head/base/diff, writer ownership, tests, CI, and relevant architecture/safety boundaries before classification.
+## 11. Testing and evidence
 
-## Dirty worktree
+Testing is selected for diagnostic value, not as a ritual gate.
+
+For rollback-ready work:
 
 ```text
-dirty worktree
-→ preserve existing changes
-→ use another worktree/branch or read-only inspection
-→ do not clean/reset/stash-drop/overwrite
+Production first
+→ immediate Production observation
+→ keep or rollback
+→ targeted CI/test/forensic work afterward when useful
 ```
 
-Dirty state itself is not an automatic blocker.
+Pre-Production focused checks remain allowed when they are cheaper than likely rollback/rework or explicitly requested.
 
-## New restriction protocol
+A good Production result can coexist with a broken or stale test contract. Do not automatically revert correct Product behavior merely to satisfy generic pre-existing test assumptions; classify and repair the test contract separately when appropriate.
 
-A proposed mandatory blocker must include:
+## 12. Failure behavior
+
+When a material Production regression appears and a known-good restore path exists:
+
+```text
+stop additional mutation
+→ rollback/restore
+→ confirm restoration
+→ investigate
+→ fix
+→ redeploy
+```
+
+Rollback precedes long forensic analysis by default.
+
+Do not repeatedly patch a broken Production state in place when clean restoration is available.
+
+## 13. Branch protection and integration
+
+Feature branches/PRs remain the normal mechanism when repository protection requires them.
+
+Production-first does not authorize silent global protection weakening, force-pushing `main`, or fabricated green checks.
+
+When an owner-authorized reversible Production change is mechanically blocked only by a required check, an explicit owner/admin bypass path may be used if repository permissions allow it. Record the bypass and rollback anchor.
+
+## 14. Required report
+
+```text
+TARGET_PRODUCTION_IDENTITY =
+CHANGE_SCOPE =
+ROLLBACK_ANCHOR =
+ROLLBACK_READY = YES / NO
+IRREVERSIBLE_RISK = YES / NO
+PRE_PRODUCTION_TESTS = SKIPPED_BY_POLICY / USED_BY_EXCEPTION
+CI_AT_INTEGRATION = GREEN / EXECUTED_FAILURE / PENDING / UNAVAILABLE / NOT_RUN
+PRODUCTION_MUTATION = PERFORMED / NOT_PERFORMED
+PRODUCTION_RESULT = PASS / FAIL / PARTIAL / UNKNOWN
+ROLLBACK = NOT_NEEDED / PERFORMED / FAILED / NOT_AVAILABLE
+RESTORED_KNOWN_GOOD = YES / NO / NA
+FOLLOW_UP_FORENSIC = REQUIRED / NOT_REQUIRED
+PRIVATE_SECRET_EXPOSURE = NONE
+```
+
+## 15. New restriction protocol
+
+A new mandatory blocker must still include:
 
 ```text
 restriction
@@ -241,30 +272,22 @@ alternatives
 traceable owner approval
 ```
 
-Without owner approval it is:
+Without owner approval it is `RECOMMENDATION_ONLY`.
+
+## 16. One-line rule
 
 ```text
-RECOMMENDATION_ONLY
+exact Production target
+→ concrete rollback
+→ bounded Production mutation
+→ immediate Production verification
+→ keep or restore first
+→ test/forensic afterward as useful
 ```
-
-## Precedence
-
-The following supersede conflicting historical process language:
-
-- this document for hard blockers, CI classification, multi-model writer authority, autonomous advanced/frontier implementation entry, and merge governance;
-- `docs/ops/PARALLEL_WORKTREE_AGENT_POLICY.md` for the operational branch/path/semantic-authority lock procedure;
-- `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md` for default role allocation;
-- `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` for the owner-approved self-directed implementation exception and CTO post-implementation review behavior;
-- `docs/project/UI_RAPID_ITERATION_LANE.md` for UI process weight;
-- `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md` for current browser/Production evidence flow;
-- `docs/ops/TEST_PREVIEW_SLOTS.md` only for explicitly assigned ephemeral fixed-slot update/restore operations.
 
 Refs #3994.
 Refs #3664.
 Refs #3662.
 Refs #3642.
 Refs #3442.
-Refs #3441.
-Refs #3437.
-Refs #3435.
 Refs #1882 — Keep OPEN.
