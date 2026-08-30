@@ -21,7 +21,7 @@ function getBaselineCommit() {
 }
 
 const BASELINE = getBaselineCommit();
-const APPROVAL = 'issue:4295';
+const APPROVAL = 'issue:4297';
 
 function mkTempDir() {
   const dir = path.join(REPO_ROOT, '.secrets', `.test-tmp-${Date.now()}-${Math.random().toString(36).slice(2,6)}`);
@@ -664,13 +664,36 @@ describe('Phase B Role-Mapping Reconciliation Contract', () => {
   });
 
   // T10 session semantics
-  it('SOURCE_ONLY_GATE is immutable and has no override surface', () => {
+  it('EPHEMERAL_GATE is source-bound and has no override surface', () => {
     const cliSrc = fs.readFileSync(CLI_PATH, 'utf8');
-    assert.match(cliSrc, /const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = false;/);
+    assert.match(cliSrc, /const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = true;/);
+    assert.match(cliSrc, /const PRODUCTION_RECONCILIATION_APPROVAL_REFERENCE = 'issue:4297';/);
+    assert.match(cliSrc, /approvalReference === PRODUCTION_RECONCILIATION_APPROVAL_REFERENCE/);
     assert.doesNotMatch(cliSrc, /process\.env\s*\[/);
     assert.doesNotMatch(cliSrc, /--enable-production|--approved|--force/);
     assert.match(cliSrc, /if \(!PRODUCTION_RECONCILIATION_EXECUTION_ENABLED\)/);
     assert.match(cliSrc, /outcome: 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE'/);
+  });
+
+  it('issue:4297 reaches activated path without opening Production', () => {
+    let stdout = '';
+    try {
+      stdout = execFileSync(process.execPath, [
+        CLI_PATH,
+        '--secret-file', '.secrets/does-not-exist.env',
+        '--role-mapping-file', '.secrets/does-not-exist-map.json',
+        '--private-output-file', `.secrets/test-activated-${Date.now()}.json`,
+        '--baseline-commit', BASELINE,
+        '--approval-reference', 'issue:4297',
+      ], { encoding: 'utf8', cwd: REPO_ROOT, timeout: 10000 });
+    } catch (err) {
+      stdout = err.stdout || '';
+    }
+    const parsed = JSON.parse(stdout.trim());
+    assert.notEqual(parsed.outcome, 'RECONCILIATION_NOT_RUN_SOURCE_ONLY_GATE');
+    assert.equal(parsed.collection_session_count, 0);
+    assert.equal(parsed.private_artifact_written, false);
+    assert.equal(parsed.outcome, 'RECONCILIATION_NOT_RUN_INPUT_INVALID');
   });
 
   it('SOURCE_ONLY_GATE blocks issue, decision, and arbitrary approval references', () => {
@@ -698,24 +721,20 @@ describe('Phase B Role-Mapping Reconciliation Contract', () => {
     }
   });
 
-  it('SOURCE_ONLY_GATE runs before main secret reads, collector, and artifacts', () => {
+  it('SOURCE_BOUND_APPROVAL_GATE precedes the activated collector call', () => {
     const cliSrc = fs.readFileSync(CLI_PATH, 'utf8');
     const mainSrc = cliSrc.slice(cliSrc.indexOf('async function main()'));
-    const gateIndex = mainSrc.indexOf('if (!PRODUCTION_RECONCILIATION_EXECUTION_ENABLED)');
+    const gateIndex = mainSrc.indexOf('if (!isSourceBoundApprovalReference(approvalReference))');
+    const collectorIndex = mainSrc.indexOf('realCollectRawGrantees(REPO_ROOT');
     assert.ok(gateIndex >= 0);
-    for (const marker of [
-      'validateSecretsInputPath(REPO_ROOT',
-      'fs.readFileSync(mapAbs',
-      'realCollectRawGrantees(REPO_ROOT',
-      'writePrivateArtifactExclusive',
-    ]) {
-      const markerIndex = mainSrc.indexOf(marker);
-      assert.ok(markerIndex >= 0, `main must contain ${marker}`);
-      assert.ok(gateIndex < markerIndex, `source-only gate must precede ${marker}`);
-    }
-    // The dormant collector retains the reviewed boundary/client implementation,
-    // but main has no reachable call to it while the constant is false.
-    assert.match(mainSrc, /realCollectRawGrantees\(REPO_ROOT/);
+    assert.ok(collectorIndex >= 0);
+    assert.ok(gateIndex < collectorIndex);
+    assert.match(cliSrc, /const PRODUCTION_RECONCILIATION_APPROVAL_REFERENCE = 'issue:4297';/);
+    assert.match(cliSrc, /validateSecretsInputPath\(REPO_ROOT/);
+    assert.match(cliSrc, /buildProductionReadonlyInvocationPlan/);
+    assert.match(cliSrc, /new Client\(pgConfig\)/);
+    assert.match(cliSrc, /await client\.connect\(\)/);
+    assert.match(cliSrc, /writePrivateArtifactExclusive/);
   });
 
   it('SOURCE_ONLY_GATE creates no private artifact with valid output path', () => {
