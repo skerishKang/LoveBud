@@ -1,122 +1,83 @@
-# Merge-First Production Verification Workflow
+# Production-First Verification Workflow
 
-> **Status:** active canonical evidence workflow
+> **Status:** active canonical Production evidence workflow
+> **Primary policy:** `PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md`
 > **Hard governance:** `MVP_AGENT_GOVERNANCE.md`
-> **Parallel work:** `PARALLEL_WORKTREE_AGENT_POLICY.md`
-> **Role model:** `../project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
-> **UI fast lane:** `../project/UI_RAPID_ITERATION_LANE.md`
-> **Refs:** #3513, #3662, #3664, #3994
+> **Owner direction:** 2026-08-30
 
 ## 1. Purpose
 
-LoveBud uses post-merge Production confirmation as the normal final check when authenticated preview/fixed-slot/staging-equivalent environments are not reliably available.
+LoveBud uses the real Production system as the preferred acceptance surface for bounded changes whose previous state can be restored safely.
 
-`Merge-first` describes the preferred **evidence order after an authorized merge**. It does not grant Ready or merge authority to an implementation worker, verifier, or Web CTO when the task/owner has kept integration separately gated.
+The normal question is not "did we finish enough pre-merge tests?" It is:
 
-Preview and fixed-slot procedures remain optional supplementary evidence when explicitly assigned. Their absence is not a merge blocker.
-
-Pre-merge evidence is risk-proportional. Low-risk UI does not require backend-grade local/full-suite verification.
+```text
+Is the exact Production target known?
+Is rollback concrete?
+Can we make the bounded change now?
+Can we verify the real behavior immediately?
+```
 
 ## 2. Current operating mode
 
 ```text
-Web CTO contract, risk classification, and authority allocation
-→ separate Web Developer / implementation owner
-→ focused pre-merge evidence
-→ Local Validation only when required
-→ independent remote exact-head review
-→ canonical CI classification
-→ user/task integration decision
-→ authorized expected-head squash merge when applicable
-→ Cloudflare Pages automatically deploys main
-→ affected Production behavior is confirmed
+fresh remote / target / authority inspection
+→ capture rollback anchor
+→ bounded implementation
+→ integrate/deploy when authorized
+→ immediate Production verification
+→ KEEP when acceptable
+   OR
+→ ROLLBACK first when unacceptable
+→ confirm restoration
+→ investigate/fix afterward
+→ redeploy
 ```
 
-Agents do not search for preview URLs or deploy fixed slots unless assigned. Implementation completion or browser PASS does not create merge authority.
+Preview, fixed slots, Local Validation, full pre-merge suites, and waiting for all CI lanes are optional for rollback-ready work.
 
-## 3. Pre-merge evidence by change class
+## 3. Rollback anchor by change class
 
-### U0 — Copy-only
+### Source/runtime
 
-Required:
+Record the previous Production commit/deployment identity and the exact revert/redeploy path.
 
-- exact before/after copy and changed-file review;
-- syntax/static/focused copy check when relevant;
-- `git diff --check` or equivalent diff hygiene;
-- CI classification;
-- exact-head remote review.
+### UI
 
-Not automatically required:
+Record the previous Production source/deployment. A visual miss normally uses immediate revert or a bounded corrective redeploy.
 
-- Local Validation;
-- full lint/build/test/verify suite;
-- preview/fixed slot;
-- screenshots;
-- desktop/mobile journey QA.
+### Config/feature flag
 
-### U1 — Visual-only
+Record the previous exact value/state and the restoration operation.
 
-Required:
+### DB data
 
-- exact selector/token/value delta and scope review;
-- focused CSS/static check when available;
-- relevant syntax/build step only when needed;
-- diff hygiene;
-- CI classification;
-- exact-head remote review.
+Use a transaction, deterministic inverse operation, or bounded backup/snapshot for the exact affected rows/keys.
 
-Local Validation and pre-merge screenshots are optional unless justified by layout, overflow, shared/global, or breakpoint risk.
+### DB schema
 
-### U2 — Structural UI
+Use a down path or a restorable snapshot/branch/backup. One-way destructive migrations are `IRREVERSIBLE_RISK = YES`.
 
-Required:
+### Provider/routing/binding
 
-- focused DOM/layout/accessibility/static tests;
-- affected build/checks;
-- conditional browser/Local evidence for affected states/viewports;
-- exact-head remote review and CI classification.
+Record the prior provider identity, route, binding, or deployment and the exact restoration path.
 
-### U3 — Runtime-sensitive UI
+## 4. Pre-Production checks
 
-Required:
+Pre-Production checks are optional unless explicitly required by the task or needed to make rollback credible.
 
-- focused unit/contract/integration tests;
-- relevant regression/build checks;
-- Local/runtime/browser/auth/API/cache/storage evidence when applicable;
-- exact-head remote review and CI classification.
+Use them when they are cheaper than likely rollback/rework, for example:
 
-### Backend/data/auth/security
+- syntax/parser check for an obvious typo risk;
+- targeted contract test for a stateful mutation that would be expensive to reverse;
+- read-only identity check to avoid touching the wrong Production resource;
+- backup/snapshot verification before a destructive or one-way operation.
 
-Use the strict full evidence defined by the task contract. UI fast-lane reductions do not apply.
-
-For active multi-model work, also confirm branch/path/semantic-authority ownership before any write or integration action.
-
-## 4. Test selection principle
-
-Tests are selected by affected behavior and blast radius.
-
-Do not require every command below for every PR:
-
-```text
-npm run lint
-npm run build
-npm test
-npm run verify
-```
-
-Run them when they are relevant to the changed contract or when shared/broad risk warrants them.
-
-Every PR still requires:
-
-- remote scope/diff review;
-- appropriate focused checks;
-- diff hygiene;
-- CI classification;
-- expected-head confirmation immediately before any authorized merge.
+Do **not** require generic full-suite execution merely because a source file changed or a PR exists.
 
 ## 5. CI
 
-Use canonical states:
+Canonical states remain:
 
 ```text
 CI_GREEN
@@ -125,152 +86,128 @@ CI_PENDING_EXECUTION
 CI_UNAVAILABLE_INFRA
 ```
 
-- relevant executed failure blocks merge;
-- relevant queued/running work blocks merge temporarily;
-- infrastructure-unavailable shells use the documented alternative-evidence policy;
-- red shell appearance alone is not executed failure.
+In the Production-first lane, CI is diagnostic evidence rather than a universal pre-Production permit.
 
-If an executed failure does not expose an exact assertion/subtest/error, record the evidence gap and do not guess-patch product code.
+A failing or pending CI lane does not automatically block a rollback-ready owner-authorized Production change when secret/privacy, irreversible-risk, and semantic-collision gates are clear.
 
-## 6. Optional pre-merge browser evidence
+Do not falsify or suppress CI. If branch protection mechanically blocks integration, use an explicit owner/admin-authorized bypass path when available or report the mechanical blocker.
 
-| Evidence | Default |
-|---|---|
-| PR/branch preview | optional |
-| fixed slot | optional |
-| authenticated preview | optional |
-| local static browser | optional, evidence-limited |
-| UI Lab/prototype | recommended for rapid U2 design iteration |
+## 6. Production verification by class
 
-If used, record URL provenance and deployed SHA where applicable. Fixed-slot operational authority never grants feature-branch Ready/merge authority.
+### U0 — Copy-only
 
-## 7. Post-merge Production verification
+Verify the exact copy/state in Production. If wrong, restore or correct immediately.
 
-Production target:
+### U1 — Visual-only
+
+Verify the affected visual property/state/viewport in Production. Avoid unnecessary full-site screenshot matrices.
+
+### U2 — Structural UI
+
+Verify affected states, layout, focus/visibility/accessibility concerns, and relevant viewports directly in Production.
+
+### U3 — Runtime-sensitive UI
+
+Verify the affected route/action/auth/API/cache/storage behavior and necessary console/network evidence in Production.
+
+### Backend/API
+
+Exercise only the bounded affected behavior needed to determine correctness and collateral safety.
+
+### DB/Auth/Security/Provider
+
+Use the exact task-specific readback and rollback contract. Do not expose secrets or private payloads in reports.
+
+## 7. Production outcomes
+
+### PASS / KEEP
+
+Record the Production evidence and retain the change.
+
+Post-Production CI/regression work may follow when useful for long-term confidence.
+
+### FAIL / ROLLBACK
+
+Default:
 
 ```text
-https://lovebud.pages.dev/
+stop additional mutation
+→ restore previous known-good state
+→ verify restoration
+→ investigate
+→ fix
+→ redeploy
 ```
 
-Verification scope is proportional and applies only after a merge has been separately authorized and completed.
+Do not keep broken Production in place merely to complete forensic analysis.
 
-### U0
+### PARTIAL / UNCERTAIN
 
-Check the exact copy in the affected state. Full journey QA is not required unless the copy is state-dependent.
+If rollback is clean and the uncertainty is material, prefer restore-first and investigate afterward.
 
-### U1
+If observation must continue briefly to perform a safe stateful rollback, restrict activity to what is required for restoration.
 
-Check the exact affected visual property on the relevant viewport/state. Do not automatically repeat every page and viewport.
+## 8. Integration rules
 
-### U2
+Before an authorized Production-first integration:
 
-Check affected states, layouts, and viewports, including overflow/accessibility concerns defined by the contract.
+1. identify exact current Production/main/PR/provider target;
+2. confirm branch/file/semantic-authority collision status;
+3. record rollback anchor;
+4. classify irreversible risk;
+5. confirm secret/privacy boundary safety;
+6. integrate/deploy through an allowed repository/provider path;
+7. verify Production immediately;
+8. keep or rollback.
 
-### U3
+Independent review may occur after the Production result for rollback-ready work. Irreversible/high-risk work may still use pre-mutation review when it is needed to make containment credible.
 
-Check affected route/action/auth/API/cache/storage/runtime behavior, console/network, and required viewports.
+## 9. GitHub protection
 
-### Backend/data/auth/security
+Do not silently disable required checks or global branch protection.
 
-Use the task-specific Production verification and data-safety contract.
+When a required check is the only mechanical blocker to an explicitly owner-authorized rollback-ready Production-first change, an available owner/admin bypass path may be used. Record the bypass, exact head, rollback anchor, and Production result.
 
-## 8. Production outcomes
+If bypass is unavailable, report `MECHANICAL_PROTECTION_BLOCKER` rather than fabricating green status.
 
-### PASS
-
-Record evidence and close an eligible child Issue only if issue-close authority is separately present and the broader goal is complete.
-
-### Minor U0/U1 visual miss
-
-```text
-new micro branch from current main
-→ exact correction
-→ focused checks
-→ independent exact-head review
-→ task-authorized expected-head squash merge when applicable
-→ Production re-check
-```
-
-### Material regression
-
-Create a dedicated correction or revert PR. Never force-push/reset/move `main` destructively.
-
-## 9. Merge rules
-
-When merge is authorized:
-
-1. confirm the task/owner granted integration authority;
-2. confirm the implementation author is not self-merging unless that authority was explicitly delegated;
-3. inspect current PR head and cumulative diff independently;
-4. confirm required evidence for the change class;
-5. classify CI;
-6. verify protected Issue wording;
-7. confirm dependency and semantic-authority sequencing;
-8. re-read exact head immediately before merge;
-9. squash merge with expected head pinned unless a narrower task contract requires another allowed method.
-
-Do not use rebase to rewrite published feature history. Do not force-update feature PR branches or `main`.
-
-## 10. Role allocation
-
-### Web CTO
-
-- classifies risk and evidence;
-- allocates/monitors parallel semantic authority;
-- reviews remote diff and final evidence independently;
-- decides technical `READY/NOT_READY`;
-- performs integration only when task/owner authorization delegates that action;
-- judges Production result after an authorized merge.
-
-### Web Developer / implementation owner
-
-- implements branch changes and focused tests;
-- maintains Draft PR and CI correction;
-- reports exact evidence;
-- does not make final merge decision;
-- does not Ready-transition or merge its own active PR unless task-specific owner authorization explicitly delegates that integration authority.
-
-### Local Validation
-
-- is invoked only when required;
-- executes exact-head local/environment/browser checks;
-- returns raw evidence;
-- does not redesign or broadly rewrite source;
-- does not gain Ready/merge authority from a PASS result.
-
-## 11. Issue handling
-
-- U0/U1 do not require a new child Issue for every micro correction;
-- reference the active parent/product/UI objective when appropriate;
-- create separate Issues for distinct product goals, structural/runtime contracts, policy, privacy/security, or substantial follow-up;
-- issue close requires the applicable task authority;
-- never close #1882 and use `Refs #1882` only.
-
-## 12. Report template
+## 10. Report template
 
 ```text
-[Merge-First Evidence Report]
+[Production-First Evidence Report]
 
-PR / Issue:
-Risk or UI class:
-Exact head:
-Changed files:
+Issue / PR:
+Target Production identity:
+Exact source head:
+Change scope:
 Active semantic authority / writer:
 Parallel class: GREEN / YELLOW / RED
-Focused checks and counts:
-CI classification:
-Local Validation: REQUIRED / NOT_REQUIRED / COMPLETED / PENDING
-Pre-merge browser evidence: USED / NOT_USED / NOT_REQUIRED
-Integration authority: AUTHORIZED / NOT_AUTHORIZED / PENDING
-Production verification scope:
-Production result: PASS / FAIL / PARTIAL / NOT_YET_VERIFIED
-Correction/revert required:
+Rollback anchor:
+Rollback ready: YES / NO
+Irreversible risk: YES / NO
+Pre-Production tests: SKIPPED_BY_POLICY / USED_BY_EXCEPTION
+CI at integration: GREEN / EXECUTED_FAILURE / PENDING / UNAVAILABLE / NOT_RUN
+Integration/bypass authority:
+Production mutation: PERFORMED / NOT_PERFORMED
+Production result: PASS / FAIL / PARTIAL / UNKNOWN
+Rollback: NOT_NEEDED / PERFORMED / FAILED / NOT_AVAILABLE
+Known-good restored: YES / NO / NA
+Follow-up forensic: REQUIRED / NOT_REQUIRED
 Secret/private exposure: NONE
 ```
 
-## 13. Governance boundary
+## 11. Governance boundary
 
-This workflow does not weaken or replace hard governance. Secret safety, preservation of worker state, Production-destructive approval, CI executed-failure/pending blockers, alternative evidence for infrastructure unavailability, semantic-authority writer locks, independent review, task-authorized expected-head integration, and #1882 protection remain authoritative.
+Production-first does not weaken:
+
+- secret/private-data protection;
+- exact target/provider identity confirmation;
+- no destructive overwrite of another worker's state;
+- one-writer semantic authority;
+- shared Love platform architecture authority;
+- explicit authorization for genuinely irreversible mutations;
+- #1882 protection.
+
+It **does** supersede generic process rules that require tests/Preview/Local Validation/full CI green before a rollback-ready Production change.
 
 Refs #3994.
 Refs #3664.
