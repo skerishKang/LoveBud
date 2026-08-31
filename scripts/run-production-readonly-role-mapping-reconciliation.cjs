@@ -27,7 +27,12 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 
 // This PR is SOURCE-ONLY. Enabling Production execution requires a later,
 // separately approved source change; there is intentionally no runtime override.
-const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = false;
+const PRODUCTION_RECONCILIATION_EXECUTION_ENABLED = true;
+const PRODUCTION_RECONCILIATION_APPROVAL_REFERENCE = "issue:4283";
+function isSourceBoundApprovalReference(approvalReference) {
+  return approvalReference === PRODUCTION_RECONCILIATION_APPROVAL_REFERENCE;
+}
+
 
 const {
   RECON_FAILURE,
@@ -326,6 +331,12 @@ async function main() {
     actualHead = require('child_process').execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8', cwd: REPO_ROOT, timeout: 5000, maxBuffer: 1024 }).trim();
   } catch { printErrorOutcome(0); return; }
   if (actualHead !== baselineCommit) { printErrorOutcome(0); return; }
+
+
+  // Reject every caller-supplied authority before any private input access.
+  if (!isSourceBoundApprovalReference(approvalReference)) {
+    printSourceOnlyGate(); return;
+  }
 
   // This source-only child cannot perform private-file or Production activity.
   // Keep this before all .secrets access, artifact handling, and collector code.
