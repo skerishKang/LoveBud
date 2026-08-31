@@ -760,6 +760,21 @@
       "notes": "Pure validator for a Phase B collection receipt. No database access; validates sanitized receipt structure only."
     },
     {
+      "path": "scripts/run-production-readonly-runtime-role-acl-attestation.cjs",
+      "category": "provenance_tooling",
+      "engine": "postgres",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #4283 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "gated",
+      "ledger_candidate": "no",
+      "notes": "Phase B production read-only runtime-role ACL attestation runner. Uses one BEGIN READ ONLY session, fixed pg_catalog and privilege queries, explicit target-role mapping, PG17 membership INHERIT/ADMIN/SET metadata, rollback, and disconnect; no schema mutation, Product row reads, SET ROLE, GRANT, REVOKE, retry, or production-write capability. Registered because the source contains catalog/DDL vocabulary detected by the static inventory guard."
+    },
+    {
       "path": "scripts/inspect-schema.cjs",
       "category": "direct_connect_diagnostic",
       "engine": "postgres",

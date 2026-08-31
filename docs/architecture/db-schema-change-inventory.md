@@ -103,7 +103,7 @@ Limitation: this guard is a static inventory-omission guard. It does **not** con
 
 ## Category Breakdown
 
-82 inventory entries plus 2 verified-negative surfaces.
+83 inventory entries plus 2 verified-negative surfaces.
 
 By `canonical_status`:
 
@@ -128,7 +128,7 @@ By category:
 | `sql_rollback` | 1 |
 | `sql_validation_guard` | 4 |
 | `sql_data_mutation` | 1 |
-| `provenance_tooling` | 10 |
+| `provenance_tooling` | 11 |
 | `catalog_adapter` | 5 |
 | `direct_connect_diagnostic` | 4 |
 | `seed_or_data_script` | 12 |
@@ -180,6 +180,7 @@ Flags: 5 entries are `destructive`; 20 entries are `production_capable` (technic
 | `scripts/adoption-baseline-collection-plan-core.cjs` | none | CANONICAL_CANDIDATE | no | no |
 | `scripts/build-adoption-baseline-collection-plan.cjs` | none | CANONICAL_CANDIDATE | no | no |
 | `scripts/phase-b-collection-receipt-core.cjs` | none | CANONICAL_CANDIDATE | no | no |
+| `scripts/run-production-readonly-runtime-role-acl-attestation.cjs` | postgres | CANONICAL_CANDIDATE | no | no |
 
 ### catalog_adapter (5)
 
