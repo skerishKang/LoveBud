@@ -547,4 +547,196 @@ describe('LoveBud #4283 target-role runtime ACL attestation contract', () => {
     const drift = deriveDecision({ identityResolved: true, roleAdmin: false, broadAllTableSelect: false, privileges: { DATABASE_CONNECT: true, USAGE_PUBLIC: true, SELECT_TREES: false, SELECT_MEMORIES: true, SELECT_TREE_SOCIAL_COUNTS: true } });
     assert.equal(drift.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
   });
+
+  it('accepts MAINTAIN ACL rows as known catalog shape without treating as SELECT', () => {
+    const rows = TARGET_RELATION_NAMES.flatMap((relationName) => [
+      {
+        relation_name: relationName,
+        relacl_was_null: false,
+        owner_oid: 999,
+        owner_name: 'fixture_owner',
+        grantee_oid: 100,
+        grantee_name: RAW_TARGET,
+        privilege_type: 'SELECT',
+        is_grantable: false,
+      },
+      {
+        relation_name: relationName,
+        relacl_was_null: false,
+        owner_oid: 999,
+        owner_name: 'fixture_owner',
+        grantee_oid: 100,
+        grantee_name: RAW_TARGET,
+        privilege_type: 'MAINTAIN',
+        is_grantable: false,
+      },
+    ]);
+    const result = classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows,
+    });
+    for (const name of TARGET_RELATION_NAMES) {
+      assert.equal(result.relations[name].directTargetGrant, 'YES');
+      // effectiveSelect is set via has_table_privilege in collectAttestation; classify alone keeps UNKNOWN
+      assert.equal(result.relations[name].effectiveSelect, 'UNKNOWN');
+    }
+    assert.equal(result.direct, 'YES');
+    // also verify via full collect that effectiveSelect becomes YES when privilege is YES
+  });
+
+  it('MAINTAIN alone does not count as SELECT or write privilege', async () => {
+    const rows = aclRowsFor({
+      trees: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' }],
+      memories: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' }],
+      tree_social_counts: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' }],
+      reactions: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' }],
+    });
+    const classified = classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows,
+    });
+    for (const name of TARGET_RELATION_NAMES) {
+      assert.equal(classified.relations[name].directTargetGrant, 'NO');
+      assert.equal(classified.relations[name].effectiveSelect, 'UNKNOWN');
+    }
+    // verify via full collect that MAINTAIN does not grant SELECT (privileges remain false)
+    const maintainPlusSelect = aclRowsFor({
+      trees: [
+        { grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' },
+        { grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'SELECT' },
+      ],
+      memories: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' }],
+      tree_social_counts: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' }],
+      reactions: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' }],
+    });
+    // Add SELECT for remaining to keep relations present without affecting MAINTAIN check
+    maintainPlusSelect.push(
+      {
+        relation_name: 'memories',
+        relacl_was_null: false,
+        owner_oid: 999,
+        owner_name: 'fixture_owner',
+        grantee_oid: 100,
+        grantee_name: RAW_TARGET,
+        privilege_type: 'SELECT',
+        is_grantable: false,
+      },
+      {
+        relation_name: 'tree_social_counts',
+        relacl_was_null: false,
+        owner_oid: 999,
+        owner_name: 'fixture_owner',
+        grantee_oid: 100,
+        grantee_name: RAW_TARGET,
+        privilege_type: 'SELECT',
+        is_grantable: false,
+      },
+      {
+        relation_name: 'reactions',
+        relacl_was_null: false,
+        owner_oid: 999,
+        owner_name: 'fixture_owner',
+        grantee_oid: 100,
+        grantee_name: RAW_TARGET,
+        privilege_type: 'SELECT',
+        is_grantable: false,
+      },
+    );
+    const { result } = await collectFixture({
+      aclRows: maintainPlusSelect,
+      privileges: { SELECT_TREES: true, SELECT_MEMORIES: true, SELECT_TREE_SOCIAL_COUNTS: true, SELECT_REACTIONS: true },
+    });
+    assert.equal(result.privileges.SELECT_TREES, true);
+    assert.equal(result.privileges.INSERT_REACTIONS, false);
+    assert.equal(result.perRelationProvenance.trees.effectiveSelect, 'YES');
+  });
+
+  it('still fails closed on unknown privilege type', () => {
+    const rows = aclRowsFor({
+      reactions: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'EXECUTE' }],
+    });
+    assert.throws(() => classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows,
+    }), /ATTESTATION_ACL_SHAPE_INVALID/);
+    const badRows2 = aclRowsFor({
+      trees: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'FOO' }],
+    });
+    assert.throws(() => classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows: badRows2,
+    }), /ATTESTATION_ACL_SHAPE_INVALID/);
+  });
+
+  it('target SELECT detection remains unchanged with mixed MAINTAIN and SELECT', async () => {
+    const rows = aclRowsFor({
+      trees: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'SELECT' }],
+      memories: [
+        { grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'SELECT' },
+        { grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' },
+      ],
+      tree_social_counts: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'MAINTAIN' }],
+      reactions: [{ grantee_name: RAW_TARGET, grantee_oid: 100, privilege_type: 'SELECT' }],
+    });
+    // Add missing MAINTAIN/SELECT mix still needs all relations present — inject SELECT for missing
+    rows.push({
+      relation_name: 'tree_social_counts',
+      relacl_was_null: false,
+      owner_oid: 999,
+      owner_name: 'fixture_owner',
+      grantee_oid: 100,
+      grantee_name: RAW_TARGET,
+      privilege_type: 'SELECT',
+      is_grantable: false,
+    });
+    const result = classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows,
+    });
+    assert.equal(result.relations.trees.directTargetGrant, 'YES');
+    assert.equal(result.relations.memories.directTargetGrant, 'YES');
+    assert.equal(result.relations.tree_social_counts.directTargetGrant, 'YES');
+    assert.equal(result.relations.reactions.directTargetGrant, 'YES');
+  });
+
+  it('write/admin/broad guards remain unchanged when MAINTAIN present', async () => {
+    const maintainRows = TARGET_RELATION_NAMES.flatMap((relationName) => [
+      {
+        relation_name: relationName,
+        relacl_was_null: false,
+        owner_oid: 999,
+        owner_name: 'fixture_owner',
+        grantee_oid: 100,
+        grantee_name: RAW_TARGET,
+        privilege_type: 'MAINTAIN',
+        is_grantable: false,
+      },
+      {
+        relation_name: relationName,
+        relacl_was_null: false,
+        owner_oid: 999,
+        owner_name: 'fixture_owner',
+        grantee_oid: 100,
+        grantee_name: RAW_TARGET,
+        privilege_type: 'SELECT',
+        is_grantable: false,
+      },
+    ]);
+    const writable = await collectFixture({ aclRows: maintainRows, privileges: { INSERT_REACTIONS: true } });
+    assert.equal(writable.result.decision.canProceed, 'NO');
+    const admin = await collectFixture({ aclRows: maintainRows, flags: [{ role_name: RAW_TARGET, rolsuper: true }] });
+    assert.equal(admin.result.roleAdmin, 'YES');
+    assert.equal(admin.result.decision.canProceed, 'NO');
+    const broad = await collectFixture({
+      aclRows: maintainRows,
+      broadAclRows: [{ relation_name: 'unrelated_table', grantee_oid: 100, grantee_name: RAW_TARGET, privilege_type: 'SELECT' }],
+    });
+    assert.equal(broad.result.broadAllTableSelect, 'YES');
+    assert.equal(broad.result.decision.canProceed, 'NO');
+  });
 });
