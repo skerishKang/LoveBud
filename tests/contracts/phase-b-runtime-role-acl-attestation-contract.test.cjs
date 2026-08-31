@@ -11,6 +11,7 @@ const {
   parseArgs,
   assertSourceBoundApproval,
   assertTargetRuntimeRole,
+  TARGET_RELATION_NAMES,
   buildRoleMappingRelation,
   classifySelectGrantSources,
   deriveDecision,
@@ -37,6 +38,22 @@ function baseIdentity(overrides = {}) {
   };
 }
 
+function aclRowsFor(sources = {}, relaclNullRelations = new Set()) {
+  return TARGET_RELATION_NAMES.flatMap((relationName) => {
+    const entries = sources[relationName] || [{ grantee_name: 'PUBLIC', grantee_oid: 0 }];
+    return entries.map((entry) => ({
+      relation_name: relationName,
+      relacl_was_null: relaclNullRelations.has(relationName),
+      owner_oid: entry.owner_oid ?? 999,
+      owner_name: entry.owner_name ?? 'fixture_owner',
+      grantee_oid: entry.grantee_oid,
+      grantee_name: entry.grantee_name,
+      privilege_type: entry.privilege_type || 'SELECT',
+      is_grantable: entry.is_grantable ?? false,
+    }));
+  });
+}
+
 function fakeClient({
   readOnly = true,
   identity = baseIdentity(),
@@ -44,12 +61,16 @@ function fakeClient({
   chain,
   flags,
   privileges,
-  broadRows = [],
+  aclRows = aclRowsFor(),
+  broadAclRows,
 } = {}) {
   const calls = [];
   let connectCount = 0;
   let endCount = 0;
-  const roleChain = chain || [{ role_name: targetRole, depth: 0, admin_option: false }];
+  const roleChain = (chain || [{ role_name: targetRole, depth: 0, admin_option: false }]).map((row, index) => ({
+    ...row,
+    oid: row.oid ?? (row.role_name === targetRole ? 100 : 101 + index),
+  }));
   const roleFlags = flags || [{
     role_name: targetRole,
     rolsuper: false,
@@ -71,6 +92,8 @@ function fakeClient({
     ...privileges,
   };
   const bool = (key) => [{ allowed: p[key] }];
+  const defaultBroadAclRows = aclRows.filter((row) => row.privilege_type === 'SELECT' &&
+    (row.grantee_name === 'PUBLIC' || roleChain.some((role) => role.oid === row.grantee_oid)));
   const client = {
     async connect() { connectCount += 1; },
     async end() { endCount += 1; },
@@ -81,7 +104,8 @@ function fakeClient({
       if (text === Q.IDENTITY) return { rows: [identity] };
       if (text === Q.ROLE_CHAIN) return { rows: roleChain };
       if (text === Q.ROLE_FLAGS) return { rows: roleFlags };
-      if (text === Q.PUBLIC_SELECT_GRANTS) return { rows: broadRows };
+      if (text === Q.RELATION_ACL) return { rows: aclRows };
+      if (text === Q.BROAD_SELECT_ACL) return { rows: broadAclRows || defaultBroadAclRows };
       if (text === Q.DATABASE_CONNECT) return { rows: bool('DATABASE_CONNECT') };
       if (text === Q.PUBLIC_USAGE) return { rows: bool('USAGE_PUBLIC') };
       if (text === Q.TREES_SELECT) return { rows: bool('SELECT_TREES') };
@@ -241,20 +265,127 @@ describe('LoveBud #4283 target-role runtime ACL attestation contract', () => {
     assert.equal(adminOption.result.decision.canProceed, 'NO');
   });
 
-  it('distinguishes PUBLIC-derived, direct target, and inherited SELECT grant sources', () => {
-    assert.deepEqual(classifySelectGrantSources({
+  it('classifies direct, inherited, PUBLIC, and mixed provenance per relation', () => {
+    const rows = aclRowsFor({
+      trees: [{ grantee_name: RAW_TARGET, grantee_oid: 100 }],
+      memories: [{ grantee_name: 'parent_role', grantee_oid: 101 }],
+      tree_social_counts: [{ grantee_name: 'PUBLIC', grantee_oid: 0 }],
+      reactions: [
+        { grantee_name: RAW_TARGET, grantee_oid: 100 },
+        { grantee_name: 'parent_role', grantee_oid: 101 },
+      ],
+    });
+    const result = classifySelectGrantSources({
       targetRuntimeRole: RAW_TARGET,
       chainNames: [RAW_TARGET, 'parent_role'],
-      rows: [
-        { table_name: 'reactions', grantee: 'PUBLIC', privilege_type: 'SELECT' },
-        { table_name: 'trees', grantee: RAW_TARGET, privilege_type: 'SELECT' },
-        { table_name: 'memories', grantee: 'parent_role', privilege_type: 'SELECT' },
-      ],
-    }), { public: 'YES', direct: 'YES', inherited: 'YES' });
+      rows,
+    });
+    assert.equal(result.relations.trees.directTargetGrant, 'YES');
+    assert.equal(result.relations.trees.inheritedGrant, 'NO');
+    assert.equal(result.relations.memories.directTargetGrant, 'NO');
+    assert.equal(result.relations.memories.inheritedGrant, 'YES');
+    assert.equal(result.relations.tree_social_counts.publicGrant, 'YES');
+    assert.equal(result.relations.reactions.directTargetGrant, 'YES');
+    assert.equal(result.relations.reactions.inheritedGrant, 'YES');
+    assert.equal(result.direct, 'MIXED');
+    assert.equal(result.inherited, 'MIXED');
   });
 
-  it('detects broad SELECT and disallowed target write privilege', async () => {
-    const broad = await collectFixture({ broadRows: [{ table_name: 'unrelated_table', grantee: RAW_TARGET, privilege_type: 'SELECT' }] });
+  it('observer A is unrelated and cannot contaminate direct target B provenance', async () => {
+    const { result } = await collectFixture({
+      aclRows: aclRowsFor({
+        reactions: [{ grantee_name: RAW_TARGET, grantee_oid: 100 }],
+      }),
+      privileges: { SELECT_REACTIONS: true },
+    });
+    assert.equal(result.perRelationProvenance.reactions.directTargetGrant, 'YES');
+    assert.equal(result.perRelationProvenance.reactions.inheritedGrant, 'NO');
+    assert.equal(result.perRelationProvenance.reactions.effectiveSelect, 'YES');
+  });
+
+  it('observer A is unrelated and target B inherited parent C provenance remains inherited', async () => {
+    const { result } = await collectFixture({
+      chain: [
+        { role_name: RAW_TARGET, depth: 0, admin_option: false, oid: 100 },
+        { role_name: 'parent_role', depth: 1, admin_option: false, oid: 101 },
+      ],
+      aclRows: aclRowsFor({
+        reactions: [{ grantee_name: 'parent_role', grantee_oid: 101 }],
+      }),
+      privileges: { SELECT_REACTIONS: true },
+    });
+    assert.equal(result.perRelationProvenance.reactions.directTargetGrant, 'NO');
+    assert.equal(result.perRelationProvenance.reactions.inheritedGrant, 'YES');
+    assert.equal(result.perRelationProvenance.reactions.effectiveSelect, 'YES');
+  });
+
+  it('PUBLIC source and effective privilege remain distinct from direct provenance', async () => {
+    const { result } = await collectFixture({
+      aclRows: aclRowsFor({ reactions: [{ grantee_name: 'PUBLIC', grantee_oid: 0 }] }),
+      privileges: { SELECT_REACTIONS: true },
+    });
+    assert.equal(result.perRelationProvenance.reactions.publicGrant, 'YES');
+    assert.equal(result.perRelationProvenance.reactions.directTargetGrant, 'NO');
+    assert.equal(result.perRelationProvenance.reactions.effectiveSelect, 'YES');
+  });
+
+  it('owner-derived SELECT is not reported as a direct target grant', () => {
+    const result = classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows: aclRowsFor({
+        reactions: [{ grantee_name: RAW_TARGET, grantee_oid: 100, owner_oid: 100 }],
+      }),
+    });
+    assert.equal(result.relations.reactions.ownerSelect, 'YES');
+    assert.equal(result.relations.reactions.directTargetGrant, 'NO');
+  });
+
+  it('relacl NULL/default ACL rows are classified without information_schema', () => {
+    const rows = aclRowsFor(
+      { reactions: [{ grantee_name: RAW_TARGET, grantee_oid: 100 }] },
+      new Set(TARGET_RELATION_NAMES),
+    );
+    const result = classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows,
+    });
+    assert.equal(result.relations.reactions.relaclWasNull, 'YES');
+    assert.equal(result.relations.reactions.directTargetGrant, 'YES');
+  });
+
+  it('rejects incomplete or malformed catalog ACL rows closed', () => {
+    assert.throws(() => classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows: aclRowsFor().slice(1),
+    }), /ATTESTATION_ACL_RELATION_MISSING/);
+    assert.throws(() => classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      rows: aclRowsFor({ reactions: [{ grantee_name: RAW_TARGET, grantee_oid: 0 }] }),
+    }), /ATTESTATION_ACL_SHAPE_INVALID/);
+  });
+
+  it('observer A SELECT does not contaminate target B effective NO or provenance', async () => {
+    const { result } = await collectFixture({
+      aclRows: aclRowsFor({
+        reactions: [{ grantee_name: RAW_OBSERVER, grantee_oid: 200 }],
+      }),
+      privileges: { SELECT_REACTIONS: false },
+    });
+    assert.equal(result.privileges.SELECT_REACTIONS, false);
+    assert.equal(result.perRelationProvenance.reactions.effectiveSelect, 'NO');
+    assert.equal(result.perRelationProvenance.reactions.publicGrant, 'NO');
+    assert.equal(result.perRelationProvenance.reactions.directTargetGrant, 'NO');
+    assert.equal(result.perRelationProvenance.reactions.inheritedGrant, 'NO');
+  });
+
+  it('broad catalog SELECT detection stays separate from per-relation source provenance', async () => {
+    const broad = await collectFixture({
+      broadAclRows: [{ relation_name: 'unrelated_table', grantee_oid: 100, grantee_name: RAW_TARGET, privilege_type: 'SELECT' }],
+    });
     assert.equal(broad.result.broadAllTableSelect, 'YES');
     assert.equal(broad.result.decision.canProceed, 'NO');
     const writable = await collectFixture({ privileges: { INSERT_REACTIONS: true } });
@@ -285,6 +416,7 @@ describe('LoveBud #4283 target-role runtime ACL attestation contract', () => {
     assert.equal(successText.includes(RAW_TARGET), false);
     assert.equal(successText.includes(RAW_GRANTEE), false);
     assert.equal(successText.includes(RAW_SECRET), false);
+    assert.equal(successText.includes('ownerOid'), false);
     const failureText = JSON.stringify(sanitizedFailure('ATTESTATION_PREEXECUTION_STOP'));
     assert.equal(failureText.includes(RAW_TARGET), false);
   });

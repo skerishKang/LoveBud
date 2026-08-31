@@ -19,6 +19,7 @@ const SOURCE_BOUND_ISSUE = '4283';
 const SOURCE_BOUND_PURPOSE = 'ONE_PRODUCTION_READONLY_RUNTIME_ROLE_ACL_ATTESTATION';
 const APPROVAL_REFERENCE = `issue:${SOURCE_BOUND_ISSUE}`;
 const MAX_ROLE_CHAIN_DEPTH = 16;
+const MAX_ACL_ROWS = 256;
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const ROLE_CLASSES = new Set(['PUBLIC', 'APPLICATION', 'AUTHENTICATED', 'SERVICE', 'OWNER_CLASS']);
 const TARGET_RELATIONS = Object.freeze([
@@ -27,6 +28,7 @@ const TARGET_RELATIONS = Object.freeze([
   'public.tree_social_counts',
   'public.reactions',
 ]);
+const TARGET_RELATION_NAMES = Object.freeze(TARGET_RELATIONS.map((value) => value.slice('public.'.length)));
 const TARGET_SET = new Set(TARGET_RELATIONS);
 
 const Q = Object.freeze({
@@ -38,18 +40,23 @@ const Q = Object.freeze({
                     current_role::text AS current_role,
                     current_database()::text AS current_database`,
   ROLE_CHAIN: `WITH RECURSIVE role_chain AS (
-      SELECT r.oid, r.rolname::text AS role_name, 0::int AS depth, false AS admin_option
+      SELECT r.oid, r.rolname::text AS role_name, 0::int AS depth,
+             false AS admin_option, ARRAY[r.oid]::oid[] AS role_path
       FROM pg_roles r
       WHERE r.rolname = $1
       UNION ALL
-      SELECT parent.oid, parent.rolname::text, child.depth + 1, m.admin_option
+      SELECT parent.oid, parent.rolname::text, child.depth + 1,
+             m.admin_option, child.role_path || parent.oid
       FROM role_chain child
       JOIN pg_auth_members m ON m.member = child.oid
       JOIN pg_roles parent ON parent.oid = m.roleid
       WHERE child.depth < $2
+        AND NOT parent.oid = ANY(child.role_path)
     )
-    SELECT oid::bigint AS oid, role_name, depth, admin_option
+    SELECT oid::bigint AS oid, role_name, MIN(depth)::int AS depth,
+           bool_or(admin_option) AS admin_option
     FROM role_chain
+    GROUP BY oid, role_name
     ORDER BY depth, role_name`,
   ROLE_FLAGS: `SELECT rolname::text AS role_name,
                       rolsuper,
@@ -70,14 +77,44 @@ const Q = Object.freeze({
   REACTIONS_INSERT: `SELECT has_table_privilege($1::name, 'public.reactions', 'INSERT') AS allowed`,
   REACTIONS_UPDATE: `SELECT has_table_privilege($1::name, 'public.reactions', 'UPDATE') AS allowed`,
   REACTIONS_DELETE: `SELECT has_table_privilege($1::name, 'public.reactions', 'DELETE') AS allowed`,
-  PUBLIC_SELECT_GRANTS: `SELECT DISTINCT table_name::text AS table_name,
-                                   grantee::text AS grantee,
-                                   privilege_type::text AS privilege_type
-                            FROM information_schema.table_privileges
-                            WHERE table_schema = 'public'
-                              AND privilege_type = 'SELECT'
-                              AND grantee = ANY($1::text[])
-                            ORDER BY table_name, grantee`,
+  RELATION_ACL: `SELECT c.relname::text AS relation_name,
+                      (c.relacl IS NULL) AS relacl_was_null,
+                      c.relowner::bigint AS owner_oid,
+                      owner_role.rolname::text AS owner_name,
+                      acl.grantee::bigint AS grantee_oid,
+                      CASE WHEN acl.grantee = 0 THEN 'PUBLIC'::text
+                           ELSE grantee_role.rolname::text END AS grantee_name,
+                      acl.privilege_type::text AS privilege_type,
+                      acl.is_grantable
+               FROM pg_class c
+               JOIN pg_namespace n ON n.oid = c.relnamespace
+               LEFT JOIN pg_roles owner_role ON owner_role.oid = c.relowner
+               CROSS JOIN LATERAL aclexplode(
+                 COALESCE(c.relacl, acldefault('r'::\"char\", c.relowner))
+               ) AS acl(grantor, grantee, privilege_type, is_grantable)
+               LEFT JOIN pg_roles grantee_role ON grantee_role.oid = acl.grantee
+                                                AND acl.grantee <> 0
+               WHERE n.nspname = 'public'
+                 AND c.relname = ANY($1::text[])
+                 AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+               ORDER BY c.relname, acl.grantee, acl.privilege_type`,
+  BROAD_SELECT_ACL: `SELECT c.relname::text AS relation_name,
+                            acl.grantee::bigint AS grantee_oid,
+                            CASE WHEN acl.grantee = 0 THEN 'PUBLIC'::text
+                                 ELSE grantee_role.rolname::text END AS grantee_name,
+                            acl.privilege_type::text AS privilege_type
+                     FROM pg_class c
+                     JOIN pg_namespace n ON n.oid = c.relnamespace
+                     CROSS JOIN LATERAL aclexplode(
+                       COALESCE(c.relacl, acldefault('r'::\"char\", c.relowner))
+                     ) AS acl(grantor, grantee, privilege_type, is_grantable)
+                     LEFT JOIN pg_roles grantee_role ON grantee_role.oid = acl.grantee
+                                                      AND acl.grantee <> 0
+                     WHERE n.nspname = 'public'
+                       AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+                       AND acl.privilege_type = 'SELECT'
+                       AND acl.grantee = ANY($1::oid[])
+                     ORDER BY c.relname, acl.grantee`,
 });
 
 const ALLOWED_FLAGS = new Set([
@@ -231,17 +268,114 @@ function buildRoleMappingRelation({ targetRuntimeRole, identity, chain, roleMapp
   };
 }
 
+function normalizeAclBoolean(value, field) {
+  if (value === true || value === false) return value;
+  if (['true', 't', 'yes'].includes(String(value).toLowerCase())) return true;
+  if (['false', 'f', 'no'].includes(String(value).toLowerCase())) return false;
+  fail(`ATTESTATION_ACL_${field}_INVALID`);
+}
+
+function classifyRelationAclSources({ rows, targetRuntimeRole, chainNames }) {
+  const target = assertTargetRuntimeRole(targetRuntimeRole).toLowerCase();
+  const chain = new Set();
+  for (const name of chainNames) {
+    if (typeof name !== 'string' || !IDENT_RE.test(name)) fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
+    const key = name.toLowerCase();
+    if (chain.has(key)) fail('ATTESTATION_ROLE_CHAIN_DUPLICATE');
+    chain.add(key);
+  }
+  if (!chain.has(target)) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
+  if (!Array.isArray(rows) || rows.length > MAX_ACL_ROWS) fail('ATTESTATION_ACL_SHAPE_INVALID');
+
+  const relations = Object.fromEntries(TARGET_RELATION_NAMES.map((name) => [name, {
+    effectiveSelect: 'UNKNOWN',
+    publicGrant: 'NO',
+    directTargetGrant: 'NO',
+    inheritedGrant: 'NO',
+    ownerSelect: 'NO',
+    relaclWasNull: 'UNKNOWN',
+    ownerOid: 'UNKNOWN',
+  }]));
+  const seenRelations = new Set();
+  for (const row of rows) {
+    if (!row || typeof row !== 'object' || typeof row.relation_name !== 'string' ||
+        !TARGET_RELATION_NAMES.includes(row.relation_name) ||
+        typeof row.grantee_name !== 'string' || !row.grantee_name ||
+        typeof row.privilege_type !== 'string' || typeof row.owner_name !== 'string' || !row.owner_name) {
+      fail('ATTESTATION_ACL_SHAPE_INVALID');
+    }
+    const granteeOid = String(row.grantee_oid ?? '');
+    if (!/^\d+$/.test(granteeOid) ||
+        (granteeOid === '0' && row.grantee_name !== 'PUBLIC') ||
+        (granteeOid !== '0' && row.grantee_name === 'PUBLIC')) {
+      fail('ATTESTATION_ACL_SHAPE_INVALID');
+    }
+    if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'REFERENCES', 'TRIGGER', 'TRUNCATE'].includes(row.privilege_type)) {
+      fail('ATTESTATION_ACL_SHAPE_INVALID');
+    }
+    const relation = relations[row.relation_name];
+    const ownerOid = String(row.owner_oid ?? '');
+    if (!/^\d+$/.test(ownerOid)) fail('ATTESTATION_ACL_SHAPE_INVALID');
+    if (relation.ownerOid === 'UNKNOWN') relation.ownerOid = ownerOid;
+    else if (relation.ownerOid !== ownerOid) fail('ATTESTATION_ACL_SHAPE_INVALID');
+    const wasNull = normalizeAclBoolean(row.relacl_was_null, 'RELACL_NULL');
+    if (relation.relaclWasNull === 'UNKNOWN') relation.relaclWasNull = wasNull ? 'YES' : 'NO';
+    else if (relation.relaclWasNull !== (wasNull ? 'YES' : 'NO')) fail('ATTESTATION_ACL_SHAPE_INVALID');
+    seenRelations.add(row.relation_name);
+    if (row.privilege_type !== 'SELECT') continue;
+    const grantee = row.grantee_name.toLowerCase();
+    if (grantee === 'public') relation.publicGrant = 'YES';
+    else if (granteeOid === ownerOid) relation.ownerSelect = 'YES';
+    else if (grantee === target) relation.directTargetGrant = 'YES';
+    else if (chain.has(grantee)) relation.inheritedGrant = 'YES';
+  }
+  if (seenRelations.size !== TARGET_RELATION_NAMES.length) fail('ATTESTATION_ACL_RELATION_MISSING');
+  return relations;
+}
+
+function validateBroadSelectAclRows(rows) {
+  if (!Array.isArray(rows) || rows.length > MAX_ACL_ROWS) fail('ATTESTATION_ACL_SHAPE_INVALID');
+  for (const row of rows) {
+    if (!row || typeof row !== 'object' || typeof row.relation_name !== 'string' ||
+        typeof row.grantee_name !== 'string' || !row.grantee_name ||
+        row.privilege_type !== 'SELECT') fail('ATTESTATION_ACL_SHAPE_INVALID');
+    const granteeOid = String(row.grantee_oid ?? '');
+    if (!/^\d+$/.test(granteeOid) ||
+        (granteeOid === '0' && row.grantee_name !== 'PUBLIC') ||
+        (granteeOid !== '0' && row.grantee_name === 'PUBLIC')) {
+      fail('ATTESTATION_ACL_SHAPE_INVALID');
+    }
+  }
+  return rows;
+}
+
+function sanitizeRelationProvenance(relations) {
+  return Object.fromEntries(TARGET_RELATION_NAMES.map((name) => {
+    const relation = relations[name];
+    return [name, {
+      effectiveSelect: relation.effectiveSelect,
+      publicGrant: relation.publicGrant,
+      directTargetGrant: relation.directTargetGrant,
+      inheritedGrant: relation.inheritedGrant,
+      ownerSelect: relation.ownerSelect,
+      relaclWasNull: relation.relaclWasNull,
+    }];
+  }));
+}
+
+function summarizeRelationSource(relations, field) {
+  const values = TARGET_RELATION_NAMES.map((name) => relations[name][field]);
+  return values.every((value) => value === 'YES') ? 'YES' :
+    values.every((value) => value === 'NO') ? 'NO' : 'MIXED';
+}
+
 function classifySelectGrantSources({ rows, targetRuntimeRole, chainNames }) {
-  const target = targetRuntimeRole.toLowerCase();
-  const chain = new Set(chainNames.map((name) => name.toLowerCase()));
-  const relevant = rows.filter((row) => TARGET_SET.has(`public.${String(row.table_name)}`) && row.privilege_type === 'SELECT');
+  const relations = classifyRelationAclSources({ rows, targetRuntimeRole, chainNames });
   return {
-    public: relevant.some((row) => String(row.grantee).toLowerCase() === 'public') ? 'YES' : 'NO',
-    direct: relevant.some((row) => String(row.grantee).toLowerCase() === target) ? 'YES' : 'NO',
-    inherited: relevant.some((row) => {
-      const grantee = String(row.grantee).toLowerCase();
-      return grantee !== target && grantee !== 'public' && chain.has(grantee);
-    }) ? 'YES' : 'NO',
+    public: summarizeRelationSource(relations, 'publicGrant'),
+    direct: summarizeRelationSource(relations, 'directTargetGrant'),
+    inherited: summarizeRelationSource(relations, 'inheritedGrant'),
+    relations,
   };
 }
 
@@ -306,10 +440,18 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       Boolean(row.rolcreaterole) || Boolean(row.rolbypassrls) || Boolean(row.rolreplication)) ||
       targetRoleAdminOption;
 
-    const broadRows = await client.query(Q.PUBLIC_SELECT_GRANTS, [[...chainNames, 'PUBLIC']]);
-    if (!broadRows || !Array.isArray(broadRows.rows)) fail('ATTESTATION_CATALOG_SHAPE_INVALID');
-    const broadAllTableSelect = roleAdmin || broadRows.rows.some((row) => !TARGET_SET.has(`public.${String(row.table_name)}`));
-    const grantSources = classifySelectGrantSources({ rows: broadRows.rows, targetRuntimeRole: target, chainNames });
+    const aclRows = safeQueryResult(
+      await client.query(Q.RELATION_ACL, [TARGET_RELATION_NAMES]),
+      'RELATION_ACL',
+    );
+    const chainOids = [...new Set(chain.map((row) => String(row.oid)))];
+    if (!chainOids.every((oid) => /^\d+$/.test(oid))) fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
+    const broadRows = validateBroadSelectAclRows(safeQueryResult(
+      await client.query(Q.BROAD_SELECT_ACL, [chainOids.map((oid) => Number(oid)).concat(0)]),
+      'BROAD_SELECT_ACL',
+    ));
+    const broadAllTableSelect = roleAdmin || broadRows.some((row) => !TARGET_RELATION_NAMES.includes(String(row.relation_name)));
+    const grantSources = classifySelectGrantSources({ rows: aclRows, targetRuntimeRole: target, chainNames });
     const privilege = (query, field) => safeBoolean(safeQueryResult(query, field)[0]);
     const privileges = {
       DATABASE_CONNECT: privilege(await client.query(Q.DATABASE_CONNECT, [target]), 'DATABASE_CONNECT'),
@@ -322,6 +464,15 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       UPDATE_REACTIONS: privilege(await client.query(Q.REACTIONS_UPDATE, [target]), 'UPDATE_REACTIONS'),
       DELETE_REACTIONS: privilege(await client.query(Q.REACTIONS_DELETE, [target]), 'DELETE_REACTIONS'),
     };
+    const effectiveByRelation = {
+      trees: privileges.SELECT_TREES,
+      memories: privileges.SELECT_MEMORIES,
+      tree_social_counts: privileges.SELECT_TREE_SOCIAL_COUNTS,
+      reactions: privileges.SELECT_REACTIONS,
+    };
+    for (const relationName of TARGET_RELATION_NAMES) {
+      grantSources.relations[relationName].effectiveSelect = effectiveByRelation[relationName] ? 'YES' : 'NO';
+    }
     const decision = deriveDecision({ identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect });
     return {
       transactionReadOnly: 'VERIFIED',
@@ -343,6 +494,7 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       publicSelectGrant: grantSources.public,
       directTargetSelectGrant: grantSources.direct,
       inheritedTargetSelectGrant: grantSources.inherited,
+      perRelationProvenance: sanitizeRelationProvenance(grantSources.relations),
       decision,
       rawRoleExposed: 'NO',
       rawGranteeExposed: 'NO',
@@ -373,6 +525,10 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     insertReactions: 'UNKNOWN', updateReactions: 'UNKNOWN', deleteReactions: 'UNKNOWN',
     usagePublic: 'UNKNOWN', databaseConnect: 'UNKNOWN', broadAllTableSelect: 'UNKNOWN', roleAdmin: 'UNKNOWN',
     publicSelectGrant: 'UNKNOWN', directTargetSelectGrant: 'UNKNOWN', inheritedTargetSelectGrant: 'UNKNOWN',
+    perRelationProvenance: Object.fromEntries(TARGET_RELATION_NAMES.map((name) => [name, {
+      effectiveSelect: 'UNKNOWN', publicGrant: 'UNKNOWN', directTargetGrant: 'UNKNOWN',
+      inheritedGrant: 'UNKNOWN', ownerSelect: 'UNKNOWN', relaclWasNull: 'UNKNOWN', ownerOid: 'UNKNOWN',
+    }])),
     reactionsPrivilegeTargetIdentity: 'UNRESOLVED', minimalRequiredChange: 'NOT_DETERMINABLE', canProceed: 'NO',
     finalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
     errorCategory: category,
@@ -405,6 +561,7 @@ function formatSuccess(result) {
     broadAllTableSelect: result.broadAllTableSelect, roleAdmin: result.roleAdmin,
     publicSelectGrant: result.publicSelectGrant, directTargetSelectGrant: result.directTargetSelectGrant,
     inheritedTargetSelectGrant: result.inheritedTargetSelectGrant,
+    perRelationProvenance: result.perRelationProvenance,
     reactionsPrivilegeTargetIdentity: result.decision.target, minimalRequiredChange: result.decision.minimalChange,
     canProceed: result.decision.canProceed, finalDisposition: result.decision.finalDisposition,
     rawRoleExposed: 'NO', rawGranteeExposed: 'NO', rawSecretExposed: 'NO',
@@ -455,6 +612,7 @@ module.exports = {
   SOURCE_BOUND_PURPOSE,
   MAX_ROLE_CHAIN_DEPTH,
   TARGET_RELATIONS,
+  TARGET_RELATION_NAMES,
   Q,
   parseArgs,
   assertSourceBoundApproval,
