@@ -365,7 +365,7 @@ function classifyRelationAclSources({ rows, targetRuntimeRole, chain }) {
         (granteeOid !== '0' && row.grantee_name === 'PUBLIC')) {
       fail('ATTESTATION_ACL_SHAPE_INVALID');
     }
-    if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'REFERENCES', 'TRIGGER', 'TRUNCATE'].includes(row.privilege_type)) {
+    if (!['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'REFERENCES', 'TRIGGER', 'TRUNCATE', 'MAINTAIN'].includes(row.privilege_type)) {
       fail('ATTESTATION_ACL_SHAPE_INVALID');
     }
     const relation = relations[row.relation_name];
