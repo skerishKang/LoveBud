@@ -19,6 +19,7 @@ const SOURCE_BOUND_ISSUE = '4283';
 const SOURCE_BOUND_PURPOSE = 'ONE_PRODUCTION_READONLY_RUNTIME_ROLE_ACL_ATTESTATION';
 const APPROVAL_REFERENCE = `issue:${SOURCE_BOUND_ISSUE}`;
 const MAX_ROLE_CHAIN_DEPTH = 16;
+const MAX_ROLE_CHAIN_ROWS = 128;
 const MAX_ACL_ROWS = 256;
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const ROLE_CLASSES = new Set(['PUBLIC', 'APPLICATION', 'AUTHENTICATED', 'SERVICE', 'OWNER_CLASS']);
@@ -41,20 +42,29 @@ const Q = Object.freeze({
                     current_database()::text AS current_database`,
   ROLE_CHAIN: `WITH RECURSIVE role_chain AS (
       SELECT r.oid, r.rolname::text AS role_name, 0::int AS depth,
-             false AS admin_option, ARRAY[r.oid]::oid[] AS role_path
+             false AS admin_option, false AS inherit_option, false AS set_option,
+             true AS member_of, true AS inherits_from,
+             ARRAY[r.oid]::oid[] AS role_path
       FROM pg_roles r
       WHERE r.rolname = $1
       UNION ALL
       SELECT parent.oid, parent.rolname::text, child.depth + 1,
-             m.admin_option, child.role_path || parent.oid
+             m.admin_option, m.inherit_option, m.set_option,
+             true, child.inherits_from AND m.inherit_option,
+             child.role_path || parent.oid
       FROM role_chain child
       JOIN pg_auth_members m ON m.member = child.oid
       JOIN pg_roles parent ON parent.oid = m.roleid
       WHERE child.depth < $2
         AND NOT parent.oid = ANY(child.role_path)
     )
-    SELECT oid::bigint AS oid, role_name, MIN(depth)::int AS depth,
-           bool_or(admin_option) AS admin_option
+    SELECT oid::bigint AS oid, role_name,
+           MIN(depth)::int AS depth,
+           bool_or(member_of) AS member_of,
+           bool_or(inherits_from) AS inherits_from,
+           COALESCE(bool_or(admin_option) FILTER (WHERE depth = 1), false) AS admin_option,
+           COALESCE(bool_or(inherit_option) FILTER (WHERE depth = 1), false) AS inherit_option,
+           COALESCE(bool_or(set_option) FILTER (WHERE depth = 1), false) AS set_option
     FROM role_chain
     GROUP BY oid, role_name
     ORDER BY depth, role_name`,
@@ -275,16 +285,60 @@ function normalizeAclBoolean(value, field) {
   fail(`ATTESTATION_ACL_${field}_INVALID`);
 }
 
-function classifyRelationAclSources({ rows, targetRuntimeRole, chainNames }) {
+function normalizeRoleBoolean(value, field) {
+  if (value === true || value === false) return value;
+  if (['true', 't', 'yes'].includes(String(value).toLowerCase())) return true;
+  if (['false', 'f', 'no'].includes(String(value).toLowerCase())) return false;
+  fail(`ATTESTATION_ROLE_${field}_INVALID`);
+}
+
+function buildRoleChainSemantics({ chain, targetRuntimeRole }) {
   const target = assertTargetRuntimeRole(targetRuntimeRole).toLowerCase();
-  const chain = new Set();
-  for (const name of chainNames) {
-    if (typeof name !== 'string' || !IDENT_RE.test(name)) fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
-    const key = name.toLowerCase();
-    if (chain.has(key)) fail('ATTESTATION_ROLE_CHAIN_DUPLICATE');
-    chain.add(key);
+  if (!Array.isArray(chain) || chain.length === 0 || chain.length > MAX_ROLE_CHAIN_ROWS) {
+    fail('ATTESTATION_ROLE_CHAIN_BOUNDS');
   }
-  if (!chain.has(target)) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
+  const roles = new Map();
+  for (const row of chain) {
+    if (!row || typeof row !== 'object' || typeof row.role_name !== 'string' ||
+        !IDENT_RE.test(row.role_name) || !/^\d+$/.test(String(row.oid ?? '')) ||
+        !Number.isInteger(Number(row.depth)) || Number(row.depth) < 0 ||
+        Number(row.depth) > MAX_ROLE_CHAIN_DEPTH) {
+      fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
+    }
+    const name = row.role_name.toLowerCase();
+    const oid = String(row.oid);
+    const memberOf = normalizeRoleBoolean(row.member_of, 'MEMBER_OF');
+    const inheritsFrom = normalizeRoleBoolean(row.inherits_from, 'INHERITS_FROM');
+    const adminOption = normalizeRoleBoolean(row.admin_option, 'ADMIN_OPTION');
+    const inheritOption = normalizeRoleBoolean(row.inherit_option, 'INHERIT_OPTION');
+    const setOption = normalizeRoleBoolean(row.set_option, 'SET_OPTION');
+    const existing = roles.get(name);
+    if (existing && existing.oid !== oid) fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
+    if (existing && (existing.memberOf !== memberOf || existing.inheritsFrom !== inheritsFrom ||
+        existing.adminOption !== adminOption || existing.inheritOption !== inheritOption ||
+        existing.setOption !== setOption)) {
+      fail('ATTESTATION_ROLE_CHAIN_DUPLICATE');
+    }
+    roles.set(name, { name, oid, depth: Number(row.depth), memberOf, inheritsFrom, adminOption, inheritOption, setOption });
+  }
+  const targetRole = roles.get(target);
+  if (!targetRole || !targetRole.memberOf) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
+  const directMembershipEdges = [...roles.values()].filter((role) => role.depth === 1 && role.memberOf);
+  return {
+    roles,
+    memberOf: new Set([...roles.values()].filter((role) => role.memberOf).map((role) => role.name)),
+    inheritsFrom: new Set([...roles.values()].filter((role) => role.inheritsFrom).map((role) => role.name)),
+    membershipOnly: new Set([...roles.values()].filter((role) => role.memberOf && !role.inheritsFrom && role.name !== target).map((role) => role.name)),
+    inheritingOids: [...roles.values()].filter((role) => role.inheritsFrom).map((role) => Number(role.oid)),
+    targetMembershipAdminOption: directMembershipEdges.some((role) => role.adminOption),
+    targetMembershipSetOption: directMembershipEdges.some((role) => role.setOption),
+    targetRole,
+  };
+}
+
+function classifyRelationAclSources({ rows, targetRuntimeRole, chain }) {
+  const target = assertTargetRuntimeRole(targetRuntimeRole).toLowerCase();
+  const semantics = buildRoleChainSemantics({ chain, targetRuntimeRole: target });
   if (!Array.isArray(rows) || rows.length > MAX_ACL_ROWS) fail('ATTESTATION_ACL_SHAPE_INVALID');
 
   const relations = Object.fromEntries(TARGET_RELATION_NAMES.map((name) => [name, {
@@ -292,6 +346,7 @@ function classifyRelationAclSources({ rows, targetRuntimeRole, chainNames }) {
     publicGrant: 'NO',
     directTargetGrant: 'NO',
     inheritedGrant: 'NO',
+    membershipOnlyGrant: 'NO',
     ownerSelect: 'NO',
     relaclWasNull: 'UNKNOWN',
     ownerOid: 'UNKNOWN',
@@ -327,7 +382,8 @@ function classifyRelationAclSources({ rows, targetRuntimeRole, chainNames }) {
     if (grantee === 'public') relation.publicGrant = 'YES';
     else if (granteeOid === ownerOid) relation.ownerSelect = 'YES';
     else if (grantee === target) relation.directTargetGrant = 'YES';
-    else if (chain.has(grantee)) relation.inheritedGrant = 'YES';
+    else if (semantics.inheritsFrom.has(grantee)) relation.inheritedGrant = 'YES';
+    else if (semantics.membershipOnly.has(grantee)) relation.membershipOnlyGrant = 'YES';
   }
   if (seenRelations.size !== TARGET_RELATION_NAMES.length) fail('ATTESTATION_ACL_RELATION_MISSING');
   return relations;
@@ -357,6 +413,7 @@ function sanitizeRelationProvenance(relations) {
       publicGrant: relation.publicGrant,
       directTargetGrant: relation.directTargetGrant,
       inheritedGrant: relation.inheritedGrant,
+      membershipOnlyGrant: relation.membershipOnlyGrant,
       ownerSelect: relation.ownerSelect,
       relaclWasNull: relation.relaclWasNull,
     }];
@@ -369,8 +426,20 @@ function summarizeRelationSource(relations, field) {
     values.every((value) => value === 'NO') ? 'NO' : 'MIXED';
 }
 
-function classifySelectGrantSources({ rows, targetRuntimeRole, chainNames }) {
-  const relations = classifyRelationAclSources({ rows, targetRuntimeRole, chainNames });
+function classifySelectGrantSources({ rows, targetRuntimeRole, chain, chainNames }) {
+  const roleChain = chain || (Array.isArray(chainNames)
+    ? chainNames.map((roleName, index) => ({
+      role_name: roleName,
+      oid: index + 1,
+      depth: index,
+      member_of: true,
+      inherits_from: true,
+      admin_option: false,
+      inherit_option: true,
+      set_option: false,
+    }))
+    : null);
+  const relations = classifyRelationAclSources({ rows, targetRuntimeRole, chain: roleChain });
   return {
     public: summarizeRelationSource(relations, 'publicGrant'),
     direct: summarizeRelationSource(relations, 'directTargetGrant'),
@@ -423,35 +492,36 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
     }
 
     const chain = safeQueryResult(await client.query(Q.ROLE_CHAIN, [target, MAX_ROLE_CHAIN_DEPTH]), 'TARGET_ROLE_CHAIN');
-    if (chain.length > MAX_ROLE_CHAIN_DEPTH + 1) fail('ATTESTATION_ROLE_CHAIN_BOUNDS');
-    const chainNames = [...new Set(chain.map((row) => String(row.role_name)))];
+    if (chain.length > MAX_ROLE_CHAIN_ROWS) fail('ATTESTATION_ROLE_CHAIN_BOUNDS');
+    const chainSemantics = buildRoleChainSemantics({ chain, targetRuntimeRole: target });
+    const chainNames = [...chainSemantics.memberOf];
     const roleFlags = safeQueryResult(await client.query(Q.ROLE_FLAGS, [chainNames]), 'TARGET_ROLE_FLAGS');
     if (!roleFlags.some((row) => String(row.role_name).toLowerCase() === target.toLowerCase())) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
     const relation = buildRoleMappingRelation({ targetRuntimeRole: target, identity, chain, roleMapping, artifact });
     const targetFlags = roleFlags.find((row) => String(row.role_name).toLowerCase() === target.toLowerCase());
     if (!targetFlags) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
-    const targetRoleAdminOption = chain.some((row) => Boolean(row.admin_option));
-    const targetRoleSuperuser = Boolean(targetFlags.rolsuper);
-    const targetRoleCreatedb = Boolean(targetFlags.rolcreatedb);
-    const targetRoleCreaterole = Boolean(targetFlags.rolcreaterole);
-    const targetRoleBypassrls = Boolean(targetFlags.rolbypassrls);
-    const targetRoleReplication = Boolean(targetFlags.rolreplication);
-    const roleAdmin = roleFlags.some((row) => Boolean(row.rolsuper) || Boolean(row.rolcreatedb) ||
-      Boolean(row.rolcreaterole) || Boolean(row.rolbypassrls) || Boolean(row.rolreplication)) ||
-      targetRoleAdminOption;
+    const targetMembershipAdminOption = chainSemantics.targetMembershipAdminOption;
+    const targetMembershipSetOption = chainSemantics.targetMembershipSetOption;
+    const targetRoleSuperuser = normalizeRoleBoolean(targetFlags.rolsuper, 'SPECIAL_ATTRIBUTE');
+    const targetRoleCreatedb = normalizeRoleBoolean(targetFlags.rolcreatedb, 'SPECIAL_ATTRIBUTE');
+    const targetRoleCreaterole = normalizeRoleBoolean(targetFlags.rolcreaterole, 'SPECIAL_ATTRIBUTE');
+    const targetRoleBypassrls = normalizeRoleBoolean(targetFlags.rolbypassrls, 'SPECIAL_ATTRIBUTE');
+    const targetRoleReplication = normalizeRoleBoolean(targetFlags.rolreplication, 'SPECIAL_ATTRIBUTE');
+    const roleAdmin = targetRoleSuperuser || targetRoleCreatedb || targetRoleCreaterole ||
+      targetRoleBypassrls || targetRoleReplication || targetMembershipAdminOption;
 
     const aclRows = safeQueryResult(
       await client.query(Q.RELATION_ACL, [TARGET_RELATION_NAMES]),
       'RELATION_ACL',
     );
-    const chainOids = [...new Set(chain.map((row) => String(row.oid)))];
-    if (!chainOids.every((oid) => /^\d+$/.test(oid))) fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
+    const chainOids = [...new Set(chainSemantics.inheritingOids.concat(Number(chainSemantics.targetRole.oid)))];
+    if (!chainOids.every((oid) => Number.isSafeInteger(oid) && oid >= 0)) fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
     const broadRows = validateBroadSelectAclRows(safeQueryResult(
-      await client.query(Q.BROAD_SELECT_ACL, [chainOids.map((oid) => Number(oid)).concat(0)]),
+      await client.query(Q.BROAD_SELECT_ACL, [chainOids.concat(0)]),
       'BROAD_SELECT_ACL',
     ));
     const broadAllTableSelect = roleAdmin || broadRows.some((row) => !TARGET_RELATION_NAMES.includes(String(row.relation_name)));
-    const grantSources = classifySelectGrantSources({ rows: aclRows, targetRuntimeRole: target, chainNames });
+    const grantSources = classifySelectGrantSources({ rows: aclRows, targetRuntimeRole: target, chain });
     const privilege = (query, field) => safeBoolean(safeQueryResult(query, field)[0]);
     const privileges = {
       DATABASE_CONNECT: privilege(await client.query(Q.DATABASE_CONNECT, [target]), 'DATABASE_CONNECT'),
@@ -486,7 +556,9 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       targetRoleCreaterole: targetRoleCreaterole ? 'YES' : 'NO',
       targetRoleBypassrls: targetRoleBypassrls ? 'YES' : 'NO',
       targetRoleReplication: targetRoleReplication ? 'YES' : 'NO',
-      targetRoleAdminOption: targetRoleAdminOption ? 'YES' : 'NO',
+      targetRoleAdminOption: targetMembershipAdminOption ? 'YES' : 'NO',
+      targetMembershipAdminOption: targetMembershipAdminOption ? 'YES' : 'NO',
+      targetMembershipSetOption: targetMembershipSetOption ? 'YES' : 'NO',
       historicalRuntimeRoleRelation: relation.historicalRelation,
       privileges,
       roleAdmin: roleAdmin ? 'YES' : 'NO',
@@ -520,6 +592,7 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     currentRoleEqualsTarget: 'UNRESOLVED', targetRoleSpecificChecks: 'UNRESOLVED',
     targetRoleSuperuser: 'UNKNOWN', targetRoleCreatedb: 'UNKNOWN', targetRoleCreaterole: 'UNKNOWN',
     targetRoleBypassrls: 'UNKNOWN', targetRoleReplication: 'UNKNOWN', targetRoleAdminOption: 'UNKNOWN',
+    targetMembershipAdminOption: 'UNKNOWN', targetMembershipSetOption: 'UNKNOWN',
     historicalRuntimeRoleRelation: 'UNRESOLVED',
     selectTrees: 'UNKNOWN', selectMemories: 'UNKNOWN', selectTreeSocialCounts: 'UNKNOWN', selectReactions: 'UNKNOWN',
     insertReactions: 'UNKNOWN', updateReactions: 'UNKNOWN', deleteReactions: 'UNKNOWN',
@@ -527,7 +600,7 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     publicSelectGrant: 'UNKNOWN', directTargetSelectGrant: 'UNKNOWN', inheritedTargetSelectGrant: 'UNKNOWN',
     perRelationProvenance: Object.fromEntries(TARGET_RELATION_NAMES.map((name) => [name, {
       effectiveSelect: 'UNKNOWN', publicGrant: 'UNKNOWN', directTargetGrant: 'UNKNOWN',
-      inheritedGrant: 'UNKNOWN', ownerSelect: 'UNKNOWN', relaclWasNull: 'UNKNOWN', ownerOid: 'UNKNOWN',
+      inheritedGrant: 'UNKNOWN', membershipOnlyGrant: 'UNKNOWN', ownerSelect: 'UNKNOWN', relaclWasNull: 'UNKNOWN', ownerOid: 'UNKNOWN',
     }])),
     reactionsPrivilegeTargetIdentity: 'UNRESOLVED', minimalRequiredChange: 'NOT_DETERMINABLE', canProceed: 'NO',
     finalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
@@ -552,6 +625,8 @@ function formatSuccess(result) {
     targetRoleCreaterole: result.targetRoleCreaterole,
     targetRoleBypassrls: result.targetRoleBypassrls,
     targetRoleReplication: result.targetRoleReplication,
+    targetMembershipAdminOption: result.targetMembershipAdminOption,
+    targetMembershipSetOption: result.targetMembershipSetOption,
     targetRoleAdminOption: result.targetRoleAdminOption,
     historicalRuntimeRoleRelation: result.historicalRuntimeRoleRelation,
     selectTrees: p.SELECT_TREES ? 'YES' : 'NO', selectMemories: p.SELECT_MEMORIES ? 'YES' : 'NO',

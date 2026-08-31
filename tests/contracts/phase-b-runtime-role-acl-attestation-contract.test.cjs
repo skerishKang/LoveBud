@@ -67,18 +67,27 @@ function fakeClient({
   const calls = [];
   let connectCount = 0;
   let endCount = 0;
-  const roleChain = (chain || [{ role_name: targetRole, depth: 0, admin_option: false }]).map((row, index) => ({
+  const roleChain = (chain || [{ role_name: targetRole, depth: 0, admin_option: false }]).map((row, index) => {
+    const depth = row.depth ?? 0;
+    return {
+      ...row,
+      oid: row.oid ?? (row.role_name === targetRole ? 100 : 101 + index),
+      depth,
+      member_of: row.member_of ?? true,
+      inherits_from: row.inherits_from ?? true,
+      admin_option: row.admin_option ?? false,
+      inherit_option: row.inherit_option ?? (depth === 0 ? false : true),
+      set_option: row.set_option ?? false,
+    };
+  });
+  const roleFlags = (flags || [{ role_name: targetRole }]).map((row) => ({
     ...row,
-    oid: row.oid ?? (row.role_name === targetRole ? 100 : 101 + index),
+    rolsuper: row.rolsuper ?? false,
+    rolcreatedb: row.rolcreatedb ?? false,
+    rolcreaterole: row.rolcreaterole ?? false,
+    rolbypassrls: row.rolbypassrls ?? false,
+    rolreplication: row.rolreplication ?? false,
   }));
-  const roleFlags = flags || [{
-    role_name: targetRole,
-    rolsuper: false,
-    rolcreatedb: false,
-    rolcreaterole: false,
-    rolbypassrls: false,
-    rolreplication: false,
-  }];
   const p = {
     DATABASE_CONNECT: true,
     USAGE_PUBLIC: true,
@@ -93,7 +102,7 @@ function fakeClient({
   };
   const bool = (key) => [{ allowed: p[key] }];
   const defaultBroadAclRows = aclRows.filter((row) => row.privilege_type === 'SELECT' &&
-    (row.grantee_name === 'PUBLIC' || roleChain.some((role) => role.oid === row.grantee_oid)));
+    (row.grantee_name === 'PUBLIC' || roleChain.some((role) => role.inherits_from && role.oid === row.grantee_oid)));
   const client = {
     async connect() { connectCount += 1; },
     async end() { endCount += 1; },
@@ -259,8 +268,13 @@ describe('LoveBud #4283 target-role runtime ACL attestation contract', () => {
     assert.equal(superuser.result.targetRoleSuperuser, 'YES');
     assert.equal(superuser.result.roleAdmin, 'YES');
     assert.equal(superuser.result.decision.canProceed, 'NO');
-    const adminOption = await collectFixture({ chain: [{ role_name: RAW_TARGET, depth: 0, admin_option: true }] });
+    const adminOption = await collectFixture({ chain: [
+      { role_name: RAW_TARGET, depth: 0, admin_option: false },
+      { role_name: 'admin_parent', depth: 1, admin_option: true, inherit_option: true, set_option: false },
+    ] });
     assert.equal(adminOption.result.targetRoleAdminOption, 'YES');
+    assert.equal(adminOption.result.targetMembershipAdminOption, 'YES');
+    assert.equal(adminOption.result.targetMembershipSetOption, 'NO');
     assert.equal(adminOption.result.roleAdmin, 'YES');
     assert.equal(adminOption.result.decision.canProceed, 'NO');
   });
@@ -368,6 +382,108 @@ describe('LoveBud #4283 target-role runtime ACL attestation contract', () => {
     }), /ATTESTATION_ACL_SHAPE_INVALID/);
   });
 
+  it('enforces PostgreSQL 17 automatic-inheritance paths and membership-only diagnostics', async () => {
+    const direct = await collectFixture({
+      chain: [
+        { role_name: RAW_TARGET, depth: 0, member_of: true, inherits_from: true },
+        { role_name: 'parent_role', depth: 1, member_of: true, inherits_from: true, inherit_option: true },
+      ],
+      aclRows: aclRowsFor({ reactions: [{ grantee_name: 'parent_role', grantee_oid: 101 }] }),
+      privileges: { SELECT_REACTIONS: true },
+    });
+    assert.equal(direct.result.perRelationProvenance.reactions.inheritedGrant, 'YES');
+    assert.equal(direct.result.perRelationProvenance.reactions.membershipOnlyGrant, 'NO');
+
+    const blocked = await collectFixture({
+      chain: [
+        { role_name: RAW_TARGET, depth: 0, member_of: true, inherits_from: true },
+        { role_name: 'parent_role', depth: 1, member_of: true, inherits_from: false, inherit_option: false },
+      ],
+      aclRows: aclRowsFor({ reactions: [{ grantee_name: 'parent_role', grantee_oid: 101 }] }),
+      privileges: { SELECT_REACTIONS: true },
+    });
+    assert.equal(blocked.result.perRelationProvenance.reactions.inheritedGrant, 'NO');
+    assert.equal(blocked.result.perRelationProvenance.reactions.membershipOnlyGrant, 'YES');
+
+    const blockedHop = await collectFixture({
+      chain: [
+        { role_name: RAW_TARGET, depth: 0, member_of: true, inherits_from: true },
+        { role_name: 'parent_role', depth: 1, member_of: true, inherits_from: true, inherit_option: true },
+        { role_name: 'grandparent_role', depth: 2, member_of: true, inherits_from: false, inherit_option: false },
+      ],
+      aclRows: aclRowsFor({ reactions: [{ grantee_name: 'grandparent_role', grantee_oid: 102 }] }),
+      privileges: { SELECT_REACTIONS: true },
+    });
+    assert.equal(blockedHop.result.perRelationProvenance.reactions.inheritedGrant, 'NO');
+    assert.equal(blockedHop.result.perRelationProvenance.reactions.membershipOnlyGrant, 'YES');
+
+    const inheritedHop = await collectFixture({
+      chain: [
+        { role_name: RAW_TARGET, depth: 0, member_of: true, inherits_from: true },
+        { role_name: 'parent_role', depth: 1, member_of: true, inherits_from: true, inherit_option: true },
+        { role_name: 'grandparent_role', depth: 2, member_of: true, inherits_from: true, inherit_option: true },
+      ],
+      aclRows: aclRowsFor({ reactions: [{ grantee_name: 'grandparent_role', grantee_oid: 102 }] }),
+      privileges: { SELECT_REACTIONS: true },
+    });
+    assert.equal(inheritedHop.result.perRelationProvenance.reactions.inheritedGrant, 'YES');
+    assert.equal(inheritedHop.result.perRelationProvenance.reactions.membershipOnlyGrant, 'NO');
+  });
+
+  it('keeps parent special attributes from becoming target attributes or admin drift', async () => {
+    const parentFlags = await collectFixture({
+      chain: [
+        { role_name: RAW_TARGET, depth: 0, member_of: true, inherits_from: true },
+        { role_name: 'parent_role', depth: 1, member_of: true, inherits_from: true },
+      ],
+      flags: [
+        { role_name: RAW_TARGET },
+        { role_name: 'parent_role', rolsuper: true, rolcreaterole: true },
+      ],
+      aclRows: aclRowsFor({ reactions: [{ grantee_name: 'parent_role', grantee_oid: 101 }] }),
+    });
+    assert.equal(parentFlags.result.targetRoleSuperuser, 'NO');
+    assert.equal(parentFlags.result.targetRoleCreaterole, 'NO');
+    assert.equal(parentFlags.result.roleAdmin, 'NO');
+    assert.equal(parentFlags.result.decision.canProceed, 'YES');
+
+    const targetFlags = await collectFixture({
+      flags: [{ role_name: RAW_TARGET, rolcreaterole: true }],
+    });
+    assert.equal(targetFlags.result.targetRoleCreaterole, 'YES');
+    assert.equal(targetFlags.result.roleAdmin, 'YES');
+    assert.equal(targetFlags.result.decision.canProceed, 'NO');
+  });
+
+  it('reports ADMIN OPTION and SET OPTION independently from inheritance', async () => {
+    const result = await collectFixture({
+      chain: [
+        { role_name: RAW_TARGET, depth: 0, member_of: true, inherits_from: true },
+        { role_name: 'parent_role', depth: 1, member_of: true, inherits_from: false, inherit_option: false, admin_option: true, set_option: true },
+      ],
+      aclRows: aclRowsFor({ reactions: [{ grantee_name: 'parent_role', grantee_oid: 101 }] }),
+      privileges: { SELECT_REACTIONS: true },
+    });
+    assert.equal(result.result.targetMembershipAdminOption, 'YES');
+    assert.equal(result.result.targetMembershipSetOption, 'YES');
+    assert.equal(result.result.roleAdmin, 'YES');
+    assert.equal(result.result.perRelationProvenance.reactions.inheritedGrant, 'NO');
+    assert.equal(result.result.perRelationProvenance.reactions.membershipOnlyGrant, 'YES');
+    assert.equal(result.result.perRelationProvenance.reactions.effectiveSelect, 'YES');
+  });
+
+  it('fails closed on malformed PostgreSQL 17 membership metadata', () => {
+    assert.throws(() => classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chain: [{ role_name: RAW_TARGET, oid: 100, depth: 0, member_of: true, inherits_from: 'invalid', admin_option: false, inherit_option: false, set_option: false }],
+      rows: aclRowsFor(),
+    }), /ATTESTATION_ROLE_INHERITS_FROM_INVALID/);
+    assert.throws(() => classifySelectGrantSources({
+      targetRuntimeRole: RAW_TARGET,
+      chain: [{ role_name: RAW_TARGET, oid: 100, depth: 0, member_of: true, inherits_from: true, admin_option: false, inherit_option: false }],
+      rows: aclRowsFor(),
+    }), /ATTESTATION_ROLE_SET_OPTION_INVALID/);
+  });
   it('observer A SELECT does not contaminate target B effective NO or provenance', async () => {
     const { result } = await collectFixture({
       aclRows: aclRowsFor({
