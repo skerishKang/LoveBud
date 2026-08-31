@@ -3,10 +3,10 @@
 /**
  * Ephemeral #4283 Production-readonly runtime-role / reactions ACL attestation.
  *
- * This file is intentionally source-bound to #4283 and is not a replacement for
- * the #4295 grantee reconciliation helper. The live path is never enabled by
- * an environment variable and accepts no caller SQL, role, object, or client.
- * It is suitable only for a separately approved one-session diagnostic run.
+ * Source-bound, one-session catalog-only diagnostic. The connected observer is
+ * never promoted to, made a member of, or otherwise used as the target role.
+ * Target-role privilege functions receive the explicitly authorized target role
+ * from the private role-mapping input.
  */
 
 const fs = require('node:fs');
@@ -19,6 +19,8 @@ const SOURCE_BOUND_ISSUE = '4283';
 const SOURCE_BOUND_PURPOSE = 'ONE_PRODUCTION_READONLY_RUNTIME_ROLE_ACL_ATTESTATION';
 const APPROVAL_REFERENCE = `issue:${SOURCE_BOUND_ISSUE}`;
 const MAX_ROLE_CHAIN_DEPTH = 16;
+const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const ROLE_CLASSES = new Set(['PUBLIC', 'APPLICATION', 'AUTHENTICATED', 'SERVICE', 'OWNER_CLASS']);
 const TARGET_RELATIONS = Object.freeze([
   'public.trees',
   'public.memories',
@@ -59,15 +61,15 @@ const Q = Object.freeze({
                       rolcanlogin
                FROM pg_roles
                WHERE rolname = ANY($1::text[])`,
-  DATABASE_CONNECT: `SELECT has_database_privilege(current_database(), 'CONNECT') AS allowed`,
-  PUBLIC_USAGE: `SELECT has_schema_privilege('public', 'USAGE') AS allowed`,
-  TREES_SELECT: `SELECT has_table_privilege('public.trees', 'SELECT') AS allowed`,
-  MEMORIES_SELECT: `SELECT has_table_privilege('public.memories', 'SELECT') AS allowed`,
-  SOCIAL_COUNTS_SELECT: `SELECT has_table_privilege('public.tree_social_counts', 'SELECT') AS allowed`,
-  REACTIONS_SELECT: `SELECT has_table_privilege('public.reactions', 'SELECT') AS allowed`,
-  REACTIONS_INSERT: `SELECT has_table_privilege('public.reactions', 'INSERT') AS allowed`,
-  REACTIONS_UPDATE: `SELECT has_table_privilege('public.reactions', 'UPDATE') AS allowed`,
-  REACTIONS_DELETE: `SELECT has_table_privilege('public.reactions', 'DELETE') AS allowed`,
+  DATABASE_CONNECT: `SELECT has_database_privilege($1::name, current_database(), 'CONNECT') AS allowed`,
+  PUBLIC_USAGE: `SELECT has_schema_privilege($1::name, 'public', 'USAGE') AS allowed`,
+  TREES_SELECT: `SELECT has_table_privilege($1::name, 'public.trees', 'SELECT') AS allowed`,
+  MEMORIES_SELECT: `SELECT has_table_privilege($1::name, 'public.memories', 'SELECT') AS allowed`,
+  SOCIAL_COUNTS_SELECT: `SELECT has_table_privilege($1::name, 'public.tree_social_counts', 'SELECT') AS allowed`,
+  REACTIONS_SELECT: `SELECT has_table_privilege($1::name, 'public.reactions', 'SELECT') AS allowed`,
+  REACTIONS_INSERT: `SELECT has_table_privilege($1::name, 'public.reactions', 'INSERT') AS allowed`,
+  REACTIONS_UPDATE: `SELECT has_table_privilege($1::name, 'public.reactions', 'UPDATE') AS allowed`,
+  REACTIONS_DELETE: `SELECT has_table_privilege($1::name, 'public.reactions', 'DELETE') AS allowed`,
   PUBLIC_SELECT_GRANTS: `SELECT DISTINCT table_name::text AS table_name,
                                    grantee::text AS grantee,
                                    privilege_type::text AS privilege_type
@@ -112,6 +114,13 @@ function safeQueryResult(result, field) {
   return result.rows;
 }
 
+function assertTargetRuntimeRole(value) {
+  if (typeof value !== 'string' || !IDENT_RE.test(value) || value.length > 63) {
+    fail('ATTESTATION_TARGET_ROLE_INVALID');
+  }
+  return value;
+}
+
 function parseArgs(args) {
   const values = {};
   const seen = new Set();
@@ -142,12 +151,48 @@ function assertBaseline(repoRoot, baselineCommit) {
   if (head !== baselineCommit) fail('ATTESTATION_BASELINE_HEAD_MISMATCH');
 }
 
+function readJsonPrivateFile(repoRoot, relPath, failure) {
+  if (relPath === undefined) fail(failure);
+  const abs = boundary.resolveSecretsRelativeFile(repoRoot, relPath);
+  let doc;
+  try {
+    doc = JSON.parse(fs.readFileSync(abs, 'utf8'));
+  } catch {
+    fail(failure);
+  }
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) fail(failure);
+  return doc;
+}
+
+/**
+ * Strict private contract. The target role is explicit and exactly one mapped
+ * role is accepted; no default, historical role, URL username, or observer
+ * identity can become the target.
+ */
+function loadTargetRoleMapping(repoRoot, relPath) {
+  const doc = readJsonPrivateFile(repoRoot, relPath, 'ATTESTATION_TARGET_ROLE_MAPPING_INVALID');
+  const topKeys = Object.keys(doc).sort();
+  if (topKeys.length !== 2 || topKeys[0] !== 'role_mapping' || topKeys[1] !== 'target_runtime_role') {
+    fail('ATTESTATION_TARGET_ROLE_MAPPING_AMBIGUOUS');
+  }
+  const targetRuntimeRole = assertTargetRuntimeRole(doc.target_runtime_role);
+  const mapping = doc.role_mapping;
+  if (!mapping || typeof mapping !== 'object' || Array.isArray(mapping)) {
+    fail('ATTESTATION_TARGET_ROLE_MAPPING_INVALID');
+  }
+  const keys = Object.keys(mapping);
+  if (keys.length !== 1 || keys[0] !== targetRuntimeRole || !ROLE_CLASSES.has(mapping[keys[0]])) {
+    fail('ATTESTATION_TARGET_ROLE_MAPPING_AMBIGUOUS');
+  }
+  return Object.freeze({
+    targetRuntimeRole,
+    roleMapping: Object.freeze({ [targetRuntimeRole]: mapping[targetRuntimeRole] }),
+  });
+}
+
 function readOptionalArtifact(repoRoot, relPath) {
   if (relPath === undefined) return null;
-  const abs = boundary.resolveSecretsRelativeFile(repoRoot, relPath);
-  if (!fs.existsSync(abs)) return null;
-  const doc = JSON.parse(fs.readFileSync(abs, 'utf8'));
-  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) fail('ATTESTATION_ARTIFACT_INVALID');
+  const doc = readJsonPrivateFile(repoRoot, relPath, 'ATTESTATION_ARTIFACT_INVALID');
   if (!Array.isArray(doc.unmapped_grantees) || doc.unmapped_grantees.length !== 2 ||
       !doc.unmapped_grantees.every((value) => typeof value === 'string' && value.length > 0)) {
     fail('ATTESTATION_ARTIFACT_INVALID');
@@ -155,22 +200,15 @@ function readOptionalArtifact(repoRoot, relPath) {
   return doc;
 }
 
-function buildRoleMappingRelation({ credentialUsername, identity, chain, mapping, artifact }) {
-  const mappingKeys = new Set(Object.keys(mapping || {}).map((key) => key.toLowerCase()));
-  const effective = String(identity.current_user || '');
-  const session = String(identity.session_user || '');
+function buildRoleMappingRelation({ targetRuntimeRole, identity, chain, roleMapping, artifact }) {
+  const target = assertTargetRuntimeRole(targetRuntimeRole);
+  const mappingKeys = new Set(Object.keys(roleMapping || {}).map((key) => key.toLowerCase()));
+  const sessionRole = String(identity.session_user || '');
   const currentRole = String(identity.current_role || '');
   const chainNames = chain.map((row) => String(row.role_name));
-  const credential = String(credentialUsername || '');
-  const credentialMapped = mappingKeys.has(credential.toLowerCase());
-  const effectiveMapped = mappingKeys.has(effective.toLowerCase());
-
-  let credentialRoleMatch = 'UNRESOLVED';
-  if (credential && effective && currentRole) {
-    if (currentRole !== session && credential === session && currentRole === effective) credentialRoleMatch = 'SET_ROLE_EFFECTIVE_ROLE';
-    else if (credential === effective && currentRole === effective && chainNames.length > 1) credentialRoleMatch = 'INHERITED_EFFECTIVE_ROLE';
-    else if (credential === effective && currentRole === effective) credentialRoleMatch = 'DIRECT_EFFECTIVE_ROLE';
-    else if (effectiveMapped) credentialRoleMatch = 'DISTINCT_MAPPED_ROLE';
+  const targetInChain = chainNames.some((name) => name.toLowerCase() === target.toLowerCase());
+  if (!targetInChain || !mappingKeys.has(target.toLowerCase())) {
+    fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
   }
 
   let historicalRelation = 'UNRESOLVED';
@@ -178,69 +216,60 @@ function buildRoleMappingRelation({ credentialUsername, identity, chain, mapping
   const currentChain = new Set(chainNames.map((name) => name.toLowerCase()));
   const historicalInChain = historical.some((name) => currentChain.has(String(name).toLowerCase()));
   if (historicalInChain) {
-    historicalRelation = historical.some((name) => String(name).toLowerCase() === effective.toLowerCase())
-      ? 'CURRENT_EFFECTIVE_ROLE'
-      : 'MEMBER_OF_CURRENT_CHAIN';
+    historicalRelation = historical.some((name) => String(name).toLowerCase() === target.toLowerCase())
+      ? 'CURRENT_TARGET_ROLE'
+      : 'MEMBER_OF_CURRENT_TARGET_CHAIN';
   } else if (historical.length > 0 && chain.length > 0) {
     historicalRelation = 'STALE_NONCURRENT_ROLE';
   }
 
-  const currentIdentityResolved = credentialRoleMatch !== 'UNRESOLVED';
   return {
-    credentialRoleMatch,
-    currentIdentityResolved,
+    currentIdentityResolved: true,
     historicalRelation,
-    roleMappingChangeRequired: currentIdentityResolved ? (effectiveMapped ? 'NO' : 'YES') : 'NOT_DETERMINABLE',
-    credentialMapped,
+    sessionEqualsTarget: sessionRole === target ? 'YES' : 'NO',
+    currentRoleEqualsTarget: currentRole === target ? 'YES' : 'NO',
+  };
+}
+
+function classifySelectGrantSources({ rows, targetRuntimeRole, chainNames }) {
+  const target = targetRuntimeRole.toLowerCase();
+  const chain = new Set(chainNames.map((name) => name.toLowerCase()));
+  const relevant = rows.filter((row) => TARGET_SET.has(`public.${String(row.table_name)}`) && row.privilege_type === 'SELECT');
+  return {
+    public: relevant.some((row) => String(row.grantee).toLowerCase() === 'public') ? 'YES' : 'NO',
+    direct: relevant.some((row) => String(row.grantee).toLowerCase() === target) ? 'YES' : 'NO',
+    inherited: relevant.some((row) => {
+      const grantee = String(row.grantee).toLowerCase();
+      return grantee !== target && grantee !== 'public' && chain.has(grantee);
+    }) ? 'YES' : 'NO',
   };
 }
 
 function deriveDecision({ identityResolved, privileges, roleAdmin, broadAllTableSelect }) {
-  const baseline = privileges.SELECT_TREES === true && privileges.SELECT_MEMORIES === true &&
+  const baseline = privileges.DATABASE_CONNECT === true && privileges.USAGE_PUBLIC === true &&
+    privileges.SELECT_TREES === true && privileges.SELECT_MEMORIES === true &&
     privileges.SELECT_TREE_SOCIAL_COUNTS === true;
   const writesClosed = privileges.INSERT_REACTIONS === false &&
     privileges.UPDATE_REACTIONS === false && privileges.DELETE_REACTIONS === false;
   if (!identityResolved) {
-    return {
-      target: 'UNRESOLVED',
-      minimalChange: 'NOT_DETERMINABLE',
-      canProceed: 'NO',
-      finalDisposition: 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
-    };
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', canProceed: 'NO', finalDisposition: 'RUNTIME_ROLE_IDENTITY_UNRESOLVED' };
   }
   if (!baseline || roleAdmin === true || broadAllTableSelect === true) {
-    return {
-      target: 'UNRESOLVED',
-      minimalChange: 'NOT_DETERMINABLE',
-      canProceed: 'NO',
-      finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP',
-    };
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', canProceed: 'NO', finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP' };
   }
   if (privileges.SELECT_REACTIONS === true) {
-    return {
-      target: 'RESOLVED',
-      minimalChange: 'NO_PRIVILEGE_CHANGE',
-      canProceed: writesClosed ? 'YES' : 'NO',
-      finalDisposition: writesClosed ? 'ALREADY_PRIVILEGED_NO_MUTATION_NEEDED' : 'BASELINE_PRIVILEGE_DRIFT_STOP',
-    };
+    return { target: 'RESOLVED', minimalChange: 'NO_PRIVILEGE_CHANGE', canProceed: writesClosed ? 'YES' : 'NO', finalDisposition: writesClosed ? 'ALREADY_PRIVILEGED_NO_MUTATION_NEEDED' : 'BASELINE_PRIVILEGE_DRIFT_STOP' };
   }
   if (privileges.SELECT_REACTIONS === false && writesClosed) {
-    return {
-      target: 'RESOLVED',
-      minimalChange: 'SELECT_ON_REACTIONS_ONLY',
-      canProceed: 'YES',
-      finalDisposition: 'RUNTIME_READ_ROLE_ACL_ATTESTED',
-    };
+    return { target: 'RESOLVED', minimalChange: 'SELECT_ON_REACTIONS_ONLY', canProceed: 'YES', finalDisposition: 'RUNTIME_READ_ROLE_ACL_ATTESTED' };
   }
-  return {
-    target: 'UNRESOLVED',
-    minimalChange: 'NOT_DETERMINABLE',
-    canProceed: 'NO',
-    finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP',
-  };
+  return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', canProceed: 'NO', finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP' };
 }
 
-async function collectAttestation({ client, credentialUsername, roleMapping, artifact }) {
+async function collectAttestation({ client, targetRuntimeRole, roleMapping, artifact }) {
+  const target = assertTargetRuntimeRole(targetRuntimeRole);
+  if (!roleMapping || Object.keys(roleMapping).length !== 1 ||
+      Object.keys(roleMapping)[0] !== target) fail('ATTESTATION_TARGET_ROLE_MAPPING_AMBIGUOUS');
   if (!client || typeof client.connect !== 'function' || typeof client.query !== 'function' || typeof client.end !== 'function') {
     fail('ATTESTATION_CLIENT_INVALID');
   }
@@ -254,47 +283,67 @@ async function collectAttestation({ client, credentialUsername, roleMapping, art
     const readOnlyRows = safeQueryResult(await client.query(Q.SHOW_RO), 'READ_ONLY');
     if (!safeBoolean(readOnlyRows[0])) fail('ATTESTATION_READ_ONLY_REQUIRED');
 
-    const identityRows = safeQueryResult(await client.query(Q.IDENTITY), 'IDENTITY');
-    const identity = identityRows[0];
+    const identity = safeQueryResult(await client.query(Q.IDENTITY), 'IDENTITY')[0];
     for (const key of ['current_user', 'session_user', 'current_role', 'current_database']) {
       if (typeof identity[key] !== 'string' || !identity[key]) fail('ATTESTATION_IDENTITY_UNRESOLVED');
     }
 
-    const chain = safeQueryResult(await client.query(Q.ROLE_CHAIN, [credentialUsername, MAX_ROLE_CHAIN_DEPTH]), 'ROLE_CHAIN');
+    const chain = safeQueryResult(await client.query(Q.ROLE_CHAIN, [target, MAX_ROLE_CHAIN_DEPTH]), 'TARGET_ROLE_CHAIN');
     if (chain.length > MAX_ROLE_CHAIN_DEPTH + 1) fail('ATTESTATION_ROLE_CHAIN_BOUNDS');
     const chainNames = [...new Set(chain.map((row) => String(row.role_name)))];
-    if (!chainNames.length) fail('ATTESTATION_ROLE_CHAIN_UNRESOLVED');
-
-    const roleFlags = safeQueryResult(await client.query(Q.ROLE_FLAGS, [chainNames]), 'ROLE_FLAGS');
+    const roleFlags = safeQueryResult(await client.query(Q.ROLE_FLAGS, [chainNames]), 'TARGET_ROLE_FLAGS');
+    if (!roleFlags.some((row) => String(row.role_name).toLowerCase() === target.toLowerCase())) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
+    const relation = buildRoleMappingRelation({ targetRuntimeRole: target, identity, chain, roleMapping, artifact });
+    const targetFlags = roleFlags.find((row) => String(row.role_name).toLowerCase() === target.toLowerCase());
+    if (!targetFlags) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
+    const targetRoleAdminOption = chain.some((row) => Boolean(row.admin_option));
+    const targetRoleSuperuser = Boolean(targetFlags.rolsuper);
+    const targetRoleCreatedb = Boolean(targetFlags.rolcreatedb);
+    const targetRoleCreaterole = Boolean(targetFlags.rolcreaterole);
+    const targetRoleBypassrls = Boolean(targetFlags.rolbypassrls);
+    const targetRoleReplication = Boolean(targetFlags.rolreplication);
     const roleAdmin = roleFlags.some((row) => Boolean(row.rolsuper) || Boolean(row.rolcreatedb) ||
       Boolean(row.rolcreaterole) || Boolean(row.rolbypassrls) || Boolean(row.rolreplication)) ||
-      chain.some((row) => Boolean(row.admin_option));
+      targetRoleAdminOption;
+
     const broadRows = await client.query(Q.PUBLIC_SELECT_GRANTS, [[...chainNames, 'PUBLIC']]);
     if (!broadRows || !Array.isArray(broadRows.rows)) fail('ATTESTATION_CATALOG_SHAPE_INVALID');
     const broadAllTableSelect = roleAdmin || broadRows.rows.some((row) => !TARGET_SET.has(`public.${String(row.table_name)}`));
-
+    const grantSources = classifySelectGrantSources({ rows: broadRows.rows, targetRuntimeRole: target, chainNames });
+    const privilege = (query, field) => safeBoolean(safeQueryResult(query, field)[0]);
     const privileges = {
-      DATABASE_CONNECT: safeBoolean(safeQueryResult(await client.query(Q.DATABASE_CONNECT), 'DATABASE_CONNECT')[0]),
-      USAGE_PUBLIC: safeBoolean(safeQueryResult(await client.query(Q.PUBLIC_USAGE), 'PUBLIC_USAGE')[0]),
-      SELECT_TREES: safeBoolean(safeQueryResult(await client.query(Q.TREES_SELECT), 'TREES_SELECT')[0]),
-      SELECT_MEMORIES: safeBoolean(safeQueryResult(await client.query(Q.MEMORIES_SELECT), 'MEMORIES_SELECT')[0]),
-      SELECT_TREE_SOCIAL_COUNTS: safeBoolean(safeQueryResult(await client.query(Q.SOCIAL_COUNTS_SELECT), 'SOCIAL_COUNTS_SELECT')[0]),
-      SELECT_REACTIONS: safeBoolean(safeQueryResult(await client.query(Q.REACTIONS_SELECT), 'REACTIONS_SELECT')[0]),
-      INSERT_REACTIONS: safeBoolean(safeQueryResult(await client.query(Q.REACTIONS_INSERT), 'INSERT_REACTIONS')[0]),
-      UPDATE_REACTIONS: safeBoolean(safeQueryResult(await client.query(Q.REACTIONS_UPDATE), 'UPDATE_REACTIONS')[0]),
-      DELETE_REACTIONS: safeBoolean(safeQueryResult(await client.query(Q.REACTIONS_DELETE), 'DELETE_REACTIONS')[0]),
+      DATABASE_CONNECT: privilege(await client.query(Q.DATABASE_CONNECT, [target]), 'DATABASE_CONNECT'),
+      USAGE_PUBLIC: privilege(await client.query(Q.PUBLIC_USAGE, [target]), 'PUBLIC_USAGE'),
+      SELECT_TREES: privilege(await client.query(Q.TREES_SELECT, [target]), 'TREES_SELECT'),
+      SELECT_MEMORIES: privilege(await client.query(Q.MEMORIES_SELECT, [target]), 'MEMORIES_SELECT'),
+      SELECT_TREE_SOCIAL_COUNTS: privilege(await client.query(Q.SOCIAL_COUNTS_SELECT, [target]), 'SOCIAL_COUNTS_SELECT'),
+      SELECT_REACTIONS: privilege(await client.query(Q.REACTIONS_SELECT, [target]), 'REACTIONS_SELECT'),
+      INSERT_REACTIONS: privilege(await client.query(Q.REACTIONS_INSERT, [target]), 'INSERT_REACTIONS'),
+      UPDATE_REACTIONS: privilege(await client.query(Q.REACTIONS_UPDATE, [target]), 'UPDATE_REACTIONS'),
+      DELETE_REACTIONS: privilege(await client.query(Q.REACTIONS_DELETE, [target]), 'DELETE_REACTIONS'),
     };
-    const relation = buildRoleMappingRelation({ credentialUsername, identity, chain, mapping: roleMapping, artifact });
     const decision = deriveDecision({ identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect });
     return {
-      credentialRoleMatch: relation.credentialRoleMatch,
-      currentRuntimeReadRoleIdentity: relation.currentIdentityResolved ? 'CONFIRMED' : 'UNRESOLVED',
+      transactionReadOnly: 'VERIFIED',
+      sessionRole: 'PRESENT_REDACTED',
+      targetRuntimeRole: 'PRESENT_REDACTED',
+      sessionEqualsTarget: relation.sessionEqualsTarget,
+      currentRoleEqualsTarget: relation.currentRoleEqualsTarget,
+      targetRoleSpecificChecks: 'VERIFIED',
+      targetRoleSuperuser: targetRoleSuperuser ? 'YES' : 'NO',
+      targetRoleCreatedb: targetRoleCreatedb ? 'YES' : 'NO',
+      targetRoleCreaterole: targetRoleCreaterole ? 'YES' : 'NO',
+      targetRoleBypassrls: targetRoleBypassrls ? 'YES' : 'NO',
+      targetRoleReplication: targetRoleReplication ? 'YES' : 'NO',
+      targetRoleAdminOption: targetRoleAdminOption ? 'YES' : 'NO',
       historicalRuntimeRoleRelation: relation.historicalRelation,
       privileges,
       roleAdmin: roleAdmin ? 'YES' : 'NO',
       broadAllTableSelect: broadAllTableSelect ? 'YES' : 'NO',
+      publicSelectGrant: grantSources.public,
+      directTargetSelectGrant: grantSources.direct,
+      inheritedTargetSelectGrant: grantSources.inherited,
       decision,
-      roleMappingChangeRequired: relation.roleMappingChangeRequired,
       rawRoleExposed: 'NO',
       rawGranteeExposed: 'NO',
       rawSecretExposed: 'NO',
@@ -315,14 +364,16 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     productionConnectionCount: runnerInvocationCount,
     collectionSessionCount: runnerInvocationCount,
     transactionReadOnly: runnerInvocationCount ? 'FAILED' : 'NOT_REACHED',
-    credentialRoleMatch: 'UNRESOLVED',
-    currentRuntimeReadRoleIdentity: 'UNRESOLVED',
+    sessionRole: 'UNRESOLVED', targetRuntimeRole: 'UNRESOLVED', sessionEqualsTarget: 'UNRESOLVED',
+    currentRoleEqualsTarget: 'UNRESOLVED', targetRoleSpecificChecks: 'UNRESOLVED',
+    targetRoleSuperuser: 'UNKNOWN', targetRoleCreatedb: 'UNKNOWN', targetRoleCreaterole: 'UNKNOWN',
+    targetRoleBypassrls: 'UNKNOWN', targetRoleReplication: 'UNKNOWN', targetRoleAdminOption: 'UNKNOWN',
     historicalRuntimeRoleRelation: 'UNRESOLVED',
     selectTrees: 'UNKNOWN', selectMemories: 'UNKNOWN', selectTreeSocialCounts: 'UNKNOWN', selectReactions: 'UNKNOWN',
     insertReactions: 'UNKNOWN', updateReactions: 'UNKNOWN', deleteReactions: 'UNKNOWN',
     usagePublic: 'UNKNOWN', databaseConnect: 'UNKNOWN', broadAllTableSelect: 'UNKNOWN', roleAdmin: 'UNKNOWN',
-    reactionsPrivilegeTargetIdentity: 'UNRESOLVED',
-    minimalRequiredChange: 'NOT_DETERMINABLE', canProceed: 'NO', roleMappingChangeRequired: 'NOT_DETERMINABLE',
+    publicSelectGrant: 'UNKNOWN', directTargetSelectGrant: 'UNKNOWN', inheritedTargetSelectGrant: 'UNKNOWN',
+    reactionsPrivilegeTargetIdentity: 'UNRESOLVED', minimalRequiredChange: 'NOT_DETERMINABLE', canProceed: 'NO',
     finalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
     errorCategory: category,
   };
@@ -335,31 +386,32 @@ function formatSuccess(result) {
     productionConnectionCount: 1,
     collectionSessionCount: 1,
     transactionReadOnly: 'VERIFIED',
-    credentialRoleMatch: result.credentialRoleMatch,
-    currentRuntimeReadRoleIdentity: result.currentRuntimeReadRoleIdentity,
+    sessionRole: result.sessionRole,
+    targetRuntimeRole: result.targetRuntimeRole,
+    sessionEqualsTarget: result.sessionEqualsTarget,
+    currentRoleEqualsTarget: result.currentRoleEqualsTarget,
+    targetRoleSpecificChecks: result.targetRoleSpecificChecks,
+    targetRoleSuperuser: result.targetRoleSuperuser,
+    targetRoleCreatedb: result.targetRoleCreatedb,
+    targetRoleCreaterole: result.targetRoleCreaterole,
+    targetRoleBypassrls: result.targetRoleBypassrls,
+    targetRoleReplication: result.targetRoleReplication,
+    targetRoleAdminOption: result.targetRoleAdminOption,
     historicalRuntimeRoleRelation: result.historicalRuntimeRoleRelation,
-    selectTrees: p.SELECT_TREES ? 'YES' : 'NO',
-    selectMemories: p.SELECT_MEMORIES ? 'YES' : 'NO',
-    selectTreeSocialCounts: p.SELECT_TREE_SOCIAL_COUNTS ? 'YES' : 'NO',
-    selectReactions: p.SELECT_REACTIONS ? 'YES' : 'NO',
-    insertReactions: p.INSERT_REACTIONS ? 'YES' : 'NO',
-    updateReactions: p.UPDATE_REACTIONS ? 'YES' : 'NO',
-    deleteReactions: p.DELETE_REACTIONS ? 'YES' : 'NO',
-    usagePublic: p.USAGE_PUBLIC ? 'YES' : 'NO',
-    databaseConnect: p.DATABASE_CONNECT ? 'YES' : 'NO',
-    broadAllTableSelect: result.broadAllTableSelect,
-    roleAdmin: result.roleAdmin,
-    reactionsPrivilegeTargetIdentity: result.decision.target,
-    minimalRequiredChange: result.decision.minimalChange,
-    canProceed: result.decision.canProceed,
-    roleMappingChangeRequired: result.roleMappingChangeRequired,
+    selectTrees: p.SELECT_TREES ? 'YES' : 'NO', selectMemories: p.SELECT_MEMORIES ? 'YES' : 'NO',
+    selectTreeSocialCounts: p.SELECT_TREE_SOCIAL_COUNTS ? 'YES' : 'NO', selectReactions: p.SELECT_REACTIONS ? 'YES' : 'NO',
+    insertReactions: p.INSERT_REACTIONS ? 'YES' : 'NO', updateReactions: p.UPDATE_REACTIONS ? 'YES' : 'NO', deleteReactions: p.DELETE_REACTIONS ? 'YES' : 'NO',
+    usagePublic: p.USAGE_PUBLIC ? 'YES' : 'NO', databaseConnect: p.DATABASE_CONNECT ? 'YES' : 'NO',
+    broadAllTableSelect: result.broadAllTableSelect, roleAdmin: result.roleAdmin,
+    publicSelectGrant: result.publicSelectGrant, directTargetSelectGrant: result.directTargetSelectGrant,
+    inheritedTargetSelectGrant: result.inheritedTargetSelectGrant,
+    reactionsPrivilegeTargetIdentity: result.decision.target, minimalRequiredChange: result.decision.minimalChange,
+    canProceed: result.decision.canProceed, finalDisposition: result.decision.finalDisposition,
     rawRoleExposed: 'NO', rawGranteeExposed: 'NO', rawSecretExposed: 'NO',
-    finalDisposition: result.decision.finalDisposition,
   };
 }
 
 async function runAttestationWithDeps({ approvalReference, purpose, baselineCommit, currentHead, loadPrivateInputs, collect }) {
-  // This gate is deliberately before private input access.
   assertSourceBoundApproval(approvalReference, purpose);
   if (currentHead !== baselineCommit) fail('ATTESTATION_BASELINE_HEAD_MISMATCH');
   const inputs = await loadPrivateInputs();
@@ -373,20 +425,21 @@ async function main() {
     assertSourceBoundApproval(args.approval_reference, args.purpose);
     assertBaseline(REPO_ROOT, args.baseline_commit);
     if (!args.secret_file || !args.role_mapping_file) fail('ATTESTATION_INPUT_INVALID');
-
+    const targetInput = loadTargetRoleMapping(REPO_ROOT, args.role_mapping_file);
     const secretUrl = boundary.loadDedicatedProductionReadonlyDatabaseUrl(REPO_ROOT, args.secret_file);
     const pgConfig = boundary.parseProductionReadonlyDatabaseUrl(secretUrl);
-    const roleMapping = boundary.loadProductionRoleMapping(REPO_ROOT, args.role_mapping_file);
     const artifact = readOptionalArtifact(REPO_ROOT, args.artifact_file);
-    const credentialUsername = pgConfig.user;
 
     // The sole live invocation starts only after all source-bound and input checks.
     runnerInvocationCount = 1;
     const { Client } = require('pg');
     const result = await collectAttestation({
-      client: new Client(pgConfig), credentialUsername, roleMapping, artifact,
+      client: new Client(pgConfig),
+      targetRuntimeRole: targetInput.targetRuntimeRole,
+      roleMapping: targetInput.roleMapping,
+      artifact,
     });
-    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    process.stdout.write(JSON.stringify(formatSuccess(result), null, 2) + '\n');
   } catch (error) {
     const category = error && typeof error.category === 'string' ? error.category : 'ATTESTATION_PREEXECUTION_STOP';
     process.stdout.write(JSON.stringify(sanitizedFailure(category, runnerInvocationCount), null, 2) + '\n');
@@ -405,7 +458,10 @@ module.exports = {
   Q,
   parseArgs,
   assertSourceBoundApproval,
+  assertTargetRuntimeRole,
+  loadTargetRoleMapping,
   buildRoleMappingRelation,
+  classifySelectGrantSources,
   deriveDecision,
   collectAttestation,
   runAttestationWithDeps,
