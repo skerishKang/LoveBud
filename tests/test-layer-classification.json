@@ -5169,6 +5169,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes CLI subprocesses and injected fake collector seam writing fake .secrets artifacts with fake role mappings/secret files; no real Production DB/network, no secret output.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/phase-b-runtime-role-acl-attestation-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4283 runtime-read role/ACL attestation pure collectors against an injected fake client and synthetic private-boundary fixtures; proves source-bound approval, fixed catalog query allowlist, read-only fail-closed behavior, role/membership classifications, reactions privilege decision, redaction, rollback, disconnect, and no retry without Production DB/network, secrets, Product rows, or mutation.",
+      "capabilities": []
     }
   ],
   "supplemental": [
