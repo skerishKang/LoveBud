@@ -5175,6 +5175,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the #4283 runtime-read role/ACL attestation pure collectors against an injected fake client and synthetic private-boundary fixtures; proves source-bound approval, fixed catalog query allowlist, read-only fail-closed behavior, role/membership classifications, reactions privilege decision, redaction, rollback, disconnect, and no retry without Production DB/network, secrets, Product rows, or mutation.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/direct-neon-readiness-matrix-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads docs/architecture/direct-neon-readiness-matrix-4311.json, wrangler.toml, and functions/_shared sources to enforce the #4311 matrix structure: one classification per route, full gate/helper coverage, checked-in gate parity with wrangler, and no executable diagnostic authority checked into main; pure static source-read only, with no function execution, network, database, auth/provider, or Production resource.",
+      "capabilities": []
     }
   ],
   "supplemental": [
