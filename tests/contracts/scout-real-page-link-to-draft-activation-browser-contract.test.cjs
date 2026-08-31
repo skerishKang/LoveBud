@@ -97,6 +97,8 @@ const ALLOWED_API_KEYS = new Set([
   'GET /api/memories/scout-memory-3907-1/comments',
   'GET /api/memories/scout-memory-3907-2/reactions',
   'GET /api/memories/scout-memory-3907-2/comments',
+  'GET /api/memories/scout-created-3907/reactions',
+  'GET /api/memories/scout-created-3907/comments',
   'POST /api/memories'
 ]);
 
@@ -461,7 +463,7 @@ async function newEditorPage(viewport, opts) {
     }, async function(route) {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(FIXTURE_MEMORIES) });
     });
-    for (const memoryId of ['scout-memory-3907-1', 'scout-memory-3907-2']) {
+    for (const memoryId of ['scout-memory-3907-1', 'scout-memory-3907-2', 'scout-created-3907']) {
       await page.route((url) => url.pathname === '/api/memories/' + memoryId + '/reactions', async function(route) {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ like_count: 0, comment_count: 0, user_reacted: false }) });
       });
