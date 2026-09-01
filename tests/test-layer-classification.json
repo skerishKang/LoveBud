@@ -527,6 +527,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/canonical-schema-adoption-activation-gate.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads scripts/canonical-schema-adoption-activation-gate-core.cjs and db/migration-provenance/canonical-schema-adoption-activation-artifact.json plus the canonical manifest/expected-schema/target-identity allowlists, and asserts the fail-closed activation gate binds the #4282 approval packet to exact main, migration path+sha256, expected-schema fingerprint, canonical target identity, single-migration-only, and forbids product-row read/runtime gate/writer grant/provider reroute/blind retry and never flips canonical_status from ADOPTION_REQUIRED; pure static source-read and JSON evidence, no execution, no DB, network, browser, or Production mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-clean-canonical-bootstrap-rehearsal-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
