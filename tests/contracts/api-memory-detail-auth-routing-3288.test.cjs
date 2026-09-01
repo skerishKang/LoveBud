@@ -885,6 +885,55 @@ test('#4232 source acknowledgement divergence rolls back before COMMIT; unknown 
   assert.doesNotMatch(unknownText, /private commit transport sentinel|postgresql:|update-token-4232/);
 });
 
+test('#4281 regression: successful direct update with BigInt/Date driver values serializes without uncaught platform 500', async () => {
+  const direct = await import('../../functions/_shared/memory-update-direct-neon.js');
+  const rowWithNonJson = memoryUpdateRow({
+    title: 'BigInt Date test',
+    channel_id: 9007199254740993n,
+    channel_name: 'test-channel',
+    channel_url: 'https://example.invalid/channel',
+    created_at: new Date('2026-09-01T00:00:00.000Z'),
+    updated_at: new Date('2026-09-01T14:14:00.000Z'),
+    emotion_tags: JSON.stringify(['tag1', 'tag2']),
+  });
+  const fixture = makeMemoryUpdateAdapter({ updateRow: rowWithNonJson });
+  const ctx = memoryUpdateContext({ body: { title: 'BigInt Date test' } });
+  const cap = captureFetch();
+  try {
+    const response = await direct.handleMemoryUpdateDirectNeon(
+      ctx.request,
+      UPDATE_MEMORY_ID,
+      ctx.env,
+      'req-memory-update-4232',
+      {
+        verifyTokenOverride: async () => ({ uid: UPDATE_OWNER_UID }),
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get('x-lovebud-request-id'), 'req-memory-update-4232');
+    assert.equal(response.headers.get('x-lovebud-route-status'), 'memory-update-complete');
+    assert.equal(cap.calls.length, 0, 'BigInt/Date success must not fall back to Modal');
+    const body = await response.json();
+    assert.equal(body.id, UPDATE_MEMORY_ID);
+    assert.equal(body.title, 'BigInt Date test');
+    // BigInt channel_id must be stringified
+    assert.equal(body.channelId, '9007199254740993');
+    // Date timestamps must be ISO strings
+    assert.match(body.createdAt, /2026-09-01T00:00:00/);
+    assert.match(body.updatedAt, /2026-09-01T14:14:00/);
+    // emotionTags normalized
+    assert.deepEqual(body.emotionTags, ['tag1', 'tag2']);
+    // No uncaught serialization error — response is valid JSON, not plain text
+    assert.doesNotMatch(JSON.stringify(body), /Internal Server Error/);
+  } finally {
+    cap.restore();
+  }
+});
+
 // ─── #4234 owner Memory DELETE direct-Neon candidate ──────────────────────
 
 const DELETE_MEMORY_ID = '44444444-4444-4444-8444-444444444444';
