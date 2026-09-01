@@ -83,6 +83,7 @@
       "vendor/",
       ".local/",
       ".hermes/",
+      ".secrets/",
       "docs/conversation/",
       "package-lock.json",
       "docs/architecture/db-schema-change-inventory.json",
@@ -1658,6 +1659,21 @@
       "automation": "automatic",
       "ledger_candidate": "no",
       "notes": "Executed-fake source-static contract running the real pure gate core with bounded synthetic evidence only; no external capability."
+    },
+    {
+      "path": "scripts/canonical-schema-adoption-activation-gate-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #4282 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "none",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "Pure, zero-DB/zero-SQL/zero-ledger fail-closed canonical schema-adoption activation gate. Binds an #4282 approval packet (exact main, migration path+sha256, expected-schema fingerprint, canonical target identity, approvalReference issue:4282, applyMode TRANSACTION_REQUIRED) to canonical repository facts in db/migration-provenance/manifest* and db-schema-change-inventory.json, enforces single-migration-only (unrelatedMigrationCount===0), checksum+path+target+identity binding, and forbids product-row read, runtime gate activation, writer grant, provider reroute, and blind retry; produces a paper-only activation artifact that preserves canonical_status=ADOPTION_REQUIRED (the canonical stream is NOT auto-activated). Imports no database driver, opens no database connection, executes no SQL, writes no ledger, acquires no advisory lock, uses no network/shell, has no Production mutation capability. Detected by RULE_RUNNER_NAME because the basename contains 'adopt'; registered here to satisfy the guard."
     },
     {
       "path": "db/proposals/4006-canonical-users-auth-identity-proposal.sql",
