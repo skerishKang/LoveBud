@@ -1676,6 +1676,36 @@
       "notes": "Pure, zero-DB/zero-SQL/zero-ledger fail-closed canonical schema-adoption activation gate. Binds an #4282 approval packet (exact main, migration path+sha256, expected-schema fingerprint, canonical target identity, approvalReference issue:4282, applyMode TRANSACTION_REQUIRED) to canonical repository facts in db/migration-provenance/manifest* and db-schema-change-inventory.json, enforces single-migration-only (unrelatedMigrationCount===0), checksum+path+target+identity binding, and forbids product-row read, runtime gate activation, writer grant, provider reroute, and blind retry; produces a paper-only activation artifact that preserves canonical_status=ADOPTION_REQUIRED (the canonical stream is NOT auto-activated). Imports no database driver, opens no database connection, executes no SQL, writes no ledger, acquires no advisory lock, uses no network/shell, has no Production mutation capability. Detected by RULE_RUNNER_NAME because the basename contains 'adopt'; registered here to satisfy the guard."
     },
     {
+      "path": "scripts/canonical-schema-adoption-operator-core.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE", "ORCHESTRATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #4282 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "none",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "Pure, zero-DB/zero-credential fail-closed governed one-migration operator core for #4282. Wraps the paper-only activation gate; binds exact issue 4282, ACTIVE comment 5491726186, main 4126045a, migration path+sha256 5332CE91EE1440D3C1BEBD0A3B0B5FF9CAB0A23612195141BEBB94D340EBAAD8, relation public.tree_appreciation_orders, target 133-relovetree/production/neondb, TRANSACTION_REQUIRED, single-migration-only, and forbids Product row read, writer grant, runtime gate activation, provider reroute, arbitrary SQL, unrelated migration, blind retry, and secret output; dry-run by default (PAPER_ONLY_DRY_RUN) and executes only when both executionEnabled and allowExecute are true with a validated bounded transport; enforces advisory-lock lifecycle, transaction-required apply with rollback on pre-commit failure, no automatic DROP after commit, post-apply catalog verification, ledger write in same transaction, budget consumed only on committed+verified apply, and ambiguous outcome stop with no retry and no credential/secret exposure. Imports no database driver, opens no database connection, executes no SQL itself, holds no Production credential; all DB effects are via injected mock transport. Detected by RULE_RUNNER_NAME because the basename contains 'adopt'; registered here to satisfy the guard."
+    },
+    {
+      "path": "scripts/canonical-schema-adoption-operator.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #4282 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "none",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "Thin CLI entrypoint for the governed canonical schema-adoption operator (#4282). Rebuilds the canonical packet via the operator core and defaults to --dry-run paper-only readiness; --execute requires both the flag and LOVEBUD_4282_ALLOW_EXECUTE=1 plus a bounded transport module at LOVEBUD_4282_OPERATOR_TRANSPORT_PATH; never logs or prints secret/credential material and never consumes the one-attempt budget without a committed+verified apply. Imports no database driver, opens no database connection, executes no SQL, holds no Production credential. Detected by RULE_RUNNER_NAME because the basename contains 'adopt'; registered here to satisfy the guard."
+    },
+    {
       "path": "db/proposals/4006-canonical-users-auth-identity-proposal.sql",
       "category": "sql_migration",
       "engine": "postgres",

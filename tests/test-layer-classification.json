@@ -533,6 +533,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/canonical-schema-adoption-operator.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads scripts/canonical-schema-adoption-operator-core.cjs and scripts/canonical-schema-adoption-operator.cjs plus the canonical activation-gate core, canonical-migrations.json, expected-schema-manifest.json and adoption-baseline allowlist, and asserts the governed one-migration operator binds the exact #4282 packet (issue 4282, ACTIVE comment 5491726186, main 4126045a, migration path+sha256, relation public.tree_appreciation_orders, target 133-relovetree/production/neondb, TRANSACTION_REQUIRED, single-migration-only) is dry-run by default, fails closed on every packet/credential/transport/lock/postcheck/ledger mismatch, rejects Product row read/writer grant/runtime gate/provider reroute/arbitrary SQL/unrelated migration/ambiguous retry/secret output, proves advisory-lock + transaction-required apply with rollback on pre-commit failure and no auto DROP after commit, and consumes the one-attempt budget only on committed+verified apply; pure static source-read and mock-transport execution, no DB, network, browser, or Production mutation (#4282).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/db-clean-canonical-bootstrap-rehearsal-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
