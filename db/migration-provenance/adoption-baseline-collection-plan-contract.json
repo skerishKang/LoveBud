@@ -386,6 +386,14 @@
         "table_kind"
       ],
       "rationale_code": "CORE_TREE_IDENTITY"
+    },
+    {
+      "name": "table:public.tree_appreciation_orders",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "table_kind"
+      ],
+      "rationale_code": "CORE_TREE_IDENTITY"
     }
   ],
   "object_selection_evidence": {
@@ -396,6 +404,14 @@
         "docs/architecture/migration-path-inventory.json"
       ],
       "why_critical": "Primary tree entity and TREE_SCHEMA_DRIFT recovery surface for owner-list and public tree APIs."
+    },
+    "table:public.tree_appreciation_orders": {
+      "repository_evidence": [
+        "db/migrations/20260812213000_add-tree-appreciation-orders.sql",
+        "db/migration-provenance/expected-schema-manifest.json",
+        "db/migration-provenance/canonical-migrations.json"
+      ],
+      "why_critical": "Catalog-presence/absence preflight target for #4282 read-only schema-adoption preflight (no table data reads authorized)."
     },
     "table:public.memories": {
       "repository_evidence": [

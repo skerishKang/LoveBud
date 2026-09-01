@@ -482,7 +482,7 @@ test('Production version policy major 17 window', () => {
 
 test('frozen allowlist and caller override rejection', () => {
   const objects = CORE.loadFrozenAdoptionAllowlistObjects(REPO);
-  assert.equal(objects.length, 9);
+  assert.equal(objects.length, 10);
   assert.equal(
     catchCategory(() => CORE.rejectCallerOverrides({ objects: [] })),
     'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
@@ -569,7 +569,7 @@ test('buildProductionReadonlyInvocationPlanForRoot uses explicit root (pure/test
       })
   );
   assert.equal(plan.mode, 'PRODUCTION_READONLY_CATALOG');
-  assert.equal(plan.objectCount, 9);
+  assert.equal(plan.objectCount, 10);
   assert.ok(plan.handle);
   assert.equal(plan.connection, undefined);
   assert.equal(plan.roleMapping, undefined);
@@ -902,9 +902,23 @@ test('alternate-root policy substitution is impossible via live collector', asyn
   assert.equal(altPlan.objectCount, 1);
   assert.equal(altPlan.objectNames[0], 'table:public.tampered_table');
 
-  // 3. Actual repository frozen allowlist remains unchanged (9 objects)
+  // 3. Repository frozen allowlist now covers #4282 catalog-presence target (10 objects)
   const realObjects = CORE.loadFrozenAdoptionAllowlistObjects(REPO);
-  assert.equal(realObjects.length, 9);
+  assert.equal(realObjects.length, 10);
+  const appreciation = realObjects.find(
+    (o) => o.object_name === 'tree_appreciation_orders'
+  );
+  assert.ok(appreciation, 'tree_appreciation_orders catalog-presence entry must be present');
+  assert.equal(appreciation.object_kind, 'TABLE');
+
+  // 3b. Contract metadata: tree_appreciation_orders is catalog-presence only (no data reads)
+  const adoption = JSON.parse(read(ADOPTION_CONTRACT));
+  const entry = adoption.reviewed_object_allowlist.find(
+    (o) => o.name === 'table:public.tree_appreciation_orders'
+  );
+  assert.ok(entry, 'contract allowlist entry exists');
+  assert.deepEqual(entry.metadata_categories, ['table_kind']);
+  assert.equal(entry.rationale_code, 'CORE_TREE_IDENTITY');
 
   // 4. Repository boundary contract is unaffected
   const realBoundary = CORE.loadBoundaryContract(REPO);
@@ -1006,4 +1020,57 @@ test('package script and docs', () => {
   assert.match(docs, /PRODUCTION_READONLY_CATALOG/);
   assert.match(docs, /LOVEBUD_PRODUCTION_READONLY_DATABASE_URL/);
   assert.doesNotMatch(docs, /neon\.tech/);
+});
+
+// #4282: read-only schema-adoption preflight allowlist patch
+// Proves: catalog-presence check for public.tree_appreciation_orders is allowed;
+// arbitrary SQL, table data reads, migration apply, and non-allowlisted objects remain blocked.
+test('4282: tree_appreciation_orders catalog-presence check allowed; data/apply/arbitrary-sql/non-allowlisted blocked', () => {
+  const adoption = JSON.parse(read(ADOPTION_CONTRACT));
+  const bc = JSON.parse(read(BOUNDARY_CONTRACT));
+
+  // 1. Presence check allowed: entry exists with catalog-presence-only metadata (no data reads)
+  const entry = adoption.reviewed_object_allowlist.find(
+    (o) => o.name === 'table:public.tree_appreciation_orders'
+  );
+  assert.ok(entry, 'catches:4282 allowlist entry for catalog presence only');
+  assert.deepEqual(entry.metadata_categories, ['table_kind'], 'catches:4282 only table_kind (presence), no columns/indexes/data');
+
+  // 2. Arbitrary SQL blocked by boundary contract
+  assert.equal(bc.caller_sql, false, 'catches:4282 caller_sql=false');
+  assert.equal(bc.caller_object_override, false, 'catches:4282 caller_object_override=false');
+
+  // 3. Table DATA reads blocked: no metadata categories imply row/column data access.
+  //    table_kind alone never yields row bodies; absence of columns/indexes/triggers/grants
+  //    among the categories guarantees no data read path exists for this object.
+  const dataImplies = [
+    'columns', 'types', 'nullability', 'defaults', 'primary_keys',
+    'unique_constraints', 'foreign_keys', 'indexes', 'triggers',
+    'row_level_security', 'grants',
+  ];
+  for (const cat of dataImplies) {
+    assert.equal(
+      entry.metadata_categories.includes(cat),
+      false,
+      'catches:4283 data category ' + cat + ' must not be authorized for tree_appreciation_orders'
+    );
+  }
+
+  // 4. Migration apply blocked: plan_status is PREPARED_ONLY (never APPLIED/ACTIVE)
+  assert.equal(adoption.fixed_field_values.plan_status, 'PREPARED_ONLY', 'catches:4282 plan_status PREPARED_ONLY => no apply');
+
+  // 5. Non-allowlisted objects blocked: only reviewed_object_allowlist may be used
+  assert.ok(
+    !adoption.reviewed_object_allowlist.some((o) => o.name === 'table:public.evil'),
+    'catches:4282 evil table not in allowlist'
+  );
+  assert.ok(
+    adoption.reviewed_object_allowlist.find((o) => o.name === 'table:public.tree_appreciation_orders'),
+    'catches:4282 real entry present'
+  );
+
+  // 6. Readonly ROLLBACK semantics preserved (contract + adapter source)
+  const adapterSrc = read(ADAPTER_CORE);
+  assert.match(adapterSrc, /BEGIN READ ONLY/, 'catches:4282 BEGIN READ ONLY preserved');
+  assert.match(adapterSrc, /ROLLBACK/, 'catches:4282 ROLLBACK ends session');
 });
