@@ -1,0 +1,18 @@
+{
+  "format_version": "1.0",
+  "artifact_type": "PAPER_ONLY_ADOPTION_ACTIVATION_RECORD",
+  "status": "ADOPTION_REQUIRED",
+  "canonical_status_after": "ADOPTION_REQUIRED",
+  "production_mutation": "NONE",
+  "runner_implemented": false,
+  "purpose": "Paper-only activation artifact binding an explicit schema-adoption approval packet to canonical repository facts (manifest id/checksum, expected-schema fingerprint, target identity, allowlist). Does NOT activate the canonical Production stream and does NOT execute any migration. A separately approved operator/runner consults this gate before executing; execution and ledger append remain out of scope for this artifact.",
+  "referenced_issue": "#4282",
+  "referenced_approval_comment": "issue:4282",
+  "canonical_target_identity": {
+    "product_shared": "133-relovetree",
+    "environment_class": "production",
+    "database": "neondb"
+  },
+  "activation_rule": "A separately approved adoption baseline attestation is required before canonical-migrations.json status changes from ADOPTION_REQUIRED to ACTIVE. This artifact records that the paper gate passed; it does not itself flip the status.",
+  "refs": ["#3458", "#3425", "#3435", "#3437", "#1882"]
+}
