@@ -38,6 +38,7 @@ const BASELINE_SHA = 'cba2577195d9d29d5bbc7b835b765eb5a0e6b99d';
 
 const EXCLUDED_DIR_NAMES = new Set([
   'node_modules', '.git', 'dist', 'build', 'coverage', 'vendor', '.local', '.hermes',
+  '.secrets',
 ]);
 const EXCLUDED_PATH_PREFIXES = [
   'docs/conversation/',
