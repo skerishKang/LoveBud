@@ -3283,6 +3283,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/scout-product-adapter-contract-isolation.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Scout Product Adapter/source-selector and existing Scout suggestion provider/endpoint-client modules in node:vm with injected fake execution-service and mock fetch dependencies. Verifies Product intent allowlisting, bounded defaults, stable Product output projection, local_stub default behavior, endpoint_client opt-in projection, and the S1 legacy direct-Provider migration boundary without real network, browser, Provider credential, database, Production, or external runtime access (#1882).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/scout-production-activation-checklist-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
