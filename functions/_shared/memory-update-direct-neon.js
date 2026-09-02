@@ -168,8 +168,33 @@ function responseHeaders(requestId, routeStatus = null) {
   return headers;
 }
 
+function toJsonSafeValue(value) {
+  if (typeof value === 'bigint') return String(value);
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(toJsonSafeValue);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [key, entry] of Object.entries(value)) {
+      out[key] = toJsonSafeValue(entry);
+    }
+    return out;
+  }
+  return value;
+}
+
 function jsonResponse(body, status, requestId, routeStatus = null) {
-  return new Response(JSON.stringify(body), {
+  let payload;
+  try {
+    payload = JSON.stringify(body, (_key, value) => (typeof value === 'bigint' ? String(value) : value));
+  } catch (_error) {
+    const fallbackStatus = 500;
+    const fallbackRouteStatus = 'dto-serialization-failed';
+    return new Response(JSON.stringify({ detail: 'Internal server error' }), {
+      status: fallbackStatus,
+      headers: responseHeaders(requestId, fallbackRouteStatus)
+    });
+  }
+  return new Response(payload, {
     status,
     headers: responseHeaders(requestId, routeStatus)
   });
@@ -212,25 +237,42 @@ function normalizeStoredVisibility(value) {
 }
 
 function normalizeMemoryRow(row) {
+  function safeStringId(value) {
+    if (value == null) return null;
+    if (typeof value === 'bigint') return String(value);
+    if (value instanceof Date) return value.toISOString();
+    return String(value);
+  }
+  function safeTimestamp(value) {
+    if (value == null) return null;
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'bigint') return String(value);
+    try {
+      return normalizeDirectNeonTimestamp(value);
+    } catch (_error) {
+      if (value instanceof Date) return value.toISOString();
+      return String(value ?? '');
+    }
+  }
   return Object.freeze({
     id: String(row.id),
-    treeId: row.tree_id ? String(row.tree_id) : null,
-    parentId: row.parent_id ? String(row.parent_id) : null,
-    title: row.title || '',
-    memo: row.memo || '',
-    artist: row.artist || '',
-    source: row.source || '',
-    sourceUrl: row.source_url || '',
-    sourceType: row.source_type || 'youtube',
-    thumbnail: row.thumbnail || '',
+    treeId: row.tree_id != null ? safeStringId(row.tree_id) : null,
+    parentId: row.parent_id != null ? safeStringId(row.parent_id) : null,
+    title: row.title != null ? String(row.title) : '',
+    memo: row.memo != null ? String(row.memo) : '',
+    artist: row.artist != null ? String(row.artist) : '',
+    source: row.source != null ? String(row.source) : '',
+    sourceUrl: row.source_url != null ? String(row.source_url) : '',
+    sourceType: row.source_type != null ? String(row.source_type) : 'youtube',
+    thumbnail: row.thumbnail != null ? String(row.thumbnail) : '',
     emotionTags: normalizeStoredEmotionTags(row.emotion_tags),
-    timestamp: row.timestamp || '',
+    timestamp: row.timestamp != null ? String(row.timestamp) : '',
     visibility: normalizeStoredVisibility(row.visibility),
-    channelId: row.channel_id || null,
-    channelName: row.channel_name || null,
-    channelUrl: row.channel_url || null,
-    createdAt: normalizeDirectNeonTimestamp(row.created_at),
-    updatedAt: normalizeDirectNeonTimestamp(row.updated_at)
+    channelId: row.channel_id != null ? safeStringId(row.channel_id) : null,
+    channelName: row.channel_name != null ? safeStringId(row.channel_name) : null,
+    channelUrl: row.channel_url != null ? safeStringId(row.channel_url) : null,
+    createdAt: safeTimestamp(row.created_at),
+    updatedAt: safeTimestamp(row.updated_at)
   });
 }
 
@@ -633,7 +675,13 @@ export async function handleMemoryUpdateDirectNeon(
   if (!dto || typeof dto.id !== 'string') {
     return jsonResponse({ detail: 'Internal server error' }, 500, requestId, 'no-memory-result');
   }
-  return jsonResponse(dto, 200, requestId, 'memory-update-complete');
+  let safeDto;
+  try {
+    safeDto = toJsonSafeValue(dto);
+  } catch (_error) {
+    return jsonResponse({ detail: 'Internal server error' }, 500, requestId, 'dto-normalization-failed');
+  }
+  return jsonResponse(safeDto, 200, requestId, 'memory-update-complete');
 }
 
 export const MEMORY_UPDATE_DIRECT_NEON_CONTRACT = Object.freeze({
