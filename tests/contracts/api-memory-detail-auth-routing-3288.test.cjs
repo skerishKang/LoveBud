@@ -1010,6 +1010,8 @@ function makeMemoryDeleteAdapter({
 
 function makeDeleteTransactionClientFactory({
   ownerId = DELETE_OWNER_UID,
+  ownerCheckFails = false,
+  clearChildParentFails = false,
   deleteFails = false,
   commitFails = false
 } = {}) {
@@ -1031,13 +1033,17 @@ function makeDeleteTransactionClientFactory({
         return { rows: [] };
       }
       if (/INNER JOIN trees t ON t\.id = m\.tree_id/i.test(text)) {
+        if (ownerCheckFails) throw new Error('private owner check query sentinel');
         return { rows: [{
           id: DELETE_MEMORY_ID,
           tree_id: DELETE_TREE_ID,
           tree_owner_id: ownerId
         }] };
       }
-      if (/UPDATE memories\s+SET parent_id = NULL/i.test(text)) return { rows: [] };
+      if (/UPDATE memories\s+SET parent_id = NULL/i.test(text)) {
+        if (clearChildParentFails) throw new Error('private clear child parent query sentinel');
+        return { rows: [] };
+      }
       if (/DELETE FROM memories/i.test(text)) {
         if (deleteFails) throw new Error('private delete query sentinel');
         return { rows: [{ id: DELETE_MEMORY_ID }] };
@@ -1263,6 +1269,7 @@ test('#4234 query failure rolls back; unknown COMMIT outcome is explicit with no
     }
   );
   assert.equal(failed.status, 502);
+  assert.equal(failed.headers.get('x-lovebud-route-status'), 'query-failed-delete-memory');
   assert.equal(failedFactory.clients.length, 1);
   assert.equal(failedFactory.logs.filter((entry) => entry.text === 'ROLLBACK').length, 1);
   assert.equal(failedFactory.logs.filter((entry) => entry.text === 'COMMIT').length, 0);
@@ -1288,4 +1295,53 @@ test('#4234 query failure rolls back; unknown COMMIT outcome is explicit with no
   const unknownText = await unknown.text();
   assert.match(unknownText, /COMMIT_OUTCOME_UNKNOWN/);
   assert.doesNotMatch(unknownText, /private delete commit transport sentinel|postgresql:|delete-token-4234/);
+});
+
+test('#4334 query failure reports safe query failure stage for owner-check, clear-child-parent, and delete-memory without leaking secrets', async () => {
+  const direct = await import('../../functions/_shared/memory-delete-direct-neon.js');
+
+  const stageCases = [
+    {
+      flag: { ownerCheckFails: true },
+      expectedRouteStatus: 'query-failed-owner-check',
+      sentinel: 'private owner check query sentinel'
+    },
+    {
+      flag: { clearChildParentFails: true },
+      expectedRouteStatus: 'query-failed-clear-child-parent',
+      sentinel: 'private clear child parent query sentinel'
+    },
+    {
+      flag: { deleteFails: true },
+      expectedRouteStatus: 'query-failed-delete-memory',
+      sentinel: 'private delete query sentinel'
+    }
+  ];
+
+  for (const item of stageCases) {
+    const factory = makeDeleteTransactionClientFactory(item.flag);
+    const response = await direct.handleMemoryDeleteDirectNeon(
+      memoryDeleteContext().request,
+      DELETE_MEMORY_ID,
+      memoryDeleteContext().env,
+      'req-4334-stage',
+      {
+        verifyTokenOverride: async () => ({ uid: DELETE_OWNER_UID }),
+        neonImporter: makeDeleteNeonImporter(factory)
+      }
+    );
+
+    assert.equal(response.status, 502);
+    assert.equal(response.headers.get('x-lovebud-route-status'), item.expectedRouteStatus);
+    const body = await response.json();
+    assert.equal(body.code, 'QUERY_FAILURE');
+    assert.equal(body.error, 'Memory delete direct-Neon transaction failed');
+    assert.equal(factory.clients.length, 1);
+    assert.equal(factory.logs.filter((entry) => entry.text === 'ROLLBACK').length, 1);
+    assert.equal(factory.logs.filter((entry) => entry.text === 'COMMIT').length, 0);
+
+    const bodyStr = JSON.stringify(body);
+    assert.doesNotMatch(bodyStr, new RegExp(item.sentinel));
+    assert.doesNotMatch(bodyStr, /postgresql:|delete-token-4234/);
+  }
 });

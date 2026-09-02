@@ -128,10 +128,37 @@ WHERE id = $1
 RETURNING id::text AS id;
 `;
 
+export const MEMORY_DELETE_QUERY_STAGE = Object.freeze({
+  OWNER_CHECK: 'owner-check',
+  CLEAR_CHILD_PARENT: 'clear-child-parent',
+  DELETE_MEMORY: 'delete-memory'
+});
+
+export const MEMORY_DELETE_QUERY_STAGE_ROUTE_STATUS = Object.freeze({
+  [MEMORY_DELETE_QUERY_STAGE.OWNER_CHECK]: 'query-failed-owner-check',
+  [MEMORY_DELETE_QUERY_STAGE.CLEAR_CHILD_PARENT]: 'query-failed-clear-child-parent',
+  [MEMORY_DELETE_QUERY_STAGE.DELETE_MEMORY]: 'query-failed-delete-memory'
+});
+
+async function queryDeleteStage(tx, signal, stage, sql, values) {
+  try {
+    return await tx.query(sql, values);
+  } catch (error) {
+    signal.queryFailureStage = stage;
+    throw error;
+  }
+}
+
 async function runDeleteWork(tx, signal, { memoryId, ownerId }) {
   // Preserve Modal owner-first behavior while keeping ownership, child cleanup,
   // and destructive work inside one request-scoped transaction.
-  const ownerRows = await tx.query(OWNER_CHECK_SQL, [memoryId]);
+  const ownerRows = await queryDeleteStage(
+    tx,
+    signal,
+    MEMORY_DELETE_QUERY_STAGE.OWNER_CHECK,
+    OWNER_CHECK_SQL,
+    [memoryId]
+  );
   const ownerRow = Array.isArray(ownerRows) && ownerRows.length ? ownerRows[0] : null;
   if (!ownerRow) {
     workFailure(signal, 404, { detail: 'Memory not found' }, 'memory-not-found');
@@ -147,8 +174,20 @@ async function runDeleteWork(tx, signal, { memoryId, ownerId }) {
 
   // Exact current Modal sequence: detach direct children in this same Tree,
   // then owner-predicated DELETE. Do not invent optional child-table cleanup.
-  await tx.query(CLEAR_CHILD_PARENT_SQL, [authoritativeTreeId, memoryId]);
-  const deletedRows = await tx.query(DELETE_MEMORY_SQL, [memoryId, ownerId]);
+  await queryDeleteStage(
+    tx,
+    signal,
+    MEMORY_DELETE_QUERY_STAGE.CLEAR_CHILD_PARENT,
+    CLEAR_CHILD_PARENT_SQL,
+    [authoritativeTreeId, memoryId]
+  );
+  const deletedRows = await queryDeleteStage(
+    tx,
+    signal,
+    MEMORY_DELETE_QUERY_STAGE.DELETE_MEMORY,
+    DELETE_MEMORY_SQL,
+    [memoryId, ownerId]
+  );
   const deleted = Array.isArray(deletedRows) && deletedRows.length ? deletedRows[0] : null;
   if (!deleted || typeof deleted.id !== 'string' || !deleted.id) {
     workFailure(signal, 404, { detail: 'Memory not found' }, 'memory-not-found');
@@ -257,7 +296,7 @@ export async function handleMemoryDeleteDirectNeon(
     }
   }
 
-  const signal = { http: null };
+  const signal = { http: null, queryFailureStage: null };
   let result;
   try {
     result = await adapter.runTransaction(async (tx) => {
@@ -278,6 +317,12 @@ export async function handleMemoryDeleteDirectNeon(
           requestId,
           signal.http.routeStatus
         );
+      }
+      if (error.code === NEON_WS_TRANSACTION_ERROR.QUERY_FAILURE && signal.queryFailureStage) {
+        const stageRouteStatus = MEMORY_DELETE_QUERY_STAGE_ROUTE_STATUS[signal.queryFailureStage];
+        if (stageRouteStatus) {
+          return sanitizeAdapterErrorResponse(error, requestId, stageRouteStatus);
+        }
       }
     }
     return sanitizeAdapterErrorResponse(error, requestId, 'transaction-failed');
