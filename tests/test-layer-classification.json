@@ -5199,6 +5199,18 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads docs/architecture/direct-neon-readiness-matrix-4311.json, wrangler.toml, and functions/_shared sources to enforce the #4311 matrix structure: one classification per route, full gate/helper coverage, checked-in gate parity with wrangler, and no executable diagnostic authority checked into main; pure static source-read only, with no function execution, network, database, auth/provider, or Production resource.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/scout-engine-transport-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the S4A bounded Scout Engine transport adapter module in-process with synthetic fake Service Binding and fake fetch to verify server-owned identity, fail-closed on missing binding/credential, bounded /internal/v1/execute request shape, service identity header construction, Engine answer projection into Scout product output, and Engine error mapping. No real network, browser, database, Provider, Core runtime, or Production mutation (#1882 S4A).",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/scout-engine-endpoint-wiring-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads functions/api/scout/suggest.js and functions/api/scout/scout-engine-transport.js to assert S4A endpoint wiring invariants: explicit opt-in via SCOUT_ENGINE_TRANSPORT_ENABLED, fail-closed path, injected fetch seam, bounded Scout error envelope, no Engine SDK vendoring, preserved local_stub default, preserved endpoint_client opt-in, and no LoveBud->Core direct runtime import. No execution, no network, no DB (#1882 S4A).",
+      "capabilities": []
     }
   ],
   "supplemental": [
