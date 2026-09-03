@@ -595,7 +595,7 @@
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
-      "checked_in_gate": "NOT_CHECKED_IN",
+      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
       "live_gate_state": "LIVE_GATE_NOT_INTENDED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
