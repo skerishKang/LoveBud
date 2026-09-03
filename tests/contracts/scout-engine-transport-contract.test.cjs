@@ -14,8 +14,10 @@ const test = require('node:test');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const TRANSPORT_PATH = path.join(ROOT, 'functions', 'api', 'scout', 'scout-engine-transport.js');
+const DOC_PATH = path.join(ROOT, 'docs', 'product', 'lovebud-scout-engine-transport-contract.md');
 
 const transportCode = fs.readFileSync(TRANSPORT_PATH, 'utf8');
+const docCode = fs.readFileSync(DOC_PATH, 'utf8');
 
 function importTransport() {
   return import(pathToFileURL(TRANSPORT_PATH).href);
@@ -431,4 +433,28 @@ test('no LoveBud -> Core direct runtime import in module source', () => {
 
 test('module asserts #1882 remains open in source', () => {
   assert.ok(transportCode.includes('Keep #1882 open'));
+});
+
+test('document matches B14 routing values — task_type = general', () => {
+  assert.match(docCode, /task_type\s*=\s*general/);
+  assert.ok(!/task_type\s*=\s*scout_suggestion/.test(docCode));
+});
+
+test('document matches B14 routing values — optimize_for = balanced', () => {
+  assert.match(docCode, /optimize_for\s*=\s*balanced/);
+  assert.ok(!/optimize_for\s*=\s*quality/.test(docCode));
+});
+
+test('document describes max_tokens derived from Product maxOutputLength with 500 ceiling', () => {
+  assert.match(docCode, /maxOutputLength/i);
+  assert.match(docCode, /500/);
+  assert.ok(!/max_tokens\s*=\s*500\s*$/.test(docCode));
+  assert.ok(!/agent\.max_tokens\s*=\s*500\s*$/.test(docCode));
+});
+
+test('runtime source and document agree on B14 routing values', () => {
+  assert.match(transportCode, /task_type:\s*['"]general['"]/);
+  assert.match(transportCode, /optimize_for:\s*['"]balanced['"]/);
+  assert.match(docCode, /task_type\s*=\s*general/);
+  assert.match(docCode, /optimize_for\s*=\s*balanced/);
 });

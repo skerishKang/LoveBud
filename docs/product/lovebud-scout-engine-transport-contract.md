@@ -29,9 +29,22 @@ The following fields are server-owned and cannot be overridden by browser input:
 - `agent.title = LoveBud Scout Suggestion`
 - `agent.description = Generates bounded fan-domain suggestions from normalized Scout product intent`
 - `agent.system_instruction = ...`
-- `agent.task_type = scout_suggestion`
-- `agent.optimize_for = quality`
-- `agent.max_tokens = 500`
+- `agent.task_type = general`
+- `agent.optimize_for = balanced`
+- `agent.max_tokens = derived from normalized Scout Product maxOutputLength, bounded by the server to a maximum of 500`
+
+Scout/fan-domain semantics remain LoveBud-owned through:
+
+- `agent.id`
+- `agent.title`
+- `agent.description`
+- `agent.system_instruction`
+- LoveBud Product Adapter contract
+
+Generic B14 routing vocabulary remains:
+
+- `task_type = general`
+- `optimize_for = balanced`
 
 Service identity headers constructed server-side:
 
