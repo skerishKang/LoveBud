@@ -8,7 +8,7 @@
  * This module:
  * - owns server-side app/agent identity
  * - constructs service identity headers server-side
- * - accepts injected fetch for testability (no global fetch from module scope)
+ * - uses ONLY the Engine service binding fetch
  * - fails closed when Engine binding or credential is missing
  * - never exposes Engine internals through Scout product output
  * - never calls direct Provider or Core runtime
@@ -42,7 +42,7 @@ const SERVER_OWNED_ENGINE_IDENTITY = Object.freeze({
     title: 'LoveBud Scout Suggestion',
     description: 'Generates bounded fan-domain suggestions from normalized Scout product intent',
     system_instruction:
-      'You are a fan-domain assistant for LoveBud Scout. Given the user excerpt, optional summary, optional memo, and an attribution-only source URL, return ONLY a JSON object with exactly these fields: titleSuggestion (string, max 50 chars), summarySuggestion (string, max 200 chars), translationSuggestion (string, max 500 chars), emotionTags (array of up to 4 strings, each max 20 chars), memoSuggestion (string, max 2000 chars), safetyNote (string, max 300 chars). Do NOT fetch or access the source URL. Do NOT include any other fields.',
+      'You are a fan-domain assistant for LoveBud Scout. Given the user excerpt, optional summary, optional memo, and an attribution-only source URL, return ONLY a JSON object with exactly these fields: titleSuggestion (string, max 50 chars), summarySuggestion (string, max 200 chars), translationSuggestion (string, max 500 chars), emotionTags (array of up to 4 strings, each max 20 chars), memoSuggestion (string, max 500 chars), safetyNote (string, max 300 chars). Do NOT fetch or access the source URL. Do NOT include any other fields.',
     task_type: 'scout_suggestion',
     optimize_for: 'quality',
     max_tokens: 500,
@@ -116,7 +116,7 @@ function projectEngineAnswerToScoutOutput(answer) {
     summarySuggestion: String(parsed.summarySuggestion || '').slice(0, 200),
     translationSuggestion: String(parsed.translationSuggestion || '').slice(0, 500),
     emotionTags,
-    memoSuggestion: String(parsed.memoSuggestion || '').slice(0, 2000),
+    memoSuggestion: String(parsed.memoSuggestion || '').slice(0, 500),
     safetyNote: String(parsed.safetyNote || '').slice(0, 300),
   };
 }
@@ -128,7 +128,6 @@ function buildScoutEngineError(code, message) {
 async function callEngineWithBinding({
   binding,
   request,
-  fetch,
   callerId,
   credential,
 }) {
@@ -179,8 +178,9 @@ async function callEngineWithBinding({
   }
 
   if (!response.ok || !body?.ok) {
-    const code = body?.code || 'ENGINE_REQUEST_FAILED';
-    const message = body?.message || 'Engine request failed';
+    const error = body?.error || {};
+    const code = error.code || 'ENGINE_REQUEST_FAILED';
+    const message = error.message || 'Engine request failed';
     return buildScoutEngineError(code, message);
   }
 
@@ -195,17 +195,27 @@ async function callEngineWithBinding({
   }
 }
 
-export function createScoutEngineTransport({ env, fetch, context }) {
+export function createScoutEngineTransport({ env, context }) {
   const binding = env?.PADIEM_AI_ENGINE || null;
   const callerId = String(env?.SCOUT_ENGINE_CALLER_ID || '').trim();
   const credential = String(env?.SCOUT_ENGINE_CREDENTIAL || '').trim();
 
-  if (!binding || !callerId || !credential) {
+  if (!binding) {
     return {
       status: 'ENGINE_UNAVAILABLE',
       error: buildScoutEngineError(
         SCOUT_ENGINE_TRANSPORT_ERROR_CODES.ENGINE_BINDING_MISSING,
         'Engine transport is not configured'
+      ),
+    };
+  }
+
+  if (!callerId || !credential) {
+    return {
+      status: 'ENGINE_UNAVAILABLE',
+      error: buildScoutEngineError(
+        SCOUT_ENGINE_TRANSPORT_ERROR_CODES.ENGINE_CREDENTIAL_MISSING,
+        'Engine caller identity or credential is not configured'
       ),
     };
   }
@@ -217,7 +227,6 @@ export function createScoutEngineTransport({ env, fetch, context }) {
       return callEngineWithBinding({
         binding,
         request,
-        fetch,
         callerId,
         credential,
       });

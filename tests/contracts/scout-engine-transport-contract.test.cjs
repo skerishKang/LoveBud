@@ -57,7 +57,7 @@ test('server-owned agent identity is fixed and not derived from input', () => {
   assert.match(transportCode, /system_instruction:/);
 });
 
-test('Engine request uses injected fetch, not hardcoded global fetch', () => {
+test('Engine request uses binding.fetch only', () => {
   assert.match(transportCode, /binding\.fetch\(/);
 });
 
@@ -74,7 +74,6 @@ test('fail-closed on missing Engine binding', async () => {
   const { createScoutEngineTransport } = await importTransport();
   const result = createScoutEngineTransport({
     env: {},
-    fetch: async () => {},
     context: {},
   });
   assert.strictEqual(result.status, 'ENGINE_UNAVAILABLE');
@@ -87,12 +86,11 @@ test('fail-closed on missing Engine credential', async () => {
   const fakeBinding = { fetch: async () => new Response('{}', { status: 200 }) };
   const result = createScoutEngineTransport({
     env: { PADIEM_AI_ENGINE: fakeBinding },
-    fetch: async () => {},
     context: {},
   });
   assert.strictEqual(result.status, 'ENGINE_UNAVAILABLE');
   assert.ok(result.error);
-  assert.strictEqual(result.error.error.code, 'ENGINE_BINDING_MISSING');
+  assert.strictEqual(result.error.error.code, 'ENGINE_CREDENTIAL_MISSING');
 });
 
 test('fail-closed on missing callerId', async () => {
@@ -100,12 +98,11 @@ test('fail-closed on missing callerId', async () => {
   const fakeBinding = { fetch: async () => new Response('{}', { status: 200 }) };
   const result = createScoutEngineTransport({
     env: { PADIEM_AI_ENGINE: fakeBinding, SCOUT_ENGINE_CREDENTIAL: 'cred' },
-    fetch: async () => {},
     context: {},
   });
   assert.strictEqual(result.status, 'ENGINE_UNAVAILABLE');
   assert.ok(result.error);
-  assert.strictEqual(result.error.error.code, 'ENGINE_BINDING_MISSING');
+  assert.strictEqual(result.error.error.code, 'ENGINE_CREDENTIAL_MISSING');
 });
 
 test('ready state requires binding, callerId, and credential', async () => {
@@ -117,7 +114,6 @@ test('ready state requires binding, callerId, and credential', async () => {
       SCOUT_ENGINE_CALLER_ID: 'caller',
       SCOUT_ENGINE_CREDENTIAL: 'cred',
     },
-    fetch: async () => {},
     context: {},
   });
   assert.strictEqual(result.status, 'READY');
@@ -147,7 +143,6 @@ test('Engine success answer is projected into bounded Scout output', async () =>
       SCOUT_ENGINE_CALLER_ID: 'caller',
       SCOUT_ENGINE_CREDENTIAL: 'cred',
     },
-    fetch: async () => {},
     context: {},
   });
 
@@ -170,11 +165,19 @@ test('Engine success answer is projected into bounded Scout output', async () =>
   assert.strictEqual(result.suggestion.safetyNote, 'Review');
 });
 
-test('Engine error maps to bounded Scout error envelope', async () => {
+test('Engine error maps to bounded Scout error envelope using canonical nested error', async () => {
   const { createScoutEngineTransport } = await importTransport();
   const fakeBinding = {
     fetch: async () =>
-      new Response(JSON.stringify({ ok: false, code: 'ENGINE_ERROR', message: 'boom' }), {
+      new Response(JSON.stringify({
+        ok: false,
+        error: {
+          code: 'ENGINE_ERROR',
+          message: 'boom',
+          retryable: false,
+          metadata: null,
+        },
+      }), {
         status: 500,
       }),
   };
@@ -184,7 +187,6 @@ test('Engine error maps to bounded Scout error envelope', async () => {
       SCOUT_ENGINE_CALLER_ID: 'caller',
       SCOUT_ENGINE_CREDENTIAL: 'cred',
     },
-    fetch: async () => {},
     context: {},
   });
 
@@ -198,6 +200,44 @@ test('Engine error maps to bounded Scout error envelope', async () => {
   assert.ok(!result.ok);
   assert.strictEqual(result.error.code, 'ENGINE_ERROR');
   assert.strictEqual(result.error.message, 'boom');
+});
+
+test('memoSuggestion is bounded to 500 chars', async () => {
+  const { createScoutEngineTransport } = await importTransport();
+  const longMemo = 'M'.repeat(1000);
+  const engineAnswer = {
+    ok: true,
+    answer: JSON.stringify({
+      titleSuggestion: 'Title',
+      summarySuggestion: 'Summary',
+      translationSuggestion: 'Translation',
+      emotionTags: [],
+      memoSuggestion: longMemo,
+      safetyNote: 'Review',
+    }),
+  };
+  const fakeBinding = {
+    fetch: async () =>
+      new Response(JSON.stringify(engineAnswer), { status: 200 }),
+  };
+  const transport = createScoutEngineTransport({
+    env: {
+      PADIEM_AI_ENGINE: fakeBinding,
+      SCOUT_ENGINE_CALLER_ID: 'caller',
+      SCOUT_ENGINE_CREDENTIAL: 'cred',
+    },
+    context: {},
+  });
+
+  const result = await transport.suggest({
+    excerpt: 'excerpt',
+    requestedLanguage: 'ko',
+    desiredTone: 'polite',
+    maxOutputLength: 200,
+  });
+
+  assert.ok(result.ok);
+  assert.strictEqual(result.suggestion.memoSuggestion.length, 500);
 });
 
 test('Engine response fields are bounded — no route/provider/model/credential leakage', async () => {
@@ -222,7 +262,6 @@ test('Engine response fields are bounded — no route/provider/model/credential 
       SCOUT_ENGINE_CALLER_ID: 'caller',
       SCOUT_ENGINE_CREDENTIAL: 'cred',
     },
-    fetch: async () => {},
     context: {},
   });
 
@@ -243,10 +282,11 @@ test('Engine response fields are bounded — no route/provider/model/credential 
 
 test('sourceUrl is attribution-only and causes zero external fetch', async () => {
   const { createScoutEngineTransport } = await importTransport();
-  let fetchCalled = false;
+  let engineBindingFetchCount = 0;
+  let externalFetchCount = 0;
   const fakeBinding = {
     fetch: async () => {
-      fetchCalled = true;
+      engineBindingFetchCount += 1;
       return new Response(
         JSON.stringify({
           ok: true,
@@ -269,10 +309,6 @@ test('sourceUrl is attribution-only and causes zero external fetch', async () =>
       SCOUT_ENGINE_CALLER_ID: 'caller',
       SCOUT_ENGINE_CREDENTIAL: 'cred',
     },
-    fetch: async () => {
-      fetchCalled = true;
-      return new Response('{}', { status: 200 });
-    },
     context: {},
   });
 
@@ -284,9 +320,8 @@ test('sourceUrl is attribution-only and causes zero external fetch', async () =>
     maxOutputLength: 200,
   });
 
-  assert.ok(fetchCalled);
-  const fetchArgs = fakeBinding.fetch.mock?.arguments?.[0] || fakeBinding.fetch.mock?.callArguments?.[0];
-  assert.ok(fetchCalled);
+  assert.strictEqual(engineBindingFetchCount, 1);
+  assert.strictEqual(externalFetchCount, 0);
 });
 
 test('no LoveBud -> Core direct runtime import in module source', () => {

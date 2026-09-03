@@ -65,14 +65,28 @@ Engine returns:
 }
 ```
 
+Engine error envelope (canonical):
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "...",
+    "message": "...",
+    "retryable": false,
+    "metadata": null
+  }
+}
+```
+
 LoveBud projects ONLY:
 
-- `titleSuggestion`
-- `summarySuggestion`
-- `translationSuggestion`
-- `emotionTags`
-- `memoSuggestion`
-- `safetyNote`
+- `titleSuggestion` (max 50 chars)
+- `summarySuggestion` (max 200 chars)
+- `translationSuggestion` (max 500 chars)
+- `emotionTags` (max 4 tags, each max 20 chars)
+- `memoSuggestion` (max 500 chars)
+- `safetyNote` (max 300 chars)
 
 The following are NEVER surfaced to the Product output:
 
@@ -85,6 +99,8 @@ The following are NEVER surfaced to the Product output:
 - `credential`
 - `service identity`
 - `raw Engine response`
+- `retryable`
+- `metadata`
 
 ## sourceUrl Policy
 
@@ -92,13 +108,15 @@ In S4A, `sourceUrl` is ATTRIBUTION ONLY. No URL fetch occurs.
 
 ## Fail-Closed
 
-- Missing Engine binding → `ENGINE_BINDING_MISSING`
-- Missing Engine credential → `ENGINE_CREDENTIAL_MISSING`
+- Missing Engine service binding → `ENGINE_BINDING_MISSING`
+- Engine binding exists but caller identity or credential missing → `ENGINE_CREDENTIAL_MISSING`
 - Engine request fails → bounded Scout error envelope
 - Engine response invalid → bounded Scout error envelope
 - Engine answer parse fails → bounded Scout error envelope
 
 No fallback to direct Provider, stub, or Core runtime.
+
+Engine transport is independent of legacy Provider LIVE mode.
 
 ## Preserved Behaviors
 
