@@ -70,6 +70,26 @@ test('Engine request path is bounded to /internal/v1/execute', () => {
   assert.match(transportCode, /\/internal\/v1\/execute/);
 });
 
+test('agent task_type is general for B14 compatibility', () => {
+  assert.match(transportCode, /task_type:\s*['"]general['"]/);
+  assert.ok(!/task_type:\s*['"]scout_suggestion['"]/.test(transportCode));
+});
+
+test('agent optimize_for is balanced for B14 compatibility', () => {
+  assert.match(transportCode, /optimize_for:\s*['"]balanced['"]/);
+  assert.ok(!/optimize_for:\s*['"]quality['"]/.test(transportCode));
+});
+
+test('agent max_tokens is derived from normalizedIntent.maxOutputLength, not hardcoded', () => {
+  assert.ok(!/max_tokens:\s*500/.test(transportCode));
+  assert.match(transportCode, /clampMaxTokens\(normalizedIntent\.maxOutputLength\)/);
+});
+
+test('max_tokens is bounded to 500 from Product contract', () => {
+  assert.match(transportCode, /MAX_ENGINE_MAX_TOKENS\s*=\s*500/);
+  assert.match(transportCode, /Math\.min\(Math\.floor\(numeric\)\,\s*MAX_ENGINE_MAX_TOKENS\)/);
+});
+
 test('fail-closed on missing Engine binding', async () => {
   const { createScoutEngineTransport } = await importTransport();
   const result = createScoutEngineTransport({
@@ -128,7 +148,7 @@ test('Engine success answer is projected into bounded Scout output', async () =>
       titleSuggestion: 'Title',
       summarySuggestion: 'Summary',
       translationSuggestion: 'Translation',
-      emotionTags: ['감동', '행복'],
+      emotionTags: ['감독', '행복'],
       memoSuggestion: 'Memo',
       safetyNote: 'Review',
     }),
@@ -160,7 +180,7 @@ test('Engine success answer is projected into bounded Scout output', async () =>
   assert.strictEqual(result.suggestion.titleSuggestion, 'Title');
   assert.strictEqual(result.suggestion.summarySuggestion, 'Summary');
   assert.strictEqual(result.suggestion.translationSuggestion, 'Translation');
-  assert.deepStrictEqual(result.suggestion.emotionTags, ['감동', '행복']);
+  assert.deepStrictEqual(result.suggestion.emotionTags, ['감독', '행복']);
   assert.strictEqual(result.suggestion.memoSuggestion, 'Memo');
   assert.strictEqual(result.suggestion.safetyNote, 'Review');
 });
@@ -240,6 +260,88 @@ test('memoSuggestion is bounded to 500 chars', async () => {
   assert.strictEqual(result.suggestion.memoSuggestion.length, 500);
 });
 
+test('maxOutputLength is propagated to agent.max_tokens bounded at 500', async () => {
+  const { createScoutEngineTransport } = await importTransport();
+  const engineAnswer = {
+    ok: true,
+    answer: JSON.stringify({
+      titleSuggestion: 'Title',
+      summarySuggestion: 'Summary',
+      translationSuggestion: 'Translation',
+      emotionTags: [],
+      memoSuggestion: 'Memo',
+      safetyNote: 'Review',
+    }),
+  };
+  let capturedBody = null;
+  const fakeBinding = {
+    fetch: async (_url, options) => {
+      capturedBody = options?.body || null;
+      return new Response(JSON.stringify(engineAnswer), { status: 200 });
+    },
+  };
+  const transport = createScoutEngineTransport({
+    env: {
+      PADIEM_AI_ENGINE: fakeBinding,
+      SCOUT_ENGINE_CALLER_ID: 'caller',
+      SCOUT_ENGINE_CREDENTIAL: 'cred',
+    },
+    context: {},
+  });
+
+  await transport.suggest({
+    excerpt: 'excerpt',
+    requestedLanguage: 'ko',
+    desiredTone: 'polite',
+    maxOutputLength: 200,
+  });
+
+  assert.ok(capturedBody);
+  const body = JSON.parse(capturedBody);
+  assert.strictEqual(body.agent.max_tokens, 200);
+});
+
+test('maxOutputLength over 500 is clamped to 500 for agent.max_tokens', async () => {
+  const { createScoutEngineTransport } = await importTransport();
+  const engineAnswer = {
+    ok: true,
+    answer: JSON.stringify({
+      titleSuggestion: 'Title',
+      summarySuggestion: 'Summary',
+      translationSuggestion: 'Translation',
+      emotionTags: [],
+      memoSuggestion: 'Memo',
+      safetyNote: 'Review',
+    }),
+  };
+  let capturedBody = null;
+  const fakeBinding = {
+    fetch: async (_url, options) => {
+      capturedBody = options?.body || null;
+      return new Response(JSON.stringify(engineAnswer), { status: 200 });
+    },
+  };
+  const transport = createScoutEngineTransport({
+    env: {
+      PADIEM_AI_ENGINE: fakeBinding,
+      SCOUT_ENGINE_CALLER_ID: 'caller',
+      SCOUT_ENGINE_CREDENTIAL: 'cred',
+    },
+    context: {},
+  });
+
+  await transport.suggest({
+    excerpt: 'excerpt',
+    requestedLanguage: 'ko',
+    desiredTone: 'polite',
+    maxOutputLength: 9999,
+  });
+
+  assert.ok(capturedBody);
+  const body = JSON.parse(capturedBody);
+  assert.strictEqual(body.agent.max_tokens, 500);
+});
+
 test('Engine response fields are bounded — no route/provider/model/credential leakage', async () => {
   const { createScoutEngineTransport } = await importTransport();
   const engineAnswer = {
@@ -283,7 +385,6 @@ test('Engine response fields are bounded — no route/provider/model/credential 
 test('sourceUrl is attribution-only and causes zero external fetch', async () => {
   const { createScoutEngineTransport } = await importTransport();
   let engineBindingFetchCount = 0;
-  let externalFetchCount = 0;
   const fakeBinding = {
     fetch: async () => {
       engineBindingFetchCount += 1;
@@ -321,7 +422,6 @@ test('sourceUrl is attribution-only and causes zero external fetch', async () =>
   });
 
   assert.strictEqual(engineBindingFetchCount, 1);
-  assert.strictEqual(externalFetchCount, 0);
 });
 
 test('no LoveBud -> Core direct runtime import in module source', () => {

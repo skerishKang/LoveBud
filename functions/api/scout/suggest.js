@@ -339,16 +339,16 @@ export async function onRequestPost(context) {
       );
     }
 
-    const engineUnavailable = engineTransport.error || {
-      code: 'ENGINE_UNAVAILABLE',
-      message: 'Engine transport is not configured',
-    };
-    return buildErrorResponse(
-      engineUnavailable.code,
-      engineUnavailable.error?.message || engineUnavailable.message || 'Engine transport is not configured',
-      requestId,
-      503
-    );
+      const engineUnavailable = engineTransport.error || {
+        ok: false,
+        error: { code: 'ENGINE_UNAVAILABLE', message: 'Engine transport is not configured' },
+      };
+      return buildErrorResponse(
+        engineUnavailable.error?.code || engineUnavailable.code || 'ENGINE_UNAVAILABLE',
+        engineUnavailable.error?.message || engineUnavailable.message || 'Engine transport is not configured',
+        requestId,
+        503
+      );
   }
 
   if (providerConfig.providerMode === SCOUT_SUGGEST_PROVIDER_MODES.LIVE) {

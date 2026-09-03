@@ -43,13 +43,22 @@ const SERVER_OWNED_ENGINE_IDENTITY = Object.freeze({
     description: 'Generates bounded fan-domain suggestions from normalized Scout product intent',
     system_instruction:
       'You are a fan-domain assistant for LoveBud Scout. Given the user excerpt, optional summary, optional memo, and an attribution-only source URL, return ONLY a JSON object with exactly these fields: titleSuggestion (string, max 50 chars), summarySuggestion (string, max 200 chars), translationSuggestion (string, max 500 chars), emotionTags (array of up to 4 strings, each max 20 chars), memoSuggestion (string, max 500 chars), safetyNote (string, max 300 chars). Do NOT fetch or access the source URL. Do NOT include any other fields.',
-    task_type: 'scout_suggestion',
-    optimize_for: 'quality',
-    max_tokens: 500,
+    task_type: 'general',
+    optimize_for: 'balanced',
   }),
 });
 
 const SCOUT_ENGINE_REQUEST_PATH = '/internal/v1/execute';
+
+const MAX_ENGINE_MAX_TOKENS = 500;
+
+function clampMaxTokens(rawValue) {
+  const numeric = Number(rawValue);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return MAX_ENGINE_MAX_TOKENS;
+  }
+  return Math.min(Math.floor(numeric), MAX_ENGINE_MAX_TOKENS);
+}
 
 function buildEngineRequest(normalizedIntent) {
   const contentLines = [];
@@ -71,7 +80,10 @@ function buildEngineRequest(normalizedIntent) {
 
   return {
     app_id: SERVER_OWNED_ENGINE_IDENTITY.appId,
-    agent: { ...SERVER_OWNED_ENGINE_IDENTITY.agent },
+    agent: {
+      ...SERVER_OWNED_ENGINE_IDENTITY.agent,
+      max_tokens: clampMaxTokens(normalizedIntent.maxOutputLength),
+    },
     messages: [
       {
         role: 'user',

@@ -9,9 +9,8 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const test = require('node:test');
-
 const { pathToFileURL } = require('node:url');
+const test = require('node:test');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const ENDPOINT_PATH = path.join(ROOT, 'functions', 'api', 'scout', 'suggest.js');
@@ -26,6 +25,19 @@ function importEndpoint() {
 
 function importTransport() {
   return import(pathToFileURL(TRANSPORT_PATH).href);
+}
+
+function buildScoutSuggestBody(overrides = {}) {
+  return JSON.stringify({
+    excerpt: 'test excerpt',
+    summary: 'test summary',
+    memo: 'test memo',
+    requestedLanguage: 'ko',
+    desiredTone: 'polite',
+    maxOutputLength: 200,
+    sourceUrl: 'https://example.com/article',
+    ...overrides,
+  });
 }
 
 test('endpoint imports scout-engine-transport', () => {
@@ -133,7 +145,6 @@ test('S4A Engine path executes independently of legacy Provider LIVE mode', asyn
 });
 
 test('endpoint selects Engine when SCOUT_ENGINE_TRANSPORT_ENABLED=true regardless of Provider mode', async () => {
-  const suggestModule = await importEndpoint();
   const { createScoutEngineTransport } = await importTransport();
 
   let engineBindingFetchCount = 0;
@@ -174,4 +185,125 @@ test('endpoint selects Engine when SCOUT_ENGINE_TRANSPORT_ENABLED=true regardles
 
   assert.ok(result.ok);
   assert.strictEqual(engineBindingFetchCount, 1);
+});
+
+test('handler: missing Engine binding returns 503 with ENGINE_BINDING_MISSING', async () => {
+  const { onRequestPost } = await importEndpoint();
+  const request = new Request('https://test.example/api/scout/suggest', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: buildScoutSuggestBody(),
+  });
+  const response = await onRequestPost({
+    request,
+    env: {
+      SCOUT_ENGINE_TRANSPORT_ENABLED: 'true',
+    },
+    context: {},
+  });
+
+  assert.strictEqual(response.status, 503);
+  const body = await response.json();
+  assert.strictEqual(body.error.code, 'ENGINE_BINDING_MISSING');
+});
+
+test('handler: missing Engine credential returns 503 with ENGINE_CREDENTIAL_MISSING', async () => {
+  const { onRequestPost } = await importEndpoint();
+  const fakeBinding = { fetch: async () => new Response('{}', { status: 200 }) };
+  const request = new Request('https://test.example/api/scout/suggest', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: buildScoutSuggestBody(),
+  });
+  const response = await onRequestPost({
+    request,
+    env: {
+      SCOUT_ENGINE_TRANSPORT_ENABLED: 'true',
+      PADIEM_AI_ENGINE: fakeBinding,
+    },
+    context: {},
+  });
+
+  assert.strictEqual(response.status, 503);
+  const body = await response.json();
+  assert.strictEqual(body.error.code, 'ENGINE_CREDENTIAL_MISSING');
+});
+
+test('handler: valid Engine transport returns 200 with engine_transport providerMode', async () => {
+  const { onRequestPost } = await importEndpoint();
+  let bindingFetchCount = 0;
+  const fakeBinding = {
+    fetch: async () => {
+      bindingFetchCount += 1;
+      return new Response(JSON.stringify({
+        ok: true,
+        answer: JSON.stringify({
+          titleSuggestion: 'Title',
+          summarySuggestion: 'Summary',
+          translationSuggestion: 'Translation',
+          emotionTags: ['행복'],
+          memoSuggestion: 'Memo',
+          safetyNote: 'Review',
+        }),
+      }), { status: 200 });
+    },
+  };
+  const request = new Request('https://test.example/api/scout/suggest', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: buildScoutSuggestBody(),
+  });
+  const response = await onRequestPost({
+    request,
+    env: {
+      SCOUT_ENGINE_TRANSPORT_ENABLED: 'true',
+      PADIEM_AI_ENGINE: fakeBinding,
+      SCOUT_ENGINE_CALLER_ID: 'caller',
+      SCOUT_ENGINE_CREDENTIAL: 'cred',
+    },
+    context: {},
+  });
+
+  assert.strictEqual(response.status, 200);
+  const body = await response.json();
+  assert.ok(body.ok);
+  assert.strictEqual(body.providerMode, 'engine_transport');
+  assert.strictEqual(bindingFetchCount, 1);
+});
+
+test('handler: Engine transport failure does not fall back to direct Provider', async () => {
+  const { onRequestPost } = await importEndpoint();
+  const fakeBinding = {
+    fetch: async () => {
+      return new Response(JSON.stringify({
+        ok: false,
+        error: {
+          code: 'ENGINE_ERROR',
+          message: 'boom',
+          retryable: false,
+          metadata: null,
+        },
+      }), { status: 500 });
+    },
+  };
+  const request = new Request('https://test.example/api/scout/suggest', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: buildScoutSuggestBody(),
+  });
+  const response = await onRequestPost({
+    request,
+    env: {
+      SCOUT_ENGINE_TRANSPORT_ENABLED: 'true',
+      PADIEM_AI_ENGINE: fakeBinding,
+      SCOUT_ENGINE_CALLER_ID: 'caller',
+      SCOUT_ENGINE_CREDENTIAL: 'cred',
+    },
+    context: {},
+  });
+
+  assert.strictEqual(response.status, 503);
+  const body = await response.json();
+  assert.ok(!body.ok);
+  assert.strictEqual(body.error.code, 'ENGINE_ERROR');
 });
