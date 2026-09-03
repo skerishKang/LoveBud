@@ -5,6 +5,9 @@
  *
  * POST /api/scout/suggest
  * No real LLM, no API keys, no external fetch, no persistence
+ *
+ * Refs #1882
+ * Keep #1882 open
  */
 
 import { readBoundedRequestBody } from '../../_shared/bounded-request-body.js';
@@ -90,6 +93,9 @@ import {
 import {
   createScoutLiveDependencyAdapter,
 } from "./live-auth-rate-limit-dependency-adapter.js";
+import {
+  createScoutEngineTransport,
+} from "./scout-engine-transport.js";
 
 const SCOUT_SUGGEST_PROVIDER_MODES = {
   STUB: 'stub',
@@ -390,6 +396,41 @@ export async function onRequestPost(context) {
       return new Response(
         JSON.stringify({ ok: false, error: { code: rateLimitResult.error.code, message: rateLimitResult.error.message } }),
         { status, headers }
+      );
+    }
+
+    // ─── S4A Engine transport boundary (fail-closed, explicit opt-in) ──────────
+    const engineTransportEnabled =
+      String(env?.SCOUT_ENGINE_TRANSPORT_ENABLED || '').toLowerCase() === 'true';
+    if (engineTransportEnabled) {
+      const engineTransport = createScoutEngineTransport({
+        env,
+        fetch: resolvedF,
+        context,
+      });
+
+      if (engineTransport.status === 'READY') {
+        const engineResult = await engineTransport.suggest(validation.normalized);
+        if (engineResult.ok) {
+          return buildSuccessResponse(engineResult.suggestion, 'engine_transport', requestId);
+        }
+        return buildErrorResponse(
+          engineResult.error.code,
+          engineResult.error.message,
+          requestId,
+          503
+        );
+      }
+
+      const engineUnavailable = engineTransport.error || {
+        code: 'ENGINE_UNAVAILABLE',
+        message: 'Engine transport is not configured',
+      };
+      return buildErrorResponse(
+        engineUnavailable.code,
+        engineUnavailable.error?.message || engineUnavailable.message || 'Engine transport is not configured',
+        requestId,
+        503
       );
     }
 
