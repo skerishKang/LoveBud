@@ -317,7 +317,7 @@ test('operator decision shape never contains a raw credential/secret field', asy
 });
 
 // ----- 7. Profile 4346 (Hub Layout) Fail-Closed Tests -----
-test('Profile 4346 packet fails operator readiness due to missing active comment and provisional fingerprint', () => {
+test('Profile 4346 packet fails operator readiness due to missing active comment and pending authorization binding', () => {
   const hubPacket = OP.buildCanonicalPacket('4346');
   assert.equal(hubPacket.issue, 4346);
   assert.equal(hubPacket.intendedRelation, 'public.tree_hub_layouts');
@@ -327,12 +327,12 @@ test('Profile 4346 packet fails operator readiness due to missing active comment
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID));
-  assert.ok(r.gateBlockers.includes('GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING'));
-  assert.ok(r.gateBlockers.includes('GATE_TARGET_NOT_ALLOWLISTED'));
+  // Accepted fingerprint and reviewed allowlist exist, but execution is disabled
+  assert.equal(r.gateDecision, 'PAPER_ACTIVATION_GATE_PASSED');
+  assert.deepEqual(r.gateBlockers, []);
 });
 
-test('Profile 4346 with mocked active comment still fails closed on pending binding, provisional fingerprint and allowlist', () => {
+test('Profile 4346 with mocked active comment still fails closed on pending authorization binding', () => {
   const hubPacket = OP.buildCanonicalPacket('4346', {
     activeAuthorizationComment: 9999999999,
   });
@@ -340,9 +340,8 @@ test('Profile 4346 with mocked active comment still fails closed on pending bind
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID));
-  assert.ok(r.gateBlockers.includes('GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING'));
-  assert.ok(r.gateBlockers.includes('GATE_TARGET_NOT_ALLOWLISTED'));
+  assert.equal(r.gateDecision, 'PAPER_ACTIVATION_GATE_PASSED');
+  assert.deepEqual(r.gateBlockers, []);
 });
 
 test('Profile 4346 execution attempt fails closed even with executionEnabled=true, allowExecute=true, and valid transport', async () => {
@@ -362,7 +361,7 @@ test('Profile 4346 execution attempt fails closed even with executionEnabled=tru
   assert.equal(r.oneAttemptBudgetConsumed, false);
 });
 
-test('Profile 4346 execution attempt fails closed with provisional fingerprint and allowlist absence', async () => {
+test('Profile 4346 execution attempt without active comment fails closed on pending authorization binding', async () => {
   const hubPacket = OP.buildCanonicalPacket('4346');
   const transport = makeMockTransport();
   const r = await OP.executeGovernedOperator({

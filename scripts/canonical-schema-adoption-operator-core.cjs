@@ -91,7 +91,7 @@ const PROFILES = Object.freeze({
     migrationPath: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
     migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
     intendedRelation: 'public.tree_hub_layouts',
-    expectedSchemaFingerprint: '0000000000000000000000000000000000000000000000000000000000000000', // Provisional
+    expectedSchemaFingerprint: '199a8d5dc0b21d8a5d0ecaa7a7101cd65b926f2d884682840624388279cc2316',
     defaultMain: '851376c6e3d44a19b9c45ba9de8bc13eff7d06d9',
     envAllowExecute: 'LOVEBUD_4346_ALLOW_EXECUTE',
     envTransportPath: 'LOVEBUD_4346_OPERATOR_TRANSPORT_PATH',

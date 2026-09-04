@@ -167,7 +167,7 @@ test('no raw grantee/secret/credential fields emitted by gate result', () => {
   assert.equal(dumped.includes('pg_'), false);
 });
 
-test('tree_hub_layouts packet fails closed due to provisional fingerprint and allowlist absence', () => {
+test('tree_hub_layouts packet with wrong fingerprint fails closed as GATE_EXPECTED_SCHEMA_FINGERPRINT_UNKNOWN', () => {
   const hubLayoutPacket = {
     currentMain: '7362b4e631136d6e94f8dc1459e99aeb3e216598',
     approvalReference: 'issue:4346',
@@ -190,10 +190,33 @@ test('tree_hub_layouts packet fails closed due to provisional fingerprint and al
   };
   const res = CORE.evaluateAdoptionActivationGate(hubLayoutPacket);
   assert.equal(res.decision, CORE.GATE_DECISIONS.NOT_APPROVED);
-  // Must fail closed because expected-schema manifest has provisional_fingerprint=true
-  assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING));
-  // Must fail closed because tree_hub_layouts is not in reviewed_object_allowlist
-  assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_TARGET_NOT_ALLOWLISTED));
+  assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_EXPECTED_SCHEMA_FINGERPRINT_UNKNOWN));
+});
+
+test('tree_hub_layouts packet with accepted CI fingerprint and allowlist passes paper activation gate', () => {
+  const hubLayoutPacket = {
+    currentMain: '7362b4e631136d6e94f8dc1459e99aeb3e216598',
+    approvalReference: 'issue:4346',
+    targetIdentity: {
+      product_shared: '133-relovetree',
+      environment_class: 'production',
+      database: 'neondb',
+    },
+    migrationFile: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
+    migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
+    intendedRelation: 'public.tree_hub_layouts',
+    applyMode: 'TRANSACTION_REQUIRED',
+    expectedSchemaFingerprint: '199a8d5dc0b21d8a5d0ecaa7a7101cd65b926f2d884682840624388279cc2316',
+    productRowReadAllowed: false,
+    runtimeGateActivation: false,
+    writerGrant: false,
+    providerReroute: false,
+    ambiguousRetryAllowed: false,
+    unrelatedMigrationCount: 0,
+  };
+  const res = CORE.evaluateAdoptionActivationGate(hubLayoutPacket);
+  assert.equal(res.decision, CORE.GATE_DECISIONS.PAPER_ACTIVATION_GATE_PASSED);
+  assert.deepEqual(res.blockers, []);
 });
 
 test('tree_hub_layouts packet rejects issue:4277 as execution approval reference', () => {
@@ -230,4 +253,59 @@ test('unregistered relation fails closed as GATE_TARGET_RELATION_INVALID', () =>
   const res = CORE.evaluateAdoptionActivationGate(unregPacket);
   assert.equal(res.decision, CORE.GATE_DECISIONS.NOT_APPROVED);
   assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_TARGET_RELATION_INVALID));
+});
+
+test('Hub Layout #4346 authority binding contract: manifest, allowlist, and profile parity', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'db', 'migration-provenance', 'expected-schema-manifest.json'), 'utf8'));
+  const allowlist = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'db', 'migration-provenance', 'adoption-baseline-collection-plan-contract.json'), 'utf8'));
+  const ACCEPTED_FINGERPRINT = 'sha256:199a8d5dc0b21d8a5d0ecaa7a7101cd65b926f2d884682840624388279cc2316';
+  const ACCEPTED_RAW_HEX = '199a8d5dc0b21d8a5d0ecaa7a7101cd65b926f2d884682840624388279cc2316';
+
+  // 1. Manifest status remains ADOPTION_REQUIRED
+  assert.equal(manifest.status, 'ADOPTION_REQUIRED');
+
+  // 2. tree_hub_layouts has exact accepted fingerprint and NO provisional_fingerprint
+  const hlManifestEntry = manifest.critical_objects.find((o) => o.name === 'table:public.tree_hub_layouts');
+  assert.ok(hlManifestEntry, 'tree_hub_layouts present in expected-schema-manifest');
+  assert.equal(hlManifestEntry.fingerprint, ACCEPTED_FINGERPRINT);
+  assert.equal(hlManifestEntry.provisional_fingerprint, undefined);
+
+  // 3. Adoption baseline collection plan contract remains PREPARED_ONLY and UNATTESTED
+  assert.equal(allowlist.fixed_field_values.plan_status, 'PREPARED_ONLY');
+  assert.equal(allowlist.prepared_attestation_status, 'UNATTESTED');
+
+  // 4. Reviewed allowlist entry has exact structural metadata categories and CORE_TREE_IDENTITY
+  const hlAllowlistEntry = allowlist.reviewed_object_allowlist.find((o) => o.name === 'table:public.tree_hub_layouts');
+  assert.ok(hlAllowlistEntry, 'tree_hub_layouts present in reviewed_object_allowlist');
+  assert.equal(hlAllowlistEntry.kind, 'TABLE');
+  assert.equal(hlAllowlistEntry.rationale_code, 'CORE_TREE_IDENTITY');
+  assert.deepEqual(hlAllowlistEntry.metadata_categories, [
+    'columns',
+    'types',
+    'nullability',
+    'defaults',
+    'primary_keys',
+    'unique_constraints',
+    'foreign_keys',
+    'indexes',
+    'triggers',
+    'row_level_security',
+    'grants',
+    'table_kind',
+  ]);
+
+  // 5. Object selection evidence present
+  assert.ok(allowlist.object_selection_evidence['table:public.tree_hub_layouts'], 'object_selection_evidence entry exists');
+  const ev = allowlist.object_selection_evidence['table:public.tree_hub_layouts'];
+  assert.ok(ev.repository_evidence.includes('db/migrations/20260828070000_add-tree-hub-layouts.sql'));
+  assert.ok(ev.repository_evidence.includes('db/migration-provenance/expected-schema-manifest.json'));
+  assert.ok(ev.repository_evidence.includes('db/migration-provenance/canonical-migrations.json'));
+
+  // 6. Profile 4346 in operator-core has accepted fingerprint, pending lifecycle, and null comment
+  const OP = require('../../scripts/canonical-schema-adoption-operator-core.cjs');
+  const profile4346 = OP.PROFILES['4346'];
+  assert.ok(profile4346, 'Profile 4346 exists in operator core');
+  assert.equal(profile4346.expectedSchemaFingerprint, ACCEPTED_RAW_HEX);
+  assert.equal(profile4346.lifecycleState, 'PENDING_AUTHORIZATION_BINDING');
+  assert.equal(profile4346.activeAuthorizationComment, null);
 });

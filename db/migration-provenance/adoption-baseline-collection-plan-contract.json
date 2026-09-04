@@ -394,6 +394,25 @@
         "table_kind"
       ],
       "rationale_code": "CORE_TREE_IDENTITY"
+    },
+    {
+      "name": "table:public.tree_hub_layouts",
+      "kind": "TABLE",
+      "metadata_categories": [
+        "columns",
+        "types",
+        "nullability",
+        "defaults",
+        "primary_keys",
+        "unique_constraints",
+        "foreign_keys",
+        "indexes",
+        "triggers",
+        "row_level_security",
+        "grants",
+        "table_kind"
+      ],
+      "rationale_code": "CORE_TREE_IDENTITY"
     }
   ],
   "object_selection_evidence": {
@@ -412,6 +431,14 @@
         "db/migration-provenance/canonical-migrations.json"
       ],
       "why_critical": "Catalog-presence/absence preflight target for #4282 read-only schema-adoption preflight (no table data reads authorized)."
+    },
+    "table:public.tree_hub_layouts": {
+      "repository_evidence": [
+        "db/migrations/20260828070000_add-tree-hub-layouts.sql",
+        "db/migration-provenance/expected-schema-manifest.json",
+        "db/migration-provenance/canonical-migrations.json"
+      ],
+      "why_critical": "Canonical catalog target for Hub Layout GET/PUT schema-adoption and #4255/#4256 privilege readiness (no table data reads authorized)."
     },
     "table:public.memories": {
       "repository_evidence": [
