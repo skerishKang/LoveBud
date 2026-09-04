@@ -316,62 +316,56 @@ test('operator decision shape never contains a raw credential/secret field', asy
   assert.equal(/postgres:\/\/[^"']+@/.test(s), false, 'must not include raw DSN');
 });
 
-// ----- 7. Profile 4346 (Hub Layout) Fail-Closed Tests -----
-test('Profile 4346 packet fails operator readiness due to missing active comment and pending authorization binding', () => {
+// ----- 7. Profile 4346 (Hub Layout) Bound Authority Tests -----
+test('Profile 4346 canonical packet passes operator readiness (dry-run path under CENTRAL comment 5543891263)', () => {
   const hubPacket = OP.buildCanonicalPacket('4346');
   assert.equal(hubPacket.issue, 4346);
   assert.equal(hubPacket.intendedRelation, 'public.tree_hub_layouts');
-  assert.equal(hubPacket.activeAuthorizationComment, null);
+  assert.equal(hubPacket.activeAuthorizationComment, 5543891263);
 
   const r = OP.evaluateOperatorReadiness(hubPacket);
-  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
-  // Accepted fingerprint and reviewed allowlist exist, but execution is disabled
+  assert.equal(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.equal(r.stops.length, 0);
   assert.equal(r.gateDecision, 'PAPER_ACTIVATION_GATE_PASSED');
   assert.deepEqual(r.gateBlockers, []);
+  assert.equal(r.manifestStatus, 'ADOPTION_REQUIRED');
 });
 
-test('Profile 4346 with mocked active comment still fails closed on pending authorization binding', () => {
+test('Profile 4346 wrong active comment fails closed', () => {
   const hubPacket = OP.buildCanonicalPacket('4346', {
     activeAuthorizationComment: 9999999999,
   });
   const r = OP.evaluateOperatorReadiness(hubPacket);
-  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
-  assert.equal(r.gateDecision, 'PAPER_ACTIVATION_GATE_PASSED');
-  assert.deepEqual(r.gateBlockers, []);
 });
 
-test('Profile 4346 execution attempt fails closed even with executionEnabled=true, allowExecute=true, and valid transport', async () => {
+test('Profile 4346 missing active comment fails closed', () => {
   const hubPacket = OP.buildCanonicalPacket('4346', {
-    activeAuthorizationComment: 9999999999,
+    activeAuthorizationComment: null,
   });
-  const transport = makeMockTransport();
-  const r = await OP.executeGovernedOperator({
-    packet: hubPacket,
-    transport,
-    executionEnabled: true,
-    allowExecute: true,
-  });
-  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
+});
+
+test('Profile 4346 executeGovernedOperator remains PAPER_ONLY_DRY_RUN by default (executionEnabled=false)', async () => {
+  const hubPacket = OP.buildCanonicalPacket('4346');
+  const r = await OP.executeGovernedOperator({ packet: hubPacket });
+  assert.equal(r.decision, OP.DECISIONS.PAPER_ONLY_DRY_RUN);
   assert.equal(r.executionAttempted, false);
   assert.equal(r.oneAttemptBudgetConsumed, false);
 });
 
-test('Profile 4346 execution attempt without active comment fails closed on pending authorization binding', async () => {
+test('Profile 4346 execution attempt fails closed with no transport (even with executionEnabled+allowExecute)', async () => {
   const hubPacket = OP.buildCanonicalPacket('4346');
-  const transport = makeMockTransport();
   const r = await OP.executeGovernedOperator({
     packet: hubPacket,
-    transport,
     executionEnabled: true,
     allowExecute: true,
   });
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_CREDENTIAL_OPERATOR_ABSENT));
   assert.equal(r.executionAttempted, false);
   assert.equal(r.oneAttemptBudgetConsumed, false);
 });
@@ -439,12 +433,143 @@ test('Profile 4346 ambiguous retry=true fails closed', () => {
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_AMBIGUOUS_RETRY_FORBIDDEN));
 });
 
-test('executeGovernedOperator with Profile 4346 remains PAPER_ONLY_DRY_RUN by default', async () => {
-  const hubPacket = OP.buildCanonicalPacket('4346');
-  const r = await OP.executeGovernedOperator({ packet: hubPacket });
-  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.equal(r.executionAttempted, false);
-  assert.equal(r.oneAttemptBudgetConsumed, false);
+// ----- 8. Exact-Head Authority and Strict CLI Boundary Tests -----
+test('Exact-head authority helper: verifyExecutionHeadAuthority matches when actualHead == centralHead', () => {
+  const profile4346 = OP.PROFILES['4346'];
+  const actualHead = OP.resolveTrustedLocalRepoHead();
+  assert.ok(actualHead, 'local repo head must be resolvable');
+
+  const matchRes = OP.verifyExecutionHeadAuthority(profile4346, { executionHead: actualHead });
+  assert.equal(matchRes.ok, true);
+  assert.equal(matchRes.actualExecutionHead, actualHead);
+  assert.equal(matchRes.centralAuthorizedExecutionHead, actualHead);
+});
+
+test('Exact-head authority helper: fails closed when actualHead != centralHead', () => {
+  const profile4346 = OP.PROFILES['4346'];
+  const fakeHead = '0'.repeat(40);
+
+  const mismatchRes = OP.verifyExecutionHeadAuthority(profile4346, { executionHead: fakeHead });
+  assert.equal(mismatchRes.ok, false);
+  assert.equal(mismatchRes.reason, OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH);
+  assert.equal(mismatchRes.centralAuthorizedExecutionHead, fakeHead);
+});
+
+test('Exact-head authority helper: fails closed when executionHead is missing / unresolvable', () => {
+  const profile4346 = OP.PROFILES['4346'];
+  const prevEnv = process.env.LOVEBUD_4346_EXECUTION_HEAD;
+  delete process.env.LOVEBUD_4346_EXECUTION_HEAD;
+  try {
+    const missingRes = OP.verifyExecutionHeadAuthority(profile4346, {});
+    assert.equal(missingRes.ok, false);
+    assert.equal(missingRes.reason, OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH);
+  } finally {
+    if (prevEnv) process.env.LOVEBUD_4346_EXECUTION_HEAD = prevEnv;
+  }
+});
+
+test('Exact-head authority helper: resolves from profile envExecutionHead', () => {
+  const profile4346 = OP.PROFILES['4346'];
+  const actualHead = OP.resolveTrustedLocalRepoHead();
+  const prevEnv = process.env.LOVEBUD_4346_EXECUTION_HEAD;
+  process.env.LOVEBUD_4346_EXECUTION_HEAD = actualHead;
+  try {
+    const res = OP.verifyExecutionHeadAuthority(profile4346, {});
+    assert.equal(res.ok, true);
+    assert.equal(res.centralAuthorizedExecutionHead, actualHead);
+  } finally {
+    if (prevEnv !== undefined) {
+      process.env.LOVEBUD_4346_EXECUTION_HEAD = prevEnv;
+    } else {
+      delete process.env.LOVEBUD_4346_EXECUTION_HEAD;
+    }
+  }
+});
+
+test('CLI strictness: exact-head mismatch prevents transport from being loaded', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+  const fakeHead = 'f'.repeat(40);
+
+  const res = child.spawnSync(
+    process.execPath,
+    [runnerScript, '--profile', '4346', '--execute', '--execution-head', fakeHead],
+    {
+      env: {
+        ...process.env,
+        LOVEBUD_4346_ALLOW_EXECUTE: '1',
+        LOVEBUD_4346_OPERATOR_TRANSPORT_PATH: 'THIS_PATH_DOES_NOT_EXIST_AND_MUST_NOT_BE_LOADED',
+      },
+      encoding: 'utf8',
+    },
+  );
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'EXECUTE_REQUESTED');
+  assert.equal(parsed.reason, OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH);
+  assert.equal(parsed.oneAttemptBudgetConsumed, false);
+  assert.equal(parsed.executionAttempted, false);
+});
+
+test('CLI strictness: --execute without explicit --profile fails closed before transport load', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+
+  const res = child.spawnSync(process.execPath, [runnerScript, '--execute'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
+  assert.equal(parsed.reason, 'INVALID_CLI_ARGUMENTS');
+  assert.ok(parsed.message.includes('PROFILE_REQUIRED_FOR_EXECUTE'));
+});
+
+test('CLI strictness: duplicate flags fail closed before transport load', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+
+  const res = child.spawnSync(process.execPath, [runnerScript, '--profile', '4346', '--profile', '4346'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
+  assert.equal(parsed.reason, 'INVALID_CLI_ARGUMENTS');
+  assert.ok(parsed.message.includes('DUPLICATE_FLAG_REJECTED'));
+});
+
+test('CLI strictness: conflicting flags --execute and --dry-run fail closed', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+
+  const res = child.spawnSync(process.execPath, [runnerScript, '--profile', '4346', '--execute', '--dry-run'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
+  assert.equal(parsed.reason, 'INVALID_CLI_ARGUMENTS');
+  assert.ok(parsed.message.includes('CONFLICTING_FLAGS_REJECTED'));
+});
+
+test('CLI strictness: unknown flags fail closed', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+
+  const res = child.spawnSync(process.execPath, [runnerScript, '--profile', '4346', '--bogus-flag'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
+  assert.equal(parsed.reason, 'INVALID_CLI_ARGUMENTS');
+  assert.ok(parsed.message.includes('UNKNOWN_FLAG_REJECTED'));
 });
 
 // ----- helpers -----
