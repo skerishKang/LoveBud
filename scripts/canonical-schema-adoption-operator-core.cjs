@@ -453,21 +453,18 @@ async function executeGovernedOperator(opts) {
     };
   }
 
-  // Core exact-head authority gate: execution head authority must be verified before any transport method calls
-  const centralHead = resolveAuthorizedExecutionHead(profile, options);
-  if (centralHead) {
-    const headAuth = verifyExecutionHeadAuthority(profile, options);
-    if (!headAuth.ok) {
-      return {
-        decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
-        stops: [headAuth.reason],
-        reason: headAuth.reason,
-        actualExecutionHead: headAuth.actualExecutionHead,
-        centralAuthorizedExecutionHead: headAuth.centralAuthorizedExecutionHead,
-        executionAttempted: false,
-        oneAttemptBudgetConsumed: false,
-      };
-    }
+  // Core exact-head authority gate: execution head authority is mandatory and must be verified before any transport method calls
+  const headAuth = verifyExecutionHeadAuthority(profile, options);
+  if (!headAuth.ok) {
+    return {
+      decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      stops: [headAuth.reason],
+      reason: headAuth.reason,
+      actualExecutionHead: headAuth.actualExecutionHead,
+      centralAuthorizedExecutionHead: headAuth.centralAuthorizedExecutionHead,
+      executionAttempted: false,
+      oneAttemptBudgetConsumed: false,
+    };
   }
 
   // --- Advisory lock ---

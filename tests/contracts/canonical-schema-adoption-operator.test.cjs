@@ -218,11 +218,13 @@ test('apply path: committed+verified consumes the one-attempt budget exactly onc
     precheck: { present: false },
     postcheck: { matched: true },
   });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.APPLY_COMMITTED_AND_VERIFIED);
   assert.equal(r.executionAttempted, true);
@@ -235,11 +237,13 @@ test('apply path: committed+verified consumes the one-attempt budget exactly onc
 
 test('apply path: relation already present fails closed (STOP_RELATION_PRESENT), no budget consumed', async () => {
   const transport = makeMockTransport({ precheck: { present: true } });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_RELATION_PRESENT));
@@ -249,11 +253,13 @@ test('apply path: relation already present fails closed (STOP_RELATION_PRESENT),
 
 test('apply path: postcheck mismatch fails closed (STOP_POSTCHECK_MISMATCH), no budget consumed', async () => {
   const transport = makeMockTransport({ precheck: { present: false }, postcheck: { matched: false } });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_POSTCHECK_MISMATCH));
@@ -266,11 +272,13 @@ test('apply path: ledger attestation failure fails closed (STOP_LEDGER_ATTESTATI
     postcheck: { matched: true },
     ledger: { recorded: false },
   });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_LEDGER_ATTESTATION_MISMATCH));
@@ -279,11 +287,13 @@ test('apply path: ledger attestation failure fails closed (STOP_LEDGER_ATTESTATI
 
 test('apply path: advisory lock unavailable fails closed (STOP_ADVISORY_LOCK_UNAVAILABLE)', async () => {
   const transport = makeMockTransport({ lockHandle: null });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ADVISORY_LOCK_UNAVAILABLE));
@@ -293,11 +303,13 @@ test('apply path: advisory lock unavailable fails closed (STOP_ADVISORY_LOCK_UNA
 
 test('apply path: thrown transport error is treated as ambiguous outcome, no retry, no budget consumed', async () => {
   const transport = makeMockTransport({ throwOnApply: new Error('connection lost') });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_AMBIGUOUS_OUTCOME));
@@ -676,6 +688,53 @@ test('Direct-core regression: authorized head != trusted actual HEAD fails close
   assert.equal(lockAcquired, 0, 'Advisory lock must not be acquired on head mismatch');
   assert.equal(txCalls, 0, 'Transaction must not be opened on head mismatch');
   assert.equal(applyCalls, 0, 'Migration must not be applied on head mismatch');
+});
+
+test('Direct-core regression: P4-enabled profile with missing execution-head authority fails closed with ZERO transport method calls', async () => {
+  let lockAcquired = 0;
+  let txCalls = 0;
+  let applyCalls = 0;
+  let verifyCalls = 0;
+  let ledgerCalls = 0;
+
+  const transport = {
+    acquireAdvisoryLock: async () => { lockAcquired += 1; return { id: 'lock-1' }; },
+    releaseAdvisoryLock: async () => {},
+    withTransaction: async (fn) => { txCalls += 1; return fn({}); },
+    applyMigration: async () => { applyCalls += 1; return { committed: true }; },
+    verifyCatalog: async () => { verifyCalls += 1; return { matched: true }; },
+    writeLedger: async () => { ledgerCalls += 1; return { recorded: true }; },
+  };
+
+  // Test with Profile 4282 (which has p4ExecutionAuthorized=true)
+  // Ensure NO executionHead option is provided and NO env execution head exists
+  const prevEnv = process.env.LOVEBUD_4282_EXECUTION_HEAD;
+  delete process.env.LOVEBUD_4282_EXECUTION_HEAD;
+
+  try {
+    const packet4282 = OP.buildCanonicalPacket('4282');
+    const r = await OP.executeGovernedOperator({
+      packet: packet4282,
+      transport,
+      executionEnabled: true,
+      allowExecute: true,
+      // NO executionHead argument
+    });
+
+    assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+    assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH));
+    assert.equal(r.executionAttempted, false);
+    assert.equal(r.oneAttemptBudgetConsumed, false);
+
+    // Specifically prove ZERO transport methods were called
+    assert.equal(lockAcquired, 0, 'Advisory lock must not be acquired on missing head authority');
+    assert.equal(txCalls, 0, 'Transaction must not be opened on missing head authority');
+    assert.equal(applyCalls, 0, 'Migration must not be applied on missing head authority');
+    assert.equal(verifyCalls, 0, 'Catalog must not be verified on missing head authority');
+    assert.equal(ledgerCalls, 0, 'Ledger must not be written on missing head authority');
+  } finally {
+    if (prevEnv) process.env.LOVEBUD_4282_EXECUTION_HEAD = prevEnv;
+  }
 });
 
 // ----- helpers -----
