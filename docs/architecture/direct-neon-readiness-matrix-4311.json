@@ -549,16 +549,16 @@
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
-      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
-      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_NOT_INTENDED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": { "ref": "#4258 exact-main evidence", "main_sha": "dce05c15321ef0eb188fb269f6e52fb5315f0651" },
+      "last_exact_head_evidence": { "ref": "#4258 canary rollback", "main_sha": "bd1e5fb78490b8693b96652146db1ce57ccd3548" },
       "modal_retained_by_design": false,
-      "rollback_authority": "wrangler gate var revert via reviewed PR",
-      "next_action": "fresh live Cloudflare provider read + Production smoke before PRODUCTION_LIVE classification"
+      "rollback_authority": "no gate checked in; activation requires separate reviewed PR; Modal path restored",
+      "next_action": "Production direct-Neon canary failed (HTTP 502 transaction-failed); gate rollback to Modal is required; zero-mutation DB/runtime forensic follows rollback"
     },
     {
       "id": "memory-reaction",
