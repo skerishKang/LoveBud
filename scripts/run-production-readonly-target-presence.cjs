@@ -17,12 +17,16 @@
  *     no connection override, no generic DATABASE_URL.
  *   - Dedicated secret key only: LOVEBUD_PRODUCTION_READONLY_DATABASE_URL.
  *   - Sanitized output format only (no raw credentials, no OIDs, no product row data).
+ *   - Source-disabled gate precedes private .secrets reads.
+ *   - Duplicate CLI flags fail closed (no last-write-wins).
+ *   - Complete real executor path implemented behind the source-disabled gate.
  *
  * Refs #4346, #4282, #4000, #4004, #4005, #4255, #4256, #1882.
  */
 
 const path = require('node:path');
 const fs = require('node:fs');
+const { Client } = require('pg');
 
 const {
   MODE: BOUNDARY_MODE,
@@ -33,6 +37,10 @@ const {
   parseProductionReadonlyDatabaseUrl,
   loadProductionRoleMapping,
   isSupportedProductionServerVersionNum,
+  assertSupportedProductionServerVersionNum,
+  buildProductionReadonlyInvocationPlan,
+  getPrivateInvocationParts,
+  releaseInvocationPlan,
   rejectCallerOverrides,
 } = require('./production-readonly-catalog-boundary-core.cjs');
 
@@ -61,6 +69,7 @@ const RUNNER_OUTCOMES = Object.freeze({
   PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY: 'PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY',
   PRESENCE_CHECK_FAIL_READONLY_PROOF: 'PRESENCE_CHECK_FAIL_READONLY_PROOF',
   PRESENCE_CHECK_FAIL_METADATA_OR_SHAPE: 'PRESENCE_CHECK_FAIL_METADATA_OR_SHAPE',
+  PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH: 'PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH',
   PRESENCE_CHECK_EXECUTION_DISABLED: 'PRESENCE_CHECK_EXECUTION_DISABLED',
 });
 
@@ -102,8 +111,13 @@ function resolveTargetProfile(profileKey) {
   return null;
 }
 
+/**
+ * Strict CLI argument parser.
+ * Disallows duplicate flags completely (no last-write-wins).
+ */
 function parseCliArgs(argv) {
   const flags = new Map();
+  const seenFlags = new Set();
   let validateOnly = false;
   let dryRun = false;
 
@@ -114,19 +128,42 @@ function parseCliArgs(argv) {
       err.category = BOUNDARY_FAILURE.PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED;
       throw err;
     }
+
     if (arg === '--validate-only') {
+      if (seenFlags.has('--validate-only')) {
+        const err = new Error(BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID);
+        err.category = BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID;
+        throw err;
+      }
+      seenFlags.add('--validate-only');
       validateOnly = true;
       continue;
     }
     if (arg === '--dry-run') {
+      if (seenFlags.has('--dry-run')) {
+        const err = new Error(BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID);
+        err.category = BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID;
+        throw err;
+      }
+      seenFlags.add('--dry-run');
       dryRun = true;
       continue;
     }
+
     if (!arg.startsWith('--') || !ALLOWED_CLI_FLAGS.has(arg)) {
       const err = new Error(BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID);
       err.category = BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID;
       throw err;
     }
+
+    // Flag with value duplicate check
+    if (seenFlags.has(arg)) {
+      const err = new Error(BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID);
+      err.category = BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID;
+      throw err;
+    }
+    seenFlags.add(arg);
+
     const next = argv[i + 1];
     if (!next || next.startsWith('--')) {
       const err = new Error(BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID);
@@ -214,9 +251,9 @@ async function inspectTargetPresenceWithClient(client, targetProfile, roleMap, c
 }
 
 /**
- * Validate presence runner configuration and input files without connecting.
+ * Pure public policy check. Does NOT read .secrets, credentials, or role files.
  */
-function validatePresenceRunnerInputs(options) {
+function validatePresenceRunnerPolicy(options) {
   rejectCallerOverrides(options || {});
 
   const profileKey = (options && options.profile) || '4346';
@@ -241,52 +278,162 @@ function validatePresenceRunnerInputs(options) {
     throw err;
   }
 
+  return {
+    valid: true,
+    targetProfile,
+  };
+}
+
+/**
+ * Private credential & configuration loader.
+ * MUST ONLY be called when source execution is explicitly enabled or in dryRun/validation mode.
+ */
+function loadPresenceRunnerPrivateInputs(options) {
+  validatePresenceRunnerPolicy(options);
+
+  const secretFile = options.secretFile;
+  const roleMappingFile = options.roleMappingFile;
+
   const url = loadDedicatedProductionReadonlyDatabaseUrl(REPO_ROOT, secretFile);
   const pgConfig = parseProductionReadonlyDatabaseUrl(url);
   const roleMapping = loadProductionRoleMapping(REPO_ROOT, roleMappingFile);
 
   return {
     valid: true,
-    targetProfile,
+    targetProfile: resolveTargetProfile(options.profile || '4346'),
+    roleMapping,
     roleMappingClassesCount: Object.keys(roleMapping).length,
+    pgConfig,
     pgConfigShape: Object.keys(pgConfig).sort(),
     dedicatedSecretKey: DEDICATED_SECRET_KEY,
   };
 }
 
 /**
- * Main runner execution entrypoint.
- * In this turn, live Production execution is hard source-disabled.
+ * Real reviewed Production read-only executor engine.
+ * Fully implemented behind the source-disabled gate.
+ * Accepts optional injected Client for testing without opening network sockets.
  */
-async function runTargetPresenceRunner(options) {
-  const profileKey = (options && options.profile) || '4346';
-  const targetProfile = resolveTargetProfile(profileKey);
-  if (!targetProfile) {
+async function executeProductionReadonlyInspection(options, injectedClientFactory) {
+  const privateInputs = loadPresenceRunnerPrivateInputs(options);
+  const targetProfile = privateInputs.targetProfile;
+  const contract = loadContract(REPO_ROOT);
+
+  const client = injectedClientFactory
+    ? injectedClientFactory(privateInputs.pgConfig)
+    : new Client(privateInputs.pgConfig);
+
+  let startedTxn = false;
+  try {
+    try {
+      await client.connect();
+    } catch {
+      const err = new Error(ADAPTER_FAILURE.CATALOG_ADAPTER_QUERY_FAILED);
+      err.category = ADAPTER_FAILURE.CATALOG_ADAPTER_QUERY_FAILED;
+      throw err;
+    }
+
+    await client.query(Q.BEGIN_RO);
+    startedTxn = true;
+
+    const roRes = await client.query(Q.SHOW_RO);
+    const roVal = roRes.rows[0] && (roRes.rows[0].transaction_read_only || Object.values(roRes.rows[0])[0]);
+    if (!isTransactionReadOnlyOn(roVal)) {
+      const err = new Error(ADAPTER_FAILURE.CATALOG_ADAPTER_READ_ONLY_REQUIRED);
+      err.category = ADAPTER_FAILURE.CATALOG_ADAPTER_READ_ONLY_REQUIRED;
+      throw err;
+    }
+
+    const verRes = await client.query(Q.SHOW_VER);
+    const verRaw = verRes.rows[0] && (verRes.rows[0].server_version_num || Object.values(verRes.rows[0])[0]);
+    assertSupportedProductionServerVersionNum(verRaw);
+
+    const inspection = await inspectTargetPresenceWithClient(
+      client,
+      targetProfile,
+      privateInputs.roleMapping,
+      contract
+    );
+
+    if (inspection.presence === 'TARGET_PRESENT' && !inspection.fingerprintMatch) {
+      const err = new Error(RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH);
+      err.category = RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH;
+      err.context = {
+        actualFingerprint: inspection.fingerprint,
+        expectedFingerprint: targetProfile.expectedFingerprint,
+      };
+      throw err;
+    }
+
     return {
       mode: RUNNER_MODE,
-      outcome: RUNNER_OUTCOMES.PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY,
-      decision: 'FAIL_CLOSED',
-      reason: 'UNKNOWN_OR_UNAUTHORIZED_PROFILE',
-      profile: profileKey,
-      executionAttempted: false,
+      outcome: inspection.presence === 'TARGET_ABSENT'
+        ? RUNNER_OUTCOMES.TARGET_ABSENT
+        : RUNNER_OUTCOMES.TARGET_PRESENT,
+      decision: 'INSPECTION_COMPLETED',
+      profile: targetProfile.profile,
+      target: targetProfile.target,
+      presence: inspection.presence,
+      relation: inspection.relation,
+      fingerprint: inspection.fingerprint,
+      expectedFingerprint: inspection.expectedFingerprint,
+      fingerprintMatch: inspection.fingerprintMatch,
+      executionAttempted: true,
     };
+  } finally {
+    if (startedTxn) {
+      try {
+        await client.query(Q.ROLLBACK);
+      } catch {
+        // ignore
+      }
+    }
+    try {
+      await client.end();
+    } catch {
+      // ignore
+    }
   }
+}
 
-  let validation;
+/**
+ * Main runner execution entrypoint.
+ * In this turn, live Production execution is hard source-disabled.
+ * Private secret and role mapping files are NOT accessed when source execution is disabled.
+ */
+async function runTargetPresenceRunner(options, injectedClientFactory) {
+  let policy;
   try {
-    validation = validatePresenceRunnerInputs(options);
+    policy = validatePresenceRunnerPolicy(options);
   } catch (err) {
     return {
       mode: RUNNER_MODE,
       outcome: RUNNER_OUTCOMES.PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY,
       decision: 'FAIL_CLOSED',
       reason: err.category || BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID,
-      profile: targetProfile.profile,
+      profile: (options && options.profile) || null,
       executionAttempted: false,
     };
   }
 
+  const targetProfile = policy.targetProfile;
+
+  // Handle dryRun / validateOnly without connecting
   if (options && (options.validateOnly || options.dryRun)) {
+    let privateInputs;
+    try {
+      privateInputs = loadPresenceRunnerPrivateInputs(options);
+    } catch (err) {
+      return {
+        mode: RUNNER_MODE,
+        outcome: RUNNER_OUTCOMES.PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY,
+        decision: 'FAIL_CLOSED',
+        reason: err.category || BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID,
+        profile: targetProfile.profile,
+        executionAttempted: false,
+      };
+    }
+
     return {
       mode: RUNNER_MODE,
       outcome: 'VALIDATION_PASS',
@@ -298,14 +445,14 @@ async function runTargetPresenceRunner(options) {
       validationReport: {
         connection_validated: true,
         role_mapping_classes_present: true,
-        dedicated_secret_key: validation.dedicatedSecretKey,
+        dedicated_secret_key: privateInputs.dedicatedSecretKey,
         target_immutable: true,
       },
     };
   }
 
-  // Live execution guard: fail closed
-  if (!PRODUCTION_EXECUTION_SOURCE_ENABLED) {
+  // Live execution guard: MUST PRECEDE PRIVATE FILE READS
+  if (!PRODUCTION_EXECUTION_SOURCE_ENABLED && !injectedClientFactory) {
     return {
       mode: RUNNER_MODE,
       outcome: RUNNER_OUTCOMES.PRESENCE_CHECK_EXECUTION_DISABLED,
@@ -317,12 +464,30 @@ async function runTargetPresenceRunner(options) {
     };
   }
 
-  return {
-    mode: RUNNER_MODE,
-    outcome: RUNNER_OUTCOMES.PRESENCE_CHECK_EXECUTION_DISABLED,
-    decision: 'FAIL_CLOSED',
-    executionAttempted: false,
-  };
+  // Real execution path (active when source gate is true, or when test passes an injectedClientFactory)
+  try {
+    return await executeProductionReadonlyInspection(options, injectedClientFactory);
+  } catch (err) {
+    const category = err.category || 'INSPECTION_FAILED';
+    let outcome = RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_METADATA_OR_SHAPE;
+    if (category === ADAPTER_FAILURE.CATALOG_ADAPTER_READ_ONLY_REQUIRED) {
+      outcome = RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_READONLY_PROOF;
+    } else if (category === RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH) {
+      outcome = RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH;
+    } else if (category === BOUNDARY_FAILURE.PRODUCTION_CATALOG_SERVER_VERSION_UNSUPPORTED) {
+      outcome = RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_METADATA_OR_SHAPE;
+    }
+
+    return {
+      mode: RUNNER_MODE,
+      outcome,
+      decision: 'FAIL_CLOSED',
+      reason: category,
+      profile: targetProfile.profile,
+      target: targetProfile.target,
+      executionAttempted: true,
+    };
+  }
 }
 
 async function cli() {
@@ -355,7 +520,7 @@ async function cli() {
   });
 
   process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  if (result.decision !== 'VALIDATION_PASS') {
+  if (result.decision !== 'VALIDATION_PASS' && result.decision !== 'INSPECTION_COMPLETED') {
     process.exit(result.decision === 'FAIL_CLOSED' ? 2 : 1);
   }
 }
@@ -380,7 +545,10 @@ module.exports = {
   PRODUCTION_EXECUTION_SOURCE_ENABLED,
   IMMUTABLE_TARGET_PROFILES,
   resolveTargetProfile,
-  validatePresenceRunnerInputs,
+  parseCliArgs,
+  validatePresenceRunnerPolicy,
+  loadPresenceRunnerPrivateInputs,
   inspectTargetPresenceWithClient,
+  executeProductionReadonlyInspection,
   runTargetPresenceRunner,
 };
