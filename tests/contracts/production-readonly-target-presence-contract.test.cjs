@@ -173,8 +173,9 @@ test('11. Target presence runner: generic DATABASE_URL secret rejected', () => {
   );
 });
 
-test('12. Target presence runner: Production execution is hard source-disabled in this turn', async () => {
-  assert.equal(RUNNER.PRODUCTION_EXECUTION_SOURCE_ENABLED, false);
+test('12. Target presence runner: Production execution is source-activated under CENTRAL comment 5543403159', async () => {
+  assert.equal(RUNNER.PRODUCTION_EXECUTION_SOURCE_ENABLED, true);
+  assert.equal(RUNNER.PRODUCTION_EXECUTION_SOURCE_AUTHORITY_COMMENT, '5543403159');
 });
 
 test('13. Target presence runner: inspectTargetPresenceWithClient with TARGET_ABSENT returns clean sanitized report', async () => {
@@ -302,10 +303,10 @@ test('16. Package.json: inspect:production-readonly-target-presence script regis
 // CENTRAL REVIEW REVISION TESTS (#4349)
 // ---------------------------------------------------------------------------
 
-test('17. SOURCE-DISABLED GATE PRECEDES PRIVATE FILE ACCESS: no .secrets reads occur', async () => {
-  // Pass nonexistent .secrets files. If secret file was read before gate, it would fail
-  // with PRODUCTION_CATALOG_SECRET_FILE_INVALID. But because gate precedes private file access,
-  // it MUST return PRESENCE_CHECK_EXECUTION_DISABLED immediately!
+test('17. PRE-CONNECTION CLASSIFICATION FIX: missing/nonexistent secret file fails at boundary before Client creation', async () => {
+  // Pass nonexistent .secrets files. Must fail at boundary before Client/connection attempt:
+  // outcome = PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY
+  // executionAttempted = false
   const res = await RUNNER.runTargetPresenceRunner({
     profile: '4346',
     secretFile: '.secrets/non-existent-secret-file.env',
@@ -313,9 +314,36 @@ test('17. SOURCE-DISABLED GATE PRECEDES PRIVATE FILE ACCESS: no .secrets reads o
   });
 
   assert.equal(res.decision, 'FAIL_CLOSED');
-  assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_EXECUTION_DISABLED);
-  assert.equal(res.reason, 'PRODUCTION_EXECUTION_SOURCE_DISABLED_IN_THIS_TURN');
-  assert.equal(res.executionAttempted, false);
+  assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY);
+  assert.equal(res.reason, BOUNDARY.FAILURE.PRODUCTION_CATALOG_SECRET_FILE_INVALID);
+  assert.equal(res.executionAttempted, false, 'executionAttempted must be false for pre-connection failure');
+});
+
+test('17B. PRE-CONNECTION CLASSIFICATION FIX: invalid role-mapping file fails at boundary before Client creation', async () => {
+  const tmpSecretsDir = path.join(ROOT, '.secrets', `.test-tmp-role-fail-${Date.now()}`);
+  fs.mkdirSync(tmpSecretsDir, { recursive: true });
+  const secFile = path.join(tmpSecretsDir, 'test.env');
+  const roleFile = path.join(tmpSecretsDir, 'roles-invalid.json');
+  fs.writeFileSync(secFile, 'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=postgresql://u:p@db.example.test:5432/d?sslmode=require\n');
+  fs.writeFileSync(roleFile, 'NOT_JSON\n');
+
+  const secRel = path.relative(ROOT, secFile).replace(/\\/g, '/');
+  const roleRel = path.relative(ROOT, roleFile).replace(/\\/g, '/');
+
+  try {
+    const res = await RUNNER.runTargetPresenceRunner({
+      profile: '4346',
+      secretFile: secRel,
+      roleMappingFile: roleRel,
+    });
+
+    assert.equal(res.decision, 'FAIL_CLOSED');
+    assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY);
+    assert.equal(res.reason, BOUNDARY.FAILURE.PRODUCTION_CATALOG_ROLE_MAPPING_INVALID);
+    assert.equal(res.executionAttempted, false, 'executionAttempted must be false for role-mapping parse failure');
+  } finally {
+    fs.rmSync(tmpSecretsDir, { recursive: true, force: true });
+  }
 });
 
 test('18. DUPLICATE CLI FLAGS FAIL CLOSED (no last-write-wins)', () => {
@@ -534,12 +562,14 @@ test('22. PURE EXECUTOR TEST SEAM FAILS CLOSED on fingerprint mismatch (TARGET_P
 
 test('23. EXPORT BOUNDARY CONTRACT: sensitive execution and credential loaders are NOT exported', () => {
   assert.equal(typeof RUNNER.loadPresenceRunnerPrivateInputs, 'undefined', 'loadPresenceRunnerPrivateInputs must NOT be exported');
+  assert.equal(typeof RUNNER.prepareProductionReadonlyInspection, 'undefined', 'prepareProductionReadonlyInspection must NOT be exported');
   assert.equal(typeof RUNNER.executeProductionReadonlyInspection, 'undefined', 'executeProductionReadonlyInspection must NOT be exported');
   assert.equal(typeof RUNNER.executeProductionReadonlyInspectionInternal, 'undefined', 'executeProductionReadonlyInspectionInternal must NOT be exported');
 
   // Assert pure executor test seam is exported
   assert.equal(typeof RUNNER.executeReadonlyInspectionWithClient, 'function', 'pure executeReadonlyInspectionWithClient must be exported for test seam');
   assert.equal(typeof RUNNER.runTargetPresenceRunner, 'function', 'runTargetPresenceRunner must be exported');
+  assert.equal(typeof RUNNER.PRODUCTION_EXECUTION_SOURCE_AUTHORITY_COMMENT, 'string', 'PRODUCTION_EXECUTION_SOURCE_AUTHORITY_COMMENT must be exported');
 });
 
 test('24. PUBLIC RUNNER SIGNATURE CONTRACT: no clientFactory parameter or bypass surface', () => {
@@ -562,18 +592,19 @@ test('25. HARD GATE ISOLATION: public runner cannot be bypassed by extra argumen
   };
 
   // Attempt bypass by passing factory as 2nd parameter
+  // When secret file does not exist, it fails closed at boundary before any client is created
   const res = await RUNNER.runTargetPresenceRunner(
     {
       profile: '4346',
-      secretFile: '.secrets/test.env',
+      secretFile: '.secrets/non-existent-secret.env',
       roleMappingFile: '.secrets/roles.json',
     },
     mockFactory
   );
 
-  // Gate must hold: FAIL_CLOSED and PRESENCE_CHECK_EXECUTION_DISABLED
+  // Must fail closed at boundary with executionAttempted = false
   assert.equal(res.decision, 'FAIL_CLOSED');
-  assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_EXECUTION_DISABLED);
+  assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY);
   assert.equal(res.executionAttempted, false);
 
   // Zero client instantiation, zero connect, zero query

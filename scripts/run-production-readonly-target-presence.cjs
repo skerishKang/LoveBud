@@ -9,17 +9,27 @@
  *   - TARGET_PRESENT (1 valid row)
  *
  * Governed invariants:
- *   - Source/test only in this turn: Production live execution is hard source-disabled.
- *   - ZERO Production database connections.
- *   - ZERO DDL/DML, ZERO migration apply, ZERO ledger/attestation write, ZERO grant/revoke.
+ *   - Source execution is activated under CENTRAL comment 5543403159.
+ *   - In PR/CI, ZERO Production database connections were attempted; the merged runner
+ *     can perform exactly one bounded Production READ-ONLY inspection under separate CENTRAL authorization.
+ *   - ZERO DDL/DML, ZERO migration apply, ZERO ledger/attestation write, ZERO grant/revoke,
+ *     ZERO Product row reads, and ZERO provider or runtime-gate mutations.
  *   - Bound strictly to immutable Profile 4346 (target: table:public.tree_hub_layouts).
  *   - Caller override strictly rejected: no caller SQL, no object override, no repoRoot override,
  *     no connection override, no generic DATABASE_URL.
  *   - Dedicated secret key only: LOVEBUD_PRODUCTION_READONLY_DATABASE_URL.
  *   - Sanitized output format only (no raw credentials, no OIDs, no product row data).
- *   - Source-disabled gate precedes private .secrets reads.
+ *   - Strict fail-closed execution ordering:
+ *       1. public policy validation
+ *       2. private-input / contract preparation
+ *       3. Client creation / connect
+ *       4. BEGIN READ ONLY
+ *       5. transaction_read_only + PostgreSQL version proof
+ *       6. immutable target catalog inspection
+ *       7. ROLLBACK
+ *       8. disconnect
  *   - Duplicate CLI flags fail closed (no last-write-wins).
- *   - Complete real executor path implemented behind the source-disabled gate.
+ *   - Real executor path requires separate explicit Production execution authorization.
  *
  * Refs #4346, #4282, #4000, #4004, #4005, #4255, #4256, #1882.
  */
@@ -58,8 +68,9 @@ const {
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-// Hard invariant: Production live connection execution is source-disabled in this PR turn.
-const PRODUCTION_EXECUTION_SOURCE_ENABLED = false;
+// Provenance authority: CENTRAL source activation comment 5543403159 (Issue #4346)
+const PRODUCTION_EXECUTION_SOURCE_ENABLED = true;
+const PRODUCTION_EXECUTION_SOURCE_AUTHORITY_COMMENT = '5543403159';
 
 const RUNNER_MODE = 'PRODUCTION_READONLY_TARGET_PRESENCE';
 
@@ -397,14 +408,31 @@ async function executeReadonlyInspectionWithClient({ client, targetProfile, role
 }
 
 /**
- * Real Production read-only executor engine.
- * STRICTLY INTERNAL: not exported, cannot be invoked directly from outside.
- * Reads private credentials ONLY when called after the production execution gate passes.
+ * Private input & contract preparation helper.
+ * Loads private credentials, role mapping, and catalog metadata contract.
+ * Does NOT instantiate Client, does NOT connect, and does NOT execute any query.
+ * Throws boundary/policy error if any input is missing or invalid.
  */
-async function executeProductionReadonlyInspectionInternal(options) {
+function prepareProductionReadonlyInspection(options) {
   const privateInputs = loadPresenceRunnerPrivateInputs(options);
   const targetProfile = privateInputs.targetProfile;
   const contract = loadContract(REPO_ROOT);
+
+  return {
+    privateInputs,
+    targetProfile,
+    contract,
+  };
+}
+
+/**
+ * Real Production read-only executor engine.
+ * STRICTLY INTERNAL: not exported, cannot be invoked directly from outside.
+ * Accepts already-prepared inputs; instantiates Client, connects, and delegates
+ * to executeReadonlyInspectionWithClient within an explicit READ ONLY transaction.
+ */
+async function executeProductionReadonlyInspectionInternal(prepared) {
+  const { privateInputs, targetProfile, contract } = prepared;
 
   const client = new Client(privateInputs.pgConfig);
 
@@ -434,8 +462,8 @@ async function executeProductionReadonlyInspectionInternal(options) {
 
 /**
  * Main runner execution entrypoint.
- * In this turn, live Production execution is hard source-disabled.
- * Private secret and role mapping files are NOT accessed when source execution is disabled.
+ * In this turn, live Production execution is source-activated under CENTRAL comment 5543403159.
+ * Private secret and role mapping files are accessed ONLY after policy validation passes.
  * Takes ONLY options (no injectedClientFactory parameter, no execution bypass parameter).
  */
 async function runTargetPresenceRunner(options) {
@@ -502,9 +530,27 @@ async function runTargetPresenceRunner(options) {
     };
   }
 
-  // Real execution path (only reachable if PRODUCTION_EXECUTION_SOURCE_ENABLED === true in source code)
+  // Phase C: Private input + contract preparation (BEFORE Client creation or connection)
+  // Any failure here is a connection boundary failure with executionAttempted = false.
+  let prepared;
   try {
-    return await executeProductionReadonlyInspectionInternal(options);
+    prepared = prepareProductionReadonlyInspection(options);
+  } catch (err) {
+    return {
+      mode: RUNNER_MODE,
+      outcome: RUNNER_OUTCOMES.PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY,
+      decision: 'FAIL_CLOSED',
+      reason: err.category || BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID,
+      profile: targetProfile.profile,
+      target: targetProfile.target,
+      executionAttempted: false,
+    };
+  }
+
+  // Phase D: Real execution path (Client creation, connect, READ ONLY transaction)
+  // Reached ONLY when preparation completely succeeded.
+  try {
+    return await executeProductionReadonlyInspectionInternal(prepared);
   } catch (err) {
     const category = err.category || 'INSPECTION_FAILED';
     let outcome = RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_METADATA_OR_SHAPE;
@@ -581,6 +627,7 @@ module.exports = {
   RUNNER_MODE,
   RUNNER_OUTCOMES,
   PRODUCTION_EXECUTION_SOURCE_ENABLED,
+  PRODUCTION_EXECUTION_SOURCE_AUTHORITY_COMMENT,
   IMMUTABLE_TARGET_PROFILES,
   resolveTargetProfile,
   parseCliArgs,
