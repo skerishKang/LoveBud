@@ -56,13 +56,15 @@ const CANONICAL_TARGET_IDENTITY = Object.freeze({
  * - ADOPTION_AUTHORIZED_PENDING_EXECUTION: P3 adoption authorized and bound; P4 live execution NOT authorized until CENTRAL grants execution authority.
  * - PENDING_AUTHORIZATION_BINDING: Non-executable pending profile.
  *
- * Future Lifecycle Sequence for Hub Layout:
- *   P2 read-only adoption preflight
- *   → P3 explicit CENTRAL authorization comment
+ * Lifecycle Sequence for Hub Layout:
+ *   P2 read-only adoption preflight (TARGET_ABSENT confirmed)
+ *   → P3 explicit CENTRAL authorization comment (5543891263)
  *   → P3.5 source-only authorization-comment binding patch (ADOPTION_AUTHORIZED_PENDING_EXECUTION)
+ *   → exact-head CI and CENTRAL review
+ *   → P4 source activation (5545880541, ACTIVE_AUTHORIZED, p4ExecutionAuthorized: true)
  *   → exact-head CI
  *   → CENTRAL merge
- *   → CENTRAL P4 live execution authority with execution head
+ *   → CENTRAL P4 live execution authority naming final exact main SHA
  *   → P4 governed operator execution
  */
 const LIFECYCLE_STATES = Object.freeze({
@@ -93,10 +95,11 @@ const PROFILES = Object.freeze({
   '4346': Object.freeze({
     key: '4346',
     issue: 4346,
-    lifecycleState: LIFECYCLE_STATES.ADOPTION_AUTHORIZED_PENDING_EXECUTION,
+    lifecycleState: LIFECYCLE_STATES.ACTIVE_AUTHORIZED,
     p3AuthorizationBound: true,
-    p4ExecutionAuthorized: false,
+    p4ExecutionAuthorized: true,
     activeAuthorizationComment: 5543891263, // P3 adoption authorized under CENTRAL comment 5543891263
+    p4SourceActivationComment: 5545880541, // P4 source activation authorized under CENTRAL comment 5545880541
     migrationId: '20260828070000_add-tree-hub-layouts',
     migrationPath: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
     migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
