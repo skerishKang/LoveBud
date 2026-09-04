@@ -58,8 +58,9 @@ const {
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-// Hard invariant: Production live connection execution is source-disabled in this PR turn.
-const PRODUCTION_EXECUTION_SOURCE_ENABLED = false;
+// Provenance authority: CENTRAL source activation comment 5543403159 (Issue #4346)
+const PRODUCTION_EXECUTION_SOURCE_ENABLED = true;
+const PRODUCTION_EXECUTION_SOURCE_AUTHORITY_COMMENT = '5543403159';
 
 const RUNNER_MODE = 'PRODUCTION_READONLY_TARGET_PRESENCE';
 
@@ -397,14 +398,31 @@ async function executeReadonlyInspectionWithClient({ client, targetProfile, role
 }
 
 /**
- * Real Production read-only executor engine.
- * STRICTLY INTERNAL: not exported, cannot be invoked directly from outside.
- * Reads private credentials ONLY when called after the production execution gate passes.
+ * Private input & contract preparation helper.
+ * Loads private credentials, role mapping, and catalog metadata contract.
+ * Does NOT instantiate Client, does NOT connect, and does NOT execute any query.
+ * Throws boundary/policy error if any input is missing or invalid.
  */
-async function executeProductionReadonlyInspectionInternal(options) {
+function prepareProductionReadonlyInspection(options) {
   const privateInputs = loadPresenceRunnerPrivateInputs(options);
   const targetProfile = privateInputs.targetProfile;
   const contract = loadContract(REPO_ROOT);
+
+  return {
+    privateInputs,
+    targetProfile,
+    contract,
+  };
+}
+
+/**
+ * Real Production read-only executor engine.
+ * STRICTLY INTERNAL: not exported, cannot be invoked directly from outside.
+ * Accepts already-prepared inputs; instantiates Client, connects, and delegates
+ * to executeReadonlyInspectionWithClient within an explicit READ ONLY transaction.
+ */
+async function executeProductionReadonlyInspectionInternal(prepared) {
+  const { privateInputs, targetProfile, contract } = prepared;
 
   const client = new Client(privateInputs.pgConfig);
 
@@ -434,8 +452,8 @@ async function executeProductionReadonlyInspectionInternal(options) {
 
 /**
  * Main runner execution entrypoint.
- * In this turn, live Production execution is hard source-disabled.
- * Private secret and role mapping files are NOT accessed when source execution is disabled.
+ * In this turn, live Production execution is source-activated under CENTRAL comment 5543403159.
+ * Private secret and role mapping files are accessed ONLY after policy validation passes.
  * Takes ONLY options (no injectedClientFactory parameter, no execution bypass parameter).
  */
 async function runTargetPresenceRunner(options) {
@@ -502,9 +520,27 @@ async function runTargetPresenceRunner(options) {
     };
   }
 
-  // Real execution path (only reachable if PRODUCTION_EXECUTION_SOURCE_ENABLED === true in source code)
+  // Phase C: Private input + contract preparation (BEFORE Client creation or connection)
+  // Any failure here is a connection boundary failure with executionAttempted = false.
+  let prepared;
   try {
-    return await executeProductionReadonlyInspectionInternal(options);
+    prepared = prepareProductionReadonlyInspection(options);
+  } catch (err) {
+    return {
+      mode: RUNNER_MODE,
+      outcome: RUNNER_OUTCOMES.PRESENCE_CHECK_NOT_RUN_CONNECTION_BOUNDARY,
+      decision: 'FAIL_CLOSED',
+      reason: err.category || BOUNDARY_FAILURE.PRODUCTION_CATALOG_INPUT_INVALID,
+      profile: targetProfile.profile,
+      target: targetProfile.target,
+      executionAttempted: false,
+    };
+  }
+
+  // Phase D: Real execution path (Client creation, connect, READ ONLY transaction)
+  // Reached ONLY when preparation completely succeeded.
+  try {
+    return await executeProductionReadonlyInspectionInternal(prepared);
   } catch (err) {
     const category = err.category || 'INSPECTION_FAILED';
     let outcome = RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_METADATA_OR_SHAPE;
@@ -581,6 +617,7 @@ module.exports = {
   RUNNER_MODE,
   RUNNER_OUTCOMES,
   PRODUCTION_EXECUTION_SOURCE_ENABLED,
+  PRODUCTION_EXECUTION_SOURCE_AUTHORITY_COMMENT,
   IMMUTABLE_TARGET_PROFILES,
   resolveTargetProfile,
   parseCliArgs,
