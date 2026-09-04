@@ -9,17 +9,27 @@
  *   - TARGET_PRESENT (1 valid row)
  *
  * Governed invariants:
- *   - Source/test only in this turn: Production live execution is hard source-disabled.
- *   - ZERO Production database connections.
- *   - ZERO DDL/DML, ZERO migration apply, ZERO ledger/attestation write, ZERO grant/revoke.
+ *   - Source execution is activated under CENTRAL comment 5543403159.
+ *   - In PR/CI, ZERO Production database connections were attempted; the merged runner
+ *     can perform exactly one bounded Production READ-ONLY inspection under separate CENTRAL authorization.
+ *   - ZERO DDL/DML, ZERO migration apply, ZERO ledger/attestation write, ZERO grant/revoke,
+ *     ZERO Product row reads, and ZERO provider or runtime-gate mutations.
  *   - Bound strictly to immutable Profile 4346 (target: table:public.tree_hub_layouts).
  *   - Caller override strictly rejected: no caller SQL, no object override, no repoRoot override,
  *     no connection override, no generic DATABASE_URL.
  *   - Dedicated secret key only: LOVEBUD_PRODUCTION_READONLY_DATABASE_URL.
  *   - Sanitized output format only (no raw credentials, no OIDs, no product row data).
- *   - Source-disabled gate precedes private .secrets reads.
+ *   - Strict fail-closed execution ordering:
+ *       1. public policy validation
+ *       2. private-input / contract preparation
+ *       3. Client creation / connect
+ *       4. BEGIN READ ONLY
+ *       5. transaction_read_only + PostgreSQL version proof
+ *       6. immutable target catalog inspection
+ *       7. ROLLBACK
+ *       8. disconnect
  *   - Duplicate CLI flags fail closed (no last-write-wins).
- *   - Complete real executor path implemented behind the source-disabled gate.
+ *   - Real executor path requires separate explicit Production execution authorization.
  *
  * Refs #4346, #4282, #4000, #4004, #4005, #4255, #4256, #1882.
  */
