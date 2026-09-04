@@ -310,29 +310,34 @@ function loadPresenceRunnerPrivateInputs(options) {
 }
 
 /**
- * Real reviewed Production read-only executor engine.
- * Fully implemented behind the source-disabled gate.
- * Accepts optional injected Client for testing without opening network sockets.
+ * Pure/internal executor core.
+ * Tested via mock client.
+ * Does NOT read credentials, does NOT instantiate new Client(), does NOT accept host/database/URL,
+ * and CANNOT create Production connections.
+ * Orchestrates transaction read-only proof, major-17 version assertion, target inspection,
+ * fingerprint validation, and fail-closed rollback.
+ *
+ * @param {object} params
+ * @param {object} params.client - connected pg client or mock with query(text, params)
+ * @param {object} params.targetProfile - immutable target profile
+ * @param {Map|object} params.roleMapping - role mapping
+ * @param {object} params.contract - catalog metadata contract
+ * @returns {Promise<object>} inspection result
  */
-async function executeProductionReadonlyInspection(options, injectedClientFactory) {
-  const privateInputs = loadPresenceRunnerPrivateInputs(options);
-  const targetProfile = privateInputs.targetProfile;
-  const contract = loadContract(REPO_ROOT);
-
-  const client = injectedClientFactory
-    ? injectedClientFactory(privateInputs.pgConfig)
-    : new Client(privateInputs.pgConfig);
+async function executeReadonlyInspectionWithClient({ client, targetProfile, roleMapping, contract }) {
+  if (!client || typeof client.query !== 'function') {
+    const err = new Error(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID);
+    err.category = ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID;
+    throw err;
+  }
+  if (!targetProfile || typeof targetProfile !== 'object') {
+    const err = new Error(ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID);
+    err.category = ADAPTER_FAILURE.CATALOG_ADAPTER_INPUT_INVALID;
+    throw err;
+  }
 
   let startedTxn = false;
   try {
-    try {
-      await client.connect();
-    } catch {
-      const err = new Error(ADAPTER_FAILURE.CATALOG_ADAPTER_QUERY_FAILED);
-      err.category = ADAPTER_FAILURE.CATALOG_ADAPTER_QUERY_FAILED;
-      throw err;
-    }
-
     await client.query(Q.BEGIN_RO);
     startedTxn = true;
 
@@ -351,7 +356,7 @@ async function executeProductionReadonlyInspection(options, injectedClientFactor
     const inspection = await inspectTargetPresenceWithClient(
       client,
       targetProfile,
-      privateInputs.roleMapping,
+      roleMapping,
       contract
     );
 
@@ -388,6 +393,37 @@ async function executeProductionReadonlyInspection(options, injectedClientFactor
         // ignore
       }
     }
+  }
+}
+
+/**
+ * Real Production read-only executor engine.
+ * STRICTLY INTERNAL: not exported, cannot be invoked directly from outside.
+ * Reads private credentials ONLY when called after the production execution gate passes.
+ */
+async function executeProductionReadonlyInspectionInternal(options) {
+  const privateInputs = loadPresenceRunnerPrivateInputs(options);
+  const targetProfile = privateInputs.targetProfile;
+  const contract = loadContract(REPO_ROOT);
+
+  const client = new Client(privateInputs.pgConfig);
+
+  try {
+    try {
+      await client.connect();
+    } catch {
+      const err = new Error(ADAPTER_FAILURE.CATALOG_ADAPTER_QUERY_FAILED);
+      err.category = ADAPTER_FAILURE.CATALOG_ADAPTER_QUERY_FAILED;
+      throw err;
+    }
+
+    return await executeReadonlyInspectionWithClient({
+      client,
+      targetProfile,
+      roleMapping: privateInputs.roleMapping,
+      contract,
+    });
+  } finally {
     try {
       await client.end();
     } catch {
@@ -400,8 +436,9 @@ async function executeProductionReadonlyInspection(options, injectedClientFactor
  * Main runner execution entrypoint.
  * In this turn, live Production execution is hard source-disabled.
  * Private secret and role mapping files are NOT accessed when source execution is disabled.
+ * Takes ONLY options (no injectedClientFactory parameter, no execution bypass parameter).
  */
-async function runTargetPresenceRunner(options, injectedClientFactory) {
+async function runTargetPresenceRunner(options) {
   let policy;
   try {
     policy = validatePresenceRunnerPolicy(options);
@@ -451,8 +488,9 @@ async function runTargetPresenceRunner(options, injectedClientFactory) {
     };
   }
 
-  // Live execution guard: MUST PRECEDE PRIVATE FILE READS
-  if (!PRODUCTION_EXECUTION_SOURCE_ENABLED && !injectedClientFactory) {
+  // Live execution guard: MUST PRECEDE PRIVATE FILE READS AND CLIENT CREATION
+  // Under NO circumstance can any argument bypass this gate.
+  if (!PRODUCTION_EXECUTION_SOURCE_ENABLED) {
     return {
       mode: RUNNER_MODE,
       outcome: RUNNER_OUTCOMES.PRESENCE_CHECK_EXECUTION_DISABLED,
@@ -464,9 +502,9 @@ async function runTargetPresenceRunner(options, injectedClientFactory) {
     };
   }
 
-  // Real execution path (active when source gate is true, or when test passes an injectedClientFactory)
+  // Real execution path (only reachable if PRODUCTION_EXECUTION_SOURCE_ENABLED === true in source code)
   try {
-    return await executeProductionReadonlyInspection(options, injectedClientFactory);
+    return await executeProductionReadonlyInspectionInternal(options);
   } catch (err) {
     const category = err.category || 'INSPECTION_FAILED';
     let outcome = RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_METADATA_OR_SHAPE;
@@ -547,8 +585,7 @@ module.exports = {
   resolveTargetProfile,
   parseCliArgs,
   validatePresenceRunnerPolicy,
-  loadPresenceRunnerPrivateInputs,
   inspectTargetPresenceWithClient,
-  executeProductionReadonlyInspection,
+  executeReadonlyInspectionWithClient,
   runTargetPresenceRunner,
 };

@@ -354,15 +354,10 @@ test('18. DUPLICATE CLI FLAGS FAIL CLOSED (no last-write-wins)', () => {
   );
 });
 
-test('19. REVIEWED EXECUTOR CALL ORDER: connect -> BEGIN READ ONLY -> SHOW RO -> SHOW VER -> Q.RELATION -> ROLLBACK -> disconnect', async () => {
+test('19. PURE EXECUTOR TEST SEAM CALL ORDER: BEGIN READ ONLY -> SHOW RO -> SHOW VER -> Q.RELATION -> ROLLBACK', async () => {
   const queryLog = [];
-  let connected = false;
-  let ended = false;
 
   const mockClient = {
-    connect: async () => {
-      connected = true;
-    },
     query: async (text, params) => {
       queryLog.push({ text, params });
       if (text === ADAPTER.Q.BEGIN_RO) return { rows: [] };
@@ -375,63 +370,38 @@ test('19. REVIEWED EXECUTOR CALL ORDER: connect -> BEGIN READ ONLY -> SHOW RO ->
       if (text === ADAPTER.Q.ROLLBACK) return { rows: [] };
       throw new Error(`Unexpected query in call order test: ${text}`);
     },
-    end: async () => {
-      ended = true;
-    },
   };
 
-  // Mock private loader for test seam
-  const fakeOptions = {
-    profile: '4346',
-    secretFile: '.secrets/test.env',
-    roleMappingFile: '.secrets/test-roles.json',
-  };
+  const targetProfile = RUNNER.resolveTargetProfile('4346');
+  const contract = ADAPTER.loadContract(ROOT);
+  const roleMapping = { public: 'PUBLIC' };
 
-  const fakePgConfig = { host: 'db.example.test', port: 5432, user: 'u', password: 'p', database: 'd' };
+  const res = await RUNNER.executeReadonlyInspectionWithClient({
+    client: mockClient,
+    targetProfile,
+    roleMapping,
+    contract,
+  });
 
-  // Create test options using isolated temporary files
-  const tmpSecretsDir = path.join(ROOT, '.secrets', `.test-tmp-order-${Date.now()}`);
-  fs.mkdirSync(tmpSecretsDir, { recursive: true });
-  const secFile = path.join(tmpSecretsDir, 'test.env');
-  const roleFile = path.join(tmpSecretsDir, 'roles.json');
-  fs.writeFileSync(secFile, 'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=postgresql://u:p@db.example.test:5432/d?sslmode=require\n');
-  fs.writeFileSync(roleFile, JSON.stringify({ public: 'PUBLIC' }) + '\n');
+  assert.equal(res.decision, 'INSPECTION_COMPLETED');
+  assert.equal(res.outcome, 'TARGET_ABSENT');
+  assert.equal(res.presence, 'TARGET_ABSENT');
 
-  const secRel = path.relative(ROOT, secFile).replace(/\\/g, '/');
-  const roleRel = path.relative(ROOT, roleFile).replace(/\\/g, '/');
+  // Assert exact query sequence
+  assert.equal(queryLog[0].text, ADAPTER.Q.BEGIN_RO);
+  assert.equal(queryLog[1].text, ADAPTER.Q.SHOW_RO);
+  assert.equal(queryLog[2].text, ADAPTER.Q.SHOW_VER);
+  assert.equal(queryLog[3].text, ADAPTER.Q.RELATION);
+  assert.deepEqual(queryLog[3].params, ['public', 'tree_hub_layouts']);
+  assert.equal(queryLog[4].text, ADAPTER.Q.ROLLBACK);
 
-  try {
-    const res = await RUNNER.runTargetPresenceRunner(
-      { profile: '4346', secretFile: secRel, roleMappingFile: roleRel },
-      () => mockClient
-    );
-
-    assert.equal(connected, true, 'client.connect was called');
-    assert.equal(ended, true, 'client.end was called');
-    assert.equal(res.decision, 'INSPECTION_COMPLETED');
-    assert.equal(res.outcome, 'TARGET_ABSENT');
-    assert.equal(res.presence, 'TARGET_ABSENT');
-
-    // Assert exact query sequence
-    assert.equal(queryLog[0].text, ADAPTER.Q.BEGIN_RO);
-    assert.equal(queryLog[1].text, ADAPTER.Q.SHOW_RO);
-    assert.equal(queryLog[2].text, ADAPTER.Q.SHOW_VER);
-    assert.equal(queryLog[3].text, ADAPTER.Q.RELATION);
-    assert.deepEqual(queryLog[3].params, ['public', 'tree_hub_layouts']);
-    assert.equal(queryLog[4].text, ADAPTER.Q.ROLLBACK);
-
-    // Assert NO COMMIT anywhere
-    assert.ok(!queryLog.some((q) => q.text.includes('COMMIT')));
-  } finally {
-    fs.rmSync(tmpSecretsDir, { recursive: true, force: true });
-  }
+  // Assert NO COMMIT anywhere
+  assert.ok(!queryLog.some((q) => q.text.includes('COMMIT')));
 });
 
-test('20. REVIEWED EXECUTOR FAILS CLOSED on transaction_read_only != on', async () => {
+test('20. PURE EXECUTOR TEST SEAM FAILS CLOSED on transaction_read_only != on', async () => {
   let rolledBack = false;
-  let ended = false;
   const mockClient = {
-    connect: async () => {},
     query: async (text) => {
       if (text === ADAPTER.Q.BEGIN_RO) return { rows: [] };
       if (text === ADAPTER.Q.SHOW_RO) return { rows: [{ transaction_read_only: 'off' }] }; // FAILS
@@ -441,39 +411,33 @@ test('20. REVIEWED EXECUTOR FAILS CLOSED on transaction_read_only != on', async 
       }
       throw new Error(`Should not reach query ${text}`);
     },
-    end: async () => { ended = true; },
   };
 
-  const tmpSecretsDir = path.join(ROOT, '.secrets', `.test-tmp-ro-${Date.now()}`);
-  fs.mkdirSync(tmpSecretsDir, { recursive: true });
-  const secFile = path.join(tmpSecretsDir, 'test.env');
-  const roleFile = path.join(tmpSecretsDir, 'roles.json');
-  fs.writeFileSync(secFile, 'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=postgresql://u:p@db.example.test:5432/d?sslmode=require\n');
-  fs.writeFileSync(roleFile, JSON.stringify({ public: 'PUBLIC' }) + '\n');
+  const targetProfile = RUNNER.resolveTargetProfile('4346');
+  const contract = ADAPTER.loadContract(ROOT);
+  const roleMapping = { public: 'PUBLIC' };
 
-  const secRel = path.relative(ROOT, secFile).replace(/\\/g, '/');
-  const roleRel = path.relative(ROOT, roleFile).replace(/\\/g, '/');
+  await assert.rejects(
+    async () => {
+      await RUNNER.executeReadonlyInspectionWithClient({
+        client: mockClient,
+        targetProfile,
+        roleMapping,
+        contract,
+      });
+    },
+    (err) => {
+      assert.equal(err.category, ADAPTER.ADAPTER_FAILURE.CATALOG_ADAPTER_READ_ONLY_REQUIRED);
+      return true;
+    }
+  );
 
-  try {
-    const res = await RUNNER.runTargetPresenceRunner(
-      { profile: '4346', secretFile: secRel, roleMappingFile: roleRel },
-      () => mockClient
-    );
-
-    assert.equal(res.decision, 'FAIL_CLOSED');
-    assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_READONLY_PROOF);
-    assert.equal(rolledBack, true, 'ROLLBACK executed on read_only failure');
-    assert.equal(ended, true, 'client disconnected');
-  } finally {
-    fs.rmSync(tmpSecretsDir, { recursive: true, force: true });
-  }
+  assert.equal(rolledBack, true, 'ROLLBACK executed on read_only failure');
 });
 
-test('21. REVIEWED EXECUTOR FAILS CLOSED on server_version_num unsupported', async () => {
+test('21. PURE EXECUTOR TEST SEAM FAILS CLOSED on server_version_num unsupported', async () => {
   let rolledBack = false;
-  let ended = false;
   const mockClient = {
-    connect: async () => {},
     query: async (text) => {
       if (text === ADAPTER.Q.BEGIN_RO) return { rows: [] };
       if (text === ADAPTER.Q.SHOW_RO) return { rows: [{ transaction_read_only: 'on' }] };
@@ -484,39 +448,33 @@ test('21. REVIEWED EXECUTOR FAILS CLOSED on server_version_num unsupported', asy
       }
       throw new Error(`Should not reach query ${text}`);
     },
-    end: async () => { ended = true; },
   };
 
-  const tmpSecretsDir = path.join(ROOT, '.secrets', `.test-tmp-ver-${Date.now()}`);
-  fs.mkdirSync(tmpSecretsDir, { recursive: true });
-  const secFile = path.join(tmpSecretsDir, 'test.env');
-  const roleFile = path.join(tmpSecretsDir, 'roles.json');
-  fs.writeFileSync(secFile, 'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=postgresql://u:p@db.example.test:5432/d?sslmode=require\n');
-  fs.writeFileSync(roleFile, JSON.stringify({ public: 'PUBLIC' }) + '\n');
+  const targetProfile = RUNNER.resolveTargetProfile('4346');
+  const contract = ADAPTER.loadContract(ROOT);
+  const roleMapping = { public: 'PUBLIC' };
 
-  const secRel = path.relative(ROOT, secFile).replace(/\\/g, '/');
-  const roleRel = path.relative(ROOT, roleFile).replace(/\\/g, '/');
+  await assert.rejects(
+    async () => {
+      await RUNNER.executeReadonlyInspectionWithClient({
+        client: mockClient,
+        targetProfile,
+        roleMapping,
+        contract,
+      });
+    },
+    (err) => {
+      assert.equal(err.category, BOUNDARY.FAILURE.PRODUCTION_CATALOG_SERVER_VERSION_UNSUPPORTED);
+      return true;
+    }
+  );
 
-  try {
-    const res = await RUNNER.runTargetPresenceRunner(
-      { profile: '4346', secretFile: secRel, roleMappingFile: roleRel },
-      () => mockClient
-    );
-
-    assert.equal(res.decision, 'FAIL_CLOSED');
-    assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_METADATA_OR_SHAPE);
-    assert.equal(rolledBack, true, 'ROLLBACK executed on version mismatch');
-    assert.equal(ended, true, 'client disconnected');
-  } finally {
-    fs.rmSync(tmpSecretsDir, { recursive: true, force: true });
-  }
+  assert.equal(rolledBack, true, 'ROLLBACK executed on version mismatch');
 });
 
-test('22. REVIEWED EXECUTOR FAILS CLOSED on fingerprint mismatch (TARGET_PRESENT but drifted)', async () => {
+test('22. PURE EXECUTOR TEST SEAM FAILS CLOSED on fingerprint mismatch (TARGET_PRESENT but drifted)', async () => {
   let rolledBack = false;
-  let ended = false;
   const mockClient = {
-    connect: async () => {},
     query: async (text) => {
       if (text === ADAPTER.Q.BEGIN_RO) return { rows: [] };
       if (text === ADAPTER.Q.SHOW_RO) return { rows: [{ transaction_read_only: 'on' }] };
@@ -550,31 +508,76 @@ test('22. REVIEWED EXECUTOR FAILS CLOSED on fingerprint mismatch (TARGET_PRESENT
       }
       throw new Error(`Unexpected query: ${text}`);
     },
-    end: async () => { ended = true; },
   };
 
-  const tmpSecretsDir = path.join(ROOT, '.secrets', `.test-tmp-drift-${Date.now()}`);
-  fs.mkdirSync(tmpSecretsDir, { recursive: true });
-  const secFile = path.join(tmpSecretsDir, 'test.env');
-  const roleFile = path.join(tmpSecretsDir, 'roles.json');
-  fs.writeFileSync(secFile, 'LOVEBUD_PRODUCTION_READONLY_DATABASE_URL=postgresql://u:p@db.example.test:5432/d?sslmode=require\n');
-  fs.writeFileSync(roleFile, JSON.stringify({ public: 'PUBLIC' }) + '\n');
+  const targetProfile = RUNNER.resolveTargetProfile('4346');
+  const contract = ADAPTER.loadContract(ROOT);
+  const roleMapping = { public: 'PUBLIC' };
 
-  const secRel = path.relative(ROOT, secFile).replace(/\\/g, '/');
-  const roleRel = path.relative(ROOT, roleFile).replace(/\\/g, '/');
+  await assert.rejects(
+    async () => {
+      await RUNNER.executeReadonlyInspectionWithClient({
+        client: mockClient,
+        targetProfile,
+        roleMapping,
+        contract,
+      });
+    },
+    (err) => {
+      assert.equal(err.category, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH);
+      return true;
+    }
+  );
 
-  try {
-    const res = await RUNNER.runTargetPresenceRunner(
-      { profile: '4346', secretFile: secRel, roleMappingFile: roleRel },
-      () => mockClient
-    );
+  assert.equal(rolledBack, true, 'ROLLBACK executed on fingerprint mismatch');
+});
 
-    assert.equal(res.decision, 'FAIL_CLOSED');
-    assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH);
-    assert.equal(res.reason, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_FAIL_FINGERPRINT_MISMATCH);
-    assert.equal(rolledBack, true, 'ROLLBACK executed on fingerprint mismatch');
-    assert.equal(ended, true, 'client disconnected');
-  } finally {
-    fs.rmSync(tmpSecretsDir, { recursive: true, force: true });
-  }
+test('23. EXPORT BOUNDARY CONTRACT: sensitive execution and credential loaders are NOT exported', () => {
+  assert.equal(typeof RUNNER.loadPresenceRunnerPrivateInputs, 'undefined', 'loadPresenceRunnerPrivateInputs must NOT be exported');
+  assert.equal(typeof RUNNER.executeProductionReadonlyInspection, 'undefined', 'executeProductionReadonlyInspection must NOT be exported');
+  assert.equal(typeof RUNNER.executeProductionReadonlyInspectionInternal, 'undefined', 'executeProductionReadonlyInspectionInternal must NOT be exported');
+
+  // Assert pure executor test seam is exported
+  assert.equal(typeof RUNNER.executeReadonlyInspectionWithClient, 'function', 'pure executeReadonlyInspectionWithClient must be exported for test seam');
+  assert.equal(typeof RUNNER.runTargetPresenceRunner, 'function', 'runTargetPresenceRunner must be exported');
+});
+
+test('24. PUBLIC RUNNER SIGNATURE CONTRACT: no clientFactory parameter or bypass surface', () => {
+  // runTargetPresenceRunner arity must be exactly 1 (options only)
+  assert.equal(RUNNER.runTargetPresenceRunner.length, 1, 'runTargetPresenceRunner signature must take exactly 1 parameter (options)');
+});
+
+test('25. HARD GATE ISOLATION: public runner cannot be bypassed by extra arguments or client factories', async () => {
+  let clientCreated = 0;
+  let connectCalled = 0;
+  let queryCalled = 0;
+
+  const mockFactory = () => {
+    clientCreated += 1;
+    return {
+      connect: async () => { connectCalled += 1; },
+      query: async () => { queryCalled += 1; return { rows: [] }; },
+      end: async () => {},
+    };
+  };
+
+  // Attempt bypass by passing factory as 2nd parameter
+  const res = await RUNNER.runTargetPresenceRunner(
+    {
+      profile: '4346',
+      secretFile: '.secrets/test.env',
+      roleMappingFile: '.secrets/roles.json',
+    },
+    mockFactory
+  );
+
+  // Gate must hold: FAIL_CLOSED and PRESENCE_CHECK_EXECUTION_DISABLED
+  assert.equal(res.decision, 'FAIL_CLOSED');
+  assert.equal(res.outcome, RUNNER.RUNNER_OUTCOMES.PRESENCE_CHECK_EXECUTION_DISABLED);
+  assert.equal(res.executionAttempted, false);
+
+  // Zero client instantiation, zero connect, zero query
+  assert.equal(clientCreated, 0, 'No client must be created');
+  assert.equal(connectCalled, 0, 'No connect must be called');
+  assert.equal(queryCalled, 0, 'No query must be called');
 });
