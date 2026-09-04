@@ -609,7 +609,59 @@ test('CLI strictness: secret-shaped input is never echoed into stderr', () => {
 });
 
 // ----- 9. Direct-Core Execution Boundary & Transport Isolation Regressions -----
-test('Direct-core regression: Profile 4346 with valid packet, valid transport, executionEnabled=true, allowExecute=true fails closed with ZERO transport method calls because P4 execution is not authorized', async () => {
+test('Direct-core regression: Profile 4346 P4-enabled with missing execution-head authority fails closed with ZERO transport method calls', async () => {
+  let lockAcquired = 0;
+  let txCalls = 0;
+  let applyCalls = 0;
+  let verifyCalls = 0;
+  let ledgerCalls = 0;
+
+  const transport = {
+    acquireAdvisoryLock: async () => { lockAcquired += 1; return { id: 'lock-1' }; },
+    releaseAdvisoryLock: async () => {},
+    withTransaction: async (fn) => {
+      txCalls += 1;
+      return fn({
+        catalogTableKind: async () => ({ present: false }),
+        verifyCatalog: async () => ({ matched: true }),
+        writeLedger: async () => { ledgerCalls += 1; return { recorded: true }; },
+      });
+    },
+    applyMigration: async () => { applyCalls += 1; return { committed: true }; },
+    verifyCatalog: async () => { verifyCalls += 1; return { matched: true }; },
+    writeLedger: async () => { ledgerCalls += 1; return { recorded: true }; },
+  };
+
+  const prevEnv = process.env.LOVEBUD_4346_EXECUTION_HEAD;
+  delete process.env.LOVEBUD_4346_EXECUTION_HEAD;
+
+  try {
+    const hubPacket = OP.buildCanonicalPacket('4346');
+    const r = await OP.executeGovernedOperator({
+      packet: hubPacket,
+      transport,
+      executionEnabled: true,
+      allowExecute: true,
+      // NO executionHead argument
+    });
+
+    assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+    assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH));
+    assert.equal(r.executionAttempted, false);
+    assert.equal(r.oneAttemptBudgetConsumed, false);
+
+    // Assert ZERO transport methods were called
+    assert.equal(lockAcquired, 0, 'Advisory lock must not be acquired');
+    assert.equal(txCalls, 0, 'Transaction must not be opened');
+    assert.equal(applyCalls, 0, 'Migration must not be applied');
+    assert.equal(verifyCalls, 0, 'Catalog must not be verified');
+    assert.equal(ledgerCalls, 0, 'Ledger must not be written');
+  } finally {
+    if (prevEnv) process.env.LOVEBUD_4346_EXECUTION_HEAD = prevEnv;
+  }
+});
+
+test('Direct-core regression: Profile 4346 P4-enabled with mismatched execution-head authority fails closed with ZERO transport method calls', async () => {
   let lockAcquired = 0;
   let txCalls = 0;
   let applyCalls = 0;
@@ -633,15 +685,17 @@ test('Direct-core regression: Profile 4346 with valid packet, valid transport, e
   };
 
   const hubPacket = OP.buildCanonicalPacket('4346');
+  const fakeHead = 'f'.repeat(40);
   const r = await OP.executeGovernedOperator({
     packet: hubPacket,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: fakeHead,
   });
 
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_UNAUTHORIZED));
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH));
   assert.equal(r.executionAttempted, false);
   assert.equal(r.oneAttemptBudgetConsumed, false);
 
@@ -651,6 +705,40 @@ test('Direct-core regression: Profile 4346 with valid packet, valid transport, e
   assert.equal(applyCalls, 0, 'Migration must not be applied');
   assert.equal(verifyCalls, 0, 'Catalog must not be verified');
   assert.equal(ledgerCalls, 0, 'Ledger must not be written');
+});
+
+test('Direct-core regression: Profile 4346 P4-enabled with matching test execution-head proceeds beyond head gate in test-only mock transport', async () => {
+  let applyCalls = 0;
+  let lockAcquire = 0;
+  let lockRelease = 0;
+  let ledgerWrites = 0;
+
+  const transport = makeMockTransport({
+    onAcquireLock: () => { lockAcquire += 1; },
+    onReleaseLock: () => { lockRelease += 1; },
+    onApply: () => { applyCalls += 1; },
+    onLedger: () => { ledgerWrites += 1; },
+    precheck: { present: false },
+    postcheck: { matched: true },
+  });
+
+  const actualHead = OP.resolveTrustedLocalRepoHead();
+  const hubPacket = OP.buildCanonicalPacket('4346');
+  const r = await OP.executeGovernedOperator({
+    packet: hubPacket,
+    transport,
+    executionEnabled: true,
+    allowExecute: true,
+    executionHead: actualHead,
+  });
+
+  assert.equal(r.decision, OP.DECISIONS.APPLY_COMMITTED_AND_VERIFIED);
+  assert.equal(r.executionAttempted, true);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(applyCalls, 1);
+  assert.equal(lockAcquire, 1);
+  assert.equal(lockRelease, 1);
+  assert.equal(ledgerWrites, 1);
 });
 
 test('Direct-core regression: authorized head != trusted actual HEAD fails closed with ZERO transport method calls', async () => {
