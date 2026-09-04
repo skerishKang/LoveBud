@@ -302,6 +302,8 @@ test('apply path: thrown transport error is treated as ambiguous outcome, no ret
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_AMBIGUOUS_OUTCOME));
   assert.equal(r.ambiguous, true);
+  assert.equal(r.retryPermitted, false);
+  assert.equal(r.attemptStarted, true);
   assert.equal(r.oneAttemptBudgetConsumed, false);
 });
 
@@ -523,8 +525,7 @@ test('CLI strictness: --execute without explicit --profile fails closed before t
   assert.equal(res.status, 2, 'Must exit with status 2');
   const parsed = JSON.parse(res.stderr);
   assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
-  assert.equal(parsed.reason, 'INVALID_CLI_ARGUMENTS');
-  assert.ok(parsed.message.includes('PROFILE_REQUIRED_FOR_EXECUTE'));
+  assert.equal(parsed.reason, 'PROFILE_REQUIRED_FOR_EXECUTE');
 });
 
 test('CLI strictness: duplicate flags fail closed before transport load', () => {
@@ -538,8 +539,7 @@ test('CLI strictness: duplicate flags fail closed before transport load', () => 
   assert.equal(res.status, 2, 'Must exit with status 2');
   const parsed = JSON.parse(res.stderr);
   assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
-  assert.equal(parsed.reason, 'INVALID_CLI_ARGUMENTS');
-  assert.ok(parsed.message.includes('DUPLICATE_FLAG_REJECTED'));
+  assert.equal(parsed.reason, 'DUPLICATE_FLAG_REJECTED');
 });
 
 test('CLI strictness: conflicting flags --execute and --dry-run fail closed', () => {
@@ -553,8 +553,7 @@ test('CLI strictness: conflicting flags --execute and --dry-run fail closed', ()
   assert.equal(res.status, 2, 'Must exit with status 2');
   const parsed = JSON.parse(res.stderr);
   assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
-  assert.equal(parsed.reason, 'INVALID_CLI_ARGUMENTS');
-  assert.ok(parsed.message.includes('CONFLICTING_FLAGS_REJECTED'));
+  assert.equal(parsed.reason, 'CONFLICTING_FLAGS_REJECTED');
 });
 
 test('CLI strictness: unknown flags fail closed', () => {
@@ -568,8 +567,115 @@ test('CLI strictness: unknown flags fail closed', () => {
   assert.equal(res.status, 2, 'Must exit with status 2');
   const parsed = JSON.parse(res.stderr);
   assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
-  assert.equal(parsed.reason, 'INVALID_CLI_ARGUMENTS');
-  assert.ok(parsed.message.includes('UNKNOWN_FLAG_REJECTED'));
+  assert.equal(parsed.reason, 'UNKNOWN_FLAG_REJECTED');
+});
+
+test('CLI strictness: secret-shaped input is never echoed into stderr', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+  const fakeSecretDSN = 'postgres://super_secret_user:super_secret_password_12345@neon.test:5432/neondb';
+
+  // Test positional secret-shaped argument
+  const resPositional = child.spawnSync(process.execPath, [runnerScript, fakeSecretDSN], {
+    encoding: 'utf8',
+  });
+  assert.equal(resPositional.status, 2);
+  assert.equal(resPositional.stderr.includes('super_secret_password_12345'), false, 'must not echo secret password in positional error');
+  assert.equal(resPositional.stderr.includes(fakeSecretDSN), false, 'must not echo secret DSN in positional error');
+  const parsedPos = JSON.parse(resPositional.stderr);
+  assert.equal(parsedPos.reason, 'POSITIONAL_ARGUMENT_REJECTED');
+
+  // Test flag secret-shaped argument
+  const resFlag = child.spawnSync(process.execPath, [runnerScript, `--secret=${fakeSecretDSN}`], {
+    encoding: 'utf8',
+  });
+  assert.equal(resFlag.status, 2);
+  assert.equal(resFlag.stderr.includes('super_secret_password_12345'), false, 'must not echo secret password in unknown flag error');
+  assert.equal(resFlag.stderr.includes(fakeSecretDSN), false, 'must not echo secret DSN in unknown flag error');
+  const parsedFlag = JSON.parse(resFlag.stderr);
+  assert.equal(parsedFlag.reason, 'UNKNOWN_FLAG_REJECTED');
+});
+
+// ----- 9. Direct-Core Execution Boundary & Transport Isolation Regressions -----
+test('Direct-core regression: Profile 4346 with valid packet, valid transport, executionEnabled=true, allowExecute=true fails closed with ZERO transport method calls because P4 execution is not authorized', async () => {
+  let lockAcquired = 0;
+  let txCalls = 0;
+  let applyCalls = 0;
+  let verifyCalls = 0;
+  let ledgerCalls = 0;
+
+  const transport = {
+    acquireAdvisoryLock: async () => { lockAcquired += 1; return { id: 'lock-1' }; },
+    releaseAdvisoryLock: async () => {},
+    withTransaction: async (fn) => {
+      txCalls += 1;
+      return fn({
+        catalogTableKind: async () => ({ present: false }),
+        verifyCatalog: async () => ({ matched: true }),
+        writeLedger: async () => { ledgerCalls += 1; return { recorded: true }; },
+      });
+    },
+    applyMigration: async () => { applyCalls += 1; return { committed: true }; },
+    verifyCatalog: async () => { verifyCalls += 1; return { matched: true }; },
+    writeLedger: async () => { ledgerCalls += 1; return { recorded: true }; },
+  };
+
+  const hubPacket = OP.buildCanonicalPacket('4346');
+  const r = await OP.executeGovernedOperator({
+    packet: hubPacket,
+    transport,
+    executionEnabled: true,
+    allowExecute: true,
+  });
+
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_UNAUTHORIZED));
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+
+  // Assert ZERO transport methods were called
+  assert.equal(lockAcquired, 0, 'Advisory lock must not be acquired');
+  assert.equal(txCalls, 0, 'Transaction must not be opened');
+  assert.equal(applyCalls, 0, 'Migration must not be applied');
+  assert.equal(verifyCalls, 0, 'Catalog must not be verified');
+  assert.equal(ledgerCalls, 0, 'Ledger must not be written');
+});
+
+test('Direct-core regression: authorized head != trusted actual HEAD fails closed with ZERO transport method calls', async () => {
+  let lockAcquired = 0;
+  let txCalls = 0;
+  let applyCalls = 0;
+
+  const transport = {
+    acquireAdvisoryLock: async () => { lockAcquired += 1; return { id: 'lock-1' }; },
+    releaseAdvisoryLock: async () => {},
+    withTransaction: async (fn) => { txCalls += 1; return fn({}); },
+    applyMigration: async () => { applyCalls += 1; return { committed: true }; },
+    verifyCatalog: async () => ({ matched: true }),
+    writeLedger: async () => ({ recorded: true }),
+  };
+
+  // Test with Profile 4282 (which has p4ExecutionAuthorized=true) to test head mismatch in core
+  const packet4282 = OP.buildCanonicalPacket('4282');
+  const fakeHead = 'e'.repeat(40);
+
+  const r = await OP.executeGovernedOperator({
+    packet: packet4282,
+    transport,
+    executionEnabled: true,
+    allowExecute: true,
+    executionHead: fakeHead,
+  });
+
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH));
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+
+  // Assert ZERO transport methods were called
+  assert.equal(lockAcquired, 0, 'Advisory lock must not be acquired on head mismatch');
+  assert.equal(txCalls, 0, 'Transaction must not be opened on head mismatch');
+  assert.equal(applyCalls, 0, 'Migration must not be applied on head mismatch');
 });
 
 // ----- helpers -----

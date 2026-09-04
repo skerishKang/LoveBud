@@ -53,18 +53,21 @@ const CANONICAL_TARGET_IDENTITY = Object.freeze({
 /**
  * Governing adoption lifecycle states:
  * - ACTIVE_AUTHORIZED: Validated and authorized with an explicit central comment.
+ * - ADOPTION_AUTHORIZED_PENDING_EXECUTION: P3 adoption authorized and bound; P4 live execution NOT authorized until CENTRAL grants execution authority.
  * - PENDING_AUTHORIZATION_BINDING: Non-executable pending profile.
  *
  * Future Lifecycle Sequence for Hub Layout:
  *   P2 read-only adoption preflight
  *   → P3 explicit CENTRAL authorization comment
- *   → P3.5 source-only authorization-comment binding patch
+ *   → P3.5 source-only authorization-comment binding patch (ADOPTION_AUTHORIZED_PENDING_EXECUTION)
  *   → exact-head CI
  *   → CENTRAL merge
+ *   → CENTRAL P4 live execution authority with execution head
  *   → P4 governed operator execution
  */
 const LIFECYCLE_STATES = Object.freeze({
   ACTIVE_AUTHORIZED: 'ACTIVE_AUTHORIZED',
+  ADOPTION_AUTHORIZED_PENDING_EXECUTION: 'ADOPTION_AUTHORIZED_PENDING_EXECUTION',
   PENDING_AUTHORIZATION_BINDING: 'PENDING_AUTHORIZATION_BINDING',
 });
 
@@ -73,6 +76,8 @@ const PROFILES = Object.freeze({
     key: '4282',
     issue: 4282,
     lifecycleState: LIFECYCLE_STATES.ACTIVE_AUTHORIZED,
+    p3AuthorizationBound: true,
+    p4ExecutionAuthorized: true,
     activeAuthorizationComment: 5491726186,
     migrationId: '20260812213000_add-tree-appreciation-orders',
     migrationPath: 'db/migrations/20260812213000_add-tree-appreciation-orders.sql',
@@ -88,8 +93,10 @@ const PROFILES = Object.freeze({
   '4346': Object.freeze({
     key: '4346',
     issue: 4346,
-    lifecycleState: LIFECYCLE_STATES.ACTIVE_AUTHORIZED,
-    activeAuthorizationComment: 5543891263, // Bound under CENTRAL comment 5543891263
+    lifecycleState: LIFECYCLE_STATES.ADOPTION_AUTHORIZED_PENDING_EXECUTION,
+    p3AuthorizationBound: true,
+    p4ExecutionAuthorized: false,
+    activeAuthorizationComment: 5543891263, // P3 adoption authorized under CENTRAL comment 5543891263
     migrationId: '20260828070000_add-tree-hub-layouts',
     migrationPath: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
     migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
@@ -168,6 +175,7 @@ const STOP_REASONS = Object.freeze({
   STOP_SECRET_OUTPUT_FORBIDDEN: 'STOP_SECRET_OUTPUT_FORBIDDEN',
   STOP_PENDING_AUTHORIZATION_BINDING: 'STOP_PENDING_AUTHORIZATION_BINDING',
   STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH: 'STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH',
+  STOP_EXECUTION_UNAUTHORIZED: 'STOP_EXECUTION_UNAUTHORIZED',
 });
 
 function isNonEmptyString(v) {
@@ -419,7 +427,10 @@ async function executeGovernedOperator(opts) {
     };
   }
 
+  const profile = resolveProfile(packet) || PROFILES['4282'];
+
   // Operator mode: real apply via the bounded transport.
+  // Validate transport interface structurally first (pure property check, ZERO method calls).
   const tCheck = validateTransport(transport);
   if (!tCheck.ok) {
     return {
@@ -431,7 +442,33 @@ async function executeGovernedOperator(opts) {
     };
   }
 
-  const profile = resolveProfile(packet) || PROFILES['4282'];
+  // Core execution authority gate: P4 live execution must be explicitly authorized
+  if (profile.p4ExecutionAuthorized !== true) {
+    return {
+      decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      stops: [STOP_REASONS.STOP_EXECUTION_UNAUTHORIZED],
+      reason: 'P4_EXECUTION_NOT_AUTHORIZED',
+      executionAttempted: false,
+      oneAttemptBudgetConsumed: false,
+    };
+  }
+
+  // Core exact-head authority gate: execution head authority must be verified before any transport method calls
+  const centralHead = resolveAuthorizedExecutionHead(profile, options);
+  if (centralHead) {
+    const headAuth = verifyExecutionHeadAuthority(profile, options);
+    if (!headAuth.ok) {
+      return {
+        decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+        stops: [headAuth.reason],
+        reason: headAuth.reason,
+        actualExecutionHead: headAuth.actualExecutionHead,
+        centralAuthorizedExecutionHead: headAuth.centralAuthorizedExecutionHead,
+        executionAttempted: false,
+        oneAttemptBudgetConsumed: false,
+      };
+    }
+  }
 
   // --- Advisory lock ---
   const lockKey = crypto
@@ -514,6 +551,8 @@ async function executeGovernedOperator(opts) {
       ambiguous: true,
       executionAttempted: true,
       oneAttemptBudgetConsumed: false,
+      retryPermitted: false,
+      attemptStarted: true,
     };
   } finally {
     try { await transport.releaseAdvisoryLock(lockHandle); } catch { /* swallow — disconnect is best-effort */ }

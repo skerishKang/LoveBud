@@ -59,30 +59,30 @@ function parseOperatorCliArgs(argv) {
         flagValue = arg.slice(eqIdx + 1);
       }
     } else {
-      throw new Error(`POSITIONAL_ARGUMENT_REJECTED: unexpected argument '${arg}'`);
+      throw new Error('POSITIONAL_ARGUMENT_REJECTED');
     }
 
     if (!ALLOWED_FLAGS.has(flagName)) {
-      throw new Error(`UNKNOWN_FLAG_REJECTED: unrecognized flag '${arg}'`);
+      throw new Error('UNKNOWN_FLAG_REJECTED');
     }
 
     if (seenFlags.has(flagName)) {
-      throw new Error(`DUPLICATE_FLAG_REJECTED: flag '${flagName}' specified more than once`);
+      throw new Error('DUPLICATE_FLAG_REJECTED');
     }
     seenFlags.add(flagName);
 
     if (flagName === '--execute') {
-      if (flagValue !== null) throw new Error(`FLAG_VALUE_UNEXPECTED: flag '${flagName}' takes no value`);
+      if (flagValue !== null) throw new Error('FLAG_VALUE_UNEXPECTED');
       isExecute = true;
     } else if (flagName === '--dry-run') {
-      if (flagValue !== null) throw new Error(`FLAG_VALUE_UNEXPECTED: flag '${flagName}' takes no value`);
+      if (flagValue !== null) throw new Error('FLAG_VALUE_UNEXPECTED');
       isDryRun = true;
     } else if (flagName === '--profile') {
       if (flagValue !== null) {
         profileKey = flagValue;
       } else {
         if (i + 1 >= argv.length || argv[i + 1].startsWith('--')) {
-          throw new Error(`FLAG_VALUE_MISSING: flag '--profile' requires a value`);
+          throw new Error('FLAG_VALUE_MISSING');
         }
         i += 1;
         profileKey = argv[i];
@@ -92,7 +92,7 @@ function parseOperatorCliArgs(argv) {
         executionHead = flagValue;
       } else {
         if (i + 1 >= argv.length || argv[i + 1].startsWith('--')) {
-          throw new Error(`FLAG_VALUE_MISSING: flag '--execution-head' requires a value`);
+          throw new Error('FLAG_VALUE_MISSING');
         }
         i += 1;
         executionHead = argv[i];
@@ -101,11 +101,11 @@ function parseOperatorCliArgs(argv) {
   }
 
   if (isExecute && isDryRun) {
-    throw new Error('CONFLICTING_FLAGS_REJECTED: cannot specify both --execute and --dry-run');
+    throw new Error('CONFLICTING_FLAGS_REJECTED');
   }
 
   if (isExecute && !profileKey) {
-    throw new Error('PROFILE_REQUIRED_FOR_EXECUTE: explicit --profile is required when --execute is specified');
+    throw new Error('PROFILE_REQUIRED_FOR_EXECUTE');
   }
 
   // Default mode is dry run if execute is not specified
@@ -134,8 +134,8 @@ try {
     JSON.stringify({
       mode: 'INITIALIZATION_FAILED',
       decision: CORE.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
-      reason: 'INVALID_CLI_ARGUMENTS',
-      message: err.message,
+      reason: err.message || 'INVALID_CLI_ARGUMENTS',
+      message: err.message || 'INVALID_CLI_ARGUMENTS',
       oneAttemptBudgetConsumed: false,
       executionAttempted: false,
     }) + '\n',
@@ -152,7 +152,6 @@ if (!profile) {
       mode: 'INITIALIZATION_FAILED',
       decision: CORE.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       reason: 'UNKNOWN_PROFILE',
-      requestedProfile: profileKey,
       oneAttemptBudgetConsumed: false,
       executionAttempted: false,
     }) + '\n',
@@ -281,6 +280,7 @@ async function main() {
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead,
   });
   process.stdout.write(JSON.stringify({ mode: 'EXECUTE', profile: profile.key, ...result }, null, 2) + '\n');
   if (result.stops && result.stops.length > 0) {
