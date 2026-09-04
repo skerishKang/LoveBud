@@ -49,16 +49,87 @@ const CANONICAL_TARGET_IDENTITY = Object.freeze({
   database: 'neondb',
 });
 
-const BOUND_MIGRATION = Object.freeze({
-  id: '20260812213000_add-tree-appreciation-orders',
-  path: 'db/migrations/20260812213000_add-tree-appreciation-orders.sql',
-  sha256: '5332ce91ee1440d3c1bebd0a3b0b5ff9cab0a23612195141bebb94d340ebaad8',
+/**
+ * Governing adoption lifecycle states:
+ * - ACTIVE_AUTHORIZED: Validated and authorized with an explicit central comment.
+ * - PENDING_AUTHORIZATION_BINDING: Non-executable pending profile.
+ *
+ * Future Lifecycle Sequence for Hub Layout:
+ *   P2 read-only adoption preflight
+ *   → P3 explicit CENTRAL authorization comment
+ *   → P3.5 source-only authorization-comment binding patch
+ *   → exact-head CI
+ *   → CENTRAL merge
+ *   → P4 governed operator execution
+ */
+const LIFECYCLE_STATES = Object.freeze({
+  ACTIVE_AUTHORIZED: 'ACTIVE_AUTHORIZED',
+  PENDING_AUTHORIZATION_BINDING: 'PENDING_AUTHORIZATION_BINDING',
 });
 
-const BOUND_RELATION = 'public.tree_appreciation_orders';
-const BOUND_EXPECTED_FINGERPRINT = 'e7bae9da3a80a035066525ae3f2d780bf4aa97c1ef400d151604e0e1998b8bb1';
-const BOUND_ACTIVE_AUTHORIZATION_COMMENT = 5491726186;
-const BOUND_ISSUE = 4282;
+const PROFILES = Object.freeze({
+  '4282': Object.freeze({
+    key: '4282',
+    issue: 4282,
+    lifecycleState: LIFECYCLE_STATES.ACTIVE_AUTHORIZED,
+    activeAuthorizationComment: 5491726186,
+    migrationId: '20260812213000_add-tree-appreciation-orders',
+    migrationPath: 'db/migrations/20260812213000_add-tree-appreciation-orders.sql',
+    migrationSha256: '5332ce91ee1440d3c1bebd0a3b0b5ff9cab0a23612195141bebb94d340ebaad8',
+    intendedRelation: 'public.tree_appreciation_orders',
+    expectedSchemaFingerprint: 'e7bae9da3a80a035066525ae3f2d780bf4aa97c1ef400d151604e0e1998b8bb1',
+    defaultMain: '4126045a8a348119e28689d52d7740c46d872765',
+    envAllowExecute: 'LOVEBUD_4282_ALLOW_EXECUTE',
+    envTransportPath: 'LOVEBUD_4282_OPERATOR_TRANSPORT_PATH',
+  }),
+  '4346': Object.freeze({
+    key: '4346',
+    issue: 4346,
+    lifecycleState: LIFECYCLE_STATES.PENDING_AUTHORIZATION_BINDING,
+    activeAuthorizationComment: null, // Zero active comment exists currently (NON_EXECUTABLE_PENDING_PROFILE)
+    migrationId: '20260828070000_add-tree-hub-layouts',
+    migrationPath: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
+    migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
+    intendedRelation: 'public.tree_hub_layouts',
+    expectedSchemaFingerprint: '0000000000000000000000000000000000000000000000000000000000000000', // Provisional
+    defaultMain: '851376c6e3d44a19b9c45ba9de8bc13eff7d06d9',
+    envAllowExecute: 'LOVEBUD_4346_ALLOW_EXECUTE',
+    envTransportPath: 'LOVEBUD_4346_OPERATOR_TRANSPORT_PATH',
+  }),
+});
+
+// Backward compatibility constants for #4282
+const BOUND_MIGRATION = Object.freeze({
+  id: PROFILES['4282'].migrationId,
+  path: PROFILES['4282'].migrationPath,
+  sha256: PROFILES['4282'].migrationSha256,
+});
+
+const BOUND_RELATION = PROFILES['4282'].intendedRelation;
+const BOUND_EXPECTED_FINGERPRINT = PROFILES['4282'].expectedSchemaFingerprint;
+const BOUND_ACTIVE_AUTHORIZATION_COMMENT = PROFILES['4282'].activeAuthorizationComment;
+const BOUND_ISSUE = PROFILES['4282'].issue;
+
+function resolveProfile(packetOrKey) {
+  if (typeof packetOrKey === 'string') {
+    if (packetOrKey === '4282' || packetOrKey === 'appreciation-order' || packetOrKey === 'tree_appreciation_orders') {
+      return PROFILES['4282'];
+    }
+    if (packetOrKey === '4346' || packetOrKey === 'hub-layout' || packetOrKey === 'tree_hub_layouts') {
+      return PROFILES['4346'];
+    }
+    return null;
+  }
+  if (isStrictObject(packetOrKey)) {
+    if (packetOrKey.issue === 4282 || packetOrKey.intendedRelation === 'public.tree_appreciation_orders') {
+      return PROFILES['4282'];
+    }
+    if (packetOrKey.issue === 4346 || packetOrKey.intendedRelation === 'public.tree_hub_layouts') {
+      return PROFILES['4346'];
+    }
+  }
+  return null;
+}
 
 const DECISIONS = Object.freeze({
   PAPER_ONLY_DRY_RUN: 'PAPER_ONLY_DRY_RUN',
@@ -90,6 +161,7 @@ const STOP_REASONS = Object.freeze({
   STOP_AUTO_DROP_FORBIDDEN: 'STOP_AUTO_DROP_FORBIDDEN',
   STOP_AMBIGUOUS_RETRY_FORBIDDEN: 'STOP_AMBIGUOUS_RETRY_FORBIDDEN',
   STOP_SECRET_OUTPUT_FORBIDDEN: 'STOP_SECRET_OUTPUT_FORBIDDEN',
+  STOP_PENDING_AUTHORIZATION_BINDING: 'STOP_PENDING_AUTHORIZATION_BINDING',
 });
 
 function isNonEmptyString(v) {
@@ -127,16 +199,27 @@ function evaluateOperatorReadiness(packet) {
     return { decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT, stops: [STOP_REASONS.STOP_PACKET_FIELD_INVALID] };
   }
 
+  const profile = resolveProfile(packet);
+  if (!profile) {
+    return { decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT, stops: [STOP_REASONS.STOP_PACKET_FIELD_INVALID] };
+  }
+
   // --- Mandatory exact bindings ---
-  if (packet.issue !== BOUND_ISSUE) stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
-  if (packet.activeAuthorizationComment !== BOUND_ACTIVE_AUTHORIZATION_COMMENT) {
+  if (profile.lifecycleState === LIFECYCLE_STATES.PENDING_AUTHORIZATION_BINDING) {
+    stops.push(STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING);
+  }
+  if (packet.issue !== profile.issue) stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
+  if (
+    !profile.activeAuthorizationComment ||
+    packet.activeAuthorizationComment !== profile.activeAuthorizationComment
+  ) {
     stops.push(STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING);
   }
   if (!isHex40(packet.currentMain || '')) stops.push(STOP_REASONS.STOP_MAIN_MOVED);
-  if (packet.migrationPath !== BOUND_MIGRATION.path) stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
+  if (packet.migrationPath !== profile.migrationPath) stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
   if (!isSha256Hex(packet.migrationSha256 || '')) stops.push(STOP_REASONS.STOP_CHECKSUM_MISMATCH);
-  if (packet.intendedRelation !== BOUND_RELATION) stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
-  if (packet.expectedSchemaFingerprint !== BOUND_EXPECTED_FINGERPRINT) {
+  if (packet.intendedRelation !== profile.intendedRelation) stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
+  if (packet.expectedSchemaFingerprint !== profile.expectedSchemaFingerprint) {
     stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
   }
   if (!isStrictObject(packet.targetIdentity)) {
@@ -170,7 +253,7 @@ function evaluateOperatorReadiness(packet) {
   }
 
   // --- Local file checksum rehash ---
-  const localPath = path.join(ROOT, BOUND_MIGRATION.path);
+  const localPath = path.join(ROOT, profile.migrationPath);
   let localSha = null;
   try {
     localSha = sha256File(localPath);
@@ -184,7 +267,7 @@ function evaluateOperatorReadiness(packet) {
   // --- Cross-check against the canonical activation gate (paper-only) ---
   const gateRes = GATE_CORE.evaluateAdoptionActivationGate({
     currentMain: packet.currentMain,
-    approvalReference: `issue:${BOUND_ISSUE}`,
+    approvalReference: `issue:${profile.issue}`,
     targetIdentity: packet.targetIdentity,
     migrationFile: packet.migrationPath,
     migrationSha256: packet.migrationSha256,
@@ -214,23 +297,37 @@ function evaluateOperatorReadiness(packet) {
 }
 
 /**
- * Build the frozen canonical packet bound to #4282.
- * Source of truth is this repo; the packet must match ACTIVE comment 5491726186.
+ * Build the frozen canonical packet bound to a profile (#4282 by default or #4346).
  */
-function buildCanonicalPacket(overrides) {
+function buildCanonicalPacket(profileKeyOrOverrides, overrides) {
+  let profile = PROFILES['4282'];
+  let actualOverrides = overrides;
+  if (typeof profileKeyOrOverrides === 'string') {
+    const resolved = resolveProfile(profileKeyOrOverrides);
+    if (resolved) {
+      profile = resolved;
+    }
+  } else if (isStrictObject(profileKeyOrOverrides)) {
+    if (profileKeyOrOverrides.profile || profileKeyOrOverrides.issue || profileKeyOrOverrides.intendedRelation) {
+      const resolved = resolveProfile(profileKeyOrOverrides.profile || profileKeyOrOverrides);
+      if (resolved) profile = resolved;
+    }
+    actualOverrides = profileKeyOrOverrides;
+  }
+
   const base = {
-    issue: BOUND_ISSUE,
-    activeAuthorizationComment: BOUND_ACTIVE_AUTHORIZATION_COMMENT,
-    currentMain: '4126045a8a348119e28689d52d7740c46d872765',
-    migrationPath: BOUND_MIGRATION.path,
-    migrationSha256: BOUND_MIGRATION.sha256,
-    intendedRelation: BOUND_RELATION,
+    issue: profile.issue,
+    activeAuthorizationComment: profile.activeAuthorizationComment,
+    currentMain: profile.defaultMain,
+    migrationPath: profile.migrationPath,
+    migrationSha256: profile.migrationSha256,
+    intendedRelation: profile.intendedRelation,
     targetIdentity: {
       product_shared: CANONICAL_TARGET_IDENTITY.product_shared,
       environment_class: CANONICAL_TARGET_IDENTITY.environment_class,
       database: CANONICAL_TARGET_IDENTITY.database,
     },
-    expectedSchemaFingerprint: BOUND_EXPECTED_FINGERPRINT,
+    expectedSchemaFingerprint: profile.expectedSchemaFingerprint,
     applyMode: 'TRANSACTION_REQUIRED',
     productRowReadAllowed: false,
     writerGrant: false,
@@ -239,7 +336,7 @@ function buildCanonicalPacket(overrides) {
     ambiguousRetryAllowed: false,
     unrelatedMigrationCount: 0,
   };
-  return Object.freeze({ ...base, ...(overrides || {}) });
+  return Object.freeze({ ...base, ...(actualOverrides || {}) });
 }
 
 const FORBIDDEN_TRANSPORT_METHODS = Object.freeze([
@@ -301,6 +398,7 @@ async function executeGovernedOperator(opts) {
   }
 
   if (!executionEnabled || !allowExecute) {
+    const profile = resolveProfile(packet) || PROFILES['4282'];
     return {
       decision: DECISIONS.PAPER_ONLY_DRY_RUN,
       stops: [],
@@ -309,7 +407,7 @@ async function executeGovernedOperator(opts) {
       oneAttemptBudgetConsumed: false,
       binding: {
         relation: packet.intendedRelation,
-        migrationId: BOUND_MIGRATION.id,
+        migrationId: profile.migrationId,
         targetIdentity: packet.targetIdentity,
       },
     };
@@ -327,10 +425,12 @@ async function executeGovernedOperator(opts) {
     };
   }
 
+  const profile = resolveProfile(packet) || PROFILES['4282'];
+
   // --- Advisory lock ---
   const lockKey = crypto
     .createHash('sha256')
-    .update(`#${BOUND_ISSUE}|${packet.migrationPath}|${packet.migrationSha256}`)
+    .update(`#${packet.issue}|${packet.migrationPath}|${packet.migrationSha256}`)
     .digest('hex')
     .slice(0, 16);
   const lockHandle = await transport.acquireAdvisoryLock(lockKey);
@@ -367,9 +467,9 @@ async function executeGovernedOperator(opts) {
       }
       // Ledger insert inside the same transaction.
       const ledger = await tx.writeLedger({
-        issue: BOUND_ISSUE,
-        activeAuthorizationComment: BOUND_ACTIVE_AUTHORIZATION_COMMENT,
-        migrationId: BOUND_MIGRATION.id,
+        issue: packet.issue,
+        activeAuthorizationComment: packet.activeAuthorizationComment,
+        migrationId: profile.migrationId,
         migrationSha256: packet.migrationSha256,
         targetIdentity: packet.targetIdentity,
         relation: packet.intendedRelation,
@@ -417,12 +517,15 @@ async function executeGovernedOperator(opts) {
 module.exports = {
   DECISIONS,
   STOP_REASONS,
+  LIFECYCLE_STATES,
   CANONICAL_TARGET_IDENTITY,
+  PROFILES,
   BOUND_MIGRATION,
   BOUND_RELATION,
   BOUND_EXPECTED_FINGERPRINT,
   BOUND_ACTIVE_AUTHORIZATION_COMMENT,
   BOUND_ISSUE,
+  resolveProfile,
   buildCanonicalPacket,
   evaluateOperatorReadiness,
   validateTransport,
