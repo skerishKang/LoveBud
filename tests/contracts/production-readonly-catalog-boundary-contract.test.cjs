@@ -482,7 +482,7 @@ test('Production version policy major 17 window', () => {
 
 test('frozen allowlist and caller override rejection', () => {
   const objects = CORE.loadFrozenAdoptionAllowlistObjects(REPO);
-  assert.equal(objects.length, 10);
+  assert.equal(objects.length, 11);
   assert.equal(
     catchCategory(() => CORE.rejectCallerOverrides({ objects: [] })),
     'PRODUCTION_CATALOG_CALLER_OVERRIDE_REJECTED'
@@ -569,7 +569,7 @@ test('buildProductionReadonlyInvocationPlanForRoot uses explicit root (pure/test
       })
   );
   assert.equal(plan.mode, 'PRODUCTION_READONLY_CATALOG');
-  assert.equal(plan.objectCount, 10);
+  assert.equal(plan.objectCount, 11);
   assert.ok(plan.handle);
   assert.equal(plan.connection, undefined);
   assert.equal(plan.roleMapping, undefined);
@@ -902,9 +902,9 @@ test('alternate-root policy substitution is impossible via live collector', asyn
   assert.equal(altPlan.objectCount, 1);
   assert.equal(altPlan.objectNames[0], 'table:public.tampered_table');
 
-  // 3. Repository frozen allowlist now covers #4282 catalog-presence target (10 objects)
+  // 3. Repository frozen allowlist now covers #4282 and #4346 catalog-presence target (11 objects)
   const realObjects = CORE.loadFrozenAdoptionAllowlistObjects(REPO);
-  assert.equal(realObjects.length, 10);
+  assert.equal(realObjects.length, 11);
   const appreciation = realObjects.find(
     (o) => o.object_name === 'tree_appreciation_orders'
   );
