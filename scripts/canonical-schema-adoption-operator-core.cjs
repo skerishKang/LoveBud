@@ -49,10 +49,29 @@ const CANONICAL_TARGET_IDENTITY = Object.freeze({
   database: 'neondb',
 });
 
+/**
+ * Governing adoption lifecycle states:
+ * - ACTIVE_AUTHORIZED: Validated and authorized with an explicit central comment.
+ * - PENDING_AUTHORIZATION_BINDING: Non-executable pending profile.
+ *
+ * Future Lifecycle Sequence for Hub Layout:
+ *   P2 read-only adoption preflight
+ *   → P3 explicit CENTRAL authorization comment
+ *   → P3.5 source-only authorization-comment binding patch
+ *   → exact-head CI
+ *   → CENTRAL merge
+ *   → P4 governed operator execution
+ */
+const LIFECYCLE_STATES = Object.freeze({
+  ACTIVE_AUTHORIZED: 'ACTIVE_AUTHORIZED',
+  PENDING_AUTHORIZATION_BINDING: 'PENDING_AUTHORIZATION_BINDING',
+});
+
 const PROFILES = Object.freeze({
   '4282': Object.freeze({
     key: '4282',
     issue: 4282,
+    lifecycleState: LIFECYCLE_STATES.ACTIVE_AUTHORIZED,
     activeAuthorizationComment: 5491726186,
     migrationId: '20260812213000_add-tree-appreciation-orders',
     migrationPath: 'db/migrations/20260812213000_add-tree-appreciation-orders.sql',
@@ -66,7 +85,8 @@ const PROFILES = Object.freeze({
   '4346': Object.freeze({
     key: '4346',
     issue: 4346,
-    activeAuthorizationComment: null, // Zero active comment exists currently
+    lifecycleState: LIFECYCLE_STATES.PENDING_AUTHORIZATION_BINDING,
+    activeAuthorizationComment: null, // Zero active comment exists currently (NON_EXECUTABLE_PENDING_PROFILE)
     migrationId: '20260828070000_add-tree-hub-layouts',
     migrationPath: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
     migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
@@ -141,6 +161,7 @@ const STOP_REASONS = Object.freeze({
   STOP_AUTO_DROP_FORBIDDEN: 'STOP_AUTO_DROP_FORBIDDEN',
   STOP_AMBIGUOUS_RETRY_FORBIDDEN: 'STOP_AMBIGUOUS_RETRY_FORBIDDEN',
   STOP_SECRET_OUTPUT_FORBIDDEN: 'STOP_SECRET_OUTPUT_FORBIDDEN',
+  STOP_PENDING_AUTHORIZATION_BINDING: 'STOP_PENDING_AUTHORIZATION_BINDING',
 });
 
 function isNonEmptyString(v) {
@@ -184,6 +205,9 @@ function evaluateOperatorReadiness(packet) {
   }
 
   // --- Mandatory exact bindings ---
+  if (profile.lifecycleState === LIFECYCLE_STATES.PENDING_AUTHORIZATION_BINDING) {
+    stops.push(STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING);
+  }
   if (packet.issue !== profile.issue) stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
   if (
     !profile.activeAuthorizationComment ||
@@ -493,6 +517,7 @@ async function executeGovernedOperator(opts) {
 module.exports = {
   DECISIONS,
   STOP_REASONS,
+  LIFECYCLE_STATES,
   CANONICAL_TARGET_IDENTITY,
   PROFILES,
   BOUND_MIGRATION,

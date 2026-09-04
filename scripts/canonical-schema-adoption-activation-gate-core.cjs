@@ -58,7 +58,7 @@ const SUPPORTED_ADOPTION_PROFILES = Object.freeze({
     relation: 'tree_hub_layouts',
     schema: 'public',
     migrationId: '20260828070000_add-tree-hub-layouts',
-    allowedApprovalReferences: Object.freeze(['issue:4346', 'issue:4277']),
+    allowedApprovalReferences: Object.freeze(['issue:4346']),
   }),
 });
 

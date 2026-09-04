@@ -196,6 +196,32 @@ test('tree_hub_layouts packet fails closed due to provisional fingerprint and al
   assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_TARGET_NOT_ALLOWLISTED));
 });
 
+test('tree_hub_layouts packet rejects issue:4277 as execution approval reference', () => {
+  const hubLayoutPacket = {
+    currentMain: '7362b4e631136d6e94f8dc1459e99aeb3e216598',
+    approvalReference: 'issue:4277', // migration provenance only, NOT execution approval
+    targetIdentity: {
+      product_shared: '133-relovetree',
+      environment_class: 'production',
+      database: 'neondb',
+    },
+    migrationFile: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
+    migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
+    intendedRelation: 'public.tree_hub_layouts',
+    applyMode: 'TRANSACTION_REQUIRED',
+    expectedSchemaFingerprint: '0'.repeat(64),
+    productRowReadAllowed: false,
+    runtimeGateActivation: false,
+    writerGrant: false,
+    providerReroute: false,
+    ambiguousRetryAllowed: false,
+    unrelatedMigrationCount: 0,
+  };
+  const res = CORE.evaluateAdoptionActivationGate(hubLayoutPacket);
+  assert.equal(res.decision, CORE.GATE_DECISIONS.NOT_APPROVED);
+  assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_APPROVAL_REFERENCE_INVALID));
+});
+
 test('unregistered relation fails closed as GATE_TARGET_RELATION_INVALID', () => {
   const unregPacket = {
     ...GOOD_PACKET,

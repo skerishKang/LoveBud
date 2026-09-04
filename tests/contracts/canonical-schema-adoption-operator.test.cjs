@@ -325,23 +325,56 @@ test('Profile 4346 packet fails operator readiness due to missing active comment
 
   const r = OP.evaluateOperatorReadiness(hubPacket);
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID));
   assert.ok(r.gateBlockers.includes('GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING'));
   assert.ok(r.gateBlockers.includes('GATE_TARGET_NOT_ALLOWLISTED'));
 });
 
-test('Profile 4346 with mocked active comment still fails closed on provisional fingerprint and allowlist', () => {
+test('Profile 4346 with mocked active comment still fails closed on pending binding, provisional fingerprint and allowlist', () => {
   const hubPacket = OP.buildCanonicalPacket('4346', {
     activeAuthorizationComment: 9999999999,
   });
   const r = OP.evaluateOperatorReadiness(hubPacket);
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  // Still fails because active comment does not match profile's null, and gate rejects provisional fingerprint
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID));
   assert.ok(r.gateBlockers.includes('GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING'));
   assert.ok(r.gateBlockers.includes('GATE_TARGET_NOT_ALLOWLISTED'));
+});
+
+test('Profile 4346 execution attempt fails closed even with executionEnabled=true, allowExecute=true, and valid transport', async () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    activeAuthorizationComment: 9999999999,
+  });
+  const transport = makeMockTransport();
+  const r = await OP.executeGovernedOperator({
+    packet: hubPacket,
+    transport,
+    executionEnabled: true,
+    allowExecute: true,
+  });
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+});
+
+test('Profile 4346 execution attempt fails closed with provisional fingerprint and allowlist absence', async () => {
+  const hubPacket = OP.buildCanonicalPacket('4346');
+  const transport = makeMockTransport();
+  const r = await OP.executeGovernedOperator({
+    packet: hubPacket,
+    transport,
+    executionEnabled: true,
+    allowExecute: true,
+  });
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
 });
 
 test('Profile 4346 wrong migration path fails closed', () => {
