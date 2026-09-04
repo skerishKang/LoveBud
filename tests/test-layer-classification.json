@@ -2614,6 +2614,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/production-readonly-target-presence-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-static contract for the Production-readonly target presence inspection runner: pure policy validation, duplicate CLI flag rejection, source execution disable gate precedence before .secrets read, mock-client transaction_read_only proof, major-17 verification, fingerprint assertion, rollback and session disconnect with no DB mutation (#4346).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-canvas-auth-bootstrap-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
