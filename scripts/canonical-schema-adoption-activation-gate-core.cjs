@@ -47,6 +47,21 @@ const CANONICAL_TARGET_IDENTITY = Object.freeze({
   database: 'neondb',
 });
 
+const SUPPORTED_ADOPTION_PROFILES = Object.freeze({
+  tree_appreciation_orders: Object.freeze({
+    relation: 'tree_appreciation_orders',
+    schema: 'public',
+    migrationId: '20260812213000_add-tree-appreciation-orders',
+    allowedApprovalReferences: Object.freeze(['issue:4282']),
+  }),
+  tree_hub_layouts: Object.freeze({
+    relation: 'tree_hub_layouts',
+    schema: 'public',
+    migrationId: '20260828070000_add-tree-hub-layouts',
+    allowedApprovalReferences: Object.freeze(['issue:4346', 'issue:4277']),
+  }),
+});
+
 const GATE_DECISIONS = Object.freeze({
   FAIL_CLOSED: 'FAIL_CLOSED',
   NOT_APPROVED: 'NOT_APPROVED',
@@ -163,10 +178,19 @@ function evaluateAdoptionActivationGate(packet) {
   if (packet.approvalReference && !/^issue:\d+$/.test(packet.approvalReference)) {
     blockers.push(GATE_BLOCKERS.GATE_APPROVAL_REFERENCE_INVALID);
   }
-  // The activation gate binds this adoption to the explicit #4282 approval.
-  if (packet.approvalReference && packet.approvalReference !== 'issue:4282') {
-    blockers.push(GATE_BLOCKERS.GATE_APPROVAL_REFERENCE_INVALID);
+
+  // --- Profile / Target relation validation ---
+  const target = parseObjectRef(packet.intendedRelation);
+  const matchedProfile = target && SUPPORTED_ADOPTION_PROFILES[target.relation];
+  if (!target || target.schema !== 'public' || !matchedProfile) {
+    blockers.push(GATE_BLOCKERS.GATE_TARGET_RELATION_INVALID);
+  } else {
+    // Validate approvalReference against the profile's allowed approval references
+    if (packet.approvalReference && !matchedProfile.allowedApprovalReferences.includes(packet.approvalReference)) {
+      blockers.push(GATE_BLOCKERS.GATE_APPROVAL_REFERENCE_INVALID);
+    }
   }
+
   if (packet.migrationSha256 && !isSha256Hex(packet.migrationSha256)) {
     blockers.push(GATE_BLOCKERS.GATE_CHECKSUM_MISMATCH);
   }
@@ -208,11 +232,6 @@ function evaluateAdoptionActivationGate(packet) {
     blockers.push(GATE_BLOCKERS.GATE_MANIFEST_NOT_ACTIVE);
   }
 
-  const target = parseObjectRef(packet.intendedRelation);
-  if (!target || target.schema !== 'public' || target.relation !== 'tree_appreciation_orders') {
-    blockers.push(GATE_BLOCKERS.GATE_TARGET_RELATION_INVALID);
-  }
-
   // Canonical target identity binding.
   if (packet.targetIdentity) {
     const ti = typeof packet.targetIdentity === 'string' ? null : packet.targetIdentity;
@@ -226,9 +245,10 @@ function evaluateAdoptionActivationGate(packet) {
     }
   }
 
-  // Migration resolution by exact id + checksum + path binding.
+  // Migration resolution by exact id + checksum + path binding for matched profile.
+  const targetMigrationId = matchedProfile ? matchedProfile.migrationId : null;
   const entry = manifest.migrations && manifest.migrations.find(
-    (m) => m.id === '20260812213000_add-tree-appreciation-orders'
+    (m) => m.id === targetMigrationId
   );
   if (!entry) {
     blockers.push(GATE_BLOCKERS.GATE_MIGRATION_NOT_FOUND);
@@ -241,8 +261,13 @@ function evaluateAdoptionActivationGate(packet) {
     }
     // Local file checksum must match the packet AND the local file on disk.
     const localPath = path.join(REPO_ROOT, entry.path);
-    const localSha = sha256File(localPath);
-    if (localSha !== String(packet.migrationSha256).toLowerCase()) {
+    let localSha = null;
+    try {
+      localSha = sha256File(localPath);
+    } catch {
+      blockers.push(GATE_BLOCKERS.GATE_MIGRATION_NOT_FOUND);
+    }
+    if (localSha && localSha !== String(packet.migrationSha256).toLowerCase()) {
       blockers.push(GATE_BLOCKERS.GATE_CHECKSUM_MISMATCH);
     }
   }
@@ -252,10 +277,14 @@ function evaluateAdoptionActivationGate(packet) {
     blockers.push(GATE_BLOCKERS.GATE_EXPECTED_SCHEMA_NOT_REQUIRES);
   }
   const critical = expected.critical_objects || expected.objects || [];
+  const targetCriticalName = target ? `table:${target.schema}.${target.relation}` : '';
   const fpEntry = critical.find(
-    (o) => o.name === 'table:public.tree_appreciation_orders'
+    (o) => o.name === targetCriticalName
   );
   if (!fpEntry) {
+    blockers.push(GATE_BLOCKERS.GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING);
+  } else if (fpEntry.provisional_fingerprint === true || fpEntry.fingerprint === 'sha256:' + '0'.repeat(64)) {
+    // Provisional fingerprint cannot be used for execution or activation approval.
     blockers.push(GATE_BLOCKERS.GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING);
   } else if (fpEntry.fingerprint !== 'sha256:' + String(packet.expectedSchemaFingerprint).toLowerCase()) {
     blockers.push(GATE_BLOCKERS.GATE_EXPECTED_SCHEMA_FINGERPRINT_UNKNOWN);
@@ -263,7 +292,7 @@ function evaluateAdoptionActivationGate(packet) {
 
   // Allowlist binding (catalog-presence allowed, data read not).
   const allowedEntry = (allowlist.reviewed_object_allowlist || []).find(
-    (o) => o.name === 'table:public.tree_appreciation_orders'
+    (o) => o.name === targetCriticalName
   );
   if (!allowedEntry) {
     blockers.push(GATE_BLOCKERS.GATE_TARGET_NOT_ALLOWLISTED);
@@ -324,6 +353,7 @@ module.exports = {
   GATE_DECISIONS,
   GATE_BLOCKERS,
   CANONICAL_TARGET_IDENTITY,
+  SUPPORTED_ADOPTION_PROFILES,
   evaluateAdoptionActivationGate,
   createPaperActivationArtifact,
   // exported for tests only (pure helpers)

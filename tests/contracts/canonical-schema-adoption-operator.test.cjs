@@ -316,6 +316,105 @@ test('operator decision shape never contains a raw credential/secret field', asy
   assert.equal(/postgres:\/\/[^"']+@/.test(s), false, 'must not include raw DSN');
 });
 
+// ----- 7. Profile 4346 (Hub Layout) Fail-Closed Tests -----
+test('Profile 4346 packet fails operator readiness due to missing active comment and provisional fingerprint', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346');
+  assert.equal(hubPacket.issue, 4346);
+  assert.equal(hubPacket.intendedRelation, 'public.tree_hub_layouts');
+  assert.equal(hubPacket.activeAuthorizationComment, null);
+
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID));
+  assert.ok(r.gateBlockers.includes('GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING'));
+  assert.ok(r.gateBlockers.includes('GATE_TARGET_NOT_ALLOWLISTED'));
+});
+
+test('Profile 4346 with mocked active comment still fails closed on provisional fingerprint and allowlist', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    activeAuthorizationComment: 9999999999,
+  });
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  // Still fails because active comment does not match profile's null, and gate rejects provisional fingerprint
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID));
+  assert.ok(r.gateBlockers.includes('GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING'));
+  assert.ok(r.gateBlockers.includes('GATE_TARGET_NOT_ALLOWLISTED'));
+});
+
+test('Profile 4346 wrong migration path fails closed', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    migrationPath: 'db/migrations/other-hub.sql',
+  });
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID));
+});
+
+test('Profile 4346 wrong checksum fails closed', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    migrationSha256: '9'.repeat(64),
+  });
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_CHECKSUM_MISMATCH));
+});
+
+test('Profile 4346 product row read allowed=true fails closed', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    productRowReadAllowed: true,
+  });
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PRODUCT_ROW_READ_FORBIDDEN));
+});
+
+test('Profile 4346 writer grant=true fails closed', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    writerGrant: true,
+  });
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_WRITER_GRANT_FORBIDDEN));
+});
+
+test('Profile 4346 runtime gate activation=true fails closed', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    runtimeGateActivation: true,
+  });
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_RUNTIME_GATE_FORBIDDEN));
+});
+
+test('Profile 4346 provider reroute=true fails closed', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    providerReroute: true,
+  });
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PROVIDER_REROUTE_FORBIDDEN));
+});
+
+test('Profile 4346 ambiguous retry=true fails closed', () => {
+  const hubPacket = OP.buildCanonicalPacket('4346', {
+    ambiguousRetryAllowed: true,
+  });
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_AMBIGUOUS_RETRY_FORBIDDEN));
+});
+
+test('executeGovernedOperator with Profile 4346 remains PAPER_ONLY_DRY_RUN by default', async () => {
+  const hubPacket = OP.buildCanonicalPacket('4346');
+  const r = await OP.executeGovernedOperator({ packet: hubPacket });
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+});
+
 // ----- helpers -----
 function makeMockTransport(opts) {
   opts = opts || {};

@@ -32,16 +32,46 @@ const CORE = require('./canonical-schema-adoption-operator-core.cjs');
 const argv = process.argv.slice(2);
 const isExecute = argv.includes('--execute');
 const isDryRun = argv.includes('--dry-run') || !isExecute;
-const allowExecuteEnv = process.env.LOVEBUD_4282_ALLOW_EXECUTE === '1';
-const transportPath = process.env.LOVEBUD_4282_OPERATOR_TRANSPORT_PATH;
+
+// Profile parsing: default is 4282 for backward compatibility
+let profileKey = '4282';
+for (const arg of argv) {
+  if (arg.startsWith('--profile=')) {
+    profileKey = arg.slice('--profile='.length);
+  } else if (arg === '--profile') {
+    const idx = argv.indexOf(arg);
+    if (idx !== -1 && argv[idx + 1]) {
+      profileKey = argv[idx + 1];
+    }
+  }
+}
+
+const profile = CORE.resolveProfile(profileKey);
+if (!profile) {
+  process.stderr.write(
+    JSON.stringify({
+      mode: 'INITIALIZATION_FAILED',
+      decision: CORE.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      reason: 'UNKNOWN_PROFILE',
+      requestedProfile: profileKey,
+      oneAttemptBudgetConsumed: false,
+      executionAttempted: false,
+    }) + '\n',
+  );
+  process.exit(2);
+}
+
+const allowExecuteEnv = process.env[profile.envAllowExecute] === '1';
+const transportPath = process.env[profile.envTransportPath];
 
 async function main() {
-  const packet = CORE.buildCanonicalPacket();
+  const packet = CORE.buildCanonicalPacket(profile.key);
 
   if (isDryRun) {
     const readiness = CORE.evaluateOperatorReadiness(packet);
     const report = {
       mode: 'DRY_RUN',
+      profile: profile.key,
       executionAttempted: false,
       oneAttemptBudgetConsumed: false,
       decision: readiness.decision,
@@ -74,8 +104,9 @@ async function main() {
     process.stderr.write(
       JSON.stringify({
         mode: 'EXECUTE_REQUESTED',
+        profile: profile.key,
         decision: CORE.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
-        reason: 'LOVEBUD_4282_ALLOW_EXECUTE not set',
+        reason: `${profile.envAllowExecute} not set`,
         oneAttemptBudgetConsumed: false,
         executionAttempted: false,
       }) + '\n',
@@ -86,8 +117,9 @@ async function main() {
     process.stderr.write(
       JSON.stringify({
         mode: 'EXECUTE_REQUESTED',
+        profile: profile.key,
         decision: CORE.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
-        reason: 'LOVEBUD_4282_OPERATOR_TRANSPORT_PATH not set',
+        reason: `${profile.envTransportPath} not set`,
         oneAttemptBudgetConsumed: false,
         executionAttempted: false,
       }) + '\n',
@@ -100,6 +132,7 @@ async function main() {
     process.stderr.write(
       JSON.stringify({
         mode: 'EXECUTE_REQUESTED',
+        profile: profile.key,
         decision: CORE.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
         reason: tCheck.reason,
         oneAttemptBudgetConsumed: false,
@@ -115,7 +148,7 @@ async function main() {
     executionEnabled: true,
     allowExecute: true,
   });
-  process.stdout.write(JSON.stringify({ mode: 'EXECUTE', ...result }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify({ mode: 'EXECUTE', profile: profile.key, ...result }, null, 2) + '\n');
   if (result.stops && result.stops.length > 0) {
     process.exit(2);
   }

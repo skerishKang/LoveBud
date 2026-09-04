@@ -166,3 +166,42 @@ test('no raw grantee/secret/credential fields emitted by gate result', () => {
   assert.equal(dumped.includes('password'), false);
   assert.equal(dumped.includes('pg_'), false);
 });
+
+test('tree_hub_layouts packet fails closed due to provisional fingerprint and allowlist absence', () => {
+  const hubLayoutPacket = {
+    currentMain: '7362b4e631136d6e94f8dc1459e99aeb3e216598',
+    approvalReference: 'issue:4346',
+    targetIdentity: {
+      product_shared: '133-relovetree',
+      environment_class: 'production',
+      database: 'neondb',
+    },
+    migrationFile: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
+    migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
+    intendedRelation: 'public.tree_hub_layouts',
+    applyMode: 'TRANSACTION_REQUIRED',
+    expectedSchemaFingerprint: '0'.repeat(64),
+    productRowReadAllowed: false,
+    runtimeGateActivation: false,
+    writerGrant: false,
+    providerReroute: false,
+    ambiguousRetryAllowed: false,
+    unrelatedMigrationCount: 0,
+  };
+  const res = CORE.evaluateAdoptionActivationGate(hubLayoutPacket);
+  assert.equal(res.decision, CORE.GATE_DECISIONS.NOT_APPROVED);
+  // Must fail closed because expected-schema manifest has provisional_fingerprint=true
+  assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_EXPECTED_SCHEMA_FINGERPRINT_MISSING));
+  // Must fail closed because tree_hub_layouts is not in reviewed_object_allowlist
+  assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_TARGET_NOT_ALLOWLISTED));
+});
+
+test('unregistered relation fails closed as GATE_TARGET_RELATION_INVALID', () => {
+  const unregPacket = {
+    ...GOOD_PACKET,
+    intendedRelation: 'public.some_random_table',
+  };
+  const res = CORE.evaluateAdoptionActivationGate(unregPacket);
+  assert.equal(res.decision, CORE.GATE_DECISIONS.NOT_APPROVED);
+  assert.ok(res.blockers.includes(CORE.GATE_BLOCKERS.GATE_TARGET_RELATION_INVALID));
+});
