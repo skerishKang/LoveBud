@@ -283,11 +283,13 @@ test('14. Target presence runner: inspectTargetPresenceWithClient with TARGET_PR
   assert.equal(result.expectedFingerprint, ACCEPTED_FINGERPRINT);
 });
 
-test('15. Operator Core: Profile 4346 lifecycleState remains PENDING_AUTHORIZATION_BINDING and comment null', () => {
+test('15. Operator Core: Profile 4346 lifecycleState is ADOPTION_AUTHORIZED_PENDING_EXECUTION and comment bound under 5543891263', () => {
   const profile4346 = OP_CORE.PROFILES['4346'];
   assert.ok(profile4346, 'Profile 4346 exists in operator core');
-  assert.equal(profile4346.lifecycleState, 'PENDING_AUTHORIZATION_BINDING');
-  assert.equal(profile4346.activeAuthorizationComment, null);
+  assert.equal(profile4346.lifecycleState, 'ADOPTION_AUTHORIZED_PENDING_EXECUTION');
+  assert.equal(profile4346.p3AuthorizationBound, true);
+  assert.equal(profile4346.p4ExecutionAuthorized, false);
+  assert.equal(profile4346.activeAuthorizationComment, 5543891263);
   assert.equal(profile4346.expectedSchemaFingerprint, ACCEPTED_RAW_HEX);
 });
 

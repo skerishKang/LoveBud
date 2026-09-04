@@ -301,11 +301,13 @@ test('Hub Layout #4346 authority binding contract: manifest, allowlist, and prof
   assert.ok(ev.repository_evidence.includes('db/migration-provenance/expected-schema-manifest.json'));
   assert.ok(ev.repository_evidence.includes('db/migration-provenance/canonical-migrations.json'));
 
-  // 6. Profile 4346 in operator-core has accepted fingerprint, pending lifecycle, and null comment
+  // 6. Profile 4346 in operator-core has accepted fingerprint, ADOPTION_AUTHORIZED_PENDING_EXECUTION lifecycle, bound P3 comment 5543891263, and p4ExecutionAuthorized=false
   const OP = require('../../scripts/canonical-schema-adoption-operator-core.cjs');
   const profile4346 = OP.PROFILES['4346'];
   assert.ok(profile4346, 'Profile 4346 exists in operator core');
   assert.equal(profile4346.expectedSchemaFingerprint, ACCEPTED_RAW_HEX);
-  assert.equal(profile4346.lifecycleState, 'PENDING_AUTHORIZATION_BINDING');
-  assert.equal(profile4346.activeAuthorizationComment, null);
+  assert.equal(profile4346.lifecycleState, 'ADOPTION_AUTHORIZED_PENDING_EXECUTION');
+  assert.equal(profile4346.p3AuthorizationBound, true);
+  assert.equal(profile4346.p4ExecutionAuthorized, false);
+  assert.equal(profile4346.activeAuthorizationComment, 5543891263);
 });

@@ -218,11 +218,13 @@ test('apply path: committed+verified consumes the one-attempt budget exactly onc
     precheck: { present: false },
     postcheck: { matched: true },
   });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.APPLY_COMMITTED_AND_VERIFIED);
   assert.equal(r.executionAttempted, true);
@@ -235,11 +237,13 @@ test('apply path: committed+verified consumes the one-attempt budget exactly onc
 
 test('apply path: relation already present fails closed (STOP_RELATION_PRESENT), no budget consumed', async () => {
   const transport = makeMockTransport({ precheck: { present: true } });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_RELATION_PRESENT));
@@ -249,11 +253,13 @@ test('apply path: relation already present fails closed (STOP_RELATION_PRESENT),
 
 test('apply path: postcheck mismatch fails closed (STOP_POSTCHECK_MISMATCH), no budget consumed', async () => {
   const transport = makeMockTransport({ precheck: { present: false }, postcheck: { matched: false } });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_POSTCHECK_MISMATCH));
@@ -266,11 +272,13 @@ test('apply path: ledger attestation failure fails closed (STOP_LEDGER_ATTESTATI
     postcheck: { matched: true },
     ledger: { recorded: false },
   });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_LEDGER_ATTESTATION_MISMATCH));
@@ -279,11 +287,13 @@ test('apply path: ledger attestation failure fails closed (STOP_LEDGER_ATTESTATI
 
 test('apply path: advisory lock unavailable fails closed (STOP_ADVISORY_LOCK_UNAVAILABLE)', async () => {
   const transport = makeMockTransport({ lockHandle: null });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ADVISORY_LOCK_UNAVAILABLE));
@@ -293,15 +303,19 @@ test('apply path: advisory lock unavailable fails closed (STOP_ADVISORY_LOCK_UNA
 
 test('apply path: thrown transport error is treated as ambiguous outcome, no retry, no budget consumed', async () => {
   const transport = makeMockTransport({ throwOnApply: new Error('connection lost') });
+  const actualHead = OP.resolveTrustedLocalRepoHead();
   const r = await OP.executeGovernedOperator({
     packet: CANONICAL_PACKET,
     transport,
     executionEnabled: true,
     allowExecute: true,
+    executionHead: actualHead,
   });
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_AMBIGUOUS_OUTCOME));
   assert.equal(r.ambiguous, true);
+  assert.equal(r.retryPermitted, false);
+  assert.equal(r.attemptStarted, true);
   assert.equal(r.oneAttemptBudgetConsumed, false);
 });
 
@@ -316,62 +330,56 @@ test('operator decision shape never contains a raw credential/secret field', asy
   assert.equal(/postgres:\/\/[^"']+@/.test(s), false, 'must not include raw DSN');
 });
 
-// ----- 7. Profile 4346 (Hub Layout) Fail-Closed Tests -----
-test('Profile 4346 packet fails operator readiness due to missing active comment and pending authorization binding', () => {
+// ----- 7. Profile 4346 (Hub Layout) Bound Authority Tests -----
+test('Profile 4346 canonical packet passes operator readiness (dry-run path under CENTRAL comment 5543891263)', () => {
   const hubPacket = OP.buildCanonicalPacket('4346');
   assert.equal(hubPacket.issue, 4346);
   assert.equal(hubPacket.intendedRelation, 'public.tree_hub_layouts');
-  assert.equal(hubPacket.activeAuthorizationComment, null);
+  assert.equal(hubPacket.activeAuthorizationComment, 5543891263);
 
   const r = OP.evaluateOperatorReadiness(hubPacket);
-  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
-  // Accepted fingerprint and reviewed allowlist exist, but execution is disabled
+  assert.equal(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.equal(r.stops.length, 0);
   assert.equal(r.gateDecision, 'PAPER_ACTIVATION_GATE_PASSED');
   assert.deepEqual(r.gateBlockers, []);
+  assert.equal(r.manifestStatus, 'ADOPTION_REQUIRED');
 });
 
-test('Profile 4346 with mocked active comment still fails closed on pending authorization binding', () => {
+test('Profile 4346 wrong active comment fails closed', () => {
   const hubPacket = OP.buildCanonicalPacket('4346', {
     activeAuthorizationComment: 9999999999,
   });
   const r = OP.evaluateOperatorReadiness(hubPacket);
-  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
-  assert.equal(r.gateDecision, 'PAPER_ACTIVATION_GATE_PASSED');
-  assert.deepEqual(r.gateBlockers, []);
 });
 
-test('Profile 4346 execution attempt fails closed even with executionEnabled=true, allowExecute=true, and valid transport', async () => {
+test('Profile 4346 missing active comment fails closed', () => {
   const hubPacket = OP.buildCanonicalPacket('4346', {
-    activeAuthorizationComment: 9999999999,
+    activeAuthorizationComment: null,
   });
-  const transport = makeMockTransport();
-  const r = await OP.executeGovernedOperator({
-    packet: hubPacket,
-    transport,
-    executionEnabled: true,
-    allowExecute: true,
-  });
-  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
+  const r = OP.evaluateOperatorReadiness(hubPacket);
+  assert.notEqual(r.decision, OP.DECISIONS.READINESS_PASSED);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING));
+});
+
+test('Profile 4346 executeGovernedOperator remains PAPER_ONLY_DRY_RUN by default (executionEnabled=false)', async () => {
+  const hubPacket = OP.buildCanonicalPacket('4346');
+  const r = await OP.executeGovernedOperator({ packet: hubPacket });
+  assert.equal(r.decision, OP.DECISIONS.PAPER_ONLY_DRY_RUN);
   assert.equal(r.executionAttempted, false);
   assert.equal(r.oneAttemptBudgetConsumed, false);
 });
 
-test('Profile 4346 execution attempt without active comment fails closed on pending authorization binding', async () => {
+test('Profile 4346 execution attempt fails closed with no transport (even with executionEnabled+allowExecute)', async () => {
   const hubPacket = OP.buildCanonicalPacket('4346');
-  const transport = makeMockTransport();
   const r = await OP.executeGovernedOperator({
     packet: hubPacket,
-    transport,
     executionEnabled: true,
     allowExecute: true,
   });
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PENDING_AUTHORIZATION_BINDING));
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_CREDENTIAL_OPERATOR_ABSENT));
   assert.equal(r.executionAttempted, false);
   assert.equal(r.oneAttemptBudgetConsumed, false);
 });
@@ -439,12 +447,294 @@ test('Profile 4346 ambiguous retry=true fails closed', () => {
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_AMBIGUOUS_RETRY_FORBIDDEN));
 });
 
-test('executeGovernedOperator with Profile 4346 remains PAPER_ONLY_DRY_RUN by default', async () => {
+// ----- 8. Exact-Head Authority and Strict CLI Boundary Tests -----
+test('Exact-head authority helper: verifyExecutionHeadAuthority matches when actualHead == centralHead', () => {
+  const profile4346 = OP.PROFILES['4346'];
+  const actualHead = OP.resolveTrustedLocalRepoHead();
+  assert.ok(actualHead, 'local repo head must be resolvable');
+
+  const matchRes = OP.verifyExecutionHeadAuthority(profile4346, { executionHead: actualHead });
+  assert.equal(matchRes.ok, true);
+  assert.equal(matchRes.actualExecutionHead, actualHead);
+  assert.equal(matchRes.centralAuthorizedExecutionHead, actualHead);
+});
+
+test('Exact-head authority helper: fails closed when actualHead != centralHead', () => {
+  const profile4346 = OP.PROFILES['4346'];
+  const fakeHead = '0'.repeat(40);
+
+  const mismatchRes = OP.verifyExecutionHeadAuthority(profile4346, { executionHead: fakeHead });
+  assert.equal(mismatchRes.ok, false);
+  assert.equal(mismatchRes.reason, OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH);
+  assert.equal(mismatchRes.centralAuthorizedExecutionHead, fakeHead);
+});
+
+test('Exact-head authority helper: fails closed when executionHead is missing / unresolvable', () => {
+  const profile4346 = OP.PROFILES['4346'];
+  const prevEnv = process.env.LOVEBUD_4346_EXECUTION_HEAD;
+  delete process.env.LOVEBUD_4346_EXECUTION_HEAD;
+  try {
+    const missingRes = OP.verifyExecutionHeadAuthority(profile4346, {});
+    assert.equal(missingRes.ok, false);
+    assert.equal(missingRes.reason, OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH);
+  } finally {
+    if (prevEnv) process.env.LOVEBUD_4346_EXECUTION_HEAD = prevEnv;
+  }
+});
+
+test('Exact-head authority helper: resolves from profile envExecutionHead', () => {
+  const profile4346 = OP.PROFILES['4346'];
+  const actualHead = OP.resolveTrustedLocalRepoHead();
+  const prevEnv = process.env.LOVEBUD_4346_EXECUTION_HEAD;
+  process.env.LOVEBUD_4346_EXECUTION_HEAD = actualHead;
+  try {
+    const res = OP.verifyExecutionHeadAuthority(profile4346, {});
+    assert.equal(res.ok, true);
+    assert.equal(res.centralAuthorizedExecutionHead, actualHead);
+  } finally {
+    if (prevEnv !== undefined) {
+      process.env.LOVEBUD_4346_EXECUTION_HEAD = prevEnv;
+    } else {
+      delete process.env.LOVEBUD_4346_EXECUTION_HEAD;
+    }
+  }
+});
+
+test('CLI strictness: exact-head mismatch prevents transport from being loaded', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+  const fakeHead = 'f'.repeat(40);
+
+  const res = child.spawnSync(
+    process.execPath,
+    [runnerScript, '--profile', '4346', '--execute', '--execution-head', fakeHead],
+    {
+      env: {
+        ...process.env,
+        LOVEBUD_4346_ALLOW_EXECUTE: '1',
+        LOVEBUD_4346_OPERATOR_TRANSPORT_PATH: 'THIS_PATH_DOES_NOT_EXIST_AND_MUST_NOT_BE_LOADED',
+      },
+      encoding: 'utf8',
+    },
+  );
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'EXECUTE_REQUESTED');
+  assert.equal(parsed.reason, OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH);
+  assert.equal(parsed.oneAttemptBudgetConsumed, false);
+  assert.equal(parsed.executionAttempted, false);
+});
+
+test('CLI strictness: --execute without explicit --profile fails closed before transport load', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+
+  const res = child.spawnSync(process.execPath, [runnerScript, '--execute'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
+  assert.equal(parsed.reason, 'PROFILE_REQUIRED_FOR_EXECUTE');
+});
+
+test('CLI strictness: duplicate flags fail closed before transport load', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+
+  const res = child.spawnSync(process.execPath, [runnerScript, '--profile', '4346', '--profile', '4346'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
+  assert.equal(parsed.reason, 'DUPLICATE_FLAG_REJECTED');
+});
+
+test('CLI strictness: conflicting flags --execute and --dry-run fail closed', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+
+  const res = child.spawnSync(process.execPath, [runnerScript, '--profile', '4346', '--execute', '--dry-run'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
+  assert.equal(parsed.reason, 'CONFLICTING_FLAGS_REJECTED');
+});
+
+test('CLI strictness: unknown flags fail closed', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+
+  const res = child.spawnSync(process.execPath, [runnerScript, '--profile', '4346', '--bogus-flag'], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(res.status, 2, 'Must exit with status 2');
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.mode, 'INITIALIZATION_FAILED');
+  assert.equal(parsed.reason, 'UNKNOWN_FLAG_REJECTED');
+});
+
+test('CLI strictness: secret-shaped input is never echoed into stderr', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+  const fakeSecretDSN = 'postgres://super_secret_user:super_secret_password_12345@neon.test:5432/neondb';
+
+  // Test positional secret-shaped argument
+  const resPositional = child.spawnSync(process.execPath, [runnerScript, fakeSecretDSN], {
+    encoding: 'utf8',
+  });
+  assert.equal(resPositional.status, 2);
+  assert.equal(resPositional.stderr.includes('super_secret_password_12345'), false, 'must not echo secret password in positional error');
+  assert.equal(resPositional.stderr.includes(fakeSecretDSN), false, 'must not echo secret DSN in positional error');
+  const parsedPos = JSON.parse(resPositional.stderr);
+  assert.equal(parsedPos.reason, 'POSITIONAL_ARGUMENT_REJECTED');
+
+  // Test flag secret-shaped argument
+  const resFlag = child.spawnSync(process.execPath, [runnerScript, `--secret=${fakeSecretDSN}`], {
+    encoding: 'utf8',
+  });
+  assert.equal(resFlag.status, 2);
+  assert.equal(resFlag.stderr.includes('super_secret_password_12345'), false, 'must not echo secret password in unknown flag error');
+  assert.equal(resFlag.stderr.includes(fakeSecretDSN), false, 'must not echo secret DSN in unknown flag error');
+  const parsedFlag = JSON.parse(resFlag.stderr);
+  assert.equal(parsedFlag.reason, 'UNKNOWN_FLAG_REJECTED');
+});
+
+// ----- 9. Direct-Core Execution Boundary & Transport Isolation Regressions -----
+test('Direct-core regression: Profile 4346 with valid packet, valid transport, executionEnabled=true, allowExecute=true fails closed with ZERO transport method calls because P4 execution is not authorized', async () => {
+  let lockAcquired = 0;
+  let txCalls = 0;
+  let applyCalls = 0;
+  let verifyCalls = 0;
+  let ledgerCalls = 0;
+
+  const transport = {
+    acquireAdvisoryLock: async () => { lockAcquired += 1; return { id: 'lock-1' }; },
+    releaseAdvisoryLock: async () => {},
+    withTransaction: async (fn) => {
+      txCalls += 1;
+      return fn({
+        catalogTableKind: async () => ({ present: false }),
+        verifyCatalog: async () => ({ matched: true }),
+        writeLedger: async () => { ledgerCalls += 1; return { recorded: true }; },
+      });
+    },
+    applyMigration: async () => { applyCalls += 1; return { committed: true }; },
+    verifyCatalog: async () => { verifyCalls += 1; return { matched: true }; },
+    writeLedger: async () => { ledgerCalls += 1; return { recorded: true }; },
+  };
+
   const hubPacket = OP.buildCanonicalPacket('4346');
-  const r = await OP.executeGovernedOperator({ packet: hubPacket });
+  const r = await OP.executeGovernedOperator({
+    packet: hubPacket,
+    transport,
+    executionEnabled: true,
+    allowExecute: true,
+  });
+
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_UNAUTHORIZED));
   assert.equal(r.executionAttempted, false);
   assert.equal(r.oneAttemptBudgetConsumed, false);
+
+  // Assert ZERO transport methods were called
+  assert.equal(lockAcquired, 0, 'Advisory lock must not be acquired');
+  assert.equal(txCalls, 0, 'Transaction must not be opened');
+  assert.equal(applyCalls, 0, 'Migration must not be applied');
+  assert.equal(verifyCalls, 0, 'Catalog must not be verified');
+  assert.equal(ledgerCalls, 0, 'Ledger must not be written');
+});
+
+test('Direct-core regression: authorized head != trusted actual HEAD fails closed with ZERO transport method calls', async () => {
+  let lockAcquired = 0;
+  let txCalls = 0;
+  let applyCalls = 0;
+
+  const transport = {
+    acquireAdvisoryLock: async () => { lockAcquired += 1; return { id: 'lock-1' }; },
+    releaseAdvisoryLock: async () => {},
+    withTransaction: async (fn) => { txCalls += 1; return fn({}); },
+    applyMigration: async () => { applyCalls += 1; return { committed: true }; },
+    verifyCatalog: async () => ({ matched: true }),
+    writeLedger: async () => ({ recorded: true }),
+  };
+
+  // Test with Profile 4282 (which has p4ExecutionAuthorized=true) to test head mismatch in core
+  const packet4282 = OP.buildCanonicalPacket('4282');
+  const fakeHead = 'e'.repeat(40);
+
+  const r = await OP.executeGovernedOperator({
+    packet: packet4282,
+    transport,
+    executionEnabled: true,
+    allowExecute: true,
+    executionHead: fakeHead,
+  });
+
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH));
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+
+  // Assert ZERO transport methods were called
+  assert.equal(lockAcquired, 0, 'Advisory lock must not be acquired on head mismatch');
+  assert.equal(txCalls, 0, 'Transaction must not be opened on head mismatch');
+  assert.equal(applyCalls, 0, 'Migration must not be applied on head mismatch');
+});
+
+test('Direct-core regression: P4-enabled profile with missing execution-head authority fails closed with ZERO transport method calls', async () => {
+  let lockAcquired = 0;
+  let txCalls = 0;
+  let applyCalls = 0;
+  let verifyCalls = 0;
+  let ledgerCalls = 0;
+
+  const transport = {
+    acquireAdvisoryLock: async () => { lockAcquired += 1; return { id: 'lock-1' }; },
+    releaseAdvisoryLock: async () => {},
+    withTransaction: async (fn) => { txCalls += 1; return fn({}); },
+    applyMigration: async () => { applyCalls += 1; return { committed: true }; },
+    verifyCatalog: async () => { verifyCalls += 1; return { matched: true }; },
+    writeLedger: async () => { ledgerCalls += 1; return { recorded: true }; },
+  };
+
+  // Test with Profile 4282 (which has p4ExecutionAuthorized=true)
+  // Ensure NO executionHead option is provided and NO env execution head exists
+  const prevEnv = process.env.LOVEBUD_4282_EXECUTION_HEAD;
+  delete process.env.LOVEBUD_4282_EXECUTION_HEAD;
+
+  try {
+    const packet4282 = OP.buildCanonicalPacket('4282');
+    const r = await OP.executeGovernedOperator({
+      packet: packet4282,
+      transport,
+      executionEnabled: true,
+      allowExecute: true,
+      // NO executionHead argument
+    });
+
+    assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+    assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH));
+    assert.equal(r.executionAttempted, false);
+    assert.equal(r.oneAttemptBudgetConsumed, false);
+
+    // Specifically prove ZERO transport methods were called
+    assert.equal(lockAcquired, 0, 'Advisory lock must not be acquired on missing head authority');
+    assert.equal(txCalls, 0, 'Transaction must not be opened on missing head authority');
+    assert.equal(applyCalls, 0, 'Migration must not be applied on missing head authority');
+    assert.equal(verifyCalls, 0, 'Catalog must not be verified on missing head authority');
+    assert.equal(ledgerCalls, 0, 'Ledger must not be written on missing head authority');
+  } finally {
+    if (prevEnv) process.env.LOVEBUD_4282_EXECUTION_HEAD = prevEnv;
+  }
 });
 
 // ----- helpers -----

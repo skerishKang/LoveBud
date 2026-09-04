@@ -31,6 +31,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const child_process = require('node:child_process');
 
 const GATE_CORE = require('./canonical-schema-adoption-activation-gate-core.cjs');
 
@@ -52,18 +53,21 @@ const CANONICAL_TARGET_IDENTITY = Object.freeze({
 /**
  * Governing adoption lifecycle states:
  * - ACTIVE_AUTHORIZED: Validated and authorized with an explicit central comment.
+ * - ADOPTION_AUTHORIZED_PENDING_EXECUTION: P3 adoption authorized and bound; P4 live execution NOT authorized until CENTRAL grants execution authority.
  * - PENDING_AUTHORIZATION_BINDING: Non-executable pending profile.
  *
  * Future Lifecycle Sequence for Hub Layout:
  *   P2 read-only adoption preflight
  *   → P3 explicit CENTRAL authorization comment
- *   → P3.5 source-only authorization-comment binding patch
+ *   → P3.5 source-only authorization-comment binding patch (ADOPTION_AUTHORIZED_PENDING_EXECUTION)
  *   → exact-head CI
  *   → CENTRAL merge
+ *   → CENTRAL P4 live execution authority with execution head
  *   → P4 governed operator execution
  */
 const LIFECYCLE_STATES = Object.freeze({
   ACTIVE_AUTHORIZED: 'ACTIVE_AUTHORIZED',
+  ADOPTION_AUTHORIZED_PENDING_EXECUTION: 'ADOPTION_AUTHORIZED_PENDING_EXECUTION',
   PENDING_AUTHORIZATION_BINDING: 'PENDING_AUTHORIZATION_BINDING',
 });
 
@@ -72,29 +76,37 @@ const PROFILES = Object.freeze({
     key: '4282',
     issue: 4282,
     lifecycleState: LIFECYCLE_STATES.ACTIVE_AUTHORIZED,
+    p3AuthorizationBound: true,
+    p4ExecutionAuthorized: true,
     activeAuthorizationComment: 5491726186,
     migrationId: '20260812213000_add-tree-appreciation-orders',
     migrationPath: 'db/migrations/20260812213000_add-tree-appreciation-orders.sql',
     migrationSha256: '5332ce91ee1440d3c1bebd0a3b0b5ff9cab0a23612195141bebb94d340ebaad8',
     intendedRelation: 'public.tree_appreciation_orders',
     expectedSchemaFingerprint: 'e7bae9da3a80a035066525ae3f2d780bf4aa97c1ef400d151604e0e1998b8bb1',
+    sourceProvenanceBase: '4126045a8a348119e28689d52d7740c46d872765',
     defaultMain: '4126045a8a348119e28689d52d7740c46d872765',
     envAllowExecute: 'LOVEBUD_4282_ALLOW_EXECUTE',
     envTransportPath: 'LOVEBUD_4282_OPERATOR_TRANSPORT_PATH',
+    envExecutionHead: 'LOVEBUD_4282_EXECUTION_HEAD',
   }),
   '4346': Object.freeze({
     key: '4346',
     issue: 4346,
-    lifecycleState: LIFECYCLE_STATES.PENDING_AUTHORIZATION_BINDING,
-    activeAuthorizationComment: null, // Zero active comment exists currently (NON_EXECUTABLE_PENDING_PROFILE)
+    lifecycleState: LIFECYCLE_STATES.ADOPTION_AUTHORIZED_PENDING_EXECUTION,
+    p3AuthorizationBound: true,
+    p4ExecutionAuthorized: false,
+    activeAuthorizationComment: 5543891263, // P3 adoption authorized under CENTRAL comment 5543891263
     migrationId: '20260828070000_add-tree-hub-layouts',
     migrationPath: 'db/migrations/20260828070000_add-tree-hub-layouts.sql',
     migrationSha256: '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9',
     intendedRelation: 'public.tree_hub_layouts',
     expectedSchemaFingerprint: '199a8d5dc0b21d8a5d0ecaa7a7101cd65b926f2d884682840624388279cc2316',
+    sourceProvenanceBase: '851376c6e3d44a19b9c45ba9de8bc13eff7d06d9',
     defaultMain: '851376c6e3d44a19b9c45ba9de8bc13eff7d06d9',
     envAllowExecute: 'LOVEBUD_4346_ALLOW_EXECUTE',
     envTransportPath: 'LOVEBUD_4346_OPERATOR_TRANSPORT_PATH',
+    envExecutionHead: 'LOVEBUD_4346_EXECUTION_HEAD',
   }),
 });
 
@@ -162,6 +174,8 @@ const STOP_REASONS = Object.freeze({
   STOP_AMBIGUOUS_RETRY_FORBIDDEN: 'STOP_AMBIGUOUS_RETRY_FORBIDDEN',
   STOP_SECRET_OUTPUT_FORBIDDEN: 'STOP_SECRET_OUTPUT_FORBIDDEN',
   STOP_PENDING_AUTHORIZATION_BINDING: 'STOP_PENDING_AUTHORIZATION_BINDING',
+  STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH: 'STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH',
+  STOP_EXECUTION_UNAUTHORIZED: 'STOP_EXECUTION_UNAUTHORIZED',
 });
 
 function isNonEmptyString(v) {
@@ -413,7 +427,10 @@ async function executeGovernedOperator(opts) {
     };
   }
 
+  const profile = resolveProfile(packet) || PROFILES['4282'];
+
   // Operator mode: real apply via the bounded transport.
+  // Validate transport interface structurally first (pure property check, ZERO method calls).
   const tCheck = validateTransport(transport);
   if (!tCheck.ok) {
     return {
@@ -425,7 +442,30 @@ async function executeGovernedOperator(opts) {
     };
   }
 
-  const profile = resolveProfile(packet) || PROFILES['4282'];
+  // Core execution authority gate: P4 live execution must be explicitly authorized
+  if (profile.p4ExecutionAuthorized !== true) {
+    return {
+      decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      stops: [STOP_REASONS.STOP_EXECUTION_UNAUTHORIZED],
+      reason: 'P4_EXECUTION_NOT_AUTHORIZED',
+      executionAttempted: false,
+      oneAttemptBudgetConsumed: false,
+    };
+  }
+
+  // Core exact-head authority gate: execution head authority is mandatory and must be verified before any transport method calls
+  const headAuth = verifyExecutionHeadAuthority(profile, options);
+  if (!headAuth.ok) {
+    return {
+      decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      stops: [headAuth.reason],
+      reason: headAuth.reason,
+      actualExecutionHead: headAuth.actualExecutionHead,
+      centralAuthorizedExecutionHead: headAuth.centralAuthorizedExecutionHead,
+      executionAttempted: false,
+      oneAttemptBudgetConsumed: false,
+    };
+  }
 
   // --- Advisory lock ---
   const lockKey = crypto
@@ -508,10 +548,107 @@ async function executeGovernedOperator(opts) {
       ambiguous: true,
       executionAttempted: true,
       oneAttemptBudgetConsumed: false,
+      retryPermitted: false,
+      attemptStarted: true,
     };
   } finally {
     try { await transport.releaseAdvisoryLock(lockHandle); } catch { /* swallow — disconnect is best-effort */ }
   }
+}
+
+/**
+ * Dynamically resolves the trusted local repository HEAD commit via `git rev-parse HEAD`.
+ * Fails closed (returns null) if git fails or output is not a valid 40-character hex SHA.
+ *
+ * @param {string} [repoRoot]
+ * @returns {string|null}
+ */
+function resolveTrustedLocalRepoHead(repoRoot) {
+  const cwd = repoRoot || ROOT;
+  try {
+    const out = child_process.execFileSync('git', ['rev-parse', 'HEAD'], {
+      cwd,
+      encoding: 'utf8',
+      timeout: 5000,
+      maxBuffer: 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    if (isHex40(out)) {
+      return out.toLowerCase();
+    }
+  } catch {
+    // Fail closed on any execution/process error
+  }
+  return null;
+}
+
+/**
+ * Resolves the CENTRAL-authorized execution head for a given profile.
+ * Precedence: CLI option `options.executionHead` > Environment variable `process.env[profile.envExecutionHead]`.
+ *
+ * @param {object} profile
+ * @param {object} [options]
+ * @returns {string|null}
+ */
+function resolveAuthorizedExecutionHead(profile, options) {
+  if (!profile) return null;
+  const opts = isStrictObject(options) ? options : {};
+  if (typeof opts.executionHead === 'string' && opts.executionHead.trim().length > 0) {
+    return opts.executionHead.trim().toLowerCase();
+  }
+  if (profile.envExecutionHead && process.env[profile.envExecutionHead]) {
+    const envVal = process.env[profile.envExecutionHead].trim();
+    if (envVal.length > 0) {
+      return envVal.toLowerCase();
+    }
+  }
+  return null;
+}
+
+/**
+ * Verifies exact-head authority between local repository HEAD and CENTRAL-authorized head.
+ * Fails closed with STOP reason if either head cannot be resolved, is not 40-hex, or does not match.
+ *
+ * @param {object} profile
+ * @param {object} [options]
+ * @param {string} [repoRoot]
+ * @returns {{ ok: boolean, reason?: string, actualExecutionHead?: string|null, centralAuthorizedExecutionHead?: string|null }}
+ */
+function verifyExecutionHeadAuthority(profile, options, repoRoot) {
+  const actualExecutionHead = resolveTrustedLocalRepoHead(repoRoot);
+  if (!actualExecutionHead || !isHex40(actualExecutionHead)) {
+    return {
+      ok: false,
+      reason: STOP_REASONS.STOP_MAIN_MOVED,
+      actualExecutionHead: null,
+      centralAuthorizedExecutionHead: null,
+    };
+  }
+
+  const centralAuthorizedExecutionHead = resolveAuthorizedExecutionHead(profile, options);
+  if (!centralAuthorizedExecutionHead || !isHex40(centralAuthorizedExecutionHead)) {
+    return {
+      ok: false,
+      reason: STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH,
+      actualExecutionHead,
+      centralAuthorizedExecutionHead: null,
+    };
+  }
+
+  if (actualExecutionHead !== centralAuthorizedExecutionHead) {
+    return {
+      ok: false,
+      reason: STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH,
+      actualExecutionHead,
+      centralAuthorizedExecutionHead,
+    };
+  }
+
+  return {
+    ok: true,
+    actualExecutionHead,
+    centralAuthorizedExecutionHead,
+  };
 }
 
 module.exports = {
@@ -530,6 +667,9 @@ module.exports = {
   evaluateOperatorReadiness,
   validateTransport,
   executeGovernedOperator,
+  resolveTrustedLocalRepoHead,
+  resolveAuthorizedExecutionHead,
+  verifyExecutionHeadAuthority,
   // exported for tests only (pure helpers)
   __pure: { sha256File, isHex40, isSha256Hex },
 };
