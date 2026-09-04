@@ -549,16 +549,16 @@
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
-      "checked_in_gate": "NOT_CHECKED_IN",
-      "live_gate_state": "LIVE_GATE_NOT_INTENDED",
+      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": { "ref": "#4258 canary rollback", "main_sha": "bd1e5fb78490b8693b96652146db1ce57ccd3548" },
+      "last_exact_head_evidence": { "ref": "#4258 reactivation base main; canonical 3-column unique authority repaired (idx_tree_view_dedup_tree_actor_window on tree_id, actor_key, counted_window_start = UNIQUE / VALID / READY / NONPARTIAL; 4-column index preserved); post-repair Modal recovery PASS (HTTP 200, upstream modal, counted true, viewCount 1, Tree match PASS)", "main_sha": "98fa9af1223120d6fc051989601cd7cff1f73815" },
       "modal_retained_by_design": false,
-      "rollback_authority": "no gate checked in; activation requires separate reviewed PR; Modal path restored",
-      "next_action": "Production direct-Neon canary failed (HTTP 502 transaction-failed); gate rollback to Modal is required; zero-mutation DB/runtime forensic follows rollback"
+      "rollback_authority": "wrangler gate var revert via reviewed PR",
+      "next_action": "fresh exact-head CI -> merge only after CENTRAL decision -> fresh exact-main CI -> exact-main Cloudflare Production deployment/provider verification -> separately authorized bounded direct-Neon Product canary -> only then PRODUCTION_LIVE decision"
     },
     {
       "id": "memory-reaction",
