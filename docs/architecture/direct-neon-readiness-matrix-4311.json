@@ -659,7 +659,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "G",
-      "disposition_note": "#4239 recorded SOURCE_MISSING; the helper has since landed on main, superseding G. Adoption/cutover still blocked by #4043 target-identity HOLD and #4282 adoption preflight.",
+      "disposition_note": "#4239's earlier SOURCE_MISSING / target-adoption blockers are superseded: the helper is on main, #4282 canonical schema adoption is completed, and #4257 minimal writer ACL is proven. Production-live status remains pending reviewed gate integration, exact-main deployment/provider verification, and separately authorized Product canary.",
       "last_exact_head_evidence": { "ref": "#4257 minimal writer grant completed; exact 3 privileges (SELECT, INSERT, UPDATE) granted to lb_product_rw_a3f8c2d1 on public.tree_appreciation_orders", "main_sha": "7eb31e9db883134f310f04e8a91248cad19a4a83" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
