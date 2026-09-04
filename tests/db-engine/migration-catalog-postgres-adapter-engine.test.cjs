@@ -11,6 +11,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const fs = require('node:fs');
+const crypto = require('node:crypto');
 const harness = require('./helpers/postgres-disposable-harness.cjs');
 const adapter = require('../../scripts/migration-catalog-postgres-adapter-core.cjs');
 const {
@@ -492,4 +494,206 @@ test('pipeline: adapter evidence → inactive candidate → same-evidence match 
 
     await adapter.assertNoCatalogMutation(opts(ctx));
   });
+});
+
+// ---------------------------------------------------------------------------
+// Issue #4346 P2B: Deterministic Hub Layout Schema Fingerprint on PostgreSQL 17.4
+// Dual independent clean disposable runs + exact structural assertions
+// ---------------------------------------------------------------------------
+test('Issue #4346: deterministic Hub Layout schema fingerprint derivation on PostgreSQL 17.4', {
+  concurrency: false,
+}, async () => {
+  const HUB_MIGRATION_PATH = path.join(
+    ROOT,
+    'db',
+    'migrations',
+    '20260828070000_add-tree-hub-layouts.sql'
+  );
+  const EXPECTED_MIGRATION_SHA256 =
+    '64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9';
+
+  // 1. Verify exact migration file bytes and checksum
+  const migrationRaw = fs.readFileSync(HUB_MIGRATION_PATH);
+  const calculatedSha = crypto.createHash('sha256').update(migrationRaw).digest('hex');
+  assert.equal(
+    calculatedSha,
+    EXPECTED_MIGRATION_SHA256,
+    'exact Hub Layout migration file SHA-256 match'
+  );
+
+  const PREREQUISITE_SQL = path.join(
+    __dirname,
+    'fixtures',
+    'hub-layout-fingerprint-4346',
+    'prerequisite.sql'
+  );
+
+  const HUB_OBJECTS = Object.freeze([
+    {
+      schema: 'public',
+      object_name: 'tree_hub_layouts',
+      object_kind: 'TABLE',
+    },
+  ]);
+
+  async function executeDisposableRun(runLabel) {
+    let runFingerprint = null;
+    await withDisposableDb(runLabel, PREREQUISITE_SQL, async (ctx) => {
+      // Assert PostgreSQL version
+      const verRes = await ctx.client.query('SHOW server_version_num');
+      assert.equal(
+        String(verRes.rows[0].server_version_num),
+        '170004',
+        `${runLabel}: exact PostgreSQL 17.4 required`
+      );
+
+      // Apply exact migration SQL
+      const applyResult = ctx.runSql(HUB_MIGRATION_PATH);
+      assert.equal(
+        applyResult && applyResult.status,
+        0,
+        `${runLabel}: Hub Layout migration apply failed: ${(applyResult && (applyResult.stderr || applyResult.stdout)) || ''}`
+      );
+
+      // --- Structural Parity Assertions ---
+      // 1. Columns
+      const colsRes = await ctx.client.query(`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'tree_hub_layouts'
+        ORDER BY ordinal_position
+      `);
+      assert.deepEqual(
+        colsRes.rows.map((r) => ({
+          name: r.column_name,
+          type: r.data_type,
+          nullable: r.is_nullable,
+          default: r.column_default,
+        })),
+        [
+          { name: 'id', type: 'text', nullable: 'NO', default: null },
+          { name: 'tree_id', type: 'text', nullable: 'NO', default: null },
+          { name: 'revision', type: 'integer', nullable: 'NO', default: null },
+          { name: 'layout_mode', type: 'text', nullable: 'NO', default: null },
+          { name: 'manual_positions', type: 'jsonb', nullable: 'NO', default: null },
+          { name: 'created_at', type: 'timestamp with time zone', nullable: 'NO', default: 'now()' },
+          { name: 'updated_at', type: 'timestamp with time zone', nullable: 'NO', default: 'now()' },
+        ],
+        `${runLabel}: columns parity`
+      );
+
+      // 2. Constraints: PK, FK (ON DELETE CASCADE), NO UNIQUE(tree_id, revision)
+      const consRes = await ctx.client.query(`
+        SELECT con.conname, con.contype, con.confdeltype,
+               pg_get_constraintdef(con.oid, true) AS definition
+        FROM pg_constraint con
+        JOIN pg_class c ON c.oid = con.conrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'tree_hub_layouts'
+        ORDER BY con.conname
+      `);
+      const consByName = new Map(consRes.rows.map((r) => [r.conname, r]));
+
+      // PK
+      assert.ok(consByName.has('tree_hub_layouts_pkey'), `${runLabel}: PK exists`);
+      assert.equal(consByName.get('tree_hub_layouts_pkey').contype, 'p');
+      assert.equal(consByName.get('tree_hub_layouts_pkey').definition, 'PRIMARY KEY (id)');
+
+      // FK
+      assert.ok(consByName.has('tree_hub_layouts_tree_id_fkey'), `${runLabel}: FK exists`);
+      const fk = consByName.get('tree_hub_layouts_tree_id_fkey');
+      assert.equal(fk.contype, 'f');
+      assert.equal(fk.confdeltype, 'c', `${runLabel}: FK ON DELETE CASCADE`);
+      assert.equal(
+        fk.definition,
+        'FOREIGN KEY (tree_id) REFERENCES trees(id) ON DELETE CASCADE'
+      );
+
+      // Assert NO UNIQUE(tree_id, revision)
+      const uniqueCons = consRes.rows.filter((r) => r.contype === 'u');
+      assert.equal(uniqueCons.length, 0, `${runLabel}: UNIQUE(tree_id, revision) must be ABSENT`);
+
+      // 3. Triggers: NO non-internal triggers
+      const trgRes = await ctx.client.query(`
+        SELECT tgname FROM pg_trigger
+        JOIN pg_class c ON c.oid = tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'tree_hub_layouts'
+          AND NOT tgisinternal
+      `);
+      assert.equal(trgRes.rows.length, 0, `${runLabel}: non-internal triggers must be 0`);
+
+      // 4. RLS
+      const rlsRes = await ctx.client.query(`
+        SELECT relrowsecurity, relforcerowsecurity
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relname = 'tree_hub_layouts'
+      `);
+      assert.equal(rlsRes.rows[0].relrowsecurity, false, `${runLabel}: RLS must be disabled`);
+      assert.equal(rlsRes.rows[0].relforcerowsecurity, false, `${runLabel}: RLS must not be forced`);
+
+      // 5. Indexes: Only the implicit PK index
+      const idxRes = await ctx.client.query(`
+        SELECT indexname, indexdef FROM pg_indexes
+        WHERE schemaname = 'public' AND tablename = 'tree_hub_layouts'
+      `);
+      assert.deepEqual(
+        idxRes.rows.map((r) => r.indexname),
+        ['tree_hub_layouts_pkey'],
+        `${runLabel}: unexpected extra indexes must be 0`
+      );
+
+      // 6. Sequence dependency: NONE (id is application-generated text)
+      const seqRes = await ctx.client.query(`
+        SELECT sequence_name FROM information_schema.sequences
+        WHERE sequence_schema = 'public'
+      `);
+      assert.equal(seqRes.rows.length, 0, `${runLabel}: sequences must be 0`);
+
+      // --- Collect Catalog Evidence via repository adapter ---
+      const evidence = await adapter.collectCatalogEvidence({
+        connection: connectionFromCtx(ctx),
+        objects: HUB_OBJECTS,
+        roleMapping: { lovebud_ci: 'APPLICATION' },
+        contract: CONTRACT,
+      });
+
+      assert.equal(evidence.objects.length, 1, `${runLabel}: evidence objects count`);
+      assert.equal(evidence.objects[0].name, 'table:public.tree_hub_layouts');
+      const fingerprint = evidence.objects[0].fingerprint;
+
+      assert.ok(
+        fingerprint && fingerprint.startsWith('sha256:'),
+        `${runLabel}: fingerprint format`
+      );
+      assert.notEqual(
+        fingerprint,
+        'sha256:' + '0'.repeat(64),
+        `${runLabel}: fingerprint must be non-zero`
+      );
+
+      runFingerprint = fingerprint;
+    });
+
+    return runFingerprint;
+  }
+
+  // Execute RUN #1 on fresh disposable database
+  const run1Fp = await executeDisposableRun('hl_run1');
+  assert.ok(run1Fp, 'RUN1 fingerprint produced');
+
+  // Execute RUN #2 on separate fresh disposable database
+  const run2Fp = await executeDisposableRun('hl_run2');
+  assert.ok(run2Fp, 'RUN2 fingerprint produced');
+
+  // Assert deterministic equality
+  assert.equal(
+    run1Fp,
+    run2Fp,
+    'HOLD_DETERMINISTIC_FINGERPRINT_DERIVATION_GAP: dual run fingerprints must match'
+  );
+
+  // Output the required sanitized marker to stdout
+  process.stdout.write(`\nLOVEBUD_4346_HUB_LAYOUT_EXPECTED_FINGERPRINT=${run1Fp}\n`);
 });
