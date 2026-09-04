@@ -540,21 +540,25 @@
       "source_refs": ["#4258"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_VIEW_WRITE_RUNTIME",
-      "required_objects": { "tree_view_dedup_events": ["INSERT"], "tree_social_counts": ["INSERT", "UPDATE", "SELECT"], "trees": ["SELECT"] },
+      "required_objects": {
+        "tree_view_dedup_events": ["INSERT", "SELECT"],
+        "tree_social_counts": ["INSERT", "UPDATE", "SELECT"],
+        "trees": ["SELECT", "UPDATE"]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
-      "privilege_state": "PRIVILEGE_UNPROVEN",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
-      "checked_in_gate": "NOT_CHECKED_IN",
-      "live_gate_state": "LIVE_GATE_NOT_INTENDED",
+      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
+      "last_exact_head_evidence": { "ref": "#4258 exact-main evidence", "main_sha": "dce05c15321ef0eb188fb269f6e52fb5315f0651" },
       "modal_retained_by_design": false,
-      "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
-      "next_action": "Complete #4258 fresh privilege-readiness audit (tree_view_dedup_events authority)"
+      "rollback_authority": "wrangler gate var revert via reviewed PR",
+      "next_action": "fresh live Cloudflare provider read + Production smoke before PRODUCTION_LIVE classification"
     },
     {
       "id": "memory-reaction",
