@@ -644,22 +644,26 @@
       "source_refs": ["#4043", "#4257", "#4282"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_APPRECIATION_ORDER_WRITE_RUNTIME",
-      "required_objects": { "tree_appreciation_orders": ["INSERT", "SELECT"], "trees": ["SELECT"], "memories": ["SELECT"] },
+      "required_objects": {
+        "tree_appreciation_orders": ["SELECT", "INSERT", "UPDATE"],
+        "trees": ["SELECT", "UPDATE"],
+        "memories": ["SELECT", "UPDATE"]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
-      "privilege_state": "PRIVILEGE_UNPROVEN",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
-      "checked_in_gate": "NOT_CHECKED_IN",
-      "live_gate_state": "LIVE_GATE_NOT_INTENDED",
+      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
       "ephemeral_diagnostic_support": "DEDICATED_ISSUE_PENDING",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "G",
       "disposition_note": "#4239 recorded SOURCE_MISSING; the helper has since landed on main, superseding G. Adoption/cutover still blocked by #4043 target-identity HOLD and #4282 adoption preflight.",
-      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
+      "last_exact_head_evidence": { "ref": "#4257 minimal writer grant completed; exact 3 privileges (SELECT, INSERT, UPDATE) granted to lb_product_rw_a3f8c2d1 on public.tree_appreciation_orders", "main_sha": "7eb31e9db883134f310f04e8a91248cad19a4a83" },
       "modal_retained_by_design": false,
-      "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
-      "next_action": "Resolve #4043 exact target identity, then complete #4282 adoption packet"
+      "rollback_authority": "wrangler gate var revert via reviewed PR",
+      "next_action": "fresh exact-head CI -> merge only after CENTRAL decision -> fresh exact-main CI -> exact-main Cloudflare Production deployment/provider verification -> separately authorized bounded direct-Neon Product canary -> only then PRODUCTION_LIVE decision"
     }
   ]
 }
