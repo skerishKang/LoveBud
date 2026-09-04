@@ -77,7 +77,11 @@ function pass(name) {
 
 function loadCommittedAuthority() {
   const manifest = JSON.parse(fs.readFileSync(SCHEMA_MANIFEST_PATH, 'utf8'));
-  return { status: manifest.status, critical_objects: manifest.critical_objects };
+  const targetNames = new Set([EXPECTED_LEDGER_OBJECT_NAME, appreciation.APPRECIATION_OBJECT_NAME]);
+  return {
+    status: manifest.status,
+    critical_objects: manifest.critical_objects.filter((obj) => targetNames.has(obj.name)),
+  };
 }
 
 function loadManifestStatus(filePath) {

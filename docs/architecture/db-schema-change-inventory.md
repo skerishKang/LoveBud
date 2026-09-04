@@ -132,7 +132,7 @@ By category:
 | `catalog_adapter` | 5 |
 | `direct_connect_diagnostic` | 4 |
 | `seed_or_data_script` | 12 |
-| `test_fixture_sql` | 8 |
+| `test_fixture_sql` | 9 |
 | `db_engine_test` | 7 |
 | `ci_workflow` | 1 |
 | `canonical_stream` | 8 |
@@ -251,7 +251,7 @@ Flags: 5 entries are `destructive`; 20 entries are `production_capable` (technic
 | `scripts/verify-db.cjs` | postgres | PROHIBITED_FOR_NEW_USE | no | no |
 | `scripts/verify-db.js` | postgres | PROHIBITED_FOR_NEW_USE | no | no |
 
-### test_fixture_sql (8)
+### test_fixture_sql (9)
 
 | Path | Engine | Canonical status | Destructive | Prod-capable |
 | --- | --- | --- | --- | --- |
@@ -263,6 +263,7 @@ Flags: 5 entries are `destructive`; 20 entries are `production_capable` (technic
 | `tests/db-engine/fixtures/tree-comments-legacy.sql` | postgres_ephemeral_ci | TEST_FIXTURE_ONLY | no | no |
 | `tests/db-engine/fixtures/trees-schema-damaged.sql` | postgres_ephemeral_ci | TEST_FIXTURE_ONLY | no | no |
 | `tests/db-engine/fixtures/migration-catalog-postgres-adapter/synthetic-baseline.sql` | postgres_ephemeral_ci | TEST_FIXTURE_ONLY | no | no |
+| `tests/db-engine/fixtures/hub-layout-fingerprint-4346/prerequisite.sql` | postgres_ephemeral_ci | TEST_FIXTURE_ONLY | no | no |
 
 ### db_engine_test (7)
 

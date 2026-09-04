@@ -15,8 +15,7 @@
     },
     {
       "name": "table:public.tree_hub_layouts",
-      "fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-      "provisional_fingerprint": true
+      "fingerprint": "sha256:199a8d5dc0b21d8a5d0ecaa7a7101cd65b926f2d884682840624388279cc2316"
     }
   ],
   "adoption_rule": "No live catalog snapshot or historical application record is committed here. A separately approved read-only adoption procedure must create sanitized object fingerprints before ACTIVE status is allowed.",

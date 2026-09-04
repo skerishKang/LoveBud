@@ -1136,6 +1136,21 @@
       "notes": "Disposable CI fixture building synthetic allowlisted objects to prove the read-only catalog adapter fingerprinting. Ephemeral only."
     },
     {
+      "path": "tests/db-engine/fixtures/hub-layout-fingerprint-4346/prerequisite.sql",
+      "category": "test_fixture_sql",
+      "engine": "postgres_ephemeral_ci",
+      "operations": ["CREATE TABLE"],
+      "canonical_status": "TEST_FIXTURE_ONLY",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "test fixtures / #4346 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "test_harness",
+      "automation": "automatic",
+      "ledger_candidate": "no",
+      "notes": "Disposable CI fixture creating minimal public.trees(id TEXT PRIMARY KEY) table to satisfy FK constraint when deriving deterministic schema fingerprint for table:public.tree_hub_layouts on PostgreSQL 17.4 (#4346). Ephemeral only."
+    },
+    {
       "path": "tests/db-engine/tree-comments-reconcile-postgres.test.cjs",
       "category": "db_engine_test",
       "engine": "postgres_ephemeral_ci",
