@@ -697,3 +697,53 @@ test('Issue #4346: deterministic Hub Layout schema fingerprint derivation on Pos
   // Output the required sanitized marker to stdout
   process.stdout.write(`\nLOVEBUD_4346_HUB_LAYOUT_EXPECTED_FINGERPRINT=${run1Fp}\n`);
 });
+
+// Issue #4346: disposable PostgreSQL 17.4 target presence runner contract subtest
+// Proves TARGET_ABSENT before migration and TARGET_PRESENT with exact fingerprint match after migration
+test('Issue #4346: disposable PostgreSQL 17.4 target presence runner contract subtest', {
+  concurrency: false,
+}, async () => {
+  const runner = require('../../scripts/run-production-readonly-target-presence.cjs');
+  const targetProfile = runner.resolveTargetProfile('4346');
+  const PREREQUISITE_SQL = path.join(
+    __dirname,
+    'fixtures',
+    'hub-layout-fingerprint-4346',
+    'prerequisite.sql'
+  );
+  const HUB_MIGRATION_PATH = path.join(
+    ROOT,
+    'db',
+    'migrations',
+    '20260828070000_add-tree-hub-layouts.sql'
+  );
+
+  await withDisposableDb('hl_presence_test', PREREQUISITE_SQL, async (ctx) => {
+    // 1. Before migration: public.tree_hub_layouts is ABSENT
+    const absentResult = await runner.inspectTargetPresenceWithClient(
+      ctx.client,
+      targetProfile,
+      new Map([['lovebud_ci', 'APPLICATION'], ['public', 'PUBLIC']]),
+      CONTRACT
+    );
+    assert.equal(absentResult.presence, 'TARGET_ABSENT');
+    assert.equal(absentResult.relation, null);
+    assert.equal(absentResult.fingerprint, null);
+
+    // 2. Apply Hub Layout migration
+    const applyResult = ctx.runSql(HUB_MIGRATION_PATH);
+    assert.equal(applyResult && applyResult.status, 0, 'apply Hub Layout migration');
+
+    // 3. After migration: public.tree_hub_layouts is PRESENT and matches expected fingerprint
+    const presentResult = await runner.inspectTargetPresenceWithClient(
+      ctx.client,
+      targetProfile,
+      new Map([['lovebud_ci', 'APPLICATION'], ['public', 'PUBLIC']]),
+      CONTRACT
+    );
+    assert.equal(presentResult.presence, 'TARGET_PRESENT');
+    assert.ok(presentResult.relation, 'relation metadata present');
+    assert.equal(presentResult.fingerprintMatch, true, 'exact fingerprint match');
+    assert.equal(presentResult.fingerprint, targetProfile.expectedFingerprint);
+  });
+});

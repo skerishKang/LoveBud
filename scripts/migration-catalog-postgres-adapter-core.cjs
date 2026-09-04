@@ -231,6 +231,48 @@ function classifyRelationRows(rows, expectedKind) {
   };
 }
 
+/**
+ * Pure classifier for target presence relation lookup rows (#4346).
+ * Distinguishes 0 rows (TARGET_ABSENT) vs 1 row (TARGET_PRESENT).
+ * Fails closed on duplicate rows, unsupported relkind, or kind mismatch.
+ *
+ * @param {Array} rows
+ * @param {string} expectedKind
+ * @returns {{ presence: 'TARGET_ABSENT' | 'TARGET_PRESENT', relation: object | null }}
+ */
+function classifyTargetPresenceRelationRows(rows, expectedKind) {
+  if (!Array.isArray(rows)) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_CATALOG_SHAPE_INVALID, { field: 'relation' });
+  }
+  if (rows.length === 0) {
+    return {
+      presence: 'TARGET_ABSENT',
+      relation: null,
+    };
+  }
+  if (rows.length > 1) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_CATALOG_SHAPE_INVALID, { field: 'relation' });
+  }
+  const row = rows[0];
+  const actualKind = objectKindFromRelkind(row.relkind);
+  if (!actualKind) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_UNSUPPORTED_RELATION);
+  }
+  if (actualKind !== expectedKind) {
+    fail(ADAPTER_FAILURE.CATALOG_ADAPTER_OBJECT_KIND_MISMATCH);
+  }
+  return {
+    presence: 'TARGET_PRESENT',
+    relation: {
+      oid: row.oid,
+      relkind: row.relkind,
+      rls_enabled: Boolean(row.rls_enabled),
+      rls_forced: Boolean(row.rls_forced),
+      object_kind: actualKind,
+    },
+  };
+}
+
 function mapFkAction(code) {
   switch (code) {
     case 'a':
@@ -986,6 +1028,7 @@ module.exports = {
   parseServerVersionNum,
   objectKindFromRelkind,
   classifyRelationRows,
+  classifyTargetPresenceRelationRows,
   mapColumnRows,
   mapConstraintRows,
   mapIndexRows,
@@ -993,6 +1036,7 @@ module.exports = {
   mapGrantRows,
   mapPrivilegeType,
   assembleRawCatalogObject,
+  fetchRawObject,
   toCanonicalMetadata,
   canonicalObjectName,
 };
