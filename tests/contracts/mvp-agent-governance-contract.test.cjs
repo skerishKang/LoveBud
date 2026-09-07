@@ -74,11 +74,11 @@ test('canonical governance declares all owner-approved provenance', () => {
   assert.ok(src.includes(PATHS.uiLane));
 });
 
-test('canonical governance lists exactly eight hard standing rules', () => {
+test('canonical governance lists exactly ten hard standing rules', () => {
   const src = read(PATHS.governance);
   const hard = section(src, '## Hard standing rules', '## CI classification');
   const numbered = hard.match(/^\d+\./gm) || [];
-  assert.equal(numbered.length, 8, `Expected 8 hard rules, found ${numbered.length}`);
+  assert.equal(numbered.length, 10, `Expected 10 hard rules, found ${numbered.length}`);
 
   assert.match(hard, /secret|credential|private payload/i);
   assert.match(hard, /another worker|other worker/i);
@@ -98,6 +98,10 @@ test('canonical governance lists exactly eight hard standing rules', () => {
   assert.match(hard, /squash is the default merge method unless a narrower task contract says otherwise/i);
   assert.match(hard, /Never close #1882/i);
   assert.match(hard, /Refs #1882/);
+  assert.match(hard, /reversible Production correction.*rollback point.*immediate post-change verification.*before mutation/is);
+  assert.match(hard, /task-specific explicit Production approval requirement remains a hard boundary.*does not manufacture missing authority/is);
+  assert.match(hard, /CI_EXECUTED_FAILURE` and `CI_PENDING_EXECUTION` remain \*\*merge blockers\*\*/);
+  assert.match(hard, /not automatically Production-correction blockers when a separate Production action is already authorized/i);
 });
 
 test('canonical governance defines exact CI classifications', () => {
@@ -130,7 +134,9 @@ test('canonical governance defines separated Web roles with conditional Local Va
   assert.match(src, /separate Web Developer or implementation owner/i);
   assert.match(src, /Local Validation only when required/i);
   assert.match(src, /Web CTO independent final review/i);
-  assert.match(src, /same production change.*implemented and finally approved/is);
+  assert.match(src, /same production source change.*implemented and finally merged.*unless task-specific owner authority explicitly permits it/is);
+  assert.match(src, /does not require a reversible Production incident correction to wait for a separate staging or test worker/i);
+  assert.match(src, /separately authorized and rollback-ready.*use the Production-first lane/i);
 });
 
 test('UI Rapid Iteration Lane defines U0 through U3 and risk boundaries', () => {
