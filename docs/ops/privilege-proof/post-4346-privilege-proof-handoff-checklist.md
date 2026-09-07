@@ -20,7 +20,7 @@ execution phases and states what remains excluded. It proves nothing itself.
 ## 0. Scope and standing rules
 
 - Every SQL fragment below is a **template**. Nothing in this document has been run.
-- Catalog metadata only. No product row bodies, no DSNs, no role credentials, no
+- Catalog metadata only. No product row bodies, no connection strings, no role credentials, no
   connection strings may ever appear in executor output routed back to issues.
 - Each lane returns **exactly one** decision. Never bundle lanes into a single grant.
 - Writer lane target: `lb_product_rw_a3f8c2d1` (literal, packet §3).
@@ -115,11 +115,16 @@ execution phases and states what remains excluded. It proves nothing itself.
 
 ## PHASE 3 — Minimal GRANT variants (templates only; only if separately authorized)
 
-- [ ] P3.1 **#4255** (single variant; trim to relation(s) proven missing in P1.3):
+- [ ] P3.1 **#4255** (single minimal variant, aligned with merged #4353 packet):
 
   ```sql
-  GRANT SELECT ON public.trees, public.tree_hub_layouts TO <runtime_read_role>;
+  GRANT SELECT ON public.tree_hub_layouts TO <runtime_read_role>;
   ```
+
+  `public.trees` SELECT is a required-present proof/baseline guard (P1.3), **not** a
+  #4255 mutation template. If `SELECT` on `public.trees` is missing, return
+  `HOLD_RUNTIME_ROLE_IDENTITY_GAP` or `UNKNOWN_STOP` and escalate — do **not** issue
+  a bundled #4255 GRANT.
 
 - [ ] P3.2 **#4256** (exact variants, packet §10 lines 337–349):
 
@@ -135,16 +140,24 @@ execution phases and states what remains excluded. It proves nothing itself.
   GRANT INSERT ON public.tree_hub_layouts TO lb_product_rw_a3f8c2d1;
   ```
 
-- [ ] P3.3 **#4254**: no GRANT template may be executed while
-  `HOLD_4283_OR_4311_BLOCKER` stands. Post-#4283 scope would be `SELECT` on
-  `public.memories`, `public.trees`, `public.reactions` for the resolved runtime-read
-  role — trim to the missing subset only.
+- [ ] P3.3 **#4254**: #4254 remains blocked while `HOLD_4283_OR_4311_BLOCKER` stands.
+  After #4283 clears, the only #4254 minimal extension candidate is:
+
+  ```sql
+  GRANT SELECT ON public.reactions TO <runtime_read_role>;
+  ```
+
+  `public.memories` and `public.trees` are required-present proof/baseline guards
+  (P1.3), **not** #4254 mutation templates.
 
 ## PHASE 4 — Exact rollback mirror variants (templates only)
 
 - [ ] P4.1 Mirrors (1:1 inverse of the specific variant applied, never broader):
 
   ```sql
+  -- #4255 rollback only (mirror of the P3.1 minimal variant):
+  REVOKE SELECT ON public.tree_hub_layouts FROM <runtime_read_role>;
+
   -- V1 exact rollback:
   REVOKE SELECT, INSERT ON public.tree_hub_layouts FROM lb_product_rw_a3f8c2d1;
   -- (+ REVOKE SELECT ON public.trees only if granted in this variant)
@@ -154,6 +167,9 @@ execution phases and states what remains excluded. It proves nothing itself.
 
   -- V3 exact rollback (must NOT revoke SELECT — it pre-existed the extension):
   REVOKE INSERT ON public.tree_hub_layouts FROM lb_product_rw_a3f8c2d1;
+
+  -- #4254 rollback only (mirror of the sole post-#4283 candidate, P3.3):
+  REVOKE SELECT ON public.reactions FROM <runtime_read_role>;
   ```
 
 - [ ] P4.2 Standing rules:
@@ -179,7 +195,7 @@ Excluded until separately authorized, each by its own lane/issue:
 
 A live run of this checklist must report per lane: phase outcomes, the single decision
 from PHASE 2, the exact variant applied (if any), the paired rollback mirror, and stop
-codes verbatim from packet §12. Output must contain no DSN, no row bodies, no secrets.
+codes verbatim from packet §12. Output must contain no connection strings, no row bodies, no secrets.
 
 ## Non-execution statement
 
