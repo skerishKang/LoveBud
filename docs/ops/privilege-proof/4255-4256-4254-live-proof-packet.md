@@ -1,5 +1,10 @@
 # Live Privilege Proof Packet — #4255 / #4256 / #4254
 
+Title clarification: this is a **prepared proof plan and template set**, not proof output.
+"Live privilege proof packet" means the exact read-only catalog SQL, checks, and
+grant/rollback templates Web CTO may execute later. This document itself contains zero
+executed privilege results, zero live observations, and grants nothing.
+
 Docs-only authority packet prepared by KILO2 for Web CTO live privilege proof planning.
 
 ```text
@@ -56,6 +61,23 @@ Additional source facts:
 - Reaction writes exist only in the separate `LB_MEMORY_REACTION_WRITE_RUNTIME` lane on
   the writer role; #4254 requires read-only aggregation.
 
+### Matrix divergence note
+
+This section-2 matrix is **source-derived**. Lane dispositions in
+`docs/architecture/DIRECT_NEON_READINESS_MATRIX_4311.md` are **execution-evidence-derived
+snapshots** (#4255/#4256 `PRIVILEGE_UNPROVEN`; #4254 `PRIVILEGE_BLOCKED` pending the #4283
+unmapped-grantee reconciliation). The two matrices answer different questions and may
+diverge. Rules:
+
+- Re-derive this source matrix against a fresh current-main head immediately before any
+  live proof; the SHA pinned above is a preparation-time snapshot, not an execution-time
+  authority.
+- If the re-derived source matrix diverges from this document or from the current #4311
+  matrix, STOP and report the divergence; do not silently prefer either side.
+- A source matrix showing a lane as "provable" never overrides #4311's
+  `PRIVILEGE_BLOCKED` classification: #4254 remains blocked until the #4283
+  reconciliation completes, regardless of what this matrix shows.
+
 ## 3. Role identity placeholders
 
 ```text
@@ -88,12 +110,16 @@ DATABASE = neondb / RESOURCE_CLASS = CANONICAL_PRODUCT_AUTHORITY
 #4255 (`<runtime_read_role>`):
 
 ```text
+Lane dependencies (route-derived, Section 2 — the only privileges the #4255 route needs):
+SELECT public.trees                    = true   (also #4112 baseline)
+SELECT public.tree_hub_layouts         = true|false -> drives this lane's decision
+
+Pre-existing shared-role baseline (regression guards for the shared read role,
+NOT #4255 route dependencies; verify present so the shared role is confirmed unbroken):
 CONNECT neondb                         = true   (#4112 baseline)
 USAGE public                           = true   (#4112 baseline)
-SELECT public.trees                    = true   (#4112 baseline)
 SELECT public.memories                 = true   (#4112 baseline; other read routes)
 SELECT public.tree_social_counts       = true   (#4131 baseline; other read routes)
-SELECT public.tree_hub_layouts         = true|false -> drives this lane's decision
 ```
 
 #4256 (`<writer_role>`):
@@ -304,14 +330,29 @@ SELECT has_function_privilege(:'role','pg_catalog.pg_advisory_xact_lock(bigint)'
 ```
 
 ```sql
--- Minimal extension (choose exactly one; only if proven missing; separately authorized):
-GRANT SELECT, INSERT ON public.tree_hub_layouts TO <writer_role>;  -- both missing
-GRANT SELECT ON public.tree_hub_layouts TO <writer_role>;          -- only SELECT missing
-GRANT INSERT ON public.tree_hub_layouts TO <writer_role>;          -- only INSERT missing
+-- Minimal extension: choose exactly ONE variant, only if the capability is proven
+-- missing, and only when separately authorized by Web CTO. Each variant has its own
+-- 1:1 inverse rollback. Record the applied variant ID in the proof record.
 
--- Exact rollback (revoke ONLY the capability actually added):
+-- V1 (both SELECT and INSERT missing):
+GRANT SELECT, INSERT ON public.tree_hub_layouts TO <writer_role>;
+-- V1 exact rollback:
 REVOKE SELECT, INSERT ON public.tree_hub_layouts FROM <writer_role>;
+
+-- V2 (only SELECT missing; INSERT already present):
+GRANT SELECT ON public.tree_hub_layouts TO <writer_role>;
+-- V2 exact rollback (must NOT revoke INSERT — it pre-existed the extension):
+REVOKE SELECT ON public.tree_hub_layouts FROM <writer_role>;
+
+-- V3 (only INSERT missing; SELECT already present):
+GRANT INSERT ON public.tree_hub_layouts TO <writer_role>;
+-- V3 exact rollback (must NOT revoke SELECT — it pre-existed the extension):
+REVOKE INSERT ON public.tree_hub_layouts FROM <writer_role>;
 ```
+
+Rollback is the exact 1:1 inverse of the applied variant: revoke only what this
+extension added, never a capability already present before it (pre-existing baseline
+revocation would break the #4157/#4257 writer baseline and unrelated lanes).
 
 Never re-grant a present capability; never bundle UPDATE/DELETE/TRUNCATE/sequence;
 never drop the shared writer role. If `advisory_lock_execute = false`:
