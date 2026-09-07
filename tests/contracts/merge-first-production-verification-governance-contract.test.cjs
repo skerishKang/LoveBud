@@ -82,15 +82,38 @@ test('workflow contains current risk-proportional sections', () => {
     '## 5. CI',
     '## 6. Optional pre-merge browser evidence',
     '## 7. Post-merge Production verification',
-    '## 8. Production outcomes',
-    '## 9. Merge rules',
-    '## 10. Role allocation',
-    '## 11. Issue handling',
-    '## 12. Report template',
-    '## 13. Governance boundary',
+    '## 8. Production-first correction outcomes',
+    '## 9. Ordinary post-merge Production outcomes',
+    '## 10. Merge rules',
+    '## 11. Role allocation',
+    '## 12. Issue handling',
+    '## 13. Report templates',
+    '## 14. Governance boundary',
   ]) {
     assert.ok(src.includes(heading), `Missing workflow heading: ${heading}`);
   }
+  assert.match(src, /Production correction sequencing:\*\* `PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md`/);
+});
+
+test('workflow separates ordinary source integration from Production-first correction flows', () => {
+  const src = read(PATHS.workflow);
+  assert.match(src, /Ordinary source-integration flow:/);
+  assert.match(src, /Separately authorized reversible Production-correction flow:/);
+  assert.match(src, /capture rollback point/);
+  assert.match(src, /immediate post-change verification/);
+  assert.match(src, /rollback first if materially unhealthy/);
+  assert.match(src, /unfinished CI does not by itself remove independently granted Production-correction authority/i);
+  assert.match(src, /does \*\*not\*\* require a separately authorized reversible Production correction to wait for source merge, local validation, preview, staging, or CI completion/i);
+});
+
+test('workflow defines Production-first correction outcomes with rollback-first failure handling', () => {
+  const src = read(PATHS.workflow);
+  const outcomes = section(src, '## 8. Production-first correction outcomes', '## 9. Ordinary post-merge Production outcomes');
+  assert.match(outcomes, /rollback immediately/);
+  assert.match(outcomes, /verify recovery/);
+  assert.match(outcomes, /Do not leave Production broken merely to collect more diagnostics when rollback is available/i);
+  assert.match(outcomes, /Stop before mutation and establish a credible recovery strategy/i);
+  assert.match(outcomes, /record the before-state, mutation, rollback point, and post-change verification/i);
 });
 
 test('current flow is focused pre-merge evidence followed by Production confirmation', () => {
@@ -145,8 +168,10 @@ test('U2 and U3 retain structural and runtime evidence', () => {
 test('backend, data, auth, and security remain strict', () => {
   const src = read(PATHS.workflow);
   const strict = section(src, '### Backend/data/auth/security', '## 4. Test selection principle');
-  assert.match(strict, /strict full evidence/i);
+  assert.match(strict, /strict source-integration evidence/i);
   assert.match(strict, /UI fast-lane reductions do not apply/i);
+  assert.match(strict, /separately authorized reversible Production correction in these domains follows `PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md`/i);
+  assert.match(strict, /do not confuse merge evidence with Production mutation authority/i);
 });
 
 test('workflow rejects universal full-suite testing by file type', () => {
@@ -165,18 +190,20 @@ test('workflow preserves exact CI classifications and blockers', () => {
     'CI_PENDING_EXECUTION',
     'CI_UNAVAILABLE_INFRA',
   ], 'workflow CI');
-  assert.match(src, /relevant executed failure blocks merge/i);
-  assert.match(src, /queued\/running work blocks merge temporarily/i);
+  assert.match(src, /relevant executed failure blocks source merge/i);
+  assert.match(src, /relevant queued\/running work blocks source merge temporarily/i);
   assert.match(src, /infrastructure-unavailable shells/i);
+  assert.match(src, /`CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION` is not, by itself, a prohibition on an independently authorized reversible Production correction/i);
 });
 
 test('Production verification scope is proportional to U0 through U3', () => {
   const src = read(PATHS.workflow);
-  const production = section(src, '## 7. Post-merge Production verification', '## 8. Production outcomes');
+  const production = section(src, '## 7. Post-merge Production verification', '## 8. Production-first correction outcomes');
   assertContainsAll(production, ['### U0', '### U1', '### U2', '### U3'], 'Production section');
   assert.match(production, /Full journey QA is not required/i);
   assert.match(production, /Do not automatically repeat every page and viewport/i);
   assert.match(production, /console\/network/i);
+  assert.match(production, /post-merge confirmation, not the only permitted route to a Production correction/i);
 });
 
 test('minor U0/U1 misses use micro correction PRs, not destructive rollback', () => {
@@ -191,29 +218,35 @@ test('minor U0/U1 misses use micro correction PRs, not destructive rollback', ()
 
 test('merge keeps expected-head-pinned squash as default with task-contract exception', () => {
   const src = read(PATHS.workflow);
-  const merge = section(src, '## 9. Merge rules', '## 10. Role allocation');
+  const merge = section(src, '## 10. Merge rules', '## 11. Role allocation');
   assert.match(merge, /re-read exact head immediately before merge/i);
   assert.match(merge, /squash merge with expected head pinned unless a narrower task contract requires another allowed method/i);
   assert.match(merge, /Do not use rebase to rewrite published feature history/i);
   assert.match(merge, /Do not force-update feature PR branches or `main`/i);
+  assert.match(merge, /do not automatically become preconditions to a separately authorized reversible Production correction/i);
   assert.doesNotMatch(merge, /Do not use merge\/rebase commit methods/i);
 });
 
 test('role allocation keeps Local conditional, implementation non-final, and integration owner-gated', () => {
   const src = read(PATHS.workflow);
-  const roles = section(src, '## 10. Role allocation', '## 11. Issue handling');
+  const roles = section(src, '## 11. Role allocation', '## 12. Issue handling');
   assertContainsAll(roles, ['Web CTO', 'Web Developer', 'Local Validation'], 'role allocation');
   assert.match(roles, /invoked only when required/i);
   assert.match(roles, /does not make final merge decision/i);
   assert.match(roles, /performs integration only when task\/owner authorization delegates that action/i);
   assert.match(roles, /does not Ready-transition or merge.*unless task-specific owner authorization explicitly delegates that integration authority/is);
+  assert.match(roles, /decides technical `READY\/NOT_READY` for source integration/i);
+  assert.match(roles, /for Production-first work, verifies Production authority, rollback readiness, and immediate post-change result/i);
+  assert.match(roles, /is not an automatic prerequisite to a reversible Production-first correction/i);
 });
 
 test('U0/U1 issue overhead is explicitly reduced', () => {
   const src = read(PATHS.workflow);
-  const issues = section(src, '## 11. Issue handling', '## 12. Report template');
+  const issues = section(src, '## 12. Issue handling', '## 13. Report templates');
   assert.match(issues, /do not require a new child Issue for every micro correction/i);
   assert.match(issues, /active parent\/product\/UI objective/i);
+  assert.match(issues, /task-specific Production approval wording remains authoritative/i);
+  assert.match(issues, /never close #1882 and use `Refs #1882` only/i);
 });
 
 test('Web Developer report makes pristine-main comparison conditional for successful U0/U1 checks', () => {

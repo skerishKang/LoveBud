@@ -4,13 +4,14 @@ This file is the repository-wide entrypoint for LoveBud work. Detailed rules liv
 
 ## 1. Guidance hierarchy
 
-1. `docs/ops/MVP_AGENT_GOVERNANCE.md` — hard blockers, CI classification, browser permission, expected-head merge, owner-approved role/UI policy.
-2. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md` — separated execution roles.
-3. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` — owner-approved advanced/frontier autonomous implementation path and CTO post-implementation review behavior.
-4. `docs/project/UI_RAPID_ITERATION_LANE.md` — U0/U1/U2/U3 UI process.
-5. `docs/project/ROLE_SESSION_TEMPLATES.md` — copy-ready role prompts.
-6. `docs/architecture/SHARED_LOVE_PLATFORM_AUTHORITY.md` — cross-repository LoveBud/LoveTree Product auth/backend/data authority and mandatory provider-mutation preflight.
-7. Product/design/engineering/ops source-of-truth documents relevant to the task.
+1. `docs/ops/MVP_AGENT_GOVERNANCE.md` — hard blockers, CI classification, Production correction sequencing, browser permission, expected-head merge, owner-approved role/UI policy.
+2. `docs/ops/PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md` — owner-approved reversible Production correction / rollback-first procedure.
+3. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md` — separated execution roles.
+4. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` — owner-approved advanced/frontier autonomous implementation path and CTO post-implementation review behavior.
+5. `docs/project/UI_RAPID_ITERATION_LANE.md` — U0/U1/U2/U3 UI process.
+6. `docs/project/ROLE_SESSION_TEMPLATES.md` — copy-ready role prompts.
+7. `docs/architecture/SHARED_LOVE_PLATFORM_AUTHORITY.md` — cross-repository LoveBud/LoveTree Product auth/backend/data authority and mandatory provider-mutation preflight.
+8. Product/design/engineering/ops source-of-truth documents relevant to the task.
 
 When documents conflict, the higher item wins. Historical runbooks and task-specific documents do not create new repo-wide blockers without owner approval. For LoveBud/LoveTree shared Auth/DB/backend/provider work, the latest explicit Product Owner decision plus `LoveBud#4004` / `LoveTree#152` remains controlling architecture authority even when a lower-level child issue describes a test or prototype resource.
 
@@ -22,6 +23,9 @@ When documents conflict, the higher item wins. Historical runbooks and task-spec
 - Do not merge on `CI_EXECUTED_FAILURE` or `CI_PENDING_EXECUTION`.
 - `CI_UNAVAILABLE_INFRA` is not a code failure; use the documented alternative-evidence path.
 - Verify exact expected head and squash merge.
+- A reversible Production correction must capture a rollback point and define immediate post-change verification before mutation.
+- CI merge blockers are not automatically blockers for a separately authorized reversible Production correction.
+- Task-specific explicit Production approval remains required when the governing Issue/runbook demands it.
 - Never close #1882; use `Refs #1882` only.
 
 ### Shared Love platform hard gate
@@ -95,7 +99,7 @@ Web Developer
 Local Validation when required
 ```
 
-Default lifecycle:
+Default lifecycle for ordinary source integration:
 
 ```text
 user request
@@ -122,19 +126,21 @@ For the autonomous frontier lane, **lack of a prior Web CTO assignment is not it
 
 ### Web CTO
 
-Owns remote verification, product/architecture/design contract, scope, risk classification, tests/evidence, final review, READY/NOT_READY, and merge judgment.
+Owns remote verification, product/architecture/design contract, scope, risk classification, tests/evidence, final review, READY/NOT_READY, merge judgment, and Production-first eligibility/rollback judgment when Production authority exists.
 
 When an advanced/frontier worker self-selects and implements a bounded Issue before receiving a CTO instruction, the CTO treats the resulting PR as an independently proposed candidate implementation. The CTO must not reject it merely because the CTO did not initiate it; the CTO fresh-verifies whether the work is valid and classifies it on its merits.
 
 ### Web Developer
 
-Works in a separate web context. Owns feature-branch implementation, focused tests, PR maintenance, CI correction, and exact evidence. Does not make final merge/product decisions.
+Works in a separate web context. Owns feature-branch implementation, focused tests, PR maintenance, CI correction, and exact evidence. Does not make final merge/product decisions unless task-specific authority explicitly delegates them.
 
 ### Local Validation
 
 Runs exact-head local/environment/browser/auth/database/provider/OS evidence only when required. It is not the default coder or UI designer.
 
 An explicitly designated advanced/frontier local implementation model may instead use the autonomous frontier lane; that is a separate implementation role from ordinary `Local Validation`.
+
+A reversible Production correction does not require Local Validation merely because it is a Production change. Use the dedicated Production-first policy when the action is separately authorized and rollback-ready.
 
 ## 4. UI Rapid Iteration Lane
 
@@ -171,9 +177,11 @@ DOM/layout/loading/responsive/accessibility structure uses focused structural te
 
 ### U3
 
-JavaScript, auth, API/data, cache/storage, routing, forms, persistence, privacy/security, or runtime accessibility uses the full relevant path.
+JavaScript, auth, API/data, cache/storage, routing, forms, persistence, privacy/security, or runtime accessibility uses the full relevant source-integration path.
 
 Escalate U0/U1 if the actual change affects DOM/focus/visibility semantics, broad shared/global files, dependencies, runtime state, privacy, or security.
+
+When a Production runtime/UI correction is separately authorized, bounded, observable, and reversible, `docs/ops/PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md` controls Production sequencing even if source-integration evidence is still incomplete.
 
 ## 5. Product and design source of truth
 
@@ -218,14 +226,31 @@ Evidence levels:
 LOCAL_EVIDENCE
 PRE_MERGE_EVIDENCE
 PRODUCTION_EVIDENCE
+POST_CHANGE_EVIDENCE
+ROLLBACK_EVIDENCE
 ```
 
-- Browser tooling, login, navigation, DevTools, Playwright, screenshots, preview, fixed slot, localhost, and Production are allowed.
+- Browser tooling, login, navigation, DevTools, Playwright, screenshots, preview, fixed slot, localhost, and Production are allowed when the task permits them.
 - Preview/fixed slot is optional evidence unless explicitly assigned.
 - Do not search for preview URLs or deploy fixed slots by habit.
-- Merge-first Production verification is the current default.
+- Merge-first Production verification remains the normal flow for ordinary source integration.
+- Production-first / Rollback-first is the normal flow for a separately authorized reversible Production correction.
 - Dynamic/auth/API pages cannot be fully proven by a static local server; report limitations.
-- Evidence scope follows U0/U1/U2/U3 risk.
+- Evidence scope follows actual risk rather than a ritual sequence.
+
+Production-first sequence:
+
+```text
+fresh Production state
+→ smallest reversible change
+→ rollback point captured
+→ Production apply
+→ immediate verification
+→ rollback first if materially unhealthy
+→ forensics/follow-up after recovery
+```
+
+Do not delay an eligible reversible correction solely because local/staging/preview/CI evidence is unfinished.
 
 ## 8. CI
 
@@ -240,10 +265,12 @@ CI_UNAVAILABLE_INFRA
 
 Red workflow appearance alone is not enough to classify an executed failure. Inspect whether relevant steps ran.
 
+`CI_EXECUTED_FAILURE` and `CI_PENDING_EXECUTION` block source merge. They do not automatically prohibit a separately authorized reversible Production correction with a credible rollback path.
+
 ## 9. Branch and parallel safety
 
 - Never edit/push `main` directly.
-- Use feature branches and PRs.
+- Use feature branches and PRs for source/document integration.
 - One active writer per remote branch.
 - Separate worktrees for simultaneous local work.
 - Split parallel work by non-overlapping files/surfaces/responsibilities.
@@ -253,6 +280,8 @@ Red workflow appearance alone is not enough to classify an executed failure. Ins
 For U0/U1, small reversible micro branches/PRs are preferred.
 
 Autonomous frontier implementation does not weaken collision rules. A self-directed worker must fresh-check existing PR/file/semantic-authority ownership before writing and must not create a competing implementation for an already-owned authority.
+
+Production-first authority is not permission to create competing source writers or bypass branch ownership.
 
 ## 10. Current local execution environment
 
@@ -274,10 +303,12 @@ Do not print secret files or environment values. Report presence/status only.
 ## 11. Operational input and image handling
 
 - Pasted completion reports, logs, and command results from another executor or model are decision inputs, not automatically trusted completion evidence.
-- The Web CTO or current reviewer independently verifies remote SHA, cumulative diff, changed files, CI, comments, and the underlying evidence.
+- The Web CTO or current reviewer independently verifies remote SHA, cumulative diff, changed files, CI, comments, and the underlying evidence needed for the actual decision.
 - For an advanced/frontier autonomous worker, a completed implementation may legitimately arrive before any CTO instruction. The reviewer should validate the implementation rather than treating the missing prior instruction as a protocol failure.
 - Attached images are analysis, comparison, and review material by default.
 - Generate or transform images only when the user explicitly requests image generation or transformation; mentioning an image alone is not such a request.
+
+For Production-first work, the required decision evidence is target freshness, Production authority, rollback point, observability, post-change result, and rollback result if used. Do not demand unrelated test evidence as a substitute.
 
 ## 12. Test selection
 
@@ -286,14 +317,20 @@ Tests are selected by affected behavior and blast radius.
 - U0: exact diff + syntax/static/focused copy check when relevant.
 - U1: exact selector/token delta + focused CSS/static check when available.
 - U2: focused structural/layout/accessibility tests and conditional browser evidence.
-- U3/backend/data/auth/security: full relevant runtime/regression evidence.
+- U3/backend/data/auth/security source integration: full relevant runtime/regression evidence.
+- reversible Production correction: immediate Production verification first; follow with relevant regression/source tests unless the task explicitly requires a different order.
 
 Do not require unrelated `lint/build/test/verify` commands solely because an HTML/CSS file changed.
+
+Do not turn unfinished local/staging/preview/CI testing into an automatic blocker for a separately authorized reversible Production correction.
 
 Always distinguish:
 
 - implemented versus already present;
 - focused checks versus CI versus browser evidence;
+- Production authority versus source merge authority;
+- pre-change versus post-change evidence;
+- rollback-ready versus irreversible;
 - pristine-main versus branch-only failures;
 - verified versus unverified;
 - Local required versus skipped;
@@ -306,13 +343,14 @@ Recommended order:
 
 1. `AGENTS.md`
 2. `docs/ops/MVP_AGENT_GOVERNANCE.md`
-3. `docs/architecture/SHARED_LOVE_PLATFORM_AUTHORITY.md` when Auth/DB/backend/provider/E2E infrastructure may be involved
-4. `docs/project/project_index.md`
-5. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
-6. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` when a worker may self-select/implement before CTO allocation
-7. `docs/project/UI_RAPID_ITERATION_LANE.md` for UI work
-8. relevant product/design/engineering/ops documents
-9. current remote Issue/PR/diff/CI evidence
+3. `docs/ops/PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md` when Production correction/diagnostic sequencing may be involved
+4. `docs/architecture/SHARED_LOVE_PLATFORM_AUTHORITY.md` when Auth/DB/backend/provider/E2E infrastructure may be involved
+5. `docs/project/project_index.md`
+6. `docs/project/WEB_CTO_WEB_DEVELOPER_LOCAL_VALIDATION.md`
+7. `docs/project/AUTONOMOUS_FRONTIER_IMPLEMENTATION_LANE.md` when a worker may self-select/implement before CTO allocation
+8. `docs/project/UI_RAPID_ITERATION_LANE.md` for UI work
+9. relevant product/design/engineering/ops documents
+10. current remote Issue/PR/diff/CI/Production evidence
 
 For shared-platform work, repository docs do not replace fresh connected reads of LoveBud#4004 / LoveTree#152 / #4005 / #4006 as relevant.
 
@@ -326,6 +364,7 @@ For shared-platform work, repository docs do not replace fresh connected reads o
 - `docs/project/VERIFICATION_AND_EVIDENCE.md`
 - `docs/project/AGENT_OPERATION_GUARDRAILS.md`
 - `docs/ops/PR_CHECKLIST.md`
+- `docs/ops/PRODUCTION_FIRST_ROLLBACK_FIRST_POLICY.md`
 - `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`
 - `docs/ops/UI_SCREENSHOT_CTO_REVIEW_POLICY.md`
 - `docs/ops/WSL_EXT4_WORKSPACE_POLICY.md`
@@ -335,13 +374,13 @@ For shared-platform work, repository docs do not replace fresh connected reads o
 ## 15. One-line operating rule
 
 ```text
-verify current remote + shared-platform authority
-→ classify target resource and architecture consistency
-→ use CTO-first allocation OR the owner-approved autonomous frontier lane
-→ classify real risk and collision authority
-→ use the smallest safe implementation/evidence path
-→ independently review exact head
-→ squash merge when separately authorized
+verify current remote + shared-platform authority + current Production target when relevant
+→ classify target resource, mutation authority, reversibility, and collision authority
+→ if separately authorized reversible Production correction: capture rollback → apply smallest Production change → verify → rollback first on failure
+→ otherwise use CTO-first allocation OR the owner-approved autonomous frontier source lane
+→ use the smallest relevant implementation/evidence path
+→ independently review exact source head
+→ squash merge when separately authorized and CI permits
 → confirm affected Production behavior
 ```
 
