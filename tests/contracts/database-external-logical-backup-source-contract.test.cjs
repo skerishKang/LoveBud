@@ -9,6 +9,11 @@
  * dump, network, or filesystem mutation). The behavior contract test in the sibling file
  * executes only the pure policy module and a deterministic injected cipher seam.
  *
+ * Deploy/schedule decoupling (#3460 child): the deployed function carries no schedule
+ * binding and every execution requires the explicit runtime activation gate
+ * (LB_RECOVERY_BACKUP_RUNTIME); unset/unknown values fail closed. Deployment alone is
+ * architecturally incapable of activating automatic Production backups.
+ *
  * The former R2 storage surface (boto3, _s3_client, put_object, head_object, copy_object,
  * delete_object, lovebud-recovery-r2) has been replaced by a Google Drive adapter under the
  * lovebud-recovery-drive symbolic secret. This contract proves the R2 surface is removed
@@ -73,8 +78,15 @@ test('3c. Drive adapter symbolic secret name exact', () => {
   assert.match(DRIVE, /lovebud-recovery-drive/);
 });
 
-test('4. one scheduled execution per 24-hour period', () => {
-  assert.match(APP, /modal\.Period\(days\s*=\s*1\)/);
+test('4. deployment does not activate a schedule (deploy != schedule activation)', () => {
+  // #3460 decoupling child: the 24h cadence constant may exist, but the deployed
+  // function must carry NO schedule binding — `modal deploy` alone stays inert.
+  assert.match(APP, /DAILY_SCHEDULE\s*=\s*modal\.Period\(days\s*=\s*1\)/);
+  assert.ok(!/schedule\s*=/.test(APP), 'no schedule= binding may remain in the deployed app');
+  const fnStart = APP.indexOf('def run_logical_backup');
+  const decoratorEnd = APP.indexOf('@app.function');
+  const binding = APP.slice(decoratorEnd, fnStart);
+  assert.ok(!/schedule\s*=/.test(binding), 'run_logical_backup must not be schedule-bound');
 });
 
 test('4c. Modal image pins PostgreSQL 17 client and preserves modal_compute local source', () => {
@@ -116,11 +128,12 @@ test('4d. narrow provider failure containment without raw exception escape', () 
   // raw exception strings must never reach status or logs
   assert.ok(!/print\([^)]*except|print\([^)]*\be\b\)/.test(flow), 'no raw exception message logging');
   assert.ok(!/str\(e\)|repr\(e\)|traceback/.test(flow), 'no exception serialization into status/logs');
-  // no broad outer catch: the only 4-space bare catch is the narrow encryption-key
-  // boundary, which fails closed by returning a sanitized status (never swallowing).
+  // no broad outer catch: the only 4-space bare catches are the three narrow
+  // fail-closed boundaries — encryption-key decode, workdir creation, and the
+  // runtime activation gate — each of which returns sanitized status (never swallows).
   const runFunctionBody = APP.slice(APP.indexOf('def run_logical_backup'));
   const fourSpaceCatches = (runFunctionBody.match(/^    except Exception:\s*$/gm) || []);
-  assert.equal(fourSpaceCatches.length, 2, 'only key-decode and workdir boundaries are 4-space catches');
+  assert.equal(fourSpaceCatches.length, 3, 'only key-decode, workdir, and runtime-activation-gate boundaries are 4-space catches');
   assert.match(runFunctionBody, /except Exception:\s*\n\s*return make_sanitized_status\(/);
   assert.match(runFunctionBody, /workdir = tempfile\.mkdtemp[\s\S]{0,240}except Exception:/);
 });
@@ -151,7 +164,7 @@ test('4b. exactly one non-HTTP Modal function binding on run_logical_backup', ()
   assert.ok(fnStart !== -1 && decoratorEnd !== -1 && decoratorEnd < fnStart, 'decorator must precede run_logical_backup');
   const binding = APP.slice(decoratorEnd, fnStart);
   assert.match(binding, /image\s*=\s*BACKUP_IMAGE/);
-  assert.match(binding, /schedule\s*=\s*DAILY_SCHEDULE/);
+  assert.ok(!/schedule\s*=/.test(binding), 'deployed function must not be schedule-bound (#3460 decoupling)');
   assert.match(binding, /timeout\s*=\s*FUNCTION_TIMEOUT_SECONDS/);
   assert.ok(!/@modal\.asgi_app|@modal\.web_endpoint/.test(binding), 'binding must remain non-HTTP');
   // each exact symbolic secret must be bound through modal.Secret.from_name
@@ -334,7 +347,7 @@ test('22. policy module purity: no forbidden imports or env/network access', () 
   assert.ok(!/^\s*(import|from)\s+psycopg\b/m.test(POLICY), 'policy must not import psycopg');
   assert.ok(!/^\s*(import|from)\s+requests\b/m.test(POLICY), 'policy must not import requests');
   assert.ok(!/^\s*import\s+subprocess\b/m.test(POLICY), 'policy must not import subprocess');
-  assert.ok(!/os\.environ/.test(POLICY), 'policy must not access environment variables');
+  assert.ok(!/os\.environ/.test(POLICY), 'policy must not access environment variables (docstrings included)');
   assert.ok(!/^\s*(import|from)\s+(socket|http|urllib|requests)\b/m.test(POLICY), 'policy must not import network libraries');
 });
 
@@ -532,8 +545,59 @@ test('38b. delete call sites are caller-bounded (staging-created or scoped-list-
   }
 });
 
-test('39. one-per-24h scheduling unchanged', () => {
-  assert.match(APP, /modal\.Period\(days\s*=\s*1\)/);
+test('39. explicit runtime activation gate is the sole execution authority', () => {
+  // #3460 decoupling child: the activation gate is the first check in the
+  // execution body and precedes every side-effecting operation.
+  const bodyStart = APP.indexOf('def run_logical_backup');
+  const body = APP.slice(bodyStart);
+  assert.match(APP, /RUNTIME_ACTIVATION_ENV\s*=\s*RUNTIME_ACTIVATION_ENV/);
+  assert.match(APP, /_runtime_activated\(\)/);
+  assert.match(body, /_runtime_activated\(\)/);
+  const gatePos = body.indexOf('_runtime_activated()');
+  const dumpPos = body.indexOf('_run_dump(');
+  const drivePos = body.indexOf('_drive_client()');
+  const encryptPos = body.indexOf('_streaming_encrypt(');
+  assert.ok(gatePos !== -1, 'gate check present in body');
+  assert.ok(dumpPos === -1 || gatePos < dumpPos, 'gate check precedes pg_dump');
+  assert.ok(drivePos === -1 || gatePos < drivePos, 'gate check precedes Drive client construction');
+  assert.ok(encryptPos === -1 || gatePos < encryptPos, 'gate check precedes encryption');
+});
+
+// --- #3460 deploy/schedule decoupling (runtime activation gate) ---
+
+test('43. runtime activation vocabulary exists and is fail-closed by design', () => {
+  assert.match(POLICY, /RUNTIME_ACTIVATION_ENV\s*=\s*["']LB_RECOVERY_BACKUP_RUNTIME["']/);
+  assert.match(POLICY, /RUNTIME_ACTIVATION_DISABLED\s*=\s*["']disabled["']/);
+  assert.match(POLICY, /RUNTIME_ACTIVATION_SCHEDULED\s*=\s*["']scheduled["']/);
+  assert.match(POLICY, /BACKUP_RUNTIME_DISABLED\s*=\s*["']BACKUP_RUNTIME_DISABLED["']/);
+  // pure classifier: only the exact "scheduled" value enables
+  assert.match(POLICY, /def classify_runtime_activation/);
+  const cls = POLICY.slice(POLICY.indexOf('def classify_runtime_activation'));
+  assert.match(cls, /raw_value == RUNTIME_ACTIVATION_SCHEDULED/);
+  assert.match(cls, /return BACKUP_RUNTIME_DISABLED/);
+});
+
+test('44. inert disabled status is sanitized and produced by the app path', () => {
+  assert.match(APP, /_runtime_disabled_status/);
+  const fn = APP.slice(APP.indexOf('def _runtime_disabled_status'));
+  assert.match(fn, /make_sanitized_status/);
+  assert.match(fn, /phase\s*=\s*["']runtime_activation["']/);
+  // the disabled phase is an allowed policy phase
+  assert.match(POLICY, /["']runtime_activation["']/);
+  // disabled path emits no secret/gate raw value (sanitized status keys only)
+  assert.ok(!/make_sanitized_status\([^)]*gate/i.test(APP), 'gate raw value never enters status');
+});
+
+test('45. gate-check failure fails closed; no checked-in activation value exists', () => {
+  const bodyStart = APP.indexOf('def run_logical_backup');
+  const body = APP.slice(bodyStart);
+  // exception during the activation check must disable, never enable
+  const gateBlock = body.slice(body.indexOf('# 0. explicit runtime activation gate'));
+  assert.match(gateBlock, /except Exception:/);
+  assert.match(gateBlock, /activated\s*=\s*False/);
+  // no committed activation value anywhere in source
+  assert.ok(!/LB_RECOVERY_BACKUP_RUNTIME\s*=\s*["']scheduled["']/.test(APP), 'no checked-in scheduled activation');
+  assert.ok(!/LB_RECOVERY_BACKUP_RUNTIME\s*=\s*["']scheduled["']/.test(POLICY), 'no checked-in scheduled activation in policy');
 });
 
 test('40. sanitized status only; raw provider error never escapes', () => {

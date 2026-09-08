@@ -7,6 +7,9 @@ objects only inside the scheduled function body. Importing this module performs
 no network, secret, DB, subprocess, filesystem, or deployment side effect.
 
 Pipeline order (single run, one Production dump per execution):
+  0. explicit runtime activation gate (#3460 decoupling child: unset/unknown
+     gate fails closed to BACKUP_RUNTIME_DISABLED with zero side effects —
+     deployment alone never authorizes a scheduled backup)
   1. symbolic secret presence check
   2. private ephemeral working directory
   3. compressed PostgreSQL custom-format logical dump (DB URL via child-only env)
@@ -32,11 +35,14 @@ import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
+from typing import Mapping
 
 import modal
 
 from modal_compute.recovery_backup_policy import (
     BACKUP_POINT_MISSING,
+    BACKUP_RUNTIME_DISABLED,
+    BACKUP_RUNTIME_SCHEDULED,
     CLEANUP_COMPLETE,
     CLEANUP_FAILED,
     DAILY_TIER_MISSING,
@@ -46,6 +52,8 @@ from modal_compute.recovery_backup_policy import (
     MONTHLY_TIER_MISSING,
     SECRET_BOUNDARY_UNPROVISIONED,
     WEEKLY_TIER_MISSING,
+    RUNTIME_ACTIVATION_ENV,
+    activation_gate_state,
     decide_monthly_promotion,
     decide_weekly_promotion,
     decode_encryption_key,
@@ -127,8 +135,17 @@ BACKUP_IMAGE = (
 
 app = modal.App(RECOVERY_BACKUP_APP_NAME)
 
-# One scheduled execution per 24-hour period; no web endpoint, no manual trigger.
+# The 24-hour cadence constant is retained as the documented retention cadence
+# only. It is deliberately NOT bound to the deployed function (#3460 decoupling
+# child): `modal deploy` must not by itself activate automatic Production
+# backups. Scheduled execution additionally requires the explicit runtime
+# activation gate below; unset/unknown gate values fail closed to disabled.
 DAILY_SCHEDULE = modal.Period(days=1)
+
+# Explicit runtime activation gate (#3460 decoupling child). The gate value is
+# supplied through the Modal secret/environment boundary at activation time and
+# is never checked in to this repository. Unset or unknown values fail closed.
+RUNTIME_ACTIVATION_ENV = RUNTIME_ACTIVATION_ENV  # re-exported symbol
 
 # Bounded runtime budget for a single scheduled backup execution.
 FUNCTION_TIMEOUT_SECONDS = 900
@@ -137,6 +154,29 @@ FUNCTION_TIMEOUT_SECONDS = 900
 def _log_phase(phase: str) -> None:
     # Sanitized phase-only logging: never logs values, commands, or stderr.
     print(f"recovery-backup phase={phase}", flush=True)
+
+
+def _runtime_activation_state(environ: Mapping[str, str] | None = None) -> str:
+    """Classify the explicit runtime activation gate (fail closed)."""
+    source = os.environ if environ is None else environ
+    return activation_gate_state(source)
+
+
+def _runtime_activated(environ: Mapping[str, str] | None = None) -> bool:
+    """True only for the explicit scheduled activation value."""
+    return _runtime_activation_state(environ) == BACKUP_RUNTIME_SCHEDULED
+
+
+def _runtime_disabled_status() -> dict:
+    """Sanitized inert status for a non-activated runtime (zero side effects)."""
+    return make_sanitized_status(
+        backup_point_state=BACKUP_POINT_MISSING,
+        daily_tier=DAILY_TIER_MISSING,
+        weekly_tier=WEEKLY_TIER_MISSING,
+        monthly_tier=MONTHLY_TIER_MISSING,
+        cleanup_state=CLEANUP_COMPLETE,
+        phase="runtime_activation",
+    )
 
 
 def _secrets_present() -> bool:
@@ -296,11 +336,29 @@ def _verified_upload(service, run_key: str, enc_path: str) -> str | None:
         modal.Secret.from_name(RECOVERY_DRIVE_SECRET_NAME),
         modal.Secret.from_name(RECOVERY_ENCRYPTION_SECRET_NAME),
     ],
-    schedule=DAILY_SCHEDULE,
     timeout=FUNCTION_TIMEOUT_SECONDS,
 )
 def run_logical_backup() -> dict:
-    """One compressed, encrypted, retained logical backup per 24-hour period."""
+    """One compressed, encrypted, retained logical backup per invocation.
+
+    Deliberately NOT schedule-bound (#3460 decoupling child): `modal deploy`
+    must never by itself activate automatic Production backups. Every entry
+    into this body first consults the explicit runtime activation gate
+    (LB_RECOVERY_BACKUP_RUNTIME); unset/unknown values fail closed to
+    BACKUP_RUNTIME_DISABLED with zero pg_dump, encryption, or Drive side
+    effects. Scheduled cadence is a separate, explicitly authorized decision.
+    """
+    # 0. explicit runtime activation gate — BEFORE any side effect. A gate
+    # evaluation failure also fails closed: an activation-check error must
+    # never enable execution.
+    try:
+        activated = _runtime_activated()
+    except Exception:
+        _log_phase("runtime_gate_error")
+        activated = False
+    if not activated:
+        _log_phase("runtime_disabled")
+        return _runtime_disabled_status()
     if not _secrets_present():
         return make_sanitized_status(
             backup_point_state=BACKUP_POINT_MISSING,

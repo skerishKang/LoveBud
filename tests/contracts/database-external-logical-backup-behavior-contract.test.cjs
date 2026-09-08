@@ -488,6 +488,59 @@ def run_secret_optional():
             'missing_client_id_fails_closed': (not missing_id)}
 check('client-secret-optional', lambda: run_secret_optional())
 
+# ---- #3460 deploy/schedule decoupling: runtime activation gate (pure policy) ----
+# NOTE: check(name, fn) records into results itself; never assign its return.
+check('gate-unset', lambda: p.activation_gate_state({}))
+check('gate-empty', lambda: p.activation_gate_state({p.RUNTIME_ACTIVATION_ENV: ''}))
+check('gate-unknown', lambda: p.activation_gate_state({p.RUNTIME_ACTIVATION_ENV: 'garbage'}))
+check('gate-disabled', lambda: p.activation_gate_state({p.RUNTIME_ACTIVATION_ENV: 'disabled'}))
+check('gate-scheduled', lambda: p.activation_gate_state({p.RUNTIME_ACTIVATION_ENV: 'scheduled'}))
+check('gate-SCHEDULED-case-sensitive', lambda: p.activation_gate_state({p.RUNTIME_ACTIVATION_ENV: 'SCHEDULED'}))
+check('gate-whitespace', lambda: p.activation_gate_state({p.RUNTIME_ACTIVATION_ENV: ' scheduled '}))
+check('classifier-none', lambda: p.classify_runtime_activation(None))
+check('classifier-scheduled', lambda: p.classify_runtime_activation('scheduled'))
+check('classifier-disabled', lambda: p.classify_runtime_activation('disabled'))
+check('classifier-unknown', lambda: p.classify_runtime_activation('anything-else'))
+
+# gate-source failure must fail closed (never enable execution)
+class _Boom(dict):
+    def get(self, key, default=None):
+        raise RuntimeError('gate-source-unavailable')
+def _gate_boom():
+    try:
+        p.activation_gate_state(_Boom())
+        return 'NOT_FAIL_CLOSED'
+    except RuntimeError:
+        return 'FAIL_CLOSED'
+check('gate-exception-fail-closed', _gate_boom)
+
+# inert disabled status is sanitized; a raw gate value can never enter status
+def _disabled_status():
+    return p.make_sanitized_status(
+        backup_point_state=p.BACKUP_POINT_MISSING,
+        daily_tier=p.DAILY_TIER_MISSING,
+        weekly_tier=p.WEEKLY_TIER_MISSING,
+        monthly_tier=p.MONTHLY_TIER_MISSING,
+        cleanup_state=p.CLEANUP_COMPLETE,
+        phase='runtime_activation',
+    )
+check('disabled-status-sanitized', _disabled_status)
+def _gate_raw_rejected():
+    try:
+        p.make_sanitized_status(
+            backup_point_state=p.BACKUP_POINT_MISSING,
+            daily_tier=p.DAILY_TIER_MISSING,
+            weekly_tier=p.WEEKLY_TIER_MISSING,
+            monthly_tier=p.MONTHLY_TIER_MISSING,
+            cleanup_state=p.CLEANUP_COMPLETE,
+            phase='runtime_activation',
+            runtime_gate_raw='scheduled',
+        )
+        return 'NOT_REJECTED'
+    except ValueError:
+        return 'REJECTED'
+check('gate-raw-value-rejected', _gate_raw_rejected)
+
 print(json.dumps(results))
 `;
 
@@ -882,4 +935,37 @@ test('AJ. client secret optional: absent does not block; missing client id fails
   assert.equal(r.value.without_client_secret, true, 'absent client secret must not block');
   assert.equal(r.value.with_client_secret, true);
   assert.equal(r.value.missing_client_id_fails_closed, true, 'missing required id fails closed');
+});
+
+// --- #3460 deploy/schedule decoupling: runtime activation gate (pure policy) ---
+
+test('AK. activation gate defaults: unset/empty/unknown/disabled -> BACKUP_RUNTIME_DISABLED', () => {
+  assert.equal(results['gate-unset'].status, 'PASS');
+  assert.equal(results['gate-unset'].value, 'BACKUP_RUNTIME_DISABLED');
+  assert.equal(results['gate-empty'].value, 'BACKUP_RUNTIME_DISABLED');
+  assert.equal(results['gate-unknown'].value, 'BACKUP_RUNTIME_DISABLED');
+  assert.equal(results['gate-disabled'].value, 'BACKUP_RUNTIME_DISABLED');
+  assert.equal(results['gate-whitespace'].value, 'BACKUP_RUNTIME_DISABLED');
+});
+
+test('AL. only the exact explicit scheduled value authorizes execution eligibility', () => {
+  assert.equal(results['gate-scheduled'].value, 'BACKUP_RUNTIME_SCHEDULED');
+  assert.equal(results['gate-SCHEDULED-case-sensitive'].value, 'BACKUP_RUNTIME_DISABLED', 'activation value is case-sensitive exact match');
+  assert.equal(results['classifier-none'].value, 'BACKUP_RUNTIME_DISABLED');
+  assert.equal(results['classifier-scheduled'].value, 'BACKUP_RUNTIME_SCHEDULED');
+  assert.equal(results['classifier-disabled'].value, 'BACKUP_RUNTIME_DISABLED');
+  assert.equal(results['classifier-unknown'].value, 'BACKUP_RUNTIME_DISABLED');
+});
+
+test('AM. gate-source failure fails closed (never enables execution)', () => {
+  assert.equal(results['gate-exception-fail-closed'].value, 'FAIL_CLOSED');
+});
+
+test('AN. inert disabled status is sanitized; gate raw value can never enter status', () => {
+  const r = results['disabled-status-sanitized'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.phase, 'runtime_activation');
+  assert.equal(r.value.backup_point_state, 'BACKUP_POINT_MISSING');
+  assert.ok(!('runtime_gate_raw' in r.value), 'raw gate value must never appear in status');
+  assert.equal(results['gate-raw-value-rejected'].value, 'REJECTED');
 });
