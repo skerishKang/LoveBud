@@ -221,13 +221,19 @@ function normalizeTreeId(rawId) {
   return { ok: true, value: trimmed.toLowerCase(), detail: null, status: null };
 }
 
+// Python int() parity for query-string input. modal_compute/tree_comments.py::
+// fetch_tree_comments does `int(limit)` inside try/except (TypeError, ValueError)
+// -> 20. Python int() on a string accepts only an optionally signed run of decimal
+// digits (surrounding whitespace allowed); it raises ValueError on fractional and
+// exponent forms, so "1.9" and "1e2" fall back to the default rather than becoming
+// 1 and 100. Number()/Math.trunc() would silently accept both, so the grammar is
+// matched explicitly instead of relying on numeric coercion.
+const PYTHON_INT_STRING_PATTERN = /^[+-]?\d+$/;
+
 function normalizeLimit(rawLimit) {
+  const text = rawLimit === null || rawLimit === undefined ? '' : String(rawLimit).trim();
   let parsed = COMMENT_DEFAULT_LIMIT;
-  if (rawLimit !== null && rawLimit !== undefined && String(rawLimit).trim() !== '') {
-    const n = Number(rawLimit);
-    parsed = Number.isFinite(n) ? Math.trunc(n) : COMMENT_DEFAULT_LIMIT;
-  }
-  if (!Number.isInteger(parsed)) parsed = COMMENT_DEFAULT_LIMIT;
+  if (PYTHON_INT_STRING_PATTERN.test(text)) parsed = Number(text);
   if (parsed < COMMENT_MIN_LIMIT) parsed = COMMENT_MIN_LIMIT;
   if (parsed > COMMENT_MAX_LIMIT) parsed = COMMENT_MAX_LIMIT;
   return parsed;

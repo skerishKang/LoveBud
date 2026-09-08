@@ -194,6 +194,48 @@ test('B7. bounded limit default 20 and clamps to 1..50 (LIMIT param = limit+1)',
   assert.equal(cmt.values[cmt.values.length - 1], 2, 'limit 0 clamps to 1 -> LIMIT 2');
 });
 
+// Modal parity for limit normalization. modal_compute/tree_comments.py::
+// fetch_tree_comments uses `int(limit)` inside try/except (TypeError, ValueError)
+// -> 20, then clamps to 1..50. Query params arrive as strings, so Python int()
+// REJECTS fractional and exponent forms outright instead of truncating or
+// exponentiating them. SQL binds LIMIT = safe_limit + 1.
+test('B7b. limit normalization matches Python int() (no float/exponent coercion)', async () => {
+  const mod = await loadModule();
+  const cases = [
+    // [query, expected safe_limit, expected LIMIT param, label]
+    [null, 20, 21, 'missing limit -> default 20'],
+    ['?limit=', 20, 21, 'empty limit -> default 20'],
+    ['?limit=1', 1, 2, 'plain integer 1'],
+    ['?limit=20', 20, 21, 'plain integer 20 passes through'],
+    ['?limit=+5', 5, 6, 'signed +5 parses under int() parity'],
+    ['?limit=-1', 1, 2, 'signed -1 parses then clamps to 1'],
+    ['?limit=0', 1, 2, '0 parses then clamps to 1'],
+    ['?limit=51', 50, 51, '51 parses then clamps to 50'],
+    ['?limit=1.9', 20, 21, '1.9 is NOT a Python int -> default 20 (never 1)'],
+    ['?limit=1e2', 20, 21, '1e2 is NOT a Python int -> default 20 (never 100/50)'],
+    ['?limit=abc', 20, 21, 'abc is NOT a Python int -> default 20'],
+    ['?limit=0x1f', 20, 21, 'hex form is NOT a Python int -> default 20'],
+    ['?limit=  ', 20, 21, 'whitespace-only limit -> default 20']
+  ];
+
+  for (const [index, [query, expectedLimit, expectedSqlLimit, label]] of cases.entries()) {
+    const { calls, executor } = makeReadExecutor();
+    const opts = query === null ? {} : { query };
+    const resp = await mod.handleTreeCommentReadDirectNeon(
+      makeGetRequest(opts),
+      READ_ENV,
+      `rid-b7b-${index}`,
+      { executorOverride: executor }
+    );
+    assert.equal(resp.status, 200, `${label}: request must succeed`);
+    const cmt = calls.find((c) => c.text.includes('FROM tree_comments'));
+    assert.ok(cmt, `${label}: comment read query issued`);
+    const sqlLimit = cmt.values[cmt.values.length - 1];
+    assert.equal(sqlLimit, expectedSqlLimit, `${label}: LIMIT param = safe_limit + 1`);
+    assert.equal(sqlLimit - 1, expectedLimit, `${label}: safe_limit parity`);
+  }
+});
+
 test('B8. cursor pagination: hasMore -> nextCursor encoded; second page consumes cursor, no overlap', async () => {
   const mod = await loadModule();
   const page1 = [
