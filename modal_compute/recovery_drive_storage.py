@@ -550,3 +550,125 @@ def select_retention_deletions(tier_files: list, keep_count: int) -> list:
     if len(tier_files) <= keep_count:
         return []
     return [item["id"] for item in tier_files[keep_count:] if item.get("id")]
+
+
+# Restore-oriented download bounds (#3460 restore source child).
+# The download primitive accepts only an already-selected app-owned recovery object
+# identity, verifies expected recovery metadata concurrently with retrieval, and
+# rejects trashed / non-recovery / wrong-parent objects. It is bounded by a maximum
+# artifact size so remote payloads are never materialized unboundedly in memory, and
+# it never becomes a generic Drive downloader and never enumerates unrelated files.
+DRIVE_RESTORE_ACCEPT_RETENTION_TIERS = frozenset((TIER_DAILY, TIER_WEEKLY, TIER_MONTHLY))
+DRIVE_RESTORE_MAX_ARTIFACT_BYTES = 20 * 1024 * 1024 * 1024  # 20 GiB hard bound
+DRIVE_RESTORE_DOWNLOAD_CHUNK_BYTES = 1024 * 1024
+
+
+def _parse_drive_size(size_raw: Any) -> int:
+    """Parse a Drive size field; -1 on any non-digit input (fail closed)."""
+    if isinstance(size_raw, (int, str)) and str(size_raw).isdigit():
+        return int(size_raw)
+    return -1
+
+
+def _preflight_download_metadata(
+    service: _DriveService,
+    file_id: str,
+    expected_size: int,
+    expected_retention_tier: str,
+    expected_run_identity: str | None,
+) -> dict:
+    """files.get metadata preflight for the selected app-owned recovery artifact.
+
+    Verified before retrieval: the file exists, is not trashed, has exactly the
+    expected encrypted byte length, carries the expected LBBA1 format/content-kind
+    app metadata, and is located under the app-owned backup root. If any check
+    fails, the secure download is refused before any media is fetched.
+    """
+    resp = service.session.get(
+        DRIVE_API_BASE + "/files/" + file_id,
+        params={"fields": "id,name,size,trashed,appProperties,parents"},
+        timeout=30,
+    )
+    if resp.status_code != 200:
+        raise RuntimeError("drive restore metadata preflight failed")
+    meta = resp.json() or {}
+    if not meta or meta.get("trashed") is True:
+        raise RuntimeError("drive restore artifact trashed or missing")
+    actual_size = _parse_drive_size(meta.get("size"))
+    props = meta.get("appProperties") or {}
+    parents = meta.get("parents") or []
+    ok = bool(
+        expected_size > 0
+        and actual_size == expected_size
+        and props.get("format-version") == DRIVE_OBJECT_METADATA["format-version"]
+        and props.get("content-kind") == DRIVE_OBJECT_METADATA["content-kind"]
+        and props.get("retention-tier") in DRIVE_RESTORE_ACCEPT_RETENTION_TIERS
+        and (expected_retention_tier is None or props.get("retention-tier") == expected_retention_tier)
+        and (expected_run_identity is None or props.get("run-identity") == expected_run_identity)
+        and service.backup_root in parents
+    )
+    if not ok:
+        raise RuntimeError("drive restore artifact metadata mismatch")
+    return meta
+
+
+def download_recovery_artifact(
+    service: _DriveService,
+    file_id: str,
+    dest_path: str,
+    *,
+    expected_size: int,
+    expected_retention_tier: str | None = None,
+    expected_run_identity: str | None = None,
+    max_bytes: int = DRIVE_RESTORE_MAX_ARTIFACT_BYTES,
+) -> None:
+    """Stream one app-owned encrypted recovery artifact to a local temp path.
+
+    Bounded restore-oriented download (#3460 restore source child):
+      - accepts ONLY an already-selected app-owned recovery object identity;
+      - verifies expected recovery metadata (size, format, content-kind, tier,
+        run identity, app-owned parent) BEFORE and DURING retrieval;
+      - rejects trashed / non-recovery / wrong-parent objects (no media fetch);
+      - streams in bounded chunks so the remote payload is never fully materialized
+        in memory;
+      - enforces a hard maximum artifact size so downloads cannot exhaust local
+        resources;
+      - never becomes a generic Drive downloader and never enumerates unrelated
+        Drive files.
+
+    The destination is always a caller-provided local temp path; no repository path
+    is written. Raises on any mismatch or provider failure (the operator fails
+    closed). No file id, name, size, or provider error detail is ever logged.
+    """
+    meta = _preflight_download_metadata(
+        service,
+        file_id,
+        expected_size=expected_size,
+        expected_retention_tier=expected_retention_tier,
+        expected_run_identity=expected_run_identity,
+    )
+    declared_size = _parse_drive_size(meta.get("size"))
+    if declared_size > max_bytes or declared_size <= 0:
+        raise RuntimeError("drive restore artifact size out of bounds")
+
+    with open(dest_path, "wb") as dst:
+        written = 0
+        with service.session.get(
+            DRIVE_API_BASE + "/files/" + file_id + "?alt=media",
+            stream=True,
+            timeout=600,
+        ) as resp:
+            if resp.status_code != 200:
+                raise RuntimeError("drive restore media download failed")
+            declared_total = _parse_drive_size(resp.headers.get("Content-Length"))
+            if declared_total != -1 and declared_total != declared_size:
+                raise RuntimeError("drive restore media size mismatch")
+            for chunk in resp.iter_content(chunk_size=DRIVE_RESTORE_DOWNLOAD_CHUNK_BYTES):
+                if not chunk:
+                    continue
+                written += len(chunk)
+                if written > max_bytes:
+                    raise RuntimeError("drive restore download exceeded bound")
+                dst.write(chunk)
+    if written != declared_size:
+        raise RuntimeError("drive restore download length mismatch")

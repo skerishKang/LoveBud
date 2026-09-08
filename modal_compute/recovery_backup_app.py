@@ -52,6 +52,15 @@ from modal_compute.recovery_backup_policy import (
     evaluate_run,
     make_sanitized_status,
 )
+from modal_compute.recovery_backup_stream import (
+    STREAM_AEAD_HEADER_BYTES,
+    STREAM_AEAD_NONCE_BYTES,
+    STREAM_AEAD_TAG_BYTES,
+    STREAM_AEAD_VERSION,
+    STREAM_CHUNK_BYTES,
+    streaming_decrypt,
+    streaming_encrypt,
+)
 from modal_compute.recovery_drive_storage import (
     TIER_DAILY,
     TIER_MONTHLY,
@@ -82,11 +91,6 @@ ENCRYPTION_KEY_ENV = "RECOVERY_ENCRYPTION_KEY_B64"
 DUMP_TIMEOUT_SECONDS = 600
 OBJECT_RETRY_MAX = 3
 OBJECT_RETRY_BACKOFF_SECONDS = 2.0
-STREAM_CHUNK_BYTES = 1024 * 1024
-STREAM_AEAD_VERSION = b"LBBA1"
-STREAM_AEAD_NONCE_BYTES = 12
-STREAM_AEAD_TAG_BYTES = 16
-STREAM_AEAD_HEADER_BYTES = len(STREAM_AEAD_VERSION) + STREAM_AEAD_NONCE_BYTES
 
 # Object prefixes (symbolic structure only; exact keys are never recorded).
 DAILY_PREFIX = "daily"
@@ -184,53 +188,21 @@ def _is_non_empty(path: str) -> bool:
         return False
 
 
+
+
+# Backward-compatible thin wrappers: the LBBA1 envelope authority now lives in the
+# shared recovery_backup_stream module so the restore operator reuses the exact same
+# format without duplication.
+
+
 def _streaming_encrypt(plain_path: str, enc_path: str, key: bytes, nonce: bytes) -> None:
-    """Stream one parseable AEAD envelope: version + nonce + ciphertext + one tag.
-
-    Uses the streaming Cipher API (update/finalize/tag) so the whole dump is never
-    loaded into memory; chunk boundaries do not affect decryptability because the
-    envelope carries a single final authentication tag.
-    """
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
-    encryptor = Cipher(algorithms.AES(key), modes.GCM(nonce)).encryptor()
-    wrote_any = False
-    with open(plain_path, "rb") as src, open(enc_path, "wb") as dst:
-        dst.write(STREAM_AEAD_VERSION)
-        dst.write(nonce)
-        while True:
-            chunk = src.read(STREAM_CHUNK_BYTES)
-            if not chunk:
-                break
-            wrote_any = True
-            dst.write(encryptor.update(chunk))
-        if not wrote_any:
-            raise ValueError("empty plaintext rejected")
-        dst.write(encryptor.finalize())
-        dst.write(encryptor.tag)  # single 16-byte authentication tag
-    if not _is_non_empty(enc_path):
-        raise ValueError("encrypted output empty")
+    """Stream one parseable AEAD envelope via the shared stream module."""
+    streaming_encrypt(plain_path, enc_path, key, nonce)
 
 
 def _streaming_decrypt(enc_path: str, out_path: str, key: bytes) -> None:
-    """Decrypt a single AEAD envelope; raises on framing or authentication errors."""
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
-    with open(enc_path, "rb") as src:
-        header = src.read(STREAM_AEAD_HEADER_BYTES)
-        if len(header) != STREAM_AEAD_HEADER_BYTES or header[: len(STREAM_AEAD_VERSION)] != STREAM_AEAD_VERSION:
-            raise ValueError("invalid envelope header")
-        nonce = header[len(STREAM_AEAD_VERSION):]
-        payload = src.read()
-        if len(payload) <= STREAM_AEAD_TAG_BYTES:
-            raise ValueError("invalid envelope payload")
-        ciphertext = payload[:-STREAM_AEAD_TAG_BYTES]
-        tag = payload[-STREAM_AEAD_TAG_BYTES:]
-    decryptor = Cipher(algorithms.AES(key), modes.GCM(nonce, tag)).decryptor()
-    with open(out_path, "wb") as dst:
-        if ciphertext:
-            dst.write(decryptor.update(ciphertext))
-        decryptor.finalize()
+    """Decrypt a single AEAD envelope via the shared stream module."""
+    streaming_decrypt(enc_path, out_path, key)
 
 
 def _drive_client():

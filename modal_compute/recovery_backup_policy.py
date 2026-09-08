@@ -15,6 +15,91 @@ from __future__ import annotations
 import base64
 from typing import Any, Mapping
 
+# --- restore operator status states (#3460 restore source child) ---------
+RESTORE_SOURCE_READY = "RESTORE_SOURCE_READY"
+RESTORE_AUTH_UNAVAILABLE = "RESTORE_AUTH_UNAVAILABLE"
+RESTORE_ARTIFACT_NOT_FOUND = "RESTORE_ARTIFACT_NOT_FOUND"
+RESTORE_ARTIFACT_INVALID = "RESTORE_ARTIFACT_INVALID"
+RESTORE_TARGET_INVALID = "RESTORE_TARGET_INVALID"
+RESTORE_COMMAND_FAILED = "RESTORE_COMMAND_FAILED"
+RESTORE_VERIFICATION_FAILED = "RESTORE_VERIFICATION_FAILED"
+RESTORE_CLEANUP_FAILED = "RESTORE_CLEANUP_FAILED"
+RESTORE_SUCCESS = "RESTORE_SUCCESS"
+
+# Restore-target authority classes (#3460 restore source child). The only permitted
+# target class is an explicitly supplied isolated non-Production target.
+RESTORE_TARGET_CLASS_ISOLATED = "ISOLATED_RESTORE_TARGET"
+RESTORE_TARGET_VALID = "RESTORE_TARGET_VALID"
+RESTORE_TARGET_INVALID = "RESTORE_TARGET_INVALID"
+
+# Canonical Production credential names that must NEVER be accepted as the restore
+# target source. Automatic Production fallback is architecturally forbidden.
+FORBIDDEN_RESTORE_TARGET_CREDENTIAL_NAMES = frozenset(
+    {
+        "LOVE_PLATFORM_DATABASE_URL",
+        "LOVE_PLATFORM_WRITE_DATABASE_URL",
+        "DATABASE_URL",
+    }
+)
+
+# Bounded structural verification categories for the future restore drill. These are
+# sanitized outcome classes only; no Product counts, identifiers, or row contents.
+RESTORE_VERIFY_SCHEMA_PRESENT = "RESTORED_SCHEMA_PRESENT"
+RESTORE_VERIFY_RELATIONS_PRESENT = "EXPECTED_CRITICAL_RELATIONS_PRESENT"
+RESTORE_VERIFY_INVARIANTS_PASS = "REPRESENTATIVE_RELATIONAL_INVARIANTS_PASS"
+RESTORE_VERIFY_FAILED = "RESTORE_VERIFICATION_FAILED"
+
+ALL_RESTORE_VERIFY_OUTCOMES = frozenset(
+    {
+        RESTORE_VERIFY_SCHEMA_PRESENT,
+        RESTORE_VERIFY_RELATIONS_PRESENT,
+        RESTORE_VERIFY_INVARIANTS_PASS,
+        RESTORE_VERIFY_FAILED,
+    }
+)
+
+# Restore pipeline phases (sanitized; mirrors the backup ALLOWED_PHASES pattern).
+ALLOWED_RESTORE_PHASES = frozenset(
+    {
+        "target",
+        "artifact_metadata",
+        "download",
+        "decrypt",
+        "restore_command",
+        "verification",
+        "cleanup",
+        None,
+    }
+)
+
+# Fixed sanitized restore status keys (mirrors ALLOWED_STATUS_KEYS). Unknown,
+# private, or raw fields are rejected rather than silently dropped.
+ALLOWED_RESTORE_STATUS_KEYS = frozenset(
+    {
+        "restore_state",
+        "target_state",
+        "artifact_state",
+        "verification_state",
+        "cleanup_state",
+        "phase",
+    }
+)
+
+# Restore state vocabulary constant (used by the source contract).
+ALL_RESTORE_STATES = frozenset(
+    {
+        RESTORE_SOURCE_READY,
+        RESTORE_AUTH_UNAVAILABLE,
+        RESTORE_ARTIFACT_NOT_FOUND,
+        RESTORE_ARTIFACT_INVALID,
+        RESTORE_TARGET_INVALID,
+        RESTORE_COMMAND_FAILED,
+        RESTORE_VERIFICATION_FAILED,
+        RESTORE_CLEANUP_FAILED,
+        RESTORE_SUCCESS,
+    }
+)
+
 # --- fixed status states -------------------------------------------------
 BACKUP_POINT_VALID = "BACKUP_POINT_VALID"
 BACKUP_POINT_STALE = "BACKUP_POINT_STALE"
@@ -382,6 +467,39 @@ def make_sanitized_status(**fields: Any) -> dict:
     return dict(fields)
 
 
+def classify_restore_target(
+    *,
+    restore_target_url_present: bool,
+    restore_target_class: str | None,
+    forbidden_credential_names_present: bool,
+    source_db_url_present: bool,
+) -> str:
+    """Pure fail-closed restore-target authority (#3460 restore source child).
+
+    A restore may proceed only against an explicitly supplied, explicitly classified
+    ISOLATED_RESTORE_TARGET. The classifier never reads the environment; the caller
+    supplies bounded booleans and the fixed target class. Rules:
+
+      - a missing restore target URL is RESTORE_TARGET_INVALID (missing target = STOP);
+      - an unclassified or non-isolated target class is RESTORE_TARGET_INVALID;
+      - the canonical Production credential names (LOVE_PLATFORM_DATABASE_URL,
+        LOVE_PLATFORM_WRITE_DATABASE_URL, DATABASE_URL) must not be present as the
+        restore-target source: automatic Production fallback is forbidden;
+      - the backup source DB URL must never be silently reused as the restore target.
+
+    Returns RESTORE_TARGET_VALID or RESTORE_TARGET_INVALID only.
+    """
+    if not restore_target_url_present:
+        return RESTORE_TARGET_INVALID
+    if restore_target_class != RESTORE_TARGET_CLASS_ISOLATED:
+        return RESTORE_TARGET_INVALID
+    if forbidden_credential_names_present:
+        return RESTORE_TARGET_INVALID
+    if source_db_url_present:
+        return RESTORE_TARGET_INVALID
+    return RESTORE_TARGET_VALID
+
+
 def reject_impossible_partial(status: Mapping[str, Any]) -> None:
     """Reject status combinations that cannot occur in a real pipeline."""
     state = status.get("backup_point_state")
@@ -557,3 +675,52 @@ def preserve_daily_on_monthly_failure(daily_valid: bool, monthly_promotion_succe
     )
     reject_impossible_partial(status)
     return status
+
+
+def make_restore_status(**fields: Any) -> dict:
+    """Build a sanitized restore status containing only fixed enums and buckets.
+
+    Mirrors make_sanitized_status for the backup path: unknown, private, or raw
+    restore fields are rejected rather than silently dropped, and the restore
+    state must be a known fixed state.
+    """
+    for key in fields:
+        if key not in ALLOWED_RESTORE_STATUS_KEYS:
+            marker = next((m for m in PRIVATE_FIELD_MARKERS if m in key.lower()), None)
+            if marker:
+                raise ValueError("RAW_FIELD_REJECTED: " + key)
+            raise ValueError("UNKNOWN_FIELD_REJECTED: " + key)
+    if "restore_state" in fields and fields["restore_state"] not in ALL_RESTORE_STATES:
+        raise ValueError("unknown restore state rejected: " + repr(fields["restore_state"]))
+    if "target_state" in fields and fields["target_state"] not in (RESTORE_TARGET_VALID, RESTORE_TARGET_INVALID):
+        raise ValueError("unknown target state rejected: " + repr(fields["target_state"]))
+    if "artifact_state" in fields and fields["artifact_state"] not in ALL_RESTORE_STATES:
+        raise ValueError("unknown artifact state rejected: " + repr(fields["artifact_state"]))
+    if "verification_state" in fields and fields["verification_state"] not in ALL_RESTORE_VERIFY_OUTCOMES:
+        raise ValueError("unknown verification state rejected: " + repr(fields["verification_state"]))
+    if "cleanup_state" in fields and fields["cleanup_state"] not in (CLEANUP_COMPLETE, CLEANUP_FAILED):
+        raise ValueError("unknown cleanup state rejected: " + repr(fields["cleanup_state"]))
+    if "phase" in fields and fields["phase"] not in ALLOWED_RESTORE_PHASES:
+        raise ValueError("unknown restore phase rejected: " + repr(fields["phase"]))
+    return dict(fields)
+
+
+def evaluate_restore_verification(
+    *,
+    schema_present: bool,
+    critical_relations_present: bool,
+    relational_invariants_pass: bool,
+) -> str:
+    """Pure fail-closed structural verification classifier for the restore drill.
+
+    Returns RESTORE_VERIFY_FAILED unless every required sanitized category passed;
+    a failure can never be reported as restore success upstream. No Product counts
+    or identifiers are accepted or emitted.
+    """
+    if not schema_present:
+        return RESTORE_VERIFY_FAILED
+    if not critical_relations_present:
+        return RESTORE_VERIFY_FAILED
+    if not relational_invariants_pass:
+        return RESTORE_VERIFY_FAILED
+    return RESTORE_VERIFY_INVARIANTS_PASS
