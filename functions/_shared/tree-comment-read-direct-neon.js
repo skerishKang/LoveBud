@@ -13,14 +13,19 @@
 // After explicit direct execution begins there is NO per-request direct ->
 // Modal fallback. Missing/bad read config or any query failure fails closed.
 //
-// Behavioral parity authority is the current Modal implementation
+// Behavioral parity authority is the observable MODAL HTTP BOUNDARY, i.e.
+// PUBLIC REQUEST -> FastAPI Query validation/coercion -> route body
 // (modal_compute/tree_comments.py::fetch_tree_comments and
-// normalize_public_tree_comment_row). This adapter preserves the current
+// normalize_public_tree_comment_row). Query validation runs before the route
+// body, so the internal int()/clamp in fetch_tree_comments is unreachable from
+// HTTP and is NOT the parity authority. This adapter preserves the current
 // public read sequence exactly:
+//   - limit validated against `limit: int = Query(default=20, ge=1, le=50)`
+//     FIRST: unparseable / <1 / >50 -> 422 FastAPI validation body with ZERO DB
+//     calls; no silent default and no clamp for a supplied value
 //   - validate treeId (required UUID, canonical) -> 400 on invalid
 //   - public-tree visibility gate BEFORE any comment read (non-public/missing
 //     -> 404 "Tree not found", never distinguishable at the anonymous edge)
-//   - bounded limit (default 20, clamp 1..50)
 //   - oldest-first stable ordering (created_at ASC, id ASC)
 //   - opaque base64url forward cursor (kind "tree_comments", target-scoped),
 //     invalid cursor -> 400
@@ -221,22 +226,66 @@ function normalizeTreeId(rawId) {
   return { ok: true, value: trimmed.toLowerCase(), detail: null, status: null };
 }
 
-// Python int() parity for query-string input. modal_compute/tree_comments.py::
-// fetch_tree_comments does `int(limit)` inside try/except (TypeError, ValueError)
-// -> 20. Python int() on a string accepts only an optionally signed run of decimal
-// digits (surrounding whitespace allowed); it raises ValueError on fractional and
-// exponent forms, so "1.9" and "1e2" fall back to the default rather than becoming
-// 1 and 100. Number()/Math.trunc() would silently accept both, so the grammar is
-// matched explicitly instead of relying on numeric coercion.
-const PYTHON_INT_STRING_PATTERN = /^[+-]?\d+$/;
+// FastAPI/Pydantic query-string integer grammar actually accepted by the Modal
+// HTTP boundary (empirically pinned against fastapi 0.115.12 / pydantic 2.13.4):
+// optional sign, decimal digits with single underscores between digits, and an
+// optional fractional part that must be exactly zero-valued. Surrounding
+// whitespace is stripped first. Exponent, radix, non-ASCII-digit, grouped-space,
+// and non-integral fractional forms are all rejected.
+const FASTAPI_INT_LAX_PATTERN = /^([+-]?)(\d(?:_?\d)*)(?:\.(\d(?:_?\d)*))?$/;
 
+const LIMIT_VALIDATION_MESSAGES = Object.freeze({
+  int_parsing: 'Input should be a valid integer, unable to parse string as an integer',
+  greater_than_equal: `Input should be greater than or equal to ${COMMENT_MIN_LIMIT}`,
+  less_than_equal: `Input should be less than or equal to ${COMMENT_MAX_LIMIT}`
+});
+
+function buildLimitValidationBody(errorType, rawInput) {
+  const detail = {
+    type: errorType,
+    loc: ['query', 'limit'],
+    msg: LIMIT_VALIDATION_MESSAGES[errorType],
+    input: String(rawInput)
+  };
+  // FastAPI emits `ctx` only for constrained-value failures, never for
+  // int_parsing, and emits it last in the Pydantic error-dict field order.
+  if (errorType === 'greater_than_equal') detail.ctx = { ge: COMMENT_MIN_LIMIT };
+  if (errorType === 'less_than_equal') detail.ctx = { le: COMMENT_MAX_LIMIT };
+  return { detail: [detail] };
+}
+
+// Starlette resolves a repeated scalar query param to its LAST occurrence, so
+// `?limit=5&limit=7` behaves as `?limit=7`. searchParams.get() returns the first.
+function resolveRawLimit(searchParams) {
+  const all = searchParams.getAll('limit');
+  return all.length > 0 ? all[all.length - 1] : null;
+}
+
+// Returns { ok: true, value } or { ok: false, status: 422, body }.
+// There is deliberately NO clamp and NO silent default for a supplied value:
+// the Modal HTTP boundary rejects out-of-range and unparseable limits with 422
+// before fetch_tree_comments() ever runs.
 function normalizeLimit(rawLimit) {
-  const text = rawLimit === null || rawLimit === undefined ? '' : String(rawLimit).trim();
-  let parsed = COMMENT_DEFAULT_LIMIT;
-  if (PYTHON_INT_STRING_PATTERN.test(text)) parsed = Number(text);
-  if (parsed < COMMENT_MIN_LIMIT) parsed = COMMENT_MIN_LIMIT;
-  if (parsed > COMMENT_MAX_LIMIT) parsed = COMMENT_MAX_LIMIT;
-  return parsed;
+  if (rawLimit === null || rawLimit === undefined) {
+    return { ok: true, value: COMMENT_DEFAULT_LIMIT, status: null, body: null };
+  }
+  const text = String(rawLimit).trim();
+  const match = FASTAPI_INT_LAX_PATTERN.exec(text);
+  if (!match) {
+    return { ok: false, value: null, status: 422, body: buildLimitValidationBody('int_parsing', rawLimit) };
+  }
+  const [, sign, integerDigits, fractionDigits] = match;
+  if (fractionDigits !== undefined && /[^0]/.test(fractionDigits)) {
+    return { ok: false, value: null, status: 422, body: buildLimitValidationBody('int_parsing', rawLimit) };
+  }
+  const value = Number(`${sign}${integerDigits.replace(/_/g, '')}`);
+  if (value < COMMENT_MIN_LIMIT) {
+    return { ok: false, value: null, status: 422, body: buildLimitValidationBody('greater_than_equal', rawLimit) };
+  }
+  if (value > COMMENT_MAX_LIMIT) {
+    return { ok: false, value: null, status: 422, body: buildLimitValidationBody('less_than_equal', rawLimit) };
+  }
+  return { ok: true, value, status: null, body: null };
 }
 
 // Safe public read DTO. Mirrors modal_compute/tree_comments.py::
@@ -342,7 +391,19 @@ export async function handleTreeCommentReadDirectNeon(
 
   const url = new URL(request.url);
 
-  // 1. treeId validation (Modal validate_required_uuid parity).
+  // 1. limit validation FIRST. modal_compute/app.py::get_tree_comments declares
+  // `limit: int = Query(default=20, ge=1, le=50)`, so FastAPI validates the query
+  // string before the route body runs and before fetch_tree_comments() reaches
+  // validate_required_uuid / the visibility gate. A rejected limit must therefore
+  // produce 422 with ZERO executor calls, never a clamped/defaulted 200 and never
+  // a treeId 400 or visibility 404 masking it.
+  const limitResult = normalizeLimit(resolveRawLimit(url.searchParams));
+  if (!limitResult.ok) {
+    return jsonResponse(limitResult.body, limitResult.status, requestId, 'invalid-limit');
+  }
+  const limit = limitResult.value;
+
+  // 2. treeId validation (Modal validate_required_uuid parity).
   const treeIdResult = normalizeTreeId(extractTreeId(request));
   if (!treeIdResult.ok) {
     return jsonResponse(
@@ -353,9 +414,6 @@ export async function handleTreeCommentReadDirectNeon(
     );
   }
   const treeId = treeIdResult.value;
-
-  // 2. bounded limit (default 20, clamp 1..50).
-  const limit = normalizeLimit(url.searchParams.get('limit'));
 
   // 3. dedicated read DB authority. No generic/write fallback.
   // Fail closed FIRST if only a writer/generic DB URL is present: never
@@ -484,6 +542,8 @@ export const TREE_COMMENT_READ_DIRECT_NEON_CONTRACT = Object.freeze({
   visibilityGate: 'require_public_tree_before_read',
   defaultLimit: COMMENT_DEFAULT_LIMIT,
   limitRange: [COMMENT_MIN_LIMIT, COMMENT_MAX_LIMIT],
+  limitValidation: 'http_422_fastapi_query_parity_no_clamp',
+  limitValidationOrder: 'before_tree_id_and_before_any_db_query',
   cursorKind: COMMENT_CURSOR_KIND,
   projection: ['id', 'tree_id', 'body', 'created_at', 'updated_at'],
   responseDto: ['id', 'treeId', 'body', 'createdAt', 'updatedAt', 'authorDisplayLabel'],

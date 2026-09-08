@@ -173,67 +173,144 @@ test('B6. empty list -> { comments: [], nextCursor: null }', async () => {
   assert.deepEqual(body, { comments: [], nextCursor: null });
 });
 
-test('B7. bounded limit default 20 and clamps to 1..50 (LIMIT param = limit+1)', async () => {
+test('B7. accepted limit values bind LIMIT = limit + 1 (no clamp path exists over HTTP)', async () => {
   const mod = await loadModule();
-  // default
-  let { calls, executor } = makeReadExecutor();
-  await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-b7a', { executorOverride: executor });
-  let cmt = calls.find((c) => c.text.includes('FROM tree_comments'));
-  assert.equal(cmt.values[cmt.values.length - 1], 21, 'default limit 20 -> LIMIT 21');
-
-  // clamp high
-  ({ calls, executor } = makeReadExecutor());
-  await mod.handleTreeCommentReadDirectNeon(makeGetRequest({ query: '?limit=999' }), READ_ENV, 'rid-b7b', { executorOverride: executor });
-  cmt = calls.find((c) => c.text.includes('FROM tree_comments'));
-  assert.equal(cmt.values[cmt.values.length - 1], 51, 'limit 999 clamps to 50 -> LIMIT 51');
-
-  // clamp low
-  ({ calls, executor } = makeReadExecutor());
-  await mod.handleTreeCommentReadDirectNeon(makeGetRequest({ query: '?limit=0' }), READ_ENV, 'rid-b7c', { executorOverride: executor });
-  cmt = calls.find((c) => c.text.includes('FROM tree_comments'));
-  assert.equal(cmt.values[cmt.values.length - 1], 2, 'limit 0 clamps to 1 -> LIMIT 2');
-});
-
-// Modal parity for limit normalization. modal_compute/tree_comments.py::
-// fetch_tree_comments uses `int(limit)` inside try/except (TypeError, ValueError)
-// -> 20, then clamps to 1..50. Query params arrive as strings, so Python int()
-// REJECTS fractional and exponent forms outright instead of truncating or
-// exponentiating them. SQL binds LIMIT = safe_limit + 1.
-test('B7b. limit normalization matches Python int() (no float/exponent coercion)', async () => {
-  const mod = await loadModule();
-  const cases = [
-    // [query, expected safe_limit, expected LIMIT param, label]
-    [null, 20, 21, 'missing limit -> default 20'],
-    ['?limit=', 20, 21, 'empty limit -> default 20'],
-    ['?limit=1', 1, 2, 'plain integer 1'],
-    ['?limit=20', 20, 21, 'plain integer 20 passes through'],
-    ['?limit=+5', 5, 6, 'signed +5 parses under int() parity'],
-    ['?limit=-1', 1, 2, 'signed -1 parses then clamps to 1'],
-    ['?limit=0', 1, 2, '0 parses then clamps to 1'],
-    ['?limit=51', 50, 51, '51 parses then clamps to 50'],
-    ['?limit=1.9', 20, 21, '1.9 is NOT a Python int -> default 20 (never 1)'],
-    ['?limit=1e2', 20, 21, '1e2 is NOT a Python int -> default 20 (never 100/50)'],
-    ['?limit=abc', 20, 21, 'abc is NOT a Python int -> default 20'],
-    ['?limit=0x1f', 20, 21, 'hex form is NOT a Python int -> default 20'],
-    ['?limit=  ', 20, 21, 'whitespace-only limit -> default 20']
+  const accepted = [
+    [null, 20, 'missing limit -> FastAPI default 20'],
+    ['?limit=1', 1, 'lower bound'],
+    ['?limit=20', 20, 'mid range'],
+    ['?limit=50', 50, 'upper bound'],
+    ['?limit=%2B5', 5, 'percent-encoded plus sign coerces to 5'],
+    ['?limit=+5', 5, 'wire "+" decodes to space on both sides, still 5'],
+    ['?limit=%205%20', 5, 'surrounding whitespace stripped then accepted'],
+    ['?limit=007', 7, 'leading zeros accepted'],
+    ['?limit=2.0', 2, 'exactly-integral decimal string coerces to 2'],
+    ['?limit=1_0', 10, 'Pydantic digit-grouping underscore coerces to 10'],
+    ['?limit=5&limit=7', 7, 'repeated param resolves to the LAST occurrence'],
+    ['?limit=abc&limit=20', 20, 'last occurrence wins even if earlier is invalid']
   ];
 
-  for (const [index, [query, expectedLimit, expectedSqlLimit, label]] of cases.entries()) {
+  for (const [query, expectedLimit, label] of accepted) {
     const { calls, executor } = makeReadExecutor();
-    const opts = query === null ? {} : { query };
     const resp = await mod.handleTreeCommentReadDirectNeon(
-      makeGetRequest(opts),
+      makeGetRequest(query === null ? {} : { query }),
       READ_ENV,
-      `rid-b7b-${index}`,
+      `rid-b7-${label.length}`,
       { executorOverride: executor }
     );
-    assert.equal(resp.status, 200, `${label}: request must succeed`);
+    assert.equal(resp.status, 200, `${label}: accepted -> 200`);
     const cmt = calls.find((c) => c.text.includes('FROM tree_comments'));
     assert.ok(cmt, `${label}: comment read query issued`);
-    const sqlLimit = cmt.values[cmt.values.length - 1];
-    assert.equal(sqlLimit, expectedSqlLimit, `${label}: LIMIT param = safe_limit + 1`);
-    assert.equal(sqlLimit - 1, expectedLimit, `${label}: safe_limit parity`);
+    assert.equal(
+      cmt.values[cmt.values.length - 1],
+      expectedLimit + 1,
+      `${label}: LIMIT param = safe_limit + 1`
+    );
   }
+});
+
+// ─── Modal HTTP limit-parity table ────────────────────────────────────────
+// The parity authority is the observable Modal HTTP boundary, NOT the internal
+// int()/clamp of fetch_tree_comments. modal_compute/app.py::get_tree_comments
+// declares `limit: int = Query(default=20, ge=1, le=50)`, so FastAPI/Pydantic
+// validates BEFORE fetch_tree_comments is entered: out-of-range and unparseable
+// values return 422 and the clamp is unreachable over HTTP.
+//
+// Every MODAL_* value below is EMPIRICAL, produced by driving the real web_app
+// through fastapi.testclient.TestClient with the fetch_tree_comments seam
+// patched (tests/contracts/tree_comment_read_limit_http_parity_4356.py).
+// None of it is inferred from library memory.
+const FASTAPI_LIMIT_MESSAGES = Object.freeze({
+  int_parsing: 'Input should be a valid integer, unable to parse string as an integer',
+  greater_than_equal: 'Input should be greater than or equal to 1',
+  less_than_equal: 'Input should be less than or equal to 50'
+});
+
+function expectedFastApiValidationBody(errorType, input) {
+  const detail = {
+    type: errorType,
+    loc: ['query', 'limit'],
+    msg: FASTAPI_LIMIT_MESSAGES[errorType],
+    input
+  };
+  if (errorType === 'greater_than_equal') detail.ctx = { ge: 1 };
+  if (errorType === 'less_than_equal') detail.ctx = { le: 50 };
+  return { detail: [detail] };
+}
+
+const MODAL_HTTP_LIMIT_REJECTED = [
+  ['?limit=0', '0', 'greater_than_equal', 'below ge=1 (previously clamped to 1)'],
+  ['?limit=-1', '-1', 'greater_than_equal', 'negative below ge=1'],
+  ['?limit=-0', '-0', 'greater_than_equal', 'signed zero still 0'],
+  ['?limit=51', '51', 'less_than_equal', 'above le=50 (previously clamped to 50)'],
+  ['?limit=999', '999', 'less_than_equal', 'far above le=50'],
+  ['?limit=1.9', '1.9', 'int_parsing', 'non-integral decimal'],
+  ['?limit=2.5', '2.5', 'int_parsing', 'non-integral decimal'],
+  ['?limit=1e2', '1e2', 'int_parsing', 'exponent form never accepted'],
+  ['?limit=1E2', '1E2', 'int_parsing', 'exponent form never accepted'],
+  ['?limit=abc', 'abc', 'int_parsing', 'non-numeric'],
+  ['?limit=', '', 'int_parsing', 'empty value'],
+  ['?limit=%20%20%20', '   ', 'int_parsing', 'whitespace-only'],
+  ['?limit=0x1f', '0x1f', 'int_parsing', 'radix form'],
+  ['?limit=5.', '5.', 'int_parsing', 'trailing dot'],
+  ['?limit=.5', '.5', 'int_parsing', 'leading dot'],
+  ['?limit=20&limit=abc', 'abc', 'int_parsing', 'last occurrence is invalid']
+];
+
+test('B7b. rejected limit inputs return Modal-identical 422 with ZERO executor calls', async () => {
+  const mod = await loadModule();
+  for (const [query, input, errorType, label] of MODAL_HTTP_LIMIT_REJECTED) {
+    const { calls, executor } = makeReadExecutor();
+    const resp = await mod.handleTreeCommentReadDirectNeon(
+      makeGetRequest({ query }),
+      READ_ENV,
+      `rid-b7b-${input.length}-${errorType}`,
+      { executorOverride: executor }
+    );
+    const MODAL_EXPECTED_STATUS = 422;
+    const DIRECT_NEON_STATUS = resp.status;
+    assert.equal(
+      DIRECT_NEON_STATUS,
+      MODAL_EXPECTED_STATUS,
+      `${label}: status parity (MODAL=${MODAL_EXPECTED_STATUS} DIRECT=${DIRECT_NEON_STATUS})`
+    );
+    assert.deepEqual(
+      await resp.clone().json(),
+      expectedFastApiValidationBody(errorType, input),
+      `${label}: FastAPI-shaped validation body`
+    );
+    assert.equal(calls.length, 0, `${label}: NO DB query before validation fails`);
+    assert.ok(
+      !calls.some((c) => c.text.includes('FROM trees')),
+      `${label}: visibility gate must not run for a rejected limit`
+    );
+  }
+});
+
+test('B7c. limit validation precedes treeId validation and the visibility gate', async () => {
+  const mod = await loadModule();
+  // Modal: FastAPI query validation runs before the route body, so a bad limit
+  // on a bad treeId is a 422 (limit), never a 400 (treeId) or 404 (visibility).
+  const first = makeReadExecutor({ treeRow: null });
+  const resp = await mod.handleTreeCommentReadDirectNeon(
+    makeGetRequest({ treeId: 'not-a-uuid', query: '?limit=0' }),
+    READ_ENV,
+    'rid-b7c-a',
+    { executorOverride: first.executor }
+  );
+  assert.equal(resp.status, 422, 'bad limit wins over bad treeId (Modal boundary order)');
+  assert.equal(first.calls.length, 0, 'no DB call on the rejected limit');
+
+  // A private/missing tree with a VALID limit still reaches the 404 gate.
+  const second = makeReadExecutor({ treeRow: null });
+  const resp2 = await mod.handleTreeCommentReadDirectNeon(
+    makeGetRequest({ query: '?limit=10' }),
+    READ_ENV,
+    'rid-b7c-b',
+    { executorOverride: second.executor }
+  );
+  assert.equal(resp2.status, 404, 'valid limit + missing tree -> visibility 404 preserved');
+  assert.equal(second.calls.length, 1, 'visibility gate is the first (and only) query');
 });
 
 test('B8. cursor pagination: hasMore -> nextCursor encoded; second page consumes cursor, no overlap', async () => {
