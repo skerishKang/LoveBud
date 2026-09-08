@@ -84,6 +84,7 @@ from modal_compute.recovery_drive_storage import (
     select_retention_deletions as drive_select_deletions,
     verify_uploaded_file as drive_verify_file,
 )
+from modal_compute.recovery_pg_transport import parse_pg_connection
 
 # Fixed symbolic identifiers (values are never logged or recorded).
 RECOVERY_BACKUP_APP_NAME = "lovebud-recovery-backup"
@@ -195,9 +196,12 @@ def _decode_encryption_key(value: str) -> bytes:
 
 
 def _run_dump(dump_path: str) -> None:
-    # Bounded single-attempt dump with a sanitized argv; the connection value is
-    # passed only through the child-only libpq environment (PGDATABASE).
+    # Bounded single-attempt dump with a sanitized argv. The connection URI is
+    # decomposed into child-only libpq environment variables (PGHOST / PGPORT /
+    # PGDATABASE / PGUSER / PGPASSWORD / PGSSLMODE / ...); the raw connection
+    # value is never placed in argv, and unsupported parameters fail closed.
     _log_phase("dump")
+    conn = parse_pg_connection(os.environ[DB_URL_ENV])
     cmd = [
         "pg_dump",
         "--format=custom",
@@ -209,9 +213,15 @@ def _run_dump(dump_path: str) -> None:
     ]
     child_env = {
         "PATH": os.environ.get("PATH", ""),
-        "PGDATABASE": os.environ[DB_URL_ENV],
         "PGCONNECT_TIMEOUT": "15",
+        "PGHOST": conn["PGHOST"],
+        "PGPORT": conn["PGPORT"],
+        "PGDATABASE": conn["PGDATABASE"],
+        "PGUSER": conn["PGUSER"],
     }
+    for key in conn:
+        if key not in child_env:
+            child_env[key] = conn[key]
     subprocess.run(
         cmd,
         check=True,
