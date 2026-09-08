@@ -52,6 +52,7 @@ SOURCE_IMPLEMENTED
 DRIVE_UNPROVISIONED
 SECRETS_UNPROVISIONED
 SCHEDULE_NOT_DEPLOYED
+BACKUP_RUNTIME_DISABLED
 NO_BACKUP_EXECUTED
 PRODUCTION_RESTORE_NOT_AUTHORIZED
 ```
@@ -59,8 +60,11 @@ PRODUCTION_RESTORE_NOT_AUTHORIZED
 `SOURCE_IMPLEMENTED` is the current state: the pipeline source and deterministic contract
 tests exist for the Google Drive adapter. `DRIVE_UNPROVISIONED`, `SECRETS_UNPROVISIONED`, and
 `SCHEDULE_NOT_DEPLOYED` remain true until a separately authorized provisioning/deployment child
-completes. `NO_BACKUP_EXECUTED` is true until the first scheduled run succeeds. Production
-restore is `PRODUCTION_RESTORE_NOT_AUTHORIZED` at all times in this source-only phase.
+completes. `BACKUP_RUNTIME_DISABLED` is the runtime posture of a deployed app whose explicit
+activation gate (`LB_RECOVERY_BACKUP_RUNTIME`) is unset, unknown, or `disabled`: deployment
+does NOT imply schedule activation, and a deployed-but-unactivated app performs zero side
+effects. `NO_BACKUP_EXECUTED` is true until the first authorized scheduled run succeeds.
+Production restore is `PRODUCTION_RESTORE_NOT_AUTHORIZED` at all times in this source-only phase.
 
 ## 3. Module layout
 
@@ -76,16 +80,21 @@ modal_compute/recovery_drive_storage.py
     All live operations only inside explicitly called functions during a run.
 
 modal_compute/recovery_backup_app.py
-    separate Modal app `lovebud-recovery-backup`; one scheduled non-HTTP function
-    per 24-hour period; all live operations inside the scheduled function body.
-    Orchestrates dump / encryption / plaintext cleanup / Drive upload / promotion /
-    retention cleanup and returns a sanitized status.
+    separate Modal app `lovebud-recovery-backup`; a single non-HTTP function that is
+    deliberately NOT schedule-bound: deploying the app alone is inert
+    (`BACKUP_RUNTIME_DISABLED`). Every execution first consults the explicit runtime
+    activation gate `LB_RECOVERY_BACKUP_RUNTIME` (unset/unknown -> disabled, fail closed);
+    only the exact `scheduled` value makes execution eligible. Orchestrates dump /
+    encryption / plaintext cleanup / Drive upload / promotion / retention cleanup and
+    returns a sanitized status.
 ```
 
 The public FastAPI app (`modal_compute/app.py`) never imports any of these modules.
 
-## 4. Pipeline summary (single scheduled run)
+## 4. Pipeline summary (single authorized run)
 
+0. explicit runtime activation gate (`LB_RECOVERY_BACKUP_RUNTIME`); unset/unknown/disabled
+   returns sanitized inert status with zero side effects (no pg_dump, no encryption, no Drive);
 1. symbolic secret presence check;
 2. private ephemeral working directory;
 3. compressed PostgreSQL custom-format logical dump (`pg_dump --format=custom
@@ -236,7 +245,9 @@ no R2 / Oracle / Backblaze B2 provisioning
 
 ## 9. Runtime provisioning prerequisites (future, separately authorized)
 
-Before any scheduled run can execute, a separate provisioning/deployment child must:
+Deploy/schedule decoupling (#3460): deploying the Modal app does NOT activate any schedule
+and does NOT authorize a Production backup. Activation is a separate, explicit, later
+authorization. A separate provisioning/deployment child must, in order:
 
 1. reuse the designated Google Drive account (no new account; no Google One
    subscription; no billing mutation; see #3894);
@@ -245,8 +256,16 @@ Before any scheduled run can execute, a separate provisioning/deployment child m
 3. provision the Drive OAuth material under the `lovebud-recovery-drive` symbolic secret;
 4. provision the backup encryption key under the `lovebud-recovery-encryption` symbolic
    secret;
-5. deploy the `lovebud-recovery-backup` Modal app and activate its 24-hour schedule.
+5. deploy the `lovebud-recovery-backup` Modal app in its INERT state (the deployed function
+   carries no schedule binding and the runtime gate remains unset — deployment alone causes
+   no backup);
+6. verify the deployed pg_dump client (major 17) inside the deployed image;
+7. verify Drive auth/quota preflight behavior against the provisioned boundary;
+8. obtain explicit CENTRAL approval for schedule/runtime activation;
+9. set the runtime activation authority (`LB_RECOVERY_BACKUP_RUNTIME=scheduled`) through the
+   Modal secret boundary — never in repository source;
+10. execute the first live backup and review sanitized evidence.
 
 Until then the implementation remains source-only with
 `DRIVE_UNPROVISIONED` / `SECRETS_UNPROVISIONED` / `SCHEDULE_NOT_DEPLOYED` /
-`NO_BACKUP_EXECUTED` reported.
+`BACKUP_RUNTIME_DISABLED` / `NO_BACKUP_EXECUTED` reported.

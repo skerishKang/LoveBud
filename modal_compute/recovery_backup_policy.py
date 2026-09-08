@@ -116,6 +116,19 @@ BACKUP_INTEGRITY_UNVERIFIED = "BACKUP_INTEGRITY_UNVERIFIED"
 EXTERNAL_STORAGE_UNPROVISIONED = "EXTERNAL_STORAGE_UNPROVISIONED"
 SECRET_BOUNDARY_UNPROVISIONED = "SECRET_BOUNDARY_UNPROVISIONED"
 
+# --- deploy/schedule decoupling (#3460 schedule-decouple child) -----------
+# Deployment must NOT imply scheduled backup activation. The only runtime
+# activation authority is the explicit symbolic gate below; unset/unknown
+# values fail closed to disabled. Secrets being present is NOT activation.
+RUNTIME_ACTIVATION_ENV = "LB_RECOVERY_BACKUP_RUNTIME"
+RUNTIME_ACTIVATION_DISABLED = "disabled"
+RUNTIME_ACTIVATION_SCHEDULED = "scheduled"
+RUNTIME_ACTIVATION_VALUES = frozenset(
+    {RUNTIME_ACTIVATION_DISABLED, RUNTIME_ACTIVATION_SCHEDULED}
+)
+BACKUP_RUNTIME_DISABLED = "BACKUP_RUNTIME_DISABLED"
+BACKUP_RUNTIME_SCHEDULED = "BACKUP_RUNTIME_SCHEDULED"
+
 # --- Drive-specific sanitized states (#3894 / child #4137) ----------------
 # Quota preflight + auth boundary states emitted by the Drive adapter. These are
 # fixed sanitized states only; exact quota byte values never appear in logs or
@@ -196,6 +209,7 @@ ALLOWED_PHASES = frozenset(
         "cleanup",
         "secrets",
         "storage",
+        "runtime_activation",
         None,
     }
 )
@@ -288,6 +302,29 @@ def decode_encryption_key(value: str) -> bytes:
     if len(decoded) != 32:
         raise ValueError("invalid encryption key length")
     return decoded
+
+
+def classify_runtime_activation(raw_value: str | None) -> str:
+    """Pure fail-closed runtime activation classifier (#3460 decoupling child).
+
+    Returns BACKUP_RUNTIME_SCHEDULED only for the exact explicit "scheduled"
+    value; every other input — unset (None), empty, unknown, or "disabled" —
+    fails closed to BACKUP_RUNTIME_DISABLED. Deployment and secret presence
+    are never activation: only this explicit value authorizes execution.
+    """
+    if raw_value == RUNTIME_ACTIVATION_SCHEDULED:
+        return BACKUP_RUNTIME_SCHEDULED
+    return BACKUP_RUNTIME_DISABLED
+
+
+def activation_gate_state(environ: Mapping[str, str]) -> str:
+    """Classify the runtime activation gate from a supplied environment mapping.
+
+    Pure function of the mapping argument (the caller supplies the environment
+    source, so this module never touches process state directly). Unset or
+    unknown values fail closed to disabled.
+    """
+    return classify_runtime_activation(environ.get(RUNTIME_ACTIVATION_ENV))
 
 
 def classify_drive_quota(
