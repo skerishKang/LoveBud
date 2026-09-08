@@ -9,6 +9,10 @@ import {
   isTreeCommentDirectNeonSelected,
   handleTreeCommentDirectNeon
 } from '../../../_shared/tree-comment-direct-neon.js';
+import {
+  isTreeCommentReadDirectNeonSelected,
+  handleTreeCommentReadDirectNeon
+} from '../../../_shared/tree-comment-read-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -222,8 +226,19 @@ async function proxyTreeCommentCreate(request, env) {
   return proxyTreeCommentCreateModal(request, env);
 }
 
+// #4000 gated direct-Neon candidate entry for the anonymous public Tree Comment
+// LIST read. unset/modal/unknown gate keeps the existing Modal GET path
+// unchanged; explicit direct_neon selection dispatches to the migration-candidate
+// adapter with no per-request direct -> Modal fallback after direct execution
+// begins.
 async function proxyTreeCommentRead(request, env) {
   const requestId = getOrCreateRequestId(request);
+  if (isTreeCommentReadDirectNeonSelected(env)) {
+    const directResponse = await handleTreeCommentReadDirectNeon(request, env, requestId);
+    if (directResponse !== null) return directResponse;
+    // directResponse === null means the adapter deferred (gate unset/unknown or
+    // non-matching request); fall through to Modal.
+  }
   const resolved = resolveModalUrl(request, env, requestId, new URL(request.url).search);
   if (resolved.response) return resolved.response;
   const modalUrl = resolved.target;
