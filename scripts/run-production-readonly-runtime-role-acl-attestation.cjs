@@ -1,12 +1,22 @@
 'use strict';
 
 /**
- * Ephemeral #4283 Production-readonly runtime-role / reactions ACL attestation.
+ * Production-readonly runtime-role ACL attestation (reactions #4283 packet +
+ * tree-comment-read #4000 packet).
  *
  * Source-bound, one-session catalog-only diagnostic. The connected observer is
  * never promoted to, made a member of, or otherwise used as the target role.
  * Target-role privilege functions receive the explicitly authorized target role
  * from the private role-mapping input.
+ *
+ * The observer credential is LOVEBUD_PRODUCTION_READONLY_DATABASE_URL. The
+ * target role is the runtime role behind LOVE_PLATFORM_DATABASE_URL, named only
+ * in the private role-mapping file; it is never read from a URL, environment
+ * value, session identity, or caller argument.
+ *
+ * TARGET_RELATIONS is a static source-reviewed allowlist. There is no caller
+ * controlled object, table, role, or SQL input, and this runner never issues
+ * GRANT, REVOKE, or any DDL/DML.
  */
 
 const fs = require('node:fs');
@@ -15,7 +25,7 @@ const { execFileSync } = require('node:child_process');
 const boundary = require('./production-readonly-catalog-boundary-core.cjs');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const SOURCE_BOUND_ISSUE = '4283';
+const SOURCE_BOUND_ISSUE = '4000';
 const SOURCE_BOUND_PURPOSE = 'ONE_PRODUCTION_READONLY_RUNTIME_ROLE_ACL_ATTESTATION';
 const APPROVAL_REFERENCE = `issue:${SOURCE_BOUND_ISSUE}`;
 const MAX_ROLE_CHAIN_DEPTH = 16;
@@ -28,6 +38,7 @@ const TARGET_RELATIONS = Object.freeze([
   'public.memories',
   'public.tree_social_counts',
   'public.reactions',
+  'public.tree_comments',
 ]);
 const TARGET_RELATION_NAMES = Object.freeze(TARGET_RELATIONS.map((value) => value.slice('public.'.length)));
 const TARGET_SET = new Set(TARGET_RELATIONS);
@@ -87,6 +98,7 @@ const Q = Object.freeze({
   REACTIONS_INSERT: `SELECT has_table_privilege($1::name, 'public.reactions', 'INSERT') AS allowed`,
   REACTIONS_UPDATE: `SELECT has_table_privilege($1::name, 'public.reactions', 'UPDATE') AS allowed`,
   REACTIONS_DELETE: `SELECT has_table_privilege($1::name, 'public.reactions', 'DELETE') AS allowed`,
+  TREE_COMMENTS_SELECT: `SELECT has_table_privilege($1::name, 'public.tree_comments', 'SELECT') AS allowed`,
   RELATION_ACL: `SELECT c.relname::text AS relation_name,
                       (c.relacl IS NULL) AS relacl_was_null,
                       c.relowner::bigint AS owner_oid,
@@ -469,6 +481,32 @@ function deriveDecision({ identityResolved, privileges, roleAdmin, broadAllTable
   return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', canProceed: 'NO', finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP' };
 }
 
+/**
+ * Tree Comment READ activation packet (#4000). Deliberately separate from the
+ * #4283 reactions decision so the historical reaction-grant semantics stay
+ * byte-for-byte regression boundaries.
+ *
+ * Attestation only. A missing privilege is reported as TREE_COMMENTS_SELECT=NO
+ * with a STOP disposition; this runner never grants, revokes, or repairs.
+ */
+function deriveTreeCommentsDecision({ identityResolved, privileges, roleAdmin, broadAllTableSelect }) {
+  const baseline = privileges.DATABASE_CONNECT === true && privileges.USAGE_PUBLIC === true &&
+    privileges.SELECT_TREES === true;
+  if (!identityResolved) {
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'RUNTIME_ROLE_IDENTITY_UNRESOLVED' };
+  }
+  if (!baseline || roleAdmin === true || broadAllTableSelect === true) {
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP' };
+  }
+  if (privileges.SELECT_TREE_COMMENTS === true) {
+    return { target: 'RESOLVED', minimalChange: 'NO_PRIVILEGE_CHANGE', activationEligible: 'YES', finalDisposition: 'TREE_COMMENTS_READ_ROLE_ACL_ATTESTED' };
+  }
+  if (privileges.SELECT_TREE_COMMENTS === false) {
+    return { target: 'RESOLVED', minimalChange: 'SELECT_ON_TREE_COMMENTS_ONLY', activationEligible: 'NO', finalDisposition: 'TREE_COMMENTS_SELECT_MISSING_STOP' };
+  }
+  return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'TREE_COMMENTS_PRIVILEGE_UNRESOLVED' };
+}
+
 async function collectAttestation({ client, targetRuntimeRole, roleMapping, artifact }) {
   const target = assertTargetRuntimeRole(targetRuntimeRole);
   if (!roleMapping || Object.keys(roleMapping).length !== 1 ||
@@ -533,17 +571,22 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       INSERT_REACTIONS: privilege(await client.query(Q.REACTIONS_INSERT, [target]), 'INSERT_REACTIONS'),
       UPDATE_REACTIONS: privilege(await client.query(Q.REACTIONS_UPDATE, [target]), 'UPDATE_REACTIONS'),
       DELETE_REACTIONS: privilege(await client.query(Q.REACTIONS_DELETE, [target]), 'DELETE_REACTIONS'),
+      SELECT_TREE_COMMENTS: privilege(await client.query(Q.TREE_COMMENTS_SELECT, [target]), 'TREE_COMMENTS_SELECT'),
     };
     const effectiveByRelation = {
       trees: privileges.SELECT_TREES,
       memories: privileges.SELECT_MEMORIES,
       tree_social_counts: privileges.SELECT_TREE_SOCIAL_COUNTS,
       reactions: privileges.SELECT_REACTIONS,
+      tree_comments: privileges.SELECT_TREE_COMMENTS,
     };
     for (const relationName of TARGET_RELATION_NAMES) {
       grantSources.relations[relationName].effectiveSelect = effectiveByRelation[relationName] ? 'YES' : 'NO';
     }
     const decision = deriveDecision({ identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect });
+    const treeCommentsDecision = deriveTreeCommentsDecision({
+      identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect,
+    });
     return {
       transactionReadOnly: 'VERIFIED',
       sessionRole: 'PRESENT_REDACTED',
@@ -568,6 +611,7 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       inheritedTargetSelectGrant: grantSources.inherited,
       perRelationProvenance: sanitizeRelationProvenance(grantSources.relations),
       decision,
+      treeCommentsDecision,
       rawRoleExposed: 'NO',
       rawGranteeExposed: 'NO',
       rawSecretExposed: 'NO',
@@ -595,6 +639,7 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     targetMembershipAdminOption: 'UNKNOWN', targetMembershipSetOption: 'UNKNOWN',
     historicalRuntimeRoleRelation: 'UNRESOLVED',
     selectTrees: 'UNKNOWN', selectMemories: 'UNKNOWN', selectTreeSocialCounts: 'UNKNOWN', selectReactions: 'UNKNOWN',
+    selectTreeComments: 'UNKNOWN',
     insertReactions: 'UNKNOWN', updateReactions: 'UNKNOWN', deleteReactions: 'UNKNOWN',
     usagePublic: 'UNKNOWN', databaseConnect: 'UNKNOWN', broadAllTableSelect: 'UNKNOWN', roleAdmin: 'UNKNOWN',
     publicSelectGrant: 'UNKNOWN', directTargetSelectGrant: 'UNKNOWN', inheritedTargetSelectGrant: 'UNKNOWN',
@@ -603,6 +648,9 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
       inheritedGrant: 'UNKNOWN', membershipOnlyGrant: 'UNKNOWN', ownerSelect: 'UNKNOWN', relaclWasNull: 'UNKNOWN', ownerOid: 'UNKNOWN',
     }])),
     reactionsPrivilegeTargetIdentity: 'UNRESOLVED', minimalRequiredChange: 'NOT_DETERMINABLE', canProceed: 'NO',
+    treeCommentsPrivilegeTargetIdentity: 'UNRESOLVED', treeCommentsMinimalRequiredChange: 'NOT_DETERMINABLE',
+    treeCommentsActivationEligible: 'NO',
+    treeCommentsFinalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
     finalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
     errorCategory: category,
   };
@@ -631,6 +679,7 @@ function formatSuccess(result) {
     historicalRuntimeRoleRelation: result.historicalRuntimeRoleRelation,
     selectTrees: p.SELECT_TREES ? 'YES' : 'NO', selectMemories: p.SELECT_MEMORIES ? 'YES' : 'NO',
     selectTreeSocialCounts: p.SELECT_TREE_SOCIAL_COUNTS ? 'YES' : 'NO', selectReactions: p.SELECT_REACTIONS ? 'YES' : 'NO',
+    selectTreeComments: p.SELECT_TREE_COMMENTS ? 'YES' : 'NO',
     insertReactions: p.INSERT_REACTIONS ? 'YES' : 'NO', updateReactions: p.UPDATE_REACTIONS ? 'YES' : 'NO', deleteReactions: p.DELETE_REACTIONS ? 'YES' : 'NO',
     usagePublic: p.USAGE_PUBLIC ? 'YES' : 'NO', databaseConnect: p.DATABASE_CONNECT ? 'YES' : 'NO',
     broadAllTableSelect: result.broadAllTableSelect, roleAdmin: result.roleAdmin,
@@ -639,6 +688,10 @@ function formatSuccess(result) {
     perRelationProvenance: result.perRelationProvenance,
     reactionsPrivilegeTargetIdentity: result.decision.target, minimalRequiredChange: result.decision.minimalChange,
     canProceed: result.decision.canProceed, finalDisposition: result.decision.finalDisposition,
+    treeCommentsPrivilegeTargetIdentity: result.treeCommentsDecision.target,
+    treeCommentsMinimalRequiredChange: result.treeCommentsDecision.minimalChange,
+    treeCommentsActivationEligible: result.treeCommentsDecision.activationEligible,
+    treeCommentsFinalDisposition: result.treeCommentsDecision.finalDisposition,
     rawRoleExposed: 'NO', rawGranteeExposed: 'NO', rawSecretExposed: 'NO',
   };
 }
@@ -696,6 +749,7 @@ module.exports = {
   buildRoleMappingRelation,
   classifySelectGrantSources,
   deriveDecision,
+  deriveTreeCommentsDecision,
   collectAttestation,
   runAttestationWithDeps,
   sanitizedFailure,

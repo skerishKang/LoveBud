@@ -11,10 +11,12 @@ const {
   parseArgs,
   assertSourceBoundApproval,
   assertTargetRuntimeRole,
+  TARGET_RELATIONS,
   TARGET_RELATION_NAMES,
   buildRoleMappingRelation,
   classifySelectGrantSources,
   deriveDecision,
+  deriveTreeCommentsDecision,
   collectAttestation,
   loadTargetRoleMapping,
   runAttestationWithDeps,
@@ -98,6 +100,7 @@ function fakeClient({
     INSERT_REACTIONS: false,
     UPDATE_REACTIONS: false,
     DELETE_REACTIONS: false,
+    SELECT_TREE_COMMENTS: false,
     ...privileges,
   };
   const bool = (key) => [{ allowed: p[key] }];
@@ -124,6 +127,7 @@ function fakeClient({
       if (text === Q.REACTIONS_INSERT) return { rows: bool('INSERT_REACTIONS') };
       if (text === Q.REACTIONS_UPDATE) return { rows: bool('UPDATE_REACTIONS') };
       if (text === Q.REACTIONS_DELETE) return { rows: bool('DELETE_REACTIONS') };
+      if (text === Q.TREE_COMMENTS_SELECT) return { rows: bool('SELECT_TREE_COMMENTS') };
       throw new Error('unexpected fixture query');
     },
   };
@@ -146,7 +150,7 @@ function writePrivateMapping(file, value) {
   fs.writeFileSync(file, JSON.stringify(value), { mode: 0o600 });
 }
 
-describe('LoveBud #4283 target-role runtime ACL attestation contract', () => {
+describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () => {
   it('binds the exact issue and purpose before private input access', async () => {
     let loaded = false;
     await assert.rejects(
@@ -513,7 +517,10 @@ describe('LoveBud #4283 target-role runtime ACL attestation contract', () => {
     const { fixture } = await collectFixture();
     const fixed = new Set(Object.values(Q));
     assert.ok(fixture.calls.every((call) => fixed.has(call.text)));
-    assert.ok(fixture.calls.every((call) => !/SELECT\s+\*|FROM\s+public\.(trees|memories|tree_social_counts|reactions)\b/i.test(call.text)));
+    assert.ok(fixture.calls.every((call) => !/SELECT\s+\*|FROM\s+public\.(trees|memories|tree_social_counts|reactions|tree_comments)\b/i.test(call.text)));
+    const treeCommentsProbe = fixture.calls.filter((call) => call.text === Q.TREE_COMMENTS_SELECT);
+    assert.equal(treeCommentsProbe.length, 1);
+    assert.deepEqual(treeCommentsProbe[0].params, [RAW_TARGET]);
   });
 
   it('retains one read-only session, rollback, disconnect, and no retry', async () => {
@@ -738,5 +745,223 @@ describe('LoveBud #4283 target-role runtime ACL attestation contract', () => {
     });
     assert.equal(broad.result.broadAllTableSelect, 'YES');
     assert.equal(broad.result.decision.canProceed, 'NO');
+  });
+
+  it('#4000 public.tree_comments is an explicit static allowlisted target', () => {
+    assert.ok(TARGET_RELATIONS.includes('public.tree_comments'));
+    assert.ok(TARGET_RELATION_NAMES.includes('tree_comments'));
+    assert.equal(TARGET_RELATIONS.length, 5);
+    assert.ok(Object.isFrozen(TARGET_RELATIONS));
+    assert.equal(Q.TREE_COMMENTS_SELECT, "SELECT has_table_privilege($1::name, 'public.tree_comments', 'SELECT') AS allowed");
+  });
+
+  it('#4000 reports sanitized TREE_COMMENTS_SELECT YES and NO', async () => {
+    const granted = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: true, SELECT_REACTIONS: true } });
+    assert.equal(granted.result.privileges.SELECT_TREE_COMMENTS, true);
+    assert.equal(granted.result.treeCommentsDecision.activationEligible, 'YES');
+    assert.equal(granted.result.treeCommentsDecision.finalDisposition, 'TREE_COMMENTS_READ_ROLE_ACL_ATTESTED');
+    assert.equal(granted.result.treeCommentsDecision.minimalChange, 'NO_PRIVILEGE_CHANGE');
+    const missing = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: false, SELECT_REACTIONS: true } });
+    assert.equal(missing.result.treeCommentsDecision.activationEligible, 'NO');
+    assert.equal(missing.result.treeCommentsDecision.finalDisposition, 'TREE_COMMENTS_SELECT_MISSING_STOP');
+    assert.equal(missing.result.treeCommentsDecision.minimalChange, 'SELECT_ON_TREE_COMMENTS_ONLY');
+  });
+
+  it('#4000 flattens the tree_comments verdict into the sanitized public output', async () => {
+    const granted = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: true, SELECT_REACTIONS: true } });
+    const output = await runAttestationWithDeps({
+      approvalReference: APPROVAL_REFERENCE,
+      purpose: SOURCE_BOUND_PURPOSE,
+      baselineCommit: 'a'.repeat(40),
+      currentHead: 'a'.repeat(40),
+      loadPrivateInputs: async () => ({}),
+      collect: async () => granted.result,
+    });
+    assert.equal(output.selectTreeComments, 'YES');
+    assert.equal(output.treeCommentsActivationEligible, 'YES');
+    assert.equal(output.treeCommentsFinalDisposition, 'TREE_COMMENTS_READ_ROLE_ACL_ATTESTED');
+    assert.equal(output.treeCommentsPrivilegeTargetIdentity, 'RESOLVED');
+    assert.equal(output.treeCommentsMinimalRequiredChange, 'NO_PRIVILEGE_CHANGE');
+    assert.equal(output.productionConnectionCount, 1);
+    assert.equal(output.rawRoleExposed, 'NO');
+    assert.equal(JSON.stringify(output).includes(RAW_TARGET), false);
+    const missing = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: false, SELECT_REACTIONS: true } });
+    const missingOutput = await runAttestationWithDeps({
+      approvalReference: APPROVAL_REFERENCE,
+      purpose: SOURCE_BOUND_PURPOSE,
+      baselineCommit: 'a'.repeat(40),
+      currentHead: 'a'.repeat(40),
+      loadPrivateInputs: async () => ({}),
+      collect: async () => missing.result,
+    });
+    assert.equal(missingOutput.selectTreeComments, 'NO');
+    assert.equal(missingOutput.treeCommentsActivationEligible, 'NO');
+    assert.equal(missingOutput.treeCommentsFinalDisposition, 'TREE_COMMENTS_SELECT_MISSING_STOP');
+    assert.equal(missingOutput.canProceed, 'YES');
+  });
+
+  it('#4000 missing tree_comments privilege stops without touching the reactions packet', async () => {
+    const { result } = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: false, SELECT_REACTIONS: true } });
+    assert.equal(result.decision.target, 'RESOLVED');
+    assert.equal(result.decision.minimalChange, 'NO_PRIVILEGE_CHANGE');
+    assert.equal(result.decision.canProceed, 'YES');
+    assert.equal(result.treeCommentsDecision.target, 'RESOLVED');
+  });
+
+  it('#4000 tree_comments probe is asked of target B only, never observer A', async () => {
+    const { result, fixture } = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: true } });
+    const probe = fixture.calls.filter((call) => call.text === Q.TREE_COMMENTS_SELECT);
+    assert.equal(probe.length, 1);
+    assert.deepEqual(probe[0].params, [RAW_TARGET]);
+    assert.equal(result.sessionEqualsTarget, 'NO');
+    assert.equal(result.currentRoleEqualsTarget, 'NO');
+    assert.equal(result.privileges.SELECT_TREE_COMMENTS, true);
+  });
+
+  it('#4000 baseline drift blocks tree_comments eligibility even when granted', async () => {
+    const noTrees = await collectFixture({ privileges: { SELECT_TREES: false, SELECT_TREE_COMMENTS: true } });
+    assert.equal(noTrees.result.treeCommentsDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+    assert.equal(noTrees.result.treeCommentsDecision.activationEligible, 'NO');
+    const noUsage = await collectFixture({ privileges: { USAGE_PUBLIC: false, SELECT_TREE_COMMENTS: true } });
+    assert.equal(noUsage.result.treeCommentsDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+    const admin = await collectFixture({
+      privileges: { SELECT_TREE_COMMENTS: true },
+      flags: [{ role_name: RAW_TARGET, rolsuper: true }],
+    });
+    assert.equal(admin.result.treeCommentsDecision.activationEligible, 'NO');
+    assert.equal(admin.result.treeCommentsDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+  });
+
+  it('#4000 allowlist extension does not weaken broad SELECT drift detection', async () => {
+    const granted = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: true } });
+    assert.equal(granted.result.broadAllTableSelect, 'NO');
+    const unlisted = await collectFixture({
+      privileges: { SELECT_TREE_COMMENTS: true },
+      broadAclRows: [{ relation_name: 'unrelated_table', grantee_oid: 100, grantee_name: RAW_TARGET, privilege_type: 'SELECT' }],
+    });
+    assert.equal(unlisted.result.broadAllTableSelect, 'YES');
+    assert.equal(unlisted.result.treeCommentsDecision.activationEligible, 'NO');
+    assert.equal(unlisted.result.treeCommentsDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+  });
+
+  it('#4000 absent tree_comments relation row fails closed with rollback and disconnect', async () => {
+    const aclRows = aclRowsFor().filter((row) => row.relation_name !== 'tree_comments');
+    const fixture = fakeClient({ aclRows });
+    await assert.rejects(
+      collectAttestation({ client: fixture.client, targetRuntimeRole: RAW_TARGET, roleMapping: TARGET_MAPPING }),
+      { category: 'ATTESTATION_ACL_RELATION_MISSING' },
+    );
+    assert.equal(fixture.counts().connectCount, 1);
+    assert.equal(fixture.counts().endCount, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 1);
+  });
+
+  it('#4000 tree_comments provenance is reported per relation like the others', async () => {
+    const { result } = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: true } });
+    assert.equal(result.perRelationProvenance.tree_comments.effectiveSelect, 'YES');
+    assert.equal(result.perRelationProvenance.tree_comments.publicGrant, 'YES');
+    assert.equal(result.perRelationProvenance.tree_comments.directTargetGrant, 'NO');
+    const direct = await collectFixture({
+      privileges: { SELECT_TREE_COMMENTS: true },
+      aclRows: aclRowsFor({ tree_comments: [{ grantee_name: RAW_TARGET, grantee_oid: 100 }] }),
+    });
+    assert.equal(direct.result.perRelationProvenance.tree_comments.directTargetGrant, 'YES');
+  });
+
+  it('#4000 executed query set is catalog-only and carries no grant, revoke, DDL, DML, or commit', () => {
+    const statements = Object.values(Q).join('\n');
+    for (const banned of [/\bGRANT\b/i, /\bREVOKE\b/i, /\bCOMMIT\b/i, /\bCREATE\b/i, /\bALTER\b/i, /\bDROP\b/i,
+      /\bINSERT\s+INTO\b/i, /\bDELETE\s+FROM\b/i, /\bUPDATE\s+\w+\s+SET\b/i, /\bSELECT\s+\*\s+FROM\b/i]) {
+      assert.equal(banned.test(statements), false, `unexpected mutation-shaped statement: ${banned}`);
+    }
+    for (const statement of Object.values(Q)) {
+      assert.ok(/^\s*(SELECT|SHOW|BEGIN|ROLLBACK|WITH)\b/i.test(statement), `non-catalog statement shape: ${statement.slice(0, 24)}`);
+    }
+    assert.equal(/tree_comments/i.test(statements), true);
+  });
+
+  it('#4000 keeps the object, table, sql, role, and query surface non-configurable', () => {
+    const valid = ['--approval-reference', APPROVAL_REFERENCE, '--purpose', SOURCE_BOUND_PURPOSE,
+      '--baseline-commit', 'a'.repeat(40), '--secret-file', '.secrets/x.env',
+      '--role-mapping-file', '.secrets/y.json', '--artifact-file', '.secrets/z.json'];
+    assert.equal(parseArgs(valid).approval_reference, APPROVAL_REFERENCE);
+    for (const flag of ['--table', '--object', '--objects', '--sql', '--query', '--role', '--schema', '--repeat']) {
+      assert.throws(() => parseArgs(valid.slice(0, 2).concat([flag, 'public.tree_comments'])), /ATTESTATION_INPUT_INVALID/);
+    }
+    assert.equal(parseArgs(valid).secret_file, '.secrets/x.env');
+  });
+
+  it('#4000 reports TREE_COMMENTS_SELECT UNKNOWN with zero session when private inputs are absent', () => {
+    const failure = sanitizedFailure('ATTESTATION_INPUT_INVALID');
+    assert.equal(failure.runnerInvocationCount, 0);
+    assert.equal(failure.productionConnectionCount, 0);
+    assert.equal(failure.collectionSessionCount, 0);
+    assert.equal(failure.transactionReadOnly, 'NOT_REACHED');
+    assert.equal(failure.selectTreeComments, 'UNKNOWN');
+    assert.equal(failure.treeCommentsActivationEligible, 'NO');
+    assert.equal(failure.treeCommentsPrivilegeTargetIdentity, 'UNRESOLVED');
+  });
+
+  it('#4000 never opens a session when source-bound approval or input load fails', async () => {
+    let collected = false;
+    await assert.rejects(
+      runAttestationWithDeps({
+        approvalReference: 'issue:4283',
+        purpose: SOURCE_BOUND_PURPOSE,
+        baselineCommit: 'a'.repeat(40),
+        currentHead: 'a'.repeat(40),
+        loadPrivateInputs: async () => { throw new Error('must not reach'); },
+        collect: async () => { collected = true; return {}; },
+      }),
+      { category: 'ATTESTATION_SOURCE_BOUND_APPROVAL_REQUIRED' },
+    );
+    assert.equal(collected, false);
+    let collectReached = false;
+    await assert.rejects(
+      runAttestationWithDeps({
+        approvalReference: APPROVAL_REFERENCE,
+        purpose: SOURCE_BOUND_PURPOSE,
+        baselineCommit: 'a'.repeat(40),
+        currentHead: 'a'.repeat(40),
+        loadPrivateInputs: async () => { throw Object.assign(new Error('missing'), { category: 'ATTESTATION_TARGET_ROLE_MAPPING_INVALID' }); },
+        collect: async () => { collectReached = true; return {}; },
+      }),
+      { category: 'ATTESTATION_TARGET_ROLE_MAPPING_INVALID' },
+    );
+    assert.equal(collectReached, false);
+  });
+
+  it('#4000 redacts target, observer, and grantee from every tree_comments output field', async () => {
+    const { result } = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: true } });
+    const text = JSON.stringify(result);
+    for (const secret of [RAW_OBSERVER, RAW_TARGET, RAW_GRANTEE, RAW_SECRET]) {
+      assert.equal(text.includes(secret), false);
+    }
+    assert.equal(text.includes('postgresql://'), false);
+    assert.equal(JSON.stringify(sanitizedFailure('ATTESTATION_ACL_RELATION_MISSING')).includes(RAW_TARGET), false);
+  });
+
+  it('#4000 keeps one session, one read-only transaction, rollback, disconnect, and no commit', async () => {
+    const { result, fixture } = await collectFixture({ privileges: { SELECT_TREE_COMMENTS: true } });
+    assert.equal(fixture.counts().connectCount, 1);
+    assert.equal(fixture.counts().endCount, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.BEGIN_RO).length, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.SHOW_RO).length, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 1);
+    assert.equal(fixture.calls.filter((call) => /\bCOMMIT\b/i.test(call.text)).length, 0);
+    assert.ok(fixture.calls.every((call) => Object.values(Q).includes(call.text)));
+    assert.equal(result.transactionReadOnly, 'VERIFIED');
+  });
+
+  it('#4000 deriveTreeCommentsDecision is closed over unknown privilege shape', () => {
+    const base = { identityResolved: true, roleAdmin: false, broadAllTableSelect: false };
+    const ok = { DATABASE_CONNECT: true, USAGE_PUBLIC: true, SELECT_TREES: true, SELECT_TREE_COMMENTS: true };
+    assert.equal(deriveTreeCommentsDecision({ ...base, privileges: ok }).activationEligible, 'YES');
+    assert.equal(deriveTreeCommentsDecision({ ...base, privileges: { ...ok, SELECT_TREE_COMMENTS: false } }).finalDisposition, 'TREE_COMMENTS_SELECT_MISSING_STOP');
+    assert.equal(deriveTreeCommentsDecision({ ...base, identityResolved: false, privileges: ok }).finalDisposition, 'RUNTIME_ROLE_IDENTITY_UNRESOLVED');
+    const unknown = deriveTreeCommentsDecision({ ...base, privileges: { DATABASE_CONNECT: true, USAGE_PUBLIC: true, SELECT_TREES: true } });
+    assert.equal(unknown.activationEligible, 'NO');
+    assert.equal(unknown.finalDisposition, 'TREE_COMMENTS_PRIVILEGE_UNRESOLVED');
+    assert.equal(unknown.target, 'UNRESOLVED');
   });
 });

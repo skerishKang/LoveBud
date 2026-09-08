@@ -768,12 +768,12 @@
       "canonical_status": "CANONICAL_CANDIDATE",
       "destructive": false,
       "production_capable": false,
-      "owner_or_issue": "database architecture / #4283 #3458",
+      "owner_or_issue": "database architecture / #4283 #4000 #3458",
       "idempotency": "idempotent",
       "execution_actor": "runner",
       "automation": "gated",
       "ledger_candidate": "no",
-      "notes": "Phase B production read-only runtime-role ACL attestation runner. Uses one BEGIN READ ONLY session, fixed pg_catalog and privilege queries, explicit target-role mapping, PG17 membership INHERIT/ADMIN/SET metadata, rollback, and disconnect; no schema mutation, Product row reads, SET ROLE, GRANT, REVOKE, retry, or production-write capability. Registered because the source contains catalog/DDL vocabulary detected by the static inventory guard."
+      "notes": "Phase B production read-only runtime-role ACL attestation runner. Uses one BEGIN READ ONLY session, fixed pg_catalog and privilege queries, explicit target-role mapping, PG17 membership INHERIT/ADMIN/SET metadata, rollback, and disconnect; no schema mutation, Product row reads, SET ROLE, GRANT, REVOKE, retry, or production-write capability. Static allowlisted target relations are trees, memories, tree_social_counts, reactions, and tree_comments; the tree_comments SELECT probe serves the #4000 Tree Comment READ activation packet and its source-bound approval reference is issue:4000. Registered because the source contains catalog/DDL vocabulary detected by the static inventory guard."
     },
     {
       "path": "scripts/inspect-schema.cjs",
