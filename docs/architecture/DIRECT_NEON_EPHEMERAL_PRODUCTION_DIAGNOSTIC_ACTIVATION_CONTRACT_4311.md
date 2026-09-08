@@ -187,7 +187,7 @@ populate the matrix.
 ```text
 scripts/run-production-readonly-role-mapping-reconciliation.cjs   #4295 source-only helper
 scripts/role-mapping-reconciliation-core.cjs                      reconciliation core
-scripts/run-production-readonly-runtime-role-acl-attestation.cjs   #4283/#4313 ACL attestation runner
+scripts/run-production-readonly-runtime-role-acl-attestation.cjs   #4283/#4313/#4000 ACL attestation runner
 scripts/run-production-readonly-catalog-collection.cjs            catalog collection runner
 docs/architecture/db-schema-change-inventory.json                 runner inventory registration
 tests/contracts/direct-neon-readiness-matrix-contract.test.cjs    matrix structural authority
