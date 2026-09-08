@@ -25,9 +25,13 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const APP_PATH = path.join(ROOT, 'modal_compute', 'recovery_backup_app.py');
 const POLICY_PATH = path.join(ROOT, 'modal_compute', 'recovery_backup_policy.py');
 const DRIVE_PATH = path.join(ROOT, 'modal_compute', 'recovery_drive_storage.py');
+const STREAM_PATH = path.join(ROOT, 'modal_compute', 'recovery_backup_stream.py');
+const RESTORE_PATH = path.join(ROOT, 'modal_compute', 'recovery_restore_app.py');
 const APP = fs.readFileSync(APP_PATH, 'utf8');
 const POLICY = fs.readFileSync(POLICY_PATH, 'utf8');
 const DRIVE = fs.readFileSync(DRIVE_PATH, 'utf8');
+const STREAM = fs.readFileSync(STREAM_PATH, 'utf8');
+const RESTORE = fs.readFileSync(RESTORE_PATH, 'utf8');
 
 test('1. separate Modal app with exact name', () => {
   assert.match(APP, /modal\.App\(\s*RECOVERY_BACKUP_APP_NAME\s*\)/);
@@ -192,21 +196,26 @@ test('7. DB URL never placed in pg_dump argv', () => {
 });
 
 test('8. streaming single-envelope AEAD (version + nonce + ciphertext + one final tag)', () => {
-  assert.match(APP, /cryptography\.hazmat\.primitives\.ciphers/);
-  assert.match(APP, /Cipher\(\s*algorithms\.AES\(key\),\s*modes\.GCM\(nonce\)\s*\)\.encryptor\(\)/);
-  assert.match(APP, /encryptor\.finalize\(\)/);
-  assert.match(APP, /encryptor\.tag/);
-  assert.match(APP, /STREAM_AEAD_VERSION/);
-  assert.match(APP, /os\.urandom\(STREAM_AEAD_NONCE_BYTES\)/);
-  // exact-once framing: version and nonce written once, tag written once
-  assert.equal((APP.match(/dst\.write\(STREAM_AEAD_VERSION\)/g) || []).length, 1, 'version written exactly once');
-  assert.equal((APP.match(/dst\.write\(nonce\)/g) || []).length, 1, 'nonce written exactly once');
-  assert.equal((APP.match(/dst\.write\(encryptor\.tag\)/g) || []).length, 1, 'single final authentication tag');
-  assert.ok(!/dst\.write\(ciphertext\[-16:\]\)/.test(APP), 'no duplicate tag write');
+  // The LBBA1 envelope authority lives in the shared stream module (restore child
+  // refactor); the backup app must delegate to it without duplicating cipher code.
+  assert.match(STREAM, /cryptography\.hazmat\.primitives\.ciphers/);
+  assert.match(STREAM, /Cipher\(\s*algorithms\.AES\(key\),\s*modes\.GCM\(nonce\)\s*\)\.encryptor\(\)/);
+  assert.match(STREAM, /encryptor\.finalize\(\)/);
+  assert.match(STREAM, /encryptor\.tag/);
+  assert.match(STREAM, /STREAM_AEAD_VERSION/);
+  assert.equal((STREAM.match(/dst\.write\(STREAM_AEAD_VERSION\)/g) || []).length, 1, 'version written exactly once');
+  assert.equal((STREAM.match(/dst\.write\(nonce\)/g) || []).length, 1, 'nonce written exactly once');
+  assert.equal((STREAM.match(/dst\.write\(encryptor\.tag\)/g) || []).length, 1, 'single final authentication tag');
+  assert.ok(!/dst\.write\(ciphertext\[-16:\]\)/.test(STREAM), 'no duplicate tag write');
+  // the backup app delegates to the shared module
+  assert.match(APP, /from modal_compute\.recovery_backup_stream import/);
+  assert.match(APP, /streaming_encrypt\(plain_path, enc_path, key, nonce\)/);
+  // no duplicated Cipher construction remains in the backup app
+  assert.ok(!/algorithms\.AES\(key\)/.test(APP), 'cipher construction must live only in the stream module');
 });
 
 test('9. chunked streaming encrypt: no whole-file read', () => {
-  const encBlock = APP.slice(APP.indexOf('def _streaming_encrypt'), APP.indexOf('def _streaming_decrypt'));
+  const encBlock = STREAM.slice(STREAM.indexOf('def streaming_encrypt'), STREAM.indexOf('def streaming_decrypt'));
   assert.match(encBlock, /src\.read\(STREAM_CHUNK_BYTES\)/);
   assert.ok(!/src\.read\(\)/.test(encBlock), 'no whole-file read in encrypt');
   assert.match(encBlock, /empty plaintext rejected/);
@@ -304,13 +313,17 @@ test('20. no raw secret/status logging patterns', () => {
   assert.ok(!/print\([^)]*(refresh_token|client_secret|access_token|file_id)/.test(DRIVE), 'no Drive credential/file-id logging');
 });
 
-test('21. no restore/reset/branch operations', () => {
-  assert.ok(!/restoreSnapshot|finalize_restore|\.restore\(|create_branch|delete_branch|reset_branch/.test(APP), 'no restore/reset/branch operation');
-  assert.ok(!/\breset\b/.test(APP), 'no reset operation');
-  assert.ok(!/snapshot/.test(APP), 'no snapshot mutation');
-  // Drive adapter: no restore/download IMPLEMENTED (check function defs, not docstrings)
+test('21. no restore/reset/branch operations in the backup path', () => {
+  assert.ok(!/restoreSnapshot|finalize_restore|\.restore\(|create_branch|delete_branch|reset_branch/.test(APP), 'no restore/reset/branch operation in backup app');
+  assert.ok(!/\breset\b/.test(APP), 'no reset operation in backup app');
+  assert.ok(!/snapshot/.test(APP), 'no snapshot mutation in backup app');
+  // The Drive adapter implements exactly one bounded restore-oriented download
+  // primitive (restore source child #3460); it must remain restore-limited: no
+  // generic downloader, no export/media helpers beyond the bounded artifact path.
   const driveFns = DRIVE.slice(DRIVE.indexOf('def build_drive_service'));
-  assert.ok(!/def\s+restore|def\s+download|def\s+get_media|def\s+export/.test(driveFns), 'no restore/download function implemented in Drive adapter');
+  const downloadFns = (driveFns.match(/def\s+(download_recovery_artifact|_preflight_download_metadata|_parse_drive_size)/g) || []);
+  assert.ok(downloadFns.length === 3, 'exactly the bounded download primitives: ' + JSON.stringify(downloadFns));
+  assert.ok(!/def\s+restore|def\s+get_media|def\s+export/.test(driveFns), 'no generic restore/get_media/export helper in Drive adapter');
 });
 
 test('22. policy module purity: no forbidden imports or env/network access', () => {
@@ -536,8 +549,15 @@ test('41. Drive adapter module imports policy states (provider logic separated)'
   assert.match(DRIVE, /classify_drive_quota/);
 });
 
-test('42. no restore/download in normal backup path', () => {
-  const driveCode = DRIVE.slice(DRIVE.indexOf('def build_drive_service'));
-  assert.ok(!/alt=media|files\.get.*media|get_media|export_link|download/.test(driveCode), 'no restore/download in Drive adapter runtime code');
-  assert.ok(!/def\s+download|def\s+restore|def\s+get_media/.test(driveCode), 'no download/restore/export helpers implemented');
+test('42. backup path stays download-free; restore download exists only in the bounded restore primitive', () => {
+  // The backup app must never download: its Drive usage remains upload/verify/copy/list/delete only.
+  assert.ok(!/alt=media|get_media|export_link|download/.test(APP), 'no download in the backup app path');
+  // The bounded restore download primitive is the only media path in the adapter.
+  const downloadFn = DRIVE.slice(DRIVE.indexOf('def download_recovery_artifact'));
+  assert.match(downloadFn, /alt=media/);
+  assert.match(downloadFn, /stream=True/);
+  assert.match(downloadFn, /iter_content/);
+  assert.match(downloadFn, /max_bytes/);
+  // no generic downloader: media fetch appears exactly once in the adapter
+  assert.equal((DRIVE.match(/alt=media/g) || []).length, 1, 'exactly one bounded media download site');
 });
