@@ -82,22 +82,27 @@ test('5. Production credential names can never be the restore target source', ()
   assert.match(POLICY, /LOVE_PLATFORM_DATABASE_URL/);
   assert.match(POLICY, /LOVE_PLATFORM_WRITE_DATABASE_URL/);
   assert.match(POLICY, /DATABASE_URL/);
-  // classify_restore_target must fail closed on forbidden/present names
+  // static authority: classify_restore_target checks ONLY url presence + isolated class
   assert.match(POLICY, /def classify_restore_target/);
-  assert.match(POLICY, /forbidden_credential_names_present/);
-  assert.match(POLICY, /return RESTORE_TARGET_INVALID/);
-  // the backup source DB URL must never be silently reused as the restore target
-  assert.match(POLICY, /source_db_url_present/);
+  assert.match(POLICY, /if not restore_target_url_present/);
+  assert.match(POLICY, /if restore_target_class\s*!=\s*RESTORE_TARGET_CLASS_ISOLATED/);
+  assert.match(POLICY, /return RESTORE_TARGET_VALID/);
+  // mere PRESENCE of known Product/source DSNs must NOT invalidate the target:
+  // the classifier must NOT contain presence-based rejection of the forbidden names
+  const classifyFn = POLICY.slice(POLICY.indexOf('def classify_restore_target'), POLICY.indexOf('def dsn_alias_rejected'));
+  assert.ok(!/forbidden_credential_names_present/.test(classifyFn), 'no presence-based invalidation in the static classifier');
+  assert.ok(!/source_db_url_present/.test(classifyFn), 'no presence-based source-DB invalidation in the static classifier');
+  // equality aliasing is the SEPARATE in-memory guard (pure, load-bearing)
+  assert.match(POLICY, /def dsn_alias_rejected/);
+  assert.match(RESTORE, /_target_alias_rejected/);
+  assert.match(RESTORE, /_known_dsn_values/);
+  assert.match(RESTORE, /FORBIDDEN_RESTORE_TARGET_CREDENTIAL_NAMES/);
   // BLOCKER-2 fix: positive isolated-target attestation must exist and be required
   assert.match(POLICY, /ISOLATED_TARGET_VERIFIED/);
   assert.match(RESTORE, /target_verifier/);
   assert.match(RESTORE, /ISOLATED_TARGET_VERIFIED/);
   // caller-supplied class string alone is insufficient
   assert.ok(!/classify_current_target\(\)\s*==\s*["']RESTORE_TARGET_VALID["'][\s\S]{0,80}download_fn/.test(RESTORE), 'no download before attestation');
-  // in-memory DSN alias equality guard (no value logging)
-  assert.match(POLICY, /def dsn_alias_rejected/);
-  assert.match(RESTORE, /_target_alias_rejected/);
-  assert.match(RESTORE, /_known_dsn_values/);
 });
 
 test('6. missing or ambiguous restore target fails closed (STOP)', () => {
@@ -118,6 +123,12 @@ test('6. missing or ambiguous restore target fails closed (STOP)', () => {
   assert.ok(targetVerifyPos !== -1 && targetVerifyPos < downloadPos, 'attestation before download');
   assert.ok(downloadPos < decryptPos, 'download before decrypt');
   assert.ok(decryptPos < subprocessPos, 'decrypt before subprocess');
+  // alias guard ordering: the in-memory equality guard runs BEFORE download and
+  // again before the subprocess (load-bearing position, not a dead check)
+  const firstAliasPos = runFn.indexOf('_target_alias_rejected(target_url)');
+  assert.ok(firstAliasPos !== -1 && firstAliasPos < downloadPos, 'alias guard before download');
+  const secondAliasPos = runFn.indexOf('_target_alias_rejected(target_url)', firstAliasPos + 1);
+  assert.ok(secondAliasPos !== -1 && secondAliasPos < subprocessPos, 'alias guard re-checked before pg_restore');
 });
 
 test('7. Drive download accepts only app-owned recovery artifacts with metadata verification', () => {

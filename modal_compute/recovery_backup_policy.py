@@ -478,31 +478,25 @@ def classify_restore_target(
     *,
     restore_target_url_present: bool,
     restore_target_class: str | None,
-    forbidden_credential_names_present: bool,
-    source_db_url_present: bool,
 ) -> str:
-    """Pure fail-closed restore-target authority (#3460 restore source child).
+    """Pure fail-closed static restore-target authority (#3460 restore source child).
 
-    A restore may proceed only against an explicitly supplied, explicitly classified
-    ISOLATED_RESTORE_TARGET. The classifier never reads the environment; the caller
-    supplies bounded booleans and the fixed target class. Rules:
-
-      - a missing restore target URL is RESTORE_TARGET_INVALID (missing target = STOP);
-      - an unclassified or non-isolated target class is RESTORE_TARGET_INVALID;
-      - the canonical Production credential names (LOVE_PLATFORM_DATABASE_URL,
-        LOVE_PLATFORM_WRITE_DATABASE_URL, DATABASE_URL) must not be present as the
-        restore-target source: automatic Production fallback is forbidden;
-      - the backup source DB URL must never be silently reused as the restore target.
+    Establishes ONLY the static target authority: an explicit restore URL must be
+    present and its class must be exactly ISOLATED_RESTORE_TARGET. This is
+    deliberately SEPARATE from alias detection: the mere PRESENCE of known
+    Product/source DSN values in the process is NOT itself aliasing and must not
+    invalidate an otherwise explicit isolated target (a distinct Product DSN may
+    legitimately coexist with an isolated restore target). Equality against known
+    DSN values is enforced separately by dsn_alias_rejected(), and the positive
+    ISOLATED_TARGET_VERIFIED attestation is enforced by the caller's injected
+    target_verifier. No implicit Product credential fallback and no automatic
+    target discovery exist anywhere.
 
     Returns RESTORE_TARGET_VALID or RESTORE_TARGET_INVALID only.
     """
     if not restore_target_url_present:
         return RESTORE_TARGET_INVALID
     if restore_target_class != RESTORE_TARGET_CLASS_ISOLATED:
-        return RESTORE_TARGET_INVALID
-    if forbidden_credential_names_present:
-        return RESTORE_TARGET_INVALID
-    if source_db_url_present:
         return RESTORE_TARGET_INVALID
     return RESTORE_TARGET_VALID
 
@@ -536,7 +530,6 @@ def dsn_alias_rejected(
 
 
 def reject_impossible_partial(status: Mapping[str, Any]) -> None:
-    """Reject status combinations that cannot occur in a real pipeline."""
     """Reject status combinations that cannot occur in a real pipeline."""
     state = status.get("backup_point_state")
     daily = status.get("daily_tier")

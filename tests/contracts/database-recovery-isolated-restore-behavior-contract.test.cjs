@@ -117,39 +117,14 @@ check('target-wrong-class', run_wrong_class)
 
 # ---- 3. Product credential names cannot substitute for restore target --------
 def run_forbidden_product_name():
-    set_target('ISOLATED_RESTORE_TARGET', 'postgresql://restore@isolated.example/db')
-    os.environ['LOVE_PLATFORM_DATABASE_URL'] = 'postgresql://prod.example/db'
+    # Product credential name used AS the restore target value (aliasing):
+    # RESTORE_TARGET_DATABASE_URL == LOVE_PLATFORM_DATABASE_URL value.
+    set_target('ISOLATED_RESTORE_TARGET', 'postgresql://product@production.example/db')
+    os.environ['LOVE_PLATFORM_DATABASE_URL'] = 'postgresql://product@production.example/db'
     return r.run_isolated_restore(**base_args())
 check('target-forbidden-product-name', run_forbidden_product_name)
 
-# ---- 3b. BLOCKER-2: Production-equivalent DSN under isolated label is rejected -----
-def run_prod_dsn_under_isolated_label():
-    # restore target URL equals a known Product DSN value (in-memory equality guard)
-    set_target('ISOLATED_RESTORE_TARGET', 'postgresql://restore@isolated.example/db')
-    os.environ['LOVE_PLATFORM_DATABASE_URL'] = 'postgresql://restore@isolated.example/db'
-    return r.run_isolated_restore(**base_args())
-check('prod-dsn-equality-rejected', run_prod_dsn_under_isolated_label)
-
-# ---- 3c. BLOCKER-2: source DB URL == restore target URL is rejected -------------
-def run_source_dsn_equality():
-    set_target('ISOLATED_RESTORE_TARGET', 'postgresql://restore@isolated.example/db')
-    os.environ['DATABASE_URL'] = 'postgresql://restore@isolated.example/db'
-    return r.run_isolated_restore(**base_args())
-check('source-dsn-equality-rejected', run_source_dsn_equality)
-
-# ---- 3d. BLOCKER-2: isolated class with NO positive attestation is rejected ------
-def run_no_attestation():
-    set_target()
-    return r.run_isolated_restore(**base_args(target_verifier=fail_attest))
-check('no-attestation-rejected', run_no_attestation)
-
-# ---- 3e. BLOCKER-2: positive fake isolated-target attestation + distinct target allowed -
-def run_attestation_allowed():
-    set_target()
-    return r.run_isolated_restore(**base_args(target_verifier=ok_attest))
-check('attestation-allowed', run_attestation_allowed)
-
-# ---- 3f. BLOCKER-2: verifier failure -> no download, no decrypt, no pg_restore ------
+# ---- shared counting seams (robust against restore-path changes) ---------------
 call_counts = {'dl': 0, 'dec': 0, 'pg': 0}
 def counting_download(service, file_id, dest_path, **kw):
     call_counts['dl'] += 1
@@ -162,6 +137,60 @@ def counting_executor(cmd, env):
     class R: returncode = 0
     return R()
 
+# ---- 3b. DSN alias guard: equality against EACH known Product/source DSN --------
+# Mere PRESENCE of a distinct Product DSN must NOT block; only EQUALITY must.
+ALIAS_ISOLATED = 'postgresql://restore@isolated.example/db'
+ALIAS_PRODUCT = 'postgresql://product@production.example/db'
+ALIAS_SOURCE = 'postgresql://source@backup-source.example/db'
+
+def run_positive_control():
+    # Positive control: a DIFFERENT Product DSN exists but restore succeeds.
+    set_target('ISOLATED_RESTORE_TARGET', ALIAS_ISOLATED)
+    os.environ['LOVE_PLATFORM_DATABASE_URL'] = ALIAS_PRODUCT
+    for k in ('LOVE_PLATFORM_WRITE_DATABASE_URL', 'DATABASE_URL'):
+        os.environ.pop(k, None)
+    for k in call_counts: call_counts[k] = 0
+    st = r.run_isolated_restore(**base_args(
+        download_fn=counting_download,
+        decrypt_fn=counting_decrypt,
+        pg_restore_executor=counting_executor,
+    ))
+    return {'status': st, 'calls': dict(call_counts)}
+check('positive-control-distinct-dsn', run_positive_control)
+
+def run_equality_case(env_name, known_value):
+    set_target('ISOLATED_RESTORE_TARGET', known_value)  # target == known DSN
+    os.environ[env_name] = known_value
+    for k in call_counts: call_counts[k] = 0
+    st = r.run_isolated_restore(**base_args(
+        download_fn=counting_download,
+        decrypt_fn=counting_decrypt,
+        pg_restore_executor=counting_executor,
+    ))
+    os.environ.pop(env_name, None)
+    return {'status': st, 'calls': dict(call_counts)}
+
+check('prod-read-dsn-equality', lambda: run_equality_case('LOVE_PLATFORM_DATABASE_URL', ALIAS_PRODUCT))
+check('prod-write-dsn-equality', lambda: run_equality_case('LOVE_PLATFORM_WRITE_DATABASE_URL', ALIAS_PRODUCT))
+check('database-url-dsn-equality', lambda: run_equality_case('DATABASE_URL', ALIAS_SOURCE))
+
+# ---- 3c. BLOCKER-2: isolated class with NO positive attestation is rejected ------
+def run_no_attestation():
+    set_target()
+    for k in ('LOVE_PLATFORM_DATABASE_URL', 'LOVE_PLATFORM_WRITE_DATABASE_URL', 'DATABASE_URL'):
+        os.environ.pop(k, None)
+    return r.run_isolated_restore(**base_args(target_verifier=fail_attest))
+check('no-attestation-rejected', run_no_attestation)
+
+# ---- 3d. BLOCKER-2: positive fake isolated-target attestation + distinct target allowed -
+def run_attestation_allowed():
+    set_target()
+    for k in ('LOVE_PLATFORM_DATABASE_URL', 'LOVE_PLATFORM_WRITE_DATABASE_URL', 'DATABASE_URL'):
+        os.environ.pop(k, None)
+    return r.run_isolated_restore(**base_args(target_verifier=ok_attest))
+check('attestation-allowed', run_attestation_allowed)
+
+# ---- 3e. BLOCKER-2: verifier failure -> no download, no decrypt, no pg_restore ------
 def run_verifier_failure_no_ops():
     set_target()
     for k in call_counts: call_counts[k] = 0
@@ -173,6 +202,50 @@ def run_verifier_failure_no_ops():
     ))
     return {'status': st, 'calls': dict(call_counts)}
 check('verifier-failure-no-ops', run_verifier_failure_no_ops)
+
+# ---- 3f. pure alias guard is load-bearing (in-memory, no env) ----------------
+def run_pure_alias_guard():
+    # equality -> rejected; distinct -> allowed; absent target -> fail closed
+    eq = p.dsn_alias_rejected(ALIAS_PRODUCT, [ALIAS_PRODUCT, ALIAS_SOURCE])
+    distinct = p.dsn_alias_rejected(ALIAS_ISOLATED, [ALIAS_PRODUCT, ALIAS_SOURCE])
+    missing = p.dsn_alias_rejected(None, [ALIAS_PRODUCT])
+    empty_known = p.dsn_alias_rejected(ALIAS_ISOLATED, [None, ''])
+    return {'eq': eq, 'distinct': distinct, 'missing': missing, 'empty_known': empty_known}
+check('pure-alias-guard', run_pure_alias_guard)
+
+# ---- 3g. MUTATION PROOF: the alias guard is the discriminating factor ----------
+# If dsn_alias_rejected() always returned False (or the app-level guard were
+# removed), the equality scenarios above would flip to RESTORE_SUCCESS and FAIL
+# these assertions. This scenario proves that causality inside the contract.
+def run_alias_mutation_proof():
+    set_target('ISOLATED_RESTORE_TARGET', ALIAS_PRODUCT)
+    os.environ['LOVE_PLATFORM_DATABASE_URL'] = ALIAS_PRODUCT
+    for k in call_counts: call_counts[k] = 0
+    st_real = r.run_isolated_restore(**base_args(
+        download_fn=counting_download,
+        decrypt_fn=counting_decrypt,
+        pg_restore_executor=counting_executor,
+    ))
+    real_calls = dict(call_counts)
+    # mutation A: neutralize the app-level guard binding -> must flip to SUCCESS
+    real_guard = r.dsn_alias_rejected
+    r.dsn_alias_rejected = lambda *a, **k: False
+    try:
+        for k in call_counts: call_counts[k] = 0
+        st_mut = r.run_isolated_restore(**base_args(
+            download_fn=counting_download,
+            decrypt_fn=counting_decrypt,
+            pg_restore_executor=counting_executor,
+        ))
+        mut_calls = dict(call_counts)
+    finally:
+        r.dsn_alias_rejected = real_guard
+    os.environ.pop('LOVE_PLATFORM_DATABASE_URL', None)
+    return {
+        'real_state': st_real['restore_state'], 'real_calls': real_calls,
+        'mutated_state': st_mut['restore_state'], 'mutated_calls': mut_calls,
+    }
+check('alias-mutation-proof', run_alias_mutation_proof)
 
 # ---- 4. Drive download accepts only app-owned recovery artifacts ------------
 def run_download_metadata_mismatch():
@@ -338,14 +411,62 @@ test('3. Product DB credential substitution is rejected', () => {
   assert.equal(results['target-forbidden-product-name'].value.restore_state, 'RESTORE_TARGET_INVALID');
 });
 
-test('3b. Production-equivalent restore URL + isolated label is rejected (alias guard)', () => {
-  assert.equal(results['prod-dsn-equality-rejected'].status, 'PASS');
-  assert.equal(results['prod-dsn-equality-rejected'].value.restore_state, 'RESTORE_TARGET_INVALID');
+test('3b. positive control: distinct Product DSN present + isolated target → success (1/1/1)', () => {
+  const r = results['positive-control-distinct-dsn'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.restore_state, 'RESTORE_SUCCESS', 'mere presence of a Product DSN must not block');
+  assert.equal(r.value.calls.dl, 1, 'exactly one download');
+  assert.equal(r.value.calls.dec, 1, 'exactly one decrypt');
+  assert.equal(r.value.calls.pg, 1, 'exactly one pg_restore');
 });
 
-test('3c. Source DB URL == restore target URL is rejected (alias guard)', () => {
-  assert.equal(results['source-dsn-equality-rejected'].status, 'PASS');
-  assert.equal(results['source-dsn-equality-rejected'].value.restore_state, 'RESTORE_TARGET_INVALID');
+test('3c. equality against LOVE_PLATFORM_DATABASE_URL is rejected (0/0/0)', () => {
+  const r = results['prod-read-dsn-equality'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.restore_state, 'RESTORE_TARGET_INVALID');
+  assert.equal(r.value.calls.dl, 0, 'no download on alias equality');
+  assert.equal(r.value.calls.dec, 0, 'no decrypt on alias equality');
+  assert.equal(r.value.calls.pg, 0, 'no pg_restore on alias equality');
+});
+
+test('3c2. equality against LOVE_PLATFORM_WRITE_DATABASE_URL is rejected (0/0/0)', () => {
+  const r = results['prod-write-dsn-equality'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.restore_state, 'RESTORE_TARGET_INVALID');
+  assert.equal(r.value.calls.dl, 0);
+  assert.equal(r.value.calls.dec, 0);
+  assert.equal(r.value.calls.pg, 0);
+});
+
+test('3c3. equality against DATABASE_URL / backup source DSN is rejected (0/0/0)', () => {
+  const r = results['database-url-dsn-equality'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.restore_state, 'RESTORE_TARGET_INVALID');
+  assert.equal(r.value.calls.dl, 0);
+  assert.equal(r.value.calls.dec, 0);
+  assert.equal(r.value.calls.pg, 0);
+});
+
+test('3c4. pure alias guard is load-bearing (equality/different/missing/empty)', () => {
+  const r = results['pure-alias-guard'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.eq, true, 'equality must be rejected');
+  assert.equal(r.value.distinct, false, 'distinct DSN must be allowed');
+  assert.equal(r.value.missing, true, 'missing target fails closed');
+  assert.equal(r.value.empty_known, false, 'empty known values are not aliasing');
+});
+
+test('3g. MUTATION PROOF: neutralizing the alias guard flips equality to SUCCESS', () => {
+  const r = results['alias-mutation-proof'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.real_state, 'RESTORE_TARGET_INVALID', 'equality rejected with the guard active');
+  assert.equal(r.value.real_calls.dl, 0);
+  assert.equal(r.value.real_calls.dec, 0);
+  assert.equal(r.value.real_calls.pg, 0);
+  assert.equal(r.value.mutated_state, 'RESTORE_SUCCESS', 'guard removed -> equality case would succeed (tests would FAIL)');
+  assert.equal(r.value.mutated_calls.dl, 1);
+  assert.equal(r.value.mutated_calls.dec, 1);
+  assert.equal(r.value.mutated_calls.pg, 1);
 });
 
 test('3d. isolated class with no positive attestation is rejected', () => {

@@ -47,6 +47,7 @@ import tempfile
 from typing import Any, Callable, Mapping
 
 from modal_compute.recovery_backup_policy import (
+    FORBIDDEN_RESTORE_TARGET_CREDENTIAL_NAMES,
     ISOLATED_TARGET_VERIFIED,
     RESTORE_ARTIFACT_INVALID,
     RESTORE_ARTIFACT_NOT_FOUND,
@@ -127,22 +128,18 @@ def _read_target_class() -> str | None:
 
 
 def classify_current_target() -> str:
-    """Fail-closed target classification against the current process environment.
+    """Fail-closed STATIC target classification against the current environment.
 
-    Returns RESTORE_TARGET_VALID only when an explicit isolated restore target URL
-    exists, its class is exactly ISOLATED_RESTORE_TARGET, and no canonical Product
-    credential name or the backup source DB URL is in use. Never reads or logs any
-    secret value.
+    Establishes only the static restore-target authority: an explicit restore-only
+    URL exists and its class is exactly ISOLATED_RESTORE_TARGET. The mere PRESENCE
+    of known Product/source DSN values does NOT invalidate the target here — alias
+    detection is the separate in-memory equality guard (`_target_alias_rejected`,
+    via the pure `dsn_alias_rejected`), and positive isolation is proven by the
+    caller's injected target_verifier. Never reads or logs any secret value.
     """
     return classify_restore_target(
         restore_target_url_present=bool(os.environ.get(RESTORE_TARGET_URL_ENV)),
         restore_target_class=_read_target_class(),
-        forbidden_credential_names_present=(
-            bool(os.environ.get("LOVE_PLATFORM_DATABASE_URL"))
-            or bool(os.environ.get("LOVE_PLATFORM_WRITE_DATABASE_URL"))
-            or bool(os.environ.get("DATABASE_URL"))
-        ),
-        source_db_url_present=bool(os.environ.get("DATABASE_URL")),
     )
 
 
@@ -160,16 +157,19 @@ def _target_arg() -> str:
 def _known_dsn_values() -> list[str]:
     """Known source/Product DSN values available to the process (in-memory only).
 
-    Includes the canonical Product credential names and the backup source DB URL.
-    Values are never logged or returned outside this module; only the boolean
-    equality verdict is ever used.
+    Reads exactly the canonical Product credential names from
+    FORBIDDEN_RESTORE_TARGET_CREDENTIAL_NAMES (LOVE_PLATFORM_DATABASE_URL,
+    LOVE_PLATFORM_WRITE_DATABASE_URL, DATABASE_URL). The backup source DB URL is
+    the same DATABASE_URL boundary in the current architecture (the backup app
+    receives Production access through the lovebud-db secret's DATABASE_URL), so
+    it is covered by the same equality comparison. Values are never logged or
+    returned outside this module; only the boolean equality verdict is ever used.
     """
-    known = [
-        os.environ.get("LOVE_PLATFORM_DATABASE_URL"),
-        os.environ.get("LOVE_PLATFORM_WRITE_DATABASE_URL"),
-        os.environ.get("DATABASE_URL"),
+    return [
+        value
+        for name in sorted(FORBIDDEN_RESTORE_TARGET_CREDENTIAL_NAMES)
+        if (value := os.environ.get(name))
     ]
-    return [v for v in known if v]
 
 
 def _target_alias_rejected(target_url: str) -> bool:
@@ -281,14 +281,15 @@ def run_isolated_restore(
 
     The default `decrypt_fn` is the shared LBBA1 AES-GCM streaming_decrypt. This
     function performs no real network/Drive/DB/subprocess unless the caller supplies
-    live implementations; the operator path is reached only when BOTH:
-      - `classify_current_target` returns RESTORE_TARGET_VALID (explicit isolated
-        class, no canonical Product credential names in use), and
+    live implementations; the operator path is reached only when ALL of:
+      - `classify_current_target` returns RESTORE_TARGET_VALID (static authority:
+        explicit URL + ISOLATED_RESTORE_TARGET class), and
+      - the explicit target does not equal any known source/Product DSN (separate
+        in-memory equality guard; mere PRESENCE of a distinct Product DSN does not
+        block), and
       - the injected `target_verifier` POSITIVELY returns ISOLATED_TARGET_VERIFIED
         for the explicit target (a caller-supplied class string alone is
-        INSUFFICIENT), and
-      - the explicit target does not equal any known source/Product DSN (in-memory
-        equality guard; values never logged).
+        INSUFFICIENT).
     Default/unverified state = STOP (fail closed) before any download/decrypt/
     subprocess operation.
 
