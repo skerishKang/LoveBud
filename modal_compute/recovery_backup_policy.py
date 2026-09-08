@@ -13,7 +13,7 @@ private identifier ever appears in a returned status.
 from __future__ import annotations
 
 import base64
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 # --- restore operator status states (#3460 restore source child) ---------
 RESTORE_SOURCE_READY = "RESTORE_SOURCE_READY"
@@ -31,6 +31,13 @@ RESTORE_SUCCESS = "RESTORE_SUCCESS"
 RESTORE_TARGET_CLASS_ISOLATED = "ISOLATED_RESTORE_TARGET"
 RESTORE_TARGET_VALID = "RESTORE_TARGET_VALID"
 RESTORE_TARGET_INVALID = "RESTORE_TARGET_INVALID"
+
+# Positive isolated-target attestation (#3460 fix turn). A caller-supplied class
+# string ALONE is insufficient: the restore operator requires a positive
+# attestation from an injected target_verifier that returns exactly this value
+# before any provider/download/subprocess operation may occur. Default/unverified
+# state = STOP (fail closed).
+ISOLATED_TARGET_VERIFIED = "ISOLATED_TARGET_VERIFIED"
 
 # Canonical Production credential names that must NEVER be accepted as the restore
 # target source. Automatic Production fallback is architecturally forbidden.
@@ -500,7 +507,36 @@ def classify_restore_target(
     return RESTORE_TARGET_VALID
 
 
+def dsn_alias_rejected(
+    restore_target_url: str | None,
+    known_dsn_values: Iterable[str | None],
+) -> bool:
+    """Pure equality guard against obvious target aliasing (#3460 fix turn).
+
+    Returns True (fail closed) when the restore target URL equals ANY known
+    source/Product DSN value available to the process (LOVE_PLATFORM_DATABASE_URL,
+    LOVE_PLATFORM_WRITE_DATABASE_URL, DATABASE_URL, backup source DB URL).
+    Comparison is in-memory only and fails closed on absences as well.
+    """
+
+    def _norm(value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
+    target = _norm(restore_target_url)
+    if target is None:
+        return True
+    for known in known_dsn_values:
+        known_norm = _norm(known)
+        if known_norm is not None and known_norm == target:
+            return True
+    return False
+
+
 def reject_impossible_partial(status: Mapping[str, Any]) -> None:
+    """Reject status combinations that cannot occur in a real pipeline."""
     """Reject status combinations that cannot occur in a real pipeline."""
     state = status.get("backup_point_state")
     daily = status.get("daily_tier")

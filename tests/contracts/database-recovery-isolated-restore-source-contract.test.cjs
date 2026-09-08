@@ -88,6 +88,16 @@ test('5. Production credential names can never be the restore target source', ()
   assert.match(POLICY, /return RESTORE_TARGET_INVALID/);
   // the backup source DB URL must never be silently reused as the restore target
   assert.match(POLICY, /source_db_url_present/);
+  // BLOCKER-2 fix: positive isolated-target attestation must exist and be required
+  assert.match(POLICY, /ISOLATED_TARGET_VERIFIED/);
+  assert.match(RESTORE, /target_verifier/);
+  assert.match(RESTORE, /ISOLATED_TARGET_VERIFIED/);
+  // caller-supplied class string alone is insufficient
+  assert.ok(!/classify_current_target\(\)\s*==\s*["']RESTORE_TARGET_VALID["'][\s\S]{0,80}download_fn/.test(RESTORE), 'no download before attestation');
+  // in-memory DSN alias equality guard (no value logging)
+  assert.match(POLICY, /def dsn_alias_rejected/);
+  assert.match(RESTORE, /_target_alias_rejected/);
+  assert.match(RESTORE, /_known_dsn_values/);
 });
 
 test('6. missing or ambiguous restore target fails closed (STOP)', () => {
@@ -99,6 +109,15 @@ test('6. missing or ambiguous restore target fails closed (STOP)', () => {
   // the operator must refuse to proceed before any download when target invalid
   assert.match(RESTORE, /classify_current_target\(\)/);
   assert.match(RESTORE, /RESTORE_TARGET_INVALID/);
+  // attestation ordering: target verification happens BEFORE download/decrypt/subprocess
+  const runFn = RESTORE.slice(RESTORE.indexOf('def run_isolated_restore'));
+  const targetVerifyPos = runFn.indexOf('target_verifier(target_url)');
+  const downloadPos = runFn.indexOf('download_fn(');
+  const decryptPos = runFn.indexOf('decrypt_fn(');
+  const subprocessPos = runFn.indexOf('_run_pg_restore(');
+  assert.ok(targetVerifyPos !== -1 && targetVerifyPos < downloadPos, 'attestation before download');
+  assert.ok(downloadPos < decryptPos, 'download before decrypt');
+  assert.ok(decryptPos < subprocessPos, 'decrypt before subprocess');
 });
 
 test('7. Drive download accepts only app-owned recovery artifacts with metadata verification', () => {
@@ -135,13 +154,18 @@ test('9. LBBA1 AEAD preserved; authenticated decryption required before restore'
   assert.match(RESTORE, /b["']LBBA1["']/);
 });
 
-test('10. pg_restore boundary: no destructive flags, no blind retry', () => {
+test('10. pg_restore boundary: no destructive flags, no script-output mode, no blind retry', () => {
   assert.match(RESTORE, /--no-owner/);
   assert.match(RESTORE, /--no-privileges/);
   assert.ok(!/--clean/.test(RESTORE), 'no --clean flag');
   assert.ok(!/--create/.test(RESTORE), 'no --create flag');
   assert.ok(!/DROP\s+DATABASE|DROP\s+SCHEMA/.test(RESTORE), 'no DROP DATABASE/SCHEMA');
   assert.ok(!/drop-db|drop-schema/.test(RESTORE), 'no drop flags');
+  // BLOCKER-1 fix: no script-output mode (--file / -f) — direct DB restore path
+  assert.ok(!/"--file"|'--file'|\\s--file\\s|--file\\s*$/.test(RESTORE), 'no --file flag');
+  assert.ok(!/"-f"|'-f'|\\s-f\\s/.test(RESTORE), 'no -f flag');
+  // archive path is positional (passed as a bare arg, not via --file)
+  assert.match(RESTORE, /\*cmd,\s*plain_path/);
   // single attempt only: no retry loop around pg_restore
   assert.ok(!/for\s+attempt\s+in\s+range\(/.test(RESTORE), 'no retry loop');
 });

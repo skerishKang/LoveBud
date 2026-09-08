@@ -47,6 +47,7 @@ import tempfile
 from typing import Any, Callable, Mapping
 
 from modal_compute.recovery_backup_policy import (
+    ISOLATED_TARGET_VERIFIED,
     RESTORE_ARTIFACT_INVALID,
     RESTORE_ARTIFACT_NOT_FOUND,
     RESTORE_AUTH_UNAVAILABLE,
@@ -59,6 +60,7 @@ from modal_compute.recovery_backup_policy import (
     RESTORE_VERIFICATION_FAILED,
     RESTORE_VERIFY_INVARIANTS_PASS,
     classify_restore_target,
+    dsn_alias_rejected,
     evaluate_restore_verification,
     make_restore_status,
 )
@@ -155,22 +157,42 @@ def _target_arg() -> str:
     return os.environ[RESTORE_TARGET_URL_ENV]
 
 
-def _build_restore_command(target_url: str) -> list:
-    """Narrow non-destructive pg_restore argv.
+def _known_dsn_values() -> list[str]:
+    """Known source/Product DSN values available to the process (in-memory only).
+
+    Includes the canonical Product credential names and the backup source DB URL.
+    Values are never logged or returned outside this module; only the boolean
+    equality verdict is ever used.
+    """
+    known = [
+        os.environ.get("LOVE_PLATFORM_DATABASE_URL"),
+        os.environ.get("LOVE_PLATFORM_WRITE_DATABASE_URL"),
+        os.environ.get("DATABASE_URL"),
+    ]
+    return [v for v in known if v]
+
+
+def _target_alias_rejected(target_url: str) -> bool:
+    """Fail closed when the restore target aliases any known source/Product DSN."""
+    return dsn_alias_rejected(target_url, _known_dsn_values())
+
+
+def _build_restore_command() -> list:
+    """Narrow non-destructive pg_restore argv (direct restore path).
 
     Only --no-owner / --no-privileges plus a redundant --exit-on-error guard are
-    included. No database-replacing, schema-wiping, or object-dropping flags are
-    present by default: the isolated target is provisioned/prepared separately by
-    an explicitly authorized future operator. The target is passed only through the
-    child-only PGDATABASE environment so the URL never appears in argv or logs.
+    included. No --file/-f script-output mode, and no database-replacing,
+    schema-wiping, or object-dropping flags are present by default: the isolated
+    target is provisioned/prepared separately by an explicitly authorized future
+    operator. The archive path is supplied POSITIONALLY by the caller; the target
+    is passed only through the child-only PGDATABASE environment so the URL never
+    appears in argv or logs.
     """
     return [
         "pg_restore",
         "--no-owner",
         "--no-privileges",
         "--exit-on-error",
-        "--file",
-        "-",
     ]
 
 
@@ -191,7 +213,7 @@ def _run_pg_restore(
     The subprocess module is imported lazily so importing this module stays fully
     hermetic (no subprocess capability is even loaded at import time).
     """
-    cmd = _build_restore_command("")
+    cmd = _build_restore_command()
     child_env = {"PATH": os.environ.get("PATH", ""), "PGDATABASE": target_url}
     if executor is not None:
         result = executor([*cmd, plain_path], child_env)
@@ -216,6 +238,7 @@ Service = Any
 DownloadFn = Callable[..., None]
 DecryptFn = Callable[[str, str, bytes], None]
 VerifyFn = Callable[[str], str]
+TargetVerifierFn = Callable[[str], str]
 
 
 def _plain_artifact_valid(enc_path: str, plain_path: str) -> bool:
@@ -248,6 +271,7 @@ def run_isolated_restore(
     expected_run_identity: str | None,
     encryption_key: bytes,
     download_fn: DownloadFn,
+    target_verifier: TargetVerifierFn,
     decrypt_fn: DecryptFn = streaming_decrypt,
     verify_fn: VerifyFn,
     pg_restore_executor: Callable[..., Any] | None = None,
@@ -257,18 +281,47 @@ def run_isolated_restore(
 
     The default `decrypt_fn` is the shared LBBA1 AES-GCM streaming_decrypt. This
     function performs no real network/Drive/DB/subprocess unless the caller supplies
-    live implementations; the operator path is reached only with an explicit
-    isolated target (checked by `classify_current_target` before any download).
+    live implementations; the operator path is reached only when BOTH:
+      - `classify_current_target` returns RESTORE_TARGET_VALID (explicit isolated
+        class, no canonical Product credential names in use), and
+      - the injected `target_verifier` POSITIVELY returns ISOLATED_TARGET_VERIFIED
+        for the explicit target (a caller-supplied class string alone is
+        INSUFFICIENT), and
+      - the explicit target does not equal any known source/Product DSN (in-memory
+        equality guard; values never logged).
+    Default/unverified state = STOP (fail closed) before any download/decrypt/
+    subprocess operation.
 
     Ordering (strict, cleanup on every failure path):
-      target classification -> download -> decrypt -> pg_restore -> verification
-      -> plaintext cleanup -> encrypted temp cleanup (finally).
+      target classification + positive attestation + alias guard -> download
+      -> decrypt -> pg_restore -> verification -> plaintext cleanup -> encrypted
+      temp cleanup (finally).
 
     Returns a sanitized status only; no raw provider/DB/secret value ever escapes.
     A temp-artifact cleanup failure downgrades the outcome to
     RESTORE_CLEANUP_FAILED (never a silent success with leftover plaintext).
     """
     if classify_current_target() != "RESTORE_TARGET_VALID":
+        return _make_restore_status(
+            restore_state=RESTORE_TARGET_INVALID,
+            target_state=RESTORE_TARGET_INVALID,
+            phase="target",
+        )
+
+    # BLOCKER-2 fix: positive target attestation + alias guard BEFORE any provider
+    # or subprocess operation. Caller class string alone is insufficient.
+    target_url = _target_arg()
+    if _target_alias_rejected(target_url):
+        return _make_restore_status(
+            restore_state=RESTORE_TARGET_INVALID,
+            target_state=RESTORE_TARGET_INVALID,
+            phase="target",
+        )
+    try:
+        target_attestation = target_verifier(target_url)
+    except Exception:
+        target_attestation = None
+    if target_attestation != ISOLATED_TARGET_VERIFIED:
         return _make_restore_status(
             restore_state=RESTORE_TARGET_INVALID,
             target_state=RESTORE_TARGET_INVALID,
@@ -287,6 +340,7 @@ def run_isolated_restore(
         enc_path = os.path.join(workdir, "recovery.enc")
         plain_path = os.path.join(workdir, "recovery.dump")
 
+        download_occurred = False
         try:
             download_fn(
                 drive_service,
@@ -297,6 +351,7 @@ def run_isolated_restore(
                 expected_run_identity=expected_run_identity,
                 max_bytes=RESTORE_MAX_ARTIFACT_BYTES,
             )
+            download_occurred = True
         except Exception:
             status = _make_restore_status(
                 restore_state=RESTORE_ARTIFACT_NOT_FOUND,
@@ -322,7 +377,26 @@ def run_isolated_restore(
             )
 
         if status is None:
-            target_url = _target_arg()  # fail closed again before any subprocess
+            # Re-verify attestation + alias guard immediately before the subprocess.
+            if _target_alias_rejected(target_url):
+                status = _make_restore_status(
+                    restore_state=RESTORE_TARGET_INVALID,
+                    target_state=RESTORE_TARGET_INVALID,
+                    phase="target",
+                )
+            else:
+                try:
+                    attestation_before_subprocess = target_verifier(target_url)
+                except Exception:
+                    attestation_before_subprocess = None
+                if attestation_before_subprocess != ISOLATED_TARGET_VERIFIED:
+                    status = _make_restore_status(
+                        restore_state=RESTORE_TARGET_INVALID,
+                        target_state=RESTORE_TARGET_INVALID,
+                        phase="target",
+                    )
+
+        if status is None:
             rc = _run_pg_restore(
                 plain_path,
                 target_url,
@@ -388,5 +462,7 @@ __all__ = [
     "classify_current_target",
     "_build_restore_command",
     "_run_pg_restore",
+    "_target_alias_rejected",
+    "_known_dsn_values",
     "run_isolated_restore",
 ]

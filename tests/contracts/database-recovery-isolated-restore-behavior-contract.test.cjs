@@ -70,6 +70,12 @@ def ok_verify(target):
 def fail_verify(target):
     return p.RESTORE_VERIFY_FAILED
 
+def ok_attest(target):
+    return p.ISOLATED_TARGET_VERIFIED
+
+def fail_attest(target):
+    return 'NOT_VERIFIED'
+
 KEY = b'k' * 32
 ENC, ART_WORK = build_artifact(b'custom dump bytes for restore verification', KEY)
 
@@ -86,6 +92,7 @@ def base_args(**kw):
         expected_size=os.path.getsize(ENC),
         expected_retention_tier='daily', expected_run_identity=None,
         encryption_key=KEY, download_fn=fake_download_from(ENC),
+        target_verifier=ok_attest,
         pg_restore_executor=ok_executor, verify_fn=ok_verify,
     )
     args.update(kw)
@@ -114,6 +121,58 @@ def run_forbidden_product_name():
     os.environ['LOVE_PLATFORM_DATABASE_URL'] = 'postgresql://prod.example/db'
     return r.run_isolated_restore(**base_args())
 check('target-forbidden-product-name', run_forbidden_product_name)
+
+# ---- 3b. BLOCKER-2: Production-equivalent DSN under isolated label is rejected -----
+def run_prod_dsn_under_isolated_label():
+    # restore target URL equals a known Product DSN value (in-memory equality guard)
+    set_target('ISOLATED_RESTORE_TARGET', 'postgresql://restore@isolated.example/db')
+    os.environ['LOVE_PLATFORM_DATABASE_URL'] = 'postgresql://restore@isolated.example/db'
+    return r.run_isolated_restore(**base_args())
+check('prod-dsn-equality-rejected', run_prod_dsn_under_isolated_label)
+
+# ---- 3c. BLOCKER-2: source DB URL == restore target URL is rejected -------------
+def run_source_dsn_equality():
+    set_target('ISOLATED_RESTORE_TARGET', 'postgresql://restore@isolated.example/db')
+    os.environ['DATABASE_URL'] = 'postgresql://restore@isolated.example/db'
+    return r.run_isolated_restore(**base_args())
+check('source-dsn-equality-rejected', run_source_dsn_equality)
+
+# ---- 3d. BLOCKER-2: isolated class with NO positive attestation is rejected ------
+def run_no_attestation():
+    set_target()
+    return r.run_isolated_restore(**base_args(target_verifier=fail_attest))
+check('no-attestation-rejected', run_no_attestation)
+
+# ---- 3e. BLOCKER-2: positive fake isolated-target attestation + distinct target allowed -
+def run_attestation_allowed():
+    set_target()
+    return r.run_isolated_restore(**base_args(target_verifier=ok_attest))
+check('attestation-allowed', run_attestation_allowed)
+
+# ---- 3f. BLOCKER-2: verifier failure -> no download, no decrypt, no pg_restore ------
+call_counts = {'dl': 0, 'dec': 0, 'pg': 0}
+def counting_download(service, file_id, dest_path, **kw):
+    call_counts['dl'] += 1
+    fake_download_from(ENC)(service, file_id, dest_path, **kw)
+def counting_decrypt(enc_path, plain_path, key):
+    call_counts['dec'] += 1
+    s.streaming_decrypt(enc_path, plain_path, key)
+def counting_executor(cmd, env):
+    call_counts['pg'] += 1
+    class R: returncode = 0
+    return R()
+
+def run_verifier_failure_no_ops():
+    set_target()
+    for k in call_counts: call_counts[k] = 0
+    st = r.run_isolated_restore(**base_args(
+        target_verifier=fail_attest,
+        download_fn=counting_download,
+        decrypt_fn=counting_decrypt,
+        pg_restore_executor=counting_executor,
+    ))
+    return {'status': st, 'calls': dict(call_counts)}
+check('verifier-failure-no-ops', run_verifier_failure_no_ops)
 
 # ---- 4. Drive download accepts only app-owned recovery artifacts ------------
 def run_download_metadata_mismatch():
@@ -209,9 +268,29 @@ check('status-surface', run_status_surface)
 
 # ---- 11. pg_restore argv surface: no destructive flags ----------------------
 def run_command_argv():
-    cmd = r._build_restore_command('postgresql://restore@isolated.example/db')
+    cmd = r._build_restore_command()
     return {'argv': cmd}
 check('command-argv', run_command_argv)
+
+# ---- 11b. PGDATABASE child-env only: target URL never in argv ----------------
+def run_pg_env_only():
+    set_target()
+    captured = {}
+    def capture_executor(cmd, env):
+        captured['argv'] = list(cmd)
+        captured['env'] = dict(env)
+        class R: returncode = 0
+        return R()
+    r.run_isolated_restore(**base_args(pg_restore_executor=capture_executor))
+    argv = captured.get('argv', [])
+    env = captured.get('env', {})
+    target = os.environ.get('RESTORE_TARGET_DATABASE_URL', '')
+    return {
+        'has_pgdatabase': 'PGDATABASE' in env,
+        'pgdatabase_value': env.get('PGDATABASE'),
+        'target_in_argv': any(target and target in str(a) for a in argv),
+    }
+check('pg-env-only', run_pg_env_only)
 
 # ---- 12. LBBA1 validity seam ------------------------------------------------
 def run_plain_valid():
@@ -259,6 +338,35 @@ test('3. Product DB credential substitution is rejected', () => {
   assert.equal(results['target-forbidden-product-name'].value.restore_state, 'RESTORE_TARGET_INVALID');
 });
 
+test('3b. Production-equivalent restore URL + isolated label is rejected (alias guard)', () => {
+  assert.equal(results['prod-dsn-equality-rejected'].status, 'PASS');
+  assert.equal(results['prod-dsn-equality-rejected'].value.restore_state, 'RESTORE_TARGET_INVALID');
+});
+
+test('3c. Source DB URL == restore target URL is rejected (alias guard)', () => {
+  assert.equal(results['source-dsn-equality-rejected'].status, 'PASS');
+  assert.equal(results['source-dsn-equality-rejected'].value.restore_state, 'RESTORE_TARGET_INVALID');
+});
+
+test('3d. isolated class with no positive attestation is rejected', () => {
+  assert.equal(results['no-attestation-rejected'].status, 'PASS');
+  assert.equal(results['no-attestation-rejected'].value.restore_state, 'RESTORE_TARGET_INVALID');
+});
+
+test('3e. positive fake isolated-target attestation + distinct target is allowed', () => {
+  assert.equal(results['attestation-allowed'].status, 'PASS');
+  assert.equal(results['attestation-allowed'].value.restore_state, 'RESTORE_SUCCESS');
+});
+
+test('3f. verifier failure -> no download, no decrypt, no pg_restore', () => {
+  const r = results['verifier-failure-no-ops'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.status.restore_state, 'RESTORE_TARGET_INVALID');
+  assert.equal(r.value.calls.dl, 0, 'no download on verifier failure');
+  assert.equal(r.value.calls.dec, 0, 'no decrypt on verifier failure');
+  assert.equal(r.value.calls.pg, 0, 'no pg_restore on verifier failure');
+});
+
 test('4. invalid Drive metadata fails closed before decrypt/restore', () => {
   assert.equal(results['download-metadata-mismatch'].status, 'PASS');
   assert.equal(results['download-metadata-mismatch'].value.restore_state, 'RESTORE_ARTIFACT_NOT_FOUND');
@@ -303,13 +411,27 @@ test('10. sanitized status only; no raw secrets/provider/DB in output', () => {
   assert.ok(!/stderr|DATABASE_URL|file_id|token/.test(statusJson), 'no raw values in status');
 });
 
-test('11. pg_restore argv is non-destructive', () => {
+test('11. pg_restore argv is non-destructive and non-script-output', () => {
   const r = results['command-argv'];
   assert.equal(r.status, 'PASS');
   assert.ok(r.value.argv.includes('--no-owner'));
   assert.ok(r.value.argv.includes('--no-privileges'));
   assert.ok(!r.value.argv.includes('--clean'), 'no --clean');
   assert.ok(!r.value.argv.includes('--create'), 'no --create');
+  // BLOCKER-1 fix: no script-output mode
+  assert.ok(!r.value.argv.includes('--file'), 'no --file');
+  assert.ok(!r.value.argv.includes('-f'), 'no -f');
+  // archive path is positional input (first bare arg is the archive, not --file)
+  assert.ok(r.value.argv[0] === 'pg_restore', 'pg_restore is argv[0]');
+  assert.ok(!r.value.argv.includes('-'), 'no bare dash placeholder');
+});
+
+test('11b. PGDATABASE carries the isolated target in child-env only (never argv)', () => {
+  const r = results['pg-env-only'];
+  assert.equal(r.status, 'PASS');
+  assert.equal(r.value.has_pgdatabase, true, 'PGDATABASE present in child env');
+  assert.equal(r.value.pgdatabase_value, 'postgresql://restore@isolated.example/db');
+  assert.equal(r.value.target_in_argv, false, 'target URL never in argv');
 });
 
 test('12. LBBA1 validity seam: encrypt->decrypt round-trips for a valid artifact', () => {
