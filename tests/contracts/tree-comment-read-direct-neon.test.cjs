@@ -18,6 +18,10 @@
 //   F. regression (write helper still loadable; route still exports GET/POST)
 //   G. sanitized failure diagnostics (stage classification, error-class and
 //      SQLSTATE sanitizers, no message/stack/credential/query leakage)
+//   H. Pages live database identity diagnostic probe (fixed-vocabulary DB
+//      classification, role match, trees/tree_comments SELECT tri-state,
+//      zero product rows, credential fail-closed, no raw identifier leakage,
+//      read-gate-absent behavior unchanged)
 //
 // The candidate mirrors modal_compute/tree_comments.py::fetch_tree_comments.
 
@@ -771,4 +775,230 @@ test('G10. security regression: no diagnostic response leaks SQL text, values, o
     assert.ok(!output.includes('SELECT'), 'no SQL text surfaces');
     assert.ok(!output.includes('tree_comments'), 'no relation name surfaces');
   }
+});
+
+// ─── H. Pages live database identity diagnostic probe ─────────────────────
+// Fixed-vocabulary identity probe (source-only; never activated by this PR).
+// A fake executor answers the single catalog probe query in-process: zero
+// real DB sessions, zero product rows, zero wrangler/matrix state change.
+
+const crypto = require('node:crypto');
+
+const PROBE_SELECTOR = 'LB_TREE_COMMENT_READ_DIAGNOSTIC';
+const FORENSIC_DB_NAME = 'forensic-neondb-identity';
+const ALTERNATE_DB_NAME = 'lovebud-branch-identity';
+const FORENSIC_ROLE_NAME = 'lovebud_readonly_role';
+const sha256Hex = (value) => crypto.createHash('sha256').update(String(value)).digest('hex');
+
+function probeRow({
+  databaseName = FORENSIC_DB_NAME,
+  currentRole = FORENSIC_ROLE_NAME,
+  sessionRole = currentRole,
+  treesSelect = true,
+  treeCommentsSelect = true
+} = {}) {
+  return {
+    database_name: databaseName,
+    current_role_name: currentRole,
+    session_role_name: sessionRole,
+    trees_select: treesSelect,
+    tree_comments_select: treeCommentsSelect
+  };
+}
+
+function makeProbeEnv(row, { fingerprints = {}, gate = false } = {}) {
+  const calls = [];
+  const executor = async (text, values) => {
+    calls.push({ text, values });
+    return row ? [row] : [];
+  };
+  const env = {
+    [PROBE_SELECTOR]: 'database_identity_probe',
+    LOVE_PLATFORM_DATABASE_URL: READ_URL,
+    ...fingerprints
+  };
+  if (gate) env.LB_TREE_COMMENT_READ_RUNTIME = 'direct_neon';
+  return { calls, executor, env };
+}
+
+async function probeBody(mod, row, options = {}) {
+  const { calls, executor, env } = makeProbeEnv(row, options);
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), env, 'rid-h', { executorOverride: executor });
+  assert.ok(resp, 'probe selected -> handler answers (no Modal fall-through)');
+  return { resp, body: await resp.clone().json(), calls };
+}
+
+test('H1. expected forensic DB + matching role + both SELECTs -> EXPECTED_FORENSIC_DB/YES/YES/YES', async () => {
+  const mod = await loadModule();
+  const { resp, body, calls } = await probeBody(mod, probeRow(), {
+    fingerprints: {
+      LOVEBUD_FORENSIC_DB_FINGERPRINT: sha256Hex(FORENSIC_DB_NAME),
+      LOVEBUD_ALTERNATE_DB_FINGERPRINT: sha256Hex(ALTERNATE_DB_NAME),
+      LOVEBUD_EXPECTED_RUNTIME_ROLE_FINGERPRINT: sha256Hex(FORENSIC_ROLE_NAME)
+    }
+  });
+  assert.equal(resp.status, 200);
+  assert.deepEqual(body, {
+    diagnostic: 'tree_comment_read_database_identity_probe',
+    databaseClass: 'EXPECTED_FORENSIC_DB',
+    runtimeRoleMatch: 'YES',
+    selectTrees: 'YES',
+    selectTreeComments: 'YES'
+  });
+  assert.equal(calls.length, 1);
+});
+
+test('H2. alternate known DB with tree_comments SELECT=false -> ALTERNATE_KNOWN_DB / NO', async () => {
+  const mod = await loadModule();
+  const { body } = await probeBody(mod, probeRow({ databaseName: ALTERNATE_DB_NAME, treeCommentsSelect: false }), {
+    fingerprints: {
+      LOVEBUD_FORENSIC_DB_FINGERPRINT: sha256Hex(FORENSIC_DB_NAME),
+      LOVEBUD_ALTERNATE_DB_FINGERPRINT: sha256Hex(ALTERNATE_DB_NAME),
+      LOVEBUD_EXPECTED_RUNTIME_ROLE_FINGERPRINT: sha256Hex(FORENSIC_ROLE_NAME)
+    }
+  });
+  assert.equal(body.databaseClass, 'ALTERNATE_KNOWN_DB');
+  assert.equal(body.runtimeRoleMatch, 'YES');
+  assert.equal(body.selectTrees, 'YES');
+  assert.equal(body.selectTreeComments, 'NO');
+});
+
+test('H3. unrecognized DB (or missing fingerprints) -> UNKNOWN_DB, never a name', async () => {
+  const mod = await loadModule();
+  const unknown = await probeBody(mod, probeRow({ databaseName: 'some-other-database' }), {
+    fingerprints: {
+      LOVEBUD_FORENSIC_DB_FINGERPRINT: sha256Hex(FORENSIC_DB_NAME),
+      LOVEBUD_ALTERNATE_DB_FINGERPRINT: sha256Hex(ALTERNATE_DB_NAME)
+    }
+  });
+  assert.equal(unknown.body.databaseClass, 'UNKNOWN_DB');
+  assert.ok(!JSON.stringify(unknown.body).includes('some-other-database'));
+  const noFingerprints = await probeBody(mod, probeRow());
+  assert.equal(noFingerprints.body.databaseClass, 'UNKNOWN_DB');
+  assert.equal(noFingerprints.body.runtimeRoleMatch, 'UNKNOWN', 'no role authority -> UNKNOWN not NO');
+});
+
+test('H4. runtime role mismatch -> runtimeRoleMatch NO (current or session divergence)', async () => {
+  const mod = await loadModule();
+  const expected = {
+    LOVEBUD_FORENSIC_DB_FINGERPRINT: sha256Hex(FORENSIC_DB_NAME),
+    LOVEBUD_EXPECTED_RUNTIME_ROLE_FINGERPRINT: sha256Hex(FORENSIC_ROLE_NAME)
+  };
+  const divergent = await probeBody(mod, probeRow({ currentRole: 'pooler_super_user' }), { fingerprints: expected });
+  assert.equal(divergent.body.runtimeRoleMatch, 'NO');
+  const sessionOnly = await probeBody(mod, probeRow({ sessionRole: 'other_role' }), { fingerprints: expected });
+  assert.equal(sessionOnly.body.runtimeRoleMatch, 'NO');
+});
+
+test('H5. malicious/raw identifiers in probe row never appear in any response byte', async () => {
+  const mod = await loadModule();
+  const evilDb = `evil-db'; DROP TABLE tree_comments; --${SECRET_SENTINEL}`;
+  const evilRole = `role_${SECRET_SENTINEL}_neon.tech`;
+  const { resp, body, calls } = await probeBody(mod, probeRow({
+    databaseName: evilDb,
+    currentRole: evilRole,
+    sessionRole: 'session_' + SECRET_SENTINEL,
+    treesSelect: null,
+    treeCommentsSelect: 'unexpected'
+  }), {
+    fingerprints: { LOVEBUD_FORENSIC_DB_FINGERPRINT: sha256Hex(FORENSIC_DB_NAME) }
+  });
+  assert.equal(resp.status, 200);
+  const output = await collectResponseOutput(resp);
+  for (const forbidden of [
+    evilDb, evilRole, SECRET_SENTINEL, 'neon.tech', 'current_user', 'session_user',
+    'current_database', 'has_table_privilege', 'DROP TABLE', ...FORBIDDEN_OUTPUT_SUBSTRINGS
+  ]) {
+    assert.ok(!output.includes(forbidden), `output must not contain ${JSON.stringify(forbidden)}`);
+  }
+  assert.equal(body.databaseClass, 'UNKNOWN_DB');
+  assert.equal(body.selectTrees, 'UNKNOWN', 'non-boolean privilege value -> UNKNOWN');
+  assert.equal(body.selectTreeComments, 'UNKNOWN');
+  assert.equal(calls.length, 1);
+});
+
+test('H6. probe is SELECT-only catalog read: one call, no parameters, no product FROM', async () => {
+  const mod = await loadModule();
+  const { calls } = await probeBody(mod, probeRow());
+  assert.equal(calls.length, 1, 'exactly one executor call');
+  assert.deepEqual(calls[0].values, [], 'no bound parameters');
+  assert.equal(calls[0].text, mod.TREE_COMMENT_READ_DATABASE_IDENTITY_PROBE_SQL);
+  assert.ok(!/\bFROM\b/i.test(calls[0].text), 'no table scan: catalog functions only');
+  assert.ok(!/\b(INSERT|UPDATE|DELETE|GRANT|REVOKE)\b/i.test(calls[0].text));
+});
+
+test('H7. selector with non-matching value -> read path unchanged (gate active, comments 200)', async () => {
+  const mod = await loadModule();
+  const { calls, executor } = makeReadExecutor({
+    commentRows: [{ id: 'c-1', tree_id: TREE_ID, body: 'normal', created_at: '2026-01-01T00:00:00+00:00', updated_at: '2026-01-01T00:00:00+00:00' }]
+  });
+  const env = { ...READ_ENV, [PROBE_SELECTOR]: 'some_other_diagnostic' };
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), env, 'rid-h7', { executorOverride: executor });
+  assert.equal(resp.status, 200);
+  const body = await resp.json();
+  assert.equal(body.comments.length, 1, 'real read flow executed, not the probe');
+  assert.equal(body.comments[0].body, 'normal');
+  assert.ok(calls.some((c) => c.text.includes('FROM tree_comments')));
+});
+
+test('H8. gate absent + selector absent -> null (Modal delegation byte-unchanged)', async () => {
+  const mod = await loadModule();
+  const { calls, executor } = makeReadExecutor();
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), { LOVE_PLATFORM_DATABASE_URL: READ_URL }, 'rid-h8', { executorOverride: executor });
+  assert.equal(resp, null);
+  assert.equal(calls.length, 0);
+});
+
+test('H9. gate absent + selector present -> probe answers WITHOUT reactivating direct-Neon reads', async () => {
+  const mod = await loadModule();
+  const { resp, body, calls } = await probeBody(mod, probeRow({ treeCommentsSelect: false }), {
+    fingerprints: {
+      LOVEBUD_FORENSIC_DB_FINGERPRINT: sha256Hex(FORENSIC_DB_NAME),
+      LOVEBUD_EXPECTED_RUNTIME_ROLE_FINGERPRINT: sha256Hex(FORENSIC_ROLE_NAME)
+    }
+  });
+  assert.equal(resp.status, 200);
+  assert.equal(body.databaseClass, 'EXPECTED_FORENSIC_DB');
+  assert.equal(body.selectTreeComments, 'NO');
+  assert.equal(calls[0].text, mod.TREE_COMMENT_READ_DATABASE_IDENTITY_PROBE_SQL, 'only the probe query ran; no visibility/comments read');
+});
+
+test('H10. probe fail-closed on config absent / forbidden fallback with zero executor calls', async () => {
+  const mod = await loadModule();
+  const { calls, executor } = makeReadExecutor();
+  const noCred = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), { [PROBE_SELECTOR]: 'database_identity_probe' }, 'rid-h10a', { executorOverride: executor });
+  assert.equal(noCred.status, 503);
+  assert.equal((await noCred.json()).code, 'DIRECT_NEON_CONFIG_ABSENT');
+  const writeOnly = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), {
+    [PROBE_SELECTOR]: 'database_identity_probe',
+    DATABASE_URL: WRITE_URL
+  }, 'rid-h10b', { executorOverride: executor });
+  assert.equal(writeOnly.status, 503);
+  assert.equal((await writeOnly.json()).code, 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK');
+  assert.equal(calls.length, 0, 'no query attempted without the dedicated read credential');
+});
+
+test('H11. classifier purity: malformed fingerprints -> UNKNOWN, driver string booleans normalize, frozen fixed keys', async () => {
+  const mod = await loadModule();
+  const malformed = await mod.classifyTreeCommentReadDatabaseIdentity(
+    {
+      databaseName: FORENSIC_DB_NAME,
+      currentRole: FORENSIC_ROLE_NAME,
+      sessionRole: FORENSIC_ROLE_NAME,
+      treesSelect: 't',
+      treeCommentsSelect: 'f'
+    },
+    { forensicDbFingerprint: 'not-hex', runtimeRoleFingerprint: 'Z'.repeat(64) }
+  );
+  assert.equal(malformed.databaseClass, 'UNKNOWN_DB');
+  assert.equal(malformed.runtimeRoleMatch, 'UNKNOWN');
+  assert.equal(malformed.selectTrees, 'YES', "'t' -> YES");
+  assert.equal(malformed.selectTreeComments, 'NO', "'f' -> NO");
+  assert.deepEqual(Object.keys(malformed), ['databaseClass', 'runtimeRoleMatch', 'selectTrees', 'selectTreeComments']);
+  assert.ok(Object.isFrozen(malformed));
+  assert.deepEqual([...mod.TREE_COMMENT_READ_DATABASE_IDENTITY_CLASSES], ['EXPECTED_FORENSIC_DB', 'ALTERNATE_KNOWN_DB', 'UNKNOWN_DB']);
+  assert.deepEqual([...mod.TREE_COMMENT_READ_PROBE_TRISTATE], ['YES', 'NO', 'UNKNOWN']);
+  const noRows = await probeBody(mod, null);
+  assert.equal(noRows.resp.status, 500);
+  assert.equal((await noRows.resp.json()).code, 'DIRECT_NEON_DIAGNOSTIC_PROBE_FAILED');
 });

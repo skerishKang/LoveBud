@@ -95,6 +95,37 @@ const DIAGNOSTIC_ERROR_CLASS_MAX_CHARS = 64;
 const DIAGNOSTIC_SQLSTATE_PATTERN = /^[A-Z0-9]{5}$/;
 const DIAGNOSTIC_ERROR_CLASS_PATTERN = /[^A-Za-z0-9_-]/g;
 
+// ─── Pages live database identity diagnostic probe (#4000 post-42501) ─────
+// The 42501 canary proved the live Pages runtime connection is rejected on
+// public.tree_comments while trees visibility succeeded, but the exact
+// database/role identity the LOVE_PLATFORM_DATABASE_URL secret reaches is
+// still unresolved. This probe answers ONLY with fixed vocabulary:
+// raw database names, role names, and connection details NEVER cross the
+// response boundary. Expected identities are supplied at activation time as
+// one-way SHA-256 fingerprints through non-public (secret_text) env bindings;
+// no private identifier is embedded in this source. Selection is via a
+// DEDICATED temporary diagnostic env (NOT the read runtime gate) and fails
+// closed for any other value. The read gate itself stays absent: the
+// selection predicate treats a selector-active request as dispatch-eligible
+// so the route can reach this branch without reactivating direct-Neon reads.
+
+export const TREE_COMMENT_READ_DIAGNOSTIC_ENV = Object.freeze({
+  SELECTOR: 'LB_TREE_COMMENT_READ_DIAGNOSTIC',
+  SELECTOR_VALUE: 'database_identity_probe',
+  FORENSIC_DB_FINGERPRINT: 'LOVEBUD_FORENSIC_DB_FINGERPRINT',
+  ALTERNATE_DB_FINGERPRINT: 'LOVEBUD_ALTERNATE_DB_FINGERPRINT',
+  RUNTIME_ROLE_FINGERPRINT: 'LOVEBUD_EXPECTED_RUNTIME_ROLE_FINGERPRINT'
+});
+
+export const TREE_COMMENT_READ_DATABASE_IDENTITY_CLASSES = Object.freeze([
+  'EXPECTED_FORENSIC_DB',
+  'ALTERNATE_KNOWN_DB',
+  'UNKNOWN_DB'
+]);
+export const TREE_COMMENT_READ_PROBE_TRISTATE = Object.freeze(['YES', 'NO', 'UNKNOWN']);
+
+const FINGERPRINT_PATTERN = /^[0-9a-f]{64}$/;
+
 // ─── Gate / route selection ───────────────────────────────────────────────
 
 export function isTreeCommentReadDirectNeonRequest(request) {
@@ -106,7 +137,20 @@ export function isTreeCommentReadDirectNeonRequest(request) {
   return /^\/api\/trees\/[^/]*\/comments$/.test(path);
 }
 
+export function isTreeCommentReadDiagnosticProbeSelected(env = {}) {
+  const value = typeof env?.[TREE_COMMENT_READ_DIAGNOSTIC_ENV.SELECTOR] === 'string'
+    ? env[TREE_COMMENT_READ_DIAGNOSTIC_ENV.SELECTOR].trim()
+    : '';
+  return value === TREE_COMMENT_READ_DIAGNOSTIC_ENV.SELECTOR_VALUE;
+}
+
 export function isTreeCommentReadDirectNeonSelected(env = {}) {
+  // Dispatch eligibility only: a request with the dedicated diagnostic
+  // selector is routed into this handler so the identity-probe branch can
+  // answer with fixed vocabulary. This does NOT select direct-Neon reads;
+  // the handler short-circuits to the probe before any read query runs, and
+  // the read runtime gate itself remains the sole trigger for real reads.
+  if (isTreeCommentReadDiagnosticProbeSelected(env)) return true;
   const value = typeof env?.[TREE_COMMENT_READ_RUNTIME_ENV.GATE_FLAG] === 'string'
     ? env[TREE_COMMENT_READ_RUNTIME_ENV.GATE_FLAG].trim()
     : '';
@@ -433,6 +477,166 @@ export async function createTreeCommentReadExecutor({ connectionString, neonOpti
   };
 }
 
+// ─── Pages live database identity diagnostic probe (implementation) ───────
+
+export const TREE_COMMENT_READ_DATABASE_IDENTITY_PROBE_SQL = [
+  'SELECT',
+  '  current_database() AS database_name,',
+  "  current_user::text AS current_role_name,",
+  "  session_user::text AS session_role_name,",
+  "  has_table_privilege(current_user, 'public.trees', 'SELECT') AS trees_select,",
+  "  has_table_privilege(current_user, 'public.tree_comments', 'SELECT') AS tree_comments_select"
+].join('\n');
+
+export async function fingerprintTreeCommentReadIdentity(value) {
+  const bytes = new TextEncoder().encode(String(value));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function expectedIdentityFingerprint(env, envName) {
+  const raw = typeof env?.[envName] === 'string' ? env[envName].trim().toLowerCase() : '';
+  return FINGERPRINT_PATTERN.test(raw) ? raw : null;
+}
+
+function probeTriState(value) {
+  if (value === true || value === 't' || value === 'true') return 'YES';
+  if (value === false || value === 'f' || value === 'false') return 'NO';
+  return 'UNKNOWN';
+}
+
+// Pure classifier: consumes already-fetched probe row values plus locally
+// injected expected SHA-256 fingerprints and returns ONLY fixed-vocabulary
+// enums. Raw names are used solely for one-way hashing inside this function
+// and never appear in its output.
+export async function classifyTreeCommentReadDatabaseIdentity(probe, expected = {}) {
+  let databaseClass = 'UNKNOWN_DB';
+  try {
+    const dbFingerprint = await fingerprintTreeCommentReadIdentity(probe?.databaseName ?? '');
+    const forensic = typeof expected.forensicDbFingerprint === 'string'
+      && FINGERPRINT_PATTERN.test(expected.forensicDbFingerprint)
+      ? expected.forensicDbFingerprint.toLowerCase()
+      : null;
+    const alternate = typeof expected.alternateDbFingerprint === 'string'
+      && FINGERPRINT_PATTERN.test(expected.alternateDbFingerprint)
+      ? expected.alternateDbFingerprint.toLowerCase()
+      : null;
+    if (forensic && dbFingerprint === forensic) databaseClass = 'EXPECTED_FORENSIC_DB';
+    else if (alternate && dbFingerprint === alternate) databaseClass = 'ALTERNATE_KNOWN_DB';
+  } catch {
+    databaseClass = 'UNKNOWN_DB';
+  }
+
+  let runtimeRoleMatch = 'UNKNOWN';
+  try {
+    const role = typeof expected.runtimeRoleFingerprint === 'string'
+      && FINGERPRINT_PATTERN.test(expected.runtimeRoleFingerprint)
+      ? expected.runtimeRoleFingerprint.toLowerCase()
+      : null;
+    if (role) {
+      const currentFingerprint = await fingerprintTreeCommentReadIdentity(probe?.currentRole ?? '');
+      const sessionFingerprint = await fingerprintTreeCommentReadIdentity(probe?.sessionRole ?? '');
+      runtimeRoleMatch = currentFingerprint === role && sessionFingerprint === role ? 'YES' : 'NO';
+    }
+  } catch {
+    runtimeRoleMatch = 'UNKNOWN';
+  }
+
+  return Object.freeze({
+    databaseClass,
+    runtimeRoleMatch,
+    selectTrees: probeTriState(probe?.treesSelect),
+    selectTreeComments: probeTriState(probe?.treeCommentsSelect)
+  });
+}
+
+async function handleTreeCommentReadDatabaseIdentityProbe(request, env, requestId, { executorOverride }) {
+  // Same credential boundary as real reads: dedicated read-only Product DB
+  // authority only, fail closed, no generic/write fallback.
+  const forbidden = detectForbiddenReadFallback(env);
+  if (forbidden) {
+    return jsonResponse(
+      { error: 'Tree Comment read diagnostic probe configuration refused', code: 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK' },
+      503,
+      requestId,
+      'config-forbidden-fallback'
+    );
+  }
+  const config = readTreeCommentReadConfig(env);
+  if (!config.configured) {
+    return jsonResponse(
+      { error: 'Tree Comment read diagnostic probe configuration absent', code: 'DIRECT_NEON_CONFIG_ABSENT' },
+      503,
+      requestId,
+      'config-absent'
+    );
+  }
+
+  let executor;
+  try {
+    executor = typeof executorOverride === 'function'
+      ? executorOverride
+      : await createTreeCommentReadExecutor({ connectionString: config.connectionString });
+  } catch {
+    return jsonResponse(
+      { error: 'Tree Comment read diagnostic probe unavailable', code: 'DIRECT_NEON_DIAGNOSTIC_PROBE_FAILED' },
+      500,
+      requestId,
+      'probe-unavailable'
+    );
+  }
+
+  try {
+    const rows = await executor(TREE_COMMENT_READ_DATABASE_IDENTITY_PROBE_SQL, []);
+    const row = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
+    if (!row || typeof row !== 'object') {
+      return jsonResponse(
+        { error: 'Tree Comment read diagnostic probe unavailable', code: 'DIRECT_NEON_DIAGNOSTIC_PROBE_FAILED' },
+        500,
+        requestId,
+        'probe-shape-invalid'
+      );
+    }
+    const classification = await classifyTreeCommentReadDatabaseIdentity(
+      {
+        databaseName: row.database_name,
+        currentRole: row.current_role_name,
+        sessionRole: row.session_role_name,
+        treesSelect: row.trees_select,
+        treeCommentsSelect: row.tree_comments_select
+      },
+      {
+        forensicDbFingerprint: expectedIdentityFingerprint(env, TREE_COMMENT_READ_DIAGNOSTIC_ENV.FORENSIC_DB_FINGERPRINT),
+        alternateDbFingerprint: expectedIdentityFingerprint(env, TREE_COMMENT_READ_DIAGNOSTIC_ENV.ALTERNATE_DB_FINGERPRINT),
+        runtimeRoleFingerprint: expectedIdentityFingerprint(env, TREE_COMMENT_READ_DIAGNOSTIC_ENV.RUNTIME_ROLE_FINGERPRINT)
+      }
+    );
+    return jsonResponse(
+      {
+        diagnostic: 'tree_comment_read_database_identity_probe',
+        databaseClass: classification.databaseClass,
+        runtimeRoleMatch: classification.runtimeRoleMatch,
+        selectTrees: classification.selectTrees,
+        selectTreeComments: classification.selectTreeComments
+      },
+      200,
+      requestId,
+      'diagnostic-probe'
+    );
+  } catch (error) {
+    // Fixed-vocabulary failure only; underlying error details never surface.
+    return jsonResponse(
+      { error: 'Tree Comment read diagnostic probe unavailable', code: 'DIRECT_NEON_DIAGNOSTIC_PROBE_FAILED' },
+      500,
+      requestId,
+      'probe-failed',
+      diagnosticFailureHeaders(error, 'unknown')
+    );
+  }
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────
 
 export async function handleTreeCommentReadDirectNeon(
@@ -445,6 +649,12 @@ export async function handleTreeCommentReadDirectNeon(
   // gateway continues to the Modal-owned read route.
   if (!isTreeCommentReadDirectNeonRequest(request) || !isTreeCommentReadDirectNeonSelected(env)) {
     return null;
+  }
+
+  // Ephemeral identity-probe diagnostic: fixed-vocabulary answer only, zero
+  // product-row reads, independent of the read runtime gate value.
+  if (isTreeCommentReadDiagnosticProbeSelected(env)) {
+    return handleTreeCommentReadDatabaseIdentityProbe(request, env, requestId, { executorOverride });
   }
 
   const url = new URL(request.url);
