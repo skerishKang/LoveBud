@@ -75,6 +75,26 @@ const COMMENT_CURSOR_VERSION = 1;
 const CURSOR_MAX_PAYLOAD_CHARS = 1024;
 const FORBIDDEN_SET = new Set(TREE_COMMENT_READ_FORBIDDEN_FALLBACK_ENVS);
 
+// ─── Sanitized failure diagnostics (#4000 forensic support) ────────────────
+// The live-gate canary failed with an undifferentiated 500
+// DIRECT_NEON_QUERY_FAILED because the catch swallowed the underlying error.
+// These helpers expose ONLY a fixed-vocabulary stage, a strictly normalized
+// error class, and a PostgreSQL-shaped SQLSTATE via response headers on the
+// existing 500 query-failed path. Error message, stack, detail, hint, where,
+// schema/table/column/constraint, query text/parameters, credentials, and
+// identifiers are NEVER read, formatted, or forwarded.
+
+const DIAGNOSTIC_STAGES = Object.freeze([
+  'executor-init',
+  'visibility-query',
+  'comments-query',
+  'response-normalization',
+  'unknown'
+]);
+const DIAGNOSTIC_ERROR_CLASS_MAX_CHARS = 64;
+const DIAGNOSTIC_SQLSTATE_PATTERN = /^[A-Z0-9]{5}$/;
+const DIAGNOSTIC_ERROR_CLASS_PATTERN = /[^A-Za-z0-9_-]/g;
+
 // ─── Gate / route selection ───────────────────────────────────────────────
 
 export function isTreeCommentReadDirectNeonRequest(request) {
@@ -333,6 +353,44 @@ function jsonResponse(body, status, requestId, routeStatus = null, extraHeaders 
   });
 }
 
+// Pure sanitizer: caught value + stage in, fixed safe structure out. Reads
+// ONLY error.constructor.name (fallback error.name) and error.code; every
+// other property of the error is never touched.
+export function sanitizeTreeCommentReadFailure(error, stage) {
+  const safeStage = DIAGNOSTIC_STAGES.includes(stage) ? stage : 'unknown';
+  let errorClass = 'UnknownError';
+  try {
+    const raw = error && typeof error.constructor === 'function' && typeof error.constructor.name === 'string'
+      ? error.constructor.name
+      : (error && typeof error.name === 'string' ? error.name : '');
+    const normalized = String(raw).replace(DIAGNOSTIC_ERROR_CLASS_PATTERN, '').slice(0, DIAGNOSTIC_ERROR_CLASS_MAX_CHARS);
+    if (normalized) errorClass = normalized;
+  } catch {
+    errorClass = 'UnknownError';
+  }
+  let sqlstate = null;
+  try {
+    if (error && typeof error.code === 'string' && DIAGNOSTIC_SQLSTATE_PATTERN.test(error.code)) {
+      sqlstate = error.code;
+    }
+  } catch {
+    sqlstate = null;
+  }
+  return Object.freeze({ stage: safeStage, errorClass, sqlstate });
+}
+
+// Fixed diagnostic headers for the 500 query-failed path only. A null
+// SQLSTATE omits its header entirely.
+function diagnosticFailureHeaders(error, stage) {
+  const sanitized = sanitizeTreeCommentReadFailure(error, stage);
+  const headers = {
+    'x-lovebud-error-stage': sanitized.stage,
+    'x-lovebud-error-class': sanitized.errorClass
+  };
+  if (sanitized.sqlstate) headers['x-lovebud-sqlstate'] = sanitized.sqlstate;
+  return headers;
+}
+
 // ─── Static, parameterized, SELECT-only queries ───────────────────────────
 
 export const TREE_COMMENT_READ_VISIBILITY_SQL = `
@@ -467,17 +525,25 @@ export async function handleTreeCommentReadDirectNeon(
         },
         500,
         requestId,
-        'query-failed'
+        'query-failed',
+        diagnosticFailureHeaders(error, 'unknown')
       );
     }
   }
 
   // 5. execute: visibility gate first, then comments. SELECT-only.
+  // stage tracks the last fixed diagnostic boundary entered before any throw;
+  // it is reported sanitized on the 500 path and never affects behavior.
+  let stage = 'unknown';
   try {
-    const executor = executorOverride || await createTreeCommentReadExecutor({
-      connectionString: config.connectionString
-    });
+    stage = 'executor-init';
+    const executor = typeof executorOverride === 'function'
+      ? executorOverride
+      : await createTreeCommentReadExecutor({
+        connectionString: config.connectionString
+      });
 
+    stage = 'visibility-query';
     const visibilityRows = await executor(TREE_COMMENT_READ_VISIBILITY_SQL, [treeId]);
     const treeRow = Array.isArray(visibilityRows) && visibilityRows.length > 0 ? visibilityRows[0] : null;
     // Defense in depth: non-public/missing row is indistinguishable from
@@ -497,9 +563,11 @@ export async function handleTreeCommentReadDirectNeon(
     }
     params.push(limit + 1);
 
+    stage = 'comments-query';
     const commentRows = await executor(buildTreeCommentReadSql(Boolean(decoded)), params);
     const rows = Array.isArray(commentRows) ? commentRows : [];
 
+    stage = 'response-normalization';
     const hasMore = rows.length > limit;
     const returnedRows = hasMore ? rows.slice(0, limit) : rows;
     const items = returnedRows
@@ -517,7 +585,7 @@ export async function handleTreeCommentReadDirectNeon(
     }
 
     return jsonResponse({ comments: items, nextCursor }, 200, requestId, 'ok');
-  } catch {
+  } catch (error) {
     return jsonResponse(
       {
         error: 'Tree Comment read direct-Neon query failed',
@@ -525,7 +593,8 @@ export async function handleTreeCommentReadDirectNeon(
       },
       500,
       requestId,
-      'query-failed'
+      'query-failed',
+      diagnosticFailureHeaders(error, stage)
     );
   }
 }

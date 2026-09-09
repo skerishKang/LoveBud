@@ -16,6 +16,8 @@
 //   E. readiness matrix representation (row present, vocabulary, rolled-back
 //      gate absent from production/preview/top-level wrangler.toml, proven privilege)
 //   F. regression (write helper still loadable; route still exports GET/POST)
+//   G. sanitized failure diagnostics (stage classification, error-class and
+//      SQLSTATE sanitizers, no message/stack/credential/query leakage)
 //
 // The candidate mirrors modal_compute/tree_comments.py::fetch_tree_comments.
 
@@ -527,4 +529,242 @@ test('F1. existing write helper still loads; route still exports GET/POST handle
   // adapter. Assert the response is not produced by the read adapter.
   const postResp = await route.onRequestPost({ request: new Request(READ_URL_STR, { method: 'POST', headers: new Headers() }), env: {} });
   assert.notEqual(postResp.headers.get('x-lovebud-upstream'), 'direct-neon', 'read gate does not intercept POST; write path unaffected');
+});
+
+// ─── G. sanitized failure diagnostics (#4000 forensic patch) ───────────────
+// The live-gate canary could not be root-caused because the 500 path swallowed
+// the underlying error. These tests pin the replacement contract: fixed stage
+// vocabulary + strictly normalized error class + validated SQLSTATE, exposed
+// ONLY as headers on the existing 500 query-failed path, with the 500 body and
+// the 200 contract byte-identical, and no message/stack/URL/credential/query
+// material ever leaving the process.
+
+const FAILURE_BODY = Object.freeze({
+  error: 'Tree Comment read direct-Neon query failed',
+  code: 'DIRECT_NEON_QUERY_FAILED'
+});
+
+const SECRET_SENTINEL = 'sup3r-s3cr3t-db-credential';
+const FORBIDDEN_OUTPUT_SUBSTRINGS = Object.freeze([
+  'postgres://',
+  'postgresql://',
+  'neon.tech',
+  'password=',
+  'DATABASE_URL',
+  'LOVE_PLATFORM_DATABASE_URL',
+  SECRET_SENTINEL,
+  TREE_ID
+]);
+
+// Full observable output of a response: body text plus every header pair.
+async function collectResponseOutput(resp) {
+  const body = await resp.clone().text();
+  const headerText = [...resp.headers].map(([k, v]) => `${k}:${v}`).join('\n');
+  return `${body}\n${headerText}`;
+}
+
+// Error shaped like a real driver failure: secrets live in message/stack/
+// detail/hint (properties the sanitizer must never read).
+function leakyError({ code } = {}) {
+  const error = new Error(
+    `permission denied for table tree_comments in role ${SECRET_SENTINEL}: ` +
+    `postgresql://user:${SECRET_SENTINEL}@ep-leak.us-east-1.neon.tech/neondb ` +
+    `DATABASE_URL=... password=${SECRET_SENTINEL} tree=${TREE_ID}`
+  );
+  error.stack = `Error: postgresql://${SECRET_SENTINEL}@ep-leak.us-east-1.neon.tech ` +
+    `LOVE_PLATFORM_DATABASE_URL password=${SECRET_SENTINEL}\n    at neon (node_modules/@neondatabase/serverless)`;
+  error.detail = `detail ${SECRET_SENTINEL} postgres://x neon.tech`;
+  error.hint = `hint ${SECRET_SENTINEL}`;
+  error.where = `where ${SECRET_SENTINEL}`;
+  error.schema = 'public';
+  error.table = 'tree_comments';
+  if (code !== undefined) error.code = code;
+  return error;
+}
+
+test('G1. executor-init failure -> stage=executor-init, 500 body unchanged, no SQLSTATE header', async () => {
+  const mod = await loadModule();
+  // Test seam: gate selected, truthy NON-function executorOverride with no
+  // dedicated read credential -> executor resolution runs
+  // createTreeCommentReadExecutor('') -> TypeError at the executor-init stage.
+  const env = { LB_TREE_COMMENT_READ_RUNTIME: 'direct_neon' };
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), env, 'rid-g1', { executorOverride: { not: 'a function' } });
+  assert.equal(resp.status, 500);
+  assert.deepEqual(await resp.json(), FAILURE_BODY);
+  assert.equal(resp.headers.get('x-lovebud-error-stage'), 'executor-init');
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'TypeError');
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), null, 'no valid code -> header omitted');
+});
+
+test('G2. visibility query throw -> stage=visibility-query, valid SQLSTATE retained, 500 body unchanged', async () => {
+  const mod = await loadModule();
+  const executor = async (text) => {
+    if (text.includes('FROM trees')) throw leakyError({ code: '42501' });
+    return [];
+  };
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-g2', { executorOverride: executor });
+  assert.equal(resp.status, 500);
+  assert.deepEqual(await resp.json(), FAILURE_BODY);
+  assert.equal(resp.headers.get('x-lovebud-error-stage'), 'visibility-query');
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'Error');
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), '42501');
+});
+
+test('G3. comments query throw -> stage=comments-query', async () => {
+  const mod = await loadModule();
+  const executor = async (text) => {
+    if (text.includes('FROM trees')) return [{ id: TREE_ID, visibility: 'public' }];
+    if (text.includes('FROM tree_comments')) throw leakyError({ code: '42P01' });
+    return [];
+  };
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-g3', { executorOverride: executor });
+  assert.equal(resp.status, 500);
+  assert.deepEqual(await resp.json(), FAILURE_BODY);
+  assert.equal(resp.headers.get('x-lovebud-error-stage'), 'comments-query');
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'Error');
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), '42P01');
+});
+
+test('G4. response-normalization throw -> stage=response-normalization', async () => {
+  const mod = await loadModule();
+  const row = { id: 'c-1', tree_id: TREE_ID, body: 'a' };
+  Object.defineProperty(row, 'created_at', {
+    enumerable: true,
+    get() { throw leakyError(); }
+  });
+  const executor = async (text) => {
+    if (text.includes('FROM trees')) return [{ id: TREE_ID, visibility: 'public' }];
+    return [row];
+  };
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-g4', { executorOverride: executor });
+  assert.equal(resp.status, 500);
+  assert.deepEqual(await resp.json(), FAILURE_BODY);
+  assert.equal(resp.headers.get('x-lovebud-error-stage'), 'response-normalization');
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), null, 'no code -> neutralized by omission');
+});
+
+test('G5. malicious error message/stack/URL/credential never appear in body or headers', async () => {
+  const mod = await loadModule();
+  const executor = async (text) => {
+    if (text.includes('FROM trees')) throw leakyError({ code: '42501' });
+    return [];
+  };
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-g5', { executorOverride: executor });
+  assert.equal(resp.status, 500);
+  const output = await collectResponseOutput(resp);
+  for (const forbidden of FORBIDDEN_OUTPUT_SUBSTRINGS) {
+    assert.ok(!output.includes(forbidden), `output must not contain ${JSON.stringify(forbidden)}`);
+  }
+  // Diagnostic header values are strictly token-shaped.
+  for (const name of ['x-lovebud-error-stage', 'x-lovebud-error-class', 'x-lovebud-sqlstate']) {
+    const value = resp.headers.get(name);
+    if (value !== null) assert.match(value, /^[A-Za-z0-9_-]{1,64}$/, `${name} must be a safe fixed token`);
+  }
+});
+
+test('G6. invalid SQLSTATE values are neutralized (header omitted)', async () => {
+  const mod = await loadModule();
+  const invalidCodes = ['4250', '425011', '4250a', '     ', 'postgresql://x', '?????'];
+  for (const code of invalidCodes) {
+    const executor = async (text) => {
+      if (text.includes('FROM trees')) throw leakyError({ code });
+      return [];
+    };
+    const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, `rid-g6-${code.length}`, { executorOverride: executor });
+    assert.equal(resp.status, 500);
+    assert.equal(resp.headers.get('x-lovebud-sqlstate'), null, `invalid code ${JSON.stringify(code)} must not surface`);
+    assert.equal(resp.headers.get('x-lovebud-error-stage'), 'visibility-query');
+  }
+});
+
+test('G7. success path carries no diagnostic error headers; 200 contract unchanged', async () => {
+  const mod = await loadModule();
+  const { executor } = makeReadExecutor();
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-g7', { executorOverride: executor });
+  assert.equal(resp.status, 200);
+  assert.deepEqual(await resp.json(), { comments: [], nextCursor: null });
+  assert.equal(resp.headers.get('x-lovebud-error-stage'), null);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), null);
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), null);
+  assert.equal(resp.headers.get('Access-Control-Expose-Headers'), 'x-lovebud-request-id', 'CORS exposure contract unchanged');
+});
+
+test('G8. known TreeCommentCursorError stays 400 invalid-cursor WITHOUT diagnostic headers', async () => {
+  const mod = await loadModule();
+  const resp = await mod.handleTreeCommentReadDirectNeon(
+    makeGetRequest({ query: '?cursor=not-base64-json!!!' }),
+    READ_ENV,
+    'rid-g8',
+    { executorOverride: (() => []) }
+  );
+  assert.equal(resp.status, 400);
+  assert.equal((await resp.json()).detail, 'Invalid pagination cursor');
+  assert.equal(resp.headers.get('x-lovebud-error-stage'), null);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), null);
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), null);
+});
+
+test('G9. sanitizer unit: stage whitelist, error-class normalization/cap, SQLSTATE accept/reject, frozen shape', async () => {
+  const mod = await loadModule();
+  assert.equal(typeof mod.sanitizeTreeCommentReadFailure, 'function');
+
+  // stage whitelist
+  assert.equal(mod.sanitizeTreeCommentReadFailure(new Error('x'), 'visibility-query').stage, 'visibility-query');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(new Error('x'), 'evil stage').stage, 'unknown');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(new Error('x'), undefined).stage, 'unknown');
+
+  // error class: punctuation/whitespace stripped, length capped, fallback
+  function Nasty() {}
+  Object.defineProperty(Nasty, 'name', {
+    value: 'Evil postgres://admin:pw@ep-x.neon.tech/db ' + 'A'.repeat(200)
+  });
+  const nasty = mod.sanitizeTreeCommentReadFailure(new Nasty(), 'unknown');
+  assert.match(nasty.errorClass, /^[A-Za-z0-9_-]+$/, 'class is alnum/underscore/hyphen only');
+  assert.ok(nasty.errorClass.length <= 64, 'class length-capped');
+  assert.ok(!nasty.errorClass.includes('postgres://'), 'URL scheme with delimiters cannot survive');
+  assert.ok(!nasty.errorClass.includes('neon.tech'), 'no dotted hostname survives');
+  assert.equal(mod.sanitizeTreeCommentReadFailure({}, 'unknown').errorClass, 'Object', 'plain object reports its real constructor');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(null, 'unknown').errorClass, 'UnknownError');
+  assert.equal(mod.sanitizeTreeCommentReadFailure('string thrown', 'unknown').errorClass, 'String', 'primitive thrown reports boxed constructor');
+
+  // SQLSTATE: exactly 5 uppercase alnum from .code only
+  assert.equal(mod.sanitizeTreeCommentReadFailure(Object.assign(new Error('x'), { code: '08P01' }), 'unknown').sqlstate, '08P01');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(Object.assign(new Error('x'), { code: '4250a' }), 'unknown').sqlstate, null);
+  assert.equal(mod.sanitizeTreeCommentReadFailure(Object.assign(new Error('x'), { code: '4250' }), 'unknown').sqlstate, null);
+  assert.equal(mod.sanitizeTreeCommentReadFailure(Object.assign(new Error('x'), { code: '425011' }), 'unknown').sqlstate, null);
+  assert.equal(mod.sanitizeTreeCommentReadFailure(new Error('x'), 'unknown').sqlstate, null);
+
+  // output shape is fixed and frozen
+  const s = mod.sanitizeTreeCommentReadFailure(new Error('x'), 'comments-query');
+  assert.deepEqual(Object.keys(s), ['stage', 'errorClass', 'sqlstate']);
+  assert.ok(Object.isFrozen(s));
+});
+
+test('G10. security regression: no diagnostic response leaks SQL text, values, or env names', async () => {
+  const mod = await loadModule();
+  const cases = [];
+  // visibility throw
+  cases.push(await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-g10a', {
+    executorOverride: async () => { throw leakyError({ code: '42501' }); }
+  }));
+  // comments throw
+  cases.push(await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-g10b', {
+    executorOverride: async (text) => {
+      if (text.includes('FROM trees')) return [{ id: TREE_ID, visibility: 'public' }];
+      throw leakyError({ code: '42P01' });
+    }
+  }));
+  // executor-init throw
+  cases.push(await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), { LB_TREE_COMMENT_READ_RUNTIME: 'direct_neon' }, 'rid-g10c', {
+    executorOverride: { not: 'a function' }
+  }));
+  for (const resp of cases) {
+    assert.equal(resp.status, 500);
+    const output = await collectResponseOutput(resp);
+    for (const forbidden of FORBIDDEN_OUTPUT_SUBSTRINGS) {
+      assert.ok(!output.includes(forbidden), `output must not contain ${JSON.stringify(forbidden)}`);
+    }
+    assert.ok(!output.includes('SELECT'), 'no SQL text surfaces');
+    assert.ok(!output.includes('tree_comments'), 'no relation name surfaces');
+  }
 });
