@@ -16,8 +16,12 @@
 //   E. readiness matrix representation (row present, vocabulary, 42501
 //      rollback gate absent from production/preview/top-level wrangler.toml, proven privilege)
 //   F. regression (write helper still loadable; route still exports GET/POST)
-//   G. sanitized failure diagnostics (stage classification, error-class and
-//      SQLSTATE sanitizers, no message/stack/credential/query leakage)
+//   G. sanitized failure diagnostics (stage classification, FIXED-whitelist
+//      error class with zero name reflection, SQLSTATE sanitizers, no
+//      message/stack/credential/query leakage)
+//   H. error-class whitelist hardening (sentinel names, dynamic constructors,
+//      custom objects, throwing getters/proxies -> UnknownError; built-ins
+//      survive; SQLSTATE independent; success/gate behavior unchanged)
 //
 // The candidate mirrors modal_compute/tree_comments.py::fetch_tree_comments.
 
@@ -717,19 +721,29 @@ test('G9. sanitizer unit: stage whitelist, error-class normalization/cap, SQLSTA
   assert.equal(mod.sanitizeTreeCommentReadFailure(new Error('x'), 'evil stage').stage, 'unknown');
   assert.equal(mod.sanitizeTreeCommentReadFailure(new Error('x'), undefined).stage, 'unknown');
 
-  // error class: punctuation/whitespace stripped, length capped, fallback
+  // error class: FIXED whitelist only, zero reflection. Any present name
+  // outside the built-in set (constructor or instance) -> UnknownError.
   function Nasty() {}
   Object.defineProperty(Nasty, 'name', {
     value: 'Evil postgres://admin:pw@ep-x.neon.tech/db ' + 'A'.repeat(200)
   });
   const nasty = mod.sanitizeTreeCommentReadFailure(new Nasty(), 'unknown');
-  assert.match(nasty.errorClass, /^[A-Za-z0-9_-]+$/, 'class is alnum/underscore/hyphen only');
-  assert.ok(nasty.errorClass.length <= 64, 'class length-capped');
-  assert.ok(!nasty.errorClass.includes('postgres://'), 'URL scheme with delimiters cannot survive');
-  assert.ok(!nasty.errorClass.includes('neon.tech'), 'no dotted hostname survives');
-  assert.equal(mod.sanitizeTreeCommentReadFailure({}, 'unknown').errorClass, 'Object', 'plain object reports its real constructor');
+  assert.equal(nasty.errorClass, 'UnknownError', 'dynamic constructor name never survives, however shaped');
+  assert.equal(mod.sanitizeTreeCommentReadFailure({}, 'unknown').errorClass, 'UnknownError', 'plain object -> UnknownError, no constructor reflection');
   assert.equal(mod.sanitizeTreeCommentReadFailure(null, 'unknown').errorClass, 'UnknownError');
-  assert.equal(mod.sanitizeTreeCommentReadFailure('string thrown', 'unknown').errorClass, 'String', 'primitive thrown reports boxed constructor');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(undefined, 'unknown').errorClass, 'UnknownError');
+  assert.equal(mod.sanitizeTreeCommentReadFailure('string thrown', 'unknown').errorClass, 'UnknownError', 'primitive -> UnknownError, no boxed-constructor reflection');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(42, 'unknown').errorClass, 'UnknownError');
+  // whitelist members survive exactly
+  for (const [make, label] of [
+    [() => new Error('x'), 'Error'],
+    [() => new TypeError('x'), 'TypeError'],
+    [() => new RangeError('x'), 'RangeError'],
+    [() => new SyntaxError('x'), 'SyntaxError'],
+    [() => new ReferenceError('x'), 'ReferenceError']
+  ]) {
+    assert.equal(mod.sanitizeTreeCommentReadFailure(make(), 'unknown').errorClass, label, `${label} survives verbatim`);
+  }
 
   // SQLSTATE: exactly 5 uppercase alnum from .code only
   assert.equal(mod.sanitizeTreeCommentReadFailure(Object.assign(new Error('x'), { code: '08P01' }), 'unknown').sqlstate, '08P01');
@@ -771,4 +785,137 @@ test('G10. security regression: no diagnostic response leaks SQL text, values, o
     assert.ok(!output.includes('SELECT'), 'no SQL text surfaces');
     assert.ok(!output.includes('tree_comments'), 'no relation name surfaces');
   }
+});
+
+// ─── H. error-class whitelist hardening ────────────────────────────────────
+// Arbitrary constructor/name reflection is removed: only exact built-in
+// whitelist members survive; everything else (sentinels, dynamic classes,
+// custom objects, throwing getters/proxies) resolves to UnknownError while
+// the SQLSTATE channel behaves independently.
+
+test('H1. error.name sentinel -> UnknownError with zero sentinel bytes anywhere', async () => {
+  const mod = await loadModule();
+  const renamed = new Error('boom');
+  renamed.name = SECRET_SENTINEL;
+  assert.equal(mod.sanitizeTreeCommentReadFailure(renamed, 'unknown').errorClass, 'UnknownError');
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h1', {
+    executorOverride: async () => { throw renamed; }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'UnknownError');
+  const output = await collectResponseOutput(resp);
+  assert.ok(!output.includes(SECRET_SENTINEL), 'overridden sentinel name never crosses the boundary');
+});
+
+test('H2. safe-shaped dynamic constructor name -> UnknownError', async () => {
+  const mod = await loadModule();
+  class CredentialLikeIdentifier123 extends Error {}
+  const err = new CredentialLikeIdentifier123('boom');
+  assert.equal(err.constructor.name, 'CredentialLikeIdentifier123', 'precondition: dynamic name is safe-shaped');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(err, 'comments-query').errorClass, 'UnknownError');
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h2', {
+    executorOverride: async () => { throw err; }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'UnknownError');
+  const output = await collectResponseOutput(resp);
+  assert.ok(!output.includes('CredentialLikeIdentifier123'), 'dynamic class name never surfaces');
+});
+
+test('H3. custom object with safe-looking name -> UnknownError; code channel independent', async () => {
+  const mod = await loadModule();
+  const custom = { name: 'TotallySafeLookingSecret123', code: '42501', message: 'x' };
+  const s = mod.sanitizeTreeCommentReadFailure(custom, 'unknown');
+  assert.equal(s.errorClass, 'UnknownError');
+  assert.equal(s.sqlstate, '42501', 'valid code still classified while class is neutralized');
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h3', {
+    executorOverride: async () => { throw custom; }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'UnknownError');
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), '42501');
+  const output = await collectResponseOutput(resp);
+  assert.ok(!output.includes('TotallySafeLookingSecret123'));
+});
+
+test('H4. throwing name getter -> UnknownError, no throw escapes the sanitizer', async () => {
+  const mod = await loadModule();
+  const evil = new Error('boom');
+  Object.defineProperty(evil, 'name', { get() { throw new Error('getter boom'); }, configurable: true });
+  assert.equal(mod.sanitizeTreeCommentReadFailure(evil, 'unknown').errorClass, 'UnknownError');
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h4', {
+    executorOverride: async () => { throw evil; }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'UnknownError');
+});
+
+test('H5. Proxy throwing on property access -> UnknownError', async () => {
+  const mod = await loadModule();
+  const proxy = new Proxy({}, { get() { throw new Error('proxy boom'); } });
+  assert.equal(mod.sanitizeTreeCommentReadFailure(proxy, 'unknown').errorClass, 'UnknownError');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(proxy, 'unknown').sqlstate, null);
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h5', {
+    executorOverride: async () => { throw proxy; }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'UnknownError');
+});
+
+test('H6. whitelisted built-in Error survives verbatim at header level', async () => {
+  const mod = await loadModule();
+  assert.equal(mod.sanitizeTreeCommentReadFailure(new Error('x'), 'unknown').errorClass, 'Error');
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h6', {
+    executorOverride: async () => { throw new Error('plain failure'); }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'Error');
+});
+
+test('H7. whitelisted TypeError survives verbatim at header level', async () => {
+  const mod = await loadModule();
+  assert.equal(mod.sanitizeTreeCommentReadFailure(new TypeError('x'), 'unknown').errorClass, 'TypeError');
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h7', {
+    executorOverride: async () => { throw new TypeError('bad shape'); }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'TypeError');
+});
+
+test('H8. whitelisted RangeError survives verbatim at header level', async () => {
+  const mod = await loadModule();
+  assert.equal(mod.sanitizeTreeCommentReadFailure(new RangeError('x'), 'unknown').errorClass, 'RangeError');
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h8', {
+    executorOverride: async () => { throw new RangeError('out of range'); }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'RangeError');
+});
+
+test('H9. valid SQLSTATE still emitted with whitelisted class', async () => {
+  const mod = await loadModule();
+  const err = new TypeError('db down');
+  err.code = '42501';
+  assert.equal(mod.sanitizeTreeCommentReadFailure(err, 'unknown').errorClass, 'TypeError');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(err, 'unknown').sqlstate, '42501');
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h9', {
+    executorOverride: async () => { throw err; }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'TypeError');
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), '42501');
+});
+
+test('H10. invalid SQLSTATE still omitted with whitelisted class', async () => {
+  const mod = await loadModule();
+  const err = new TypeError('db down');
+  err.code = 'not-a-state';
+  assert.equal(mod.sanitizeTreeCommentReadFailure(err, 'unknown').errorClass, 'TypeError');
+  assert.equal(mod.sanitizeTreeCommentReadFailure(err, 'unknown').sqlstate, null);
+  const resp = await mod.handleTreeCommentReadDirectNeon(makeGetRequest(), READ_ENV, 'rid-h10', {
+    executorOverride: async () => { throw err; }
+  });
+  assert.equal(resp.status, 500);
+  assert.equal(resp.headers.get('x-lovebud-error-class'), 'TypeError');
+  assert.equal(resp.headers.get('x-lovebud-sqlstate'), null, 'malformed code omitted even when class is known');
 });
