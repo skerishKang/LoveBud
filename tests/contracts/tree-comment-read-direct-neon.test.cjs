@@ -13,8 +13,8 @@
 //      failure -> 500, NO blind Modal fallback; invalid treeId -> 400;
 //      private/missing tree -> 404 leak-safe; invalid cursor -> 400;
 //      forbidden write/generic fallback -> 503)
-//   E. readiness matrix representation (row present, vocabulary, rolled-back
-//      gate absent from production/preview/top-level wrangler.toml, proven privilege)
+//   E. readiness matrix representation (row present, vocabulary, diagnostic
+//      reactivation gate Production-only in wrangler.toml, proven privilege)
 //   F. regression (write helper still loadable; route still exports GET/POST)
 //   G. sanitized failure diagnostics (stage classification, error-class and
 //      SQLSTATE sanitizers, no message/stack/credential/query leakage)
@@ -471,7 +471,7 @@ test('D8. cursor target mismatch -> 400 (cannot read another tree page)', async 
 
 // ─── E. readiness matrix representation ───────────────────────────────────
 
-test('E1. matrix row present, vocabulary-valid, rolled-back gate absent everywhere, proven privilege', async () => {
+test('E1. matrix row present, vocabulary-valid, diagnostic reactivation gate Production-only, proven privilege', async () => {
   const mod = await loadModule();
   const matrix = JSON.parse(fs.readFileSync(MATRIX_PATH, 'utf8'));
   const vocab = matrix.classification_vocabulary;
@@ -485,14 +485,17 @@ test('E1. matrix row present, vocabulary-valid, rolled-back gate absent everywhe
   assert.ok(vocab.source_state.includes(row.source_state));
   assert.ok(vocab.privilege_state.includes(row.privilege_state));
   assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
-  assert.equal(row.checked_in_gate, 'NOT_CHECKED_IN');
-  assert.equal(row.live_gate_state, 'LIVE_GATE_NOT_INTENDED');
+  // Diagnostic reactivation state (#4363 sanitized diagnostics merged): the
+  // gate is checked in for exactly one CENTRAL-authorized read-only live
+  // canary. This is a source/config gate check-in, NOT a Production-live
+  // claim; production_live stays NOT_PRODUCTION_LIVE until a canary succeeds.
+  assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_READ_REQUIRED');
   assert.equal(row.production_live, 'NOT_PRODUCTION_LIVE');
   assert.deepEqual(row.required_objects, { trees: ['SELECT'], tree_comments: ['SELECT'] });
-  // Rollback state: the gate was checked into Production, the live read-only
-  // canary failed (500 DIRECT_NEON_QUERY_FAILED), and the source revert removes
-  // it. Require the gate absent from [env.production.vars], top-level [vars],
-  // and any preview env block (block-scoped, not whole-file includes).
+  // Require the gate present in [env.production.vars] and absent from
+  // top-level [vars] and any preview env block (block-scoped, not whole-file
+  // includes).
   const wranglerLines = fs.readFileSync(path.resolve(REPO_ROOT, 'wrangler.toml'), 'utf8').split(/\r?\n/);
   const blockFor = (headerPredicate) => {
     let current = null;
@@ -507,7 +510,7 @@ test('E1. matrix row present, vocabulary-valid, rolled-back gate absent everywhe
   const productionBlock = blockFor((h) => h === '[env.production.vars]');
   const topLevelBlock = blockFor((h) => h === '[vars]');
   const previewBlock = blockFor((h) => /^\[env\.preview(\.vars)?\]$/.test(h));
-  assert.ok(!productionBlock.includes('LB_TREE_COMMENT_READ_RUNTIME'), 'gate must NOT be checked into [env.production.vars] after rollback');
+  assert.ok(productionBlock.includes('LB_TREE_COMMENT_READ_RUNTIME = "direct_neon"'), 'gate must be checked into [env.production.vars] for the diagnostic canary');
   assert.ok(!topLevelBlock.includes('LB_TREE_COMMENT_READ_RUNTIME'), 'gate must NOT be in top-level [vars]');
   assert.ok(!previewBlock.includes('LB_TREE_COMMENT_READ_RUNTIME'), 'gate must NOT be in any preview env');
   // the source helper file actually exists on disk
