@@ -63,8 +63,32 @@ const CANONICAL_TOP_LEVEL_FIELDS = [
   'required_group_fields', 'field_definitions', 'groups',
 ];
 
+/**
+ * verify-static logical execution sequence.
+ *
+ * The sequence models the *logical* stages of the verify-static job, not the
+ * incidental YAML serialization of the workflow. A stage that is expressed as
+ * a YAML anchor, a YAML alias, or a multi-line block scalar therefore maps to
+ * the same stable token as the equivalent inline step.
+ *
+ * `apt-source-isolation` is the legitimate third-party Google Chrome APT
+ * source isolation operation that runs before any apt-dependent install
+ * (Playwright Chromium).
+ */
+const VERIFY_STATIC_APT_ISOLATION_COMMAND = 'apt-source-isolation';
+const VERIFY_STATIC_UNKNOWN_BLOCK_COMMAND = 'unrecognized-run-block';
+
+const APT_SOURCE_ISOLATION_LOCATION_MARKERS = ['/etc/apt/sources.list.d'];
+const APT_SOURCE_ISOLATION_ACTION_MARKERS = ['mv ', 'rm ', 'disabled'];
+const APT_SOURCE_ISOLATION_FORBIDDEN_MARKERS = [
+  '--allow-unauthenticated',
+  'Acquire::AllowInsecureRepositories',
+  'trusted=yes',
+];
+
 const CANONICAL_VERIFY_STATIC_SEQUENCE = [
   'ci',
+  VERIFY_STATIC_APT_ISOLATION_COMMAND,
   'npx playwright install --with-deps chromium',
   'lint',
   'build',
@@ -444,47 +468,185 @@ function getDbEngineScriptRefs(pkg) {
   return { refs, errors };
 }
 
-function getVerifyStaticCommands(ciYaml) {
-  const lines = ciYaml.split('\n');
-  let inVerifyStatic = false;
-  let inSteps = false;
-  let inBlock = false;
-  const runCommands = [];
-  const topLevelKey = /^\w[\w-]*:/;
-  for (const line of lines) {
-    const t = line.trim();
-    if (t === 'verify-static:') { inVerifyStatic = true; inSteps = false; inBlock = false; continue; }
-    if (!inVerifyStatic) continue;
-    if (t === '') continue;
-    if (t.startsWith('steps:')) { inSteps = true; inBlock = false; continue; }
-    if (inSteps && t.startsWith('env:') || t.startsWith('with:')) { inBlock = true; continue; }
-    if (inBlock) {
-      if (t.startsWith('- ')) inBlock = false;
-      else continue;
-    }
-    if (inSteps && !t.startsWith('-') && !t.startsWith('uses:') && !t.startsWith('run:') && !t.startsWith('env:') && !t.startsWith('with:') && !t.startsWith('#') && topLevelKey.test(t)) {
+function verifyStaticIndentWidth(line) {
+  let n = 0;
+  while (n < line.length && (line[n] === ' ' || line[n] === '\t')) n++;
+  return n;
+}
+
+function verifyStaticSkippable(trimmed) {
+  return trimmed === '' || trimmed.startsWith('#');
+}
+
+function findVerifyStaticJobBounds(lines) {
+  let start = -1;
+  let jobIndent = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim() === 'verify-static:') {
+      start = i;
+      jobIndent = verifyStaticIndentWidth(lines[i]);
       break;
     }
-    if (!inSteps) continue;
-    if (t.startsWith('uses:')) continue;
-    if (t.startsWith('env:') || t.startsWith('with:')) { inBlock = true; continue; }
-    if (t.startsWith('run:')) {
-      const cmd = t.slice(4).trim();
-      runCommands.push(cmd);
-      continue;
+  }
+  if (start === -1) return null;
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (verifyStaticSkippable(t)) continue;
+    if (verifyStaticIndentWidth(lines[i]) <= jobIndent) {
+      end = i;
+      break;
     }
   }
-  const result = [];
-  for (const cmd of runCommands) {
-    let normalized = cmd;
-    if (cmd === 'npm ci') {
-      normalized = 'ci';
-    } else if (cmd === 'npm test' || cmd === 'node scripts/ci-smoke-runner.cjs') {
-      normalized = 'test';
-    } else if (cmd.startsWith('npm run ')) {
-      normalized = cmd.slice(8).trim();
+  return { start, end, jobIndent };
+}
+
+function findVerifyStaticStepsIndex(lines, bounds) {
+  for (let i = bounds.start + 1; i < bounds.end; i++) {
+    const t = lines[i].trim();
+    if (t.startsWith('steps:') && verifyStaticIndentWidth(lines[i]) > bounds.jobIndent) {
+      return i;
     }
-    result.push(normalized);
+  }
+  return -1;
+}
+
+function collectVerifyStaticStepBlocks(lines, from, to, stepsIndent) {
+  const blocks = [];
+  let current = null;
+  let stepIndent = -1;
+  for (let i = from; i < to; i++) {
+    const raw = lines[i];
+    const t = raw.trim();
+    if (verifyStaticSkippable(t)) continue;
+    const ind = verifyStaticIndentWidth(raw);
+    if (ind <= stepsIndent) break;
+    const isItem = t.startsWith('-') && (t.length === 1 || t[1] === ' ' || t[1] === '\t');
+    if (isItem) {
+      if (stepIndent === -1 || ind < stepIndent) stepIndent = ind;
+      if (ind === stepIndent) {
+        current = [raw];
+        blocks.push(current);
+        continue;
+      }
+    }
+    if (current) current.push(raw);
+  }
+  return blocks;
+}
+
+function collectAnchoredStepBlocks(lines) {
+  const anchors = new Map();
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const t = raw.trim();
+    if (!t.startsWith('- &')) continue;
+    const anchor = t.slice(3).trim();
+    if (!anchor) continue;
+    const ind = verifyStaticIndentWidth(raw);
+    const block = [raw];
+    for (let j = i + 1; j < lines.length; j++) {
+      const next = lines[j];
+      const nt = next.trim();
+      if (verifyStaticSkippable(nt)) continue;
+      if (verifyStaticIndentWidth(next) <= ind) break;
+      if (nt.startsWith('- ')) break;
+      block.push(next);
+    }
+    if (!anchors.has(anchor)) anchors.set(anchor, block);
+  }
+  return anchors;
+}
+
+function normalizeStepBlockLines(block) {
+  const out = [];
+  for (let i = 0; i < block.length; i++) {
+    const line = block[i];
+    if (i === 0) {
+      let k = 0;
+      while (k < line.length && (line[k] === ' ' || line[k] === '\t')) k++;
+      if (line[k] === '-') {
+        let after = k + 1;
+        while (after < line.length && (line[after] === ' ' || line[after] === '\t')) after++;
+        out.push(' '.repeat(after) + line.slice(after));
+        continue;
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+function isAptSourceIsolationRunBlock(text) {
+  const hasLocation = APT_SOURCE_ISOLATION_LOCATION_MARKERS.some((m) => text.includes(m));
+  if (!hasLocation) return false;
+  const hasAction = APT_SOURCE_ISOLATION_ACTION_MARKERS.some((m) => text.includes(m));
+  if (!hasAction) return false;
+  return !APT_SOURCE_ISOLATION_FORBIDDEN_MARKERS.some((m) => text.includes(m));
+}
+
+function extractRunFromStepBlock(block, anchors) {
+  const norm = normalizeStepBlockLines(block);
+  if (norm.length === 0) return null;
+  const firstTrimmed = norm[0].trim();
+  if (firstTrimmed.startsWith('*')) {
+    const alias = firstTrimmed.slice(1).trim();
+    const resolved = anchors && anchors.get(alias);
+    if (!resolved) return null;
+    return extractRunFromStepBlock(resolved, null);
+  }
+  const mappingIndent = verifyStaticIndentWidth(norm[0]);
+  for (let i = 0; i < norm.length; i++) {
+    const line = norm[i];
+    const t = line.trim();
+    if (verifyStaticSkippable(t)) continue;
+    if (verifyStaticIndentWidth(line) !== mappingIndent) continue;
+    if (!t.startsWith('run:')) continue;
+    const value = t.slice('run:'.length).trim();
+    if (/^[|>][+-]?\d*$/.test(value)) {
+      const body = [];
+      for (let j = i + 1; j < norm.length; j++) {
+        const bl = norm[j];
+        if (bl.trim() === '') {
+          body.push('');
+          continue;
+        }
+        if (verifyStaticIndentWidth(bl) > mappingIndent) body.push(bl);
+        else break;
+      }
+      return { kind: 'block', text: body.join('\n') };
+    }
+    return { kind: 'single', text: value };
+  }
+  return null;
+}
+
+function normalizeVerifyStaticCommand(entry) {
+  if (entry.kind === 'block') {
+    return isAptSourceIsolationRunBlock(entry.text)
+      ? VERIFY_STATIC_APT_ISOLATION_COMMAND
+      : VERIFY_STATIC_UNKNOWN_BLOCK_COMMAND;
+  }
+  const cmd = entry.text.trim();
+  if (cmd === 'npm ci') return 'ci';
+  if (cmd === 'npm test' || cmd === 'node scripts/ci-smoke-runner.cjs') return 'test';
+  if (cmd.startsWith('npm run ')) return cmd.slice('npm run '.length).trim();
+  return cmd;
+}
+
+function getVerifyStaticCommands(ciYaml) {
+  const lines = String(ciYaml).split('\n');
+  const bounds = findVerifyStaticJobBounds(lines);
+  if (!bounds) return [];
+  const stepsIndex = findVerifyStaticStepsIndex(lines, bounds);
+  if (stepsIndex === -1) return [];
+  const anchors = collectAnchoredStepBlocks(lines);
+  const blocks = collectVerifyStaticStepBlocks(lines, stepsIndex + 1, bounds.end, verifyStaticIndentWidth(lines[stepsIndex]));
+  const result = [];
+  for (const block of blocks) {
+    const entry = extractRunFromStepBlock(block, anchors);
+    if (!entry) continue;
+    result.push(normalizeVerifyStaticCommand(entry));
   }
   return result;
 }
@@ -810,6 +972,9 @@ module.exports = {
   CANONICAL_REQUIRED_GROUP_FIELDS,
   CANONICAL_TOP_LEVEL_FIELDS,
   CANONICAL_GROUP_FIELDS,
+  VERIFY_STATIC_APT_ISOLATION_COMMAND,
+  VERIFY_STATIC_UNKNOWN_BLOCK_COMMAND,
+  isAptSourceIsolationRunBlock,
   EXPECTED_DB_ENGINE_SCRIPTS,
   assertEnumMatch,
   assertExactOrderedArray,

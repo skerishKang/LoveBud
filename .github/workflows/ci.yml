@@ -27,6 +27,36 @@ jobs:
       - name: Install
         run: npm ci
 
+      # GitHub-hosted ubuntu runners ship a preinstalled third-party Google
+      # Chrome APT source (dl.google.com/linux/chrome). When that external
+      # repository serves a corrupt index ("Hash Sum mismatch"), every
+      # apt-get update in the job fails even though all official Ubuntu
+      # sources are healthy. This step disables ONLY Chrome third-party
+      # source files under /etc/apt/sources.list.d for the ephemeral runner
+      # before any system-package apt operation. Ubuntu official
+      # repositories are untouched and no integrity bypass is added: APT
+      # signature and hash verification remain fully enforced, and any real
+      # failure of the required Ubuntu packages still fails the job. The
+      # YAML anchor below lets every other apt-dependent job in this
+      # workflow reference this exact step without duplication.
+      - &isolate-google-chrome-apt-source
+        name: Isolate third-party Google Chrome APT source
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          backup_dir="/tmp/ci-isolated-apt-sources"
+          sudo mkdir -p "${backup_dir}"
+          disabled=0
+          for f in /etc/apt/sources.list.d/*; do
+            if [ -f "${f}" ] && sudo grep -qE 'dl\.google\.com/linux/chrome' "${f}"; then
+              echo "Disabling third-party Google Chrome APT source: ${f}"
+              sudo mv "${f}" "${backup_dir}/$(basename "${f}")"
+              disabled=$((disabled + 1))
+            fi
+          done
+          echo "Google Chrome third-party APT sources disabled: ${disabled}"
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
@@ -131,6 +161,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      - *isolate-google-chrome-apt-source
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -189,6 +221,8 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - *isolate-google-chrome-apt-source
 
       - name: Install PostgreSQL client
         run: |
@@ -249,6 +283,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      - *isolate-google-chrome-apt-source
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -307,6 +343,8 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - *isolate-google-chrome-apt-source
 
       - name: Install PostgreSQL client
         run: |
@@ -367,6 +405,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      - *isolate-google-chrome-apt-source
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -425,6 +465,8 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - *isolate-google-chrome-apt-source
 
       - name: Install PostgreSQL client
         run: |
@@ -485,6 +527,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      - *isolate-google-chrome-apt-source
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -543,6 +587,8 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - *isolate-google-chrome-apt-source
 
       - name: Install PostgreSQL client
         run: |
@@ -603,6 +649,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      - *isolate-google-chrome-apt-source
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -661,6 +709,8 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - *isolate-google-chrome-apt-source
 
       - name: Install PostgreSQL client
         run: |
@@ -721,6 +771,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      - *isolate-google-chrome-apt-source
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -779,6 +831,8 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - *isolate-google-chrome-apt-source
 
       - name: Install PostgreSQL client
         run: |
@@ -839,6 +893,8 @@ jobs:
       - name: Install
         run: npm ci
 
+      - *isolate-google-chrome-apt-source
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
@@ -897,6 +953,8 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      - *isolate-google-chrome-apt-source
 
       - name: Install PostgreSQL client
         run: |
