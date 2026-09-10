@@ -45,6 +45,9 @@ const {
   PACKAGE_PATH: MOD_PKG_PATH,
   CI_YML_PATH: MOD_CI_PATH,
   EXPECTED_DB_ENGINE_SCRIPTS,
+  VERIFY_STATIC_APT_ISOLATION_COMMAND,
+  VERIFY_STATIC_UNKNOWN_BLOCK_COMMAND,
+  isAptSourceIsolationRunBlock,
 } = require(REPORTER_PATH);
 const { loadCanonicalTestSuiteCounts } = require(AUTHORITY_PATH);
 
@@ -486,7 +489,7 @@ test('12. canonical DB-engine script/target/supplemental cardinality with one-to
   assert.equal(suppPaths.size, suppDb.length, 'duplicate supplemental path detected');
 });
 
-test('13. active verify-static exact six-command sequence', () => {
+test('13. active verify-static exact seven-command sequence', () => {
   const ciRaw = fs.readFileSync(CI_YML_PATH, 'utf8');
   const cmds = getVerifyStaticCommands(ciRaw);
   const { CANONICAL_VERIFY_STATIC_SEQUENCE, assertExactOrderedArray } = require(REPORTER_PATH);
@@ -494,9 +497,9 @@ test('13. active verify-static exact six-command sequence', () => {
   // Also verify via the reporter's own check
   const observed = checkVerifyStaticExact(ciRaw);
   assert.deepEqual(observed, CANONICAL_VERIFY_STATIC_SEQUENCE);
-  // Reporter output must reflect the 6-command sequence
+  // Reporter output must reflect the 7-command sequence
   const data = buildReportData();
-  assert.equal(data.verify_static_command_count, 6, 'count must be 6');
+  assert.equal(data.verify_static_command_count, 7, 'count must be 7');
   assert.deepEqual(data.verify_static_commands, CANONICAL_VERIFY_STATIC_SEQUENCE);
 });
 
@@ -759,8 +762,128 @@ test('36. reporter buildReportData with verify-static lint removed fails', () =>
   }
 });
 
-// 37–39: field_definitions negative cases
-test('37. field_definitions extra key rejected', () => {
+// 37–43: hardened parser / contract cases
+test('37. verify-static tolerates ordinary step metadata (name/shell/env/with/uses) without breaking extraction', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const mutated = raw.replace(
+    '      - name: Lint\n        run: npm run lint',
+    [
+      '      - name: Lint',
+      '        if: always()',
+      '        shell: bash',
+      '        working-directory: .',
+      '        env:',
+      '          CI_LINT: "1"',
+      '          FOOBAR: qux',
+      '        run: npm run lint',
+    ].join('\n')
+  );
+  assert.ok(mutated.includes('CI_LINT'), 'sanity: mutation applied');
+  const cmds = getVerifyStaticCommands(mutated);
+  const { CANONICAL_VERIFY_STATIC_SEQUENCE } = require(REPORTER_PATH);
+  assert.deepEqual(cmds, CANONICAL_VERIFY_STATIC_SEQUENCE, 'metadata must not perturb the sequence');
+  // Reporter must still pass (no throw) on enriched metadata.
+  assert.deepEqual(checkVerifyStaticExact(mutated), CANONICAL_VERIFY_STATIC_SEQUENCE);
+});
+
+test('38. verify-static recognizes the apt-source-isolation stage from a YAML anchor definition', () => {
+  const { CANONICAL_VERIFY_STATIC_SEQUENCE } = require(REPORTER_PATH);
+  const synthetic = [
+    'name: CI',
+    'on:',
+    '  pull_request:',
+    'jobs:',
+    '  anchor-host:',
+    '    runs-on: ubuntu-latest',
+    '    steps:',
+    '      - &isolate-google-chrome-apt-source',
+    '        name: Isolate third-party Google Chrome APT source',
+    '        shell: bash',
+    '        run: |',
+    '          set -euo pipefail',
+    '          sudo mv /etc/apt/sources.list.d/google-chrome.list /tmp/x',
+    '  verify-static:',
+    '    runs-on: ubuntu-latest',
+    '    steps:',
+    '      - name: Checkout',
+    '        uses: actions/checkout@v7',
+    '      - name: Install',
+    '        run: npm ci',
+    '      - *isolate-google-chrome-apt-source',
+    '      - name: Install Playwright Chromium',
+    '        run: npx playwright install --with-deps chromium',
+    '      - name: Lint',
+    '        run: npm run lint',
+    '      - name: Build check',
+    '        run: npm run build',
+    '      - name: Smoke test',
+    '        run: node scripts/ci-smoke-runner.cjs',
+    '      - name: Verify',
+    '        run: npm run verify',
+  ].join('\n');
+  const cmds = getVerifyStaticCommands(synthetic);
+  assert.deepEqual(cmds, CANONICAL_VERIFY_STATIC_SEQUENCE, 'alias of anchored isolation step must resolve');
+  assert.equal(cmds[1], VERIFY_STATIC_APT_ISOLATION_COMMAND, 'alias must model apt-source-isolation');
+});
+
+test('39. verify-static requires the apt-source-isolation stage', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const lines = raw.split('\n');
+  const startIdx = lines.findIndex((l) => l.trim() === '- &isolate-google-chrome-apt-source');
+  assert.ok(startIdx !== -1, 'sanity: isolation anchor found');
+  const endIdx = lines.findIndex((l, i) => i > startIdx && l.trim().startsWith('- name: Install Playwright Chromium'));
+  assert.ok(endIdx !== -1, 'sanity: next step found');
+  const mutated = lines.slice(0, startIdx).concat(lines.slice(endIdx)).join('\n');
+  try {
+    checkVerifyStaticExact(mutated);
+    throw new Error('No error');
+  } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('40. verify-static rejects an insecure apt-source-isolation variant', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  const lines = raw.split('\n');
+  const startIdx = lines.findIndex((l) => l.trim() === '- &isolate-google-chrome-apt-source');
+  const endIdx = lines.findIndex((l, i) => i > startIdx && l.trim().startsWith('- name: Install Playwright Chromium'));
+  assert.ok(startIdx !== -1 && endIdx !== -1, 'sanity: isolation step bounds found');
+  // Replace the legitimate isolation run block with one that disables APT verification.
+  const insecureBlock = [
+    '      - &isolate-google-chrome-apt-source',
+    '        name: Isolate third-party Google Chrome APT source',
+    '        shell: bash',
+    '        run: |',
+    '          set -euo pipefail',
+    '          sudo apt-get update --allow-unauthenticated -o Acquire::AllowInsecureRepositories=true',
+  ];
+  const mutated = lines.slice(0, startIdx).concat(insecureBlock, lines.slice(endIdx)).join('\n');
+  const cmds = getVerifyStaticCommands(mutated);
+  // The insecure variant must NOT be recognized as legitimate isolation.
+  assert.equal(cmds[1], VERIFY_STATIC_UNKNOWN_BLOCK_COMMAND, 'insecure apt step must not be modeled as apt-source-isolation');
+  try {
+    checkVerifyStaticExact(mutated);
+    throw new Error('No error');
+  } catch (e) {
+    assert.equal(e.code, 'WORKFLOW_COMMAND_MISMATCH');
+  }
+});
+
+test('41. verify-static does not scan later jobs for commands', () => {
+  const raw = require('fs').readFileSync(CI_YML_PATH, 'utf8');
+  // Inject an unrelated run step deep inside the db-impact job.
+  const mutated = raw.replace(
+    '      - name: Classify DB impact',
+    '      - name: Ghost step\n        run: npm run ghost\n      - name: Classify DB impact'
+  );
+  assert.ok(mutated.includes('npm run ghost'), 'sanity: ghost step injected');
+  const cmds = getVerifyStaticCommands(mutated);
+  const { CANONICAL_VERIFY_STATIC_SEQUENCE } = require(REPORTER_PATH);
+  assert.deepEqual(cmds, CANONICAL_VERIFY_STATIC_SEQUENCE, 'commands outside verify-static must be ignored');
+});
+
+// 42–44: field_definitions negative cases
+test('42. field_definitions extra key rejected', () => {
   const reg = readJson(REGISTRY_PATH);
   const r = JSON.parse(JSON.stringify(reg));
   r.field_definitions.bogus = 'evil value';
@@ -769,7 +892,7 @@ test('37. field_definitions extra key rejected', () => {
   }
 });
 
-test('38. field_definitions missing key rejected', () => {
+test('43. field_definitions missing key rejected', () => {
   const reg = readJson(REGISTRY_PATH);
   const r = JSON.parse(JSON.stringify(reg));
   delete r.field_definitions.purpose;
@@ -778,7 +901,7 @@ test('38. field_definitions missing key rejected', () => {
   }
 });
 
-test('39. field_definitions empty value rejected', () => {
+test('44. field_definitions empty value rejected', () => {
   const reg = readJson(REGISTRY_PATH);
   const r = JSON.parse(JSON.stringify(reg));
   r.field_definitions.purpose = '';
