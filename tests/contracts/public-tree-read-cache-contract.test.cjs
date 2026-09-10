@@ -627,3 +627,101 @@ test('18. authenticated GET remains Modal owner/private-first even when direct g
     restoreMocks();
   }
 });
+
+// ─── #4311 readiness matrix representation (public Tree detail Production-live attestation) ──────────
+
+test('#4311 readiness matrix records the public Tree detail Production-live attestation (continuity-based)', () => {
+  const root = path.resolve(__dirname, '../..');
+  const matrix = JSON.parse(fs.readFileSync(path.resolve(root, 'docs', 'architecture', 'direct-neon-readiness-matrix-4311.json'), 'utf8'));
+  const vocab = matrix.classification_vocabulary;
+  const row = matrix.routes.find((entry) => entry.id === 'public-tree-detail');
+  assert.ok(row, 'public-tree-detail row present');
+  assert.equal(row.source_helper, 'functions/_shared/public-tree-detail-neon-query.js');
+  assert.equal(row.runtime_gate, 'LB_PUBLIC_TREE_DETAIL_RUNTIME');
+  assert.equal(row.method, 'GET');
+  assert.equal(row.credential_boundary, 'direct_neon_runtime');
+  // Production-live attestation state (CENTRAL accepted 2026-09-11, continuity
+  // reconciliation report LOVEBUD_4000_PUBLIC_TREE_DETAIL_CONTINUITY_RECONCILIATION_REPORT):
+  // historical accepted #4332 canary authority + current continuity, no new Product request.
+  assert.equal(row.source_state, 'SOURCE_READY');
+  assert.equal(row.source_parity, 'PASS_AT_CITED_SHA');
+  assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
+  assert.equal(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_VERIFIED');
+  assert.equal(row.production_live, 'PRODUCTION_LIVE');
+  assert.equal(row.diagnostic_execution_authorized, 'NOT_AUTHORIZED');
+  assert.equal(row.modal_retained_by_design, false);
+  assert.deepEqual(
+    row.required_objects,
+    { trees: ['SELECT'], memories: ['SELECT'], tree_social_counts: ['SELECT'] },
+    'the read path needs exactly three SELECT-only objects',
+  );
+  assert.ok(vocab.source_state.includes(row.source_state));
+  assert.ok(vocab.source_parity.includes(row.source_parity));
+  assert.ok(vocab.privilege_state.includes(row.privilege_state));
+  assert.ok(vocab.live_provider_state.includes(row.live_provider_state));
+  assert.ok(vocab.checked_in_gate.includes(row.checked_in_gate));
+  assert.ok(vocab.live_gate_state.includes(row.live_gate_state));
+  assert.ok(vocab.production_live.includes(row.production_live));
+  assert.ok(vocab.diagnostic_execution_authorized.includes(row.diagnostic_execution_authorized));
+  // Continuity evidence bound to the attested main SHA; must not silently lose protocol facts.
+  assert.equal(row.last_exact_head_evidence.main_sha, 'f0f177096388007e361d0cac50c17cecb06fe041', 'continuity evidence bound to attested main SHA');
+  for (const marker of [
+    'HISTORICAL_4332_CUTOVER_ACCEPTED=YES',
+    'HISTORICAL_PRODUCT_GET_COUNT=1',
+    'CANARY_MUST_NOT_BE_RERUN=YES',
+    'CONTINUITY_RECONCILIATION=PASS',
+    'INVALIDATING_CHANGE_SINCE_4332=NO',
+    'PRODUCTION_COMMIT_MATCH=YES',
+    'PRODUCTION_GATE_VALUE=direct_neon',
+    'PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY',
+    'FRESH_DB_ACL_ATTESTATION=NO',
+    'HTTP=200',
+    'x-lovebud-upstream=direct-neon',
+    'x-lovebud-runtime=direct_neon',
+    'no-store',
+    'request-id present',
+    'public DTO parity PASS',
+    'memoryCount parity PASS',
+    'like/view parity PASS',
+    'owner identifier absent PASS',
+    'no retry',
+    'DIRECT_NEON_PUBLIC_TREE_DETAIL_PRODUCTION_CUTOVER_ACCEPTED',
+    '#4332',
+  ]) {
+    assert.ok(row.disposition_note.includes(marker), `disposition_note retains: ${marker}`);
+  }
+  // Gate-only rollback authority: the stale "no gate checked in" text must be gone.
+  assert.ok(row.rollback_authority.startsWith('GATE_ONLY_ROLLBACK'), 'rollback authority is gate-only rollback');
+  assert.ok(row.rollback_authority.includes('reviewed PR'), 'gate rollback goes through a reviewed PR');
+  assert.ok(row.rollback_authority.includes('no DB change'), 'gate rollback requires no DB change');
+  assert.ok(row.rollback_authority.includes('owner/private authority preserved'), 'rollback preserves authenticated owner/private authority');
+  // Steady-state next_action: monitoring/regression only; stale #4263 action must be gone.
+  assert.ok(!row.next_action.includes('Complete #4263 fresh runtime-readiness audit'), 'stale #4263 readiness action removed');
+  assert.ok(row.next_action.includes('monitoring/regression'), 'next_action is monitoring/regression steady state');
+  assert.ok(row.next_action.includes('invalidates this continuity-based attestation'), 'next_action states the invalidation rule');
+  assert.ok(row.next_action.includes('do not request another #4332 Product canary'), 'no new canary requested');
+  // JSON/Markdown parity for the attested row (MD is a rendering of the authoritative JSON).
+  const md = fs.readFileSync(path.resolve(root, 'docs', 'architecture', 'DIRECT_NEON_READINESS_MATRIX_4311.md'), 'utf8');
+  const mdRow = md.split(/\r?\n/).find((line) => line.startsWith('| public-tree-detail |'));
+  assert.ok(mdRow, 'markdown rendering contains the public-tree-detail row');
+  for (const marker of [
+    'LIVE_PROVEN_AT_CITED_SHA',
+    'LIVE_GATE_VERIFIED',
+    'PRODUCTION_LIVE',
+    'PRIVILEGE_PROVEN_AT_CITED_SHA',
+    'CHECKED-IN',
+    'HISTORICAL_4332_CUTOVER_ACCEPTED=YES',
+    'HISTORICAL_PRODUCT_GET_COUNT=1',
+    'CANARY_MUST_NOT_BE_RERUN=YES',
+    'CONTINUITY_RECONCILIATION=PASS',
+    'INVALIDATING_CHANGE_SINCE_4332=NO',
+    'PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY',
+    'FRESH_DB_ACL_ATTESTATION=NO',
+    'GATE_ONLY_ROLLBACK',
+    '#4332',
+  ]) {
+    assert.ok(mdRow.includes(marker), `markdown public-tree-detail row retains: ${marker}`);
+  }
+});
