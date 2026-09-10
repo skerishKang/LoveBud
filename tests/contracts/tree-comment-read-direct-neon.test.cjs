@@ -475,7 +475,7 @@ test('D8. cursor target mismatch -> 400 (cannot read another tree page)', async 
 
 // ─── E. readiness matrix representation ───────────────────────────────────
 
-test('E1. matrix row present, vocabulary-valid, 42501-rollback gate absent everywhere, proven privilege', async () => {
+test('E1. matrix row present, vocabulary-valid, activation gate Production-only, proven privilege', async () => {
   const mod = await loadModule();
   const matrix = JSON.parse(fs.readFileSync(MATRIX_PATH, 'utf8'));
   const vocab = matrix.classification_vocabulary;
@@ -489,15 +489,23 @@ test('E1. matrix row present, vocabulary-valid, 42501-rollback gate absent every
   assert.ok(vocab.source_state.includes(row.source_state));
   assert.ok(vocab.privilege_state.includes(row.privilege_state));
   assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
-  // Rollback state after the #4364 diagnostic canary failed at
-  // stage=comments-query (NeonDbError, SQLSTATE 42501): the gate was
-  // re-checked-in via #4364, exactly one read-only live canary ran, the
-  // sanitized diagnostics captured the evidence, and this source revert
-  // removes the gate again. #4363 sanitized diagnostics source/tests remain.
-  // production_live stays NOT_PRODUCTION_LIVE.
-  assert.equal(row.checked_in_gate, 'NOT_CHECKED_IN');
-  assert.equal(row.live_gate_state, 'LIVE_GATE_NOT_INTENDED');
+  assert.equal(row.source_state, 'SOURCE_READY');
+  assert.equal(row.diagnostic_execution_authorized, 'NOT_AUTHORIZED');
+  assert.equal(row.modal_retained_by_design, false);
+  // Activation intent after #4367 sanitizer whitelist hardening (commit 82da755e):
+  // gate is re-checked into [env.production.vars] as SOURCE/CONFIG candidate;
+  // this is NOT live provider proof. live_provider_state stays NOT_FRESHLY_VERIFIED,
+  // live_gate_state is LIVE_GATE_READ_REQUIRED, checked_in_gate is
+  // CHECKED_IN_PRODUCTION_GATE, and production_live stays NOT_PRODUCTION_LIVE
+  // until CENTRAL fresh-verifies live provider state and runs one canary.
+  // Sanitizer/tests parity remains enforced in G/H.
+  assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
+  assert.equal(row.live_provider_state, 'NOT_FRESHLY_VERIFIED');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_READ_REQUIRED');
   assert.equal(row.production_live, 'NOT_PRODUCTION_LIVE');
+  // Explicit: checked-in configuration must NOT be treated as live Production proof
+  assert.notEqual(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA', 'checked-in gate alone is not live proof');
+  assert.notEqual(row.live_gate_state, 'LIVE_GATE_VERIFIED', 'checked-in gate alone is not verified live gate');
   assert.deepEqual(row.required_objects, { trees: ['SELECT'], tree_comments: ['SELECT'] });
   // Require the gate absent from [env.production.vars], top-level [vars],
   // and any preview env block (block-scoped, not whole-file includes).
@@ -515,9 +523,13 @@ test('E1. matrix row present, vocabulary-valid, 42501-rollback gate absent every
   const productionBlock = blockFor((h) => h === '[env.production.vars]');
   const topLevelBlock = blockFor((h) => h === '[vars]');
   const previewBlock = blockFor((h) => /^\[env\.preview(\.vars)?\]$/.test(h));
-  assert.ok(!productionBlock.includes('LB_TREE_COMMENT_READ_RUNTIME'), 'gate must NOT be checked into [env.production.vars] after the 42501 rollback');
+  assert.ok(productionBlock.includes('LB_TREE_COMMENT_READ_RUNTIME = "direct_neon"'), 'gate must be checked into [env.production.vars] as direct_neon (activation intent)');
+  // Parity with JSON: production occurrence count = 1, top-level = 0, preview = 0
+  assert.equal((productionBlock.match(/LB_TREE_COMMENT_READ_RUNTIME/g) || []).length, 1, 'Production occurrence count = 1');
   assert.ok(!topLevelBlock.includes('LB_TREE_COMMENT_READ_RUNTIME'), 'gate must NOT be in top-level [vars]');
   assert.ok(!previewBlock.includes('LB_TREE_COMMENT_READ_RUNTIME'), 'gate must NOT be in any preview env');
+  assert.equal((topLevelBlock.match(/LB_TREE_COMMENT_READ_RUNTIME/g) || []).length, 0, 'TOP-LEVEL gate occurrence = 0');
+  assert.equal((previewBlock.match(/LB_TREE_COMMENT_READ_RUNTIME/g) || []).length, 0, 'PREVIEW gate occurrence = 0');
   // the source helper file actually exists on disk
   assert.ok(fs.existsSync(path.resolve(REPO_ROOT, row.source_helper)), 'source helper exists on disk');
 });
