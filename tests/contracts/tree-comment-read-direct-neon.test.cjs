@@ -475,7 +475,7 @@ test('D8. cursor target mismatch -> 400 (cannot read another tree page)', async 
 
 // ─── E. readiness matrix representation ───────────────────────────────────
 
-test('E1. matrix row present, vocabulary-valid, activation gate Production-only, proven privilege', async () => {
+test('E1. matrix row present, vocabulary-valid, production live attestation with deviation disclosure', async () => {
   const mod = await loadModule();
   const matrix = JSON.parse(fs.readFileSync(MATRIX_PATH, 'utf8'));
   const vocab = matrix.classification_vocabulary;
@@ -492,21 +492,27 @@ test('E1. matrix row present, vocabulary-valid, activation gate Production-only,
   assert.equal(row.source_state, 'SOURCE_READY');
   assert.equal(row.diagnostic_execution_authorized, 'NOT_AUTHORIZED');
   assert.equal(row.modal_retained_by_design, false);
-  // Activation intent after #4367 sanitizer whitelist hardening (commit 82da755e):
-  // gate is re-checked into [env.production.vars] as SOURCE/CONFIG candidate;
-  // this is NOT live provider proof. live_provider_state stays NOT_FRESHLY_VERIFIED,
-  // live_gate_state is LIVE_GATE_READ_REQUIRED, checked_in_gate is
-  // CHECKED_IN_PRODUCTION_GATE, and production_live stays NOT_PRODUCTION_LIVE
-  // until CENTRAL fresh-verifies live provider state and runs one canary.
-  // Sanitizer/tests parity remains enforced in G/H.
+  // Production live attestation (CENTRAL accepted 2026-09-11): live proof PASS at 1147182c deployment 6dbfbf43.
+  // Functional proof validated HTTP 200 direct-neon/direct_neon ok, response shape PASS, no 42501, no leak.
+  // Deviation disclosed: actual target GET count = 2 (not exactly one), second was non-failure capture-path remediation.
   assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
-  assert.equal(row.live_provider_state, 'NOT_FRESHLY_VERIFIED');
-  assert.equal(row.live_gate_state, 'LIVE_GATE_READ_REQUIRED');
-  assert.equal(row.production_live, 'NOT_PRODUCTION_LIVE');
-  // Explicit: checked-in configuration must NOT be treated as live Production proof
-  assert.notEqual(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA', 'checked-in gate alone is not live proof');
-  assert.notEqual(row.live_gate_state, 'LIVE_GATE_VERIFIED', 'checked-in gate alone is not verified live gate');
+  assert.equal(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_VERIFIED');
+  assert.equal(row.production_live, 'PRODUCTION_LIVE');
   assert.deepEqual(row.required_objects, { trees: ['SELECT'], tree_comments: ['SELECT'] });
+  // Pin: live attestation metadata matches current main SHA and deployment evidence
+  assert.equal(matrix.authority.as_of_main_sha, '1147182c3e07780c3dc6bccf9d736063647239d9', 'authority bound to attested main SHA');
+  assert.equal(row.last_exact_head_evidence.main_sha, '1147182c3e07780c3dc6bccf9d736063647239d9', 'live evidence bound to same SHA');
+  assert.ok(row.source_refs.includes('#4369'), 'activation PR #4369 in source_refs');
+  // Protocol deviation disclosure MUST be preserved verbatim
+  assert.ok(row.disposition_note.includes('FUNCTIONAL_LIVE_PROOF=PASS'), 'deviation note: functional PASS disclosed');
+  assert.ok(row.disposition_note.includes('ONE_SHOT_PROTOCOL_COMPLIANCE=FAIL'), 'deviation note: one-shot FAIL disclosed');
+  assert.ok(row.disposition_note.includes('Actual target Tree Comment GET count=2'), 'deviation note: actual count 2');
+  assert.ok(row.disposition_note.includes('non-failure local capture-path remediation'), 'deviation note: remediation reason');
+  assert.ok(row.next_action.includes('Production direct-Neon read is live and verified'), 'next_action is live-verified steady state');
+  assert.ok(!row.next_action.includes('run exactly one read-only Production canary'), 'next_action no longer requests another canary');
+  // JSON/Markdown parity helper note
+  assert.ok(row.disposition_note.includes('historical 42501'), 'prior 42501 retained for trail');
   // Require the gate absent from [env.production.vars], top-level [vars],
   // and any preview env block (block-scoped, not whole-file includes).
   const wranglerLines = fs.readFileSync(path.resolve(REPO_ROOT, 'wrangler.toml'), 'utf8').split(/\r?\n/);
