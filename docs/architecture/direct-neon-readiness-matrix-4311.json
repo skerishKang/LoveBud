@@ -2,74 +2,24 @@
   "format_version": "1.0",
   "authority": {
     "issue": 4311,
-    "parent_issues": [
-      4000,
-      4004
-    ],
+    "parent_issues": [4000, 4004],
     "reconciled_predecessor": 4239,
     "as_of_main_sha": "1147182c3e07780c3dc6bccf9d736063647239d9",
     "staleness_rule": "Every *_state value below is bound to as_of_main_sha or to the cited evidence ref. Main movement or prior consumption invalidates any DIAGNOSTIC_EXECUTION_AUTHORIZED value. This matrix never re-enables historical authority; fresh exact-head verification is required before any Production claim.",
     "never_infer_rule": "A route is PRODUCTION_LIVE only from fresh live provider evidence; checked-in gate vars prove repository intent only."
   },
   "classification_vocabulary": {
-    "source_state": [
-      "SOURCE_READY",
-      "SOURCE_IN_PROGRESS",
-      "SOURCE_MISSING",
-      "KEEP_MODAL_BY_DESIGN"
-    ],
-    "source_parity": [
-      "PASS_AT_CITED_SHA",
-      "NOT_FRESHLY_PROVEN"
-    ],
-    "runtime_state": [
-      "RUNTIME_PROVEN_AT_CITED_SHA",
-      "NOT_FRESHLY_PROVEN"
-    ],
-    "privilege_state": [
-      "PRIVILEGE_PROVEN_AT_CITED_SHA",
-      "PRIVILEGE_UNPROVEN",
-      "PRIVILEGE_BLOCKED"
-    ],
-    "live_provider_state": [
-      "LIVE_PROVEN_AT_CITED_SHA",
-      "NOT_FRESHLY_VERIFIED"
-    ],
-    "checked_in_gate": [
-      "CHECKED_IN_PRODUCTION_GATE",
-      "NOT_CHECKED_IN"
-    ],
-    "live_gate_state": [
-      "LIVE_GATE_VERIFIED",
-      "LIVE_GATE_READ_REQUIRED",
-      "LIVE_GATE_NOT_INTENDED"
-    ],
-    "ephemeral_diagnostic_support": [
-      "SOURCE_ONLY_HELPER_AVAILABLE",
-      "DEDICATED_ISSUE_PENDING",
-      "NONE"
-    ],
-    "diagnostic_execution_authorized": [
-      "AUTHORIZED_ONE_SESSION_AT_CITED_SHA",
-      "NOT_AUTHORIZED",
-      "CONSUMED",
-      "INVALIDATED_STALE_MAIN"
-    ],
-    "production_live": [
-      "PRODUCTION_LIVE",
-      "NOT_PRODUCTION_LIVE"
-    ],
-    "disposition_4239": [
-      "A",
-      "B",
-      "C",
-      "D",
-      "E",
-      "F",
-      "G",
-      "H",
-      "I"
-    ]
+    "source_state": ["SOURCE_READY", "SOURCE_IN_PROGRESS", "SOURCE_MISSING", "KEEP_MODAL_BY_DESIGN"],
+    "source_parity": ["PASS_AT_CITED_SHA", "NOT_FRESHLY_PROVEN"],
+    "runtime_state": ["RUNTIME_PROVEN_AT_CITED_SHA", "NOT_FRESHLY_PROVEN"],
+    "privilege_state": ["PRIVILEGE_PROVEN_AT_CITED_SHA", "PRIVILEGE_UNPROVEN", "PRIVILEGE_BLOCKED"],
+    "live_provider_state": ["LIVE_PROVEN_AT_CITED_SHA", "NOT_FRESHLY_VERIFIED"],
+    "checked_in_gate": ["CHECKED_IN_PRODUCTION_GATE", "NOT_CHECKED_IN"],
+    "live_gate_state": ["LIVE_GATE_VERIFIED", "LIVE_GATE_READ_REQUIRED", "LIVE_GATE_NOT_INTENDED"],
+    "ephemeral_diagnostic_support": ["SOURCE_ONLY_HELPER_AVAILABLE", "DEDICATED_ISSUE_PENDING", "NONE"],
+    "diagnostic_execution_authorized": ["AUTHORIZED_ONE_SESSION_AT_CITED_SHA", "NOT_AUTHORIZED", "CONSUMED", "INVALIDATED_STALE_MAIN"],
+    "production_live": ["PRODUCTION_LIVE", "NOT_PRODUCTION_LIVE"],
+    "disposition_4239": ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
   },
   "credential_boundaries": {
     "modal_runtime": "Modal Product runtime credential (historical default path; retained until per-route cutover).",
@@ -83,27 +33,11 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/public-browse-summary-direct-neon.js",
-      "shared_core": [
-        "functions/_shared/direct-neon-browse-summary-core.js",
-        "functions/_shared/direct-neon-browse-transport.js"
-      ],
-      "source_refs": [
-        "#4153",
-        "#4155"
-      ],
+      "shared_core": ["functions/_shared/direct-neon-browse-summary-core.js", "functions/_shared/direct-neon-browse-transport.js"],
+      "source_refs": ["#4153", "#4155"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_BROWSE_SUMMARY_READ_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "SELECT"
-        ],
-        "memories": [
-          "SELECT"
-        ],
-        "tree_social_counts": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -114,10 +48,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "B",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR; Modal path remains default until live gate verified",
       "next_action": "Fresh live Cloudflare provider read + production smoke before A classification"
@@ -128,20 +59,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/love-platform-api-growing-neon-query.js",
-      "source_refs": [
-        "#4153",
-        "#4155"
-      ],
+      "source_refs": ["#4153", "#4155"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_GROWING_READ_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "SELECT"
-        ],
-        "memories": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -152,10 +73,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "B",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "Fresh live Cloudflare provider read + production smoke before A classification"
@@ -166,20 +84,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/public-community-memories-direct-neon.js",
-      "source_refs": [
-        "#4153",
-        "#4155"
-      ],
+      "source_refs": ["#4153", "#4155"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_COMMUNITY_MEMORIES_READ_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "SELECT"
-        ],
-        "memories": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -190,10 +98,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "B",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "Fresh live Cloudflare provider read + production smoke before A classification"
@@ -204,22 +109,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/public-tree-detail-neon-query.js",
-      "source_refs": [
-        "#4263"
-      ],
+      "source_refs": ["#4263"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_PUBLIC_TREE_DETAIL_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "SELECT"
-        ],
-        "memories": [
-          "SELECT"
-        ],
-        "tree_social_counts": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -230,10 +123,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4263 fresh runtime-readiness audit, then privilege attestation via #4311 activation contract"
@@ -244,22 +134,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/owner-tree-list-direct-neon.js",
-      "source_refs": [
-        "#4264"
-      ],
+      "source_refs": ["#4264"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_OWNER_TREES_READ_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "SELECT"
-        ],
-        "memories": [
-          "SELECT"
-        ],
-        "tree_social_counts": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -270,10 +148,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4264 fresh runtime-readiness audit, then privilege attestation"
@@ -284,22 +159,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/owner-tree-detail-direct-neon.js",
-      "source_refs": [
-        "#4265"
-      ],
+      "source_refs": ["#4265"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_OWNER_TREE_DETAIL_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "SELECT"
-        ],
-        "memories": [
-          "SELECT"
-        ],
-        "tree_social_counts": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -310,10 +173,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4265 fresh runtime-readiness audit, then privilege attestation"
@@ -324,20 +184,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/public-memory-detail-direct-neon.js",
-      "source_refs": [
-        "#4254",
-        "#4283"
-      ],
+      "source_refs": ["#4254", "#4283"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_PUBLIC_MEMORY_DETAIL_RUNTIME",
-      "required_objects": {
-        "memories": [
-          "SELECT"
-        ],
-        "reactions": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "memories": ["SELECT"], "reactions": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_BLOCKED",
@@ -350,10 +200,7 @@
       "diagnostic_authority_note": "PR #4312 candidate is source-bound to issue:4295 at base 78318d5c; current main moved, so per #4311 rule 3 that authority is non-reusable until re-activated at exact current main.",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": {
-        "ref": "#4283 CURRENT-AUTHORITY HOLD comment",
-        "main_sha": "78318d5c08d61dc8f2819d799cc179ea490d445e"
-      },
+      "last_exact_head_evidence": { "ref": "#4283 CURRENT-AUTHORITY HOLD comment", "main_sha": "78318d5c08d61dc8f2819d799cc179ea490d445e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; Modal path remains default",
       "next_action": "Re-activate unmapped-grantee reconciliation under this contract at exact current main, then complete #4283 grant packet"
@@ -364,16 +211,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/owner-memory-list-direct-neon.js",
-      "source_refs": [
-        "#4266"
-      ],
+      "source_refs": ["#4266"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_OWNER_MEMORIES_READ_RUNTIME",
-      "required_objects": {
-        "memories": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "memories": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -384,10 +225,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4266 fresh runtime-readiness audit, then privilege attestation"
@@ -398,16 +236,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/owner-memory-detail-direct-neon.js",
-      "source_refs": [
-        "#4267"
-      ],
+      "source_refs": ["#4267"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_OWNER_MEMORY_DETAIL_RUNTIME",
-      "required_objects": {
-        "memories": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "memories": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -418,10 +250,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4267 fresh runtime-readiness audit, then privilege attestation"
@@ -432,20 +261,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/hub-layout-read-direct-neon.js",
-      "source_refs": [
-        "#4238",
-        "#4255"
-      ],
+      "source_refs": ["#4238", "#4255"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_HUB_LAYOUT_READ_RUNTIME",
-      "required_objects": {
-        "tree_hub_layouts": [
-          "SELECT"
-        ],
-        "trees": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "tree_hub_layouts": ["SELECT"], "trees": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -457,10 +276,7 @@
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "F",
       "disposition_note": "#4238 source candidate has since landed; F superseded to C-equivalent, retained historical value for audit trail",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4255 fresh privilege-readiness audit"
@@ -471,9 +287,7 @@
       "method": "GET",
       "family": "READ",
       "source_helper": null,
-      "source_refs": [
-        "#4257"
-      ],
+      "source_refs": ["#4257"],
       "source_state": "KEEP_MODAL_BY_DESIGN",
       "runtime_gate": null,
       "required_objects": {},
@@ -487,10 +301,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "H",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": true,
       "rollback_authority": "N/A (no Direct-Neon path)",
       "next_action": "Revisit only if GET-side Direct-Neon demand is explicitly approved"
@@ -501,20 +312,10 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-create-direct-neon.js",
-      "source_refs": [
-        "#4157"
-      ],
+      "source_refs": ["#4157"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_CREATE_WRITE_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "INSERT",
-          "SELECT"
-        ],
-        "users": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["INSERT", "SELECT"], "users": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -525,10 +326,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Privilege attestation for writer role, then activation packet"
@@ -539,17 +337,10 @@
       "method": "PATCH",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-update-direct-neon.js",
-      "source_refs": [
-        "#4157"
-      ],
+      "source_refs": ["#4157"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_UPDATE_WRITE_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "UPDATE",
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["UPDATE", "SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -560,10 +351,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Privilege attestation for writer role, then activation packet"
@@ -574,22 +362,10 @@
       "method": "DELETE",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-delete-direct-neon.js",
-      "source_refs": [
-        "#4261"
-      ],
+      "source_refs": ["#4261"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_DELETE_WRITE_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "DELETE",
-          "SELECT"
-        ],
-        "memories": [
-          "DELETE",
-          "UPDATE",
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["DELETE", "SELECT"], "memories": ["DELETE", "UPDATE", "SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -600,10 +376,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4261 fresh privilege-readiness audit (DELETE + canonical FK authority)"
@@ -614,20 +387,10 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-create-direct-neon.js",
-      "source_refs": [
-        "#4157"
-      ],
+      "source_refs": ["#4157"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_CREATE_WRITE_RUNTIME",
-      "required_objects": {
-        "memories": [
-          "INSERT",
-          "SELECT"
-        ],
-        "trees": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "memories": ["INSERT", "SELECT"], "trees": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -638,10 +401,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Privilege attestation for writer role, then activation packet"
@@ -652,20 +412,10 @@
       "method": "PATCH",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-update-direct-neon.js",
-      "source_refs": [
-        "#4281"
-      ],
+      "source_refs": ["#4281"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_UPDATE_WRITE_RUNTIME",
-      "required_objects": {
-        "memories": [
-          "UPDATE",
-          "SELECT"
-        ],
-        "trees": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "memories": ["UPDATE", "SELECT"], "trees": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -676,10 +426,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "C",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4281 owner Memory update activation packet under this contract"
@@ -690,21 +437,10 @@
       "method": "DELETE",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-delete-direct-neon.js",
-      "source_refs": [
-        "#4262"
-      ],
+      "source_refs": ["#4262"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_DELETE_WRITE_RUNTIME",
-      "required_objects": {
-        "memories": [
-          "DELETE",
-          "UPDATE",
-          "SELECT"
-        ],
-        "trees": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "memories": ["DELETE", "UPDATE", "SELECT"], "trees": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -715,10 +451,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4262 fresh privilege-readiness audit (DELETE + canonical dependency authority)"
@@ -729,24 +462,10 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-fork-direct-neon.js",
-      "source_refs": [
-        "#4157"
-      ],
+      "source_refs": ["#4157"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_FORK_WRITE_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "INSERT",
-          "SELECT"
-        ],
-        "memories": [
-          "INSERT",
-          "SELECT"
-        ],
-        "users": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["INSERT", "SELECT"], "memories": ["INSERT", "SELECT"], "users": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -757,10 +476,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "B",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "Fresh live Cloudflare provider read + production smoke before A classification"
@@ -771,31 +487,10 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-comment-direct-neon.js",
-      "source_refs": [
-        "#4157"
-      ],
+      "source_refs": ["#4157"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_COMMENT_WRITE_RUNTIME",
-      "required_objects": {
-        "tree_comments": [
-          "INSERT",
-          "SELECT"
-        ],
-        "social_idempotency": [
-          "INSERT",
-          "UPDATE",
-          "SELECT"
-        ],
-        "social_rate_limits": [
-          "INSERT"
-        ],
-        "social_audit_log": [
-          "INSERT"
-        ],
-        "trees": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "tree_comments": ["INSERT", "SELECT"], "social_idempotency": ["INSERT", "UPDATE", "SELECT"], "social_rate_limits": ["INSERT"], "social_audit_log": ["INSERT"], "trees": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -806,10 +501,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "B",
-      "last_exact_head_evidence": {
-        "ref": "#4157 cutover authority via #4239",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4157 cutover authority via #4239", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "Fresh live Cloudflare provider read + production smoke before A classification"
@@ -820,23 +512,10 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/tree-comment-read-direct-neon.js",
-      "source_refs": [
-        "#4000",
-        "#4004",
-        "#4363",
-        "#4367",
-        "#4369"
-      ],
+      "source_refs": ["#4000", "#4004", "#4363", "#4367", "#4369"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_COMMENT_READ_RUNTIME",
-      "required_objects": {
-        "trees": [
-          "SELECT"
-        ],
-        "tree_comments": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "trees": ["SELECT"], "tree_comments": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -848,10 +527,7 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
       "disposition_note": "Read-only sibling of the proven tree-comment writer (#4145). Privilege is a strict subset of the proven tree-comment grant set (trees + tree_comments SELECT only). Production gate checked in as a source/config candidate after the #4000 single-table GRANT SELECT on public.tree_comments and the fresh post-grant runtime-role ACL reattestation (SELECT_TREES/SELECT_TREE_COMMENTS = YES, TREE_COMMENTS_READ_ROLE_ACL_ATTESTED). Activation PR #4361 merged and the Production gate went live at ce16eafa (Cloudflare Pages production deployment f1779088, live provider var LB_TREE_COMMENT_READ_RUNTIME=direct_neon verified). Live read-only canary FAILED: direct-Neon path confirmed selected (x-lovebud-upstream=direct-neon, no Modal fallback) with two deterministic HTTP 500 DIRECT_NEON_QUERY_FAILED responses while the same-credential community-memories direct-Neon route returned 200 on the same deployment. Production gate rolled back via this reviewed source revert pending forensic diagnosis; SELECT privilege intentionally NOT revoked. DB-side forensics passed (privilege/schema/query-plan/zero-row execution exonerated the database); provider logs insufficient (Cloudflare Pages/Neon telemetry unavailable for the failure window). Sanitized failure diagnostics merged via #4363 expose x-lovebud-error-stage / x-lovebud-error-class / x-lovebud-sqlstate on the query-failed 500 path. Diagnostic reactivation PR #4364 merged and exactly ONE read-only live canary executed on production deployment 72f601d7 (commit 850515c7): HTTP 500 DIRECT_NEON_QUERY_FAILED with sanitized evidence ERROR_STAGE=comments-query, ERROR_CLASS=NeonDbError, SQLSTATE=42501 (insufficient_privilege); upstream=direct-neon, runtime=direct_neon, no Modal fallback; executor-init succeeded and the trees visibility SELECT succeeded before the tree_comments query was rejected by PostgreSQL. No retry. Gate rolled back again via this reviewed source revert. The actual live Pages Production database identity remains UNRESOLVED (secret_text bindings unreadable); the existing tree_comments SELECT GRANT is intentionally NOT revoked merely because the Pages runtime may target a different database. Sanitizer whitelist hardening #4367 (commit 82da755e) removed arbitrary error.name/constructor.name reflection, preserving fixed whitelist (Error/TypeError/RangeError/SyntaxError/ReferenceError -> verbatim, else UnknownError) and SQLSTATE sanitization; source/tests remain. Activation intent PR #4369 (commit 1147182c3e07780c3dc6bccf9d736063647239d9) re-checked LB_TREE_COMMENT_READ_RUNTIME=direct_neon into [env.production.vars] as candidate; checked-in gate does NOT equal live proof until verified. Production live attestation (CENTRAL accepted 2026-09-11): active Production deployment 6dbfbf43 (source 1147182c) matched approved merge, live provider selector LB_TREE_COMMENT_READ_RUNTIME=direct_neon verified (x-lovebud-runtime:direct_neon, x-lovebud-upstream:direct-neon, x-lovebud-route-status:ok). Successful Production GET /api/trees/{id}/comments for a valid public tree returned HTTP 200 with response shape PASS (comments array, nextCursor), no Modal fallback, no auth failure, no query failure, no SQLSTATE / no 42501, no secret leak, no diagnostic failure headers on success. FUNCTIONAL_LIVE_PROOF=PASS. Actual target Tree Comment GET count=2; approved protocol was exactly one; second request was non-failure local capture-path remediation after the first successful request; therefore ONE_SHOT_PROTOCOL_COMPLIANCE=FAIL; functional live proof remains PASS; no further canary was authorized or executed after CENTRAL review; historical 42501 evidence is superseded by this live proof but retained for audit trail.",
-      "last_exact_head_evidence": {
-        "ref": "Production live proof #4000 tree-comment READ direct-Neon at exact main 1147182c (deployment 6dbfbf43): HTTP 200 direct-neon/direct_neon ok, response shape PASS, no 42501, no secret leak; bound to same deployed source SHA; supersedes prior 42501 rollback evidence which is retained for audit trail; includes sanitizer hardening #4367 and activation PR #4369",
-        "main_sha": "1147182c3e07780c3dc6bccf9d736063647239d9"
-      },
+      "last_exact_head_evidence": { "ref": "Production live proof #4000 tree-comment READ direct-Neon at exact main 1147182c (deployment 6dbfbf43): HTTP 200 direct-neon/direct_neon ok, response shape PASS, no 42501, no secret leak; bound to same deployed source SHA; supersedes prior 42501 rollback evidence which is retained for audit trail; includes sanitizer hardening #4367 and activation PR #4369", "main_sha": "1147182c3e07780c3dc6bccf9d736063647239d9" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR; Modal path remains default until live gate verified",
       "next_action": "Production direct-Neon read is live and verified at cited source/deployment evidence (commit 1147182c deployment 6dbfbf43 live runtime direct_neon, HTTP 200 direct-neon). Continue ordinary monitoring/regression protection. Any future credential/gate/provider change invalidates live attestation and requires fresh verification. No repeated canary merely to repair the historical one-shot count."
@@ -862,36 +538,10 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-like-direct-neon.js",
-      "source_refs": [
-        "#4157"
-      ],
+      "source_refs": ["#4157"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_LIKE_WRITE_RUNTIME",
-      "required_objects": {
-        "tree_likes": [
-          "INSERT",
-          "SELECT"
-        ],
-        "tree_social_counts": [
-          "INSERT",
-          "UPDATE",
-          "SELECT"
-        ],
-        "social_idempotency": [
-          "INSERT",
-          "UPDATE",
-          "SELECT"
-        ],
-        "social_rate_limits": [
-          "INSERT"
-        ],
-        "social_audit_log": [
-          "INSERT"
-        ],
-        "trees": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "tree_likes": ["INSERT", "SELECT"], "tree_social_counts": ["INSERT", "UPDATE", "SELECT"], "social_idempotency": ["INSERT", "UPDATE", "SELECT"], "social_rate_limits": ["INSERT"], "social_audit_log": ["INSERT"], "trees": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -902,10 +552,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "B",
-      "last_exact_head_evidence": {
-        "ref": "#4157 cutover authority via #4239",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4157 cutover authority via #4239", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "Fresh live Cloudflare provider read + production smoke before A classification"
@@ -916,25 +563,13 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-view-direct-neon.js",
-      "source_refs": [
-        "#4258"
-      ],
+      "source_refs": ["#4258"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_VIEW_WRITE_RUNTIME",
       "required_objects": {
-        "tree_view_dedup_events": [
-          "INSERT",
-          "SELECT"
-        ],
-        "tree_social_counts": [
-          "INSERT",
-          "UPDATE",
-          "SELECT"
-        ],
-        "trees": [
-          "SELECT",
-          "UPDATE"
-        ]
+        "tree_view_dedup_events": ["INSERT", "SELECT"],
+        "tree_social_counts": ["INSERT", "UPDATE", "SELECT"],
+        "trees": ["SELECT", "UPDATE"]
       },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
@@ -946,10 +581,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": {
-        "ref": "#4258 reactivation base main; canonical 3-column unique authority repaired (idx_tree_view_dedup_tree_actor_window on tree_id, actor_key, counted_window_start = UNIQUE / VALID / READY / NONPARTIAL; 4-column index preserved); post-repair Modal recovery PASS (HTTP 200, upstream modal, counted true, viewCount 1, Tree match PASS)",
-        "main_sha": "98fa9af1223120d6fc051989601cd7cff1f73815"
-      },
+      "last_exact_head_evidence": { "ref": "#4258 reactivation base main; canonical 3-column unique authority repaired (idx_tree_view_dedup_tree_actor_window on tree_id, actor_key, counted_window_start = UNIQUE / VALID / READY / NONPARTIAL; 4-column index preserved); post-repair Modal recovery PASS (HTTP 200, upstream modal, counted true, viewCount 1, Tree match PASS)", "main_sha": "98fa9af1223120d6fc051989601cd7cff1f73815" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "fresh exact-head CI -> merge only after CENTRAL decision -> fresh exact-main CI -> exact-main Cloudflare Production deployment/provider verification -> separately authorized bounded direct-Neon Product canary -> only then PRODUCTION_LIVE decision"
@@ -960,29 +592,10 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-reaction-direct-neon.js",
-      "source_refs": [
-        "#4260"
-      ],
+      "source_refs": ["#4260"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_REACTION_WRITE_RUNTIME",
-      "required_objects": {
-        "reactions": [
-          "INSERT",
-          "DELETE",
-          "SELECT"
-        ],
-        "memories": [
-          "SELECT"
-        ],
-        "social_idempotency": [
-          "INSERT",
-          "UPDATE",
-          "SELECT"
-        ],
-        "social_audit_log": [
-          "INSERT"
-        ]
-      },
+      "required_objects": { "reactions": ["INSERT", "DELETE", "SELECT"], "memories": ["SELECT"], "social_idempotency": ["INSERT", "UPDATE", "SELECT"], "social_audit_log": ["INSERT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -993,10 +606,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4260 fresh privilege-readiness audit (reactions writer authority)"
@@ -1007,31 +617,10 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-comment-direct-neon.js",
-      "source_refs": [
-        "#4259"
-      ],
+      "source_refs": ["#4259"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_COMMENT_WRITE_RUNTIME",
-      "required_objects": {
-        "comments": [
-          "INSERT",
-          "SELECT"
-        ],
-        "memories": [
-          "SELECT"
-        ],
-        "social_idempotency": [
-          "INSERT",
-          "UPDATE",
-          "SELECT"
-        ],
-        "social_rate_limits": [
-          "INSERT"
-        ],
-        "social_audit_log": [
-          "INSERT"
-        ]
-      },
+      "required_objects": { "comments": ["INSERT", "SELECT"], "memories": ["SELECT"], "social_idempotency": ["INSERT", "UPDATE", "SELECT"], "social_rate_limits": ["INSERT"], "social_audit_log": ["INSERT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -1042,10 +631,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4259 fresh privilege-readiness audit (comments writer authority)"
@@ -1056,21 +642,10 @@
       "method": "PUT",
       "family": "WRITE",
       "source_helper": "functions/_shared/hub-layout-direct-neon.js",
-      "source_refs": [
-        "#4256"
-      ],
+      "source_refs": ["#4256"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_HUB_LAYOUT_WRITE_RUNTIME",
-      "required_objects": {
-        "tree_hub_layouts": [
-          "INSERT",
-          "UPDATE",
-          "SELECT"
-        ],
-        "trees": [
-          "SELECT"
-        ]
-      },
+      "required_objects": { "tree_hub_layouts": ["INSERT", "UPDATE", "SELECT"], "trees": ["SELECT"] },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_UNPROVEN",
@@ -1081,10 +656,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "last_exact_head_evidence": {
-        "ref": "#4239 reconciliation",
-        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
-      },
+      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
       "modal_retained_by_design": false,
       "rollback_authority": "no gate checked in; activation requires separate reviewed PR",
       "next_action": "Complete #4256 fresh privilege-readiness audit (tree_hub_layouts PUT authority)"
@@ -1095,27 +667,13 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/appreciation-order-direct-neon.js",
-      "source_refs": [
-        "#4043",
-        "#4257",
-        "#4282"
-      ],
+      "source_refs": ["#4043", "#4257", "#4282"],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_APPRECIATION_ORDER_WRITE_RUNTIME",
       "required_objects": {
-        "tree_appreciation_orders": [
-          "SELECT",
-          "INSERT",
-          "UPDATE"
-        ],
-        "trees": [
-          "SELECT",
-          "UPDATE"
-        ],
-        "memories": [
-          "SELECT",
-          "UPDATE"
-        ]
+        "tree_appreciation_orders": ["SELECT", "INSERT", "UPDATE"],
+        "trees": ["SELECT", "UPDATE"],
+        "memories": ["SELECT", "UPDATE"]
       },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
@@ -1128,10 +686,7 @@
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "G",
       "disposition_note": "#4239's earlier SOURCE_MISSING / target-adoption blockers are superseded: the helper is on main, #4282 canonical schema adoption is completed, and #4257 minimal writer ACL is proven. Production-live status remains pending reviewed gate integration, exact-main deployment/provider verification, and separately authorized Product canary.",
-      "last_exact_head_evidence": {
-        "ref": "#4257 minimal writer grant completed; exact 3 privileges (SELECT, INSERT, UPDATE) granted to lb_product_rw_a3f8c2d1 on public.tree_appreciation_orders",
-        "main_sha": "7eb31e9db883134f310f04e8a91248cad19a4a83"
-      },
+      "last_exact_head_evidence": { "ref": "#4257 minimal writer grant completed; exact 3 privileges (SELECT, INSERT, UPDATE) granted to lb_product_rw_a3f8c2d1 on public.tree_appreciation_orders", "main_sha": "7eb31e9db883134f310f04e8a91248cad19a4a83" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "fresh exact-head CI -> merge only after CENTRAL decision -> fresh exact-main CI -> exact-main Cloudflare Production deployment/provider verification -> separately authorized bounded direct-Neon Product canary -> only then PRODUCTION_LIVE decision"
