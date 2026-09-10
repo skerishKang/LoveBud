@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { test } = require('node:test');
+const fs = require('node:fs');
 
 const root = path.resolve(__dirname, '../..');
 
@@ -605,5 +606,72 @@ test('#4113 catch-all direct gate fails closed without invoking Modal and unrela
     assert.equal(growing.pathname, '/modal/browse/growing');
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+// ─── #4311 readiness matrix representation (Growing Production-live attestation) ──────────
+
+test('#4311 readiness matrix records the Growing Production-live attestation', () => {
+  const matrix = JSON.parse(fs.readFileSync(path.resolve(root, 'docs', 'architecture', 'direct-neon-readiness-matrix-4311.json'), 'utf8'));
+  const vocab = matrix.classification_vocabulary;
+  const row = matrix.routes.find((entry) => entry.id === 'growing');
+  assert.ok(row, 'growing row present');
+  assert.equal(row.source_helper, 'functions/_shared/love-platform-api-growing-neon-query.js');
+  assert.equal(row.runtime_gate, 'LB_GROWING_READ_RUNTIME');
+  assert.equal(row.method, 'GET');
+  assert.equal(row.credential_boundary, 'direct_neon_runtime');
+  // Production-live attestation state (CENTRAL accepted 2026-09-11, report
+  // LOVEBUD_4000_GROWING_DIRECT_NEON_LIVE_VERIFY_REPORT): functional proof PASS,
+  // exactly one target GET at the source-canonical minimum limit=3, one control read.
+  assert.equal(row.source_state, 'SOURCE_READY');
+  assert.equal(row.source_parity, 'PASS_AT_CITED_SHA');
+  assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
+  assert.equal(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_VERIFIED');
+  assert.equal(row.production_live, 'PRODUCTION_LIVE');
+  assert.equal(row.diagnostic_execution_authorized, 'NOT_AUTHORIZED');
+  assert.equal(row.modal_retained_by_design, false);
+  assert.deepEqual(row.required_objects, { trees: ['SELECT'], memories: ['SELECT'] }, 'the read path needs SELECT only');
+  assert.ok(vocab.source_state.includes(row.source_state));
+  assert.ok(vocab.source_parity.includes(row.source_parity));
+  assert.ok(vocab.privilege_state.includes(row.privilege_state));
+  assert.ok(vocab.live_provider_state.includes(row.live_provider_state));
+  assert.ok(vocab.checked_in_gate.includes(row.checked_in_gate));
+  assert.ok(vocab.live_gate_state.includes(row.live_gate_state));
+  assert.ok(vocab.production_live.includes(row.production_live));
+  assert.ok(vocab.diagnostic_execution_authorized.includes(row.diagnostic_execution_authorized));
+  // Bounded live evidence pinned to the attested main SHA; must not silently lose protocol facts.
+  assert.equal(row.last_exact_head_evidence.main_sha, '1c09ebc90bc577bb7ba4dc9e58d99f6edcdd3eed', 'live evidence bound to attested main SHA');
+  for (const marker of [
+    'FUNCTIONAL_LIVE_PROOF=PASS',
+    'ACTUAL_TARGET_GET_COUNT=1',
+    'ONE_SHOT_PROTOCOL_COMPLIANCE=PASS',
+    'CONTROL_READ_COUNT=1',
+    'HTTP=200',
+    'x-lovebud-upstream=direct-neon',
+    'x-lovebud-runtime=direct_neon',
+    'no-store',
+    'request-id',
+    'route-status absent on success by current source',
+    'shape=PASS',
+    'Modal fallback=NO',
+    'secret leak=NO',
+    'retry=NO',
+    '#4111',
+    'limit=3',
+  ]) {
+    assert.ok(row.disposition_note.includes(marker), `disposition_note retains: ${marker}`);
+  }
+  // Steady-state next_action: monitoring/regression only, invalidation rule stated, no new canary.
+  assert.ok(row.next_action.includes('monitoring/regression'), 'next_action is monitoring/regression steady state');
+  assert.ok(row.next_action.includes('invalidates this live attestation'), 'next_action states the invalidation rule');
+  assert.ok(!row.next_action.includes('Fresh live Cloudflare provider read'), 'next_action no longer requests another Growing canary');
+  // JSON/Markdown parity for the attested row (MD is a rendering of the authoritative JSON).
+  const md = fs.readFileSync(path.resolve(root, 'docs', 'architecture', 'DIRECT_NEON_READINESS_MATRIX_4311.md'), 'utf8');
+  const mdRow = md.split(/\r?\n/).find((line) => line.startsWith('| growing |'));
+  assert.ok(mdRow, 'markdown rendering contains the growing row');
+  for (const marker of ['LIVE_PROVEN_AT_CITED_SHA', 'LIVE_GATE_VERIFIED', 'PRODUCTION_LIVE', 'FUNCTIONAL_LIVE_PROOF=PASS', 'ACTUAL_TARGET_GET_COUNT=1', 'ONE_SHOT_PROTOCOL_COMPLIANCE=PASS', 'CONTROL_READ_COUNT=1', '#4111']) {
+    assert.ok(mdRow.includes(marker), `markdown growing row retains: ${marker}`);
   }
 });
