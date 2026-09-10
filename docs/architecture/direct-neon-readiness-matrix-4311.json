@@ -41,17 +41,18 @@
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
-      "live_provider_state": "NOT_FRESHLY_VERIFIED",
+      "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
       "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
-      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "live_gate_state": "LIVE_GATE_VERIFIED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
-      "production_live": "NOT_PRODUCTION_LIVE",
+      "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
-      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
+      "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, report LOVEBUD_4000_BROWSE_SUMMARY_DIRECT_NEON_LIVE_VERIFY_REPORT; fresh current-main proof, not a replacement of history): active Production deployment served source matching approved main e92de06eff288f0585e8972bdcf410070b0793a8; live provider gate LB_BROWSE_SUMMARY_READ_RUNTIME=direct_neon verified on the response. Exactly one target Production GET of the Browse Summary community read was executed: HTTP=200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, x-lovebud-route-status=ok, canonical response shape=PASS, Modal fallback=NO, secret leak=NO, retry=NO, no remediation required. FUNCTIONAL_LIVE_PROOF=PASS; ACTUAL_TARGET_GET_COUNT=1; ONE_SHOT_PROTOCOL_COMPLIANCE=PASS. #4155 historical cutover/soak evidence is retained; this row records fresh current-main state and does not claim that history never existed. No raw tree UUID, title/content, raw Product body, DB identifier, role identifier, credential, or connection string is recorded here.",
+      "last_exact_head_evidence": { "ref": "Production live proof #4000 Browse Summary direct-Neon at exact main e92de06eff288f0585e8972bdcf410070b0793a8: one target Production GET, HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, x-lovebud-route-status=ok, response shape PASS, Modal fallback NO, secret leak NO, retry NO; FUNCTIONAL_LIVE_PROOF=PASS, ACTUAL_TARGET_GET_COUNT=1, ONE_SHOT_PROTOCOL_COMPLIANCE=PASS; bound to the deployed source SHA; #4155 cutover/soak history retained for audit trail", "main_sha": "e92de06eff288f0585e8972bdcf410070b0793a8" },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR; Modal path remains default until live gate verified",
-      "next_action": "Fresh live Cloudflare provider read + production smoke before A classification"
+      "next_action": "Browse Summary direct-Neon read is Production live and verified at cited source/deployment evidence (one target GET, HTTP 200, upstream direct-neon, runtime direct_neon, route status ok, one-shot protocol PASS). Future gate change, credential change, provider change, or runtime change invalidates this live attestation and requires fresh verification. Continue ordinary monitoring/regression protection; do not request another canary merely to strengthen current proof."
     },
     {
       "id": "growing",

@@ -544,7 +544,7 @@ test('G4. sort selection is allowlisted and capability gaps degrade to the safe 
 
 // ─── H. matrix regression and Production safety ────────────────────────────
 
-test('H1. #4311 readiness matrix still describes this Production-gated read path', () => {
+test('H1. #4311 readiness matrix still describes this Production-gated read path with live attestation', () => {
   const matrix = JSON.parse(fs.readFileSync(MATRIX_PATH, 'utf8'));
   const vocab = matrix.classification_vocabulary;
   const row = matrix.routes.find((entry) => entry.id === 'browse-summary');
@@ -555,7 +555,38 @@ test('H1. #4311 readiness matrix still describes this Production-gated read path
   assert.equal(row.family, 'READ');
   assert.equal(row.credential_boundary, 'direct_neon_runtime');
   assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
-  assert.equal(row.production_live, 'NOT_PRODUCTION_LIVE');
+  // Production live attestation (CENTRAL accepted 2026-09-11): exactly one target Production GET,
+  // HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon,
+  // x-lovebud-route-status=ok, canonical response shape PASS, Modal fallback NO, secret leak NO,
+  // retry NO, no remediation required. FUNCTIONAL_LIVE_PROOF=PASS,
+  // ACTUAL_TARGET_GET_COUNT=1, ONE_SHOT_PROTOCOL_COMPLIANCE=PASS, bound to main e92de06e.
+  // #4155 historical cutover/soak evidence is retained; this is fresh current-main proof.
+  assert.equal(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA', 'live provider proven at cited SHA');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_VERIFIED', 'live gate verified');
+  assert.equal(row.production_live, 'PRODUCTION_LIVE');
+  assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.source_parity, 'PASS_AT_CITED_SHA');
+  assert.equal(row.modal_retained_by_design, false);
+  // The bounded live evidence must not silently lose the accepted protocol facts.
+  assert.ok(row.disposition_note.includes('FUNCTIONAL_LIVE_PROOF=PASS'), 'evidence: functional live proof PASS');
+  assert.ok(row.disposition_note.includes('ACTUAL_TARGET_GET_COUNT=1'), 'evidence: exactly one target Production GET');
+  assert.ok(row.disposition_note.includes('ONE_SHOT_PROTOCOL_COMPLIANCE=PASS'), 'evidence: one-shot protocol PASS');
+  assert.ok(row.disposition_note.includes('HTTP=200'), 'evidence: HTTP 200');
+  assert.ok(row.disposition_note.includes('x-lovebud-upstream=direct-neon'), 'evidence: upstream direct-neon');
+  assert.ok(row.disposition_note.includes('x-lovebud-runtime=direct_neon'), 'evidence: runtime direct_neon');
+  assert.ok(row.disposition_note.includes('x-lovebud-route-status=ok'), 'evidence: route status ok');
+  assert.ok(row.disposition_note.includes('response shape=PASS'), 'evidence: canonical response shape PASS');
+  assert.ok(row.disposition_note.includes('Modal fallback=NO'), 'evidence: no Modal fallback');
+  assert.ok(row.disposition_note.includes('secret leak=NO'), 'evidence: no secret leak');
+  assert.ok(row.disposition_note.includes('retry=NO'), 'evidence: no retry');
+  assert.ok(row.disposition_note.includes('#4155'), 'evidence: #4155 history retained');
+  assert.ok(row.last_exact_head_evidence.ref.includes('FUNCTIONAL_LIVE_PROOF=PASS'), 'evidence ref: functional live proof PASS');
+  assert.ok(row.last_exact_head_evidence.ref.includes('ACTUAL_TARGET_GET_COUNT=1'), 'evidence ref: one target Production GET');
+  assert.ok(row.last_exact_head_evidence.ref.includes('ONE_SHOT_PROTOCOL_COMPLIANCE=PASS'), 'evidence ref: one-shot protocol PASS');
+  assert.equal(row.last_exact_head_evidence.main_sha, 'e92de06eff288f0585e8972bdcf410070b0793a8', 'live evidence bound to attested main SHA');
+  assert.ok(row.next_action.includes('monitoring/regression'), 'next_action is monitoring/regression steady state');
+  assert.ok(row.next_action.includes('invalidates this live attestation'), 'next_action states the invalidation rule');
+  assert.ok(!row.next_action.includes('Fresh live Cloudflare provider read'), 'next_action no longer requests another canary');
   assert.equal(row.diagnostic_execution_authorized, 'NOT_AUTHORIZED');
   assert.ok(vocab.source_state.includes(row.source_state));
   assert.ok(vocab.privilege_state.includes(row.privilege_state));
