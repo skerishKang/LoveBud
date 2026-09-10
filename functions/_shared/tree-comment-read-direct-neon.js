@@ -78,8 +78,8 @@ const FORBIDDEN_SET = new Set(TREE_COMMENT_READ_FORBIDDEN_FALLBACK_ENVS);
 // ─── Sanitized failure diagnostics (#4000 forensic support) ────────────────
 // The live-gate canary failed with an undifferentiated 500
 // DIRECT_NEON_QUERY_FAILED because the catch swallowed the underlying error.
-// These helpers expose ONLY a fixed-vocabulary stage, a strictly normalized
-// error class, and a PostgreSQL-shaped SQLSTATE via response headers on the
+// These helpers expose ONLY a fixed-vocabulary stage, a fixed-vocabulary
+// error class (built-in whitelist, never reflected), and a PostgreSQL-shaped
 // existing 500 query-failed path. Error message, stack, detail, hint, where,
 // schema/table/column/constraint, query text/parameters, credentials, and
 // identifiers are NEVER read, formatted, or forwarded.
@@ -91,9 +91,7 @@ const DIAGNOSTIC_STAGES = Object.freeze([
   'response-normalization',
   'unknown'
 ]);
-const DIAGNOSTIC_ERROR_CLASS_MAX_CHARS = 64;
 const DIAGNOSTIC_SQLSTATE_PATTERN = /^[A-Z0-9]{5}$/;
-const DIAGNOSTIC_ERROR_CLASS_PATTERN = /[^A-Za-z0-9_-]/g;
 
 // ─── Gate / route selection ───────────────────────────────────────────────
 
@@ -353,21 +351,59 @@ function jsonResponse(body, status, requestId, routeStatus = null, extraHeaders 
   });
 }
 
-// Pure sanitizer: caught value + stage in, fixed safe structure out. Reads
-// ONLY error.constructor.name (fallback error.name) and error.code; every
-// other property of the error is never touched.
+// Pure sanitizer: caught value + stage in, fixed safe structure out. The
+// error class is NEVER reflected from the thrown value: only an exact
+// built-in whitelist member survives, and only when BOTH the constructor
+// name and the instance name are absent-or-whitelisted. Any other,
+// non-string, missing, getter-throwing, or Proxy-throwing shape resolves to
+// UnknownError. Reads ONLY error.constructor.name, error.name, and
+// error.code inside a single throw-safe boundary; every other property of
+// the error is never touched.
+const DIAGNOSTIC_ERROR_CLASS_WHITELIST = Object.freeze([
+  'Error',
+  'TypeError',
+  'RangeError',
+  'SyntaxError',
+  'ReferenceError'
+]);
+const DIAGNOSTIC_ERROR_CLASS_FALLBACK = 'UnknownError';
+
+function classifyTreeCommentReadErrorClass(error) {
+  let constructorName = '';
+  let instanceName = '';
+  try {
+    if (error !== null && error !== undefined) {
+      const ctor = error.constructor;
+      if (typeof ctor === 'function' && typeof ctor.name === 'string' && ctor.name !== '') {
+        constructorName = ctor.name;
+      }
+      const nm = error.name;
+      if (typeof nm === 'string' && nm !== '') {
+        instanceName = nm;
+      }
+    }
+  } catch {
+    return DIAGNOSTIC_ERROR_CLASS_FALLBACK;
+  }
+  const known = (value) => value !== '' && DIAGNOSTIC_ERROR_CLASS_WHITELIST.includes(value);
+  if (constructorName !== '' && !known(constructorName)) {
+    return DIAGNOSTIC_ERROR_CLASS_FALLBACK;
+  }
+  if (instanceName !== '' && !known(instanceName)) {
+    return DIAGNOSTIC_ERROR_CLASS_FALLBACK;
+  }
+  if (known(constructorName)) {
+    return constructorName;
+  }
+  if (known(instanceName)) {
+    return instanceName;
+  }
+  return DIAGNOSTIC_ERROR_CLASS_FALLBACK;
+}
+
 export function sanitizeTreeCommentReadFailure(error, stage) {
   const safeStage = DIAGNOSTIC_STAGES.includes(stage) ? stage : 'unknown';
-  let errorClass = 'UnknownError';
-  try {
-    const raw = error && typeof error.constructor === 'function' && typeof error.constructor.name === 'string'
-      ? error.constructor.name
-      : (error && typeof error.name === 'string' ? error.name : '');
-    const normalized = String(raw).replace(DIAGNOSTIC_ERROR_CLASS_PATTERN, '').slice(0, DIAGNOSTIC_ERROR_CLASS_MAX_CHARS);
-    if (normalized) errorClass = normalized;
-  } catch {
-    errorClass = 'UnknownError';
-  }
+  const errorClass = classifyTreeCommentReadErrorClass(error);
   let sqlstate = null;
   try {
     if (error && typeof error.code === 'string' && DIAGNOSTIC_SQLSTATE_PATTERN.test(error.code)) {
