@@ -675,3 +675,76 @@ test('#4311 readiness matrix records the Growing Production-live attestation', (
     assert.ok(mdRow.includes(marker), `markdown growing row retains: ${marker}`);
   }
 });
+
+// ─── #4311 readiness matrix representation (Community Memories Production-live attestation) ──────────
+
+test('#4311 readiness matrix records the Community Memories Production-live attestation with corrected route label', async () => {
+  const community = await loadCommunityMemoriesDirect();
+  // Independent route-authority proof from the helper contract itself.
+  assert.equal(community.COMMUNITY_MEMORIES_DIRECT_NEON_CONTRACT.path, '/api/community/memories', 'helper contract pins the canonical Product path');
+  assert.equal(community.isPublicCommunityMemoriesRequest(new Request('https://lovebud.test/api/community/memories')), true, 'matcher matches the canonical Product path');
+
+  const matrix = JSON.parse(fs.readFileSync(path.resolve(root, 'docs', 'architecture', 'direct-neon-readiness-matrix-4311.json'), 'utf8'));
+  const vocab = matrix.classification_vocabulary;
+  const row = matrix.routes.find((entry) => entry.id === 'community-memories');
+  assert.ok(row, 'community-memories row present');
+  assert.equal(row.source_helper, 'functions/_shared/public-community-memories-direct-neon.js');
+  assert.equal(row.runtime_gate, 'LB_COMMUNITY_MEMORIES_READ_RUNTIME');
+  assert.equal(row.method, 'GET');
+  assert.equal(row.family, 'READ');
+  assert.equal(row.credential_boundary, 'direct_neon_runtime');
+  // Route label correction (authorized by exact-main source proof): the stale
+  // historical/broader label /api/community/trees is replaced by the canonical path.
+  assert.equal(row.route, '/api/community/memories', 'stale matrix route label corrected to the canonical Product path');
+  // Production-live attestation state (CENTRAL accepted 2026-09-11, report
+  // LOVEBUD_4000_COMMUNITY_MEMORIES_DIRECT_NEON_LIVE_VERIFY_REPORT).
+  assert.equal(row.source_state, 'SOURCE_READY');
+  assert.equal(row.source_parity, 'PASS_AT_CITED_SHA');
+  assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
+  assert.equal(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_VERIFIED');
+  assert.equal(row.production_live, 'PRODUCTION_LIVE');
+  assert.equal(row.diagnostic_execution_authorized, 'NOT_AUTHORIZED');
+  assert.equal(row.modal_retained_by_design, false);
+  assert.deepEqual(row.required_objects, { trees: ['SELECT'], memories: ['SELECT'] }, 'the read path needs SELECT only');
+  assert.ok(vocab.production_live.includes(row.production_live));
+  // Bounded live evidence pinned to the attested main SHA; must not silently lose protocol facts.
+  assert.equal(row.last_exact_head_evidence.main_sha, '399c1da71ae9d49e772325aaff2cffc457a39db0', 'live evidence bound to attested main SHA');
+  for (const marker of [
+    'FUNCTIONAL_LIVE_PROOF=PASS',
+    'ACTUAL_TARGET_GET_COUNT=1',
+    'ONE_SHOT_PROTOCOL_COMPLIANCE=PASS',
+    'CONTROL_READ_COUNT=1',
+    'ROUTE_AUTHORITY_MATCH=HISTORICAL_LABEL_DRIFT',
+    'HTTP=200',
+    'x-lovebud-upstream=direct-neon',
+    'x-lovebud-runtime=direct_neon',
+    'route-status absent on success',
+    'ERROR_ONLY',
+    'no-store',
+    'request-id',
+    'shape=PASS',
+    'public visibility intersection',
+    'Modal fallback=NO',
+    'secret leak=NO',
+    'retry=NO',
+    '#4153',
+    '/api/community/memories?limit=1',
+    'corrected from the historical/broader /api/community/trees to /api/community/memories',
+  ]) {
+    assert.ok(row.disposition_note.includes(marker), `disposition_note retains: ${marker}`);
+  }
+  // Steady-state next_action: monitoring/regression only, invalidation rule stated, no new canary.
+  assert.ok(row.next_action.includes('monitoring/regression'), 'next_action is monitoring/regression steady state');
+  assert.ok(row.next_action.includes('invalidates this live attestation'), 'next_action states the invalidation rule');
+  assert.ok(!row.next_action.includes('Fresh live Cloudflare provider read'), 'next_action no longer requests another Community Memories canary');
+  // JSON/Markdown parity for the attested row (MD is a rendering of the authoritative JSON).
+  const md = fs.readFileSync(path.resolve(root, 'docs', 'architecture', 'DIRECT_NEON_READINESS_MATRIX_4311.md'), 'utf8');
+  const mdRow = md.split(/\r?\n/).find((line) => line.startsWith('| community-memories |'));
+  assert.ok(mdRow, 'markdown rendering contains the community-memories row');
+  assert.ok(mdRow.includes('`GET /api/community/memories`'), 'markdown row carries the corrected canonical route');
+  for (const marker of ['LIVE_PROVEN_AT_CITED_SHA', 'LIVE_GATE_VERIFIED', 'PRODUCTION_LIVE', 'FUNCTIONAL_LIVE_PROOF=PASS', 'ACTUAL_TARGET_GET_COUNT=1', 'ONE_SHOT_PROTOCOL_COMPLIANCE=PASS', 'CONTROL_READ_COUNT=1', 'ROUTE_AUTHORITY_MATCH=HISTORICAL_LABEL_DRIFT', '#4153']) {
+    assert.ok(mdRow.includes(marker), `markdown community-memories row retains: ${marker}`);
+  }
+});
