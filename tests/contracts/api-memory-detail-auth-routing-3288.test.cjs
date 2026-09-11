@@ -1360,14 +1360,15 @@ test('#4383 public-memory-detail gate check-in keeps matrix row, wrangler gate, 
   assert.equal(row.credential_boundary, 'direct_neon_runtime');
   assert.equal(row.source_state, 'SOURCE_READY');
   assert.equal(row.source_parity, 'PASS_AT_CITED_SHA');
-  // Phase 2b gate check-in pre-canary state (preflight #4383 ACCEPTED, CENTRAL
-  // comment 5633048066): grant authority is historical #4283 evidence; no fresh
-  // DB ACL attestation and no canary are implied until Phase 2c.
+  // Production live attestation state (Phase 2c functional canary accepted by
+  // CENTRAL with a permanently recorded protocol exception, #4383 comment
+  // 5634321685): grant authority remains historical #4283 evidence and no fresh
+  // DB ACL attestation is implied by this row.
   assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
   assert.equal(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA');
   assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
-  assert.equal(row.live_gate_state, 'LIVE_GATE_READ_REQUIRED');
-  assert.equal(row.production_live, 'NOT_PRODUCTION_LIVE');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_VERIFIED');
+  assert.equal(row.production_live, 'PRODUCTION_LIVE');
   assert.equal(row.diagnostic_execution_authorized, 'INVALIDATED_STALE_MAIN');
   assert.equal(row.modal_retained_by_design, false);
   assert.deepEqual(
@@ -1398,10 +1399,10 @@ test('#4383 public-memory-detail gate check-in keeps matrix row, wrangler gate, 
   }
   assert.equal(
     row.last_exact_head_evidence.main_sha,
-    '73ef8a3902dbcb2cef4b9e38efc640f6d7e868c2',
-    'evidence bound to the exact preflight-accepted main SHA',
+    '9085363819d858f2cb3fd526f4e46a279f416f28',
+    'evidence bound to the exact main the Phase 2c canary ran against',
   );
-  assert.ok(row.last_exact_head_evidence.ref.includes('#4383'), 'evidence ref cites the accepted preflight');
+  assert.ok(row.last_exact_head_evidence.ref.includes('#4383'), 'evidence ref cites the accepted #4383 disposition');
   assert.ok(row.rollback_authority.startsWith('GATE_ONLY_ROLLBACK'), 'rollback authority is gate-only rollback');
   assert.ok(row.rollback_authority.includes('no DB rollback'), 'gate rollback requires no DB rollback');
   assert.ok(row.rollback_authority.includes('no ACL rollback'), 'gate rollback requires no ACL rollback');
@@ -1410,7 +1411,7 @@ test('#4383 public-memory-detail gate check-in keeps matrix row, wrangler gate, 
     'anonymous Modal public read remains fallback/default',
   );
   assert.ok(row.next_action.includes('monitoring/regression'), 'next_action is steady-state monitoring');
-  assert.ok(row.next_action.includes('canary pending'), 'next_action states the canary is still pending');
+  assert.ok(!row.next_action.includes('canary pending'), 'stale canary-pending action removed after attestation');
   // wrangler.toml: exactly the Production scope carries the checked-in gate.
   const wrangler = fs.readFileSync(path.join(root, 'wrangler.toml'), 'utf8');
   const productionSection = wrangler.split(/^\[env\.production\.vars\]\s*$/m)[1] || '';
@@ -1435,8 +1436,8 @@ test('#4383 public-memory-detail gate check-in keeps matrix row, wrangler gate, 
     'CHECKED-IN',
     'PRIVILEGE_PROVEN_AT_CITED_SHA',
     'LIVE_PROVEN_AT_CITED_SHA',
-    'LIVE_GATE_READ_REQUIRED',
-    'NOT_PRODUCTION_LIVE',
+    'LIVE_GATE_VERIFIED',
+    'PRODUCTION_LIVE',
     'HISTORICAL_4283_GRANT_COMPLETED=YES',
     'HISTORICAL_4283_CLOSE_DATE=2026-09-01',
     'CUTOVER_PREFLIGHT_ISSUE=4383',
@@ -1451,4 +1452,109 @@ test('#4383 public-memory-detail gate check-in keeps matrix row, wrangler gate, 
   assert.ok(!mdRow.includes('PRIVILEGE_BLOCKED'), 'stale PRIVILEGE_BLOCKED rendering removed');
   assert.ok(!mdRow.includes('#4283 HOLD'), 'stale #4283 HOLD citation removed from markdown');
   assert.ok(!mdRow.includes('LIVE_GATE_NOT_INTENDED'), 'stale LIVE_GATE_NOT_INTENDED rendering removed');
+  assert.ok(!mdRow.includes('LIVE_GATE_READ_REQUIRED'), 'stale LIVE_GATE_READ_REQUIRED rendering removed');
+  assert.ok(!mdRow.includes('NOT_PRODUCTION_LIVE'), 'stale NOT_PRODUCTION_LIVE rendering removed');
+});
+
+test('#4383 public-memory-detail Production live attestation records the canary and the protocol exception truthfully', () => {
+  const root = path.resolve(__dirname, '..', '..');
+  const matrix = JSON.parse(
+    fs.readFileSync(path.join(root, 'docs', 'architecture', 'direct-neon-readiness-matrix-4311.json'), 'utf8')
+  );
+  const row = matrix.routes.find((entry) => entry.id === 'public-memory-detail');
+  assert.ok(row, 'public-memory-detail row present');
+  assert.equal(row.id, 'public-memory-detail');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_VERIFIED');
+  assert.equal(row.production_live, 'PRODUCTION_LIVE');
+  assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
+  assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
+  assert.deepEqual(
+    row.required_objects,
+    { memories: ['SELECT'], trees: ['SELECT'], reactions: ['SELECT'] },
+    'attestation must not expand the SELECT-only privilege envelope',
+  );
+  // The attestation is source/doc/test-only: no new Product request, no DB session.
+  assert.equal(
+    row.last_exact_head_evidence.main_sha,
+    '9085363819d858f2cb3fd526f4e46a279f416f28',
+    'attestation cites the exact main the Phase 2c canary ran against',
+  );
+  // Functional canary evidence plus the permanently recorded protocol exception.
+  for (const marker of [
+    'PUBLIC_MEMORY_DETAIL_FUNCTIONAL_CANARY=PASS',
+    'PHASE_2C_PROTOCOL_COMPLIANCE=FAIL_RECORDED',
+    'CENTRAL_PROTOCOL_EXCEPTION=ACCEPTED_NO_RERUN',
+    'REPLACEMENT_CANARY_AUTHORIZED=NO',
+    'AUTHORIZED_SHAPE_CANARY_GET_COUNT=2',
+    'UNAUTHORIZED_DISCOVERY_GET_COUNT=1',
+    'TOTAL_PRODUCT_GET_COUNT_PHASE2C=3',
+    'RETRY_COUNT=0',
+    'MAIN_DRIFT_SINCE_CANARY=NO',
+  ]) {
+    assert.ok(row.disposition_note.includes(marker), `disposition_note records: ${marker}`);
+  }
+  // The recorded deviations must stay in the audit record.
+  for (const deviation of [
+    'one unauthorized anonymous discovery GET to the public community-memory feed',
+    'required provider deployment-metadata read was not performed',
+  ]) {
+    assert.ok(row.disposition_note.includes(deviation), `disposition_note records the deviation: ${deviation}`);
+  }
+  // Continuity is post-hoc corroboration only, never a pre-canary deployment check.
+  assert.ok(
+    row.disposition_note.includes('post-hoc deployment/source continuity corroboration'),
+    'continuity is described as post-hoc corroboration',
+  );
+  assert.ok(
+    !row.disposition_note.includes('pre-canary deployment check PASS'),
+    'no pre-canary deployment check is claimed as PASS',
+  );
+  // The canary must never be relabeled as protocol-compliant anywhere in the row.
+  assert.ok(
+    !JSON.stringify(row).includes('PHASE_2C_PROTOCOL_COMPLIANCE=PASS'),
+    'Phase 2c protocol compliance must not be claimed as PASS',
+  );
+  assert.ok(
+    !JSON.stringify(row).includes('ONE_SHOT_PROTOCOL_COMPLIANCE=PASS'),
+    'the one-shot compliance marker belongs to other routes only',
+  );
+  assert.ok(
+    !JSON.stringify(row).includes('NOT_PRODUCTION_LIVE'),
+    'stale pre-canary production_live marker fully removed from the row',
+  );
+  // Steady-state next action: monitoring/regression, no replacement canary.
+  assert.ok(row.next_action.includes('monitoring/regression'), 'next_action is steady-state monitoring');
+  assert.ok(
+    row.next_action.includes('Do not rerun or replace the Phase 2c canary'),
+    'next_action forbids a replacement canary',
+  );
+  assert.ok(
+    row.next_action.includes('write-route isolation invalidates'),
+    'next_action states the invalidation surface',
+  );
+  // Markdown parity for the attested row and its exception markers.
+  const md = fs.readFileSync(
+    path.join(root, 'docs', 'architecture', 'DIRECT_NEON_READINESS_MATRIX_4311.md'),
+    'utf8'
+  );
+  const mdRow = md.split(/\r?\n/).find((line) => line.startsWith('| public-memory-detail |'));
+  assert.ok(mdRow, 'markdown rendering contains the public-memory-detail row');
+  for (const marker of [
+    'LIVE_GATE_VERIFIED',
+    'PRODUCTION_LIVE',
+    'PUBLIC_MEMORY_DETAIL_FUNCTIONAL_CANARY=PASS',
+    'PHASE_2C_PROTOCOL_COMPLIANCE=FAIL_RECORDED',
+    'CENTRAL_PROTOCOL_EXCEPTION=ACCEPTED_NO_RERUN',
+    'REPLACEMENT_CANARY_AUTHORIZED=NO',
+    'AUTHORIZED_SHAPE_CANARY_GET_COUNT=2',
+    'UNAUTHORIZED_DISCOVERY_GET_COUNT=1',
+    'TOTAL_PRODUCT_GET_COUNT_PHASE2C=3',
+    'RETRY_COUNT=0',
+    'MAIN_DRIFT_SINCE_CANARY=NO',
+    'post-hoc deployment/source continuity corroboration',
+  ]) {
+    assert.ok(mdRow.includes(marker), `markdown public-memory-detail row records: ${marker}`);
+  }
+  assert.ok(!mdRow.includes('PHASE_2C_PROTOCOL_COMPLIANCE=PASS'), 'markdown does not claim compliance PASS');
+  assert.ok(!mdRow.includes('pre-canary deployment check PASS'), 'markdown claims no pre-canary deployment check');
 });
