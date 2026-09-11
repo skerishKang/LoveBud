@@ -1345,3 +1345,110 @@ test('#4334 query failure reports safe query failure stage for owner-check, clea
     assert.doesNotMatch(bodyStr, /postgresql:|delete-token-4234/);
   }
 });
+
+test('#4383 public-memory-detail gate check-in keeps matrix row, wrangler gate, and MD rendering in contract', () => {
+  const root = path.resolve(__dirname, '..', '..');
+  const matrix = JSON.parse(
+    fs.readFileSync(path.join(root, 'docs', 'architecture', 'direct-neon-readiness-matrix-4311.json'), 'utf8')
+  );
+  const vocab = matrix.classification_vocabulary;
+  const row = matrix.routes.find((entry) => entry.id === 'public-memory-detail');
+  assert.ok(row, 'public-memory-detail row present');
+  assert.equal(row.route, '/api/memories/{id} public detail');
+  assert.equal(row.method, 'GET');
+  assert.equal(row.runtime_gate, 'LB_PUBLIC_MEMORY_DETAIL_RUNTIME');
+  assert.equal(row.credential_boundary, 'direct_neon_runtime');
+  assert.equal(row.source_state, 'SOURCE_READY');
+  assert.equal(row.source_parity, 'PASS_AT_CITED_SHA');
+  // Phase 2b gate check-in pre-canary state (preflight #4383 ACCEPTED, CENTRAL
+  // comment 5633048066): grant authority is historical #4283 evidence; no fresh
+  // DB ACL attestation and no canary are implied until Phase 2c.
+  assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_READ_REQUIRED');
+  assert.equal(row.production_live, 'NOT_PRODUCTION_LIVE');
+  assert.equal(row.diagnostic_execution_authorized, 'INVALIDATED_STALE_MAIN');
+  assert.equal(row.modal_retained_by_design, false);
+  assert.deepEqual(
+    row.required_objects,
+    { memories: ['SELECT'], trees: ['SELECT'], reactions: ['SELECT'] },
+    'the read path needs exactly three SELECT-only application objects; no tree_social_counts and no write privilege',
+  );
+  for (const [field] of [
+    ['source_state'], ['source_parity'], ['privilege_state'], ['live_provider_state'],
+    ['checked_in_gate'], ['live_gate_state'], ['production_live'],
+    ['diagnostic_execution_authorized'],
+  ]) {
+    assert.ok(vocab[field].includes(row[field]), `${field}=${row[field]} must stay inside the declared vocabulary`);
+  }
+  // Stale blocker fields must be fully gone.
+  assert.equal(row.privilege_block_reason, undefined, 'privilege_block_reason removed after grant completion');
+  assert.ok(!JSON.stringify(row).includes('#4283 HOLD'), 'stale #4283 HOLD citation removed');
+  // Evidence retention for the historical accepted authority chain.
+  for (const marker of [
+    'HISTORICAL_4283_GRANT_COMPLETED=YES',
+    'HISTORICAL_4283_CLOSE_DATE=2026-09-01',
+    'CUTOVER_PREFLIGHT_ISSUE=4383',
+    'PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY',
+    'FRESH_DB_ACL_ATTESTATION=NO',
+    '#4283 CLOSED COMPLETED — grant verified 2026-09-01',
+  ]) {
+    assert.ok(row.disposition_note.includes(marker), `disposition_note retains: ${marker}`);
+  }
+  assert.equal(
+    row.last_exact_head_evidence.main_sha,
+    '73ef8a3902dbcb2cef4b9e38efc640f6d7e868c2',
+    'evidence bound to the exact preflight-accepted main SHA',
+  );
+  assert.ok(row.last_exact_head_evidence.ref.includes('#4383'), 'evidence ref cites the accepted preflight');
+  assert.ok(row.rollback_authority.startsWith('GATE_ONLY_ROLLBACK'), 'rollback authority is gate-only rollback');
+  assert.ok(row.rollback_authority.includes('no DB rollback'), 'gate rollback requires no DB rollback');
+  assert.ok(row.rollback_authority.includes('no ACL rollback'), 'gate rollback requires no ACL rollback');
+  assert.ok(
+    row.rollback_authority.includes('the anonymous Modal public Memory detail path remains the fallback/default'),
+    'anonymous Modal public read remains fallback/default',
+  );
+  assert.ok(row.next_action.includes('monitoring/regression'), 'next_action is steady-state monitoring');
+  assert.ok(row.next_action.includes('canary pending'), 'next_action states the canary is still pending');
+  // wrangler.toml: exactly the Production scope carries the checked-in gate.
+  const wrangler = fs.readFileSync(path.join(root, 'wrangler.toml'), 'utf8');
+  const productionSection = wrangler.split(/^\[env\.production\.vars\]\s*$/m)[1] || '';
+  assert.match(
+    productionSection,
+    /^LB_PUBLIC_MEMORY_DETAIL_RUNTIME\s*=\s*"direct_neon"\s*$/m,
+    'gate line is checked in the Production vars scope',
+  );
+  const topLevelVars = wrangler.split(/^\[vars\]\s*$/m)[1]?.split(/^\[/m)[0] || '';
+  assert.ok(
+    !topLevelVars.includes('LB_PUBLIC_MEMORY_DETAIL_RUNTIME'),
+    'gate must not be added to the non-production top-level vars scope',
+  );
+  // JSON/Markdown parity for the gate-checked-in row (MD is a rendering of the authoritative JSON).
+  const md = fs.readFileSync(
+    path.join(root, 'docs', 'architecture', 'DIRECT_NEON_READINESS_MATRIX_4311.md'),
+    'utf8'
+  );
+  const mdRow = md.split(/\r?\n/).find((line) => line.startsWith('| public-memory-detail |'));
+  assert.ok(mdRow, 'markdown rendering contains the public-memory-detail row');
+  for (const marker of [
+    'CHECKED-IN',
+    'PRIVILEGE_PROVEN_AT_CITED_SHA',
+    'LIVE_PROVEN_AT_CITED_SHA',
+    'LIVE_GATE_READ_REQUIRED',
+    'NOT_PRODUCTION_LIVE',
+    'HISTORICAL_4283_GRANT_COMPLETED=YES',
+    'HISTORICAL_4283_CLOSE_DATE=2026-09-01',
+    'CUTOVER_PREFLIGHT_ISSUE=4383',
+    'PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY',
+    'FRESH_DB_ACL_ATTESTATION=NO',
+    'GATE_ONLY_ROLLBACK',
+    'memories SELECT + trees SELECT + reactions SELECT',
+    '#4383',
+  ]) {
+    assert.ok(mdRow.includes(marker), `markdown public-memory-detail row retains: ${marker}`);
+  }
+  assert.ok(!mdRow.includes('PRIVILEGE_BLOCKED'), 'stale PRIVILEGE_BLOCKED rendering removed');
+  assert.ok(!mdRow.includes('#4283 HOLD'), 'stale #4283 HOLD citation removed from markdown');
+  assert.ok(!mdRow.includes('LIVE_GATE_NOT_INTENDED'), 'stale LIVE_GATE_NOT_INTENDED rendering removed');
+});
