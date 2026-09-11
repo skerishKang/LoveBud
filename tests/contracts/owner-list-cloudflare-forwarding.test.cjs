@@ -1169,3 +1169,122 @@ test('#4311 readiness matrix records the owner Memory list Production-live attes
   assert.ok(!mdRow.includes('NOT_PRODUCTION_LIVE'), 'stale NOT_PRODUCTION_LIVE rendering removed');
   assert.ok(!mdRow.includes('Complete #4266 fresh runtime-readiness audit'), 'stale #4266 action removed from markdown');
 });
+
+test('#4311 readiness matrix records the owner Memory detail Production-live attestation (continuity-based)', () => {
+  const matrix = JSON.parse(fs.readFileSync(path.resolve(ROOT, 'docs', 'architecture', 'direct-neon-readiness-matrix-4311.json'), 'utf8'));
+  const vocab = matrix.classification_vocabulary;
+  const row = matrix.routes.find((entry) => entry.id === 'owner-memory-detail');
+  assert.ok(row, 'owner-memory-detail row present');
+  assert.equal(row.route, '/api/memories/{id}');
+  assert.equal(row.method, 'GET');
+  assert.equal(row.runtime_gate, 'LB_OWNER_MEMORY_DETAIL_RUNTIME');
+  assert.equal(row.credential_boundary, 'direct_neon_runtime');
+  // Production-live attestation state (CENTRAL accepted 2026-09-11, continuity
+  // reconciliation report LOVEBUD_4375_OWNER_MEMORY_DETAIL_CONTINUITY_RECONCILIATION_REPORT):
+  // historical accepted #4324 cutover authority + unchanged current envelope,
+  // no new Product request, no DB session, no new canary implied.
+  assert.equal(row.source_state, 'SOURCE_READY');
+  assert.equal(row.source_parity, 'PASS_AT_CITED_SHA');
+  assert.equal(row.privilege_state, 'PRIVILEGE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.checked_in_gate, 'CHECKED_IN_PRODUCTION_GATE');
+  assert.equal(row.live_provider_state, 'LIVE_PROVEN_AT_CITED_SHA');
+  assert.equal(row.live_gate_state, 'LIVE_GATE_VERIFIED');
+  assert.equal(row.production_live, 'PRODUCTION_LIVE');
+  assert.equal(row.diagnostic_execution_authorized, 'NOT_AUTHORIZED');
+  assert.equal(row.modal_retained_by_design, false);
+  assert.deepEqual(
+    row.required_objects,
+    { trees: ['SELECT'], memories: ['SELECT'] },
+    'the read path needs exactly two SELECT-only application objects; no tree_social_counts and no write privilege',
+  );
+  assert.ok(vocab.source_state.includes(row.source_state));
+  assert.ok(vocab.source_parity.includes(row.source_parity));
+  assert.ok(vocab.privilege_state.includes(row.privilege_state));
+  assert.ok(vocab.live_provider_state.includes(row.live_provider_state));
+  assert.ok(vocab.checked_in_gate.includes(row.checked_in_gate));
+  assert.ok(vocab.live_gate_state.includes(row.live_gate_state));
+  assert.ok(vocab.production_live.includes(row.production_live));
+  assert.ok(vocab.diagnostic_execution_authorized.includes(row.diagnostic_execution_authorized));
+  // Continuity evidence bound to the reconciliation baseline SHA; must not silently lose protocol facts.
+  assert.equal(row.last_exact_head_evidence.main_sha, 'b88340d3a78bf61c8f98f3fcd715bfc6609cc2b5', 'continuity evidence bound to attested main SHA');
+  for (const marker of [
+    'HISTORICAL_4324_CUTOVER_ACCEPTED=YES',
+    'HISTORICAL_PRODUCT_GET_COUNT=2',
+    'HISTORICAL_THIRD_REQUEST=NO',
+    'HISTORICAL_RETRY=NO',
+    'HISTORICAL_403_CONTROL_NOT_REQUIRED=YES',
+    'CONTINUITY_RECONCILIATION=PASS',
+    'INVALIDATING_CHANGE_SINCE_4324=NO',
+    'PRODUCTION_COMMIT_MATCH=YES',
+    'PRODUCTION_GATE_VALUE=direct_neon',
+    'PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY',
+    'FRESH_DB_ACL_ATTESTATION=NO',
+    'ID_SCOPE_AUTHORIZATION=PASS',
+    'WRITE_ROUTE_ISOLATION=PASS',
+    'HTTP=200',
+    'x-lovebud-runtime=direct_neon',
+    'x-lovebud-upstream=direct-neon',
+    'no-store',
+    'request-id present',
+    'memory detail response shape=legacy object',
+    'id scope PASS',
+    'owner binding PASS',
+    'tree scope PASS',
+    'DTO shape PASS',
+    'clientKey parity PASS',
+    "to_jsonb(m)->>client_key",
+    'retained synthetic Memory detail evidence PASS',
+    'HTTP=404',
+    '404-before-403 ordering PASS',
+    'response shape=sanitized not-found',
+    'DIRECT_NEON_OWNER_MEMORY_DETAIL_CUTOVER=ACCEPTED',
+    'trees SELECT + memories SELECT',
+    '#4324',
+    '#4325',
+    '#4267',
+  ]) {
+    assert.ok(row.disposition_note.includes(marker), `disposition_note retains: ${marker}`);
+  }
+  // Gate-only rollback authority: the stale "no gate checked in" text must be gone.
+  assert.ok(row.rollback_authority.startsWith('GATE_ONLY_ROLLBACK'), 'rollback authority is gate-only rollback');
+  assert.ok(row.rollback_authority.includes('no DB rollback'), 'gate rollback requires no DB rollback');
+  assert.ok(row.rollback_authority.includes('no ACL rollback'), 'gate rollback requires no ACL rollback');
+  assert.ok(row.rollback_authority.includes('authenticated Modal owner Memory-detail path remains the fallback/default'), 'authenticated Modal read remains fallback/default');
+  assert.ok(row.rollback_authority.includes('PUT / PATCH / DELETE routes remain independently governed'), 'write routes stay independently governed');
+  // Steady-state next_action: monitoring/regression only; stale #4267 action must be gone.
+  assert.ok(!row.next_action.includes('Complete #4267 fresh runtime-readiness audit'), 'stale #4267 readiness action removed');
+  assert.ok(row.next_action.includes('monitoring/regression'), 'next_action is monitoring/regression steady state');
+  assert.ok(row.next_action.includes('invalidates this continuity-based attestation'), 'next_action states the invalidation rule');
+  assert.ok(row.next_action.includes('Firebase principal boundary'), 'next_action covers the Firebase principal boundary');
+  assert.ok(row.next_action.includes('id-scope authorization (404-before-403 ordering)'), 'next_action covers id-scope authorization');
+  assert.ok(row.next_action.includes('write isolation (PUT/DELETE gate independence)'), 'next_action covers write isolation');
+  // JSON/Markdown parity for the attested row (MD is a rendering of the authoritative JSON).
+  const md = fs.readFileSync(path.resolve(ROOT, 'docs', 'architecture', 'DIRECT_NEON_READINESS_MATRIX_4311.md'), 'utf8');
+  const mdRow = md.split(/\r?\n/).find((line) => line.startsWith('| owner-memory-detail |'));
+  assert.ok(mdRow, 'markdown rendering contains the owner-memory-detail row');
+  for (const marker of [
+    'CHECKED-IN',
+    'PRIVILEGE_PROVEN_AT_CITED_SHA',
+    'LIVE_PROVEN_AT_CITED_SHA',
+    'LIVE_GATE_VERIFIED',
+    'PRODUCTION_LIVE',
+    'HISTORICAL_4324_CUTOVER_ACCEPTED=YES',
+    'HISTORICAL_PRODUCT_GET_COUNT=2',
+    'HISTORICAL_THIRD_REQUEST=NO',
+    'HISTORICAL_RETRY=NO',
+    'HISTORICAL_403_CONTROL_NOT_REQUIRED=YES',
+    'CONTINUITY_RECONCILIATION=PASS',
+    'INVALIDATING_CHANGE_SINCE_4324=NO',
+    'PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY',
+    'FRESH_DB_ACL_ATTESTATION=NO',
+    'ID_SCOPE_AUTHORIZATION=PASS',
+    'GATE_ONLY_ROLLBACK',
+    'trees SELECT + memories SELECT',
+    'to_jsonb',
+    '#4324',
+  ]) {
+    assert.ok(mdRow.includes(marker), `markdown owner-memory-detail row retains: ${marker}`);
+  }
+  assert.ok(!mdRow.includes('NOT_PRODUCTION_LIVE'), 'stale NOT_PRODUCTION_LIVE rendering removed');
+  assert.ok(!mdRow.includes('Complete #4267 fresh runtime-readiness audit'), 'stale #4267 action removed from markdown');
+});
