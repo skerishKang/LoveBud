@@ -9,14 +9,15 @@
  *
  *   # Production execution (out-of-band credentialed operator only):
  *   LOVEBUD_4282_ALLOW_EXECUTE=1 node scripts/canonical-schema-adoption-operator.cjs --execute
- *     # will still fail closed unless a transport is provided via
- *     # LOVEBUD_4282_OPERATOR_TRANSPORT_PATH pointing to a module exporting
- *     # a valid bounded transport interface.
+ *     # the ONLY transport that can ever be loaded is the fixed repository-owned
+ *     # module scripts/canonical-schema-adoption-postgres-transport.cjs.
+ *     # Any legacy arbitrary-module-path input fails closed:
+ *     # ARBITRARY_MODULE_PATH_ALLOWED=NO.
  *
  * Hard rules:
  *   - execution disabled by default
  *   - both --execute flag and LOVEBUD_4282_ALLOW_EXECUTE=1 are required
- *   - transport path must export a valid bounded surface
+ *   - the loaded transport is fixed by repository path, never by caller input
  *   - the one-attempt budget is consumed ONLY on a committed+verified apply
  *   - any error / connection loss is treated as ambiguous outcome: stop, no retry
  *   - this script never logs or prints secret/credential material
@@ -160,7 +161,15 @@ if (!profile) {
 }
 
 const allowExecuteEnv = process.env[profile.envAllowExecute] === '1';
-const transportPath = process.env[profile.envTransportPath];
+// Legacy arbitrary-module-path input is forbidden: the transport is now fixed
+// to the repository-owned module. Reading this env var exists ONLY to fail
+// closed when it is set; the value is never used to load anything.
+const legacyTransportEnv = profile.envTransportPath;
+const legacyTransportPath = process.env[legacyTransportEnv];
+const FIXED_TRANSPORT_PATH = path.join(
+  __dirname,
+  'canonical-schema-adoption-postgres-transport.cjs'
+);
 
 async function main() {
   const packet = CORE.buildCanonicalPacket(profile.key);
@@ -211,20 +220,6 @@ async function main() {
     );
     process.exit(2);
   }
-  if (!transportPath) {
-    process.stderr.write(
-      JSON.stringify({
-        mode: 'EXECUTE_REQUESTED',
-        profile: profile.key,
-        decision: CORE.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
-        reason: `${profile.envTransportPath} not set`,
-        oneAttemptBudgetConsumed: false,
-        executionAttempted: false,
-      }) + '\n',
-    );
-    process.exit(2);
-  }
-
   // Exact-head verification BEFORE requiring or touching transport
   const headAuth = CORE.verifyExecutionHeadAuthority(profile, { executionHead });
   if (!headAuth.ok) {
@@ -243,9 +238,26 @@ async function main() {
     process.exit(2);
   }
 
+  if (typeof legacyTransportPath === 'string' && legacyTransportPath.trim().length > 0) {
+    process.stderr.write(
+      JSON.stringify({
+        mode: 'EXECUTE_REQUESTED',
+        profile: profile.key,
+        decision: CORE.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+        reason: 'STOP_ARBITRARY_MODULE_PATH_FORBIDDEN',
+        detail: `the ${legacyTransportEnv} environment variable is no longer honored; the operator loads only the fixed repository transport`,
+        oneAttemptBudgetConsumed: false,
+        executionAttempted: false,
+      }) + '\n',
+    );
+    process.exit(2);
+  }
+
   let transport;
   try {
-    transport = require(path.resolve(transportPath));
+    // Fixed repository-owned bounded transport. No caller-controlled path is
+    // ever resolved or required.
+    transport = require(FIXED_TRANSPORT_PATH);
   } catch (err) {
     process.stderr.write(
       JSON.stringify({

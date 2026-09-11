@@ -526,6 +526,51 @@ test('CLI strictness: exact-head mismatch prevents transport from being loaded',
   assert.equal(parsed.executionAttempted, false);
 });
 
+test('CLI strictness: legacy arbitrary transport path is rejected after valid head authority', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+  const actualHead = OP.resolveTrustedLocalRepoHead();
+  const res = child.spawnSync(
+    process.execPath,
+    [runnerScript, '--profile', '4346', '--execute', '--execution-head', actualHead],
+    {
+      env: {
+        ...process.env,
+        LOVEBUD_4346_ALLOW_EXECUTE: '1',
+        LOVEBUD_4346_OPERATOR_TRANSPORT_PATH: 'THIS_PATH_DOES_NOT_EXIST_AND_MUST_NOT_BE_LOADED',
+      },
+      encoding: 'utf8',
+    },
+  );
+
+  assert.equal(res.status, 2);
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.reason, 'STOP_ARBITRARY_MODULE_PATH_FORBIDDEN');
+  assert.match(parsed.detail, /no longer honored/);
+  assert.equal(parsed.executionAttempted, false);
+});
+
+test('CLI strictness: fixed transport reaches secret preconnect failure when no legacy path is supplied', () => {
+  const child = require('node:child_process');
+  const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
+  const actualHead = OP.resolveTrustedLocalRepoHead();
+  const env = { ...process.env };
+  delete env.LOVEBUD_4346_OPERATOR_TRANSPORT_PATH;
+  delete env.LOVEBUD_SCHEMA_ADOPTION_DATABASE_URL;
+  env.LOVEBUD_4346_ALLOW_EXECUTE = '1';
+  const res = child.spawnSync(
+    process.execPath,
+    [runnerScript, '--profile', '4346', '--execute', '--execution-head', actualHead],
+    { env, encoding: 'utf8' },
+  );
+
+  assert.equal(res.status, 2);
+  const parsed = JSON.parse(res.stderr);
+  assert.equal(parsed.reason, 'UNCAUGHT_ERROR');
+  assert.equal(res.stderr.includes('LOVEBUD_SCHEMA_ADOPTION_DATABASE_URL'), false);
+  assert.equal(res.stderr.includes('postgresql://'), false);
+});
+
 test('CLI strictness: --execute without explicit --profile fails closed before transport load', () => {
   const child = require('node:child_process');
   const runnerScript = path.join(ROOT, 'scripts/canonical-schema-adoption-operator.cjs');
