@@ -1718,7 +1718,22 @@
       "execution_actor": "none",
       "automation": "manual",
       "ledger_candidate": "no",
-      "notes": "Thin CLI entrypoint for the governed canonical schema-adoption operator (#4282). Rebuilds the canonical packet via the operator core and defaults to --dry-run paper-only readiness; --execute requires both the flag and LOVEBUD_4282_ALLOW_EXECUTE=1 plus a bounded transport module at LOVEBUD_4282_OPERATOR_TRANSPORT_PATH; never logs or prints secret/credential material and never consumes the one-attempt budget without a committed+verified apply. Imports no database driver, opens no database connection, executes no SQL, holds no Production credential. Detected by RULE_RUNNER_NAME because the basename contains 'adopt'; registered here to satisfy the guard."
+      "notes": "Thin CLI entrypoint for the governed canonical schema-adoption operator (#4282). Rebuilds the canonical packet via the operator core and defaults to --dry-run paper-only readiness; --execute requires both the flag and LOVEBUD_4282_ALLOW_EXECUTE=1 plus the fixed repository-owned bounded Postgres transport; any legacy arbitrary transport-path input fails closed. Never logs or prints secret/credential material and never consumes the one-attempt budget without a committed+verified apply. Imports no database driver at module load, opens no database connection in dry-run mode, executes no SQL itself, and holds no Production credential. Detected by RULE_RUNNER_NAME because the basename contains 'adopt'; registered here to satisfy the guard."
+    },
+    {
+      "path": "scripts/canonical-schema-adoption-postgres-transport.cjs",
+      "category": "provenance_tooling",
+      "engine": "postgres",
+      "operations": ["READ_ONLY", "VALIDATE", "ORCHESTRATE", "CREATE TABLE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": true,
+      "owner_or_issue": "canonical schema adoption transport / #4371 #4346 #4282 #4000",
+      "idempotency": "precondition_bound",
+      "execution_actor": "operator",
+      "automation": "gated",
+      "ledger_candidate": "yes",
+      "notes": "Repository-owned bounded Postgres transport for the governed canonical schema-adoption operator. Uses a dedicated TLS database URL only at connect time, one connection/transaction attempt, a parameterized advisory lock, the frozen profile migration allowlist with byte checksum verification, bounded catalog facts, and the fixed append-only migration ledger adapter. Import is network-inert because pg and the catalog adapter load lazily; arbitrary SQL, product-row reads, grants, runtime-gate mutation, provider reroute, DROP, retries, and raw credential output are not capabilities. Production execution remains separately gated by the operator core exact-head and authorization checks. Detected by RULE_RUNNER_NAME because the basename contains 'adopt'; registered here to satisfy the guard."
     },
     {
       "path": "db/proposals/4006-canonical-users-auth-identity-proposal.sql",

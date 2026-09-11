@@ -539,6 +539,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/canonical-schema-adoption-postgres-transport.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the repository-owned schema-adoption Postgres transport against a stateful in-process fake pg client and a child-process import probe. Computes catalog fixture fingerprints through the real catalog adapter pipeline, verifies the bounded allowlist/checksum/transaction/advisory-lock/catalog/ledger contracts for profiles #4282 and #4346, and proves missing or malformed secrets fail before client creation, credentials are not echoed, imports are network-inert, and post-check mismatch never issues DROP. No real PostgreSQL, network, browser, credential, or Production resource is used (#4371).",
+      "capabilities": ["child_process", "filesystem"]
+    },
+    {
       "path": "tests/contracts/db-clean-canonical-bootstrap-rehearsal-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
