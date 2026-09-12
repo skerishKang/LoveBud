@@ -9,17 +9,40 @@
  *
  *   # Production execution (out-of-band credentialed operator only):
  *   LOVEBUD_LEDGER_BOOTSTRAP_ALLOW_EXECUTE=1 \
- *     node scripts/canonical-ledger-bootstrap-operator.cjs --execute --execution-head <40hex>
+ *   LOVEBUD_LEDGER_BOOTSTRAP_EXECUTION_AUTHORITY=<central-comment> \
+ *     node scripts/canonical-ledger-bootstrap-operator.cjs \
+ *       --execute --execution-authority <central-comment> --execution-head <40hex>
  *     # the ONLY transport that can ever be loaded is the fixed repository-owned
  *     # module scripts/canonical-ledger-bootstrap-postgres.cjs, consumed through
  *     # a bounded six-method view. Any arbitrary module path input is rejected.
  *
+ * Authority separation:
+ *   - The frozen packet carries IMMUTABLE BOOTSTRAP PROVENANCE only: issue:3846,
+ *     the migration identity/path/checksum, the expected schema fingerprint, the
+ *     ADDITIVE risk class, and TRANSACTION_REQUIRED mode.
+ *   - The LIVE CENTRAL Production execution authority is supplied separately at
+ *     execution time (--execution-authority /
+ *     LOVEBUD_LEDGER_BOOTSTRAP_EXECUTION_AUTHORITY). It is never defaulted from,
+ *     and never derived from, the frozen provenance.
+ *   - The SOURCE/TEST implementation comment 5644253160 authorized building this
+ *     vehicle only. It is provenance metadata and can NEVER satisfy the live
+ *     Production execution authority.
+ *
  * Hard rules:
  *   - execution disabled by default; dry run is the default mode
  *   - both --execute and LOVEBUD_LEDGER_BOOTSTRAP_ALLOW_EXECUTE=1 are required
- *   - the exact-head authority gate must pass BEFORE any transport method call
+ *   - the live execution authority gate AND the exact-head gate must both pass
+ *     BEFORE any transport method call
  *   - the transport is fixed by repository path, never by caller input
- *   - the one-attempt budget is consumed ONLY on a committed+verified apply
+ *   - the CENTRAL exactly-one DB-capable authority is consumed when governed
+ *     DB-capable execution begins (connection / advisory-lock / transaction
+ *     path), NOT when COMMIT succeeds. Every outcome after that point stays
+ *     consumed and retryPermitted is false: rollback, target-already-present,
+ *     catalog mismatch, ledger mismatch, connection failure after connect,
+ *     transaction failure, and commit ambiguity are NOT reusable.
+ *   - preconnect failures (readiness, transport validation, missing/invalid
+ *     execution authority, head mismatch, missing/malformed credential) leave
+ *     the authority unconsumed
  *   - any error / connection loss is treated as ambiguous outcome: stop, no retry
  *   - this script never logs or prints secret/credential material
  *   - SOURCE/TEST ONLY: running this file in CI performs NO Production contact
@@ -38,10 +61,26 @@ const ROOT = path.resolve(__dirname, '..');
 const BOOTSTRAP = TRANSPORT.BOOTSTRAP;
 const CANONICAL_TARGET_IDENTITY = TRANSPORT.CANONICAL_TARGET_IDENTITY;
 
-const ALLOWED_FLAGS = Object.freeze(['--execute', '--dry-run', '--execution-head']);
+const ALLOWED_FLAGS = Object.freeze([
+  '--execute',
+  '--dry-run',
+  '--execution-head',
+  '--execution-authority',
+]);
 const ENV_ALLOW_EXECUTE = 'LOVEBUD_LEDGER_BOOTSTRAP_ALLOW_EXECUTE';
 const ENV_EXECUTION_HEAD = 'LOVEBUD_LEDGER_BOOTSTRAP_EXECUTION_HEAD';
+const ENV_EXECUTION_AUTHORITY = 'LOVEBUD_LEDGER_BOOTSTRAP_EXECUTION_AUTHORITY';
 const FIXED_TRANSPORT_PATH = path.join(__dirname, 'canonical-ledger-bootstrap-postgres.cjs');
+
+// Failure categories the repository transport raises provably BEFORE any
+// DB-capable contact (credential resolution and lock-key shape validation).
+// Only these leave the CENTRAL authority unconsumed: every other failure out of
+// the advisory-lock call is treated as DB-capable execution having begun.
+const PRECONNECT_FAILURE_CATEGORIES = new Set([
+  TRANSPORT.TRANSPORT_FAILURE.SECRET_UNAVAILABLE,
+  TRANSPORT.TRANSPORT_FAILURE.SECRET_MALFORMED,
+  TRANSPORT.TRANSPORT_FAILURE.LOCK_KEY_INVALID,
+]);
 
 const DECISIONS = Object.freeze({
   PAPER_ONLY_DRY_RUN: 'PAPER_ONLY_DRY_RUN',
@@ -58,7 +97,9 @@ const STOP_REASONS = Object.freeze({
   STOP_RELATION_PRESENT: 'STOP_RELATION_PRESENT',
   STOP_CHECKSUM_MISMATCH: 'STOP_CHECKSUM_MISMATCH',
   STOP_TARGET_IDENTITY_MISMATCH: 'STOP_TARGET_IDENTITY_MISMATCH',
-  STOP_ACTIVE_COMMENT_MISSING: 'STOP_ACTIVE_COMMENT_MISSING',
+  STOP_EXECUTION_AUTHORITY_MISSING: 'STOP_EXECUTION_AUTHORITY_MISSING',
+  STOP_EXECUTION_AUTHORITY_SOURCE_TEST_ONLY: 'STOP_EXECUTION_AUTHORITY_SOURCE_TEST_ONLY',
+  STOP_EXECUTION_AUTHORITY_INVALID: 'STOP_EXECUTION_AUTHORITY_INVALID',
   STOP_UNRELATED_MIGRATION_PRESENT: 'STOP_UNRELATED_MIGRATION_PRESENT',
   STOP_CREDENTIAL_OPERATOR_ABSENT: 'STOP_CREDENTIAL_OPERATOR_ABSENT',
   STOP_ADVISORY_LOCK_UNAVAILABLE: 'STOP_ADVISORY_LOCK_UNAVAILABLE',
@@ -136,21 +177,25 @@ function readJsonRepoFile(relPath) {
 }
 
 /**
- * Build the canonical single-binding bootstrap packet from the frozen
- * repository binding in the transport module. currentMain defaults to the
- * trusted local repository HEAD.
+ * Build the canonical single-binding bootstrap PROVENANCE packet from the
+ * frozen repository binding in the transport module. currentMain defaults to
+ * the trusted local repository HEAD.
+ *
+ * The packet deliberately carries NO execution authority: the live CENTRAL
+ * Production execution authority is supplied separately at execution time and
+ * is never derived from these frozen provenance facts.
  */
 function buildBootstrapPacket(overrides) {
   const actualOverrides = isStrictObject(overrides) ? overrides : {};
   const base = {
     issue: BOOTSTRAP.issue,
-    activeAuthorizationComment: BOOTSTRAP.activeAuthorizationComment,
     migrationId: BOOTSTRAP.migrationId,
     currentMain: TRANSPORT.resolveTrustedLocalRepoHead(ROOT),
     migrationPath: BOOTSTRAP.migrationPath,
     migrationSha256: BOOTSTRAP.migrationSha256,
     intendedRelation: BOOTSTRAP.relation,
     expectedSchemaFingerprint: BOOTSTRAP.expectedSchemaFingerprint,
+    riskClass: BOOTSTRAP.riskClass,
     targetIdentity: Object.freeze({ ...CANONICAL_TARGET_IDENTITY }),
     applyMode: 'TRANSACTION_REQUIRED',
     unrelatedMigrationCount: 0,
@@ -224,9 +269,6 @@ function evaluateBootstrapReadiness(packet) {
   }
 
   if (packet.issue !== BOOTSTRAP.issue) stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
-  if (packet.activeAuthorizationComment !== BOOTSTRAP.activeAuthorizationComment) {
-    stops.push(STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING);
-  }
   if (!isHex40(String(packet.currentMain || ''))) stops.push(STOP_REASONS.STOP_MAIN_MOVED);
   if (packet.migrationId !== BOOTSTRAP.migrationId) {
     stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
@@ -241,6 +283,9 @@ function evaluateBootstrapReadiness(packet) {
     stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
   }
   if (packet.expectedSchemaFingerprint !== BOOTSTRAP.expectedSchemaFingerprint) {
+    stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
+  }
+  if (packet.riskClass !== BOOTSTRAP.riskClass) {
     stops.push(STOP_REASONS.STOP_PACKET_FIELD_INVALID);
   }
   if (!isStrictObject(packet.targetIdentity)) {
@@ -327,6 +372,61 @@ function resolveAuthorizedExecutionHead(options, env) {
 }
 
 /**
+ * Resolve the live CENTRAL Production execution authority reference from the
+ * explicit execution-time input (CLI flag / options) or the dedicated
+ * environment key. It is NEVER read from the frozen packet or the SOURCE/TEST
+ * implementation provenance.
+ */
+function resolveExecutionAuthorityReference(options, env) {
+  const opts = isStrictObject(options) ? options : {};
+  const fromOptions = opts.executionAuthority;
+  if (typeof fromOptions === 'string' && fromOptions.trim().length > 0) {
+    return fromOptions;
+  }
+  if (typeof fromOptions === 'number' && Number.isSafeInteger(fromOptions) && fromOptions > 0) {
+    return fromOptions;
+  }
+  const source = isStrictObject(env) ? env : process.env;
+  const raw = source[ENV_EXECUTION_AUTHORITY];
+  if (typeof raw === 'string' && raw.trim().length > 0) return raw;
+  if (typeof raw === 'number' && Number.isSafeInteger(raw) && raw > 0) return raw;
+  return null;
+}
+
+/**
+ * Live CENTRAL Production execution authority gate. The reference must be
+ * present, well-formed, and distinct from the SOURCE/TEST implementation
+ * provenance comment. Fails closed BEFORE any credential/DB contact.
+ */
+function verifyLedgerBootstrapExecutionAuthority(options, env) {
+  const raw = resolveExecutionAuthorityReference(options, env);
+  if (raw === null) {
+    return {
+      ok: false,
+      reason: STOP_REASONS.STOP_EXECUTION_AUTHORITY_MISSING,
+      executionAuthorityReference: null,
+    };
+  }
+  const normalized = TRANSPORT.normalizeExecutionAuthorityReference(raw);
+  if (normalized === String(BOOTSTRAP.sourceTestImplementationComment)) {
+    // The SOURCE/TEST implementation comment is provenance, never authority.
+    return {
+      ok: false,
+      reason: STOP_REASONS.STOP_EXECUTION_AUTHORITY_SOURCE_TEST_ONLY,
+      executionAuthorityReference: null,
+    };
+  }
+  if (!TRANSPORT.isValidExecutionAuthorityReference(raw)) {
+    return {
+      ok: false,
+      reason: STOP_REASONS.STOP_EXECUTION_AUTHORITY_INVALID,
+      executionAuthorityReference: null,
+    };
+  }
+  return { ok: true, reason: null, executionAuthorityReference: normalized };
+}
+
+/**
  * Exact-head authority gate: the CENTRAL-authorized execution head (CLI flag
  * or LOVEBUD_LEDGER_BOOTSTRAP_EXECUTION_HEAD) must exist, be 40-hex, and equal
  * the trusted local repository HEAD. Fails closed otherwise.
@@ -362,10 +462,31 @@ function verifyLedgerBootstrapExecutionHead(options, repoRoot, env) {
 }
 
 /**
+ * Normalize one governed-attempt result envelope.
+ *
+ * `oneAttemptBudgetConsumed` is the CENTRAL authority-consumption state: it
+ * becomes true the moment governed DB-capable execution begins (connection /
+ * advisory-lock / transaction path) and never returns to false. It is NOT the
+ * commit outcome. `committedAndVerified` is a separate DB-outcome fact and is
+ * never used as authority-consumption state. `retryPermitted` is always the
+ * exact inverse of consumption, so a consumed authority can never be reused.
+ */
+function governedResult(fields) {
+  const consumed = fields.oneAttemptBudgetConsumed === true;
+  return {
+    ...fields,
+    dbCapableExecutionStarted: consumed,
+    oneAttemptBudgetConsumed: consumed,
+    retryPermitted: !consumed,
+  };
+}
+
+/**
  * Execute the governed bootstrap. Default is a paper-only dry run. Real apply
  * requires executionEnabled AND allowExecute AND a validated bounded transport
- * AND the exact-head authority gate. One attempt; ambiguous outcomes stop with
- * no retry.
+ * AND the live CENTRAL execution-authority gate AND the exact-head gate — all
+ * BEFORE any transport method call. One attempt; every outcome after governed
+ * DB-capable execution begins keeps the CENTRAL authority consumed.
  */
 async function executeGovernedBootstrap(opts) {
   const options = isStrictObject(opts) ? opts : {};
@@ -376,17 +497,17 @@ async function executeGovernedBootstrap(opts) {
 
   const readiness = evaluateBootstrapReadiness(packet);
   if (readiness.decision !== DECISIONS.READINESS_PASSED) {
-    return {
+    return governedResult({
       decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       stops: readiness.stops,
       reason: 'READINESS_FAILED',
       executionAttempted: false,
       oneAttemptBudgetConsumed: false,
-    };
+    });
   }
 
   if (!executionEnabled || !allowExecute) {
-    return {
+    return governedResult({
       decision: DECISIONS.PAPER_ONLY_DRY_RUN,
       stops: [],
       reason: executionEnabled ? 'EXECUTION_NOT_ALLOWED' : 'EXECUTION_DISABLED_BY_DEFAULT',
@@ -397,19 +518,37 @@ async function executeGovernedBootstrap(opts) {
         migrationId: packet.migrationId,
         targetIdentity: packet.targetIdentity,
       },
-    };
+    });
   }
 
   const tCheck = validateLedgerBootstrapTransport(transport);
   if (!tCheck.ok) {
-    return {
+    return governedResult({
       decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       stops: [tCheck.reason],
       reason: tCheck.reason,
       executionAttempted: false,
       oneAttemptBudgetConsumed: false,
-    };
+    });
   }
+
+  // Live CENTRAL Production execution authority. Supplied separately at
+  // execution time; never derived from the frozen SOURCE/TEST provenance.
+  const authorityAuth = verifyLedgerBootstrapExecutionAuthority(
+    { executionAuthority: options.executionAuthority },
+    options.env
+  );
+  if (!authorityAuth.ok) {
+    return governedResult({
+      decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      stops: [authorityAuth.reason],
+      reason: authorityAuth.reason,
+      executionAuthorityReference: authorityAuth.executionAuthorityReference,
+      executionAttempted: false,
+      oneAttemptBudgetConsumed: false,
+    });
+  }
+  const executionAuthorityReference = authorityAuth.executionAuthorityReference;
 
   const headAuth = verifyLedgerBootstrapExecutionHead(
     { executionHead: options.executionHead },
@@ -417,15 +556,16 @@ async function executeGovernedBootstrap(opts) {
     options.env
   );
   if (!headAuth.ok) {
-    return {
+    return governedResult({
       decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       stops: [headAuth.reason],
       reason: headAuth.reason,
       actualExecutionHead: headAuth.actualExecutionHead,
       centralAuthorizedExecutionHead: headAuth.centralAuthorizedExecutionHead,
+      executionAuthorityReference,
       executionAttempted: false,
       oneAttemptBudgetConsumed: false,
-    };
+    });
   }
 
   const lockKey = crypto
@@ -434,26 +574,37 @@ async function executeGovernedBootstrap(opts) {
     .digest('hex')
     .slice(0, 16);
 
+  // ---- Preconnect boundary ---------------------------------------------
+  // Everything above is pure/local. From here on the transport may open a
+  // connection, so any non-preconnect failure below is DB-capable and keeps
+  // the CENTRAL authority consumed.
   let lockHandle;
   try {
     lockHandle = await transport.acquireAdvisoryLock(lockKey);
-  } catch {
-    return {
+  } catch (err) {
+    const preconnectFailure = PRECONNECT_FAILURE_CATEGORIES.has(err && err.category);
+    return governedResult({
       decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       stops: [STOP_REASONS.STOP_ADVISORY_LOCK_UNAVAILABLE],
-      reason: 'ADVISORY_LOCK_QUERY_FAILED',
-      executionAttempted: false,
-      oneAttemptBudgetConsumed: false,
-    };
+      reason: preconnectFailure ? 'PRECONNECT_CREDENTIAL_UNAVAILABLE' : 'ADVISORY_LOCK_QUERY_FAILED',
+      preconnectFailure,
+      executionAuthorityReference,
+      executionAttempted: !preconnectFailure,
+      oneAttemptBudgetConsumed: !preconnectFailure,
+      committedAndVerified: false,
+    });
   }
   if (!lockHandle) {
-    return {
+    // The connection and the advisory-lock path both began: consumed.
+    return governedResult({
       decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       stops: [STOP_REASONS.STOP_ADVISORY_LOCK_UNAVAILABLE],
       reason: 'ADVISORY_LOCK_UNAVAILABLE',
-      executionAttempted: false,
-      oneAttemptBudgetConsumed: false,
-    };
+      executionAuthorityReference,
+      executionAttempted: true,
+      oneAttemptBudgetConsumed: true,
+      committedAndVerified: false,
+    });
   }
 
   try {
@@ -478,7 +629,8 @@ async function executeGovernedBootstrap(opts) {
       }
       const ledger = await tx.writeLedger({
         issue: packet.issue,
-        activeAuthorizationComment: packet.activeAuthorizationComment,
+        executionAuthorityReference,
+        executionHead: headAuth.actualExecutionHead,
         migrationId: packet.migrationId,
         migrationSha256: packet.migrationSha256,
         targetIdentity: packet.targetIdentity,
@@ -492,32 +644,38 @@ async function executeGovernedBootstrap(opts) {
     });
 
     if (!txResult || txResult.ok !== true) {
-      return {
+      // Rolled back pre-commit, but the CENTRAL authority is already consumed.
+      return governedResult({
         decision: DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT,
         stops: [txResult && txResult.reason ? txResult.reason : STOP_REASONS.STOP_AMBIGUOUS_OUTCOME],
         reason: txResult && txResult.reason ? txResult.reason : 'APPLY_FAILED',
+        executionAuthorityReference,
         executionAttempted: true,
-        oneAttemptBudgetConsumed: false,
-      };
+        oneAttemptBudgetConsumed: true,
+        committedAndVerified: false,
+      });
     }
 
-    return {
+    return governedResult({
       decision: DECISIONS.APPLY_COMMITTED_AND_VERIFIED,
       stops: [],
       reason: 'APPLY_COMMITTED_AND_VERIFIED',
+      executionAuthorityReference,
       executionAttempted: true,
       oneAttemptBudgetConsumed: true,
-    };
+      committedAndVerified: true,
+    });
   } catch {
-    return {
+    return governedResult({
       decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       stops: [STOP_REASONS.STOP_AMBIGUOUS_OUTCOME],
       reason: 'AMBIGUOUS_OUTCOME',
       ambiguous: true,
+      executionAuthorityReference,
       executionAttempted: true,
-      oneAttemptBudgetConsumed: false,
-      retryPermitted: false,
-    };
+      oneAttemptBudgetConsumed: true,
+      committedAndVerified: false,
+    });
   } finally {
     try {
       await transport.releaseAdvisoryLock(lockHandle);
@@ -533,6 +691,7 @@ function parseOperatorCliArgs(argv) {
   let isExecute = false;
   let isDryRun = false;
   let executionHead = null;
+  let executionAuthority = null;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = String(argv[i]);
@@ -555,22 +714,25 @@ function parseOperatorCliArgs(argv) {
       if (flagValue !== null) throw new Error('FLAG_VALUE_UNEXPECTED');
       if (flagName === '--execute') isExecute = true;
       else isDryRun = true;
-    } else if (flagName === '--execution-head') {
+    } else if (flagName === '--execution-head' || flagName === '--execution-authority') {
+      let value;
       if (flagValue !== null) {
-        executionHead = flagValue;
+        value = flagValue;
       } else {
         if (i + 1 >= argv.length || String(argv[i + 1]).startsWith('--')) {
           throw new Error('FLAG_VALUE_MISSING');
         }
         i += 1;
-        executionHead = String(argv[i]);
+        value = String(argv[i]);
       }
+      if (flagName === '--execution-head') executionHead = value;
+      else executionAuthority = value;
     }
   }
 
   if (isExecute && isDryRun) throw new Error('CONFLICTING_FLAGS_REJECTED');
   if (!isExecute && !isDryRun) isDryRun = true;
-  return { isExecute, isDryRun, executionHead };
+  return { isExecute, isDryRun, executionHead, executionAuthority };
 }
 
 function writeJsonError(obj) {
@@ -601,17 +763,22 @@ async function main() {
       mode: 'DRY_RUN',
       executionAttempted: false,
       oneAttemptBudgetConsumed: false,
+      retryPermitted: true,
       decision: readiness.decision,
       stops: readiness.stops,
       binding: {
         issue: packet.issue,
-        activeAuthorizationComment: packet.activeAuthorizationComment,
+        // Provenance metadata only: the SOURCE/TEST implementation comment is
+        // NEVER the Production mutation authority.
+        sourceTestImplementationComment: BOOTSTRAP.sourceTestImplementationComment,
+        liveExecutionAuthority: 'SUPPLIED_SEPARATELY_AT_EXECUTION_TIME',
         migrationId: packet.migrationId,
         currentMain: packet.currentMain,
         migrationPath: packet.migrationPath,
         migrationSha256: packet.migrationSha256,
         intendedRelation: packet.intendedRelation,
         expectedSchemaFingerprint: packet.expectedSchemaFingerprint,
+        riskClass: packet.riskClass,
         targetIdentity: packet.targetIdentity,
         applyMode: packet.applyMode,
       },
@@ -627,6 +794,26 @@ async function main() {
       decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       reason: `${ENV_ALLOW_EXECUTE} not set`,
       oneAttemptBudgetConsumed: false,
+      retryPermitted: true,
+      executionAttempted: false,
+    });
+    process.exit(2);
+    return;
+  }
+
+  // Live CENTRAL Production execution authority gate — BEFORE any credential
+  // or DB contact. The SOURCE/TEST implementation comment can never pass.
+  const authorityAuth = verifyLedgerBootstrapExecutionAuthority({
+    executionAuthority: parsed.executionAuthority,
+  });
+  if (!authorityAuth.ok) {
+    writeJsonError({
+      mode: 'EXECUTE_REQUESTED',
+      decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      reason: authorityAuth.reason,
+      executionAuthorityReference: authorityAuth.executionAuthorityReference,
+      oneAttemptBudgetConsumed: false,
+      retryPermitted: true,
       executionAttempted: false,
     });
     process.exit(2);
@@ -642,6 +829,7 @@ async function main() {
       actualExecutionHead: headAuth.actualExecutionHead,
       centralAuthorizedExecutionHead: headAuth.centralAuthorizedExecutionHead,
       oneAttemptBudgetConsumed: false,
+      retryPermitted: true,
       executionAttempted: false,
     });
     process.exit(2);
@@ -691,6 +879,7 @@ async function main() {
     executionEnabled: true,
     allowExecute: true,
     executionHead: parsed.executionHead,
+    executionAuthority: parsed.executionAuthority,
   });
   process.stdout.write(JSON.stringify({ mode: 'EXECUTE', ...result }, null, 2) + '\n');
   if (result.stops && result.stops.length > 0) process.exit(2);
@@ -703,8 +892,13 @@ if (require.main === module) {
       decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
       reason: 'UNCAUGHT_ERROR',
       message: 'Operator entered an undefined state. Read-only reconcile required; no retry.',
-      oneAttemptBudgetConsumed: false,
-      executionAttempted: false,
+      // Fail closed: an undefined state may have begun DB-capable execution, so
+      // the CENTRAL exactly-one authority must be treated as CONSUMED.
+      oneAttemptBudgetConsumed: true,
+      dbCapableExecutionStarted: true,
+      retryPermitted: false,
+      committedAndVerified: false,
+      executionAttempted: true,
     });
     process.exit(2);
   });
@@ -718,14 +912,18 @@ module.exports = Object.freeze({
   ALLOWED_FLAGS,
   ENV_ALLOW_EXECUTE,
   ENV_EXECUTION_HEAD,
+  ENV_EXECUTION_AUTHORITY,
+  PRECONNECT_FAILURE_CATEGORIES,
   REQUIRED_TRANSPORT_METHODS,
   FORBIDDEN_TRANSPORT_METHODS,
   buildBootstrapPacket,
   evaluateBootstrapReadiness,
   validateLedgerBootstrapTransport,
   resolveAuthorizedExecutionHead,
+  resolveExecutionAuthorityReference,
+  verifyLedgerBootstrapExecutionAuthority,
   verifyLedgerBootstrapExecutionHead,
   executeGovernedBootstrap,
   parseOperatorCliArgs,
-  __pure: { sha256File, isHex40, isSha256Hex, provenanceStops },
+  __pure: { sha256File, isHex40, isSha256Hex, provenanceStops, governedResult },
 });

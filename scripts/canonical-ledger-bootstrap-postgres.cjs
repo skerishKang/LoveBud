@@ -31,6 +31,21 @@
  * embedded); no grant/revoke, product rows, drop, runtime gate, provider
  * reroute, arbitrary SQL, or arbitrary module input.
  *
+ * AUTHORITY SEPARATION (the two must never be conflated):
+ *   A. Immutable bootstrap provenance — issue:3846, the migration identity,
+ *      path, checksum and expected fingerprint, risk class ADDITIVE, and
+ *      transaction mode REQUIRED. Frozen in BOOTSTRAP below and cross-checked
+ *      against db/migration-provenance/*.json by the operator.
+ *   B. Live CENTRAL Production execution authority — a CENTRAL comment
+ *      reference supplied SEPARATELY at execution time (operator CLI/env). It
+ *      is never defaulted from, and never derived from, the frozen provenance.
+ *      The SOURCE/TEST implementation comment 5644253160 authorized building
+ *      this vehicle ONLY; it is retained in BOOTSTRAP as inert provenance
+ *      metadata, and isValidExecutionAuthorityReference() rejects it as live
+ *      authority. writeLedger() refuses any attestation payload whose authority
+ *      reference is absent, malformed, equal to the SOURCE/TEST comment, or not
+ *      bound to the exact authorized execution head.
+ *
  * SOURCE/TEST ONLY: this file performs NO Production contact. Live execution
  * is a separately authorized, separately credentialed operator action.
  *
@@ -72,14 +87,48 @@ const CANONICAL_TARGET_IDENTITY = Object.freeze({
   database: 'neondb',
 });
 
-// The single frozen bootstrap binding. These values are the exact repository
-// facts recorded in db/migration-provenance/canonical-migrations.json,
+// SOURCE/TEST implementation provenance ONLY. CENTRAL comment 5644253160
+// authorized building this repository-owned vehicle under issue #3846; it did
+// NOT authorize a Production mutation, and it MUST NEVER be accepted as the
+// live Production execution authority. It is retained as inert metadata so the
+// separation stays auditable, and it is explicitly rejected below.
+const SOURCE_TEST_IMPLEMENTATION_COMMENT = 5644253160;
+
+// A live CENTRAL Production execution authorization is a CENTRAL comment
+// reference: bare digits, or the explicit `comment:<digits>` form. It is
+// supplied separately at execution time and is never defaulted from BOOTSTRAP
+// or any other frozen binding.
+const EXECUTION_AUTHORITY_RE = /^[0-9]{6,}$/;
+
+function normalizeExecutionAuthorityReference(value) {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) {
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase().replace(/^comment:/, '');
+    if (normalized.length > 0) return normalized;
+  }
+  return null;
+}
+
+function isValidExecutionAuthorityReference(value) {
+  const normalized = normalizeExecutionAuthorityReference(value);
+  if (!normalized || !EXECUTION_AUTHORITY_RE.test(normalized)) return false;
+  // The SOURCE/TEST implementation provenance can never be live authority.
+  if (normalized === String(SOURCE_TEST_IMPLEMENTATION_COMMENT)) return false;
+  return true;
+}
+
+// The single frozen bootstrap PROVENANCE binding (category A above). These
+// values are the exact repository facts recorded in
+// db/migration-provenance/canonical-migrations.json,
 // db/migration-provenance/expected-schema-manifest.json, and
 // db/migration-provenance/ledger-contract.json. They are never read from the
-// environment, caller input, or any network source.
+// environment, caller input, or any network source. This object carries NO
+// execution authority.
 const BOOTSTRAP = Object.freeze({
   issue: 3846,
-  activeAuthorizationComment: 5644253160,
+  sourceTestImplementationComment: SOURCE_TEST_IMPLEMENTATION_COMMENT,
   migrationId: '20260802094500_bootstrap-migration-ledger',
   migrationPath: 'db/migrations/20260802094500_bootstrap-migration-ledger.sql',
   migrationSha256: 'c04d6e8cf074514e1835cd837f6ae72ccd96b775a507a12d2b394733977918cc',
@@ -113,6 +162,8 @@ const TRANSPORT_FAILURE = Object.freeze({
   ROLE_MAPPING_UNAVAILABLE: 'LEDGER_BOOTSTRAP_ROLE_MAPPING_UNAVAILABLE',
   LEDGER_PAYLOAD_INVALID: 'LEDGER_BOOTSTRAP_LEDGER_PAYLOAD_INVALID',
   DEPLOYED_COMMIT_UNAVAILABLE: 'LEDGER_BOOTSTRAP_DEPLOYED_COMMIT_UNAVAILABLE',
+  EXECUTION_AUTHORITY_INVALID: 'LEDGER_BOOTSTRAP_EXECUTION_AUTHORITY_INVALID',
+  EXECUTION_HEAD_UNBOUND: 'LEDGER_BOOTSTRAP_EXECUTION_HEAD_UNBOUND',
 });
 
 const HEX16_RE = /^[0-9a-f]{16}$/;
@@ -120,7 +171,8 @@ const HEX64_RE = /^[0-9a-f]{64}$/;
 const HEX40_RE = /^[0-9a-f]{40}$/;
 const LEDGER_PAYLOAD_KEYS = Object.freeze([
   'issue',
-  'activeAuthorizationComment',
+  'executionAuthorityReference',
+  'executionHead',
   'migrationId',
   'migrationSha256',
   'targetIdentity',
@@ -539,8 +591,18 @@ function createLedgerBootstrapTransport(options) {
     if (payload.issue !== BOOTSTRAP.issue) {
       throw failFixed(TRANSPORT_FAILURE.LEDGER_PAYLOAD_INVALID);
     }
-    if (payload.activeAuthorizationComment !== BOOTSTRAP.activeAuthorizationComment) {
-      throw failFixed(TRANSPORT_FAILURE.LEDGER_PAYLOAD_INVALID);
+    // Live CENTRAL Production execution authority (category B). It must be
+    // present, well-formed, and distinct from the SOURCE/TEST implementation
+    // provenance comment — that comment is never a mutation authority and is
+    // never written into an attestation as one.
+    if (!isValidExecutionAuthorityReference(payload.executionAuthorityReference)) {
+      throw failFixed(TRANSPORT_FAILURE.EXECUTION_AUTHORITY_INVALID);
+    }
+    // The attestation must be bound to the exact authorized execution head.
+    const executionHead =
+      typeof payload.executionHead === 'string' ? payload.executionHead.toLowerCase() : '';
+    if (!HEX40_RE.test(executionHead)) {
+      throw failFixed(TRANSPORT_FAILURE.EXECUTION_HEAD_UNBOUND);
     }
     const t = payload.targetIdentity;
     if (
@@ -562,6 +624,14 @@ function createLedgerBootstrapTransport(options) {
     if (typeof deployedCommit !== 'string' || !HEX40_RE.test(deployedCommit)) {
       throw failFixed(TRANSPORT_FAILURE.DEPLOYED_COMMIT_UNAVAILABLE);
     }
+    if (executionHead !== deployedCommit) {
+      // The attestation is not bound to the exact authorized execution head.
+      throw failFixed(TRANSPORT_FAILURE.EXECUTION_HEAD_UNBOUND);
+    }
+    // The fixed seven-field record carries NO authorization comment: the
+    // SOURCE/TEST provenance comment is never written as mutation authority,
+    // and the live execution authority is bound by the validation above rather
+    // than by any ledger column.
     const client = state.client;
     const ledgerAdapter = LEDGER_ADAPTER.createPostgresMigrationLedgerAdapter({
       queryLockedSession: async ({ query }) => {
@@ -614,6 +684,10 @@ module.exports = Object.freeze({
   TRANSPORT_FAILURE,
   BOOTSTRAP,
   CANONICAL_TARGET_IDENTITY,
+  SOURCE_TEST_IMPLEMENTATION_COMMENT,
+  EXECUTION_AUTHORITY_RE,
+  normalizeExecutionAuthorityReference,
+  isValidExecutionAuthorityReference,
   CREDENTIAL_ENV_KEY,
   ROLE_MAPPING_ENV_KEY,
   RUNNER_VERSION,

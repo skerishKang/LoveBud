@@ -3,8 +3,10 @@
 /**
  * SOURCE_STATIC policy tests for the governed #3846 canonical ledger-bootstrap
  * operator. Pure — no DB, no Production contact, no secrets. Validates
- * fail-closed prechecks, dry-run by default, exact-head authority, and that the
- * one-attempt budget is consumed only on a committed+verified apply.
+ * fail-closed prechecks, dry-run by default, live CENTRAL execution-authority
+ * separation from the SOURCE/TEST implementation provenance, exact-head
+ * authority, and that the CENTRAL exactly-one DB-capable authority is consumed
+ * when governed DB-capable execution begins (not on COMMIT).
  *
  * Refs #3846, #3458 (keep OPEN), #1882 (keep OPEN).
  */
@@ -21,6 +23,12 @@ const TRANSPORT = require(path.join(ROOT, 'scripts/canonical-ledger-bootstrap-po
 const BOOT = OP.BOOTSTRAP;
 const ACTUAL_HEAD = TRANSPORT.resolveTrustedLocalRepoHead(ROOT);
 
+// A live CENTRAL Production execution authorization reference. Deliberately NOT
+// the SOURCE/TEST implementation comment (5644253160), which is provenance only
+// and must never satisfy the live Production execution authority.
+const LIVE_AUTHORITY = '5644581826';
+const SOURCE_TEST_COMMENT = 5644253160;
+
 const CANONICAL_PACKET = OP.buildBootstrapPacket();
 
 function makeFakeTransport(overrides = {}) {
@@ -32,6 +40,7 @@ function makeFakeTransport(overrides = {}) {
     catalogMatched: true,
     ledgerRecorded: true,
     throwOn: null,
+    throwCategory: null,
     ...overrides,
   };
   const txApi = Object.freeze({
@@ -55,7 +64,14 @@ function makeFakeTransport(overrides = {}) {
   const transport = {
     acquireAdvisoryLock: async (key) => {
       calls.push(['acquireAdvisoryLock', key]);
-      if (behavior.throwOn === 'acquireAdvisoryLock') throw new Error('FAKE_LOCK_BOOM');
+      if (behavior.throwOn === 'acquireAdvisoryLock') {
+        if (behavior.throwCategory) {
+          const err = new Error(behavior.throwCategory);
+          err.category = behavior.throwCategory;
+          throw err;
+        }
+        throw new Error('FAKE_LOCK_BOOM');
+      }
       return behavior.lockGranted ? { fakeHandle: true } : null;
     },
     releaseAdvisoryLock: async () => {
@@ -93,6 +109,7 @@ function executeArgs(extra = {}) {
     executionEnabled: true,
     allowExecute: true,
     executionHead: ACTUAL_HEAD,
+    executionAuthority: LIVE_AUTHORITY,
     ...extra,
   };
 }
@@ -105,14 +122,14 @@ test('canonical #3846 packet passes bootstrap readiness (dry-run path)', () => {
   assert.deepEqual(res.stops, []);
 });
 
-test('packet binding is exact', () => {
+test('packet binding is exact and carries provenance only', () => {
   assert.equal(CANONICAL_PACKET.issue, 3846);
-  assert.equal(CANONICAL_PACKET.activeAuthorizationComment, 5644253160);
   assert.equal(CANONICAL_PACKET.migrationId, '20260802094500_bootstrap-migration-ledger');
   assert.equal(CANONICAL_PACKET.migrationPath, 'db/migrations/20260802094500_bootstrap-migration-ledger.sql');
   assert.equal(CANONICAL_PACKET.migrationSha256, 'c04d6e8cf074514e1835cd837f6ae72ccd96b775a507a12d2b394733977918cc');
   assert.equal(CANONICAL_PACKET.intendedRelation, 'public.schema_migration_ledger');
   assert.equal(CANONICAL_PACKET.expectedSchemaFingerprint, '961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1');
+  assert.equal(CANONICAL_PACKET.riskClass, 'ADDITIVE');
   assert.deepEqual(CANONICAL_PACKET.targetIdentity, {
     product_shared: '133-relovetree',
     environment_class: 'production',
@@ -120,6 +137,24 @@ test('packet binding is exact', () => {
   });
   assert.equal(CANONICAL_PACKET.applyMode, 'TRANSACTION_REQUIRED');
   assert.equal(CANONICAL_PACKET.unrelatedMigrationCount, 0);
+  // The frozen packet must NOT carry any execution authority: the SOURCE/TEST
+  // implementation comment is provenance, and the live authority is supplied
+  // separately at execution time.
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(CANONICAL_PACKET, 'activeAuthorizationComment'),
+    false,
+    'packet must not embed a mutation-authority comment'
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(CANONICAL_PACKET, 'executionAuthority'),
+    false,
+    'packet must not embed the live execution authority'
+  );
+  assert.equal(
+    JSON.stringify(CANONICAL_PACKET).includes(String(SOURCE_TEST_COMMENT)),
+    false,
+    'packet must not embed the SOURCE/TEST implementation comment'
+  );
 });
 
 test('canonical packet has zero provenance stops', () => {
@@ -152,7 +187,7 @@ test('executeGovernedBootstrap fails closed with no transport', async () => {
 
 const packetVariants = [
   ['wrong issue', { issue: 9999 }, OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID],
-  ['wrong ACTIVE comment', { activeAuthorizationComment: 5641029190 }, OP.STOP_REASONS.STOP_ACTIVE_COMMENT_MISSING],
+  ['wrong risk class', { riskClass: 'DESTRUCTIVE' }, OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID],
   ['malformed currentMain', { currentMain: 'NOT-A-HEX' }, OP.STOP_REASONS.STOP_MAIN_MOVED],
   ['wrong migration id', { migrationId: 'other' }, OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID],
   ['wrong migration path', { migrationPath: 'db/migrations/other.sql' }, OP.STOP_REASONS.STOP_PACKET_FIELD_INVALID],
@@ -250,14 +285,99 @@ test('execution stops before any transport call when head authority is unverifie
   assert.deepEqual(fake.calls, []);
 });
 
+// ----- 6b. Live CENTRAL execution-authority gate -----
+
+test('execution authority is required: absent, empty, and env-absent all fail closed', () => {
+  for (const options of [{}, { executionAuthority: '' }, { executionAuthority: '   ' }, { executionAuthority: null }]) {
+    const r = OP.verifyLedgerBootstrapExecutionAuthority(options, {});
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, OP.STOP_REASONS.STOP_EXECUTION_AUTHORITY_MISSING);
+    assert.equal(r.executionAuthorityReference, null);
+  }
+});
+
+test('the SOURCE/TEST implementation comment can never satisfy the live authority', () => {
+  for (const value of [SOURCE_TEST_COMMENT, String(SOURCE_TEST_COMMENT), `comment:${SOURCE_TEST_COMMENT}`]) {
+    const r = OP.verifyLedgerBootstrapExecutionAuthority({ executionAuthority: value }, {});
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, OP.STOP_REASONS.STOP_EXECUTION_AUTHORITY_SOURCE_TEST_ONLY);
+    assert.equal(r.executionAuthorityReference, null);
+  }
+});
+
+test('a malformed execution authority reference fails closed', () => {
+  for (const value of ['not-a-comment', 'abc', '12345', 'x'.repeat(40), '5644581826x']) {
+    const r = OP.verifyLedgerBootstrapExecutionAuthority({ executionAuthority: value }, {});
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, OP.STOP_REASONS.STOP_EXECUTION_AUTHORITY_INVALID);
+  }
+});
+
+test('a live execution authority passes and resolves from env', () => {
+  const direct = OP.verifyLedgerBootstrapExecutionAuthority({ executionAuthority: LIVE_AUTHORITY }, {});
+  assert.equal(direct.ok, true);
+  assert.equal(direct.executionAuthorityReference, LIVE_AUTHORITY);
+  const viaEnv = OP.verifyLedgerBootstrapExecutionAuthority({}, {
+    [OP.ENV_EXECUTION_AUTHORITY]: `comment:${LIVE_AUTHORITY}`,
+  });
+  assert.equal(viaEnv.ok, true);
+  assert.equal(viaEnv.executionAuthorityReference, LIVE_AUTHORITY);
+});
+
+test('missing live execution authority stops before any transport call and stays unconsumed', async () => {
+  const fake = makeFakeTransport();
+  const r = await OP.executeGovernedBootstrap(
+    executeArgs({ transport: fake.transport, executionAuthority: null, env: {} })
+  );
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_AUTHORITY_MISSING));
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+  assert.equal(r.retryPermitted, true);
+  assert.deepEqual(fake.calls, []);
+});
+
+test('the SOURCE/TEST comment as live authority stops before any transport call', async () => {
+  const fake = makeFakeTransport();
+  const r = await OP.executeGovernedBootstrap(
+    executeArgs({ transport: fake.transport, executionAuthority: String(SOURCE_TEST_COMMENT) })
+  );
+  assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_EXECUTION_AUTHORITY_SOURCE_TEST_ONLY));
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+  assert.equal(r.retryPermitted, true);
+  assert.deepEqual(fake.calls, []);
+});
+
+test('missing/malformed credential is a preconnect failure: zero DB calls, unconsumed', async () => {
+  for (const category of [
+    TRANSPORT.TRANSPORT_FAILURE.SECRET_UNAVAILABLE,
+    TRANSPORT.TRANSPORT_FAILURE.SECRET_MALFORMED,
+  ]) {
+    const fake = makeFakeTransport({ throwOn: 'acquireAdvisoryLock', throwCategory: category });
+    const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+    assert.equal(r.preconnectFailure, true);
+    assert.equal(r.reason, 'PRECONNECT_CREDENTIAL_UNAVAILABLE');
+    assert.equal(r.executionAttempted, false);
+    assert.equal(r.oneAttemptBudgetConsumed, false);
+    assert.equal(r.retryPermitted, true);
+    assert.equal(fake.calls.filter((c) => c[0] === 'withTransaction').length, 0);
+  }
+});
+
 // ----- 7. Governed execution flow (mock transport only) -----
 
-test('happy path commits+verifies and consumes the one-attempt budget', async () => {
+test('happy path commits+verifies and consumes the CENTRAL authority', async () => {
   const fake = makeFakeTransport();
   const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   assert.equal(r.decision, OP.DECISIONS.APPLY_COMMITTED_AND_VERIFIED);
   assert.equal(r.executionAttempted, true);
+  assert.equal(r.dbCapableExecutionStarted, true);
   assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.committedAndVerified, true);
+  assert.equal(r.retryPermitted, false);
+  assert.equal(r.executionAuthorityReference, LIVE_AUTHORITY);
   const names = fake.calls.map((c) => c[0]);
   assert.deepEqual(names, [
     'acquireAdvisoryLock',
@@ -271,54 +391,80 @@ test('happy path commits+verifies and consumes the one-attempt budget', async ()
   assert.equal(fake.calls[0][1].length, 16);
 });
 
-test('relation already present rolls back pre-commit without consuming the budget', async () => {
+test('target already present after a DB-capable start stays consumed', async () => {
   const fake = makeFakeTransport({ relationPresent: true });
   const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_RELATION_PRESENT));
-  assert.equal(r.oneAttemptBudgetConsumed, false);
+  assert.equal(r.dbCapableExecutionStarted, true);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.committedAndVerified, false);
+  assert.equal(r.retryPermitted, false);
 });
 
-test('lock unavailable stops before the transaction', async () => {
+test('advisory lock unavailable after connect stays consumed', async () => {
   const fake = makeFakeTransport({ lockGranted: false });
   const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ADVISORY_LOCK_UNAVAILABLE));
-  assert.equal(r.executionAttempted, false);
+  assert.equal(r.executionAttempted, true);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.retryPermitted, false);
   assert.equal(fake.calls.filter((c) => c[0] === 'withTransaction').length, 0);
 });
 
-test('lock acquisition throw stops before the transaction', async () => {
+test('an untyped lock-path throw is treated as DB-capable and stays consumed', async () => {
   const fake = makeFakeTransport({ throwOn: 'acquireAdvisoryLock' });
   const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_ADVISORY_LOCK_UNAVAILABLE));
-  assert.equal(r.executionAttempted, false);
+  assert.equal(r.executionAttempted, true);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.retryPermitted, false);
 });
 
-test('postcheck mismatch rolls back pre-commit', async () => {
+test('a connection failure after the preconnect boundary stays consumed', async () => {
+  const fake = makeFakeTransport({
+    throwOn: 'acquireAdvisoryLock',
+    throwCategory: TRANSPORT.TRANSPORT_FAILURE.CONNECT_UNAVAILABLE,
+  });
+  const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  assert.equal(r.preconnectFailure, false);
+  assert.equal(r.executionAttempted, true);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.retryPermitted, false);
+});
+
+test('postcheck (catalog) mismatch rolls back and stays consumed', async () => {
   const fake = makeFakeTransport({ catalogMatched: false });
   const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_POSTCHECK_MISMATCH));
-  assert.equal(r.oneAttemptBudgetConsumed, false);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.committedAndVerified, false);
+  assert.equal(r.retryPermitted, false);
 });
 
-test('ledger attestation mismatch rolls back pre-commit', async () => {
+test('ledger attestation mismatch rolls back and stays consumed', async () => {
   const fake = makeFakeTransport({ ledgerRecorded: false });
   const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
   assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_LEDGER_ATTESTATION_MISMATCH));
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.committedAndVerified, false);
+  assert.equal(r.retryPermitted, false);
 });
 
-test('apply failure reason is surfaced and stays pre-commit', async () => {
+test('apply failure reason is surfaced, rolled back, and stays consumed', async () => {
   const fake = makeFakeTransport({ applyCommitted: false });
   const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   assert.equal(r.decision, OP.DECISIONS.APPLY_ROLLED_BACK_PRE_COMMIT);
-  assert.equal(r.oneAttemptBudgetConsumed, false);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.committedAndVerified, false);
+  assert.equal(r.retryPermitted, false);
 });
 
-test('a thrown transaction is an ambiguous outcome: no retry, budget not consumed', async () => {
+test('a thrown transaction is ambiguous: consumed, no retry permitted', async () => {
   const fake = makeFakeTransport({ throwOn: 'withTransaction' });
   const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   assert.equal(r.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
@@ -326,34 +472,84 @@ test('a thrown transaction is an ambiguous outcome: no retry, budget not consume
   assert.equal(r.ambiguous, true);
   assert.equal(r.retryPermitted, false);
   assert.equal(r.executionAttempted, true);
-  assert.equal(r.oneAttemptBudgetConsumed, false);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.committedAndVerified, false);
   assert.ok(fake.calls.some((c) => c[0] === 'releaseAdvisoryLock'), 'lock must be released even on ambiguity');
 });
 
-test('writeLedger payload binds the exact packet facts', async () => {
+test('committedAndVerified is never used as authority-consumption state', async () => {
+  const fake = makeFakeTransport({ catalogMatched: false });
+  const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  assert.equal(r.committedAndVerified, false);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+});
+
+test('no second attempt is permitted under the same execution authority', async () => {
+  const scenarios = [
+    {},
+    { relationPresent: true },
+    { catalogMatched: false },
+    { ledgerRecorded: false },
+    { applyCommitted: false },
+    { lockGranted: false },
+    { throwOn: 'withTransaction' },
+    { throwOn: 'acquireAdvisoryLock', throwCategory: TRANSPORT.TRANSPORT_FAILURE.CONNECT_UNAVAILABLE },
+  ];
+  for (const scenario of scenarios) {
+    const fake = makeFakeTransport(scenario);
+    const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+    assert.equal(
+      r.oneAttemptBudgetConsumed,
+      true,
+      `scenario ${JSON.stringify(scenario)} must leave the authority consumed`
+    );
+    assert.equal(r.retryPermitted, false, `scenario ${JSON.stringify(scenario)} must forbid retry`);
+    assert.equal(r.executionAuthorityReference, LIVE_AUTHORITY);
+  }
+});
+
+test('writeLedger payload binds the live authority reference and the exact execution head', async () => {
   const fake = makeFakeTransport();
   await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
   const call = fake.calls.find((c) => c[0] === 'writeLedger');
   assert.equal(call[1].issue, 3846);
-  assert.equal(call[1].activeAuthorizationComment, 5644253160);
+  assert.equal(call[1].executionAuthorityReference, LIVE_AUTHORITY);
+  assert.notEqual(call[1].executionAuthorityReference, String(SOURCE_TEST_COMMENT));
+  assert.equal(call[1].executionHead, ACTUAL_HEAD);
   assert.equal(call[1].migrationId, BOOT.migrationId);
   assert.equal(call[1].migrationSha256, BOOT.migrationSha256);
   assert.equal(call[1].relation, BOOT.relation);
   assert.equal(call[1].fingerprint, BOOT.expectedSchemaFingerprint);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(call[1], 'activeAuthorizationComment'),
+    false,
+    'the SOURCE/TEST comment must never be written as the mutation authority'
+  );
 });
 
 // ----- 8. CLI argument strictness (pure parser) -----
 
 test('CLI parser: default mode is dry run', () => {
-  assert.deepEqual(OP.parseOperatorCliArgs([]), { isExecute: false, isDryRun: true, executionHead: null });
+  assert.deepEqual(OP.parseOperatorCliArgs([]), {
+    isExecute: false, isDryRun: true, executionHead: null, executionAuthority: null,
+  });
 });
 
 test('CLI parser: accepts --execute with --execution-head in both forms', () => {
   assert.deepEqual(OP.parseOperatorCliArgs(['--execute', '--execution-head', 'a'.repeat(40)]), {
-    isExecute: true, isDryRun: false, executionHead: 'a'.repeat(40),
+    isExecute: true, isDryRun: false, executionHead: 'a'.repeat(40), executionAuthority: null,
   });
   assert.deepEqual(OP.parseOperatorCliArgs(['--execute', `--execution-head=${'b'.repeat(40)}`]), {
-    isExecute: true, isDryRun: false, executionHead: 'b'.repeat(40),
+    isExecute: true, isDryRun: false, executionHead: 'b'.repeat(40), executionAuthority: null,
+  });
+});
+
+test('CLI parser: accepts --execution-authority in both forms', () => {
+  assert.deepEqual(OP.parseOperatorCliArgs(['--execute', '--execution-authority', LIVE_AUTHORITY]), {
+    isExecute: true, isDryRun: false, executionHead: null, executionAuthority: LIVE_AUTHORITY,
+  });
+  assert.deepEqual(OP.parseOperatorCliArgs(['--execute', `--execution-authority=${LIVE_AUTHORITY}`]), {
+    isExecute: true, isDryRun: false, executionHead: null, executionAuthority: LIVE_AUTHORITY,
   });
 });
 
@@ -364,6 +560,7 @@ const parserRejections = [
   ['conflicting modes', ['--execute', '--dry-run'], 'CONFLICTING_FLAGS_REJECTED'],
   ['value on boolean', ['--execute=yes'], 'FLAG_VALUE_UNEXPECTED'],
   ['missing head value', ['--execution-head'], 'FLAG_VALUE_MISSING'],
+  ['missing authority value', ['--execution-authority'], 'FLAG_VALUE_MISSING'],
 ];
 
 for (const [label, argv, message] of parserRejections) {
@@ -380,6 +577,7 @@ function spawnCli(args, env = {}) {
   delete cleanEnv[TRANSPORT.ROLE_MAPPING_ENV_KEY];
   delete cleanEnv[OP.ENV_ALLOW_EXECUTE];
   delete cleanEnv[OP.ENV_EXECUTION_HEAD];
+  delete cleanEnv[OP.ENV_EXECUTION_AUTHORITY];
   Object.assign(cleanEnv, env);
   return spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'canonical-ledger-bootstrap-operator.cjs'), ...args], {
     encoding: 'utf8',
@@ -404,11 +602,16 @@ test('CLI: dry run exits 0 with READINESS_PASSED and zero execution', () => {
   assert.equal(parsed.decision, OP.DECISIONS.READINESS_PASSED);
   assert.equal(parsed.executionAttempted, false);
   assert.equal(parsed.oneAttemptBudgetConsumed, false);
+  assert.equal(parsed.retryPermitted, true);
   assert.equal(parsed.binding.issue, 3846);
+  // Provenance metadata only — the SOURCE/TEST comment is not presented as the
+  // Production mutation authority.
+  assert.equal(parsed.binding.sourceTestImplementationComment, SOURCE_TEST_COMMENT);
+  assert.equal(parsed.binding.liveExecutionAuthority, 'SUPPLIED_SEPARATELY_AT_EXECUTION_TIME');
 });
 
 test('CLI: --execute without the allow-execute env fails closed', () => {
-  const r = spawnCli(['--execute', '--execution-head', ACTUAL_HEAD]);
+  const r = spawnCli(['--execute', '--execution-head', ACTUAL_HEAD, '--execution-authority', LIVE_AUTHORITY]);
   assert.equal(r.status, 2);
   const parsed = JSON.parse(r.stderr);
   assert.equal(parsed.mode, 'EXECUTE_REQUESTED');
@@ -417,8 +620,33 @@ test('CLI: --execute without the allow-execute env fails closed', () => {
   assert.equal(parsed.executionAttempted, false);
 });
 
+test('CLI: --execute without a live execution authority fails closed before credential contact', () => {
+  const r = spawnCli(['--execute', '--execution-head', ACTUAL_HEAD], { [OP.ENV_ALLOW_EXECUTE]: '1' });
+  assert.equal(r.status, 2);
+  const parsed = JSON.parse(r.stderr);
+  assert.equal(parsed.mode, 'EXECUTE_REQUESTED');
+  assert.equal(parsed.reason, OP.STOP_REASONS.STOP_EXECUTION_AUTHORITY_MISSING);
+  assert.equal(parsed.executionAttempted, false);
+  assert.equal(parsed.oneAttemptBudgetConsumed, false);
+  assert.equal(parsed.retryPermitted, true);
+});
+
+test('CLI: the SOURCE/TEST implementation comment as --execution-authority fails closed', () => {
+  const r = spawnCli(
+    ['--execute', '--execution-head', ACTUAL_HEAD, '--execution-authority', String(SOURCE_TEST_COMMENT)],
+    { [OP.ENV_ALLOW_EXECUTE]: '1' }
+  );
+  assert.equal(r.status, 2);
+  const parsed = JSON.parse(r.stderr);
+  assert.equal(parsed.reason, OP.STOP_REASONS.STOP_EXECUTION_AUTHORITY_SOURCE_TEST_ONLY);
+  assert.equal(parsed.executionAttempted, false);
+  assert.equal(parsed.oneAttemptBudgetConsumed, false);
+});
+
 test('CLI: exact-head mismatch prevents transport use', () => {
-  const r = spawnCli(['--execute', '--execution-head', 'f'.repeat(40)], { [OP.ENV_ALLOW_EXECUTE]: '1' });
+  const r = spawnCli(['--execute', '--execution-head', 'f'.repeat(40), '--execution-authority', LIVE_AUTHORITY], {
+    [OP.ENV_ALLOW_EXECUTE]: '1',
+  });
   assert.equal(r.status, 2);
   const parsed = JSON.parse(r.stderr);
   assert.equal(parsed.reason, OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH);
@@ -426,16 +654,32 @@ test('CLI: exact-head mismatch prevents transport use', () => {
   assert.equal(parsed.oneAttemptBudgetConsumed, false);
 });
 
-test('CLI: valid head with no credential fails closed before any connect', () => {
-  const r = spawnCli(['--execute', '--execution-head', ACTUAL_HEAD], { [OP.ENV_ALLOW_EXECUTE]: '1' });
+test('CLI: valid authority and head with no credential fails closed before any connect', () => {
+  const r = spawnCli(['--execute', '--execution-head', ACTUAL_HEAD, '--execution-authority', LIVE_AUTHORITY], {
+    [OP.ENV_ALLOW_EXECUTE]: '1',
+  });
   assert.equal(r.status, 2);
   const parsed = JSON.parse(r.stdout || r.stderr);
   assert.equal(parsed.mode, 'EXECUTE');
   assert.equal(parsed.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
   assert.ok(parsed.stops.includes(OP.STOP_REASONS.STOP_ADVISORY_LOCK_UNAVAILABLE));
-  assert.equal(parsed.reason, 'ADVISORY_LOCK_QUERY_FAILED');
+  assert.equal(parsed.reason, 'PRECONNECT_CREDENTIAL_UNAVAILABLE');
+  assert.equal(parsed.preconnectFailure, true);
   assert.equal(parsed.executionAttempted, false);
   assert.equal(parsed.oneAttemptBudgetConsumed, false);
+  assert.equal(parsed.retryPermitted, true);
+});
+
+test('CLI: execution authority also resolves from the dedicated env key', () => {
+  const r = spawnCli(['--execute', '--execution-head', 'f'.repeat(40)], {
+    [OP.ENV_ALLOW_EXECUTE]: '1',
+    [OP.ENV_EXECUTION_AUTHORITY]: LIVE_AUTHORITY,
+  });
+  assert.equal(r.status, 2);
+  const parsed = JSON.parse(r.stderr);
+  // The authority was accepted (env-resolved); the stop is the head mismatch,
+  // not a missing authority.
+  assert.equal(parsed.reason, OP.STOP_REASONS.STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH);
 });
 
 test('CLI source never embeds credential material or DSN-shaped literals', () => {

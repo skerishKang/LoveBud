@@ -242,10 +242,17 @@ function expectCode(error, code) {
   assert.equal(error && error.category, code);
 }
 
+// A live CENTRAL Production execution authorization reference. Deliberately NOT
+// the SOURCE/TEST implementation comment (5644253160), which is provenance only.
+const LIVE_EXECUTION_AUTHORITY = '5644581826';
+const SOURCE_TEST_COMMENT = 5644253160;
+const DEPLOYED_COMMIT = 'd'.repeat(40);
+
 function validLedgerPayload(overrides = {}) {
   return {
     issue: BOOT.issue,
-    activeAuthorizationComment: BOOT.activeAuthorizationComment,
+    executionAuthorityReference: LIVE_EXECUTION_AUTHORITY,
+    executionHead: DEPLOYED_COMMIT,
     migrationId: BOOT.migrationId,
     migrationSha256: BOOT.migrationSha256,
     targetIdentity: { ...TRANSPORT.CANONICAL_TARGET_IDENTITY },
@@ -282,10 +289,18 @@ test('module exposes exactly the bounded six-method transport surface plus inert
   }
 });
 
-test('BOOTSTRAP binding is frozen and matches the committed repository provenance', () => {
+test('BOOTSTRAP binding is frozen, carries provenance only, and matches the committed repository provenance', () => {
   assert.ok(Object.isFrozen(BOOT));
   assert.equal(BOOT.issue, 3846);
-  assert.equal(BOOT.activeAuthorizationComment, 5644253160);
+  // The SOURCE/TEST implementation comment is retained as inert PROVENANCE
+  // metadata only. BOOTSTRAP exposes no mutation-authority comment field.
+  assert.equal(BOOT.sourceTestImplementationComment, TRANSPORT.SOURCE_TEST_IMPLEMENTATION_COMMENT);
+  assert.equal(BOOT.sourceTestImplementationComment, 5644253160);
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(BOOT, 'activeAuthorizationComment'),
+    false,
+    'BOOTSTRAP must not expose a Production mutation-authority comment field'
+  );
   assert.equal(BOOT.migrationId, '20260802094500_bootstrap-migration-ledger');
   assert.equal(BOOT.migrationPath, 'db/migrations/20260802094500_bootstrap-migration-ledger.sql');
   assert.equal(BOOT.migrationSha256, 'c04d6e8cf074514e1835cd837f6ae72ccd96b775a507a12d2b394733977918cc');
@@ -592,7 +607,6 @@ test('writeLedger rejects any payload that deviates from the frozen binding', as
   const badPayloads = [
     { extra: 1 },
     validLedgerPayload({ issue: 9999 }),
-    validLedgerPayload({ activeAuthorizationComment: 5641029190 }),
     validLedgerPayload({ migrationId: 'other-migration' }),
     validLedgerPayload({ migrationSha256: 'f'.repeat(64) }),
     validLedgerPayload({ relation: 'public.other_relation' }),
@@ -651,6 +665,75 @@ test('writeLedger reports recorded=false when the append echo is empty', async (
     return { ok: false };
   });
   assert.equal(out.recorded, false);
+});
+
+// ----- 8b. Live Production execution authority separation -----
+
+test('the SOURCE/TEST implementation comment can never be a live execution authority reference', () => {
+  assert.equal(TRANSPORT.isValidExecutionAuthorityReference(SOURCE_TEST_COMMENT), false);
+  assert.equal(TRANSPORT.isValidExecutionAuthorityReference(String(SOURCE_TEST_COMMENT)), false);
+  assert.equal(TRANSPORT.isValidExecutionAuthorityReference(`comment:${SOURCE_TEST_COMMENT}`), false);
+  assert.equal(TRANSPORT.isValidExecutionAuthorityReference(LIVE_EXECUTION_AUTHORITY), true);
+  assert.equal(TRANSPORT.isValidExecutionAuthorityReference(`comment:${LIVE_EXECUTION_AUTHORITY}`), true);
+  assert.equal(
+    TRANSPORT.normalizeExecutionAuthorityReference(`comment:${LIVE_EXECUTION_AUTHORITY}`),
+    LIVE_EXECUTION_AUTHORITY
+  );
+  for (const bad of ['', null, undefined, 'not-a-comment', 'abc', '12345', 0, -1, {}]) {
+    assert.equal(TRANSPORT.isValidExecutionAuthorityReference(bad), false, `must reject ${String(bad)}`);
+  }
+});
+
+test('writeLedger refuses the SOURCE/TEST comment and any non-live authority reference', async () => {
+  const setup = await openTransport();
+  const badAuthorities = [
+    String(SOURCE_TEST_COMMENT), // SOURCE/TEST provenance is never live authority
+    SOURCE_TEST_COMMENT,
+    `comment:${SOURCE_TEST_COMMENT}`,
+    '',
+    null,
+    undefined,
+    'not-a-comment',
+    'abc',
+    42,
+  ];
+  await setup.transport.withTransaction(async () => {
+    for (const value of badAuthorities) {
+      await assert.rejects(
+        () => setup.transport.writeLedger(validLedgerPayload({ executionAuthorityReference: value })),
+        (err) => { expectCode(err, F.EXECUTION_AUTHORITY_INVALID); return true; }
+      );
+    }
+    return { ok: false };
+  });
+  // No ledger SQL may be sent for any rejected authority reference.
+  assert.equal(setup.state.sql.includes(LEDGER.POSTGRES_MIGRATION_LEDGER_QUERIES.append.text), false);
+});
+
+test('writeLedger requires the attestation to be bound to the exact authorized execution head', async () => {
+  const setup = await openTransport();
+  const badHeads = ['f'.repeat(40), '', null, undefined, 'nope', 12345];
+  await setup.transport.withTransaction(async () => {
+    for (const value of badHeads) {
+      await assert.rejects(
+        () => setup.transport.writeLedger(validLedgerPayload({ executionHead: value })),
+        (err) => { expectCode(err, F.EXECUTION_HEAD_UNBOUND); return true; }
+      );
+    }
+    return { ok: false };
+  });
+  assert.equal(setup.state.sql.includes(LEDGER.POSTGRES_MIGRATION_LEDGER_QUERIES.append.text), false);
+});
+
+test('a released transport instance cannot begin a second DB-capable attempt', async () => {
+  const setup = await openTransport();
+  await setup.transport.releaseAdvisoryLock(setup.handle);
+  assert.equal(setup.state.connectAttempts, 1);
+  await assert.rejects(
+    () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
+    (err) => { expectCode(err, F.CONNECT_UNAVAILABLE); return true; }
+  );
+  assert.equal(setup.state.connectAttempts, 1, 'no second connect attempt may ever begin');
 });
 
 // ----- 9. Fixed SQL allowlist -----
