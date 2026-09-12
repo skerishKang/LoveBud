@@ -46,6 +46,21 @@
  *      reference is absent, malformed, equal to the SOURCE/TEST comment, or not
  *      bound to the exact authorized execution head.
  *
+ * CONNECTED-TARGET IDENTITY GATE (target-binding guard). A syntactically valid
+ * DSN is not proof of the right target, so before ANY advisory lock, BEGIN, or
+ * DDL the transport proves the target it is ACTUALLY connected to:
+ *   A. the parsed DSN host must be the canonical Neon endpoint identity
+ *      (ep-little-poetry-a1vjyiim) on the Neon-managed domain. An arbitrary
+ *      *.neon.tech host is rejected, and this is checkable from the DSN, so a
+ *      wrong endpoint fails PRECONNECT with no connection opened at all.
+ *   B. one bounded probe must report the canonical database (neondb).
+ *   C. the connected role must resolve through the already-approved private
+ *      role mapping to OWNER_CLASS. The raw owner role name is never hardcoded.
+ * A wrong connected database or role class means DB-capable execution has
+ * already begun: it fails closed as CONNECTED_TARGET_IDENTITY_MISMATCH and the
+ * CENTRAL authority stays consumed. Raw host/database/role values are never
+ * returned, thrown, or logged — only bounded booleans and the class label.
+ *
  * SOURCE/TEST ONLY: this file performs NO Production contact. Live execution
  * is a separately authorized, separately credentialed operator action.
  *
@@ -87,6 +102,25 @@ const CANONICAL_TARGET_IDENTITY = Object.freeze({
   database: 'neondb',
 });
 
+// Canonical Neon provider endpoint identity. The ledger bootstrap may run only
+// against THIS endpoint on the Neon-managed domain. The endpoint id is the
+// security-relevant binding; the regional labels are intentionally not pinned
+// to one literal because CENTRAL fixed the endpoint identity, not a region.
+const CANONICAL_NEON_ENDPOINT_IDENTITY = 'ep-little-poetry-a1vjyiim';
+const NEON_MANAGED_DOMAIN_SUFFIX = '.neon.tech';
+const NEON_ENDPOINT_POOLER_SUFFIX = '-pooler';
+const NEON_ENDPOINT_LABEL_RE = /^ep-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+// The connected role must resolve to this grantee class through the approved
+// private role mapping. The raw Production owner role name is NEVER hardcoded,
+// returned, or logged.
+const EXPECTED_CONNECTED_ROLE_CLASS = 'OWNER_CLASS';
+
+// The single bounded connected-identity probe: fixed SQL text, no
+// interpolation, no parameters, no values.
+const CONNECTED_IDENTITY_QUERY =
+  'SELECT current_database() AS database_name, current_user AS role_name';
+
 // SOURCE/TEST implementation provenance ONLY. CENTRAL comment 5644253160
 // authorized building this repository-owned vehicle under issue #3846; it did
 // NOT authorize a Production mutation, and it MUST NEVER be accepted as the
@@ -117,6 +151,34 @@ function isValidExecutionAuthorityReference(value) {
   // The SOURCE/TEST implementation provenance can never be live authority.
   if (normalized === String(SOURCE_TEST_IMPLEMENTATION_COMMENT)) return false;
   return true;
+}
+
+// Classify a DSN host as a Neon endpoint host and extract its endpoint id.
+// Returns null when the host is not on the Neon-managed domain at all. The
+// pooler suffix is normalized away so pooled and direct hosts bind to the same
+// endpoint identity.
+function classifyNeonEndpointHost(host) {
+  if (typeof host !== 'string') return null;
+  const normalized = host.trim().toLowerCase().replace(/\.+$/, '');
+  if (normalized.length === 0) return null;
+  if (!normalized.endsWith(NEON_MANAGED_DOMAIN_SUFFIX)) return null;
+  const labels = normalized.split('.');
+  // <endpoint>.<region label...>.neon.tech — a bare "neon.tech" is not an
+  // endpoint host and is rejected.
+  if (labels.length < 3) return null;
+  const first = labels[0];
+  if (!first) return null;
+  const endpointId = first.endsWith(NEON_ENDPOINT_POOLER_SUFFIX)
+    ? first.slice(0, -NEON_ENDPOINT_POOLER_SUFFIX.length)
+    : first;
+  if (!NEON_ENDPOINT_LABEL_RE.test(endpointId)) return null;
+  return Object.freeze({ endpointId });
+}
+
+// True only for the canonical endpoint identity on the Neon-managed domain.
+function isCanonicalNeonEndpointHost(host) {
+  const classified = classifyNeonEndpointHost(host);
+  return !!classified && classified.endpointId === CANONICAL_NEON_ENDPOINT_IDENTITY;
 }
 
 // The single frozen bootstrap PROVENANCE binding (category A above). These
@@ -164,6 +226,10 @@ const TRANSPORT_FAILURE = Object.freeze({
   DEPLOYED_COMMIT_UNAVAILABLE: 'LEDGER_BOOTSTRAP_DEPLOYED_COMMIT_UNAVAILABLE',
   EXECUTION_AUTHORITY_INVALID: 'LEDGER_BOOTSTRAP_EXECUTION_AUTHORITY_INVALID',
   EXECUTION_HEAD_UNBOUND: 'LEDGER_BOOTSTRAP_EXECUTION_HEAD_UNBOUND',
+  ENDPOINT_IDENTITY_MISMATCH: 'LEDGER_BOOTSTRAP_ENDPOINT_IDENTITY_MISMATCH',
+  CONNECTED_TARGET_IDENTITY_MISMATCH: 'LEDGER_BOOTSTRAP_CONNECTED_TARGET_IDENTITY_MISMATCH',
+  CONNECTED_TARGET_IDENTITY_UNAVAILABLE: 'LEDGER_BOOTSTRAP_CONNECTED_TARGET_IDENTITY_UNAVAILABLE',
+  IDENTITY_NOT_VERIFIED: 'LEDGER_BOOTSTRAP_IDENTITY_NOT_VERIFIED',
 });
 
 const HEX16_RE = /^[0-9a-f]{16}$/;
@@ -252,6 +318,7 @@ function createLedgerBootstrapTransport(options) {
     handle: null,
     connectAttempted: false,
     txOpen: false,
+    identityVerified: false,
     roleMapping: isStrictObject(opts.roleMapping) ? opts.roleMapping : null,
     roleMap: null,
     contract: null,
@@ -269,11 +336,19 @@ function createLedgerBootstrapTransport(options) {
     if (typeof raw !== 'string' || raw.trim().length === 0) {
       throw failFixed(TRANSPORT_FAILURE.SECRET_UNAVAILABLE);
     }
+    let pgConfig;
     try {
-      return BOUNDARY.parseProductionReadonlyDatabaseUrl(raw);
+      pgConfig = BOUNDARY.parseProductionReadonlyDatabaseUrl(raw);
     } catch {
       throw failFixed(TRANSPORT_FAILURE.SECRET_MALFORMED);
     }
+    // Target-binding guard, provably PRE-CONNECT: a well-formed DSN aimed at a
+    // different Neon endpoint must never open a connection at all. This runs
+    // before createClient(), so the connection count stays zero.
+    if (!isCanonicalNeonEndpointHost(pgConfig.host)) {
+      throw failFixed(TRANSPORT_FAILURE.ENDPOINT_IDENTITY_MISMATCH);
+    }
+    return pgConfig;
   }
 
   async function ensureConnection() {
@@ -309,6 +384,9 @@ function createLedgerBootstrapTransport(options) {
     state.client = null;
     state.handle = null;
     state.txOpen = false;
+    // The verified identity belongs to the connection: losing the connection
+    // invalidates it, so a later lock/transaction cannot rely on a stale pass.
+    state.identityVerified = false;
     if (client) {
       try {
         await client.end();
@@ -337,6 +415,67 @@ function createLedgerBootstrapTransport(options) {
     return state.roleMap;
   }
 
+  /**
+   * Connected-target identity gate. Opens the ONE permitted connection (if not
+   * already open) and proves the ACTUALLY CONNECTED target before any advisory
+   * lock, BEGIN, migration SQL, or ledger write.
+   *
+   *   A. pre-connect: the DSN host is already bound to the canonical Neon
+   *      endpoint by resolvePgConfig() — a wrong endpoint throws there and
+   *      never reaches this method with a connection.
+   *   B. post-connect: current_database() must be the canonical database.
+   *   C. post-connect: current_user must resolve through the approved private
+   *      role mapping to OWNER_CLASS.
+   *
+   * Returns bounded facts only (booleans + the class label). Raw host,
+   * database, and role values are never returned, thrown, or logged.
+   */
+  async function verifyConnectedTargetIdentity() {
+    // The approved private role mapping is a PRECONNECT input. Resolve it
+    // BEFORE the connection opens, so a missing/invalid mapping fails closed
+    // without ever costing the CENTRAL authority (ROLE_MAPPING_UNAVAILABLE is
+    // a preconnect category in the operator).
+    const roleMap = roleMappingForVerify();
+    const client = await ensureConnection();
+    let res;
+    try {
+      res = await client.query(CONNECTED_IDENTITY_QUERY);
+    } catch {
+      await closeConnection();
+      throw failFixed(TRANSPORT_FAILURE.CONNECTED_TARGET_IDENTITY_UNAVAILABLE);
+    }
+    const row = res && Array.isArray(res.rows) && res.rows.length === 1 ? res.rows[0] : null;
+    if (
+      !row ||
+      typeof row.database_name !== 'string' ||
+      typeof row.role_name !== 'string' ||
+      row.database_name.length === 0 ||
+      row.role_name.length === 0
+    ) {
+      // Malformed identity result: fail closed, never echo the payload.
+      await closeConnection();
+      throw failFixed(TRANSPORT_FAILURE.CONNECTED_TARGET_IDENTITY_UNAVAILABLE);
+    }
+    const databaseVerified = row.database_name === CANONICAL_TARGET_IDENTITY.database;
+    const mapped = roleMap.get(row.role_name.toLowerCase());
+    const roleClass = typeof mapped === 'string' ? mapped : null;
+    const roleClassVerified = roleClass === EXPECTED_CONNECTED_ROLE_CLASS;
+    if (!databaseVerified || !roleClassVerified) {
+      // DB-capable execution already began: fail closed, connection released,
+      // no lock, no BEGIN, no DDL. Caller keeps the authority consumed.
+      await closeConnection();
+      throw failFixed(TRANSPORT_FAILURE.CONNECTED_TARGET_IDENTITY_MISMATCH);
+    }
+    // Bounded facts only: booleans and the class label. Never the raw values.
+    state.identityVerified = true;
+    return Object.freeze({
+      ok: true,
+      databaseVerified: true,
+      roleClassVerified: true,
+      roleClass: EXPECTED_CONNECTED_ROLE_CLASS,
+    });
+  }
+
   function contractForVerify() {
     if (!state.contract) {
       state.contract = adapter().loadContract(repoRoot);
@@ -349,6 +488,13 @@ function createLedgerBootstrapTransport(options) {
   async function acquireAdvisoryLock(lockKey) {
     if (typeof lockKey !== 'string' || !HEX16_RE.test(lockKey)) {
       throw failFixed(TRANSPORT_FAILURE.LOCK_KEY_INVALID);
+    }
+    // Structural ordering guard: the connected target identity must already be
+    // proven on this connection. The advisory lock — and therefore every
+    // transaction, migration apply, and ledger write behind it — is unreachable
+    // until the identity gate has passed.
+    if (!state.identityVerified) {
+      throw failFixed(TRANSPORT_FAILURE.IDENTITY_NOT_VERIFIED);
     }
     const client = await ensureConnection();
     const [a, b] = lockKeyHalves(lockKey);
@@ -670,6 +816,7 @@ function createLedgerBootstrapTransport(options) {
     applyMigration,
     verifyCatalog,
     writeLedger,
+    verifyConnectedTargetIdentity,
   });
 }
 
@@ -692,4 +839,10 @@ module.exports = Object.freeze({
   ROLE_MAPPING_ENV_KEY,
   RUNNER_VERSION,
   resolveTrustedLocalRepoHead,
+  CANONICAL_NEON_ENDPOINT_IDENTITY,
+  NEON_MANAGED_DOMAIN_SUFFIX,
+  EXPECTED_CONNECTED_ROLE_CLASS,
+  CONNECTED_IDENTITY_QUERY,
+  classifyNeonEndpointHost,
+  isCanonicalNeonEndpointHost,
 });
