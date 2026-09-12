@@ -14,7 +14,7 @@
  *       --execute --execution-authority <central-comment> --execution-head <40hex>
  *     # the ONLY transport that can ever be loaded is the fixed repository-owned
  *     # module scripts/canonical-ledger-bootstrap-postgres.cjs, consumed through
- *     # a bounded six-method view. Any arbitrary module path input is rejected.
+ *     # a bounded seven-method view. Any arbitrary module path input is rejected.
  *
  * Authority separation:
  *   - The frozen packet carries IMMUTABLE BOOTSTRAP PROVENANCE only: issue:3846,
@@ -34,6 +34,12 @@
  *   - the live execution authority gate AND the exact-head gate must both pass
  *     BEFORE any transport method call
  *   - the transport is fixed by repository path, never by caller input
+ *   - connected-target identity is proven AFTER the one connection opens and
+ *     BEFORE the advisory lock, BEGIN, migration SQL, or ledger write. A wrong
+ *     Neon endpoint fails preconnect (unconsumed); a wrong connected database,
+ *     a role class other than OWNER_CLASS, a failed probe, or a malformed
+ *     identity result is a post-connect stop: consumed, no retry, and zero
+ *     lock/BEGIN/apply/ledger calls.
  *   - the CENTRAL exactly-one DB-capable authority is consumed when governed
  *     DB-capable execution begins (connection / advisory-lock / transaction
  *     path), NOT when COMMIT succeeds. Every outcome after that point stays
@@ -41,8 +47,8 @@
  *     catalog mismatch, ledger mismatch, connection failure after connect,
  *     transaction failure, and commit ambiguity are NOT reusable.
  *   - preconnect failures (readiness, transport validation, missing/invalid
- *     execution authority, head mismatch, missing/malformed credential) leave
- *     the authority unconsumed
+ *     execution authority, head mismatch, missing/malformed credential, and a
+ *     DSN bound to the wrong Neon endpoint) leave the authority unconsumed
  *   - any error / connection loss is treated as ambiguous outcome: stop, no retry
  *   - this script never logs or prints secret/credential material
  *   - SOURCE/TEST ONLY: running this file in CI performs NO Production contact
@@ -73,13 +79,16 @@ const ENV_EXECUTION_AUTHORITY = 'LOVEBUD_LEDGER_BOOTSTRAP_EXECUTION_AUTHORITY';
 const FIXED_TRANSPORT_PATH = path.join(__dirname, 'canonical-ledger-bootstrap-postgres.cjs');
 
 // Failure categories the repository transport raises provably BEFORE any
-// DB-capable contact (credential resolution and lock-key shape validation).
-// Only these leave the CENTRAL authority unconsumed: every other failure out of
-// the advisory-lock call is treated as DB-capable execution having begun.
+// DB-capable contact: credential resolution, DSN endpoint-identity binding, and
+// lock-key shape validation. Only these leave the CENTRAL authority unconsumed.
+// Every other failure out of the connected-identity or advisory-lock calls is
+// treated as DB-capable execution having begun.
 const PRECONNECT_FAILURE_CATEGORIES = new Set([
   TRANSPORT.TRANSPORT_FAILURE.SECRET_UNAVAILABLE,
   TRANSPORT.TRANSPORT_FAILURE.SECRET_MALFORMED,
   TRANSPORT.TRANSPORT_FAILURE.LOCK_KEY_INVALID,
+  TRANSPORT.TRANSPORT_FAILURE.ENDPOINT_IDENTITY_MISMATCH,
+  TRANSPORT.TRANSPORT_FAILURE.ROLE_MAPPING_UNAVAILABLE,
 ]);
 
 const DECISIONS = Object.freeze({
@@ -117,6 +126,8 @@ const STOP_REASONS = Object.freeze({
   STOP_SECRET_OUTPUT_FORBIDDEN: 'STOP_SECRET_OUTPUT_FORBIDDEN',
   STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH: 'STOP_EXECUTION_HEAD_AUTHORITY_MISMATCH',
   STOP_EXECUTION_UNAUTHORIZED: 'STOP_EXECUTION_UNAUTHORIZED',
+  STOP_PRECONNECT_ENDPOINT_IDENTITY: 'STOP_PRECONNECT_ENDPOINT_IDENTITY',
+  STOP_CONNECTED_TARGET_IDENTITY_MISMATCH: 'STOP_CONNECTED_TARGET_IDENTITY_MISMATCH',
 });
 
 const FORBIDDEN_TRANSPORT_METHODS = Object.freeze([
@@ -131,6 +142,7 @@ const FORBIDDEN_TRANSPORT_METHODS = Object.freeze([
 ]);
 
 const REQUIRED_TRANSPORT_METHODS = Object.freeze([
+  'verifyConnectedTargetIdentity',
   'acquireAdvisoryLock',
   'releaseAdvisoryLock',
   'withTransaction',
@@ -578,6 +590,71 @@ async function executeGovernedBootstrap(opts) {
   // Everything above is pure/local. From here on the transport may open a
   // connection, so any non-preconnect failure below is DB-capable and keeps
   // the CENTRAL authority consumed.
+
+  // Connected-target identity gate. Opens the ONE permitted connection and
+  // proves the ACTUALLY CONNECTED database and role class BEFORE any advisory
+  // lock, BEGIN, migration SQL, or ledger write.
+  //   - a wrong Neon endpoint is detectable from the DSN alone and fails
+  //     PRECONNECT with zero connections (authority UNCONSUMED);
+  //   - a wrong connected database, a role class that is not OWNER_CLASS, a
+  //     failed probe, or a malformed identity result means DB-capable
+  //     execution has already begun: CONSUMED, retryPermitted = false.
+  let identity;
+  try {
+    identity = await transport.verifyConnectedTargetIdentity();
+  } catch (err) {
+    const category = err && err.category;
+    if (PRECONNECT_FAILURE_CATEGORIES.has(category)) {
+      // A preconnect input problem (credential, role mapping, DSN endpoint
+      // binding): nothing DB-capable has happened, so the CENTRAL authority
+      // stays UNCONSUMED and the attempt remains permitted.
+      const endpointMismatch = category === TRANSPORT.TRANSPORT_FAILURE.ENDPOINT_IDENTITY_MISMATCH;
+      return governedResult({
+        decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+        stops: [
+          endpointMismatch
+            ? STOP_REASONS.STOP_PRECONNECT_ENDPOINT_IDENTITY
+            : STOP_REASONS.STOP_CREDENTIAL_OPERATOR_ABSENT,
+        ],
+        reason: endpointMismatch
+          ? 'PRECONNECT_ENDPOINT_IDENTITY_MISMATCH'
+          : 'PRECONNECT_CREDENTIAL_UNAVAILABLE',
+        preconnectFailure: true,
+        executionAuthorityReference,
+        executionAttempted: false,
+        oneAttemptBudgetConsumed: false,
+        committedAndVerified: false,
+      });
+    }
+    // The connection opened and the connected target could not be proven:
+    // DB-capable execution has begun, so the authority stays CONSUMED.
+    return governedResult({
+      decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      stops: [STOP_REASONS.STOP_CONNECTED_TARGET_IDENTITY_MISMATCH],
+      reason: 'CONNECTED_TARGET_IDENTITY_MISMATCH',
+      preconnectFailure: false,
+      executionAuthorityReference,
+      executionAttempted: true,
+      oneAttemptBudgetConsumed: true,
+      committedAndVerified: false,
+    });
+  }
+  if (!identity || identity.ok !== true) {
+    // Defensive: a transport that reports non-ok without throwing is still a
+    // post-connect failure, and an undefined state may have begun DB-capable
+    // execution. Fail closed and keep the authority consumed.
+    return governedResult({
+      decision: DECISIONS.EXECUTION_DISABLED_BY_DEFAULT,
+      stops: [STOP_REASONS.STOP_CONNECTED_TARGET_IDENTITY_MISMATCH],
+      reason: 'CONNECTED_TARGET_IDENTITY_MISMATCH',
+      preconnectFailure: false,
+      executionAuthorityReference,
+      executionAttempted: true,
+      oneAttemptBudgetConsumed: true,
+      committedAndVerified: false,
+    });
+  }
+
   let lockHandle;
   try {
     lockHandle = await transport.acquireAdvisoryLock(lockKey);
@@ -839,8 +916,9 @@ async function main() {
   let transport;
   try {
     const mod = require(FIXED_TRANSPORT_PATH);
-    // Bounded view: expose EXACTLY the six governed methods and nothing else.
+    // Bounded view: expose EXACTLY the seven governed methods and nothing else.
     transport = Object.freeze({
+      verifyConnectedTargetIdentity: mod.verifyConnectedTargetIdentity,
       acquireAdvisoryLock: mod.acquireAdvisoryLock,
       releaseAdvisoryLock: mod.releaseAdvisoryLock,
       withTransaction: mod.withTransaction,
@@ -909,6 +987,8 @@ module.exports = Object.freeze({
   STOP_REASONS,
   BOOTSTRAP,
   CANONICAL_TARGET_IDENTITY,
+  CANONICAL_NEON_ENDPOINT_IDENTITY: TRANSPORT.CANONICAL_NEON_ENDPOINT_IDENTITY,
+  EXPECTED_CONNECTED_ROLE_CLASS: TRANSPORT.EXPECTED_CONNECTED_ROLE_CLASS,
   ALLOWED_FLAGS,
   ENV_ALLOW_EXECUTE,
   ENV_EXECUTION_HEAD,

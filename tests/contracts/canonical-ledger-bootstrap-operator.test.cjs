@@ -39,6 +39,7 @@ function makeFakeTransport(overrides = {}) {
     applyCommitted: true,
     catalogMatched: true,
     ledgerRecorded: true,
+    identityOk: true,
     throwOn: null,
     throwCategory: null,
     ...overrides,
@@ -62,6 +63,24 @@ function makeFakeTransport(overrides = {}) {
     },
   });
   const transport = {
+    verifyConnectedTargetIdentity: async () => {
+      calls.push(['verifyConnectedTargetIdentity']);
+      if (behavior.throwOn === 'verifyConnectedTargetIdentity') {
+        if (behavior.throwCategory) {
+          const err = new Error(behavior.throwCategory);
+          err.category = behavior.throwCategory;
+          throw err;
+        }
+        throw new Error('FAKE_IDENTITY_BOOM');
+      }
+      if (!behavior.identityOk) return { ok: false };
+      return {
+        ok: true,
+        databaseVerified: true,
+        roleClassVerified: true,
+        roleClass: TRANSPORT.EXPECTED_CONNECTED_ROLE_CLASS,
+      };
+    },
     acquireAdvisoryLock: async (key) => {
       calls.push(['acquireAdvisoryLock', key]);
       if (behavior.throwOn === 'acquireAdvisoryLock') {
@@ -380,6 +399,7 @@ test('happy path commits+verifies and consumes the CENTRAL authority', async () 
   assert.equal(r.executionAuthorityReference, LIVE_AUTHORITY);
   const names = fake.calls.map((c) => c[0]);
   assert.deepEqual(names, [
+    'verifyConnectedTargetIdentity',
     'acquireAdvisoryLock',
     'withTransaction',
     'catalogTableKind',
@@ -388,7 +408,7 @@ test('happy path commits+verifies and consumes the CENTRAL authority', async () 
     'writeLedger',
     'releaseAdvisoryLock',
   ]);
-  assert.equal(fake.calls[0][1].length, 16);
+  assert.equal(fake.calls[1][1].length, 16);
 });
 
 test('target already present after a DB-capable start stays consumed', async () => {
@@ -527,6 +547,124 @@ test('writeLedger payload binds the live authority reference and the exact execu
   );
 });
 
+// ----- 7b. Connected-target identity gate -----
+
+test('transport validation fails closed when the identity gate method is missing', () => {
+  const fake = makeFakeTransport();
+  const partial = { ...fake.transport };
+  delete partial.verifyConnectedTargetIdentity;
+  const check = OP.validateLedgerBootstrapTransport(partial);
+  assert.equal(check.ok, false);
+  assert.equal(check.reason, OP.STOP_REASONS.STOP_CREDENTIAL_OPERATOR_ABSENT);
+});
+
+test('the identity gate always precedes the advisory lock', async () => {
+  const fake = makeFakeTransport();
+  await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  const names = fake.calls.map((c) => c[0]);
+  assert.ok(names.includes('verifyConnectedTargetIdentity'));
+  assert.ok(names.includes('acquireAdvisoryLock'));
+  assert.ok(
+    names.indexOf('verifyConnectedTargetIdentity') < names.indexOf('acquireAdvisoryLock'),
+    'identity must be verified before the advisory lock'
+  );
+});
+
+test('a connected-target mismatch after connect consumes the authority and forbids retry', async () => {
+  const fake = makeFakeTransport({
+    throwOn: 'verifyConnectedTargetIdentity',
+    throwCategory: TRANSPORT.TRANSPORT_FAILURE.CONNECTED_TARGET_IDENTITY_MISMATCH,
+  });
+  const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_CONNECTED_TARGET_IDENTITY_MISMATCH));
+  assert.equal(r.reason, 'CONNECTED_TARGET_IDENTITY_MISMATCH');
+  assert.equal(r.preconnectFailure, false);
+  assert.equal(r.executionAttempted, true);
+  assert.equal(r.dbCapableExecutionStarted, true);
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.retryPermitted, false);
+  assert.equal(r.committedAndVerified, false);
+});
+
+test('a connected-target mismatch performs zero lock/BEGIN/apply/ledger calls', async () => {
+  const fake = makeFakeTransport({
+    throwOn: 'verifyConnectedTargetIdentity',
+    throwCategory: TRANSPORT.TRANSPORT_FAILURE.CONNECTED_TARGET_IDENTITY_MISMATCH,
+  });
+  await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  const names = fake.calls.map((c) => c[0]);
+  assert.deepEqual(names, ['verifyConnectedTargetIdentity']);
+  for (const forbidden of [
+    'acquireAdvisoryLock',
+    'releaseAdvisoryLock',
+    'withTransaction',
+    'catalogTableKind',
+    'applyMigration',
+    'verifyCatalog',
+    'writeLedger',
+  ]) {
+    assert.equal(names.includes(forbidden), false, `${forbidden} must not be called`);
+  }
+});
+
+test('an identity probe that throws unexpectedly is DB-capable and consumes', async () => {
+  const fake = makeFakeTransport({ throwOn: 'verifyConnectedTargetIdentity' });
+  const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.retryPermitted, false);
+  assert.equal(r.dbCapableExecutionStarted, true);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_CONNECTED_TARGET_IDENTITY_MISMATCH));
+});
+
+test('a non-ok identity envelope is fail-closed and consumes', async () => {
+  const fake = makeFakeTransport({ identityOk: false });
+  const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  assert.equal(r.oneAttemptBudgetConsumed, true);
+  assert.equal(r.retryPermitted, false);
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_CONNECTED_TARGET_IDENTITY_MISMATCH));
+});
+
+test('a wrong Neon endpoint is a PRECONNECT stop that leaves the authority unconsumed', async () => {
+  const fake = makeFakeTransport({
+    throwOn: 'verifyConnectedTargetIdentity',
+    throwCategory: TRANSPORT.TRANSPORT_FAILURE.ENDPOINT_IDENTITY_MISMATCH,
+  });
+  const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  assert.ok(r.stops.includes(OP.STOP_REASONS.STOP_PRECONNECT_ENDPOINT_IDENTITY));
+  assert.equal(r.reason, 'PRECONNECT_ENDPOINT_IDENTITY_MISMATCH');
+  assert.equal(r.preconnectFailure, true);
+  assert.equal(r.executionAttempted, false);
+  assert.equal(r.dbCapableExecutionStarted, false);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+  assert.equal(r.retryPermitted, true);
+});
+
+test('an unavailable role mapping is a PRECONNECT stop that leaves the authority unconsumed', async () => {
+  const fake = makeFakeTransport({
+    throwOn: 'verifyConnectedTargetIdentity',
+    throwCategory: TRANSPORT.TRANSPORT_FAILURE.ROLE_MAPPING_UNAVAILABLE,
+  });
+  const r = await OP.executeGovernedBootstrap(executeArgs({ transport: fake.transport }));
+  assert.equal(r.preconnectFailure, true);
+  assert.equal(r.oneAttemptBudgetConsumed, false);
+  assert.equal(r.retryPermitted, true);
+});
+
+test('the preconnect category set binds the endpoint and role-mapping categories', () => {
+  assert.ok(OP.PRECONNECT_FAILURE_CATEGORIES.has(TRANSPORT.TRANSPORT_FAILURE.ENDPOINT_IDENTITY_MISMATCH));
+  assert.ok(OP.PRECONNECT_FAILURE_CATEGORIES.has(TRANSPORT.TRANSPORT_FAILURE.ROLE_MAPPING_UNAVAILABLE));
+  // Post-connect identity failures must NOT be preconnect: they consume.
+  assert.equal(
+    OP.PRECONNECT_FAILURE_CATEGORIES.has(TRANSPORT.TRANSPORT_FAILURE.CONNECTED_TARGET_IDENTITY_MISMATCH),
+    false
+  );
+  assert.equal(
+    OP.PRECONNECT_FAILURE_CATEGORIES.has(TRANSPORT.TRANSPORT_FAILURE.CONNECTED_TARGET_IDENTITY_UNAVAILABLE),
+    false
+  );
+  assert.equal(OP.PRECONNECT_FAILURE_CATEGORIES.has(TRANSPORT.TRANSPORT_FAILURE.IDENTITY_NOT_VERIFIED), false);
+});
+
 // ----- 8. CLI argument strictness (pure parser) -----
 
 test('CLI parser: default mode is dry run', () => {
@@ -662,7 +800,9 @@ test('CLI: valid authority and head with no credential fails closed before any c
   const parsed = JSON.parse(r.stdout || r.stderr);
   assert.equal(parsed.mode, 'EXECUTE');
   assert.equal(parsed.decision, OP.DECISIONS.EXECUTION_DISABLED_BY_DEFAULT);
-  assert.ok(parsed.stops.includes(OP.STOP_REASONS.STOP_ADVISORY_LOCK_UNAVAILABLE));
+  // The credential now resolves at the connected-target identity gate, which is
+  // still preconnect: the failure surfaces before the advisory lock is reached.
+  assert.ok(parsed.stops.includes(OP.STOP_REASONS.STOP_CREDENTIAL_OPERATOR_ABSENT));
   assert.equal(parsed.reason, 'PRECONNECT_CREDENTIAL_UNAVAILABLE');
   assert.equal(parsed.preconnectFailure, true);
   assert.equal(parsed.executionAttempted, false);

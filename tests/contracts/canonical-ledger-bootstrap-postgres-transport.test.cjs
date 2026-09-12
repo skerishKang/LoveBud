@@ -31,7 +31,11 @@ const F = TRANSPORT.TRANSPORT_FAILURE;
 const CRED_SCHEME = 'postgresql';
 const CRED_USER = 'svc' + '_ro';
 const CRED_PASSWORD = ['Synthetic', 'P4ss', 'w0rd', '%21'].join('');
-const CRED_HOST = 'db.example' + '.invalid';
+// Canonical Neon endpoint host, assembled from labels for the same reason.
+const NEON_ENDPOINT_ID = 'ep-little-poetry-a1vjyiim';
+const NEON_REGION_LABELS = ['us-east-2', 'aws'];
+const NEON_DOMAIN = 'neon' + '.tech';
+const CRED_HOST = [NEON_ENDPOINT_ID, ...NEON_REGION_LABELS, NEON_DOMAIN].join('.');
 const CRED_PORT = '5432';
 const CRED_DATABASE = 'neon' + 'db';
 const CRED_QUERY = 'ssl' + 'mode=require';
@@ -150,6 +154,11 @@ function makeFakeClient(options = {}) {
     committed: false,
     rolledBack: false,
     lockHeld: false,
+    // Connected-identity probe surface. Defaults describe the canonical target.
+    databaseName: options.databaseName === undefined ? CRED_DATABASE : options.databaseName,
+    roleName: options.roleName === undefined ? 'postgres' : options.roleName,
+    identityRows: options.identityRows === undefined ? null : options.identityRows,
+    identityCalls: 0,
   };
   const ledgerText = LEDGER.POSTGRES_MIGRATION_LEDGER_QUERIES.append.text;
   const client = {
@@ -164,6 +173,12 @@ function makeFakeClient(options = {}) {
       state.calls.push({ text, params });
       state.sql.push(text);
       state.params.push(params);
+      if (text === TRANSPORT.CONNECTED_IDENTITY_QUERY) {
+        state.identityCalls += 1;
+        if (state.failOn === 'identity') throw new Error('FAKE_IDENTITY_DENIED');
+        if (state.identityRows !== null) return { rows: state.identityRows };
+        return { rows: [{ database_name: state.databaseName, role_name: state.roleName }] };
+      }
       if (text === 'SELECT pg_try_advisory_lock($1::integer, $2::integer) AS locked') {
         if (state.failOn === 'lock') throw new Error('FAKE_LOCK_DENIED');
         if (state.lockGranted) state.lockHeld = true;
@@ -233,6 +248,8 @@ function makeTransport(options = {}) {
 
 async function openTransport(options = {}) {
   const setup = makeTransport(options);
+  // The connected-target identity gate is a prerequisite for the advisory lock.
+  await setup.transport.verifyConnectedTargetIdentity();
   const handle = await setup.transport.acquireAdvisoryLock('0123456789abcdef');
   return { ...setup, handle };
 }
@@ -280,8 +297,8 @@ test('IMPORT_NETWORK_INERT: transport import does not load pg or catalog adapter
 
 // ----- 2. Bounded surface and frozen binding -----
 
-test('module exposes exactly the bounded six-method transport surface plus inert metadata', () => {
-  for (const m of ['acquireAdvisoryLock', 'releaseAdvisoryLock', 'withTransaction', 'applyMigration', 'verifyCatalog', 'writeLedger']) {
+test('module exposes exactly the bounded seven-method transport surface plus inert metadata', () => {
+  for (const m of ['verifyConnectedTargetIdentity', 'acquireAdvisoryLock', 'releaseAdvisoryLock', 'withTransaction', 'applyMigration', 'verifyCatalog', 'writeLedger']) {
     assert.equal(typeof TRANSPORT[m], 'function', `${m} must be a function`);
   }
   for (const forbidden of ['queryProductRows', 'grantWriter', 'activateRuntimeGate', 'rerouteProvider', 'dropRelation', 'executeArbitrarySql', 'retryAmbiguous', 'exposeRawCredential']) {
@@ -337,7 +354,7 @@ test('the bound migration file bytes still hash to the bound checksum', () => {
 test('missing dedicated credential fails closed before any client is created', async () => {
   const setup = makeTransport({ env: null });
   await assert.rejects(
-    () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
+    () => setup.transport.verifyConnectedTargetIdentity(),
     (err) => { expectCode(err, F.SECRET_UNAVAILABLE); return true; }
   );
   assert.equal(setup.state.connectAttempts, 0);
@@ -346,7 +363,7 @@ test('missing dedicated credential fails closed before any client is created', a
 test('malformed credential fails closed before connect with a fixed category', async () => {
   const setup = makeTransport({ env: { [TRANSPORT.CREDENTIAL_ENV_KEY]: 'not-a-dsn-at-all' } });
   await assert.rejects(
-    () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
+    () => setup.transport.verifyConnectedTargetIdentity(),
     (err) => { expectCode(err, F.SECRET_MALFORMED); return true; }
   );
   assert.equal(setup.state.connectAttempts, 0);
@@ -361,7 +378,7 @@ test('generic DATABASE_URL is never used as a fallback', async () => {
     repoRoot: ROOT,
   });
   await assert.rejects(
-    () => transport.acquireAdvisoryLock('0123456789abcdef'),
+    () => transport.verifyConnectedTargetIdentity(),
     (err) => { expectCode(err, F.SECRET_UNAVAILABLE); return true; }
   );
   assert.equal(setup.state.connectAttempts, 0);
@@ -382,6 +399,7 @@ test('lock key must be exactly 16 lowercase hex chars', async () => {
 
 test('lock not granted returns null with no retry and closes the connection', async () => {
   const setup = makeTransport({ lockGranted: false });
+  await setup.transport.verifyConnectedTargetIdentity();
   const handle = await setup.transport.acquireAdvisoryLock('0123456789abcdef');
   assert.equal(handle, null);
   assert.equal(setup.state.connectAttempts, 1);
@@ -390,6 +408,7 @@ test('lock not granted returns null with no retry and closes the connection', as
 
 test('lock query failure throws a fixed sanitized category', async () => {
   const setup = makeTransport({ failOn: 'lock' });
+  await setup.transport.verifyConnectedTargetIdentity();
   await assert.rejects(
     () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
     (err) => { expectCode(err, F.LOCK_QUERY_FAILED); return true; }
@@ -399,11 +418,11 @@ test('lock query failure throws a fixed sanitized category', async () => {
 test('ONE connect attempt per transport instance: a failed connect is never retried', async () => {
   const setup = makeTransport({ failOn: 'connect' });
   await assert.rejects(
-    () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
+    () => setup.transport.verifyConnectedTargetIdentity(),
     (err) => { expectCode(err, F.CONNECT_UNAVAILABLE); return true; }
   );
   await assert.rejects(
-    () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
+    () => setup.transport.verifyConnectedTargetIdentity(),
     (err) => { expectCode(err, F.CONNECT_UNAVAILABLE); return true; }
   );
   assert.equal(setup.state.connectAttempts, 1);
@@ -411,6 +430,7 @@ test('ONE connect attempt per transport instance: a failed connect is never retr
 
 test('releaseAdvisoryLock is best-effort and always closes the connection', async () => {
   const setup = makeTransport({ failOn: 'unlock' });
+  await setup.transport.verifyConnectedTargetIdentity();
   const handle = await setup.transport.acquireAdvisoryLock('0123456789abcdef');
   await setup.transport.releaseAdvisoryLock(handle);
   // A failed unlock is swallowed: ending the connection is what releases the
@@ -585,11 +605,14 @@ test('verifyCatalog fails closed when the catalog query fails', async () => {
 });
 
 test('verifyCatalog fails closed when no role mapping is available', async () => {
-  const setup = await openTransport({ tablePresent: true, roleMapping: null });
+  // The role mapping is resolved at the identity gate, which is PRECONNECT:
+  // an unavailable mapping therefore fails before the connection opens.
+  const setup = makeTransport({ tablePresent: true, roleMapping: null });
   await assert.rejects(
-    () => setup.transport.verifyCatalog(BOOT.relation, BOOT.expectedSchemaFingerprint),
+    () => setup.transport.verifyConnectedTargetIdentity(),
     (err) => { expectCode(err, F.ROLE_MAPPING_UNAVAILABLE); return true; }
   );
+  assert.equal(setup.state.connectAttempts, 0, 'no connection may open without a role mapping');
 });
 
 // ----- 8. Ledger append binding -----
@@ -730,7 +753,7 @@ test('a released transport instance cannot begin a second DB-capable attempt', a
   await setup.transport.releaseAdvisoryLock(setup.handle);
   assert.equal(setup.state.connectAttempts, 1);
   await assert.rejects(
-    () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
+    () => setup.transport.verifyConnectedTargetIdentity(),
     (err) => { expectCode(err, F.CONNECT_UNAVAILABLE); return true; }
   );
   assert.equal(setup.state.connectAttempts, 1, 'no second connect attempt may ever begin');
@@ -758,6 +781,7 @@ test('the full happy-path flow only ever sends allowlisted fixed SQL', async () 
   await setup.transport.releaseAdvisoryLock(setup.handle);
   const migrationSql = fs.readFileSync(path.join(ROOT, BOOT.migrationPath), 'utf8');
   const allowed = new Set([
+    TRANSPORT.CONNECTED_IDENTITY_QUERY,
     'SELECT pg_try_advisory_lock($1::integer, $2::integer) AS locked',
     'SELECT pg_advisory_unlock($1::integer, $2::integer)',
     'BEGIN',
@@ -770,4 +794,225 @@ test('the full happy-path flow only ever sends allowlisted fixed SQL', async () 
   for (const text of setup.state.sql) {
     assert.ok(allowed.has(text), `non-allowlisted SQL sent: ${String(text).slice(0, 60)}`);
   }
+});
+
+// ----- 10. Connected-target identity gate -----
+
+const POOLED_CANONICAL_HOST = [NEON_ENDPOINT_ID + '-pooler', ...NEON_REGION_LABELS, NEON_DOMAIN].join('.');
+
+function transportForHost(host, options = {}) {
+  const box = { created: 0 };
+  const transport = TRANSPORT.createLedgerBootstrapTransport({
+    createClient: () => {
+      box.created += 1;
+      return makeFakeClient(options).client;
+    },
+    env: { [TRANSPORT.CREDENTIAL_ENV_KEY]: syntheticDsn({ host }) },
+    roleMapping: ROLE_MAPPING,
+    repoRoot: ROOT,
+  });
+  return { transport, box };
+}
+
+test('connected-target: the host classifier binds the canonical endpoint exactly', () => {
+  assert.equal(TRANSPORT.isCanonicalNeonEndpointHost(CRED_HOST), true);
+  assert.equal(TRANSPORT.isCanonicalNeonEndpointHost(POOLED_CANONICAL_HOST), true);
+  for (const bad of [
+    'ep-other-endpoint.us-east-2.aws.neon.tech',
+    'db.example.invalid',
+    'neon.tech',
+    'some.host.neon.tech',
+    `${CRED_HOST}.evil.invalid`,
+    '',
+    null,
+    undefined,
+    42,
+  ]) {
+    assert.equal(TRANSPORT.isCanonicalNeonEndpointHost(bad), false, `must reject ${String(bad)}`);
+  }
+});
+
+test('connected-target A: a wrong Neon endpoint is rejected before any client is created', async () => {
+  const { transport, box } = transportForHost('ep-not-the-canonical-endpoint.us-east-2.aws.neon.tech');
+  await assert.rejects(
+    () => transport.verifyConnectedTargetIdentity(),
+    (err) => { expectCode(err, F.ENDPOINT_IDENTITY_MISMATCH); return true; }
+  );
+  assert.equal(box.created, 0, 'no client may be constructed for a wrong endpoint');
+});
+
+test('connected-target A: a generic *.neon.tech host is rejected before any client is created', async () => {
+  for (const host of ['some.host.neon.tech', 'db.shared.neon.tech']) {
+    const { transport, box } = transportForHost(host);
+    await assert.rejects(
+      () => transport.verifyConnectedTargetIdentity(),
+      (err) => { expectCode(err, F.ENDPOINT_IDENTITY_MISMATCH); return true; }
+    );
+    assert.equal(box.created, 0, `no client may be constructed for ${host}`);
+  }
+});
+
+test('connected-target A: a malformed or non-Neon endpoint is rejected', async () => {
+  for (const host of ['neon.tech', 'not-neon.example.invalid', `${CRED_HOST}.evil.invalid`, 'ep-.us-east-2.aws.neon.tech']) {
+    const { transport, box } = transportForHost(host);
+    await assert.rejects(
+      () => transport.verifyConnectedTargetIdentity(),
+      (err) => { expectCode(err, F.ENDPOINT_IDENTITY_MISMATCH); return true; }
+    );
+    assert.equal(box.created, 0, `no client may be constructed for ${host}`);
+  }
+});
+
+test('connected-target A: the canonical endpoint host is accepted (direct and pooled)', async () => {
+  for (const host of [CRED_HOST, POOLED_CANONICAL_HOST]) {
+    const { transport, box } = transportForHost(host);
+    const result = await transport.verifyConnectedTargetIdentity();
+    assert.equal(result.ok, true);
+    assert.equal(box.created, 1);
+  }
+});
+
+test('connected-target B: a wrong connected database fails after connect, before any lock', async () => {
+  const setup = makeTransport({ databaseName: 'some_other_database' });
+  await assert.rejects(
+    () => setup.transport.verifyConnectedTargetIdentity(),
+    (err) => { expectCode(err, F.CONNECTED_TARGET_IDENTITY_MISMATCH); return true; }
+  );
+  assert.equal(setup.state.connectAttempts, 1, 'the connection did open');
+  assert.equal(setup.state.sql.some((t) => t.includes('pg_try_advisory_lock')), false);
+  assert.equal(setup.state.sql.includes('BEGIN'), false);
+});
+
+test('connected-target C: a role not mapped to OWNER_CLASS fails before any lock', async () => {
+  // service_role is deliberately mapped to SERVICE in the fixture mapping.
+  const setup = makeTransport({ roleName: 'service_role' });
+  await assert.rejects(
+    () => setup.transport.verifyConnectedTargetIdentity(),
+    (err) => { expectCode(err, F.CONNECTED_TARGET_IDENTITY_MISMATCH); return true; }
+  );
+  assert.equal(setup.state.sql.some((t) => t.includes('pg_try_advisory_lock')), false);
+});
+
+test('connected-target C: an unmapped connected role fails closed', async () => {
+  const setup = makeTransport({ roleName: 'totally_unknown_role' });
+  await assert.rejects(
+    () => setup.transport.verifyConnectedTargetIdentity(),
+    (err) => { expectCode(err, F.CONNECTED_TARGET_IDENTITY_MISMATCH); return true; }
+  );
+  assert.equal(setup.state.sql.some((t) => t.includes('pg_try_advisory_lock')), false);
+});
+
+test('connected-target B/C: neondb + OWNER_CLASS passes with bounded facts only', async () => {
+  const setup = makeTransport();
+  const result = await setup.transport.verifyConnectedTargetIdentity();
+  assert.deepEqual(Object.keys(result).sort(), ['databaseVerified', 'ok', 'roleClass', 'roleClassVerified']);
+  assert.equal(result.ok, true);
+  assert.equal(result.databaseVerified, true);
+  assert.equal(result.roleClassVerified, true);
+  assert.equal(result.roleClass, TRANSPORT.EXPECTED_CONNECTED_ROLE_CLASS);
+  assert.equal(setup.state.connectAttempts, 1);
+  assert.equal(setup.state.identityCalls, 1);
+});
+
+test('connected-target: an identity-query failure fails closed', async () => {
+  const setup = makeTransport({ failOn: 'identity' });
+  await assert.rejects(
+    () => setup.transport.verifyConnectedTargetIdentity(),
+    (err) => { expectCode(err, F.CONNECTED_TARGET_IDENTITY_UNAVAILABLE); return true; }
+  );
+  assert.equal(setup.state.sql.some((t) => t.includes('pg_try_advisory_lock')), false);
+});
+
+test('connected-target: a malformed identity result fails closed', async () => {
+  const malformed = [
+    [],
+    [{ database_name: 'neondb' }],
+    [{ role_name: 'postgres' }],
+    [{ database_name: '', role_name: 'postgres' }],
+    [{ database_name: 'neondb', role_name: '' }],
+    [{ database_name: 7, role_name: 'postgres' }],
+    [
+      { database_name: 'neondb', role_name: 'postgres' },
+      { database_name: 'neondb', role_name: 'postgres' },
+    ],
+  ];
+  for (const identityRows of malformed) {
+    const setup = makeTransport({ identityRows });
+    await assert.rejects(
+      () => setup.transport.verifyConnectedTargetIdentity(),
+      (err) => { expectCode(err, F.CONNECTED_TARGET_IDENTITY_UNAVAILABLE); return true; }
+    );
+    assert.equal(setup.state.sql.some((t) => t.includes('pg_try_advisory_lock')), false);
+  }
+});
+
+test('connected-target: raw host/database/role values never appear in error or result', async () => {
+  const setup = makeTransport({ databaseName: 'leaky_database_name', roleName: 'leaky_role_name' });
+  let error = null;
+  try {
+    await setup.transport.verifyConnectedTargetIdentity();
+  } catch (err) {
+    error = err;
+  }
+  assert.ok(error, 'a mismatch must be raised');
+  const errorBlob = JSON.stringify({
+    message: error.message,
+    category: error.category,
+    stack: String(error.stack || ''),
+  });
+  // NOTE: the module filename itself contains "postgres", so the stack is only
+  // checked for the values that must never leak.
+  for (const secretish of ['leaky_database_name', 'leaky_role_name', CRED_HOST, NEON_ENDPOINT_ID, CRED_PASSWORD]) {
+    assert.equal(errorBlob.includes(secretish), false, `error must not leak ${secretish}`);
+  }
+
+  const okSetup = makeTransport();
+  const ok = await okSetup.transport.verifyConnectedTargetIdentity();
+  const okBlob = JSON.stringify(ok);
+  for (const secretish of [CRED_HOST, NEON_ENDPOINT_ID, 'postgres', 'leaky_']) {
+    assert.equal(okBlob.includes(secretish), false, `result must not leak ${secretish}`);
+  }
+});
+
+test('connected-target: zero lock/BEGIN/apply/ledger calls on identity mismatch', async () => {
+  const setup = makeTransport({ databaseName: 'wrong_database' });
+  await assert.rejects(() => setup.transport.verifyConnectedTargetIdentity(), () => true);
+  const migrationSql = fs.readFileSync(path.join(ROOT, BOOT.migrationPath), 'utf8');
+  assert.deepEqual(setup.state.sql, [TRANSPORT.CONNECTED_IDENTITY_QUERY]);
+  assert.equal(setup.state.sql.includes('BEGIN'), false);
+  assert.equal(setup.state.sql.includes('COMMIT'), false);
+  assert.equal(setup.state.sql.includes(migrationSql), false);
+  assert.equal(setup.state.sql.includes(LEDGER.POSTGRES_MIGRATION_LEDGER_QUERIES.append.text), false);
+});
+
+test('connected-target: the advisory lock is structurally unreachable before identity passes', async () => {
+  const setup = makeTransport();
+  await assert.rejects(
+    () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
+    (err) => { expectCode(err, F.IDENTITY_NOT_VERIFIED); return true; }
+  );
+  assert.equal(setup.state.connectAttempts, 0);
+  assert.equal(setup.state.sql.length, 0);
+});
+
+test('connected-target: losing the connection invalidates a prior identity pass', async () => {
+  const setup = makeTransport();
+  await setup.transport.verifyConnectedTargetIdentity();
+  await setup.transport.acquireAdvisoryLock('0123456789abcdef');
+  await setup.transport.releaseAdvisoryLock(setup.handle);
+  await assert.rejects(
+    () => setup.transport.acquireAdvisoryLock('0123456789abcdef'),
+    (err) => { expectCode(err, F.IDENTITY_NOT_VERIFIED); return true; }
+  );
+});
+
+test('connected-target: one connection maximum and no retry are preserved', async () => {
+  const setup = makeTransport({ databaseName: 'wrong_database' });
+  await assert.rejects(() => setup.transport.verifyConnectedTargetIdentity(), () => true);
+  assert.equal(setup.state.connectAttempts, 1);
+  await assert.rejects(
+    () => setup.transport.verifyConnectedTargetIdentity(),
+    (err) => { expectCode(err, F.CONNECT_UNAVAILABLE); return true; }
+  );
+  assert.equal(setup.state.connectAttempts, 1, 'no second connect attempt may ever begin');
 });
