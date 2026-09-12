@@ -1736,6 +1736,36 @@
       "notes": "Repository-owned bounded Postgres transport for the governed canonical schema-adoption operator. Uses a dedicated TLS database URL only at connect time, one connection/transaction attempt, a parameterized advisory lock, the frozen profile migration allowlist with byte checksum verification, bounded catalog facts, and the fixed append-only migration ledger adapter. Import is network-inert because pg and the catalog adapter load lazily; arbitrary SQL, product-row reads, grants, runtime-gate mutation, provider reroute, DROP, retries, and raw credential output are not capabilities. Production execution remains separately gated by the operator core exact-head and authorization checks. Detected by RULE_RUNNER_NAME because the basename contains 'adopt'; registered here to satisfy the guard."
     },
     {
+      "path": "scripts/canonical-ledger-bootstrap-postgres.cjs",
+      "category": "provenance_tooling",
+      "engine": "postgres",
+      "operations": ["READ_ONLY", "VALIDATE", "ORCHESTRATE", "CREATE TABLE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": true,
+      "owner_or_issue": "ledger bootstrap transport / #3846",
+      "idempotency": "precondition_bound",
+      "execution_actor": "operator",
+      "automation": "gated",
+      "ledger_candidate": "yes",
+      "notes": "Repository-owned bounded Postgres transport for the governed Production migration-ledger bootstrap vehicle (#3846). Exposes exactly six transport methods (acquireAdvisoryLock, releaseAdvisoryLock, withTransaction, applyMigration, verifyCatalog, writeLedger) bound to the frozen bootstrap migration 20260802094500_bootstrap-migration-ledger with content checksum c04d6e8cf074514e1835cd837f6ae72ccd96b775a507a12d2b394733977918cc, expected schema fingerprint 961d195776eaa245e4e63620a35f19a4de2dbe2f00dbd8b94faffb70ce2332d1, and relation public.schema_migration_ledger. Reads a dedicated TLS database URL from LOVEBUD_LEDGER_BOOTSTRAP_DATABASE_URL only at connect time, uses one connection and one transaction attempt, a parameterized advisory lock, byte-checksum-verified allowlisted migration apply, bounded catalog fact verification through the canonical catalog adapter pipeline, and the fixed append-only migration-ledger adapter for the ledger record. Authority separation is explicit: the frozen BOOTSTRAP object carries immutable bootstrap provenance only (issue 3846, migration identity/path/checksum, expected fingerprint, ADDITIVE, TRANSACTION_REQUIRED), while the live CENTRAL Production execution authority is supplied separately at execution time and is never defaulted from provenance. The SOURCE/TEST implementation comment 5644253160 is retained as inert provenance metadata and isValidExecutionAuthorityReference rejects it as live authority; writeLedger refuses any attestation payload whose executionAuthorityReference is absent, malformed, or equal to that comment, and whose executionHead is not the exact authorized execution head, so the SOURCE/TEST comment is never written as the mutation authority. Import is network-inert because pg and the adapters load lazily; arbitrary SQL, product-row reads, grants, runtime-gate mutation, provider reroute, DROP, ambiguous-outcome retry, and raw credential output are not capabilities, and failures surface only bounded LEDGER_BOOTSTRAP_* categories. Production execution remains separately gated by the operator live-execution-authority and exact-head checks. Not auto-detected by the guard's name or DDL rules because the basename contains no runner token and the source carries no literal DDL; registered here proactively."
+    },
+    {
+      "path": "scripts/canonical-ledger-bootstrap-operator.cjs",
+      "category": "provenance_tooling",
+      "engine": "none",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "ledger bootstrap operator / #3846",
+      "idempotency": "precondition_bound",
+      "execution_actor": "none",
+      "automation": "manual",
+      "ledger_candidate": "no",
+      "notes": "Repository-owned governed ledger-bootstrap operator CLI with embedded pure core for the Production migration-ledger bootstrap (#3846). Defaults to --dry-run paper-only readiness; --execute requires the flag plus LOVEBUD_LEDGER_BOOTSTRAP_ALLOW_EXECUTE=1 plus a SEPARATELY SUPPLIED live CENTRAL Production execution authorization reference (--execution-authority or LOVEBUD_LEDGER_BOOTSTRAP_EXECUTION_AUTHORITY) plus an exact --execution-head match against the authorized head, all enforced BEFORE any credential or database contact, then drives only the fixed repository-owned bounded Postgres transport. The frozen packet carries immutable bootstrap provenance only: issue 3846 (approvalReference issue:3846), the migration identity/path/checksum, expected schema fingerprint, relation public.schema_migration_ledger, ADDITIVE risk class, and TRANSACTION_REQUIRED mode. The SOURCE/TEST implementation comment 5644253160 is retained as inert provenance metadata only and can never satisfy the live Production execution authority. Enforces the CENTRAL exactly-one DB-capable authority consumption invariant: the authority is consumed when governed DB-capable execution begins (connection / advisory-lock / transaction path), NOT when COMMIT succeeds, so rollback, target-already-present, catalog mismatch, ledger mismatch, connection failure after connect, transaction failure, and commit ambiguity all remain consumed with retryPermitted false and no second attempt under the same authority; a separate committedAndVerified field records the DB outcome and is never used as authority-consumption state. Preconnect failures (readiness, transport validation, missing/invalid execution authority, head mismatch, missing/malformed credential) leave the authority unconsumed. Also enforces the advisory-lock lifecycle, transaction-required apply with rollback on pre-commit failure, post-apply catalog verification, same-transaction ledger write, and fail-closed stops for provenance mismatch, head mismatch, lock unavailability, and ambiguous outcomes with no retry and no secret output. Never logs or prints credential material. Imports no database driver at module load, opens no database connection in dry-run mode, executes no SQL itself, and holds no Production credential. Not auto-detected by the guard's name or DDL rules; registered here proactively."
+    },
+    {
       "path": "db/proposals/4006-canonical-users-auth-identity-proposal.sql",
       "category": "sql_migration",
       "engine": "postgres",
