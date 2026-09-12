@@ -1829,4 +1829,246 @@ describe('DB postgres ledger adapter contract (#3458)', () => {
       assert.strictEqual(rows[1].migration_id, 'm2');
     });
   });
+
+  // #4346 — real-driver QueryResult container compatibility.
+  //
+  // node-postgres returns a `Result` INSTANCE, not a plain object literal, so its
+  // prototype is `Result.prototype`. The adapter previously required the top-level
+  // result to be a plain record, which mapped a successful `INSERT ... RETURNING`
+  // to UNKNOWN and made a successful read reject. These regressions pin the
+  // corrected container contract WITHOUT weakening any evidence validation: only
+  // the container check changed, and every row/evidence rule still fails closed.
+  //
+  // A Result-like class stands in for the driver's `Result` so this file stays
+  // pg-free (its registered layer is SOURCE_STATIC).
+  describe('11. Real-driver QueryResult container compatibility (#4346)', () => {
+    class ResultLike {
+      constructor(rows) {
+        this.rows = rows;
+        this.command = 'INSERT';
+        this.rowCount = Array.isArray(rows) ? rows.length : null;
+        this.oid = null;
+        this.fields = [];
+      }
+    }
+
+    const container = (rows) => new ResultLike(rows);
+
+    it('1. custom-prototype container + valid append evidence -> APPENDED', async () => {
+      const c = container([{ migration_id: 'mid', content_checksum: 'csum' }]);
+      assert.notStrictEqual(Object.getPrototypeOf(c), Object.prototype);
+      const { adapter } = adapterWith({ append: c });
+      const res = await adapter.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'APPENDED');
+    });
+
+    it('2. custom-prototype container + valid read rows -> readLedger succeeds', async () => {
+      const c = container([readRow({ migration_id: 'm1' }), readRow({ migration_id: 'm2' })]);
+      assert.notStrictEqual(Object.getPrototypeOf(c), Object.prototype);
+      const { adapter } = adapterWith({ read: c });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 2);
+      assert.strictEqual(rows[0].migration_id, 'm1');
+      assert.strictEqual(rows[1].migration_id, 'm2');
+    });
+
+    it('2b. null-prototype container is still accepted (unchanged behaviour)', async () => {
+      const c = Object.create(null);
+      c.rows = [readRow()];
+      const { adapter } = adapterWith({ read: c });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 1);
+    });
+
+    it('2c. non-plain prototype does NOT excuse malformed rows', async () => {
+      const { adapter } = adapterWith({ read: container([{ migration_id: 'only' }]) });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    it('3. inherited-only rows -> read rejects (own-data required)', async () => {
+      const c = Object.create({ rows: [readRow()] });
+      const { adapter } = adapterWith({ read: c });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    it('3b. inherited-only rows -> append UNKNOWN (own-data required)', async () => {
+      const c = Object.create({ rows: [{ migration_id: 'mid', content_checksum: 'csum' }] });
+      const { adapter } = adapterWith({ append: c });
+      const res = await adapter.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    it('4. accessor rows -> read rejects without executing the getter', async () => {
+      let ran = false;
+      const c = new ResultLike([]);
+      Object.defineProperty(c, 'rows', {
+        enumerable: true,
+        configurable: true,
+        get() { ran = true; return [readRow()]; }
+      });
+      const { adapter } = adapterWith({ read: c });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+      assert.strictEqual(ran, false);
+    });
+
+    it('4b. accessor rows -> append UNKNOWN without executing the getter', async () => {
+      let ran = false;
+      const c = new ResultLike([]);
+      Object.defineProperty(c, 'rows', {
+        enumerable: true,
+        configurable: true,
+        get() { ran = true; return [{ migration_id: 'mid', content_checksum: 'csum' }]; }
+      });
+      const { adapter } = adapterWith({ append: c });
+      const res = await adapter.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'UNKNOWN');
+      assert.strictEqual(ran, false);
+    });
+
+    it('5. container descriptor trap -> bounded failure, no raw leak (read)', async () => {
+      const c = new Proxy(new ResultLike([]), {
+        getOwnPropertyDescriptor() { throw new Error('descriptor secret'); }
+      });
+      const { adapter } = adapterWith({ read: c });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+      assert.ok(!err.message.includes('secret'));
+    });
+
+    it('5b. container getPrototypeOf trap -> bounded failure, no raw leak (read)', async () => {
+      const c = new Proxy(new ResultLike([readRow()]), {
+        getPrototypeOf() { throw new Error('proto secret'); }
+      });
+      const { adapter } = adapterWith({ read: c });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+      assert.ok(!err.message.includes('secret'));
+    });
+
+    it('5c. container ownKeys/descriptor trap -> UNKNOWN, no raw leak (append)', async () => {
+      const c = new Proxy(new ResultLike([{ migration_id: 'mid', content_checksum: 'csum' }]), {
+        ownKeys() { throw new Error('ownKeys secret'); },
+        getOwnPropertyDescriptor() { throw new Error('desc secret'); }
+      });
+      const { adapter } = adapterWith({ append: c });
+      const res = await adapter.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'UNKNOWN');
+      assert.ok(!JSON.stringify(res).includes('secret'));
+    });
+
+    it('5d. revoked-Proxy container -> bounded failure (read)', async () => {
+      const { proxy, revoke } = Proxy.revocable(new ResultLike([readRow()]), {});
+      revoke();
+      const { adapter } = adapterWith({ read: proxy });
+      const err = await rejectsRead(adapter);
+      assert.strictEqual(err.message, POSTGRES_LEDGER_READ_ERROR);
+    });
+
+    it('6. malformed rows in a custom-prototype container -> fail closed', async () => {
+      const { adapter: a1 } = adapterWith({ read: container([{ migration_id: 'x' }]) });
+      assert.strictEqual((await rejectsRead(a1)).message, POSTGRES_LEDGER_READ_ERROR);
+      const { adapter: a2 } = adapterWith({ append: container([{ migration_id: 'mid' }]) });
+      const res = await a2.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    it('7. sparse rows -> UNKNOWN / fail closed', async () => {
+      const sparse = [readRow()];
+      sparse.length = 2;
+      const { adapter } = adapterWith({ read: container(sparse) });
+      assert.strictEqual((await rejectsRead(adapter)).message, POSTGRES_LEDGER_READ_ERROR);
+
+      const sparseAppend = [{ migration_id: 'mid', content_checksum: 'csum' }];
+      sparseAppend.length = 2;
+      const { adapter: a2 } = adapterWith({ append: container(sparseAppend) });
+      const res = await a2.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    it('8. multi-row append evidence -> UNKNOWN', async () => {
+      const row = { migration_id: 'mid', content_checksum: 'csum' };
+      const { adapter } = adapterWith({ append: container([row, { ...row }]) });
+      const res = await adapter.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    it('9. wrong migration_id -> UNKNOWN', async () => {
+      const { adapter } = adapterWith({
+        append: container([{ migration_id: 'OTHER', content_checksum: 'csum' }])
+      });
+      const res = await adapter.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    it('10. wrong content_checksum -> UNKNOWN', async () => {
+      const { adapter } = adapterWith({
+        append: container([{ migration_id: 'mid', content_checksum: 'OTHER' }])
+      });
+      const res = await adapter.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'UNKNOWN');
+    });
+
+    it('11. plain synthetic QueryResult fixtures still pass (read + append + empty)', async () => {
+      const { adapter: ar } = adapterWith({ read: { rows: [readRow()] } });
+      assert.strictEqual((await ar.readLedger({ lockHandle: HANDLE })).length, 1);
+
+      const { adapter: ae } = adapterWith({ read: { rows: [] } });
+      assert.deepStrictEqual(await ae.readLedger({ lockHandle: HANDLE }), []);
+
+      const { adapter: aa } = adapterWith({
+        append: { rows: [{ migration_id: 'mid', content_checksum: 'csum' }] }
+      });
+      const res = await aa.appendLedgerRecord({
+        record: validRecord({ migration_id: 'mid', content_checksum: 'csum' }),
+        lockHandle: HANDLE
+      });
+      assert.strictEqual(res.status, 'APPENDED');
+    });
+
+    it('12. driver-shaped container with extra top-level metadata is accepted; metadata is ignored', async () => {
+      const c = new ResultLike([readRow()]);
+      // Driver Result carries plenty of extra top-level metadata; none of it may
+      // influence the decision, and none of it may appear in a result.
+      c.command = 'SELECT';
+      c.rowCount = 1;
+      c.oid = 0;
+      c.fields = [{ name: 'secret_field_name' }];
+      c._parsers = [];
+      const { adapter } = adapterWith({ read: c });
+      const rows = await adapter.readLedger({ lockHandle: HANDLE });
+      assert.strictEqual(rows.length, 1);
+      assert.ok(!JSON.stringify(rows).includes('secret_field_name'));
+      assert.strictEqual(rows[0].constructor, Object);
+    });
+  });
 });

@@ -11,7 +11,9 @@
  *   withTransaction(fn)          -> { ok, reason? } (BEGIN/COMMIT/ROLLBACK here)
  *   applyMigration(tx, {path,sha256}) -> { committed } (exact bootstrap binding only)
  *   verifyCatalog(relation, fingerprint) -> { matched } (bounded facts only)
- *   writeLedger(payload)         -> { recorded } (fixed seven-field append only)
+ *   writeLedger(payload)         -> { recorded, ledgerAppendStatus } (fixed seven-field append only;
+ *                                   ledgerAppendStatus is the bounded APPENDED | FAILED | UNKNOWN
+ *                                   diagnostic, never raw driver data)
  *
  * This transport is bound to exactly ONE migration: the canonical ledger
  * bootstrap migration recorded in db/migration-provenance/canonical-migrations.json
@@ -254,6 +256,32 @@ function failFixed(code) {
 
 function isStrictObject(v) {
   return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+/**
+ * Whitelist the ledger adapter's append status into a bounded enum.
+ *
+ * The adapter is total and returns a fixed `{ status }` of
+ * APPENDED | FAILED | UNKNOWN. That status is the only thing preserved here:
+ * anything that is not exactly one of the three fixed literals collapses to
+ * UNKNOWN, and a throwing/revoked Proxy accessor collapses to UNKNOWN as well.
+ * This is a SOURCE/TEST diagnostic so a failed append can be told apart from an
+ * unavailable one. No raw query error, row, result, handle, session, host, or
+ * credential value is ever propagated.
+ */
+function boundedLedgerAppendStatus(append) {
+  const STATUSES = LEDGER_ADAPTER.POSTGRES_LEDGER_APPEND_STATUSES;
+  let raw = '';
+  try {
+    if (append !== null && typeof append === 'object' && typeof append.status === 'string') {
+      raw = append.status;
+    }
+  } catch {
+    raw = '';
+  }
+  if (raw === STATUSES.APPENDED) return STATUSES.APPENDED;
+  if (raw === STATUSES.FAILED) return STATUSES.FAILED;
+  return STATUSES.UNKNOWN;
 }
 
 function sha256Buffer(buf) {
@@ -796,10 +824,16 @@ function createLedgerBootstrapTransport(options) {
       transaction_outcome: 'COMMITTED',
     };
     const append = await ledgerAdapter.appendLedgerRecord({ record, lockHandle: state.handle });
-    if (append && append.status === LEDGER_ADAPTER.POSTGRES_LEDGER_APPEND_STATUSES.APPENDED) {
-      return Object.freeze({ recorded: true });
+    // Bounded SOURCE/TEST diagnostic: preserve the adapter's fixed status class
+    // (APPENDED | FAILED | UNKNOWN) so a FAILED append is distinguishable from an
+    // UNKNOWN one without ever exposing a raw error, row, or session value.
+    // Production behaviour is unchanged — anything other than APPENDED still
+    // fails closed with recorded:false.
+    const appendStatus = boundedLedgerAppendStatus(append);
+    if (appendStatus === LEDGER_ADAPTER.POSTGRES_LEDGER_APPEND_STATUSES.APPENDED) {
+      return Object.freeze({ recorded: true, ledgerAppendStatus: appendStatus });
     }
-    return Object.freeze({ recorded: false });
+    return Object.freeze({ recorded: false, ledgerAppendStatus: appendStatus });
   }
 
   const txApi = Object.freeze({

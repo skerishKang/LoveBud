@@ -137,6 +137,20 @@ async function fixtureFingerprint(rows = fixtureRows()) {
   return ADAPTER.buildCatalogEvidence(metadata, contract).objects[0].fingerprint.slice('sha256:'.length);
 }
 
+// Stand-in for the node-postgres `Result` class: an INSTANCE whose prototype is
+// not `Object.prototype`, carrying `rows` as an own data property plus extra
+// top-level driver metadata. Used to prove the transport path no longer depends
+// on the top-level result being a plain object literal. (#4346)
+class ResultLikeContainer {
+  constructor(rows) {
+    this.rows = rows;
+    this.command = 'INSERT';
+    this.rowCount = Array.isArray(rows) ? rows.length : null;
+    this.oid = null;
+    this.fields = [];
+  }
+}
+
 function makeFakeClient(options = {}) {
   const rows = options.rows || fixtureRows();
   const migrationSql = fs.readFileSync(path.join(ROOT, BOOT.migrationPath), 'utf8');
@@ -220,7 +234,11 @@ function makeFakeClient(options = {}) {
       if (text === ledgerText) {
         if (state.failOn === 'ledger') throw new Error('FAKE_LEDGER_DENIED');
         if (options.ledgerEcho === false) return { rows: [] };
-        return { rows: [{ migration_id: params[0], content_checksum: params[1] }] };
+        const echoRows = [{ migration_id: params[0], content_checksum: params[1] }];
+        // Driver-shaped echo: a non-plain container instance instead of a plain
+        // object literal. (#4346)
+        if (options.ledgerEchoDriverShaped === true) return new ResultLikeContainer(echoRows);
+        return { rows: echoRows };
       }
       if (text === ADAPTER.Q.RELATION) {
         return { rows: state.tablePresent ? rows.relation : [] };
@@ -688,6 +706,122 @@ test('writeLedger reports recorded=false when the append echo is empty', async (
     return { ok: false };
   });
   assert.equal(out.recorded, false);
+});
+
+// ----- 8c. Bounded ledger-append status diagnostics (#4346) -----
+//
+// The adapter is total and returns APPENDED | FAILED | UNKNOWN. The transport
+// previously collapsed all three into recorded:true|false, which made the real
+// Production failure (a driver `Result` rejected as a non-plain record) look
+// identical to an empty ON CONFLICT echo. These tests pin the bounded diagnostic
+// AND pin that non-APPENDED still fails closed.
+
+const APPEND_STATUSES = LEDGER.POSTGRES_LEDGER_APPEND_STATUSES;
+
+test('writeLedger surfaces the bounded APPENDED diagnostic when the append echo matches', async () => {
+  const setup = await openTransport();
+  let out = null;
+  await setup.transport.withTransaction(async (tx) => {
+    out = await tx.writeLedger(validLedgerPayload());
+    return { ok: false };
+  });
+  assert.equal(out.recorded, true);
+  assert.equal(out.ledgerAppendStatus, APPEND_STATUSES.APPENDED);
+});
+
+test('writeLedger accepts a driver-shaped (non-plain) append echo container (#4346)', async () => {
+  // The exact Production regression: node-postgres returns a `Result` INSTANCE,
+  // whose prototype is not Object.prototype. Rejecting it mapped a successful
+  // INSERT ... RETURNING to UNKNOWN and forced a pre-commit rollback.
+  const setup = await openTransport({ ledgerEchoDriverShaped: true });
+  let out = null;
+  await setup.transport.withTransaction(async (tx) => {
+    out = await tx.writeLedger(validLedgerPayload());
+    return { ok: false };
+  });
+  assert.equal(out.recorded, true);
+  assert.equal(out.ledgerAppendStatus, APPEND_STATUSES.APPENDED);
+});
+
+test('writeLedger surfaces FAILED and still fails closed', async () => {
+  const setup = await openTransport({ ledgerEcho: false });
+  let out = null;
+  await setup.transport.withTransaction(async (tx) => {
+    out = await tx.writeLedger(validLedgerPayload());
+    return { ok: false };
+  });
+  assert.equal(out.recorded, false);
+  assert.equal(out.ledgerAppendStatus, APPEND_STATUSES.FAILED);
+});
+
+test('writeLedger surfaces UNKNOWN and still fails closed', async () => {
+  const setup = await openTransport({ failOn: 'ledger' });
+  let out = null;
+  await setup.transport.withTransaction(async (tx) => {
+    out = await tx.writeLedger(validLedgerPayload());
+    return { ok: false };
+  });
+  assert.equal(out.recorded, false);
+  assert.equal(out.ledgerAppendStatus, APPEND_STATUSES.UNKNOWN);
+});
+
+test('FAILED and UNKNOWN are distinguishable in transport evidence', async () => {
+  const failedSetup = await openTransport({ ledgerEcho: false });
+  let failedOut = null;
+  await failedSetup.transport.withTransaction(async (tx) => {
+    failedOut = await tx.writeLedger(validLedgerPayload());
+    return { ok: false };
+  });
+
+  const unknownSetup = await openTransport({ failOn: 'ledger' });
+  let unknownOut = null;
+  await unknownSetup.transport.withTransaction(async (tx) => {
+    unknownOut = await tx.writeLedger(validLedgerPayload());
+    return { ok: false };
+  });
+
+  assert.notEqual(failedOut.ledgerAppendStatus, unknownOut.ledgerAppendStatus);
+  assert.deepEqual(
+    [failedOut.recorded, unknownOut.recorded],
+    [false, false],
+    'both non-APPENDED statuses must remain fail closed'
+  );
+  for (const out of [failedOut, unknownOut]) {
+    assert.ok(
+      Object.values(APPEND_STATUSES).includes(out.ledgerAppendStatus),
+      'the diagnostic must stay inside the fixed bounded enum'
+    );
+  }
+});
+
+test('writeLedger never retries: exactly one ledger append query is issued', async () => {
+  const setup = await openTransport({ ledgerEcho: false });
+  await setup.transport.withTransaction(async (tx) => {
+    await tx.writeLedger(validLedgerPayload());
+    return { ok: false };
+  });
+  const ledgerText = LEDGER.POSTGRES_MIGRATION_LEDGER_QUERIES.append.text;
+  assert.equal(setup.state.sql.filter((t) => t === ledgerText).length, 1);
+});
+
+test('the ledger append path issues no arbitrary SQL, no Product read, no GRANT/REVOKE', async () => {
+  const setup = await openTransport();
+  await setup.transport.withTransaction(async (tx) => {
+    await tx.writeLedger(validLedgerPayload());
+    return { ok: false };
+  });
+  const ledgerText = LEDGER.POSTGRES_MIGRATION_LEDGER_QUERIES.append.text;
+  const allowed = new Set([
+    TRANSPORT.CONNECTED_IDENTITY_QUERY,
+    'SELECT pg_try_advisory_lock($1::integer, $2::integer) AS locked',
+    'BEGIN',
+    'ROLLBACK',
+    ledgerText,
+  ]);
+  for (const sql of setup.state.sql) {
+    assert.ok(allowed.has(sql), `unexpected SQL on the ledger path: ${String(sql).slice(0, 60)}`);
+    assert.doesNotMatch(sql, /\bGRANT\b|\bREVOKE\b/i);
+  }
 });
 
 // ----- 8b. Live Production execution authority separation -----

@@ -26,6 +26,15 @@
  * stack, query result, raw row reference, lock handle, session/client, query or
  * release function, hostname, database name, connection URL, credential, or
  * operator identity ever appears in a result.
+ *
+ * Real-driver compatibility: the top-level query result is treated as an opaque
+ * CONTAINER, not as a plain record. Real node-postgres returns a `Result`
+ * instance whose prototype is `Result.prototype`, so requiring a plain top-level
+ * record would map a successful `INSERT ... RETURNING` to UNKNOWN and fail a
+ * successful read. Only the own data property `rows` is read; the container's
+ * prototype and every other top-level field are ignored. Rows themselves are
+ * still required to be plain records, because the driver builds each row as a
+ * plain `{}` object.
  */
 
 // Fixed ledger relation. Never caller-overridable, never read from the
@@ -162,6 +171,35 @@ function safeIsPlainRecord(value) {
     if (Array.isArray(value)) return false;
     const proto = Object.getPrototypeOf(value);
     return proto === Object.prototype || proto === null;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Top-level QueryResult container check.
+//
+// This deliberately does NOT constrain the prototype VALUE. The real
+// node-postgres driver returns a `Result` instance whose prototype is
+// `Result.prototype`, not `Object.prototype`, so requiring a plain record here
+// would reject every genuine driver result even when the query succeeded. The
+// container's only trusted content is its own data property `rows`, which is
+// read separately via safeGetOwnDataProperty and validated exactly as before.
+//
+// The prototype is still PROBED defensively, but its value is discarded: a
+// container whose prototype cannot be inspected at all (revoked Proxy, throwing
+// getPrototypeOf trap) is treated as hostile and fails closed. This keeps
+// "container trap failure => bounded failure" true without imposing any
+// prototype requirement on legitimate driver results.
+//
+// Still rejected: null/undefined, non-objects, and arrays (a query result is a
+// record, not an array). Never throws.
+function safeIsQueryResultContainer(value) {
+  if (value === null || value === undefined) return false;
+  try {
+    if (typeof value !== 'object') return false;
+    if (Array.isArray(value)) return false;
+    Object.getPrototypeOf(value);
+    return true;
   } catch (error) {
     return false;
   }
@@ -328,13 +366,17 @@ function isCanonicalUtcTimestamp(value) {
 // trap throws yield undefined.
 // Validate a QueryResult and project it to a frozen array of frozen seven-field
 // clones preserving the query row order (no JS sort/dedupe/rewrite). Top-level
-// metadata (command, rowCount, oid, fields, ...) is allowed and ignored; only the
-// own-data `rows` dense array is validated. Returns undefined (=> fixed read error)
-// on any malformed top-level shape, sparse rows, malformed row, or trap throw. An
-// empty dense rows array yields a frozen [] (valid empty ledger).
+// metadata (command, rowCount, oid, fields, prototype, ...) is allowed and
+// ignored; only the own-data `rows` dense array is validated. The container is
+// NOT required to be a plain object — real node-postgres results are `Result`
+// instances — but `rows` must still be an OWN DATA property (inherited-only or
+// accessor `rows` fails closed). Returns undefined (=> fixed read error) on any
+// malformed top-level shape, missing/inherited/accessor rows, sparse rows,
+// malformed row, or trap throw. An empty dense rows array yields a frozen []
+// (valid empty ledger).
 function readLedgerRecords(result) {
   try {
-    if (!safeIsPlainRecord(result)) return undefined;
+    if (!safeIsQueryResultContainer(result)) return undefined;
     const rows = safeGetOwnDataProperty(result, 'rows');
     if (rows === MISS) return undefined;
 
@@ -382,9 +424,13 @@ function readExactAppendEvidenceRowSnapshot(row) {
 //   UNKNOWN:  query throw/reject, malformed QueryResult/rows-array,
 //             non-dense-array rows, multiple rows, extra properties,
 //             malformed record structure.
+// The top-level container is NOT required to be a plain object: real
+// node-postgres returns a `Result` instance, and rejecting it would map a
+// successful INSERT ... RETURNING to UNKNOWN. Only the own-data `rows` property
+// is inspected; every other top-level field (prototype included) is ignored.
 function readExactAppendEvidence(result, snapshot) {
   try {
-    if (!safeIsPlainRecord(result)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
+    if (!safeIsQueryResultContainer(result)) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
     const rows = safeGetOwnDataProperty(result, 'rows');
     if (rows === MISS) return POSTGRES_LEDGER_APPEND_STATUSES.UNKNOWN;
 
