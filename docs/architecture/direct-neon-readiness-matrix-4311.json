@@ -687,18 +687,18 @@
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
-      "live_provider_state": "NOT_FRESHLY_VERIFIED",
+      "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
       "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
-      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "live_gate_state": "LIVE_GATE_VERIFIED",
       "ephemeral_diagnostic_support": "DEDICATED_ISSUE_PENDING",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
-      "production_live": "NOT_PRODUCTION_LIVE",
+      "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "G",
-      "disposition_note": "#4239's earlier SOURCE_MISSING / target-adoption blockers are superseded: the helper is on main, #4282 canonical schema adoption is completed, and #4257 minimal writer ACL is proven. Production-live status remains pending reviewed gate integration, exact-main deployment/provider verification, and separately authorized Product canary.",
-      "last_exact_head_evidence": { "ref": "#4257 minimal writer grant completed; exact 3 privileges (SELECT, INSERT, UPDATE) granted to lb_product_rw_a3f8c2d1 on public.tree_appreciation_orders", "main_sha": "7eb31e9db883134f310f04e8a91248cad19a4a83" },
+      "disposition_note": "Production-live attestation (source/doc/test-only). The full accepted chain: #4282 canonical public.tree_appreciation_orders schema adoption COMPLETE -> #4257 fresh writer ACL audit proved the dedicated writer role already held the required trees/memories row-lock capabilities but lacked target-table privileges -> exactly one bounded grant of SELECT, INSERT, UPDATE on public.tree_appreciation_orders (no DELETE/TRUNCATE/sequence privileges) -> PR #4345 checked in LB_APPRECIATION_ORDER_WRITE_RUNTIME=direct_neon and merged to exact main 851376c -> exact-head CI and exact-main CI green (run 33841480947) -> Production deployment/provider verification (release parity, x-lovebud-upstream=direct-neon) -> bounded Product canary accepted by CENTRAL: POST #1 exercised the initial INSERT path and POST #2 (same disposable Tree, empty order) exercised the ON CONFLICT DO UPDATE path, both HTTP 200 with runtime direct_neon, upstream direct-neon, route status saved, PRODUCT_RETRY=0 -> cleanup PASS via one disposable Tree DELETE with post-delete 404 verification -> #4257 final closeout (comments 5535980555, 5536043657, 5536254929, 5536370299, 5536459290, 5536485011). No raw Tree/Memory ID, token, DB URL, request-id value, or raw private Product body recorded. Fresh source-continuity audit at main f1f9af8 confirms zero drift in the helper, route dispatch, required privilege envelope, or wrangler gate since the cited evidence.",
+      "last_exact_head_evidence": { "ref": "schema adoption #4282 -> fresh ACL audit + exactly one bounded writer grant #4257 (SELECT, INSERT, UPDATE on public.tree_appreciation_orders) -> checked-in Production gate PR #4345 merged at 851376c -> exact-head CI green -> exact-main CI run 33841480947 SUCCESS -> Production deployment/provider verification -> bounded Product canary PASS: 1 INSERT-path POST + 1 conflict UPDATE-path POST (same disposable Tree, empty order), both HTTP 200 direct-neon markers, 0 retries -> cleanup PASS (1 Tree DELETE + post-delete 404) -> #4257 final closeout accepted by CENTRAL (comment 5536485011); continuity re-verified at main f1f9af8 with zero helper/route/gate drift", "main_sha": "851376c6e3d44a19b9c45ba9de8bc13eff7d06d9" },
       "modal_retained_by_design": false,
-      "rollback_authority": "wrangler gate var revert via reviewed PR",
-      "next_action": "fresh exact-head CI -> merge only after CENTRAL decision -> fresh exact-main CI -> exact-main Cloudflare Production deployment/provider verification -> separately authorized bounded direct-Neon Product canary -> only then PRODUCTION_LIVE decision"
+      "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_APPRECIATION_ORDER_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the #4282 canonical schema and the #4257 proven least-privilege grant remain intact unless a separately proven defect requires otherwise; the Modal POST path remains the fallback/default when the gate is unset",
+      "next_action": "Appreciation Order POST direct-Neon write is Production live at the cited evidence. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no further Product canary): any change to LB_APPRECIATION_ORDER_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the appreciation-order-direct-neon helper, route dispatch, the tree_appreciation_orders schema, trees/memories locking semantics, Cloudflare Production deployment/source parity, auth/owner isolation, or UPSERT transaction behavior"
     }
   ]
 }
