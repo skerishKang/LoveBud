@@ -17,6 +17,7 @@ const {
   classifySelectGrantSources,
   deriveDecision,
   deriveTreeCommentsDecision,
+  deriveHubLayoutDecision,
   collectAttestation,
   loadTargetRoleMapping,
   runAttestationWithDeps,
@@ -101,6 +102,13 @@ function fakeClient({
     UPDATE_REACTIONS: false,
     DELETE_REACTIONS: false,
     SELECT_TREE_COMMENTS: false,
+    SELECT_TREE_HUB_LAYOUTS: false,
+    INSERT_TREE_HUB_LAYOUTS: false,
+    UPDATE_TREE_HUB_LAYOUTS: false,
+    DELETE_TREE_HUB_LAYOUTS: false,
+    TRUNCATE_TREE_HUB_LAYOUTS: false,
+    REFERENCES_TREE_HUB_LAYOUTS: false,
+    TRIGGER_TREE_HUB_LAYOUTS: false,
     ...privileges,
   };
   const bool = (key) => [{ allowed: p[key] }];
@@ -128,6 +136,13 @@ function fakeClient({
       if (text === Q.REACTIONS_UPDATE) return { rows: bool('UPDATE_REACTIONS') };
       if (text === Q.REACTIONS_DELETE) return { rows: bool('DELETE_REACTIONS') };
       if (text === Q.TREE_COMMENTS_SELECT) return { rows: bool('SELECT_TREE_COMMENTS') };
+      if (text === Q.HUB_LAYOUT_SELECT) return { rows: bool('SELECT_TREE_HUB_LAYOUTS') };
+      if (text === Q.HUB_LAYOUT_INSERT) return { rows: bool('INSERT_TREE_HUB_LAYOUTS') };
+      if (text === Q.HUB_LAYOUT_UPDATE) return { rows: bool('UPDATE_TREE_HUB_LAYOUTS') };
+      if (text === Q.HUB_LAYOUT_DELETE) return { rows: bool('DELETE_TREE_HUB_LAYOUTS') };
+      if (text === Q.HUB_LAYOUT_TRUNCATE) return { rows: bool('TRUNCATE_TREE_HUB_LAYOUTS') };
+      if (text === Q.HUB_LAYOUT_REFERENCES) return { rows: bool('REFERENCES_TREE_HUB_LAYOUTS') };
+      if (text === Q.HUB_LAYOUT_TRIGGER) return { rows: bool('TRIGGER_TREE_HUB_LAYOUTS') };
       throw new Error('unexpected fixture query');
     },
   };
@@ -517,7 +532,7 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
     const { fixture } = await collectFixture();
     const fixed = new Set(Object.values(Q));
     assert.ok(fixture.calls.every((call) => fixed.has(call.text)));
-    assert.ok(fixture.calls.every((call) => !/SELECT\s+\*|FROM\s+public\.(trees|memories|tree_social_counts|reactions|tree_comments)\b/i.test(call.text)));
+    assert.ok(fixture.calls.every((call) => !/SELECT\s+\*|FROM\s+public\.(trees|memories|tree_social_counts|reactions|tree_comments|tree_hub_layouts)\b/i.test(call.text)));
     const treeCommentsProbe = fixture.calls.filter((call) => call.text === Q.TREE_COMMENTS_SELECT);
     assert.equal(treeCommentsProbe.length, 1);
     assert.deepEqual(treeCommentsProbe[0].params, [RAW_TARGET]);
@@ -750,7 +765,7 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
   it('#4000 public.tree_comments is an explicit static allowlisted target', () => {
     assert.ok(TARGET_RELATIONS.includes('public.tree_comments'));
     assert.ok(TARGET_RELATION_NAMES.includes('tree_comments'));
-    assert.equal(TARGET_RELATIONS.length, 5);
+    assert.equal(TARGET_RELATIONS.length, 6);
     assert.ok(Object.isFrozen(TARGET_RELATIONS));
     assert.equal(Q.TREE_COMMENTS_SELECT, "SELECT has_table_privilege($1::name, 'public.tree_comments', 'SELECT') AS allowed");
   });
@@ -962,6 +977,226 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
     const unknown = deriveTreeCommentsDecision({ ...base, privileges: { DATABASE_CONNECT: true, USAGE_PUBLIC: true, SELECT_TREES: true } });
     assert.equal(unknown.activationEligible, 'NO');
     assert.equal(unknown.finalDisposition, 'TREE_COMMENTS_PRIVILEGE_UNRESOLVED');
+    assert.equal(unknown.target, 'UNRESOLVED');
+  });
+
+  it('#4000 public.tree_hub_layouts is an explicit static allowlisted target', () => {
+    assert.ok(TARGET_RELATIONS.includes('public.tree_hub_layouts'));
+    assert.ok(TARGET_RELATION_NAMES.includes('tree_hub_layouts'));
+    assert.equal(TARGET_RELATIONS.length, 6);
+    assert.ok(Object.isFrozen(TARGET_RELATIONS));
+    assert.equal(Q.HUB_LAYOUT_SELECT, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'SELECT') AS allowed");
+    assert.equal(Q.HUB_LAYOUT_INSERT, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'INSERT') AS allowed");
+    assert.equal(Q.HUB_LAYOUT_UPDATE, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'UPDATE') AS allowed");
+    assert.equal(Q.HUB_LAYOUT_DELETE, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'DELETE') AS allowed");
+    assert.equal(Q.HUB_LAYOUT_TRUNCATE, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'TRUNCATE') AS allowed");
+    assert.equal(Q.HUB_LAYOUT_REFERENCES, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'REFERENCES') AS allowed");
+    assert.equal(Q.HUB_LAYOUT_TRIGGER, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'TRIGGER') AS allowed");
+  });
+
+  it('#4000 reports sanitized TREE_HUB_LAYOUTS SELECT YES and NO', async () => {
+    const granted = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: true, SELECT_REACTIONS: true } });
+    assert.equal(granted.result.privileges.SELECT_TREE_HUB_LAYOUTS, true);
+    assert.equal(granted.result.hubLayoutDecision.target, 'RESOLVED');
+    assert.equal(granted.result.hubLayoutDecision.activationEligible, 'ACL_READY_ONLY');
+    assert.equal(granted.result.hubLayoutDecision.finalDisposition, 'HUB_LAYOUT_SELECT_ALREADY_PRESENT');
+    assert.equal(granted.result.hubLayoutDecision.minimalChange, 'NONE');
+    const missing = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: false, SELECT_REACTIONS: true } });
+    assert.equal(missing.result.hubLayoutDecision.target, 'RESOLVED');
+    assert.equal(missing.result.hubLayoutDecision.activationEligible, 'NO');
+    assert.equal(missing.result.hubLayoutDecision.finalDisposition, 'HUB_LAYOUT_SELECT_MISSING');
+    assert.equal(missing.result.hubLayoutDecision.minimalChange, 'GRANT_SELECT_PUBLIC_TREE_HUB_LAYOUTS_TO_RESOLVED_RUNTIME_READ_ROLE');
+  });
+
+  it('#4000 flattens the hub_layout verdict into the sanitized public output', async () => {
+    const granted = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: true, SELECT_REACTIONS: true } });
+    const output = await runAttestationWithDeps({
+      approvalReference: APPROVAL_REFERENCE,
+      purpose: SOURCE_BOUND_PURPOSE,
+      baselineCommit: 'a'.repeat(40),
+      currentHead: 'a'.repeat(40),
+      loadPrivateInputs: async () => ({}),
+      collect: async () => granted.result,
+    });
+    assert.equal(output.selectTreeHubLayouts, 'YES');
+    assert.equal(output.insertTreeHubLayouts, 'NO');
+    assert.equal(output.updateTreeHubLayouts, 'NO');
+    assert.equal(output.deleteTreeHubLayouts, 'NO');
+    assert.equal(output.truncateTreeHubLayouts, 'NO');
+    assert.equal(output.referencesTreeHubLayouts, 'NO');
+    assert.equal(output.triggerTreeHubLayouts, 'NO');
+    assert.equal(output.hubLayoutActivationEligible, 'ACL_READY_ONLY');
+    assert.equal(output.hubLayoutFinalDisposition, 'HUB_LAYOUT_SELECT_ALREADY_PRESENT');
+    assert.equal(output.hubLayoutPrivilegeTargetIdentity, 'RESOLVED');
+    assert.equal(output.hubLayoutMinimalRequiredChange, 'NONE');
+    assert.equal(output.productionConnectionCount, 1);
+    assert.equal(output.rawRoleExposed, 'NO');
+    assert.equal(JSON.stringify(output).includes(RAW_TARGET), false);
+    const missing = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: false, SELECT_REACTIONS: true } });
+    const missingOutput = await runAttestationWithDeps({
+      approvalReference: APPROVAL_REFERENCE,
+      purpose: SOURCE_BOUND_PURPOSE,
+      baselineCommit: 'a'.repeat(40),
+      currentHead: 'a'.repeat(40),
+      loadPrivateInputs: async () => ({}),
+      collect: async () => missing.result,
+    });
+    assert.equal(missingOutput.selectTreeHubLayouts, 'NO');
+    assert.equal(missingOutput.hubLayoutActivationEligible, 'NO');
+    assert.equal(missingOutput.hubLayoutFinalDisposition, 'HUB_LAYOUT_SELECT_MISSING');
+    assert.equal(missingOutput.hubLayoutMinimalRequiredChange, 'GRANT_SELECT_PUBLIC_TREE_HUB_LAYOUTS_TO_RESOLVED_RUNTIME_READ_ROLE');
+    assert.equal(missingOutput.canProceed, 'YES');
+  });
+
+  it('#4000 missing hub_layout SELECT stops without touching the reactions or tree_comments packets', async () => {
+    const { result } = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: false, SELECT_REACTIONS: true, SELECT_TREE_COMMENTS: true } });
+    assert.equal(result.decision.target, 'RESOLVED');
+    assert.equal(result.decision.minimalChange, 'NO_PRIVILEGE_CHANGE');
+    assert.equal(result.decision.canProceed, 'YES');
+    assert.equal(result.treeCommentsDecision.target, 'RESOLVED');
+    assert.equal(result.treeCommentsDecision.activationEligible, 'YES');
+    assert.equal(result.hubLayoutDecision.target, 'RESOLVED');
+    assert.equal(result.hubLayoutDecision.finalDisposition, 'HUB_LAYOUT_SELECT_MISSING');
+  });
+
+  it('#4000 hub_layout probes are asked of target B only, never observer A', async () => {
+    const { result, fixture } = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: true } });
+    for (const query of [Q.HUB_LAYOUT_SELECT, Q.HUB_LAYOUT_INSERT, Q.HUB_LAYOUT_UPDATE, Q.HUB_LAYOUT_DELETE, Q.HUB_LAYOUT_TRUNCATE, Q.HUB_LAYOUT_REFERENCES, Q.HUB_LAYOUT_TRIGGER]) {
+      const probe = fixture.calls.filter((call) => call.text === query);
+      assert.equal(probe.length, 1);
+      assert.deepEqual(probe[0].params, [RAW_TARGET]);
+    }
+    assert.equal(result.sessionEqualsTarget, 'NO');
+    assert.equal(result.currentRoleEqualsTarget, 'NO');
+    assert.equal(result.privileges.SELECT_TREE_HUB_LAYOUTS, true);
+  });
+
+  it('#4000 hub_layout widening signals are diagnostic-only and never revoke', async () => {
+    const widened = await collectFixture({
+      privileges: {
+        SELECT_TREE_HUB_LAYOUTS: true,
+        INSERT_TREE_HUB_LAYOUTS: true,
+        UPDATE_TREE_HUB_LAYOUTS: true,
+        DELETE_TREE_HUB_LAYOUTS: true,
+        TRUNCATE_TREE_HUB_LAYOUTS: true,
+        REFERENCES_TREE_HUB_LAYOUTS: true,
+        TRIGGER_TREE_HUB_LAYOUTS: true,
+      },
+    });
+    assert.equal(widened.result.privileges.INSERT_TREE_HUB_LAYOUTS, true);
+    assert.equal(widened.result.privileges.TRIGGER_TREE_HUB_LAYOUTS, true);
+    assert.equal(widened.result.hubLayoutDecision.finalDisposition, 'HUB_LAYOUT_SELECT_ALREADY_PRESENT');
+    assert.equal(widened.result.hubLayoutDecision.activationEligible, 'ACL_READY_ONLY');
+    assert.ok(widened.fixture.calls.every((call) => !/\b(REVOKE|GRANT)\b/i.test(call.text)));
+  });
+
+  it('#4000 baseline drift blocks hub_layout eligibility even when granted', async () => {
+    const noTrees = await collectFixture({ privileges: { SELECT_TREES: false, SELECT_TREE_HUB_LAYOUTS: true } });
+    assert.equal(noTrees.result.hubLayoutDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+    assert.equal(noTrees.result.hubLayoutDecision.activationEligible, 'NO');
+    const noUsage = await collectFixture({ privileges: { USAGE_PUBLIC: false, SELECT_TREE_HUB_LAYOUTS: true } });
+    assert.equal(noUsage.result.hubLayoutDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+    const admin = await collectFixture({
+      privileges: { SELECT_TREE_HUB_LAYOUTS: true },
+      flags: [{ role_name: RAW_TARGET, rolsuper: true }],
+    });
+    assert.equal(admin.result.hubLayoutDecision.activationEligible, 'NO');
+    assert.equal(admin.result.hubLayoutDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+  });
+
+  it('#4000 allowlist extension does not weaken broad SELECT drift detection for hub_layouts', async () => {
+    const granted = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: true } });
+    assert.equal(granted.result.broadAllTableSelect, 'NO');
+    const unlisted = await collectFixture({
+      privileges: { SELECT_TREE_HUB_LAYOUTS: true },
+      broadAclRows: [{ relation_name: 'unrelated_table', grantee_oid: 100, grantee_name: RAW_TARGET, privilege_type: 'SELECT' }],
+    });
+    assert.equal(unlisted.result.broadAllTableSelect, 'YES');
+    assert.equal(unlisted.result.hubLayoutDecision.activationEligible, 'NO');
+    assert.equal(unlisted.result.hubLayoutDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+  });
+
+  it('#4000 absent hub_layout relation row fails closed with rollback and disconnect', async () => {
+    const aclRows = aclRowsFor().filter((row) => row.relation_name !== 'tree_hub_layouts');
+    const fixture = fakeClient({ aclRows });
+    await assert.rejects(
+      collectAttestation({ client: fixture.client, targetRuntimeRole: RAW_TARGET, roleMapping: TARGET_MAPPING }),
+      { category: 'ATTESTATION_ACL_RELATION_MISSING' },
+    );
+    assert.equal(fixture.counts().connectCount, 1);
+    assert.equal(fixture.counts().endCount, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 1);
+  });
+
+  it('#4000 hub_layout provenance is reported per relation like the others', async () => {
+    const { result } = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: true } });
+    assert.equal(result.perRelationProvenance.tree_hub_layouts.effectiveSelect, 'YES');
+    assert.equal(result.perRelationProvenance.tree_hub_layouts.publicGrant, 'YES');
+    assert.equal(result.perRelationProvenance.tree_hub_layouts.directTargetGrant, 'NO');
+    const direct = await collectFixture({
+      privileges: { SELECT_TREE_HUB_LAYOUTS: true },
+      aclRows: aclRowsFor({ tree_hub_layouts: [{ grantee_name: RAW_TARGET, grantee_oid: 100 }] }),
+    });
+    assert.equal(direct.result.perRelationProvenance.tree_hub_layouts.directTargetGrant, 'YES');
+    assert.equal(direct.result.perRelationProvenance.tree_hub_layouts.effectiveSelect, 'YES');
+  });
+
+  it('#4000 hub_layout query set is catalog-only and carries no grant, revoke, DDL, DML, or commit', () => {
+    const statements = [Q.HUB_LAYOUT_SELECT, Q.HUB_LAYOUT_INSERT, Q.HUB_LAYOUT_UPDATE, Q.HUB_LAYOUT_DELETE, Q.HUB_LAYOUT_TRUNCATE, Q.HUB_LAYOUT_REFERENCES, Q.HUB_LAYOUT_TRIGGER].join('\n');
+    for (const banned of [/\bGRANT\b/i, /\bREVOKE\b/i, /\bCOMMIT\b/i, /\bCREATE\b/i, /\bALTER\b/i, /\bDROP\b/i,
+      /\bINSERT\s+INTO\b/i, /\bDELETE\s+FROM\b/i, /\bUPDATE\s+\w+\s+SET\b/i, /\bSELECT\s+\*\s+FROM\b/i]) {
+      assert.equal(banned.test(statements), false, `unexpected mutation-shaped statement: ${banned}`);
+    }
+    assert.equal((statements.match(/has_table_privilege/g) || []).length, 7);
+    assert.equal((statements.match(/public\.tree_hub_layouts/g) || []).length, 7);
+  });
+
+  it('#4000 keeps the hub_layout relation non-configurable via flags', () => {
+    for (const flag of ['--table', '--object', '--objects', '--sql', '--query', '--role', '--schema']) {
+      assert.throws(() => parseArgs(['--approval-reference', APPROVAL_REFERENCE, '--purpose', SOURCE_BOUND_PURPOSE, flag, 'public.tree_hub_layouts']), /ATTESTATION_INPUT_INVALID/);
+    }
+  });
+
+  it('#4000 reports HUB_LAYOUT UNKNOWN with zero session when private inputs are absent', () => {
+    const failure = sanitizedFailure('ATTESTATION_INPUT_INVALID');
+    assert.equal(failure.runnerInvocationCount, 0);
+    assert.equal(failure.productionConnectionCount, 0);
+    assert.equal(failure.collectionSessionCount, 0);
+    assert.equal(failure.transactionReadOnly, 'NOT_REACHED');
+    assert.equal(failure.selectTreeHubLayouts, 'UNKNOWN');
+    assert.equal(failure.insertTreeHubLayouts, 'UNKNOWN');
+    assert.equal(failure.updateTreeHubLayouts, 'UNKNOWN');
+    assert.equal(failure.deleteTreeHubLayouts, 'UNKNOWN');
+    assert.equal(failure.truncateTreeHubLayouts, 'UNKNOWN');
+    assert.equal(failure.referencesTreeHubLayouts, 'UNKNOWN');
+    assert.equal(failure.triggerTreeHubLayouts, 'UNKNOWN');
+    assert.equal(failure.hubLayoutPrivilegeTargetIdentity, 'UNKNOWN');
+    assert.equal(failure.hubLayoutMinimalRequiredChange, 'UNKNOWN');
+    assert.equal(failure.hubLayoutActivationEligible, 'UNKNOWN');
+    assert.equal(failure.hubLayoutFinalDisposition, 'UNKNOWN');
+  });
+
+  it('#4000 redacts target, observer, and grantee from every hub_layout output field', async () => {
+    const { result } = await collectFixture({ privileges: { SELECT_TREE_HUB_LAYOUTS: true } });
+    const text = JSON.stringify(result);
+    for (const secret of [RAW_OBSERVER, RAW_TARGET, RAW_GRANTEE, RAW_SECRET]) {
+      assert.equal(text.includes(secret), false);
+    }
+    assert.equal(text.includes('postgresql://'), false);
+    assert.equal(JSON.stringify(sanitizedFailure('ATTESTATION_ACL_RELATION_MISSING')).includes(RAW_TARGET), false);
+  });
+
+  it('#4000 deriveHubLayoutDecision is closed over unknown privilege shape', () => {
+    const base = { identityResolved: true, roleAdmin: false, broadAllTableSelect: false };
+    const ok = { DATABASE_CONNECT: true, USAGE_PUBLIC: true, SELECT_TREES: true, SELECT_TREE_HUB_LAYOUTS: true };
+    assert.equal(deriveHubLayoutDecision({ ...base, privileges: ok }).activationEligible, 'ACL_READY_ONLY');
+    assert.equal(deriveHubLayoutDecision({ ...base, privileges: ok }).finalDisposition, 'HUB_LAYOUT_SELECT_ALREADY_PRESENT');
+    assert.equal(deriveHubLayoutDecision({ ...base, privileges: { ...ok, SELECT_TREE_HUB_LAYOUTS: false } }).finalDisposition, 'HUB_LAYOUT_SELECT_MISSING');
+    assert.equal(deriveHubLayoutDecision({ ...base, privileges: { ...ok, SELECT_TREE_HUB_LAYOUTS: false } }).minimalChange, 'GRANT_SELECT_PUBLIC_TREE_HUB_LAYOUTS_TO_RESOLVED_RUNTIME_READ_ROLE');
+    assert.equal(deriveHubLayoutDecision({ ...base, identityResolved: false, privileges: ok }).finalDisposition, 'RUNTIME_ROLE_IDENTITY_UNRESOLVED');
+    const unknown = deriveHubLayoutDecision({ ...base, privileges: { DATABASE_CONNECT: true, USAGE_PUBLIC: true, SELECT_TREES: true } });
+    assert.equal(unknown.activationEligible, 'NO');
+    assert.equal(unknown.finalDisposition, 'HUB_LAYOUT_PRIVILEGE_UNRESOLVED');
     assert.equal(unknown.target, 'UNRESOLVED');
   });
 });
