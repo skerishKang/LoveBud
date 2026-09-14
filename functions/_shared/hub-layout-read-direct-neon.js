@@ -100,7 +100,115 @@ export function detectHubLayoutReadForbiddenFallback(env = {}) {
   return null;
 }
 
-function directHeaders(requestId, routeStatus = null) {
+// ─── Diagnostic failure sanitization (#4000) ──────────────────────────────
+// The live-gate canary failed with 500 query-failed because the catch block
+// swallowed the underlying error. These helpers expose ONLY a fixed-vocabulary
+// stage, a fixed-vocabulary error class (built-in whitelist, never reflected),
+// and a PostgreSQL-shaped SQLSTATE (when valid) as headers on the existing 500
+// query-failed path. Error message, stack, detail, hint, where,
+// schema/table/column/constraint, query text/parameters, credentials, and
+// identifiers are NEVER read, formatted, or forwarded.
+
+export const DIAGNOSTIC_STAGES = Object.freeze([
+  'executor-init',
+  'visibility-query',
+  'hub-layout-query',
+  'response-normalization',
+  'unknown'
+]);
+
+export const DIAGNOSTIC_SQLSTATE_PATTERN = /^[A-Z0-9]{5}$/;
+
+export const DIAGNOSTIC_ERROR_CLASS_WHITELIST = Object.freeze([
+  'Error',
+  'TypeError',
+  'RangeError',
+  'SyntaxError',
+  'ReferenceError'
+]);
+export const DIAGNOSTIC_ERROR_CLASS_FALLBACK = 'UnknownError';
+
+export const HUB_LAYOUT_READ_ERROR_CODES = Object.freeze({
+  EXECUTOR_INIT_FAILED: 'EXECUTOR_INIT_FAILED',
+  VISIBILITY_QUERY_FAILED: 'VISIBILITY_QUERY_FAILED',
+  HUB_LAYOUT_QUERY_FAILED: 'HUB_LAYOUT_QUERY_FAILED',
+  RESPONSE_NORMALIZATION_FAILED: 'RESPONSE_NORMALIZATION_FAILED',
+  DIRECT_NEON_QUERY_FAILED: 'DIRECT_NEON_QUERY_FAILED'
+});
+
+export function classifyHubLayoutReadErrorClass(error) {
+  let constructorName = '';
+  let instanceName = '';
+  try {
+    if (error !== null && error !== undefined) {
+      const ctor = error.constructor;
+      if (typeof ctor === 'function' && typeof ctor.name === 'string' && ctor.name !== '') {
+        constructorName = ctor.name;
+      }
+      const nm = error.name;
+      if (typeof nm === 'string' && nm !== '') {
+        instanceName = nm;
+      }
+    }
+  } catch {
+    return DIAGNOSTIC_ERROR_CLASS_FALLBACK;
+  }
+  const known = (value) => value !== '' && DIAGNOSTIC_ERROR_CLASS_WHITELIST.includes(value);
+  if (constructorName !== '' && !known(constructorName)) {
+    return DIAGNOSTIC_ERROR_CLASS_FALLBACK;
+  }
+  if (instanceName !== '' && !known(instanceName)) {
+    return DIAGNOSTIC_ERROR_CLASS_FALLBACK;
+  }
+  if (known(constructorName)) {
+    return constructorName;
+  }
+  if (known(instanceName)) {
+    return instanceName;
+  }
+  return DIAGNOSTIC_ERROR_CLASS_FALLBACK;
+}
+
+export function sanitizeHubLayoutReadFailure(error, stage) {
+  const safeStage = DIAGNOSTIC_STAGES.includes(stage) ? stage : 'unknown';
+  const errorClass = classifyHubLayoutReadErrorClass(error);
+  let sqlstate = null;
+  try {
+    if (error && typeof error.code === 'string' && DIAGNOSTIC_SQLSTATE_PATTERN.test(error.code)) {
+      sqlstate = error.code;
+    }
+  } catch {
+    sqlstate = null;
+  }
+  return Object.freeze({ stage: safeStage, errorClass, sqlstate });
+}
+
+export function diagnosticFailureHeaders(error, stage) {
+  const sanitized = sanitizeHubLayoutReadFailure(error, stage);
+  const headers = {
+    'x-lovebud-error-stage': sanitized.stage,
+    'x-lovebud-error-class': sanitized.errorClass
+  };
+  if (sanitized.sqlstate) headers['x-lovebud-sqlstate'] = sanitized.sqlstate;
+  return headers;
+}
+
+export function diagnosticFailureCodeForStage(stage) {
+  if (stage === 'visibility-query') return HUB_LAYOUT_READ_ERROR_CODES.VISIBILITY_QUERY_FAILED;
+  if (stage === 'hub-layout-query') return HUB_LAYOUT_READ_ERROR_CODES.HUB_LAYOUT_QUERY_FAILED;
+  if (stage === 'response-normalization') return HUB_LAYOUT_READ_ERROR_CODES.RESPONSE_NORMALIZATION_FAILED;
+  if (stage === 'executor-init') return HUB_LAYOUT_READ_ERROR_CODES.EXECUTOR_INIT_FAILED;
+  return HUB_LAYOUT_READ_ERROR_CODES.DIRECT_NEON_QUERY_FAILED;
+}
+
+export function diagnosticFailureBody(stage) {
+  return {
+    detail: 'Internal server error',
+    code: diagnosticFailureCodeForStage(stage)
+  };
+}
+
+function directHeaders(requestId, routeStatus = null, extraHeaders = null) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
@@ -112,13 +220,18 @@ function directHeaders(requestId, routeStatus = null) {
     headers['x-lovebud-request-id'] = requestId;
     headers['Access-Control-Expose-Headers'] = 'x-lovebud-request-id';
   }
+  if (extraHeaders) {
+    for (const [name, value] of Object.entries(extraHeaders)) {
+      headers[name] = value;
+    }
+  }
   return headers;
 }
 
-function jsonResponse(body, status, requestId, routeStatus = null) {
+function jsonResponse(body, status, requestId, routeStatus = null, extraHeaders = null) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: directHeaders(requestId, routeStatus)
+    headers: directHeaders(requestId, routeStatus, extraHeaders)
   });
 }
 
@@ -248,7 +361,9 @@ export async function handleHubLayoutReadDirectNeon(
     );
   }
 
+  let stage = 'unknown';
   try {
+    stage = 'executor-init';
     const executor = await createHubLayoutReadDirectExecutor({
       connectionString: config.connectionString,
       executor: executorOverride || undefined
@@ -256,6 +371,7 @@ export async function handleHubLayoutReadDirectNeon(
 
     // Preserve Modal's two-stage error authority: Tree missing vs foreign owner
     // is decided before tree_hub_layouts is queried.
+    stage = 'visibility-query';
     const ownerRows = await executor(HUB_LAYOUT_OWNER_READ_SQL, [treeId]);
     const tree = Array.isArray(ownerRows) && ownerRows.length ? ownerRows[0] : null;
     if (!tree) {
@@ -270,6 +386,7 @@ export async function handleHubLayoutReadDirectNeon(
       );
     }
 
+    stage = 'hub-layout-query';
     const layoutRows = await executor(HUB_LAYOUT_LATEST_READ_SQL, [treeId]);
     const row = Array.isArray(layoutRows) && layoutRows.length ? layoutRows[0] : null;
     if (!row) {
@@ -281,13 +398,17 @@ export async function handleHubLayoutReadDirectNeon(
       );
     }
 
-    return jsonResponse(projectHubLayoutReadRow(row), 200, requestId, 'loaded');
-  } catch {
+    stage = 'response-normalization';
+    const projected = projectHubLayoutReadRow(row);
+
+    return jsonResponse(projected, 200, requestId, 'loaded');
+  } catch (error) {
     return jsonResponse(
-      { detail: 'Internal server error' },
+      diagnosticFailureBody(stage),
       500,
       requestId,
-      'query-failed'
+      'query-failed',
+      diagnosticFailureHeaders(error, stage)
     );
   }
 }
