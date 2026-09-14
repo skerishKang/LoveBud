@@ -39,6 +39,7 @@ const TARGET_RELATIONS = Object.freeze([
   'public.tree_social_counts',
   'public.reactions',
   'public.tree_comments',
+  'public.tree_hub_layouts',
 ]);
 const TARGET_RELATION_NAMES = Object.freeze(TARGET_RELATIONS.map((value) => value.slice('public.'.length)));
 const TARGET_SET = new Set(TARGET_RELATIONS);
@@ -99,6 +100,13 @@ const Q = Object.freeze({
   REACTIONS_UPDATE: `SELECT has_table_privilege($1::name, 'public.reactions', 'UPDATE') AS allowed`,
   REACTIONS_DELETE: `SELECT has_table_privilege($1::name, 'public.reactions', 'DELETE') AS allowed`,
   TREE_COMMENTS_SELECT: `SELECT has_table_privilege($1::name, 'public.tree_comments', 'SELECT') AS allowed`,
+  HUB_LAYOUT_SELECT: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'SELECT') AS allowed`,
+  HUB_LAYOUT_INSERT: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'INSERT') AS allowed`,
+  HUB_LAYOUT_UPDATE: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'UPDATE') AS allowed`,
+  HUB_LAYOUT_DELETE: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'DELETE') AS allowed`,
+  HUB_LAYOUT_TRUNCATE: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'TRUNCATE') AS allowed`,
+  HUB_LAYOUT_REFERENCES: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'REFERENCES') AS allowed`,
+  HUB_LAYOUT_TRIGGER: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'TRIGGER') AS allowed`,
   RELATION_ACL: `SELECT c.relname::text AS relation_name,
                       (c.relacl IS NULL) AS relacl_was_null,
                       c.relowner::bigint AS owner_oid,
@@ -507,6 +515,36 @@ function deriveTreeCommentsDecision({ identityResolved, privileges, roleAdmin, b
   return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'TREE_COMMENTS_PRIVILEGE_UNRESOLVED' };
 }
 
+/**
+ * Hub Layout GET diagnosis packet (#4000). Deliberately separate from the
+ * #4283 reactions decision and the #4000 tree-comments decision so both
+ * historical decision blocks stay byte-for-byte regression boundaries.
+ *
+ * Hub Layout GET is a SELECT-only route: INSERT/UPDATE/DELETE/TRUNCATE/
+ * REFERENCES/TRIGGER are collected as diagnostic widening signals only and
+ * never drive the disposition. A missing SELECT is reported as
+ * SELECT_TREE_HUB_LAYOUTS=NO with a STOP disposition; this runner never
+ * grants, revokes, or repairs. `ACL_READY_ONLY` means the ACL state alone
+ * is ready; it is not a gate-activation approval.
+ */
+function deriveHubLayoutDecision({ identityResolved, privileges, roleAdmin, broadAllTableSelect }) {
+  const baseline = privileges.DATABASE_CONNECT === true && privileges.USAGE_PUBLIC === true &&
+    privileges.SELECT_TREES === true;
+  if (!identityResolved) {
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'RUNTIME_ROLE_IDENTITY_UNRESOLVED' };
+  }
+  if (!baseline || roleAdmin === true || broadAllTableSelect === true) {
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP' };
+  }
+  if (privileges.SELECT_TREE_HUB_LAYOUTS === true) {
+    return { target: 'RESOLVED', minimalChange: 'NONE', activationEligible: 'ACL_READY_ONLY', finalDisposition: 'HUB_LAYOUT_SELECT_ALREADY_PRESENT' };
+  }
+  if (privileges.SELECT_TREE_HUB_LAYOUTS === false) {
+    return { target: 'RESOLVED', minimalChange: 'GRANT_SELECT_PUBLIC_TREE_HUB_LAYOUTS_TO_RESOLVED_RUNTIME_READ_ROLE', activationEligible: 'NO', finalDisposition: 'HUB_LAYOUT_SELECT_MISSING' };
+  }
+  return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'HUB_LAYOUT_PRIVILEGE_UNRESOLVED' };
+}
+
 async function collectAttestation({ client, targetRuntimeRole, roleMapping, artifact }) {
   const target = assertTargetRuntimeRole(targetRuntimeRole);
   if (!roleMapping || Object.keys(roleMapping).length !== 1 ||
@@ -572,6 +610,13 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       UPDATE_REACTIONS: privilege(await client.query(Q.REACTIONS_UPDATE, [target]), 'UPDATE_REACTIONS'),
       DELETE_REACTIONS: privilege(await client.query(Q.REACTIONS_DELETE, [target]), 'DELETE_REACTIONS'),
       SELECT_TREE_COMMENTS: privilege(await client.query(Q.TREE_COMMENTS_SELECT, [target]), 'TREE_COMMENTS_SELECT'),
+      SELECT_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_SELECT, [target]), 'HUB_LAYOUT_SELECT'),
+      INSERT_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_INSERT, [target]), 'HUB_LAYOUT_INSERT'),
+      UPDATE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_UPDATE, [target]), 'HUB_LAYOUT_UPDATE'),
+      DELETE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_DELETE, [target]), 'HUB_LAYOUT_DELETE'),
+      TRUNCATE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_TRUNCATE, [target]), 'HUB_LAYOUT_TRUNCATE'),
+      REFERENCES_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_REFERENCES, [target]), 'HUB_LAYOUT_REFERENCES'),
+      TRIGGER_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_TRIGGER, [target]), 'HUB_LAYOUT_TRIGGER'),
     };
     const effectiveByRelation = {
       trees: privileges.SELECT_TREES,
@@ -579,12 +624,16 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       tree_social_counts: privileges.SELECT_TREE_SOCIAL_COUNTS,
       reactions: privileges.SELECT_REACTIONS,
       tree_comments: privileges.SELECT_TREE_COMMENTS,
+      tree_hub_layouts: privileges.SELECT_TREE_HUB_LAYOUTS,
     };
     for (const relationName of TARGET_RELATION_NAMES) {
       grantSources.relations[relationName].effectiveSelect = effectiveByRelation[relationName] ? 'YES' : 'NO';
     }
     const decision = deriveDecision({ identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect });
     const treeCommentsDecision = deriveTreeCommentsDecision({
+      identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect,
+    });
+    const hubLayoutDecision = deriveHubLayoutDecision({
       identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect,
     });
     return {
@@ -612,6 +661,7 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       perRelationProvenance: sanitizeRelationProvenance(grantSources.relations),
       decision,
       treeCommentsDecision,
+      hubLayoutDecision,
       rawRoleExposed: 'NO',
       rawGranteeExposed: 'NO',
       rawSecretExposed: 'NO',
@@ -640,7 +690,10 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     historicalRuntimeRoleRelation: 'UNRESOLVED',
     selectTrees: 'UNKNOWN', selectMemories: 'UNKNOWN', selectTreeSocialCounts: 'UNKNOWN', selectReactions: 'UNKNOWN',
     selectTreeComments: 'UNKNOWN',
+    selectTreeHubLayouts: 'UNKNOWN',
     insertReactions: 'UNKNOWN', updateReactions: 'UNKNOWN', deleteReactions: 'UNKNOWN',
+    insertTreeHubLayouts: 'UNKNOWN', updateTreeHubLayouts: 'UNKNOWN', deleteTreeHubLayouts: 'UNKNOWN',
+    truncateTreeHubLayouts: 'UNKNOWN', referencesTreeHubLayouts: 'UNKNOWN', triggerTreeHubLayouts: 'UNKNOWN',
     usagePublic: 'UNKNOWN', databaseConnect: 'UNKNOWN', broadAllTableSelect: 'UNKNOWN', roleAdmin: 'UNKNOWN',
     publicSelectGrant: 'UNKNOWN', directTargetSelectGrant: 'UNKNOWN', inheritedTargetSelectGrant: 'UNKNOWN',
     perRelationProvenance: Object.fromEntries(TARGET_RELATION_NAMES.map((name) => [name, {
@@ -651,6 +704,8 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     treeCommentsPrivilegeTargetIdentity: 'UNRESOLVED', treeCommentsMinimalRequiredChange: 'NOT_DETERMINABLE',
     treeCommentsActivationEligible: 'NO',
     treeCommentsFinalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
+    hubLayoutPrivilegeTargetIdentity: 'UNKNOWN', hubLayoutMinimalRequiredChange: 'UNKNOWN',
+    hubLayoutActivationEligible: 'UNKNOWN', hubLayoutFinalDisposition: 'UNKNOWN',
     finalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
     errorCategory: category,
   };
@@ -680,7 +735,11 @@ function formatSuccess(result) {
     selectTrees: p.SELECT_TREES ? 'YES' : 'NO', selectMemories: p.SELECT_MEMORIES ? 'YES' : 'NO',
     selectTreeSocialCounts: p.SELECT_TREE_SOCIAL_COUNTS ? 'YES' : 'NO', selectReactions: p.SELECT_REACTIONS ? 'YES' : 'NO',
     selectTreeComments: p.SELECT_TREE_COMMENTS ? 'YES' : 'NO',
+    selectTreeHubLayouts: p.SELECT_TREE_HUB_LAYOUTS ? 'YES' : 'NO',
     insertReactions: p.INSERT_REACTIONS ? 'YES' : 'NO', updateReactions: p.UPDATE_REACTIONS ? 'YES' : 'NO', deleteReactions: p.DELETE_REACTIONS ? 'YES' : 'NO',
+    insertTreeHubLayouts: p.INSERT_TREE_HUB_LAYOUTS ? 'YES' : 'NO', updateTreeHubLayouts: p.UPDATE_TREE_HUB_LAYOUTS ? 'YES' : 'NO',
+    deleteTreeHubLayouts: p.DELETE_TREE_HUB_LAYOUTS ? 'YES' : 'NO', truncateTreeHubLayouts: p.TRUNCATE_TREE_HUB_LAYOUTS ? 'YES' : 'NO',
+    referencesTreeHubLayouts: p.REFERENCES_TREE_HUB_LAYOUTS ? 'YES' : 'NO', triggerTreeHubLayouts: p.TRIGGER_TREE_HUB_LAYOUTS ? 'YES' : 'NO',
     usagePublic: p.USAGE_PUBLIC ? 'YES' : 'NO', databaseConnect: p.DATABASE_CONNECT ? 'YES' : 'NO',
     broadAllTableSelect: result.broadAllTableSelect, roleAdmin: result.roleAdmin,
     publicSelectGrant: result.publicSelectGrant, directTargetSelectGrant: result.directTargetSelectGrant,
@@ -692,6 +751,10 @@ function formatSuccess(result) {
     treeCommentsMinimalRequiredChange: result.treeCommentsDecision.minimalChange,
     treeCommentsActivationEligible: result.treeCommentsDecision.activationEligible,
     treeCommentsFinalDisposition: result.treeCommentsDecision.finalDisposition,
+    hubLayoutPrivilegeTargetIdentity: result.hubLayoutDecision.target,
+    hubLayoutMinimalRequiredChange: result.hubLayoutDecision.minimalChange,
+    hubLayoutActivationEligible: result.hubLayoutDecision.activationEligible,
+    hubLayoutFinalDisposition: result.hubLayoutDecision.finalDisposition,
     rawRoleExposed: 'NO', rawGranteeExposed: 'NO', rawSecretExposed: 'NO',
   };
 }
@@ -750,6 +813,7 @@ module.exports = {
   classifySelectGrantSources,
   deriveDecision,
   deriveTreeCommentsDecision,
+  deriveHubLayoutDecision,
   collectAttestation,
   runAttestationWithDeps,
   sanitizedFailure,
