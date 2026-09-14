@@ -1199,4 +1199,131 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
     assert.equal(unknown.finalDisposition, 'HUB_LAYOUT_PRIVILEGE_UNRESOLVED');
     assert.equal(unknown.target, 'UNRESOLVED');
   });
+
+  const RAW_STAGE_ERROR = 'raw-secret-ECONNREFUSED-10.0.0.1:5432-postgresql://leak';
+
+  function poisonQuery(fixture, text) {
+    const original = fixture.client.query.bind(fixture.client);
+    fixture.client.query = async (queryText, params) => {
+      if (queryText === text) throw new Error(RAW_STAGE_ERROR);
+      return original(queryText, params);
+    };
+  }
+
+  async function expectStageFailure(fixture, category) {
+    const error = await collectAttestation({
+      client: fixture.client,
+      targetRuntimeRole: RAW_TARGET,
+      roleMapping: TARGET_MAPPING,
+    }).then(() => null, (caught) => caught);
+    assert.ok(error, `expected rejection classified as ${category}`);
+    assert.equal(error.category, category);
+    assert.equal(error.message, category);
+    assert.equal(String(error.message).includes(RAW_STAGE_ERROR), false);
+    const sanitizedText = JSON.stringify(sanitizedFailure(error.category, 1));
+    assert.equal(sanitizedText.includes(RAW_STAGE_ERROR), false);
+    assert.equal(sanitizedText.includes(RAW_TARGET), false);
+    assert.equal(sanitizedText.includes(RAW_OBSERVER), false);
+    return error;
+  }
+
+  it('#4000 classifies a raw connect failure as ATTESTATION_CONNECT_FAILED with no transaction and no disconnect', async () => {
+    const fixture = fakeClient();
+    fixture.client.connect = async () => { throw new Error(RAW_STAGE_ERROR); };
+    await expectStageFailure(fixture, 'ATTESTATION_CONNECT_FAILED');
+    assert.equal(fixture.calls.length, 0);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.BEGIN_RO).length, 0);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 0);
+    assert.equal(fixture.counts().endCount, 0);
+  });
+
+  it('#4000 classifies a BEGIN READ ONLY failure as ATTESTATION_BEGIN_READ_ONLY_FAILED and still disconnects', async () => {
+    const fixture = fakeClient();
+    poisonQuery(fixture, Q.BEGIN_RO);
+    await expectStageFailure(fixture, 'ATTESTATION_BEGIN_READ_ONLY_FAILED');
+    assert.equal(fixture.counts().connectCount, 1);
+    assert.equal(fixture.counts().endCount, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 0);
+  });
+
+  it('#4000 classifies a SHOW transaction_read_only failure as ATTESTATION_READ_ONLY_VERIFY_FAILED with rollback and disconnect', async () => {
+    const fixture = fakeClient();
+    poisonQuery(fixture, Q.SHOW_RO);
+    await expectStageFailure(fixture, 'ATTESTATION_READ_ONLY_VERIFY_FAILED');
+    assert.equal(fixture.counts().connectCount, 1);
+    assert.equal(fixture.counts().endCount, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.BEGIN_RO).length, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 1);
+  });
+
+  it('#4000 classifies identity and role-chain catalog failures as ATTESTATION_IDENTITY_ROLE_CATALOG_FAILED with rollback and disconnect', async () => {
+    for (const text of [Q.IDENTITY, Q.ROLE_CHAIN, Q.ROLE_FLAGS]) {
+      const fixture = fakeClient();
+      poisonQuery(fixture, text);
+      await expectStageFailure(fixture, 'ATTESTATION_IDENTITY_ROLE_CATALOG_FAILED');
+      assert.equal(fixture.counts().connectCount, 1);
+      assert.equal(fixture.counts().endCount, 1);
+      assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 1);
+    }
+  });
+
+  it('#4000 classifies ACL and privilege catalog failures as ATTESTATION_ACL_CATALOG_FAILED with rollback and disconnect', async () => {
+    for (const text of [Q.RELATION_ACL, Q.BROAD_SELECT_ACL, Q.DATABASE_CONNECT, Q.TREES_SELECT, Q.TREE_COMMENTS_SELECT, Q.HUB_LAYOUT_SELECT, Q.HUB_LAYOUT_TRIGGER]) {
+      const fixture = fakeClient();
+      poisonQuery(fixture, text);
+      await expectStageFailure(fixture, 'ATTESTATION_ACL_CATALOG_FAILED');
+      assert.equal(fixture.counts().connectCount, 1);
+      assert.equal(fixture.counts().endCount, 1);
+      assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 1);
+    }
+  });
+
+  it('#4000 stage classification keeps every pre-existing categorized fail() semantics unchanged', async () => {
+    const notReadOnly = fakeClient({ readOnly: false });
+    await assert.rejects(
+      collectAttestation({ client: notReadOnly.client, targetRuntimeRole: RAW_TARGET, roleMapping: TARGET_MAPPING }),
+      { category: 'ATTESTATION_READ_ONLY_REQUIRED' },
+    );
+    const unknownRole = fakeClient({ flags: [{ role_name: 'different_role' }] });
+    await assert.rejects(
+      collectAttestation({ client: unknownRole.client, targetRuntimeRole: RAW_TARGET, roleMapping: TARGET_MAPPING }),
+      { category: 'ATTESTATION_TARGET_ROLE_UNRESOLVED' },
+    );
+    const missingRelation = fakeClient({ aclRows: aclRowsFor().filter((row) => row.relation_name !== 'tree_hub_layouts') });
+    await assert.rejects(
+      collectAttestation({ client: missingRelation.client, targetRuntimeRole: RAW_TARGET, roleMapping: TARGET_MAPPING }),
+      { category: 'ATTESTATION_ACL_RELATION_MISSING' },
+    );
+    const shaped = fakeClient();
+    const original = shaped.client.query.bind(shaped.client);
+    shaped.client.query = async (text, params) => {
+      if (text === Q.RELATION_ACL) return { rows: [{ relation_name: 'trees' }] };
+      return original(text, params);
+    };
+    await assert.rejects(
+      collectAttestation({ client: shaped.client, targetRuntimeRole: RAW_TARGET, roleMapping: TARGET_MAPPING }),
+      { category: 'ATTESTATION_ACL_SHAPE_INVALID' },
+    );
+  });
+
+  it('#4000 sanitized failure output for each live stage stays redacted and single-session', () => {
+    for (const category of [
+      'ATTESTATION_CONNECT_FAILED',
+      'ATTESTATION_BEGIN_READ_ONLY_FAILED',
+      'ATTESTATION_READ_ONLY_VERIFY_FAILED',
+      'ATTESTATION_IDENTITY_ROLE_CATALOG_FAILED',
+      'ATTESTATION_ACL_CATALOG_FAILED',
+    ]) {
+      const failure = sanitizedFailure(category, 1);
+      assert.equal(failure.runnerInvocationCount, 1);
+      assert.equal(failure.productionConnectionCount, 1);
+      assert.equal(failure.collectionSessionCount, 1);
+      assert.equal(failure.errorCategory, category);
+      assert.equal(failure.canProceed, 'NO');
+      const text = JSON.stringify(failure);
+      assert.equal(text.includes(RAW_STAGE_ERROR), false);
+      assert.equal(text.includes(RAW_TARGET), false);
+      assert.equal(text.includes(RAW_OBSERVER), false);
+    }
+  });
 });

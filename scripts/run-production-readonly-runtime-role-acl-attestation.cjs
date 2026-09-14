@@ -554,70 +554,109 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
   }
   let connected = false;
   let transactionStarted = false;
+  // Sanitized live-stage failure classification (#4000 diagnostic hardening).
+  // Uncategorized pg/network/runtime errors are translated into one fixed
+  // stage category per bounded stage. Every pre-existing categorized fail()
+  // semantics passes through unchanged, and no raw error message, code,
+  // detail, host, or stack is ever retained or emitted.
+  const stage = async (failureCategory, operation) => {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error && typeof error.category === 'string') throw error;
+      fail(failureCategory);
+    }
+    return undefined;
+  };
   try {
-    await client.connect();
+    await stage('ATTESTATION_CONNECT_FAILED', () => client.connect());
     connected = true;
-    await client.query(Q.BEGIN_RO);
+    await stage('ATTESTATION_BEGIN_READ_ONLY_FAILED', () => client.query(Q.BEGIN_RO));
     transactionStarted = true;
-    const readOnlyRows = safeQueryResult(await client.query(Q.SHOW_RO), 'READ_ONLY');
+    const readOnlyRows = await stage('ATTESTATION_READ_ONLY_VERIFY_FAILED', async () =>
+      safeQueryResult(await client.query(Q.SHOW_RO), 'READ_ONLY'));
     if (!safeBoolean(readOnlyRows[0])) fail('ATTESTATION_READ_ONLY_REQUIRED');
 
-    const identity = safeQueryResult(await client.query(Q.IDENTITY), 'IDENTITY')[0];
-    for (const key of ['current_user', 'session_user', 'current_role', 'current_database']) {
-      if (typeof identity[key] !== 'string' || !identity[key]) fail('ATTESTATION_IDENTITY_UNRESOLVED');
-    }
+    const roleFacts = await stage('ATTESTATION_IDENTITY_ROLE_CATALOG_FAILED', async () => {
+      const identity = safeQueryResult(await client.query(Q.IDENTITY), 'IDENTITY')[0];
+      for (const key of ['current_user', 'session_user', 'current_role', 'current_database']) {
+        if (typeof identity[key] !== 'string' || !identity[key]) fail('ATTESTATION_IDENTITY_UNRESOLVED');
+      }
 
-    const chain = safeQueryResult(await client.query(Q.ROLE_CHAIN, [target, MAX_ROLE_CHAIN_DEPTH]), 'TARGET_ROLE_CHAIN');
-    if (chain.length > MAX_ROLE_CHAIN_ROWS) fail('ATTESTATION_ROLE_CHAIN_BOUNDS');
-    const chainSemantics = buildRoleChainSemantics({ chain, targetRuntimeRole: target });
-    const chainNames = [...chainSemantics.memberOf];
-    const roleFlags = safeQueryResult(await client.query(Q.ROLE_FLAGS, [chainNames]), 'TARGET_ROLE_FLAGS');
-    if (!roleFlags.some((row) => String(row.role_name).toLowerCase() === target.toLowerCase())) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
-    const relation = buildRoleMappingRelation({ targetRuntimeRole: target, identity, chain, roleMapping, artifact });
-    const targetFlags = roleFlags.find((row) => String(row.role_name).toLowerCase() === target.toLowerCase());
-    if (!targetFlags) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
-    const targetMembershipAdminOption = chainSemantics.targetMembershipAdminOption;
-    const targetMembershipSetOption = chainSemantics.targetMembershipSetOption;
-    const targetRoleSuperuser = normalizeRoleBoolean(targetFlags.rolsuper, 'SPECIAL_ATTRIBUTE');
-    const targetRoleCreatedb = normalizeRoleBoolean(targetFlags.rolcreatedb, 'SPECIAL_ATTRIBUTE');
-    const targetRoleCreaterole = normalizeRoleBoolean(targetFlags.rolcreaterole, 'SPECIAL_ATTRIBUTE');
-    const targetRoleBypassrls = normalizeRoleBoolean(targetFlags.rolbypassrls, 'SPECIAL_ATTRIBUTE');
-    const targetRoleReplication = normalizeRoleBoolean(targetFlags.rolreplication, 'SPECIAL_ATTRIBUTE');
-    const roleAdmin = targetRoleSuperuser || targetRoleCreatedb || targetRoleCreaterole ||
-      targetRoleBypassrls || targetRoleReplication || targetMembershipAdminOption;
+      const chain = safeQueryResult(await client.query(Q.ROLE_CHAIN, [target, MAX_ROLE_CHAIN_DEPTH]), 'TARGET_ROLE_CHAIN');
+      if (chain.length > MAX_ROLE_CHAIN_ROWS) fail('ATTESTATION_ROLE_CHAIN_BOUNDS');
+      const chainSemantics = buildRoleChainSemantics({ chain, targetRuntimeRole: target });
+      const chainNames = [...chainSemantics.memberOf];
+      const roleFlags = safeQueryResult(await client.query(Q.ROLE_FLAGS, [chainNames]), 'TARGET_ROLE_FLAGS');
+      if (!roleFlags.some((row) => String(row.role_name).toLowerCase() === target.toLowerCase())) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
+      const relation = buildRoleMappingRelation({ targetRuntimeRole: target, identity, chain, roleMapping, artifact });
+      const targetFlags = roleFlags.find((row) => String(row.role_name).toLowerCase() === target.toLowerCase());
+      if (!targetFlags) fail('ATTESTATION_TARGET_ROLE_UNRESOLVED');
+      const targetMembershipAdminOption = chainSemantics.targetMembershipAdminOption;
+      const targetMembershipSetOption = chainSemantics.targetMembershipSetOption;
+      const targetRoleSuperuser = normalizeRoleBoolean(targetFlags.rolsuper, 'SPECIAL_ATTRIBUTE');
+      const targetRoleCreatedb = normalizeRoleBoolean(targetFlags.rolcreatedb, 'SPECIAL_ATTRIBUTE');
+      const targetRoleCreaterole = normalizeRoleBoolean(targetFlags.rolcreaterole, 'SPECIAL_ATTRIBUTE');
+      const targetRoleBypassrls = normalizeRoleBoolean(targetFlags.rolbypassrls, 'SPECIAL_ATTRIBUTE');
+      const targetRoleReplication = normalizeRoleBoolean(targetFlags.rolreplication, 'SPECIAL_ATTRIBUTE');
+      const roleAdmin = targetRoleSuperuser || targetRoleCreatedb || targetRoleCreaterole ||
+        targetRoleBypassrls || targetRoleReplication || targetMembershipAdminOption;
+      return {
+        chain,
+        chainSemantics,
+        relation,
+        targetMembershipAdminOption,
+        targetMembershipSetOption,
+        targetRoleSuperuser,
+        targetRoleCreatedb,
+        targetRoleCreaterole,
+        targetRoleBypassrls,
+        targetRoleReplication,
+        roleAdmin,
+      };
+    });
+    const {
+      chain, chainSemantics, relation, targetMembershipAdminOption, targetMembershipSetOption,
+      targetRoleSuperuser, targetRoleCreatedb, targetRoleCreaterole, targetRoleBypassrls,
+      targetRoleReplication, roleAdmin,
+    } = roleFacts;
 
-    const aclRows = safeQueryResult(
-      await client.query(Q.RELATION_ACL, [TARGET_RELATION_NAMES]),
-      'RELATION_ACL',
-    );
-    const chainOids = [...new Set(chainSemantics.inheritingOids.concat(Number(chainSemantics.targetRole.oid)))];
-    if (!chainOids.every((oid) => Number.isSafeInteger(oid) && oid >= 0)) fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
-    const broadRows = validateBroadSelectAclRows(safeQueryResult(
-      await client.query(Q.BROAD_SELECT_ACL, [chainOids.concat(0)]),
-      'BROAD_SELECT_ACL',
-    ));
-    const broadAllTableSelect = roleAdmin || broadRows.some((row) => !TARGET_RELATION_NAMES.includes(String(row.relation_name)));
-    const grantSources = classifySelectGrantSources({ rows: aclRows, targetRuntimeRole: target, chain });
-    const privilege = (query, field) => safeBoolean(safeQueryResult(query, field)[0]);
-    const privileges = {
-      DATABASE_CONNECT: privilege(await client.query(Q.DATABASE_CONNECT, [target]), 'DATABASE_CONNECT'),
-      USAGE_PUBLIC: privilege(await client.query(Q.PUBLIC_USAGE, [target]), 'PUBLIC_USAGE'),
-      SELECT_TREES: privilege(await client.query(Q.TREES_SELECT, [target]), 'TREES_SELECT'),
-      SELECT_MEMORIES: privilege(await client.query(Q.MEMORIES_SELECT, [target]), 'MEMORIES_SELECT'),
-      SELECT_TREE_SOCIAL_COUNTS: privilege(await client.query(Q.SOCIAL_COUNTS_SELECT, [target]), 'SOCIAL_COUNTS_SELECT'),
-      SELECT_REACTIONS: privilege(await client.query(Q.REACTIONS_SELECT, [target]), 'REACTIONS_SELECT'),
-      INSERT_REACTIONS: privilege(await client.query(Q.REACTIONS_INSERT, [target]), 'INSERT_REACTIONS'),
-      UPDATE_REACTIONS: privilege(await client.query(Q.REACTIONS_UPDATE, [target]), 'UPDATE_REACTIONS'),
-      DELETE_REACTIONS: privilege(await client.query(Q.REACTIONS_DELETE, [target]), 'DELETE_REACTIONS'),
-      SELECT_TREE_COMMENTS: privilege(await client.query(Q.TREE_COMMENTS_SELECT, [target]), 'TREE_COMMENTS_SELECT'),
-      SELECT_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_SELECT, [target]), 'HUB_LAYOUT_SELECT'),
-      INSERT_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_INSERT, [target]), 'HUB_LAYOUT_INSERT'),
-      UPDATE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_UPDATE, [target]), 'HUB_LAYOUT_UPDATE'),
-      DELETE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_DELETE, [target]), 'HUB_LAYOUT_DELETE'),
-      TRUNCATE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_TRUNCATE, [target]), 'HUB_LAYOUT_TRUNCATE'),
-      REFERENCES_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_REFERENCES, [target]), 'HUB_LAYOUT_REFERENCES'),
-      TRIGGER_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_TRIGGER, [target]), 'HUB_LAYOUT_TRIGGER'),
-    };
+    const aclFacts = await stage('ATTESTATION_ACL_CATALOG_FAILED', async () => {
+      const aclRows = safeQueryResult(
+        await client.query(Q.RELATION_ACL, [TARGET_RELATION_NAMES]),
+        'RELATION_ACL',
+      );
+      const chainOids = [...new Set(chainSemantics.inheritingOids.concat(Number(chainSemantics.targetRole.oid)))];
+      if (!chainOids.every((oid) => Number.isSafeInteger(oid) && oid >= 0)) fail('ATTESTATION_ROLE_CHAIN_SHAPE_INVALID');
+      const broadRows = validateBroadSelectAclRows(safeQueryResult(
+        await client.query(Q.BROAD_SELECT_ACL, [chainOids.concat(0)]),
+        'BROAD_SELECT_ACL',
+      ));
+      const broadAllTableSelect = roleAdmin || broadRows.some((row) => !TARGET_RELATION_NAMES.includes(String(row.relation_name)));
+      const grantSources = classifySelectGrantSources({ rows: aclRows, targetRuntimeRole: target, chain });
+      const privilege = (query, field) => safeBoolean(safeQueryResult(query, field)[0]);
+      const privileges = {
+        DATABASE_CONNECT: privilege(await client.query(Q.DATABASE_CONNECT, [target]), 'DATABASE_CONNECT'),
+        USAGE_PUBLIC: privilege(await client.query(Q.PUBLIC_USAGE, [target]), 'PUBLIC_USAGE'),
+        SELECT_TREES: privilege(await client.query(Q.TREES_SELECT, [target]), 'TREES_SELECT'),
+        SELECT_MEMORIES: privilege(await client.query(Q.MEMORIES_SELECT, [target]), 'MEMORIES_SELECT'),
+        SELECT_TREE_SOCIAL_COUNTS: privilege(await client.query(Q.SOCIAL_COUNTS_SELECT, [target]), 'SOCIAL_COUNTS_SELECT'),
+        SELECT_REACTIONS: privilege(await client.query(Q.REACTIONS_SELECT, [target]), 'REACTIONS_SELECT'),
+        INSERT_REACTIONS: privilege(await client.query(Q.REACTIONS_INSERT, [target]), 'INSERT_REACTIONS'),
+        UPDATE_REACTIONS: privilege(await client.query(Q.REACTIONS_UPDATE, [target]), 'UPDATE_REACTIONS'),
+        DELETE_REACTIONS: privilege(await client.query(Q.REACTIONS_DELETE, [target]), 'DELETE_REACTIONS'),
+        SELECT_TREE_COMMENTS: privilege(await client.query(Q.TREE_COMMENTS_SELECT, [target]), 'TREE_COMMENTS_SELECT'),
+        SELECT_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_SELECT, [target]), 'HUB_LAYOUT_SELECT'),
+        INSERT_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_INSERT, [target]), 'HUB_LAYOUT_INSERT'),
+        UPDATE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_UPDATE, [target]), 'HUB_LAYOUT_UPDATE'),
+        DELETE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_DELETE, [target]), 'HUB_LAYOUT_DELETE'),
+        TRUNCATE_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_TRUNCATE, [target]), 'HUB_LAYOUT_TRUNCATE'),
+        REFERENCES_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_REFERENCES, [target]), 'HUB_LAYOUT_REFERENCES'),
+        TRIGGER_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_TRIGGER, [target]), 'HUB_LAYOUT_TRIGGER'),
+      };
+      return { broadAllTableSelect, grantSources, privileges };
+    });
+    const { broadAllTableSelect, grantSources, privileges } = aclFacts;
     const effectiveByRelation = {
       trees: privileges.SELECT_TREES,
       memories: privileges.SELECT_MEMORIES,
