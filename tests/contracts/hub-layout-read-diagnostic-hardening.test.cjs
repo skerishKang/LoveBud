@@ -21,7 +21,7 @@ const READ_ENV = Object.freeze({
   LOVE_PLATFORM_DATABASE_URL: READ_URL
 });
 
-const SECRET_SENTINEL = 'sup3r-s3cr3t-db-credential';
+const SECRET_SENTINEL = 'NOT_A_REAL_SECRET';
 const FORBIDDEN_OUTPUT_SUBSTRINGS = Object.freeze([
   'postgres://',
   'postgresql://',
