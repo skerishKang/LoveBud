@@ -308,6 +308,55 @@ test('5. JSON body contract: invalid JSON / non-object rejected; empty body defa
   assert.equal(emptyResp, null, 'empty body parses as {} -> omitted visibility defers to Modal');
 });
 
+test('5b. #4412 bounded pre-auth routing exception is explicit and performs zero auth/DB work for malformed or oversized bodies', async () => {
+  const mod = await loadModule();
+  const factory = makeFakeClientFactory(DEFAULT_SCRIPT());
+  let verifyCalls = 0;
+  const verifyShouldNotRun = async () => {
+    verifyCalls += 1;
+    return Object.freeze({ uid: AUTH_USER_ID });
+  };
+
+  const malformed = new Request(CREATE_URL, {
+    method: 'POST',
+    headers: new Headers({ 'content-type': 'application/json' }),
+    body: '{not-json'
+  });
+  const malformedResp = await mod.handleMemoryCreateDirectNeon(
+    malformed,
+    WRITER_ENV,
+    'rid-4412-malformed',
+    { verifyTokenOverride: verifyShouldNotRun, neonImporter: makeNeonImporter(factory) }
+  );
+  assert.equal(malformedResp.status, 400);
+  assert.equal(verifyCalls, 0, 'malformed routing body is rejected before auth by accepted bounded exception');
+  assert.equal(factory.clients.length, 0, 'no DB client before auth');
+
+  const oversized = new Request(CREATE_URL, {
+    method: 'POST',
+    headers: new Headers({ 'content-type': 'application/json' }),
+    body: 'x'.repeat((128 * 1024) + 1)
+  });
+  const oversizedResp = await mod.handleMemoryCreateDirectNeon(
+    oversized,
+    WRITER_ENV,
+    'rid-4412-oversized',
+    { verifyTokenOverride: verifyShouldNotRun, neonImporter: makeNeonImporter(factory) }
+  );
+  assert.equal(oversizedResp.status, 413);
+  assert.equal(verifyCalls, 0, 'oversized body is rejected before auth without invoking verifier');
+  assert.equal(factory.clients.length, 0, 'no DB capability acquisition on pre-auth bounded rejection');
+
+  assert.equal(
+    mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.preAuthBodyRoutingParityDecision,
+    'ACCEPTED_BOUNDED_ROUTING_EXCEPTION_4412'
+  );
+  assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.preAuthBodyMaxBytes, 128 * 1024);
+  assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.preAuthMalformedJsonStatus, 400);
+  assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.preAuthOversizeStatus, 413);
+  assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.authBeforeDbCapabilityAcquisition, true);
+});
+
 // ─── Owner authority / spoofing ──────────────────────────────────────────
 
 test('6. verified Firebase UID is sole owner authority; forged owner fields ignored', async () => {
@@ -872,6 +921,9 @@ test('29. contract surface: bounded frozen metadata', async () => {
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.gateEnv, 'LB_MEMORY_CREATE_WRITE_RUNTIME');
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.databaseEnv, 'LOVE_PLATFORM_WRITE_DATABASE_URL');
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.routeSplit.explicitPublicOnly, 'direct-neon-candidate');
+  assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.routeSplitBeforeAuthKeepsModalErrorShapes, true);
+  assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.preAuthBodyRoutingParityDecision, 'ACCEPTED_BOUNDED_ROUTING_EXCEPTION_4412');
+  assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.preAuthBodyMaxBytes, 128 * 1024);
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.parentLock, 'FOR_KEY_SHARE_BEFORE_INSERT_3918_PARITY');
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.clientKeySchemaNotActivated, 501);
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.clientKeyUniqueNotActivated, 501);
