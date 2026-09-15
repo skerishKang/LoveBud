@@ -26,6 +26,99 @@ function createEditorMemoryFormSave(deps) {
     } = deps;
 
     let apiCreatePromise = null;
+    let memoryCreateOperationCounter = 0;
+
+    const DEFINITELY_NOT_COMMITTED_CREATE_CODES = new Set([
+        'DIRECT_NEON_CONFIG_ABSENT',
+        'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK',
+        'AUTH_MISSING',
+        'AUTH_INVALID',
+        'AUTH_UNAVAILABLE',
+        'INVALID_MEMORY_SCALAR_TYPE',
+        'CLIENT_KEY_INVALID_TYPE',
+        'CLIENT_KEY_TOO_LONG',
+        'MEMORY_CLIENT_KEY_SCHEMA_NOT_ACTIVATED',
+        'BEGIN_FAILURE',
+        'QUERY_FAILURE',
+        'WORK_FAILURE',
+        'ROLLBACK_FAILURE'
+    ]);
+
+    function createMemoryOperationClientKey() {
+        memoryCreateOperationCounter += 1;
+
+        try {
+            const cryptoApi = window.crypto;
+            if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
+                return ('editor-' + cryptoApi.randomUUID()).slice(0, 100);
+            }
+            if (cryptoApi && typeof cryptoApi.getRandomValues === 'function') {
+                const bytes = new Uint8Array(16);
+                cryptoApi.getRandomValues(bytes);
+                const hex = Array.from(bytes, function (value) {
+                    return value.toString(16).padStart(2, '0');
+                }).join('');
+                return ('editor-' + hex).slice(0, 100);
+            }
+        } catch (e) {}
+
+        // Fallback is operation-scoped, bounded, and stable for this dispatch.
+        // It is an idempotency hint, not an authentication or security token.
+        const stamp = Date.now().toString(36);
+        const random = Math.random().toString(36).slice(2, 14);
+        return ('editor-' + stamp + '-' + memoryCreateOperationCounter.toString(36) + '-' + random).slice(0, 100);
+    }
+
+    function withStableMemoryCreateClientKey(payload) {
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+        const existing = typeof payload.clientKey === 'string' ? payload.clientKey.trim() : '';
+        if (existing) return payload;
+        return {
+            ...payload,
+            clientKey: createMemoryOperationClientKey()
+        };
+    }
+
+    function isPossiblyCommittedCreateError(error) {
+        if (!error || typeof error !== 'object') return false;
+
+        if (error.code === 'COMMIT_OUTCOME_UNKNOWN' || error.code === 'CONNECTION_CLOSE_FAILURE') {
+            return true;
+        }
+
+        if (error._phase === 'fetch_rejected' || error._phase === 'json_parse_failed') {
+            return true;
+        }
+
+        const status = Number(error.statusCode != null ? error.statusCode : error.status);
+        if (Number.isFinite(status) && status >= 500) {
+            return !DEFINITELY_NOT_COMMITTED_CREATE_CODES.has(error.code);
+        }
+
+        return false;
+    }
+
+    async function reconcilePossiblyCommittedCreate(operationPayload) {
+        const client = window.apiClient;
+        const clientKey = operationPayload && typeof operationPayload.clientKey === 'string'
+            ? operationPayload.clientKey
+            : '';
+
+        if (!clientKey || !treeId || !client || typeof client.getMemoriesByTree !== 'function') {
+            return null;
+        }
+
+        try {
+            const memories = await client.getMemoriesByTree(treeId);
+            if (!Array.isArray(memories)) return null;
+            const matches = memories.filter(function (memory) {
+                return memory && memory.clientKey === clientKey;
+            });
+            return matches.length === 1 ? matches[0] : null;
+        } catch (e) {
+            return null;
+        }
+    }
 
     // #3852 — cross-save monotonic generation shared across every save in this
     // Editor runtime instance. The latest-started save wins: a save that
@@ -191,13 +284,15 @@ function createEditorMemoryFormSave(deps) {
 
     async function createMemoryWithFallback(newMemoryData) {
         apiCreatePromise = null;
-        const apiPromise = dispatchApiCreateOnce(newMemoryData);
+        const operationPayload = withStableMemoryCreateClientKey(newMemoryData);
+        const apiPromise = dispatchApiCreateOnce(operationPayload);
         // Start convergence monitoring at dispatch time — before the UI awaits
         // the shared API promise — so REQUEST_DISPATCHED precedes settlement.
         // The returned task is fire-and-observe and never blocks the save.
         const monitoringTask = monitorCreateConvergence(apiPromise);
         let createdMemory = null;
         let useApi = false;
+        let suppressLocalFallback = false;
         try {
             const apiResult = await apiPromise;
             createdMemory = apiResult.createdMemory;
@@ -205,18 +300,48 @@ function createEditorMemoryFormSave(deps) {
             setLocalSaveMode(false);
             editorDebugLog('[editor] API createMemory success');
         } catch (e) {
-            console.warn('[editor] API createMemory failed, using local save');
-            if (e?.message?.includes('401') || e?.message?.includes('403')) {
-                showToast(i18n('no_permission_local'), 'warn');
-            } else if (e?.message?.includes('400')) {
-                updateSaveStatus('failed', i18n('check_input') || '입력값을 다시 확인해 주세요.');
-                showToast(i18n('check_input') || '입력값을 다시 확인해 주세요.', 'error');
+            const possiblyCommitted = isPossiblyCommittedCreateError(e);
+
+            if (possiblyCommitted) {
+                // #4410: no blind POST retry and no synthetic local substitute
+                // when persistence may already have happened. Reconcile only
+                // through the existing owner-scoped canonical read using the
+                // exact operation-scoped clientKey.
+                const reconciled = await reconcilePossiblyCommittedCreate(operationPayload);
+                if (reconciled) {
+                    createdMemory = reconciled;
+                    useApi = true;
+                    setLocalSaveMode(false);
+                    editorDebugLog('[editor] API createMemory reconciled after uncertain acknowledgement');
+                } else {
+                    suppressLocalFallback = true;
+                    setLocalSaveMode(false);
+                    updateSaveStatus('failed', i18n('save_failed') || '저장 상태를 확인할 수 없습니다.');
+                    showToast(i18n('save_failed') || '저장 상태를 확인할 수 없습니다.', 'error');
+                    editorDebugLog('[editor] API createMemory outcome uncertain; local fallback suppressed');
+                }
             } else {
-                showToast(i18n('server_fail_local') || '서버 저장에 실패해 로컬 저장으로 전환합니다.', 'error');
+                console.warn('[editor] API createMemory failed, using local save');
+                if (e?.message?.includes('401') || e?.message?.includes('403')) {
+                    showToast(i18n('no_permission_local'), 'warn');
+                } else if (e?.message?.includes('400')) {
+                    updateSaveStatus('failed', i18n('check_input') || '입력값을 다시 확인해 주세요.');
+                    showToast(i18n('check_input') || '입력값을 다시 확인해 주세요.', 'error');
+                } else {
+                    showToast(i18n('server_fail_local') || '서버 저장에 실패해 로컬 저장으로 전환합니다.', 'error');
+                }
             }
         }
 
         if (!createdMemory || typeof createdMemory !== 'object') {
+            if (suppressLocalFallback) {
+                const result = { createdMemory: null, useApi: false, ambiguous: true };
+                if (monitoringTask && typeof monitoringTask.catch === 'function') {
+                    monitoringTask.catch(() => editorDebugLog('[editor] Convergence monitoring unavailable'));
+                }
+                return result;
+            }
+
             editorDebugLog('[editor] Using local fallback memory');
             setLocalSaveMode(true);
             createdMemory = {
