@@ -357,3 +357,110 @@ test('existing-edit flow enrichPayloadChannelMetadata remains accessible from fo
     const form = sandbox.window.createEditorMemoryForm(defaultDeps());
     assert.equal(typeof form.enrichPayloadChannelMetadata, 'function', 'form must expose enrichPayloadChannelMetadata');
 });
+
+// ─── #4410 ambiguous Memory-create acknowledgement hardening ──────────────
+
+function install4410SaveRuntime(apiClient) {
+    const sandbox = createSandbox();
+    sandbox.window.apiClient = apiClient;
+    sandbox.window.crypto = {
+        randomUUID: () => '11111111-2222-4333-8444-555555555555'
+    };
+    vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/editor/editor-memory-form-save.js'), 'utf8'), sandbox);
+    return sandbox;
+}
+
+function make4410Error(fields) {
+    const error = new Error(fields.message || 'synthetic');
+    Object.assign(error, fields);
+    return error;
+}
+
+test('#4410 COMMIT_OUTCOME_UNKNOWN reconciles exact clientKey with one POST and no local substitute', async () => {
+    let createCount = 0;
+    let rereadCount = 0;
+    let dispatchedPayload = null;
+    const localModes = [];
+    const sandbox = install4410SaveRuntime({
+        createMemory: async (payload) => {
+            createCount += 1;
+            dispatchedPayload = payload;
+            throw make4410Error({ code: 'COMMIT_OUTCOME_UNKNOWN', status: 502 });
+        },
+        getMemoriesByTree: async (treeId) => {
+            rereadCount += 1;
+            assert.equal(treeId, 'tree-1');
+            return [{ id: 'canonical-4410', treeId, clientKey: dispatchedPayload.clientKey, title: 'canonical' }];
+        }
+    });
+    const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultDeps({
+        setLocalSaveMode: (value) => localModes.push(value)
+    }));
+    const result = await save.createMemoryWithFallback({ title: 'request-title' });
+    assert.equal(createCount, 1);
+    assert.equal(rereadCount, 1);
+    assert.ok(dispatchedPayload.clientKey);
+    assert.ok(dispatchedPayload.clientKey.length <= 100);
+    assert.equal(result.useApi, true);
+    assert.equal(result.createdMemory.id, 'canonical-4410');
+    assert.equal(result.createdMemory.clientKey, dispatchedPayload.clientKey);
+    assert.equal(localModes.includes(true), false);
+});
+
+test('#4410 unresolved transport ambiguity performs no blind POST retry and no local Memory', async () => {
+    let createCount = 0;
+    let rereadCount = 0;
+    let localIdCount = 0;
+    const localModes = [];
+    const sandbox = install4410SaveRuntime({
+        createMemory: async () => {
+            createCount += 1;
+            throw make4410Error({ _phase: 'fetch_rejected' });
+        },
+        getMemoriesByTree: async () => {
+            rereadCount += 1;
+            return [];
+        }
+    });
+    const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultDeps({
+        nextMemoryId: () => {
+            localIdCount += 1;
+            return 'must-not-be-created';
+        },
+        setLocalSaveMode: (value) => localModes.push(value)
+    }));
+    const result = await save.createMemoryWithFallback({ title: 'request-title' });
+    assert.equal(createCount, 1);
+    assert.equal(rereadCount, 1);
+    assert.equal(localIdCount, 0);
+    assert.equal(result.createdMemory, null);
+    assert.equal(result.useApi, false);
+    assert.equal(result.ambiguous, true);
+    assert.equal(localModes.includes(true), false);
+});
+
+test('#4410 definitely pre-commit failure retains existing local fallback policy', async () => {
+    let createCount = 0;
+    let rereadCount = 0;
+    let localMode = null;
+    const sandbox = install4410SaveRuntime({
+        createMemory: async () => {
+            createCount += 1;
+            throw make4410Error({ code: 'DIRECT_NEON_CONFIG_ABSENT', status: 503 });
+        },
+        getMemoriesByTree: async () => {
+            rereadCount += 1;
+            return [];
+        }
+    });
+    const save = sandbox.window.LoveBudEditorMemoryFormSave(defaultDeps({
+        nextMemoryId: () => 'local-4410',
+        setLocalSaveMode: (value) => { localMode = value; }
+    }));
+    const result = await save.createMemoryWithFallback({ title: 'request-title' });
+    assert.equal(createCount, 1);
+    assert.equal(rereadCount, 0);
+    assert.equal(localMode, true);
+    assert.equal(result.useApi, false);
+    assert.equal(result.createdMemory.id, 'local-4410');
+});
