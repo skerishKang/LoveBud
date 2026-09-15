@@ -92,7 +92,7 @@ import {
   buildFirebaseReadPrincipalErrorResponse,
   FirebaseReadPrincipalError
 } from '../../workers/love-platform-api/firebase-read-principal.js';
-import { readBoundedRequestBody } from './bounded-request-body.js';
+import { MAX_REQUEST_BODY_BYTES, readBoundedRequestBody } from './bounded-request-body.js';
 import { validateWritePayload } from './legacy-key-guard.js';
 import { normalizeDirectNeonTimestamp } from './tree-fork-direct-neon.js';
 
@@ -711,6 +711,15 @@ export async function handleMemoryCreateDirectNeon(
     return null;
   }
 
+  // #4412 SECURITY/PARITY DECISION:
+  // A bounded pre-auth body read is intentionally accepted here ONLY to decide
+  // whether this request belongs to the existing Modal authority or to the
+  // exact-public direct-Neon candidate. Authenticating every gated request
+  // before this split would itself change omitted/private/invalid-visibility
+  // Modal behavior. The exception is bounded by MAX_REQUEST_BODY_BYTES,
+  // performs no DB/config/capability acquisition, reads the live stream once,
+  // and exact-public still authenticates before any direct DB work.
+  //
   // Bounded body read exactly once. The wired route reads the body before
   // dispatch and passes the captured result here (a Request stream cannot be
   // re-read); standalone callers omit boundedBodyResult and the handler reads
@@ -1024,6 +1033,10 @@ export const MEMORY_CREATE_DIRECT_NEON_CONTRACT = Object.freeze({
     gateUnsetOrModalOrUnknown: 'modal'
   }),
   routeSplitBeforeAuthKeepsModalErrorShapes: true,
+  preAuthBodyRoutingParityDecision: 'ACCEPTED_BOUNDED_ROUTING_EXCEPTION_4412',
+  preAuthBodyMaxBytes: MAX_REQUEST_BODY_BYTES,
+  preAuthMalformedJsonStatus: 400,
+  preAuthOversizeStatus: 413,
   authBeforeDbCapabilityAcquisition: true,
   parentLock: 'FOR_KEY_SHARE_BEFORE_INSERT_3918_PARITY',
   clientKeyUniqueIndex: 'UNIQUE (tree_id, client_key)',
