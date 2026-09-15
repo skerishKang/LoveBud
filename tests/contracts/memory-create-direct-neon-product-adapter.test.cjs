@@ -108,8 +108,9 @@ function makeMemoryRow(overrides = {}) {
 const DEFAULT_SCRIPT = () => ({
   'FROM trees': [{ id: TREE_ID, visibility: 'public' }],
   'FOR KEY SHARE;': [],
-  // capability probe returns one row -> client_key column present
+  // capability probes: client_key column + exact UNIQUE(tree_id, client_key)
   "column_name = 'client_key'": [{ column_name: 'client_key' }],
+  'FROM pg_catalog.pg_index i': [{ unique_capability: 1 }],
   'INSERT INTO memories': [{ id: 'fresh-memory-row-id' }],
   'INNER JOIN trees t ON t.id = m.tree_id': [makeMemoryRow({ id: 'fresh-memory-row-id' })]
 });
@@ -550,6 +551,42 @@ test('15. client_key column unavailable + explicit clientKey -> bounded 501, zer
   assert.equal(compatResp.status, 200);
   const compatInsert = compat.logs.find((l) => l.text.includes('INSERT INTO memories'));
   assert.ok(!compatInsert.text.includes('client_key'), 'compatibility insert omits client_key column');
+  const compatReread = compat.logs.find((l) => l.text.includes('INNER JOIN trees t ON t.id = m.tree_id'));
+  assert.ok(compatReread, 'compatibility path performs canonical reread');
+  assert.ok(!compatReread.text.includes('m.client_key'), 'column-absent canonical reread never references client_key');
+});
+
+test('15b. client_key column present but UNIQUE capability absent: explicit key fails before INSERT; omitted key still succeeds', async () => {
+  const mod = await loadModule();
+
+  const explicitNoUnique = makeFakeClientFactory({
+    ...DEFAULT_SCRIPT(),
+    'FROM pg_catalog.pg_index i': []
+  });
+  const explicitResp = await runCandidate(mod, explicitNoUnique, {
+    treeId: TREE_ID,
+    visibility: 'public',
+    clientKey: 'key-unique-capability-required'
+  });
+  assert.equal(explicitResp.status, 501);
+  const explicitJson = await explicitResp.json();
+  assert.equal(explicitJson.code, 'MEMORY_CLIENT_KEY_UNIQUE_NOT_ACTIVATED');
+  assert.ok(!explicitNoUnique.logs.some((l) => l.text.includes('INSERT INTO memories')), 'unique capability fails closed before mutation');
+  assert.ok(explicitNoUnique.logs.some((l) => l.text === 'ROLLBACK'));
+
+  const omittedNoUnique = makeFakeClientFactory({
+    ...DEFAULT_SCRIPT(),
+    'FROM pg_catalog.pg_index i': []
+  });
+  const omittedResp = await runCandidate(mod, omittedNoUnique, {
+    treeId: TREE_ID,
+    visibility: 'public'
+  });
+  assert.equal(omittedResp.status, 200);
+  assert.ok(!omittedNoUnique.logs.some((l) => l.text.includes('FROM pg_catalog.pg_index i')), 'omitted key does not require unique capability');
+  const omittedInsert = omittedNoUnique.logs.find((l) => l.text.includes('INSERT INTO memories'));
+  assert.ok(omittedInsert.text.includes('client_key'), 'column-present omitted key preserves explicit NULL column parity');
+  assert.ok(!omittedInsert.text.includes('ON CONFLICT'), 'omitted key never invokes conflict capability');
 });
 
 test('16. existing same treeId+clientKey converges to the persisted canonical Memory', async () => {
@@ -565,6 +602,7 @@ test('16. existing same treeId+clientKey converges to the persisted canonical Me
     'SELECT id': [{ id: 'persisted-canonical-id' }],
     'FROM trees': [{ id: TREE_ID, visibility: 'public' }],
     "column_name = 'client_key'": [{ column_name: 'client_key' }],
+    'FROM pg_catalog.pg_index i': [{ unique_capability: 1 }],
     'WHERE m.tree_id = $1': [existingRow]
   });
   const resp = await runCandidate(mod, factory, {
@@ -585,6 +623,7 @@ test('17. concurrent lost race: INSERT affects zero rows -> canonical reread of 
     'INSERT INTO memories': [], // ON CONFLICT DO NOTHING -> zero RETURNING rows
     'FROM trees': [{ id: TREE_ID, visibility: 'public' }],
     "column_name = 'client_key'": [{ column_name: 'client_key' }],
+    'FROM pg_catalog.pg_index i': [{ unique_capability: 1 }],
     'WHERE m.tree_id = $1': [winner]
   });
   const resp = await runCandidate(mod, factory, {
@@ -835,6 +874,8 @@ test('29. contract surface: bounded frozen metadata', async () => {
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.routeSplit.explicitPublicOnly, 'direct-neon-candidate');
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.parentLock, 'FOR_KEY_SHARE_BEFORE_INSERT_3918_PARITY');
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.clientKeySchemaNotActivated, 501);
+  assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.clientKeyUniqueNotActivated, 501);
+  assert.match(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.clientKeyUniqueCapabilityCheck, /pg_index/);
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.responseFromCanonicalRereadOnly, true);
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.perRequestModalFallbackAfterDirectStart, false);
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);

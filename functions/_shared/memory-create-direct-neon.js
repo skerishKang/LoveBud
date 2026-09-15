@@ -378,6 +378,27 @@ WHERE table_schema = current_schema()
   AND column_name = 'client_key';
 `;
 
+const CLIENT_KEY_UNIQUE_CAPABILITY_SQL = `
+SELECT 1
+FROM pg_catalog.pg_index i
+INNER JOIN pg_catalog.pg_class c ON c.oid = i.indrelid
+INNER JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = current_schema()
+  AND c.relname = 'memories'
+  AND i.indisunique = TRUE
+  AND i.indpred IS NULL
+  AND i.indnkeyatts = 2
+  AND (
+    SELECT array_agg(a.attname ORDER BY k.ordinality)
+    FROM unnest(i.indkey) WITH ORDINALITY AS k(attnum, ordinality)
+    INNER JOIN pg_catalog.pg_attribute a
+      ON a.attrelid = c.oid
+     AND a.attnum = k.attnum
+    WHERE k.ordinality <= i.indnkeyatts
+  ) = ARRAY['tree_id'::name, 'client_key'::name]
+LIMIT 1;
+`;
+
 const EXISTING_CLIENT_KEY_FOR_KEY_SHARE_SQL = `
 SELECT id
 FROM memories
@@ -387,10 +408,22 @@ LIMIT 1
 FOR KEY SHARE;
 `;
 
-const CANONICAL_REREAD_BY_ID_SQL = `
+const CANONICAL_REREAD_BY_ID_WITH_CLIENT_KEY_SQL = `
 SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
        m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
        m.channel_id, m.channel_name, m.channel_url, m.client_key,
+       m.created_at::text AS created_at, m.updated_at::text AS updated_at,
+       t.owner_id AS tree_owner_id
+FROM memories m
+INNER JOIN trees t ON t.id = m.tree_id
+WHERE m.id = $1
+LIMIT 1;
+`;
+
+const CANONICAL_REREAD_BY_ID_WITHOUT_CLIENT_KEY_SQL = `
+SELECT m.id, m.tree_id, m.parent_id, m.title, m.memo, m.artist, m.source, m.source_url,
+       m.source_type, m.thumbnail, m.emotion_tags, m.timestamp, m.visibility,
+       m.channel_id, m.channel_name, m.channel_url,
        m.created_at::text AS created_at, m.updated_at::text AS updated_at,
        t.owner_id AS tree_owner_id
 FROM memories m
@@ -428,6 +461,16 @@ ON CONFLICT (tree_id, client_key) DO NOTHING
 RETURNING id;
 `;
 
+const INSERT_WITH_NULL_CLIENT_KEY_SQL = `
+INSERT INTO memories (
+  id, tree_id, parent_id, title, memo, artist, source, source_url,
+  source_type, thumbnail, emotion_tags, timestamp, visibility,
+  channel_id, channel_name, channel_url, client_key, created_at, updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'public', $13, $14, $15, $16, NOW(), NOW())
+RETURNING id;
+`;
+
 const INSERT_BASE_SQL = `
 INSERT INTO memories (${INSERT_BASE_COLUMNS})
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'public', $13, $14, $15, NOW(), NOW())
@@ -445,6 +488,7 @@ const CREATE_WORK_OUTCOME = Object.freeze({
   TREE_NOT_OWNED: 'tree-not-owned',
   INVALID_PARENT_ID: 'invalid-parent-id',
   CLIENT_KEY_SCHEMA_NOT_ACTIVATED: 'client-key-schema-not-activated',
+  CLIENT_KEY_UNIQUE_NOT_ACTIVATED: 'client-key-unique-not-activated',
   CONFLICT_UNRESOLVED: 'conflict-unresolved',
   MEMORY_INSERT_EMPTY: 'memory-insert-empty',
   CANONICAL_MISSING: 'canonical-missing',
@@ -493,6 +537,17 @@ function createWorkResponse(error, signal, requestId) {
         requestId,
         'client-key-schema-not-activated'
       );
+    case CREATE_WORK_OUTCOME.CLIENT_KEY_UNIQUE_NOT_ACTIVATED:
+      return jsonResponse(
+        {
+          error: 'Memory clientKey uniqueness not activated',
+          code: 'MEMORY_CLIENT_KEY_UNIQUE_NOT_ACTIVATED',
+          reason: 'UNIQUE (tree_id, client_key) unavailable; cannot honor idempotency'
+        },
+        status,
+        requestId,
+        'client-key-unique-not-activated'
+      );
     case CREATE_WORK_OUTCOME.CONFLICT_UNRESOLVED:
       return jsonResponse(
         { error: 'Memory clientKey conflict unresolved', code: 'MEMORY_CLIENT_KEY_CONFLICT_UNRESOLVED' },
@@ -518,11 +573,17 @@ async function canonicalRereadAndVerify(tx, signal, {
   treeId = null,
   clientKey = null,
   ownerId,
+  hasClientKeyColumn = true,
   missingOutcome = CREATE_WORK_OUTCOME.CANONICAL_MISSING,
   missingStatus = 500
 }) {
   const rows = memoryId !== null
-    ? await tx.canonicalReread(CANONICAL_REREAD_BY_ID_SQL, [memoryId])
+    ? await tx.canonicalReread(
+        hasClientKeyColumn
+          ? CANONICAL_REREAD_BY_ID_WITH_CLIENT_KEY_SQL
+          : CANONICAL_REREAD_BY_ID_WITHOUT_CLIENT_KEY_SQL,
+        [memoryId]
+      )
     : await tx.canonicalReread(CANONICAL_REREAD_BY_CLIENT_KEY_SQL, [treeId, clientKey]);
   const row = Array.isArray(rows) && rows.length ? rows[0] : null;
   if (!row) {
@@ -554,38 +615,53 @@ async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey,
     }
   }
 
-  // C. Schema capability detection for memories.client_key (#4058 parity).
+  // C. Schema capability detection for memories.client_key (#4058/#4411).
+  // Column existence and ON CONFLICT authority are separate capabilities.
   const capabilityRows = await tx.query(CLIENT_KEY_COLUMN_SQL, []);
   const hasClientKeyColumn = Array.isArray(capabilityRows) && capabilityRows.length > 0;
 
   let insertSql;
   let insertParams;
 
-  if (hasClientKeyColumn) {
+  if (clientKey !== null) {
+    if (!hasClientKeyColumn) {
+      throw createWorkError(signal, CREATE_WORK_OUTCOME.CLIENT_KEY_SCHEMA_NOT_ACTIVATED, 501);
+    }
+
+    const uniqueRows = await tx.query(CLIENT_KEY_UNIQUE_CAPABILITY_SQL, []);
+    const hasClientKeyUniqueCapability = Array.isArray(uniqueRows) && uniqueRows.length > 0;
+    if (!hasClientKeyUniqueCapability) {
+      throw createWorkError(signal, CREATE_WORK_OUTCOME.CLIENT_KEY_UNIQUE_NOT_ACTIVATED, 501);
+    }
+
     insertSql = INSERT_WITH_CLIENT_KEY_SQL;
     insertParams = [...values, clientKey];
 
     // D. Idempotency convergence pre-check under FOR KEY SHARE: an already
     // persisted (tree_id, client_key) row wins; return its canonical reread.
-    if (clientKey !== null) {
-      const existingRows = await tx.query(EXISTING_CLIENT_KEY_FOR_KEY_SHARE_SQL, [treeId, clientKey]);
-      if (Array.isArray(existingRows) && existingRows.length > 0) {
-        return await canonicalRereadAndVerify(tx, signal, { treeId, clientKey, ownerId });
-      }
+    const existingRows = await tx.query(EXISTING_CLIENT_KEY_FOR_KEY_SHARE_SQL, [treeId, clientKey]);
+    if (Array.isArray(existingRows) && existingRows.length > 0) {
+      return await canonicalRereadAndVerify(tx, signal, {
+        treeId,
+        clientKey,
+        ownerId,
+        hasClientKeyColumn: true
+      });
     }
+  } else if (hasClientKeyColumn) {
+    // Preserve Modal parity for an omitted key: explicitly persist NULL when
+    // the column exists, but do not require or invoke ON CONFLICT capability.
+    insertSql = INSERT_WITH_NULL_CLIENT_KEY_SQL;
+    insertParams = [...values, null];
   } else {
-    // Compatibility path (#4058): never silently ignore an explicitly supplied
-    // clientKey under a schema that cannot honor it.
-    if (clientKey !== null) {
-      throw createWorkError(signal, CREATE_WORK_OUTCOME.CLIENT_KEY_SCHEMA_NOT_ACTIVATED, 501);
-    }
+    // Legacy compatibility: no client_key column and no explicit key.
     insertSql = INSERT_BASE_SQL;
     insertParams = [...values];
   }
 
-  // E. Insert. ON CONFLICT DO NOTHING makes a lost same-key race observable as
-  // zero RETURNING rows (live UNIQUE (tree_id, client_key)); multiple NULL
-  // client keys can never conflict, mirroring Modal UniqueViolation semantics.
+  // E. Insert. ON CONFLICT DO NOTHING is used only after exact uniqueness
+  // capability is proven for explicit clientKey writes. Omitted-key writes
+  // never depend on that capability.
   const insertedRows = await tx.query(insertSql, insertParams);
   const insertedRow = Array.isArray(insertedRows) ? insertedRows[insertedRows.length - 1] : null;
 
@@ -598,6 +674,7 @@ async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey,
         treeId,
         clientKey,
         ownerId,
+        hasClientKeyColumn: true,
         missingOutcome: CREATE_WORK_OUTCOME.CONFLICT_UNRESOLVED,
         missingStatus: 409
       });
@@ -606,8 +683,13 @@ async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey,
   }
 
   // G. Canonical owner-scoped reread builds the whole response; verify the
-  // reread still belongs to the verified owner before returning.
-  return await canonicalRereadAndVerify(tx, signal, { memoryId: String(insertedRow.id), ownerId });
+  // reread still belongs to the verified owner before returning. The legacy
+  // column-absent path MUST use a projection that does not reference client_key.
+  return await canonicalRereadAndVerify(tx, signal, {
+    memoryId: String(insertedRow.id),
+    ownerId,
+    hasClientKeyColumn
+  });
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────
@@ -945,8 +1027,10 @@ export const MEMORY_CREATE_DIRECT_NEON_CONTRACT = Object.freeze({
   authBeforeDbCapabilityAcquisition: true,
   parentLock: 'FOR_KEY_SHARE_BEFORE_INSERT_3918_PARITY',
   clientKeyUniqueIndex: 'UNIQUE (tree_id, client_key)',
+  clientKeyUniqueCapabilityCheck: 'pg_index exact non-partial UNIQUE(tree_id,client_key)',
   clientKeyConflictStrategy: 'ON_CONFLICT_DO_NOTHING_THEN_CANONICAL_REREAD',
   clientKeySchemaNotActivated: 501,
+  clientKeyUniqueNotActivated: 501,
   scalarValidationBeforeMutation: true,
   timestampProjection: 'created_at::text AS created_at, updated_at::text AS updated_at',
   responseFromCanonicalRereadOnly: true,
