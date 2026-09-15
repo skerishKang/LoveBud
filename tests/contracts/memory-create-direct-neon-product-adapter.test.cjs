@@ -840,3 +840,50 @@ test('29. contract surface: bounded frozen metadata', async () => {
   assert.equal(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
   assert.match(mod.MEMORY_CREATE_DIRECT_NEON_CONTRACT.timestampProjection, /created_at::text AS created_at/);
 });
+
+// ─── #4410 transaction finalization hardening ─────────────────────────────
+
+function make4410TransactionImporter({ commitFails = false, closeFails = false } = {}) {
+  return async () => ({
+    Client: class Fake4410Client {
+      async connect() {}
+      async query(text) {
+        if (text === 'COMMIT' && commitFails) throw new Error('synthetic commit transport failure');
+        return { rows: [] };
+      }
+      async end() {
+        if (closeFails) throw new Error('synthetic close failure');
+      }
+    }
+  });
+}
+
+test('26. #4410 known COMMIT + connection close failure remains committed success', async () => {
+  const txMod = await import('../../functions/_shared/db/neon-ws-transaction-adapter.js');
+  const adapter = await txMod.createNeonWsTransactionAdapter({
+    connectionString: NEON_URL,
+    neonImporter: make4410TransactionImporter({ closeFails: true })
+  });
+  const result = await adapter.runTransaction(async () => ({ canonical: true }));
+  assert.deepEqual(result.value, { canonical: true });
+  assert.equal(result.outcome, 'committed');
+  assert.equal(result.commitOutcome, txMod.NEON_WS_TRANSACTION_COMMIT_OUTCOME.COMMITTED);
+  assert.equal(result.state, txMod.NEON_WS_TRANSACTION_STATE.CLOSED);
+  assert.equal(result.stats.closeCount, 0);
+});
+
+test('27. #4410 COMMIT transport failure remains explicit unknown outcome', async () => {
+  const txMod = await import('../../functions/_shared/db/neon-ws-transaction-adapter.js');
+  const adapter = await txMod.createNeonWsTransactionAdapter({
+    connectionString: NEON_URL,
+    neonImporter: make4410TransactionImporter({ commitFails: true })
+  });
+  await assert.rejects(
+    () => adapter.runTransaction(async () => ({ canonical: true })),
+    (error) => {
+      assert.equal(error.code, txMod.NEON_WS_TRANSACTION_ERROR.COMMIT_OUTCOME_UNKNOWN);
+      assert.equal(error.commitOutcome, txMod.NEON_WS_TRANSACTION_COMMIT_OUTCOME.UNKNOWN);
+      return true;
+    }
+  );
+});
