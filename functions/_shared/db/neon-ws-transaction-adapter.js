@@ -523,13 +523,21 @@ export async function createNeonWsTransactionAdapter({ connectionString, neonImp
       const closeFailed = await closeClient(client, machine, stats);
       if (closeFailed && !pendingError) {
         const knownOutcome = outcomeForState(stateBeforeClose);
-        pendingError = makeError(
-          NEON_WS_TRANSACTION_ERROR.CONNECTION_CLOSE_FAILURE,
-          'database connection close failed',
-          machine,
-          knownOutcome,
-          502,
-        );
+
+        // #4410: once COMMIT is known to have succeeded, a best-effort
+        // connection cleanup failure must not rewrite the Product write into
+        // an HTTP failure. Callers would otherwise be told to recover from a
+        // write that is already canonical, which can create duplicate/local
+        // substitutes. Unknown COMMIT outcomes remain explicit failures.
+        if (knownOutcome !== NEON_WS_TRANSACTION_COMMIT_OUTCOME.COMMITTED) {
+          pendingError = makeError(
+            NEON_WS_TRANSACTION_ERROR.CONNECTION_CLOSE_FAILURE,
+            'database connection close failed',
+            machine,
+            knownOutcome,
+            502,
+          );
+        }
       }
 
       if (pendingError) throw pendingError;
