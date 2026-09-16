@@ -7,6 +7,8 @@ const fs = require('node:fs');
 const {
   APPROVAL_REFERENCE,
   SOURCE_BOUND_PURPOSE,
+  MEMORY_SOCIAL_READ_APPROVAL_REFERENCE,
+  MEMORY_SOCIAL_READ_PURPOSE,
   Q,
   parseArgs,
   assertSourceBoundApproval,
@@ -17,6 +19,7 @@ const {
   classifySelectGrantSources,
   deriveDecision,
   deriveTreeCommentsDecision,
+  deriveMemoryCommentsDecision,
   deriveHubLayoutDecision,
   collectAttestation,
   loadTargetRoleMapping,
@@ -98,6 +101,7 @@ function fakeClient({
     SELECT_MEMORIES: true,
     SELECT_TREE_SOCIAL_COUNTS: true,
     SELECT_REACTIONS: false,
+    SELECT_COMMENTS: false,
     INSERT_REACTIONS: false,
     UPDATE_REACTIONS: false,
     DELETE_REACTIONS: false,
@@ -132,6 +136,7 @@ function fakeClient({
       if (text === Q.MEMORIES_SELECT) return { rows: bool('SELECT_MEMORIES') };
       if (text === Q.SOCIAL_COUNTS_SELECT) return { rows: bool('SELECT_TREE_SOCIAL_COUNTS') };
       if (text === Q.REACTIONS_SELECT) return { rows: bool('SELECT_REACTIONS') };
+      if (text === Q.COMMENTS_SELECT) return { rows: bool('SELECT_COMMENTS') };
       if (text === Q.REACTIONS_INSERT) return { rows: bool('INSERT_REACTIONS') };
       if (text === Q.REACTIONS_UPDATE) return { rows: bool('UPDATE_REACTIONS') };
       if (text === Q.REACTIONS_DELETE) return { rows: bool('DELETE_REACTIONS') };
@@ -181,6 +186,21 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
     );
     assert.equal(loaded, false);
     assert.throws(() => assertSourceBoundApproval(APPROVAL_REFERENCE, 'wrong-purpose'), /ATTESTATION_SOURCE_BOUND_APPROVAL_REQUIRED/);
+  });
+
+  it('accepts only the exact #4423 Memory social read authority pair in addition to the legacy packet', () => {
+    assert.doesNotThrow(() => assertSourceBoundApproval(
+      MEMORY_SOCIAL_READ_APPROVAL_REFERENCE,
+      MEMORY_SOCIAL_READ_PURPOSE,
+    ));
+    assert.throws(
+      () => assertSourceBoundApproval(MEMORY_SOCIAL_READ_APPROVAL_REFERENCE, SOURCE_BOUND_PURPOSE),
+      /ATTESTATION_SOURCE_BOUND_APPROVAL_REQUIRED/,
+    );
+    assert.throws(
+      () => assertSourceBoundApproval(APPROVAL_REFERENCE, MEMORY_SOCIAL_READ_PURPOSE),
+      /ATTESTATION_SOURCE_BOUND_APPROVAL_REQUIRED/,
+    );
   });
 
   it('rejects arbitrary SQL, roles, objects, repeat, and output flags', () => {
@@ -244,6 +264,53 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
     assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 1);
   });
 
+  it('#4423 Memory comments decision requires the existing baseline plus comments SELECT', () => {
+    const base = {
+      DATABASE_CONNECT: true,
+      USAGE_PUBLIC: true,
+      SELECT_TREES: true,
+      SELECT_MEMORIES: true,
+      SELECT_COMMENTS: true,
+    };
+    assert.deepEqual(
+      deriveMemoryCommentsDecision({
+        identityResolved: true,
+        privileges: base,
+        roleAdmin: false,
+        broadAllTableSelect: false,
+      }),
+      {
+        target: 'RESOLVED',
+        minimalChange: 'NO_PRIVILEGE_CHANGE',
+        activationEligible: 'YES',
+        finalDisposition: 'MEMORY_COMMENTS_READ_ROLE_ACL_ATTESTED',
+      },
+    );
+    assert.deepEqual(
+      deriveMemoryCommentsDecision({
+        identityResolved: true,
+        privileges: { ...base, SELECT_COMMENTS: false },
+        roleAdmin: false,
+        broadAllTableSelect: false,
+      }),
+      {
+        target: 'RESOLVED',
+        minimalChange: 'SELECT_ON_COMMENTS_ONLY',
+        activationEligible: 'NO',
+        finalDisposition: 'MEMORY_COMMENTS_SELECT_MISSING_STOP',
+      },
+    );
+    assert.equal(
+      deriveMemoryCommentsDecision({
+        identityResolved: true,
+        privileges: { ...base, SELECT_MEMORIES: false },
+        roleAdmin: false,
+        broadAllTableSelect: false,
+      }).finalDisposition,
+      'BASELINE_PRIVILEGE_DRIFT_STOP',
+    );
+  });
+
   it('fails closed when transaction_read_only is not on', async () => {
     const fixture = fakeClient({ readOnly: false });
     await assert.rejects(collectAttestation({ client: fixture.client, targetRuntimeRole: RAW_TARGET, roleMapping: TARGET_MAPPING }), { category: 'ATTESTATION_READ_ONLY_REQUIRED' });
@@ -257,7 +324,7 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
     });
     assert.equal(result.sessionEqualsTarget, 'NO');
     assert.equal(result.targetRoleSpecificChecks, 'VERIFIED');
-    const privilegeCalls = fixture.calls.filter((call) => [Q.DATABASE_CONNECT, Q.PUBLIC_USAGE, Q.TREES_SELECT, Q.MEMORIES_SELECT, Q.SOCIAL_COUNTS_SELECT, Q.REACTIONS_SELECT].includes(call.text));
+    const privilegeCalls = fixture.calls.filter((call) => [Q.DATABASE_CONNECT, Q.PUBLIC_USAGE, Q.TREES_SELECT, Q.MEMORIES_SELECT, Q.SOCIAL_COUNTS_SELECT, Q.REACTIONS_SELECT, Q.COMMENTS_SELECT].includes(call.text));
     assert.ok(privilegeCalls.length >= 6);
     assert.ok(privilegeCalls.every((call) => call.params[0] === RAW_TARGET));
     assert.notEqual(result.decision.target, 'RESOLVED');
