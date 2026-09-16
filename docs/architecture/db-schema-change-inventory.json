@@ -773,7 +773,7 @@
       "execution_actor": "runner",
       "automation": "gated",
       "ledger_candidate": "no",
-      "notes": "Phase B production read-only runtime-role ACL attestation runner. Uses one BEGIN READ ONLY session, fixed pg_catalog and privilege queries, explicit target-role mapping, PG17 membership INHERIT/ADMIN/SET metadata, rollback, and disconnect; no schema mutation, Product row reads, SET ROLE, GRANT, REVOKE, retry, or production-write capability. Static allowlisted target relations are trees, memories, tree_social_counts, reactions, and tree_comments; the tree_comments SELECT probe serves the #4000 Tree Comment READ activation packet and its source-bound approval reference is issue:4000. Registered because the source contains catalog/DDL vocabulary detected by the static inventory guard."
+      "notes": "Phase B production read-only runtime-role ACL attestation runner. Uses one BEGIN READ ONLY session, fixed pg_catalog and privilege queries, explicit target-role mapping, PG17 membership INHERIT/ADMIN/SET metadata, rollback, and disconnect; no schema mutation, Product row reads, SET ROLE, GRANT, REVOKE, retry, or production-write capability. Static allowlisted target relations are trees, memories, tree_social_counts, reactions, comments, tree_comments, and tree_hub_layouts; the tree_comments SELECT probe serves the #4000 Tree Comment READ activation packet, while comments SELECT serves the #4423 Memory social GET readiness packet. Source-bound approvals remain exact issue/purpose pairs; the runner is read-only and never grants or revokes. Registered because the source contains catalog/DDL vocabulary detected by the static inventory guard."
     },
     {
       "path": "scripts/inspect-schema.cjs",
