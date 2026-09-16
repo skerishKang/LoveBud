@@ -504,20 +504,20 @@
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
-      "live_provider_state": "NOT_FRESHLY_VERIFIED",
+      "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
       "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
-      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "live_gate_state": "LIVE_GATE_VERIFIED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
-      "production_live": "NOT_PRODUCTION_LIVE",
+      "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "I",
       "last_exact_head_evidence": {
-        "ref": "Production gate check-in authorized by CENTRAL #4424 comment 5702126256 at exact main bc5b0951e6ee1127c53b74179f07e2d11739a097 after source candidate #4427 merged and exact-main CI 18/18 SUCCESS. Source/helper/route/tests remain unchanged; gate-only source mutation adds LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME=direct_neon to env.production.vars. Existing direct_neon_runtime trees SELECT privilege evidence is reused; no fresh DB session/ACL mutation/Product request/provider mutation/deploy/secret mutation is authorized.",
-        "main_sha": "bc5b0951e6ee1127c53b74179f07e2d11739a097"
+        "ref": "Production-live evidence accepted by CENTRAL #4424 comment 5702872787 at exact main 90fd7489bd8984564bab1d13f5fdadd7ad2713f1. Provider/deployment/gate readback was accepted in #4424 comment 5702543524: Production Pages/source exact-main parity, LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME=direct_neon live, canonical release manifest SHA/schema/no-store PASS. Bounded browser-native positive-owner canary under authority 5702551939 used QA_DEV_002 and exactly 3 Product requests with 0 retries/discovery: disposable Tree create 200 direct_neon/direct-neon tree-create-complete; target capability GET 200 direct_neon/direct-neon tree-capability-complete with exact body {viewerCanEdit:true}, owner/account leak NO and Modal fallback NO; Tree DELETE cleanup 200 direct_neon/direct-neon tree-delete-complete with deleted=true and fixture match PASS. No raw credentials/private IDs recorded; no direct Production DB session, ACL/provider/secret/deploy/source/Git/GitHub mutation outside the authorized Product routes.",
+        "main_sha": "90fd7489bd8984564bab1d13f5fdadd7ad2713f1"
       },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed removal/unset or restoration of a reviewed non-direct LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME value; no DB/ACL rollback required; existing Modal private Tree capability GET remains default/fallback when gate is non-direct.",
-      "next_action": "After this gate-check-in PR is merged with exact-head CI GREEN and post-merge exact-main CI GREEN, perform read-only Production provider/deployment/gate readback. Do not run a Product canary until CENTRAL separately accepts provider/gate parity and issues a bounded browser-native canary authority."
+      "next_action": "Private Tree capability direct-Neon read is Production live at the accepted #4424 evidence. Continue ordinary monitoring/regression protection only. No replacement Product canary is authorized. GATE_ONLY_ROLLBACK remains the recovery path. Any change to LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME, the direct_neon_runtime credential boundary, trees SELECT privilege envelope, private-tree-capability-direct-neon helper SQL, route dispatch, Firebase principal/legacyOwnerId owner binding, false-on-auth/non-owner compatibility semantics, response DTO/viewerCanEdit-only contract, request-id/no-store/direct-neon markers, or Cloudflare Production deployment/source parity invalidates this attestation and requires fresh CENTRAL review."
     },
     {
       "id": "appreciation-order-get",
