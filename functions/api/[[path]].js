@@ -28,8 +28,7 @@ import {
 } from '../_shared/tree-fork-direct-neon.js';
 import {
   handlePrivateTreeCapabilityDirectNeon,
-  isPrivateTreeCapabilityDirectNeonSelected,
-  PRIVATE_TREE_CAPABILITY_RUNTIME
+  isPrivateTreeCapabilityDirectNeonSelected
 } from '../_shared/private-tree-capability-direct-neon.js';
 
 function stripTrailingSlash(value) {
@@ -95,10 +94,8 @@ function isPrivateTreeCapabilityRequest(request) {
   return /^\/api\/private\/trees\/[^/]+\/capability$/.test(path);
 }
 
-// Audit-visible exact source gate. Runtime selection remains delegated to the
-// shared helper so unknown values preserve the existing Modal authority.
-const PRIVATE_TREE_CAPABILITY_GATE = PRIVATE_TREE_CAPABILITY_RUNTIME.GATE_FLAG;
-void PRIVATE_TREE_CAPABILITY_GATE;
+// Source-only gate: LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME=direct_neon.
+// Unknown/unset values preserve the existing Modal authority.
 
 // Hub-layout is a private/owner sub-resource read. Same-origin GET must be
 // auth-first at the edge so an unauthenticated request never reaches Modal.
