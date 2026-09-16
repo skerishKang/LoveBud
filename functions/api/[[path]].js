@@ -26,6 +26,10 @@ import {
   isTreeForkDirectNeonRequest,
   isTreeForkDirectNeonSelected
 } from '../_shared/tree-fork-direct-neon.js';
+import {
+  handlePrivateTreeCapabilityDirectNeon,
+  isPrivateTreeCapabilityDirectNeonSelected
+} from '../_shared/private-tree-capability-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -89,6 +93,9 @@ function isPrivateTreeCapabilityRequest(request) {
   const path = new URL(request.url).pathname.replace(/\/+$/, '');
   return /^\/api\/private\/trees\/[^/]+\/capability$/.test(path);
 }
+
+// Source-only gate: LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME=direct_neon.
+// Unknown/unset values preserve the existing Modal authority.
 
 // Hub-layout is a private/owner sub-resource read. Same-origin GET must be
 // auth-first at the edge so an unauthenticated request never reaches Modal.
@@ -569,6 +576,36 @@ export async function onRequest(context) {
       }
       console.warn('[LoveBudCloudflareProxy] Modal write failed, returning 503', error);
       return buildModalUnavailableResponse(requestId);
+    }
+  }
+
+  // ─── Phase-5 private Tree capability gated Direct-Neon read candidate ──────
+  // Missing Authorization preserves the existing edge auth-first 401 below.
+  // With the exact direct gate selected, a provided Authorization header is
+  // resolved by the Firebase-principal helper and the capability is answered
+  // by one bounded Tree owner-existence SELECT. Once direct execution begins,
+  // no Modal fallback is permitted.
+  if (isPrivateTreeCapabilityRequest(request) &&
+      isPrivateTreeCapabilityDirectNeonSelected(env || {}) &&
+      hasAuthorizationHeader(request)) {
+    const path = new URL(request.url).pathname.replace(/\/+$/, '');
+    const match = path.match(/^\/api\/private\/trees\/([^/]+)\/capability$/);
+    if (match) {
+      try {
+        const encodedTreeId = normalizeEncodedPathSegment(match[1]);
+        const treeId = encodedTreeId ? decodeURIComponent(encodedTreeId) : '';
+        return await handlePrivateTreeCapabilityDirectNeon(
+          request,
+          treeId,
+          env || {},
+          requestId
+        );
+      } catch (error) {
+        if (isInvalidPathEncodingError(error)) {
+          return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+        }
+        throw error;
+      }
     }
   }
 
