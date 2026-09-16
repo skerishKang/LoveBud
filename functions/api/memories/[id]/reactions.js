@@ -4,6 +4,11 @@ import {
   handleMemoryReactionDirectNeon,
   isMemoryReactionDirectNeonSelected
 } from '../../../_shared/memory-reaction-direct-neon.js';
+import {
+  handleMemoryAuthReactionReadDirectNeon,
+  isMemoryAuthReactionReadDirectNeonSelected
+} from '../../../_shared/memory-auth-reaction-read-direct-neon.js';
+import { getOrCreateRequestId } from '../../../_shared/request-id.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -115,6 +120,17 @@ async function fetchModal(target, options) {
 export async function onRequestGet(context) {
   const authorization = getAuthorization(context.request);
   if (!authorization) return buildMissingAuthorizationResponse();
+
+  if (isMemoryAuthReactionReadDirectNeonSelected(context.env || {})) {
+    const requestId = getOrCreateRequestId(context.request);
+    return handleMemoryAuthReactionReadDirectNeon(
+      context.request,
+      context.env || {},
+      context.params?.id,
+      requestId,
+      context.directNeonTestOverrides || {}
+    );
+  }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) return buildModalConfigUnavailableResponse();

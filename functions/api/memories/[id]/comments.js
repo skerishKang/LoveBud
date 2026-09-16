@@ -4,6 +4,11 @@ import {
   handleMemoryCommentDirectNeon,
   isMemoryCommentDirectNeonSelected
 } from '../../../_shared/memory-comment-direct-neon.js';
+import {
+  handleMemoryAuthCommentReadDirectNeon,
+  isMemoryAuthCommentReadDirectNeonSelected
+} from '../../../_shared/memory-auth-comment-read-direct-neon.js';
+import { getOrCreateRequestId } from '../../../_shared/request-id.js';
 
 // Canonical request-body size boundary: 128 KB / 128 KiB (131072 bytes), owned and enforced by the shared reader.
 function stripTrailingSlash(value) {
@@ -116,6 +121,17 @@ async function fetchModal(target, options) {
 export async function onRequestGet(context) {
   const authorization = getAuthorization(context.request);
   if (!authorization) return buildMissingAuthorizationResponse();
+
+  if (isMemoryAuthCommentReadDirectNeonSelected(context.env || {})) {
+    const requestId = getOrCreateRequestId(context.request);
+    return handleMemoryAuthCommentReadDirectNeon(
+      context.request,
+      context.env || {},
+      context.params?.id,
+      requestId,
+      context.directNeonTestOverrides || {}
+    );
+  }
 
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) return buildModalConfigUnavailableResponse();
