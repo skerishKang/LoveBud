@@ -1,4 +1,8 @@
 import { REQUEST_ID_HEADER, getOrCreateRequestId } from '../../../../../_shared/request-id.js';
+import {
+  handleMemoryPublicReactionReadDirectNeon,
+  isMemoryPublicReactionReadDirectNeonSelected
+} from '../../../../../_shared/memory-public-reaction-read-direct-neon.js';
 
 const MODAL_FETCH_TIMEOUT_MS = 25000;
 
@@ -52,9 +56,20 @@ function build504Response(requestId) {
 }
 
 export async function onRequestGet(context) {
-  const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   const requestId = getOrCreateRequestId(context.request);
 
+  if (isMemoryPublicReactionReadDirectNeonSelected(context.env || {})) {
+    return handleMemoryPublicReactionReadDirectNeon(
+      context.request,
+      context.env || {},
+      context.params?.tree_id,
+      context.params?.memory_id,
+      requestId,
+      context.directNeonTestOverrides || {}
+    );
+  }
+
+  const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) {
     return build503Response(requestId);
   }
