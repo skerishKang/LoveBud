@@ -2,24 +2,74 @@
   "format_version": "1.0",
   "authority": {
     "issue": 4311,
-    "parent_issues": [4000, 4004],
+    "parent_issues": [
+      4000,
+      4004
+    ],
     "reconciled_predecessor": 4239,
     "as_of_main_sha": "1147182c3e07780c3dc6bccf9d736063647239d9",
     "staleness_rule": "Every *_state value below is bound to as_of_main_sha or to the cited evidence ref. Main movement or prior consumption invalidates any DIAGNOSTIC_EXECUTION_AUTHORIZED value. This matrix never re-enables historical authority; fresh exact-head verification is required before any Production claim.",
     "never_infer_rule": "A route is PRODUCTION_LIVE only from fresh live provider evidence; checked-in gate vars prove repository intent only."
   },
   "classification_vocabulary": {
-    "source_state": ["SOURCE_READY", "SOURCE_IN_PROGRESS", "SOURCE_MISSING", "KEEP_MODAL_BY_DESIGN"],
-    "source_parity": ["PASS_AT_CITED_SHA", "NOT_FRESHLY_PROVEN"],
-    "runtime_state": ["RUNTIME_PROVEN_AT_CITED_SHA", "NOT_FRESHLY_PROVEN"],
-    "privilege_state": ["PRIVILEGE_PROVEN_AT_CITED_SHA", "PRIVILEGE_UNPROVEN", "PRIVILEGE_BLOCKED"],
-    "live_provider_state": ["LIVE_PROVEN_AT_CITED_SHA", "NOT_FRESHLY_VERIFIED"],
-    "checked_in_gate": ["CHECKED_IN_PRODUCTION_GATE", "NOT_CHECKED_IN"],
-    "live_gate_state": ["LIVE_GATE_VERIFIED", "LIVE_GATE_READ_REQUIRED", "LIVE_GATE_NOT_INTENDED"],
-    "ephemeral_diagnostic_support": ["SOURCE_ONLY_HELPER_AVAILABLE", "DEDICATED_ISSUE_PENDING", "NONE"],
-    "diagnostic_execution_authorized": ["AUTHORIZED_ONE_SESSION_AT_CITED_SHA", "NOT_AUTHORIZED", "CONSUMED", "INVALIDATED_STALE_MAIN"],
-    "production_live": ["PRODUCTION_LIVE", "NOT_PRODUCTION_LIVE"],
-    "disposition_4239": ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+    "source_state": [
+      "SOURCE_READY",
+      "SOURCE_IN_PROGRESS",
+      "SOURCE_MISSING",
+      "KEEP_MODAL_BY_DESIGN"
+    ],
+    "source_parity": [
+      "PASS_AT_CITED_SHA",
+      "NOT_FRESHLY_PROVEN"
+    ],
+    "runtime_state": [
+      "RUNTIME_PROVEN_AT_CITED_SHA",
+      "NOT_FRESHLY_PROVEN"
+    ],
+    "privilege_state": [
+      "PRIVILEGE_PROVEN_AT_CITED_SHA",
+      "PRIVILEGE_UNPROVEN",
+      "PRIVILEGE_BLOCKED"
+    ],
+    "live_provider_state": [
+      "LIVE_PROVEN_AT_CITED_SHA",
+      "NOT_FRESHLY_VERIFIED"
+    ],
+    "checked_in_gate": [
+      "CHECKED_IN_PRODUCTION_GATE",
+      "NOT_CHECKED_IN"
+    ],
+    "live_gate_state": [
+      "LIVE_GATE_VERIFIED",
+      "LIVE_GATE_READ_REQUIRED",
+      "LIVE_GATE_NOT_INTENDED"
+    ],
+    "ephemeral_diagnostic_support": [
+      "SOURCE_ONLY_HELPER_AVAILABLE",
+      "DEDICATED_ISSUE_PENDING",
+      "NONE"
+    ],
+    "diagnostic_execution_authorized": [
+      "AUTHORIZED_ONE_SESSION_AT_CITED_SHA",
+      "NOT_AUTHORIZED",
+      "CONSUMED",
+      "INVALIDATED_STALE_MAIN"
+    ],
+    "production_live": [
+      "PRODUCTION_LIVE",
+      "NOT_PRODUCTION_LIVE"
+    ],
+    "disposition_4239": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I"
+    ]
   },
   "credential_boundaries": {
     "modal_runtime": "Modal Product runtime credential (historical default path; retained until per-route cutover).",
@@ -33,11 +83,27 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/public-browse-summary-direct-neon.js",
-      "shared_core": ["functions/_shared/direct-neon-browse-summary-core.js", "functions/_shared/direct-neon-browse-transport.js"],
-      "source_refs": ["#4153", "#4155"],
+      "shared_core": [
+        "functions/_shared/direct-neon-browse-summary-core.js",
+        "functions/_shared/direct-neon-browse-transport.js"
+      ],
+      "source_refs": [
+        "#4153",
+        "#4155"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_BROWSE_SUMMARY_READ_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -49,7 +115,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
       "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, report LOVEBUD_4000_BROWSE_SUMMARY_DIRECT_NEON_LIVE_VERIFY_REPORT; fresh current-main proof, not a replacement of history): active Production deployment served source matching approved main e92de06eff288f0585e8972bdcf410070b0793a8; live provider gate LB_BROWSE_SUMMARY_READ_RUNTIME=direct_neon verified on the response. Exactly one target Production GET of the Browse Summary community read was executed: HTTP=200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, x-lovebud-route-status=ok, canonical response shape=PASS, Modal fallback=NO, secret leak=NO, retry=NO, no remediation required. FUNCTIONAL_LIVE_PROOF=PASS; ACTUAL_TARGET_GET_COUNT=1; ONE_SHOT_PROTOCOL_COMPLIANCE=PASS. #4155 historical cutover/soak evidence is retained; this row records fresh current-main state and does not claim that history never existed. No raw tree UUID, title/content, raw Product body, DB identifier, role identifier, credential, or connection string is recorded here.",
-      "last_exact_head_evidence": { "ref": "Production live proof #4000 Browse Summary direct-Neon at exact main e92de06eff288f0585e8972bdcf410070b0793a8: one target Production GET, HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, x-lovebud-route-status=ok, response shape PASS, Modal fallback NO, secret leak NO, retry NO; FUNCTIONAL_LIVE_PROOF=PASS, ACTUAL_TARGET_GET_COUNT=1, ONE_SHOT_PROTOCOL_COMPLIANCE=PASS; bound to the deployed source SHA; #4155 cutover/soak history retained for audit trail", "main_sha": "e92de06eff288f0585e8972bdcf410070b0793a8" },
+      "last_exact_head_evidence": {
+        "ref": "Production live proof #4000 Browse Summary direct-Neon at exact main e92de06eff288f0585e8972bdcf410070b0793a8: one target Production GET, HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, x-lovebud-route-status=ok, response shape PASS, Modal fallback NO, secret leak NO, retry NO; FUNCTIONAL_LIVE_PROOF=PASS, ACTUAL_TARGET_GET_COUNT=1, ONE_SHOT_PROTOCOL_COMPLIANCE=PASS; bound to the deployed source SHA; #4155 cutover/soak history retained for audit trail",
+        "main_sha": "e92de06eff288f0585e8972bdcf410070b0793a8"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR; Modal path remains default until live gate verified",
       "next_action": "Browse Summary direct-Neon read is Production live and verified at cited source/deployment evidence (one target GET, HTTP 200, upstream direct-neon, runtime direct_neon, route status ok, one-shot protocol PASS). Future gate change, credential change, provider change, or runtime change invalidates this live attestation and requires fresh verification. Continue ordinary monitoring/regression protection; do not request another canary merely to strengthen current proof."
@@ -60,10 +129,20 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/love-platform-api-growing-neon-query.js",
-      "source_refs": ["#4153", "#4155"],
+      "source_refs": [
+        "#4153",
+        "#4155"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_GROWING_READ_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -75,7 +154,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
       "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, report LOVEBUD_4000_GROWING_DIRECT_NEON_LIVE_VERIFY_REPORT; fresh current-main proof, not a replacement of #4111 history): active Production deployment source matched approved main 1c09ebc90bc577bb7ba4dc9e58d99f6edcdd3eed; live provider gate LB_GROWING_READ_RUNTIME=direct_neon verified on the response. Exactly one anonymous Product GET of GET /api/community/growing-trees was executed using the source-canonical minimum limit=3 (current source clamps limit to [3,12]): HTTP=200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, x-lovebud-route-status absent on success by current source (error-path-only header), Cache-Control no-store=PASS, x-lovebud-request-id=PRESENT, canonical Growing response shape=PASS, Modal fallback=NO, secret leak=NO, retry=NO, no remediation required. One read-only control read of /.well-known/release.json corroborated the deployed source SHA. FUNCTIONAL_LIVE_PROOF=PASS; ACTUAL_TARGET_GET_COUNT=1; ONE_SHOT_PROTOCOL_COMPLIANCE=PASS; CONTROL_READ_COUNT=1. #4111 historical cutover authority is preserved; this row records fresh current-main state. No raw Tree IDs, titles, Memory content, owner/user identifiers, Product-row URLs, database identifiers, role identifiers, credentials, or connection strings are recorded here.",
-      "last_exact_head_evidence": { "ref": "Production live proof #4000 Growing direct-Neon at exact main 1c09ebc90bc577bb7ba4dc9e58d99f6edcdd3eed: one Product GET /api/community/growing-trees?limit=3 (source-canonical minimum, range [3,12]), HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, route-status absent on success by current source, no-store PASS, request-id PRESENT, response shape PASS, Modal fallback NO, secret leak NO, retry NO; FUNCTIONAL_LIVE_PROOF=PASS, ACTUAL_TARGET_GET_COUNT=1, ONE_SHOT_PROTOCOL_COMPLIANCE=PASS, CONTROL_READ_COUNT=1; bound to the deployed source SHA; #4111 cutover authority retained for audit trail", "main_sha": "1c09ebc90bc577bb7ba4dc9e58d99f6edcdd3eed" },
+      "last_exact_head_evidence": {
+        "ref": "Production live proof #4000 Growing direct-Neon at exact main 1c09ebc90bc577bb7ba4dc9e58d99f6edcdd3eed: one Product GET /api/community/growing-trees?limit=3 (source-canonical minimum, range [3,12]), HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, route-status absent on success by current source, no-store PASS, request-id PRESENT, response shape PASS, Modal fallback NO, secret leak NO, retry NO; FUNCTIONAL_LIVE_PROOF=PASS, ACTUAL_TARGET_GET_COUNT=1, ONE_SHOT_PROTOCOL_COMPLIANCE=PASS, CONTROL_READ_COUNT=1; bound to the deployed source SHA; #4111 cutover authority retained for audit trail",
+        "main_sha": "1c09ebc90bc577bb7ba4dc9e58d99f6edcdd3eed"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "Growing direct-Neon read is Production live and verified at cited source/deployment evidence (one Product GET at source-canonical limit=3, HTTP 200, upstream direct-neon, runtime direct_neon, one-shot protocol PASS). Future gate change, credential change, provider change, or runtime change invalidates this live attestation and requires fresh verification. Continue ordinary monitoring/regression protection; do not request another Growing canary merely to strengthen current proof."
@@ -86,10 +168,20 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/public-community-memories-direct-neon.js",
-      "source_refs": ["#4153", "#4155"],
+      "source_refs": [
+        "#4153",
+        "#4155"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_COMMUNITY_MEMORIES_READ_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -101,7 +193,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
       "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, report LOVEBUD_4000_COMMUNITY_MEMORIES_DIRECT_NEON_LIVE_VERIFY_REPORT; fresh current-main proof, not a replacement of #4153 history): active Production deployment source matched approved main 399c1da71ae9d49e772325aaff2cffc457a39db0; live provider gate LB_COMMUNITY_MEMORIES_READ_RUNTIME=direct_neon verified on the response. Exactly one control read of /.well-known/release.json corroborated the deployed source SHA. Exactly one anonymous Product GET was executed as GET /api/community/memories?limit=1 (source-canonical minimum, limit range [1,200]): HTTP=200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, x-lovebud-route-status absent on success (route-status semantic ERROR_ONLY by current source: responseHeaders() emits the header only on error paths invalid-limit/invalid-tree-id/config-absent/query-failed), Cache-Control no-store=PASS, x-lovebud-request-id=PRESENT, canonical Community Memories response shape=PASS (JSON array within limit, exact canonical 18-key public DTO keyset), public visibility intersection (memory-public AND tree-public) preserved=PASS, Modal fallback=NO, secret leak=NO, retry=NO, no remediation required. FUNCTIONAL_LIVE_PROOF=PASS; ACTUAL_TARGET_GET_COUNT=1; ONE_SHOT_PROTOCOL_COMPLIANCE=PASS; CONTROL_READ_COUNT=1. ROUTE_AUTHORITY_MATCH=HISTORICAL_LABEL_DRIFT: current source (isPublicCommunityMemoriesRequest exact-path match, COMMUNITY_MEMORIES_DIRECT_NEON_CONTRACT.path, and catch-all dispatch to handlePublicCommunityMemoriesDirectNeon) independently confirms /api/community/memories as the gate-owning Product path, so the stale matrix route label was corrected from the historical/broader /api/community/trees to /api/community/memories. #4153 historical cutover and 30/30 soak evidence is preserved; this row records fresh current-main state. No Memory IDs, Tree IDs, titles, memo/content, media/source URLs, owner/user identifiers, database identifiers, role identifiers, credentials, or connection strings are recorded here.",
-      "last_exact_head_evidence": { "ref": "Production live proof #4000 Community Memories direct-Neon at exact main 399c1da71ae9d49e772325aaff2cffc457a39db0: one Product GET /api/community/memories?limit=1 (source-canonical minimum), HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, route-status absent on success (semantic ERROR_ONLY by current source), no-store PASS, request-id PRESENT, canonical shape PASS, public visibility intersection PASS, Modal fallback NO, secret leak NO, retry NO; FUNCTIONAL_LIVE_PROOF=PASS, ACTUAL_TARGET_GET_COUNT=1, ONE_SHOT_PROTOCOL_COMPLIANCE=PASS, CONTROL_READ_COUNT=1; bound to the deployed source SHA; #4153 cutover/soak history retained for audit trail", "main_sha": "399c1da71ae9d49e772325aaff2cffc457a39db0" },
+      "last_exact_head_evidence": {
+        "ref": "Production live proof #4000 Community Memories direct-Neon at exact main 399c1da71ae9d49e772325aaff2cffc457a39db0: one Product GET /api/community/memories?limit=1 (source-canonical minimum), HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, route-status absent on success (semantic ERROR_ONLY by current source), no-store PASS, request-id PRESENT, canonical shape PASS, public visibility intersection PASS, Modal fallback NO, secret leak NO, retry NO; FUNCTIONAL_LIVE_PROOF=PASS, ACTUAL_TARGET_GET_COUNT=1, ONE_SHOT_PROTOCOL_COMPLIANCE=PASS, CONTROL_READ_COUNT=1; bound to the deployed source SHA; #4153 cutover/soak history retained for audit trail",
+        "main_sha": "399c1da71ae9d49e772325aaff2cffc457a39db0"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR",
       "next_action": "Community Memories direct-Neon read is Production live and verified at cited source/deployment evidence (one Product GET at source-canonical limit=1, HTTP 200, upstream direct-neon, runtime direct_neon, one-shot protocol PASS). Future gate change, credential change, provider change, runtime change, or route dispatch change invalidates this live attestation and requires fresh verification. Continue ordinary monitoring/regression protection; do not request another Community Memories canary merely to strengthen current proof."
@@ -112,10 +207,22 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/public-tree-detail-neon-query.js",
-      "source_refs": ["#4263"],
+      "source_refs": [
+        "#4263"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_PUBLIC_TREE_DETAIL_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -127,7 +234,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, continuity reconciliation report LOVEBUD_4000_PUBLIC_TREE_DETAIL_CONTINUITY_RECONCILIATION_REPORT; historical accepted authority plus current continuity — no new Product request was executed, and the #4332 canary must not be rerun). Layer A historical accepted live proof: #4332 one-shot anonymous Product canary against GET /api/trees/{id} — HISTORICAL_4332_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=1, CANARY_MUST_NOT_BE_RERUN=YES, HTTP=200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, Cache-Control no-store, request-id present, public DTO parity PASS, memoryCount parity PASS, like/view parity PASS, owner identifier absent PASS, no retry; terminal decision DIRECT_NEON_PUBLIC_TREE_DETAIL_PRODUCTION_CUTOVER_ACCEPTED. Layer B current continuity proof: zero commits since the #4332 acceptance window to the route/helper/shared transport/contract test/gate line/credential boundary; current privilege envelope still exactly trees SELECT, memories SELECT, tree_social_counts SELECT (no write capability); PRODUCTION_COMMIT_MATCH=YES — active Production deployment serves exact main f0f177096388007e361d0cac50c17cecb06fe041, corroborated by one read-only control read of /.well-known/release.json; PRODUCTION_GATE_VALUE=direct_neon checked in under [env.production.vars]; CONTINUITY_RECONCILIATION=PASS; INVALIDATING_CHANGE_SINCE_4332=NO. PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY (historical accepted #4273/#4263/#4332 privilege authority plus unchanged current source envelope; FRESH_DB_ACL_ATTESTATION=NO — no DB session was opened and no fresh ACL claim is made). No rollback, remediation, or new Product request required. No raw Tree IDs, titles, Memory content, owner/user identifiers, database identifiers, role identifiers, credentials, or connection strings are recorded here.",
-      "last_exact_head_evidence": { "ref": "Continuity-based Production live proof #4000 public Tree detail at exact main f0f177096388007e361d0cac50c17cecb06fe041: the #4332 accepted one-shot canary (HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, Cache-Control no-store, request-id present, public DTO parity PASS, memoryCount parity PASS, like/view parity PASS, owner identifier absent PASS, no retry) remains valid because no invalidating change occurred since acceptance and active Production serves this exact main SHA; HISTORICAL_4332_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=1, CANARY_MUST_NOT_BE_RERUN=YES, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4332=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO; #4263/#4273/#4332 historical authority retained for audit trail", "main_sha": "f0f177096388007e361d0cac50c17cecb06fe041" },
+      "last_exact_head_evidence": {
+        "ref": "Continuity-based Production live proof #4000 public Tree detail at exact main f0f177096388007e361d0cac50c17cecb06fe041: the #4332 accepted one-shot canary (HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, Cache-Control no-store, request-id present, public DTO parity PASS, memoryCount parity PASS, like/view parity PASS, owner identifier absent PASS, no retry) remains valid because no invalidating change occurred since acceptance and active Production serves this exact main SHA; HISTORICAL_4332_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=1, CANARY_MUST_NOT_BE_RERUN=YES, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4332=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO; #4263/#4273/#4332 historical authority retained for audit trail",
+        "main_sha": "f0f177096388007e361d0cac50c17cecb06fe041"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: remove/unset or restore a non-direct LB_PUBLIC_TREE_DETAIL_RUNTIME in Production wrangler vars via reviewed PR; no DB change and no source rollback required unless an independent source defect is separately proven; authenticated owner/private authority preserved",
       "next_action": "Public Tree detail direct-Neon read is Production live at cited evidence (historical #4332 accepted canary plus continuity reconciliation PASS at exact main f0f177096388007e361d0cac50c17cecb06fe041). Future change to the gate, credential boundary, provider, runtime helper, route dispatch, required privilege envelope, or authenticated/public branch isolation invalidates this continuity-based attestation and requires a fresh CENTRAL decision. Continue ordinary monitoring/regression protection; do not request another #4332 Product canary merely to strengthen the current record."
@@ -138,10 +248,22 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/owner-tree-list-direct-neon.js",
-      "source_refs": ["#4264"],
+      "source_refs": [
+        "#4264"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_OWNER_TREES_READ_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -153,7 +275,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, continuity reconciliation report LOVEBUD_4375_OWNER_TREE_LIST_CONTINUITY_RECONCILIATION_REPORT; conclusion is continuity-based: historical accepted #4330 cutover/canary authority + unchanged current privilege/source/gate envelope + current Production deployment continuity — no new Product request was executed, no DB session was opened, and no second canary is implied). Layer A historical accepted live proof: #4330 one-shot authenticated Product canary GET /api/trees?limit=10 using approved private QA/test Firebase authority — HISTORICAL_4330_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=1, second request=NO, retry=NO, HTTP=200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, Cache-Control no-store, request-id present, legacy array response shape PASS, every returned row owner-bound to the verified principal PASS, DTO shape PASS, memoryCount parity PASS, like/view capability parity PASS, cursor live continuation NOT EXECUTED by explicit one-request budget; terminal decision DIRECT_NEON_OWNER_TREE_LIST_CUTOVER=ACCEPTED; activation PR #4331 merged at dd2b506520d0fc648be6813e398f2d65e6e29c15. Layer B current continuity proof: zero commits since the #4330 acceptance window (base 2026-09-02T10:42:48Z) to the owner-tree-list helper, route, Firebase principal boundary, shared transport, contract tests, gate line, or credential boundary; current privilege envelope still exactly trees SELECT, memories SELECT, tree_social_counts SELECT (no write privilege); PRODUCTION_COMMIT_MATCH=YES — active Production deployment serves exact main c47284f14be4ab9379024f3b1ce09ee013fcad0a, corroborated by one read-only control read of /.well-known/release.json; PRODUCTION_GATE_VALUE=direct_neon checked in under [env.production.vars]; CONTINUITY_RECONCILIATION=PASS; INVALIDATING_CHANGE_SINCE_4330=NO. PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY (historical accepted #4273/#4264/#4330 privilege authority plus unchanged current source envelope; FRESH_DB_ACL_ATTESTATION=NO — historical ACL authority is not a fresh DB ACL attestation). No rollback, remediation, or new Product request required. No Firebase tokens, UIDs, emails, Tree IDs, Memory IDs, request-id values, database identifiers, role identifiers, credentials, or raw Product bodies are recorded here.",
-      "last_exact_head_evidence": { "ref": "Continuity-based Production live proof #4375 owner Tree list at exact main c47284f14be4ab9379024f3b1ce09ee013fcad0a: the #4330 accepted one-shot authenticated canary (GET /api/trees?limit=10, HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, Cache-Control no-store, request-id present, legacy array shape PASS, owner-bound rows PASS, DTO shape PASS, memoryCount parity PASS, like/view capability parity PASS, cursor continuation NOT EXECUTED by one-request budget, no second request, no retry) remains valid because no invalidating change occurred since acceptance and active Production serves this exact main SHA; HISTORICAL_4330_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=1, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4330=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO; #4264/#4273/#4330/#4331 historical authority retained for audit trail", "main_sha": "c47284f14be4ab9379024f3b1ce09ee013fcad0a" },
+      "last_exact_head_evidence": {
+        "ref": "Continuity-based Production live proof #4375 owner Tree list at exact main c47284f14be4ab9379024f3b1ce09ee013fcad0a: the #4330 accepted one-shot authenticated canary (GET /api/trees?limit=10, HTTP 200, x-lovebud-upstream=direct-neon, x-lovebud-runtime=direct_neon, Cache-Control no-store, request-id present, legacy array shape PASS, owner-bound rows PASS, DTO shape PASS, memoryCount parity PASS, like/view capability parity PASS, cursor continuation NOT EXECUTED by one-request budget, no second request, no retry) remains valid because no invalidating change occurred since acceptance and active Production serves this exact main SHA; HISTORICAL_4330_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=1, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4330=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO; #4264/#4273/#4330/#4331 historical authority retained for audit trail",
+        "main_sha": "c47284f14be4ab9379024f3b1ce09ee013fcad0a"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: disable/unset or restore a reviewed non-direct classification for LB_OWNER_TREES_READ_RUNTIME in Production wrangler vars via reviewed PR; no DB rollback and no ACL rollback required; no source rollback unless a separate source defect is proven; authenticated Modal owner-tree-list remains rollback/default authority; POST /api/trees remains independently governed",
       "next_action": "Owner Tree list direct-Neon read is Production live at cited evidence (historical #4330 accepted cutover/canary plus continuity reconciliation PASS at exact main c47284f14be4ab9379024f3b1ce09ee013fcad0a). Continue ordinary monitoring/regression protection only: any future change to the gate, credential boundary, provider deployment, owner-tree-list helper, route dispatch, Firebase principal boundary, required privilege envelope, pagination/social-count semantics, or read/write isolation invalidates this continuity-based attestation and requires fresh CENTRAL review. Do not request another owner Tree list canary merely to strengthen the current record."
@@ -164,10 +289,22 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/owner-tree-detail-direct-neon.js",
-      "source_refs": ["#4265"],
+      "source_refs": [
+        "#4265"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_OWNER_TREE_DETAIL_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -179,7 +316,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, continuity reconciliation report LOVEBUD_4375_OWNER_TREE_DETAIL_CONTINUITY_RECONCILIATION_REPORT; conclusion is continuity-based: historical accepted #4328 Product cutover authority + unchanged current source/gate/privilege envelope + current Production deployment continuity — no new Product request was executed, no DB session was opened, and no new canary is implied). Layer A historical accepted live proof: #4328 owner Tree detail direct-Neon cutover — HISTORICAL_4328_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2 (one authenticated owner Tree-detail success + one guaranteed-nonexistent owner-not-found compatibility control), HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO, HTTP=200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, x-lovebud-public-tree-cache=bypass-auth, Cache-Control=no-store, request-id present, owner binding PASS, DTO shape PASS, memoryCount parity PASS, like/view capability parity PASS; owner-not-found compatibility control HTTP=404, leak-safe final response PASS, private Tree exposure NO; terminal decision DIRECT_NEON_OWNER_TREE_DETAIL_CUTOVER=ACCEPTED; activation PR #4329 merged at 172bbdb459cfef5967a2cbae33974b0bdc7d1b16. Layer B current continuity proof (accepted; no fresh Product request and no DB session in this task): SOURCE_CONTINUITY=PASS, FIREBASE_PRINCIPAL_CONTINUITY=PASS, OWNER_SCOPE_CONTINUITY=PASS, DTO_CONTINUITY=PASS, SOCIAL_COUNT_CONTINUITY=PASS; OWNER_NOT_FOUND_PUBLIC_FALLBACK=PASS; PUBLIC_BRANCH_ISOLATION=PASS; PUT_DELETE_ISOLATION=PASS; WRITE_ROUTE_ISOLATION=PASS; PRIVILEGE_ENVELOPE_CHANGED=NO; current privilege envelope still exactly trees SELECT, memories SELECT, tree_social_counts SELECT (no write privilege); GATE_CONTINUITY=PASS; PRODUCTION_COMMIT_MATCH=YES; PRODUCTION_GATE_VALUE=direct_neon checked in for LB_OWNER_TREE_DETAIL_RUNTIME under [env.production.vars]; CONTINUITY_RECONCILIATION=PASS; INVALIDATING_CHANGE_SINCE_4328=NO. PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY (historical accepted #4328 cutover privilege authority plus unchanged current source envelope; FRESH_DB_ACL_ATTESTATION=NO — historical ACL authority is not a fresh DB ACL attestation and no DB session was opened). No rollback, remediation, or new Product request required. No Firebase tokens, UIDs, emails, Tree IDs, Memory IDs, request-id values, database identifiers, role/grantee identifiers, credentials, or raw Product bodies are recorded here.",
-      "last_exact_head_evidence": { "ref": "Continuity-based Production live proof #4375 owner Tree detail at exact main e31b2c8b9a4c44c93fbf7c036dd0e6e578f4ee0e: the #4328 accepted cutover canary (authenticated owner Tree-detail GET HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, x-lovebud-public-tree-cache=bypass-auth, Cache-Control no-store, request-id present, owner binding PASS, DTO shape PASS, memoryCount parity PASS, like/view capability parity PASS; owner-not-found compatibility control HTTP 404, leak-safe final response PASS, private Tree exposure NO; exactly 2 total Product GETs, third request NO, retry NO) remains valid because no invalidating change occurred since acceptance and active Production serves current continuity; HISTORICAL_4328_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2, HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4328=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO, OWNER_NOT_FOUND_PUBLIC_FALLBACK=PASS, PUBLIC_BRANCH_ISOLATION=PASS, PUT_DELETE_ISOLATION=PASS, WRITE_ROUTE_ISOLATION=PASS; #4265/#4328/#4329 historical authority retained for audit trail", "main_sha": "e31b2c8b9a4c44c93fbf7c036dd0e6e578f4ee0e" },
+      "last_exact_head_evidence": {
+        "ref": "Continuity-based Production live proof #4375 owner Tree detail at exact main e31b2c8b9a4c44c93fbf7c036dd0e6e578f4ee0e: the #4328 accepted cutover canary (authenticated owner Tree-detail GET HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, x-lovebud-public-tree-cache=bypass-auth, Cache-Control no-store, request-id present, owner binding PASS, DTO shape PASS, memoryCount parity PASS, like/view capability parity PASS; owner-not-found compatibility control HTTP 404, leak-safe final response PASS, private Tree exposure NO; exactly 2 total Product GETs, third request NO, retry NO) remains valid because no invalidating change occurred since acceptance and active Production serves current continuity; HISTORICAL_4328_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2, HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4328=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO, OWNER_NOT_FOUND_PUBLIC_FALLBACK=PASS, PUBLIC_BRANCH_ISOLATION=PASS, PUT_DELETE_ISOLATION=PASS, WRITE_ROUTE_ISOLATION=PASS; #4265/#4328/#4329 historical authority retained for audit trail",
+        "main_sha": "e31b2c8b9a4c44c93fbf7c036dd0e6e578f4ee0e"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: disable/unset or restore a reviewed non-direct LB_OWNER_TREE_DETAIL_RUNTIME classification in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required; no source rollback unless a separate source defect is proven; authenticated Modal owner/private-first behavior remains the fallback/default; anonymous/public Tree detail remains independently governed; PUT/DELETE gates remain independently governed",
       "next_action": "Owner Tree detail direct-Neon read is Production live at cited evidence (historical accepted #4328 Product cutover authority + unchanged current source/gate/privilege envelope + current Production deployment continuity, continuity reconciliation PASS at exact main e31b2c8b9a4c44c93fbf7c036dd0e6e578f4ee0e). Continue ordinary monitoring/regression protection only: any future change to LB_OWNER_TREE_DETAIL_RUNTIME, the credential boundary, the Production provider/deployment, the owner-tree-detail helper, route dispatch, the Firebase principal boundary, owner scope, the required privilege envelope, DTO/social-count behavior, the owner-not-found compatibility bridge, public branch isolation, or write-route isolation invalidates this continuity-based attestation and requires fresh CENTRAL review. Do not request another owner Tree detail Product canary merely to strengthen the current record."
@@ -190,10 +330,23 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/public-memory-detail-direct-neon.js",
-      "source_refs": ["#4254", "#4283"],
+      "source_refs": [
+        "#4254",
+        "#4283"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_PUBLIC_MEMORY_DETAIL_RUNTIME",
-      "required_objects": { "memories": ["SELECT"], "trees": ["SELECT"], "reactions": ["SELECT"] },
+      "required_objects": {
+        "memories": [
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ],
+        "reactions": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -206,7 +359,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "D",
       "disposition_note": "Production live attestation (source/doc/test-only; Phase 2c functional canary executed at exact main 9085363819d858f2cb3fd526f4e46a279f416f28 and accepted by CENTRAL with a permanently recorded protocol exception, #4383 comment 5634321685; DECISION=READY_FOR_SOURCE_ONLY_PUBLIC_MEMORY_DETAIL_PRODUCTION_LIVE_ATTESTATION_WITH_PROTOCOL_EXCEPTION). Functional canary: PUBLIC_MEMORY_DETAIL_FUNCTIONAL_CANARY=PASS; Request 1 (authorized-shape anonymous public Memory detail GET) HTTP=200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control=no-store, request-id present, visibility=public, public DTO shape PASS (19 keys), reactionCounts shape PASS (object with integer total), private-field exposure NO; Request 2 (authorized-shape anonymous guaranteed-nonexistent Memory detail GET) HTTP=404, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control=no-store, request-id present, route-status=not-found, leak-safe body PASS (bounded single-key detail, requested identifier not echoed), private-data exposure NO. Protocol compliance is not claimed: PHASE_2C_PROTOCOL_COMPLIANCE=FAIL_RECORDED with two recorded deviations — (1) one unauthorized anonymous discovery GET to the public community-memory feed was executed after retained fixture authority was found missing, and (2) the required provider deployment-metadata read was not performed before Product requests. CENTRAL_PROTOCOL_EXCEPTION=ACCEPTED_NO_RERUN, REPLACEMENT_CANARY_AUTHORIZED=NO. AUTHORIZED_SHAPE_CANARY_GET_COUNT=2, UNAUTHORIZED_DISCOVERY_GET_COUNT=1, TOTAL_PRODUCT_GET_COUNT_PHASE2C=3, RETRY_COUNT=0. Continuity basis is post-hoc deployment/source continuity corroboration only, not a pre-canary deployment check: MAIN_DRIFT_SINCE_CANARY=NO, current main remains exactly the Phase 2b merged SHA, exact-main Cloudflare Pages deployment SUCCESS, verify-static SUCCESS, db-impact SUCCESS, reliability-preview-rehearsal SUCCESS, all DB-engine checks SUCCESS, and both live responses carried the direct-Neon runtime/upstream markers expected from the checked-in gate. Grant authority retained for audit trail: #4283 CLOSED COMPLETED — grant verified 2026-09-01 (NEON_CONSOLE_GRANT=SUCCESS with 4 GRANT statements per #issuecomment-5486056477; POST_GRANT_A_ATTESTATION_COMPLETED_CLEAN per #issuecomment-5486489548; CREDENTIAL_BOUNDARY_RESOLUTION=RESOLVED_BY_4283_EVIDENCE; unmapped_grantee_count=0). HISTORICAL_4283_GRANT_COMPLETED=YES, HISTORICAL_4283_CLOSE_DATE=2026-09-01, CUTOVER_PREFLIGHT_ISSUE=4383, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO. Source continuity since grant era 3f8f60ff7ac22ff1e8cbef3886bf17b8890eca91: PASS (public-memory-detail helper, route, memory-route-proxy, request-id, path-segment, package-lock byte-identical; @neondatabase/serverless 1.1.0 pinned). required_objects remain memories SELECT + trees SELECT + reactions SELECT per current exact-main SQL (memories INNER JOIN trees with both visibility='public' predicates plus reactions count aggregation); tree_social_counts NOT required by this route; no information_schema probe, no to_jsonb, no clientKey access, no writes/DDL/admin. Privilege envelope from #4283 (SELECT trees, memories, tree_social_counts, reactions + schema USAGE; NO PUBLIC SELECT; NO write/DDL/admin) is a superset of current required objects; PRIVILEGE_ENVELOPE_CHANGED_SINCE_GRANT=NO. No private identifiers, tokens, request-id values, or raw Product bodies recorded.",
-      "last_exact_head_evidence": { "ref": "Phase 2c functional canary at exact main accepted by CENTRAL with a recorded protocol exception (#4383 comment 5634321685; PUBLIC_MEMORY_DETAIL_FUNCTIONAL_CANARY=PASS, PHASE_2C_PROTOCOL_COMPLIANCE=FAIL_RECORDED, CENTRAL_PROTOCOL_EXCEPTION=ACCEPTED_NO_RERUN, REPLACEMENT_CANARY_AUTHORIZED=NO, MAIN_DRIFT_SINCE_CANARY=NO); post-hoc deployment/source continuity corroboration with exact-main Cloudflare Pages SUCCESS; #4283 CLOSED COMPLETED — grant verified 2026-09-01 historical authority retained for audit trail", "main_sha": "9085363819d858f2cb3fd526f4e46a279f416f28" },
+      "last_exact_head_evidence": {
+        "ref": "Phase 2c functional canary at exact main accepted by CENTRAL with a recorded protocol exception (#4383 comment 5634321685; PUBLIC_MEMORY_DETAIL_FUNCTIONAL_CANARY=PASS, PHASE_2C_PROTOCOL_COMPLIANCE=FAIL_RECORDED, CENTRAL_PROTOCOL_EXCEPTION=ACCEPTED_NO_RERUN, REPLACEMENT_CANARY_AUTHORIZED=NO, MAIN_DRIFT_SINCE_CANARY=NO); post-hoc deployment/source continuity corroboration with exact-main Cloudflare Pages SUCCESS; #4283 CLOSED COMPLETED — grant verified 2026-09-01 historical authority retained for audit trail",
+        "main_sha": "9085363819d858f2cb3fd526f4e46a279f416f28"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: disable/unset or restore a reviewed non-direct LB_PUBLIC_MEMORY_DETAIL_RUNTIME classification in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required; no source rollback unless a separate source defect is proven; the anonymous Modal public Memory detail path remains the fallback/default; authenticated owner reads remain governed independently by LB_OWNER_MEMORY_DETAIL_RUNTIME; PUT/DELETE routes remain independently governed",
       "next_action": "Public Memory detail direct-Neon read is Production live at cited evidence (Phase 2c functional canary PASS at exact main 9085363819d858f2cb3fd526f4e46a279f416f28, accepted by CENTRAL with a permanently recorded protocol exception and no replacement canary authorized). Continue ordinary monitoring/regression protection only: any future change to LB_PUBLIC_MEMORY_DETAIL_RUNTIME, the credential boundary, the Production provider/deployment, the public-memory-detail helper, route dispatch, the privilege envelope, the public visibility predicates, reaction aggregation, the DTO projection, request-id/no-store behavior, owner/public isolation, or write-route isolation invalidates this attestation and requires fresh CENTRAL review. Do not rerun or replace the Phase 2c canary and do not relabel the recorded protocol deviations as compliant."
@@ -217,10 +373,19 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/owner-memory-list-direct-neon.js",
-      "source_refs": ["#4266"],
+      "source_refs": [
+        "#4266"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_OWNER_MEMORIES_READ_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -232,7 +397,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, continuity reconciliation report LOVEBUD_4375_OWNER_MEMORY_LIST_CONTINUITY_RECONCILIATION_REPORT; conclusion is continuity-based: historical accepted #4326 Product cutover authority + unchanged current source/gate/privilege envelope + current Production deployment continuity — no new Product request was executed, no DB session was opened, and no new canary is implied). Layer A historical accepted live proof: #4266 runtime-readiness authority plus #4326 owner Memory list direct-Neon cutover — HISTORICAL_4326_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2 (one authenticated owner Memory-list GET plus one guaranteed-nonexistent Tree empty control), HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO; Request 1 HTTP=200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control=no-store, request-id present, legacy response shape=array, tree scope PASS, owner binding PASS, DTO shape PASS, clientKey parity PASS, retained synthetic Memory evidence PASS; Request 2 HTTP=200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control=no-store, request-id present, response shape=empty array; terminal decision DIRECT_NEON_OWNER_MEMORY_LIST_CUTOVER=ACCEPTED; activation PR #4327 merged at 08d632ec723d482be840ce58f039c8f915bd3d2f. Layer B current continuity proof (accepted; no fresh Product request and no DB session in this task): SOURCE_CONTINUITY=PASS, FIREBASE_PRINCIPAL_CONTINUITY=PASS, OWNER_SCOPE_CONTINUITY=PASS, TREE_SCOPE_AUTHORIZATION=PASS, LEGACY_RESPONSE_SHAPE_CONTINUITY=PASS, DTO_CONTINUITY=PASS, CLIENT_KEY_CONTINUITY=PASS, PAGINATION_CONTINUITY=PASS, CURSOR_SCOPE_AND_KEYSET_CONTINUITY=PASS, NO_STORE_REQUEST_ID_CONTINUITY=PASS, FAIL_CLOSED_DIRECT_MODE=PASS; POST_MEMORY_CREATE_ISOLATION=PASS; WRITE_ROUTE_ISOLATION=PASS; PRIVILEGE_ENVELOPE_CHANGED=NO; current privilege envelope still exactly trees SELECT, memories SELECT (no write privilege; the information_schema client_key capability probe is not an application-table privilege expansion); GATE_CONTINUITY=PASS; PRODUCTION_COMMIT_MATCH=YES; PRODUCTION_GATE_VALUE=direct_neon checked in for LB_OWNER_MEMORIES_READ_RUNTIME under [env.production.vars]; CONTINUITY_RECONCILIATION=PASS; INVALIDATING_CHANGE_SINCE_4326=NO; PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY; FRESH_DB_ACL_ATTESTATION=NO. required_objects corrected route-locally from memories-only to trees SELECT + memories SELECT per current exact-main SQL (INNER JOIN trees on t.id = m.tree_id with t.owner_id predicate); tree_social_counts is NOT required by this route. No private identifiers, tokens, request-id values, or raw Product bodies recorded.",
-      "last_exact_head_evidence": { "ref": "Continuity-based Production live proof #4375 owner Memory list at exact main 563f3ff80fa47a499e962b0876026070059e2681: the #4326 accepted cutover canary (Request 1 authenticated owner Memory-list GET HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control no-store, request-id present, legacy array shape PASS, tree scope PASS, owner binding PASS, DTO shape PASS, clientKey parity PASS, retained synthetic Memory evidence PASS; Request 2 guaranteed-nonexistent Tree empty control HTTP 200, response shape empty array; exactly 2 total Product GETs, third request NO, retry NO) remains valid because no invalidating change occurred since acceptance and active Production serves this exact main SHA; HISTORICAL_4326_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2, HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4326=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO, POST_MEMORY_CREATE_ISOLATION=PASS, WRITE_ROUTE_ISOLATION=PASS; #4266/#4326/#4327 historical authority retained for audit trail", "main_sha": "563f3ff80fa47a499e962b0876026070059e2681" },
+      "last_exact_head_evidence": {
+        "ref": "Continuity-based Production live proof #4375 owner Memory list at exact main 563f3ff80fa47a499e962b0876026070059e2681: the #4326 accepted cutover canary (Request 1 authenticated owner Memory-list GET HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control no-store, request-id present, legacy array shape PASS, tree scope PASS, owner binding PASS, DTO shape PASS, clientKey parity PASS, retained synthetic Memory evidence PASS; Request 2 guaranteed-nonexistent Tree empty control HTTP 200, response shape empty array; exactly 2 total Product GETs, third request NO, retry NO) remains valid because no invalidating change occurred since acceptance and active Production serves this exact main SHA; HISTORICAL_4326_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2, HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4326=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO, POST_MEMORY_CREATE_ISOLATION=PASS, WRITE_ROUTE_ISOLATION=PASS; #4266/#4326/#4327 historical authority retained for audit trail",
+        "main_sha": "563f3ff80fa47a499e962b0876026070059e2681"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: disable/unset or restore a reviewed non-direct LB_OWNER_MEMORIES_READ_RUNTIME classification in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required; no source rollback unless a separate source defect is proven; authenticated Modal owner Memory-list path remains the fallback/default; POST memory-create remains independently governed by LB_MEMORY_CREATE_WRITE_RUNTIME",
       "next_action": "Owner Memory list direct-Neon read is Production live at cited evidence (historical accepted #4326 Product cutover authority + unchanged current source/gate/privilege envelope + current Production deployment continuity, continuity reconciliation PASS at exact main 563f3ff80fa47a499e962b0876026070059e2681). Continue ordinary monitoring/regression protection only: any future change to LB_OWNER_MEMORIES_READ_RUNTIME, the credential boundary, the Production provider/deployment, the owner-memory-list helper, route dispatch, the Firebase principal boundary, owner or tree scope, the required privilege envelope, DTO behavior, clientKey capability behavior, pagination/cursor semantics, or write isolation invalidates this continuity-based attestation and requires fresh CENTRAL review. Do not request another owner Memory list Product canary merely to strengthen the current record."
@@ -243,10 +411,19 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/owner-memory-detail-direct-neon.js",
-      "source_refs": ["#4267"],
+      "source_refs": [
+        "#4267"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_OWNER_MEMORY_DETAIL_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "memories": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -258,7 +435,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Production live attestation (CENTRAL accepted 2026-09-11, continuity reconciliation report LOVEBUD_4375_OWNER_MEMORY_DETAIL_CONTINUITY_RECONCILIATION_REPORT; conclusion is continuity-based: historical accepted #4324 Product cutover authority + unchanged current source/gate/privilege envelope + current Production deployment continuity — no new Product request was executed, no DB session was opened, and no new canary is implied). Layer A historical accepted live proof: #4267 runtime-readiness authority plus #4324 owner Memory detail direct-Neon cutover — HISTORICAL_4324_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2 (one authenticated owner Memory-detail GET plus one guaranteed-nonexistent UUID control), HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO, HISTORICAL_403_CONTROL_NOT_REQUIRED=YES (external-party 403 control explicitly not required per #4324 FINAL: no separately authoritative second-QA fixture existed); Request 1 HTTP=200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control=no-store, request-id present, memory detail response shape=legacy object, id scope PASS, owner binding PASS, tree scope PASS, DTO shape PASS, clientKey parity PASS, retained synthetic Memory detail evidence PASS; Request 2 HTTP=404, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control=no-store, request-id present, 404-before-403 ordering PASS, response shape=sanitized not-found; terminal decision DIRECT_NEON_OWNER_MEMORY_DETAIL_CUTOVER=ACCEPTED; activation PR #4325 merged at 66a31a989d821f8e1c7e4216aced2403fbe40405. Layer B current continuity proof (accepted; no fresh Product request and no DB session in this task): SOURCE_CONTINUITY=PASS, FIREBASE_PRINCIPAL_CONTINUITY=PASS, OWNER_SCOPE_CONTINUITY=PASS, TREE_SCOPE_AUTHORIZATION=PASS, ID_SCOPE_AUTHORIZATION=PASS (requested id resolves to a row whose parent Tree owner equals principal.legacyOwnerId; bare id-equality is not sufficient; missing/deleted reads 404 before non-owner reads 403), LEGACY_RESPONSE_SHAPE_CONTINUITY=PASS, DTO_CONTINUITY=PASS, CLIENT_KEY_CONTINUITY=PASS (to_jsonb(m)->>client_key embedded projection; no information_schema probe; not an application-table privilege expansion), NO_STORE_REQUEST_ID_CONTINUITY=PASS, FAIL_CLOSED_DIRECT_MODE=PASS; WRITE_ROUTE_ISOLATION=PASS (detail read gate governs GET only; PUT remains under LB_MEMORY_UPDATE and DELETE under LB_MEMORY_DELETE); PRIVILEGE_ENVELOPE_CHANGED=NO; current privilege envelope still exactly trees SELECT, memories SELECT (no write privilege); GATE_CONTINUITY=PASS; PRODUCTION_COMMIT_MATCH=YES; PRODUCTION_GATE_VALUE=direct_neon checked in for LB_OWNER_MEMORY_DETAIL_RUNTIME under [env.production.vars]; CONTINUITY_RECONCILIATION=PASS; INVALIDATING_CHANGE_SINCE_4324=NO; PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY; FRESH_DB_ACL_ATTESTATION=NO. required_objects corrected route-locally from memories-only to trees SELECT + memories SELECT per current exact-main SQL (memories INNER JOIN trees ON t.id = m.tree_id with tree_owner_id predicate); tree_social_counts is NOT required by this route. No private identifiers, tokens, request-id values, or raw Product bodies recorded.",
-      "last_exact_head_evidence": { "ref": "Continuity-based Production live proof #4375 owner Memory detail at exact main b88340d3a78bf61c8f98f3fcd715bfc6609cc2b5: the #4324 accepted cutover canary (Request 1 authenticated owner Memory-detail GET HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control no-store, request-id present, legacy object shape PASS, id scope PASS, owner binding PASS, tree scope PASS, DTO shape PASS, clientKey parity PASS, retained synthetic Memory detail evidence PASS; Request 2 guaranteed-nonexistent UUID control HTTP 404 with direct markers, no-store, request-id present, 404-before-403 ordering PASS; exactly 2 total Product GETs, third request NO, retry NO) remains valid because no invalidating change occurred since acceptance and active Production serves this exact main SHA; HISTORICAL_4324_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2, HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO, HISTORICAL_403_CONTROL_NOT_REQUIRED=YES, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4324=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO, ID_SCOPE_AUTHORIZATION=PASS, WRITE_ROUTE_ISOLATION=PASS; #4267/#4324/#4325 historical authority retained for audit trail", "main_sha": "b88340d3a78bf61c8f98f3fcd715bfc6609cc2b5" },
+      "last_exact_head_evidence": {
+        "ref": "Continuity-based Production live proof #4375 owner Memory detail at exact main b88340d3a78bf61c8f98f3fcd715bfc6609cc2b5: the #4324 accepted cutover canary (Request 1 authenticated owner Memory-detail GET HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, Cache-Control no-store, request-id present, legacy object shape PASS, id scope PASS, owner binding PASS, tree scope PASS, DTO shape PASS, clientKey parity PASS, retained synthetic Memory detail evidence PASS; Request 2 guaranteed-nonexistent UUID control HTTP 404 with direct markers, no-store, request-id present, 404-before-403 ordering PASS; exactly 2 total Product GETs, third request NO, retry NO) remains valid because no invalidating change occurred since acceptance and active Production serves this exact main SHA; HISTORICAL_4324_CUTOVER_ACCEPTED=YES, HISTORICAL_PRODUCT_GET_COUNT=2, HISTORICAL_THIRD_REQUEST=NO, HISTORICAL_RETRY=NO, HISTORICAL_403_CONTROL_NOT_REQUIRED=YES, CONTINUITY_RECONCILIATION=PASS, INVALIDATING_CHANGE_SINCE_4324=NO, PRODUCTION_COMMIT_MATCH=YES, PRODUCTION_GATE_VALUE=direct_neon, PRIVILEGE_AUTHORITY_CONTINUITY=PASS_AT_HISTORICAL_ACCEPTED_AUTHORITY, FRESH_DB_ACL_ATTESTATION=NO, ID_SCOPE_AUTHORIZATION=PASS, WRITE_ROUTE_ISOLATION=PASS; #4267/#4324/#4325 historical authority retained for audit trail",
+        "main_sha": "b88340d3a78bf61c8f98f3fcd715bfc6609cc2b5"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: disable/unset or restore a reviewed non-direct LB_OWNER_MEMORY_DETAIL_RUNTIME classification in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required; no source rollback unless a separate source defect is proven; authenticated Modal owner Memory-detail path remains the fallback/default; PUT / PATCH / DELETE routes remain independently governed by their own runtime gates",
       "next_action": "Owner Memory detail direct-Neon read is Production live at cited evidence (historical accepted #4324 Product cutover authority + unchanged current source/gate/privilege envelope + current Production deployment continuity, continuity reconciliation PASS at exact main b88340d3a78bf61c8f98f3fcd715bfc6609cc2b5). Continue ordinary monitoring/regression protection only: any future change to LB_OWNER_MEMORY_DETAIL_RUNTIME, the credential boundary, the Production provider/deployment, the owner-memory-detail helper, detail route dispatch, the Firebase principal boundary, owner or tree scope, id-scope authorization (404-before-403 ordering), the required privilege envelope, DTO behavior, clientKey behavior (to_jsonb projection), pagination/cursor semantics (if any), or write isolation (PUT/DELETE gate independence) invalidates this continuity-based attestation and requires fresh CENTRAL review. Do not request another owner Memory detail Product canary merely to strengthen the current record."
@@ -269,10 +449,23 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/hub-layout-read-direct-neon.js",
-      "source_refs": ["#4238", "#4255", "#4000", "#4403", "#4404"],
+      "source_refs": [
+        "#4238",
+        "#4255",
+        "#4000",
+        "#4403",
+        "#4404"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_HUB_LAYOUT_READ_RUNTIME",
-      "required_objects": { "tree_hub_layouts": ["SELECT"], "trees": ["SELECT"] },
+      "required_objects": {
+        "tree_hub_layouts": [
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -284,10 +477,47 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "F",
       "disposition_note": "Production live attestation per #4000 CENTRAL authority comment 5678561603 at exact main 285ecdd0a4e6bc59eeaeff64c2a5872f61860916. Complete evidence chain preserved: 1) Historical failed Hub Layout GET canary and emergency rollback (#4399 at main 0f4e13d9) preserved for audit trail; 2) Root cause subsequently proven as missing SELECT public.tree_hub_layouts on current runtime-read role; 3) Fresh ACL restoration accepted under authority 5672428115: PRE trees SELECT=YES tree_hub_layouts SELECT=NO -> MUTATION exactly one GRANT SELECT public.tree_hub_layouts -> POST trees SELECT=YES tree_hub_layouts SELECT=YES, INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER=NO; 4) Diagnostic stage hardening merged via #4403 (headers x-lovebud-error-stage, x-lovebud-error-class, x-lovebud-sqlstate; stage attribution executor-init, visibility-query, hub-layout-query, response-normalization); 5) Gate re-check-in PR #4404 merged at exact main 285ecdd0; 6) Exact-main post-merge CI, verify-static, db-impact, Reliability Preview, Cloudflare Pages all SUCCESS; 7) Provider/gate readback authority 5675765134 PASS (canonical project/branch match, active deployment SHA=exact main, LB_HUB_LAYOUT_READ_RUNTIME=direct_neon); 8) Bounded Product functional canary accepted under authority 5675929475: R1 disposable Tree create 200, R2 Hub Layout PUT direct_neon/direct-neon saved 200 rev 1, R3 single Hub Layout GET direct_neon/direct-neon loaded 200 rev 1 layoutMode manual positions [] updatedAt valid error headers absent, R4 Tree DELETE cleanup 200 (PRODUCT_REQUEST_COUNT=4, PRODUCT_RETRY_COUNT=0, GET_COUNT=1, SECOND_GET=0, DISCOVERY_CALLS=0, PRODUCTION_DB_CONNECTIONS=0); 9) Protocol note PRE_PRODUCT_LOCAL_HARNESS_DEVIATION recorded: one local pre-request runner stop due to id_token/idToken key mismatch, PRODUCT_REQUEST_COUNT=0 at stop, corrected locally before Product contact, no replacement canary required or authorized, not claimed as clean single-run harness execution; 10) Final classification: hub-layout-get is PRODUCTION_LIVE; 11) Rollback: GATE_ONLY_ROLLBACK (reviewed removal/unset of LB_HUB_LAYOUT_READ_RUNTIME only; no DB/ACL rollback unless separate defect proven); 12) Invalidation rule: any change to gate, credential boundary, privilege envelope, helper SQL, route dispatch, auth principal semantics, response DTO, direct-neon headers, or deployment parity invalidates this attestation and requires fresh CENTRAL review.",
-      "last_exact_head_evidence": { "ref": "#4000 authority comment 5678561603 final production-live attestation: historical failed canary/rollback preserved; root cause missing SELECT tree_hub_layouts resolved by 5672428115 GRANT SELECT; #4403 diagnostic hardening; #4404 gate re-check-in merged at main 285ecdd0; provider readback 5675765134 PASS; functional canary 5675929475 PASS (4 requests: Tree create 200, Hub Layout PUT 200 saved rev 1, Hub Layout GET 200 loaded rev 1 direct_neon/direct-neon, Tree DELETE 200; 0 retries, 1 GET, 0 discovery, 0 DB connections; pre-product local harness deviation recorded, no replacement canary); Production live accepted", "main_sha": "285ecdd0a4e6bc59eeaeff64c2a5872f61860916" },
+      "last_exact_head_evidence": {
+        "ref": "#4000 authority comment 5678561603 final production-live attestation: historical failed canary/rollback preserved; root cause missing SELECT tree_hub_layouts resolved by 5672428115 GRANT SELECT; #4403 diagnostic hardening; #4404 gate re-check-in merged at main 285ecdd0; provider readback 5675765134 PASS; functional canary 5675929475 PASS (4 requests: Tree create 200, Hub Layout PUT 200 saved rev 1, Hub Layout GET 200 loaded rev 1 direct_neon/direct-neon, Tree DELETE 200; 0 retries, 1 GET, 0 discovery, 0 DB connections; pre-product local harness deviation recorded, no replacement canary); Production live accepted",
+        "main_sha": "285ecdd0a4e6bc59eeaeff64c2a5872f61860916"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_HUB_LAYOUT_READ_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB/ACL rollback — the #4000 / authority 5672428115 SELECT grant remains in place and is not a rollback trigger; no ACL rollback unless a new separately proven defect requires it; Modal hub-layout read path remains the fallback/default when the gate is unset.",
       "next_action": "Hub Layout GET direct-Neon read is Production live at cited evidence (Phase 2 functional canary PASS at exact main 285ecdd0a4e6bc59eeaeff64c2a5872f61860916 under authority 5675929475, provider readback PASS under authority 5675765134, PRE_PRODUCT_LOCAL_HARNESS_DEVIATION recorded, no replacement canary required or authorized, accepted by CENTRAL comment 5678561603). Continue ordinary monitoring/regression protection only: any future change to LB_HUB_LAYOUT_READ_RUNTIME, the credential boundary, the Production provider/deployment, the hub-layout-read helper, route dispatch, the Firebase principal boundary, owner or tree scope, the required privilege envelope, DTO behavior, revision handling, direct-neon headers, or write-route isolation invalidates this attestation and requires fresh CENTRAL review. Do not request another Hub Layout GET Product canary merely to strengthen the current record."
+    },
+    {
+      "id": "private-tree-capability",
+      "route": "/api/private/trees/{id}/capability",
+      "method": "GET",
+      "family": "READ",
+      "source_helper": "functions/_shared/private-tree-capability-direct-neon.js",
+      "source_refs": [
+        "#4424"
+      ],
+      "source_state": "SOURCE_READY",
+      "runtime_gate": "LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME",
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ]
+      },
+      "credential_boundary": "direct_neon_runtime",
+      "source_parity": "PASS_AT_CITED_SHA",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
+      "live_provider_state": "NOT_FRESHLY_VERIFIED",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_NOT_INTENDED",
+      "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
+      "diagnostic_execution_authorized": "NOT_AUTHORIZED",
+      "production_live": "NOT_PRODUCTION_LIVE",
+      "disposition_4239": "I",
+      "last_exact_head_evidence": {
+        "ref": "PR #4427 source candidate at ea76b532494552e6bd6991f0859cd25fe36bf107; helper/route/tests present; trees SELECT privilege reused from the accepted direct_neon_runtime owner-Tree read envelope; no fresh DB session",
+        "main_sha": "ea76b532494552e6bd6991f0859cd25fe36bf107"
+      },
+      "modal_retained_by_design": false,
+      "rollback_authority": "SOURCE_ONLY: keep LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME unset/non-direct so the existing Modal capability route remains authoritative; no DB/ACL rollback required",
+      "next_action": "Merge source candidate only after exact-head CI GREEN; Production gate check-in/provider readback/Product proof require separate CENTRAL authority. No Product request or gate activation is authorized by this row."
     },
     {
       "id": "appreciation-order-get",
@@ -295,7 +525,9 @@
       "method": "GET",
       "family": "READ",
       "source_helper": null,
-      "source_refs": ["#4257"],
+      "source_refs": [
+        "#4257"
+      ],
       "source_state": "KEEP_MODAL_BY_DESIGN",
       "runtime_gate": null,
       "required_objects": {},
@@ -309,7 +541,10 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "H",
-      "last_exact_head_evidence": { "ref": "#4239 reconciliation", "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e" },
+      "last_exact_head_evidence": {
+        "ref": "#4239 reconciliation",
+        "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
+      },
       "modal_retained_by_design": true,
       "rollback_authority": "N/A (no Direct-Neon path)",
       "next_action": "Revisit only if GET-side Direct-Neon demand is explicitly approved"
@@ -320,10 +555,25 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-create-direct-neon.js",
-      "source_refs": ["#4157", "#4000"],
+      "source_refs": [
+        "#4157",
+        "#4000"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_CREATE_WRITE_RUNTIME",
-      "required_objects": { "users": ["INSERT", "UPDATE"], "trees": ["INSERT", "SELECT"], "memories": ["SELECT"] },
+      "required_objects": {
+        "users": [
+          "INSERT",
+          "UPDATE"
+        ],
+        "trees": [
+          "INSERT",
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -335,7 +585,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Production live attestation accepted by CENTRAL #4000 comment 5700671716 at exact main 249b73374970490239eec91e8b9877780078bbf7. Gate LB_TREE_CREATE_WRITE_RUNTIME=direct_neon was already checked in via PR #4418. Read-only Production provider/gate proof under authority 5698862188 and acceptance 5698947750 confirmed canonical project/branch, active deployment/source exact-main parity, release.json parity, and live gate value direct_neon with zero Product/DB/provider/secret/deploy mutation. Initial local-HTTP canary attempts returned pre-function Cloudflare 403; #4419 isolated this to the local HTTP client/egress path, while browser-native anonymous and synthetic-Authorization controls reached the LoveBud application boundary. Final bounded browser-native Product canary under authority 5700607900 passed: QA_DEV_002 Firebase sign-in exactly once; POST /api/trees HTTP 200 runtime direct_neon upstream direct-neon route-status tree-create-complete no-store request-id present canonical DTO PASS owner binding PASS title/visibility/memoryCount/groupName/keywords/timestamps PASS COMMIT_OUTCOME_UNKNOWN=NO; cleanup DELETE of the same private fixture HTTP 200 runtime direct_neon upstream direct-neon route-status tree-delete-complete deleted=true fixture match PASS COMMIT_OUTCOME_UNKNOWN=NO. Product budget exactly 2 requests (POST 1, DELETE 1), GET/PUT/PATCH/retry/discovery 0, local HTTP LoveBud API requests 0, no direct Production DB connection, no ACL/provider/secret/deploy mutation, and no raw credential/token/private-id/request-id/cf-ray/DB-error output. TREE_CREATE_DIRECT_NEON_PRODUCTION_LIVE=ACCEPTED; FUNCTIONAL_PRODUCT_POST_PROOF=PASS; CANARY_RERUN_REQUIRED=NO; CANARY_RERUN_AUTHORIZED=NO. Historical local-HTTP 403 attempts remain edge-path diagnostic evidence only. Required object envelope remains users INSERT+UPDATE, trees INSERT+SELECT, memories SELECT on direct_neon_runtime; MINIMAL_GRANT_REQUIRED=NONE and FRESH_DB_ACL_ATTESTATION=NO.",
-      "last_exact_head_evidence": {"ref":"Tree Create Production-live proof accepted by CENTRAL #4000 comment 5700671716 at exact main 249b73374970490239eec91e8b9877780078bbf7: provider/gate readback PASS under 5698862188/5698947750; final browser-native Product canary authority 5700607900, POST /api/trees HTTP 200 direct_neon/direct-neon tree-create-complete no-store request-id present canonical DTO/owner/title/public/zero-memory/default-fields/timestamps PASS COMMIT_OUTCOME_UNKNOWN=NO; cleanup DELETE HTTP 200 direct_neon/direct-neon tree-delete-complete deleted=true fixture match PASS; Product count 2, retries 0, no direct DB/ACL/provider/secret/deploy mutation; local HTTP 403 history isolated to client/egress path under #4419 and does not invalidate browser-native proof","main_sha":"249b73374970490239eec91e8b9877780078bbf7"},
+      "last_exact_head_evidence": {
+        "ref": "Tree Create Production-live proof accepted by CENTRAL #4000 comment 5700671716 at exact main 249b73374970490239eec91e8b9877780078bbf7: provider/gate readback PASS under 5698862188/5698947750; final browser-native Product canary authority 5700607900, POST /api/trees HTTP 200 direct_neon/direct-neon tree-create-complete no-store request-id present canonical DTO/owner/title/public/zero-memory/default-fields/timestamps PASS COMMIT_OUTCOME_UNKNOWN=NO; cleanup DELETE HTTP 200 direct_neon/direct-neon tree-delete-complete deleted=true fixture match PASS; Product count 2, retries 0, no direct DB/ACL/provider/secret/deploy mutation; local HTTP 403 history isolated to client/egress path under #4419 and does not invalidate browser-native proof",
+        "main_sha": "249b73374970490239eec91e8b9877780078bbf7"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed removal/unset of LB_TREE_CREATE_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB/ACL rollback is required merely to disable the route; the reused tree-fork-proven direct_neon_runtime writer privileges remain intact; Modal Tree Create remains fallback/default when the gate is unset",
       "next_action": "Tree Create direct-Neon is Production live at accepted exact-main evidence. Do not rerun the Tree Create canary merely to strengthen proof. Memory Create may resume under its existing checked-in gate, subject to fresh exact-main verification and its separately authorized browser-native functional canary. Any future change to LB_TREE_CREATE_WRITE_RUNTIME, direct_neon credential boundary, Production provider/deployment, helper SQL, route dispatch, Firebase principal mapping, required privilege envelope, transaction/COMMIT ambiguity semantics, canonical DTO, or browser-vs-edge execution assumptions invalidates this attestation and requires fresh CENTRAL review."
@@ -346,10 +599,25 @@
       "method": "PUT",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-update-direct-neon.js",
-      "source_refs": ["#4157", "#4228", "#4000"],
+      "source_refs": [
+        "#4157",
+        "#4228",
+        "#4000"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_UPDATE_WRITE_RUNTIME",
-      "required_objects": { "trees": ["UPDATE", "SELECT"], "memories": ["SELECT"], "tree_social_counts": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "UPDATE",
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -361,7 +629,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Gate checked in per #4000 CENTRAL authority comment 5679138327 at exact main 9095e2d62831373ad2eb353c3f1bed71c830f9ba: LB_TREE_UPDATE_WRITE_RUNTIME = \"direct_neon\" checked into [env.production.vars] in wrangler.toml (Batch 2). Privilege readiness is accepted same-boundary reuse evidence per #4000 CENTRAL audit comment 5655510644 and PR #4397 review comment 5655636410, NOT fresh ACL attestation: full source-accurate envelope is trees [SELECT, UPDATE] + memories [SELECT] + tree_social_counts [SELECT]; trees SELECT+UPDATE was already proven through accepted Production-live evidence (appreciation-order-post #4257/#4282 chain at main 851376c6); memories SELECT and tree_social_counts SELECT were already proven through accepted Production-live owner-tree-detail evidence (at main e31b2c8b) — all under the identical direct_neon_runtime credential boundary; CLASSIFICATION=ALREADY_PRIVILEGED+READY_FOR_GATE; MINIMAL_GRANT_REQUIRED=NONE. METHOD METADATA CORRECTION per #4000 CENTRAL authority comment 5681017728 at exact main f567aeddfa2f6750da933433b017682ff4267b43: the authoritative same-origin Tree update method is PUT, not PATCH — functions/api/trees/[id].js exports onRequestPut, functions/_shared/tree-update-direct-neon.js pins TREE_UPDATE_DIRECT_NEON_CONTRACT.method = \"PUT\", tests/contracts/api-route-mapping.test.cjs pins the writer gate as PUT-only, and the historical source candidate #4228 is PUT /api/trees/:id; the stale PATCH method metadata and the stale tree-update request-phase wording were corrected in this doc-only reconciliation (no runtime source, route source, auth source, DB helper, or wrangler change). PROVIDER/GATE READBACK ACCEPTED: read-only Cloudflare Pages readback under authority 5680851997 was accepted by CENTRAL comment 5681004263 — canonical account/project/production branch = MATCH, active Production deployment = SUCCESS, active deployment/source parity = exact main, LB_TREE_UPDATE_WRITE_RUNTIME present = YES with active value direct_neon, LIVE_GATE_PROVIDER_READBACK = PASS, PRODUCT_REQUEST = 0, PRODUCT_PUT_REQUEST = 0, Production DB connection = 0, provider/secret/DB/ACL/source/Git/GitHub mutation = 0; hence live_provider_state is LIVE_PROVEN_AT_CITED_SHA and live_gate_state is LIVE_GATE_VERIFIED. THE PRIOR METHOD-CORRECTION PR #4407 WAS DOC-ONLY: no Production DB session, no GRANT/REVOKE, no Product write request (PUT or PATCH), no Product GET, no canary, no rebind, and no production-live claim; diagnostic execution was NOT authorized at that prior stage; production_live = PRODUCTION_LIVE per this final source/doc-only attestation. TERMINAL CHAIN ACCEPTED (sanitized): (1) source candidate #4228 = PUT /api/trees/:id; (2) Production gate check-in under #4000 CENTRAL authority 5679138327; (3) provider/gate readback authority 5680851997 accepted by CENTRAL comment 5681004263; (4) method metadata correction authority 5681017728 with method correction PR #4407 merged; (5) final bounded Product canary authority 5682700749 accepted by CENTRAL canary acceptance 5683567536. Functional Product evidence at exact main 0b278105f65cee9b2771c307af1fb26947897f60 (exactly 3 Product requests total, 0 retries, 0 discovery): POST create = 1 (existing Modal Tree-create authority, public disposable fixture); PUT update = 1, HTTP 200, x-lovebud-runtime = direct_neon, x-lovebud-upstream = direct-neon, x-lovebud-route-status = tree-update-complete, Cache-Control = no-store, request-id present with value not recorded, canonical DTO PASS, private fixture-id match PASS, private owner-binding match PASS, title acknowledgement PASS, COMMIT_OUTCOME_UNKNOWN = NO; DELETE cleanup = 1, HTTP 200, direct_neon/direct-neon/tree-delete-complete, deleted = true, cleanup PASS; GET = 0; PATCH = 0; no direct Production DB connection; no ACL/GRANT/REVOKE; no provider/secret mutation; no raw credential/token/private-id/request-id exposure. TREE_UPDATE_DIRECT_NEON_PRODUCTION_LIVE = ACCEPTED; FUNCTIONAL_PRODUCT_PUT_PROOF = PASS; CANARY_RERUN_REQUIRED = NO; CANARY_RERUN_AUTHORIZED = NO. Rollback remains GATE_ONLY_ROLLBACK: reviewed removal/unset of LB_TREE_UPDATE_WRITE_RUNTIME only; no DB/ACL rollback.",
-      "last_exact_head_evidence": { "ref": "Method metadata corrected PATCH -> PUT and accepted provider/gate readback recorded per #4000 CENTRAL authority comment 5681017728 at exact main f567aeddfa2f6750da933433b017682ff4267b43; authoritative method evidence: functions/api/trees/[id].js onRequestPut, functions/_shared/tree-update-direct-neon.js TREE_UPDATE_DIRECT_NEON_CONTRACT.method = PUT, tests/contracts/api-route-mapping.test.cjs PUT-only writer gate, historical source candidate #4228 = PUT /api/trees/:id; provider readback authority 5680851997 accepted by CENTRAL comment 5681004263 (canonical project/branch MATCH, active deployment SUCCESS, deployment/source parity = exact main, LB_TREE_UPDATE_WRITE_RUNTIME present = YES = direct_neon, LIVE_GATE_PROVIDER_READBACK = PASS, PRODUCT_REQUEST = 0, PRODUCT_PUT_REQUEST = 0, Production DB connection = 0, no provider/secret/DB/ACL/source mutation); final bounded Product canary authority 5682700749 accepted by CENTRAL canary acceptance 5683567536 changed tree-update production_live to PRODUCTION_LIVE via this source/doc-only attestation: exactly 3 Product requests, 0 retries, 0 discovery (PUT update 1 = HTTP 200 direct_neon/direct-neon/tree-update-complete no-store request-id present value not recorded canonical DTO PASS private fixture-id match PASS private owner-binding match PASS title acknowledgement PASS COMMIT_OUTCOME_UNKNOWN = NO; DELETE cleanup 1 = HTTP 200 direct_neon/direct-neon/tree-delete-complete deleted = true cleanup PASS; POST create 1 via existing Modal Tree-create authority); GET = 0 PATCH = 0; no Production DB connection, no ACL/GRANT/REVOKE, no provider/secret mutation, no raw credential/token/private-id/request-id exposure; TREE_UPDATE_DIRECT_NEON_PRODUCTION_LIVE = ACCEPTED FUNCTIONAL_PRODUCT_PUT_PROOF = PASS CANARY_RERUN_REQUIRED = NO CANARY_RERUN_AUTHORIZED = NO", "main_sha": "0b278105f65cee9b2771c307af1fb26947897f60" },
+      "last_exact_head_evidence": {
+        "ref": "Method metadata corrected PATCH -> PUT and accepted provider/gate readback recorded per #4000 CENTRAL authority comment 5681017728 at exact main f567aeddfa2f6750da933433b017682ff4267b43; authoritative method evidence: functions/api/trees/[id].js onRequestPut, functions/_shared/tree-update-direct-neon.js TREE_UPDATE_DIRECT_NEON_CONTRACT.method = PUT, tests/contracts/api-route-mapping.test.cjs PUT-only writer gate, historical source candidate #4228 = PUT /api/trees/:id; provider readback authority 5680851997 accepted by CENTRAL comment 5681004263 (canonical project/branch MATCH, active deployment SUCCESS, deployment/source parity = exact main, LB_TREE_UPDATE_WRITE_RUNTIME present = YES = direct_neon, LIVE_GATE_PROVIDER_READBACK = PASS, PRODUCT_REQUEST = 0, PRODUCT_PUT_REQUEST = 0, Production DB connection = 0, no provider/secret/DB/ACL/source mutation); final bounded Product canary authority 5682700749 accepted by CENTRAL canary acceptance 5683567536 changed tree-update production_live to PRODUCTION_LIVE via this source/doc-only attestation: exactly 3 Product requests, 0 retries, 0 discovery (PUT update 1 = HTTP 200 direct_neon/direct-neon/tree-update-complete no-store request-id present value not recorded canonical DTO PASS private fixture-id match PASS private owner-binding match PASS title acknowledgement PASS COMMIT_OUTCOME_UNKNOWN = NO; DELETE cleanup 1 = HTTP 200 direct_neon/direct-neon/tree-delete-complete deleted = true cleanup PASS; POST create 1 via existing Modal Tree-create authority); GET = 0 PATCH = 0; no Production DB connection, no ACL/GRANT/REVOKE, no provider/secret mutation, no raw credential/token/private-id/request-id exposure; TREE_UPDATE_DIRECT_NEON_PRODUCTION_LIVE = ACCEPTED FUNCTIONAL_PRODUCT_PUT_PROOF = PASS CANARY_RERUN_REQUIRED = NO CANARY_RERUN_AUTHORIZED = NO",
+        "main_sha": "0b278105f65cee9b2771c307af1fb26947897f60"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed removal/unset of LB_TREE_UPDATE_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB/ACL rollback — the reused appreciation-order-proven and owner-tree-detail-proven direct_neon_runtime privileges remain intact and are not a rollback trigger; Modal tree-update write path remains the fallback/default when the gate is unset.",
       "next_action": "Gate checked in per #4000 CENTRAL authority comment 5679138327 — method metadata is corrected to PUT and the accepted provider/gate readback is recorded per #4000 CENTRAL authority comment 5681017728 at exact main f567aeddfa2f6750da933433b017682ff4267b43; PROVIDER/GATE PROOF = COMPLETE per readback authority 5680851997 accepted by CENTRAL comment 5681004263. FINAL BOUNDED PRODUCT CANARY COMPLETE: authority 5682700749 accepted by CENTRAL canary acceptance 5683567536; functional Product PUT proof PASS at exact main 0b278105f65cee9b2771c307af1fb26947897f60 (exactly 3 Product requests, 0 retries, 0 discovery; PUT update HTTP 200 direct_neon/direct-neon/tree-update-complete no-store request-id present value not recorded canonical DTO PASS private fixture-id match PASS private owner-binding match PASS title acknowledgement PASS COMMIT_OUTCOME_UNKNOWN = NO; DELETE cleanup HTTP 200 direct_neon/direct-neon/tree-delete-complete deleted = true cleanup PASS; POST create 1 via existing Modal Tree-create authority; GET = 0; PATCH = 0; no Production DB connection, no ACL/GRANT/REVOKE, no provider/secret mutation, no raw credential/token/private-id/request-id exposure). TREE_UPDATE_DIRECT_NEON_PRODUCTION_LIVE = ACCEPTED; FUNCTIONAL_PRODUCT_PUT_PROOF = PASS; CANARY_RERUN_REQUIRED = NO; CANARY_RERUN_AUTHORIZED = NO. Tree Update direct-Neon is Production live at the cited evidence; continue ordinary monitoring/regression protection only. Any future change to LB_TREE_UPDATE_WRITE_RUNTIME, the direct_neon credential boundary, the Production provider/deployment, the tree-update helper, route dispatch, Firebase principal / legacyOwnerId owner-authority semantics, the required privilege envelope, transaction / COMMIT ambiguity semantics, the canonical DTO, or request-id / no-store / runtime/upstream/route-status behavior invalidates this attestation and requires fresh CENTRAL review. No additional Tree Update Product canary should be requested merely to strengthen the accepted record. Rollback remains GATE_ONLY_ROLLBACK (reviewed removal/unset of LB_TREE_UPDATE_WRITE_RUNTIME only; no DB/ACL rollback)."
@@ -372,10 +643,21 @@
       "method": "DELETE",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-delete-direct-neon.js",
-      "source_refs": ["#4261"],
+      "source_refs": [
+        "#4261"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_DELETE_WRITE_RUNTIME",
-      "required_objects": { "trees": ["DELETE", "SELECT"], "memories": ["DELETE", "UPDATE"] },
+      "required_objects": {
+        "trees": [
+          "DELETE",
+          "SELECT"
+        ],
+        "memories": [
+          "DELETE",
+          "UPDATE"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -387,7 +669,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "D",
       "disposition_note": "Production live attestation (source/doc/test-only) from accepted #4261 terminal authority: fresh privilege-readiness audit proved the exact DELETE public.trees grant with no widening (no DELETE on any other table added, no role-membership or default-privilege widening) -> LB_TREE_DELETE_WRITE_RUNTIME=direct_neon checked in -> bounded one-flight Production canary accepted by CENTRAL (closeout comment 5517757762 at main 9ee6f5ce, post-merge CI run 33692094703 SUCCESS): exactly 1 Product DELETE, second DELETE=NO, retry=NO, HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, x-lovebud-route-status=tree-delete-complete, Cache-Control no-store, request-id present, deleted=true, returned id matches privately requested fixture, COMMIT_OUTCOME_UNKNOWN=NO; no raw Tree IDs, tokens, or request-id values recorded. Required envelope re-derived from current exact-main source: trees SELECT (owner pre-check) + DELETE (RETURNING), memories UPDATE (clear same-tree parent links) + DELETE (child cleanup before tree row); the helper executes no SELECT on memories, so that privilege is not declared. This same gate was later exercised as the accepted cleanup path for the #4258/#4259/#4260/#4346 fixtures. Continuity re-audited at main 1161ffe6 with zero drift in helper, route dispatch, or wrangler gate since 9ee6f5ce.",
-      "last_exact_head_evidence": { "ref": "#4261 canary acceptance closeout comment 5517757762 at main 9ee6f5ce: exactly 1 Product DELETE HTTP 200 tree-delete-complete direct_neon/direct-neon no-store request-id present deleted=true fixture match PASS COMMIT_OUTCOME_UNKNOWN=NO, second DELETE NO, retry NO; post-merge CI run 33692094703 SUCCESS on exact main; envelope functionally proven by the accepted canary executing byte-identical helper source", "main_sha": "9ee6f5ce7beba66f8b9cd80cdf6a10e96c3b0157" },
+      "last_exact_head_evidence": {
+        "ref": "#4261 canary acceptance closeout comment 5517757762 at main 9ee6f5ce: exactly 1 Product DELETE HTTP 200 tree-delete-complete direct_neon/direct-neon no-store request-id present deleted=true fixture match PASS COMMIT_OUTCOME_UNKNOWN=NO, second DELETE NO, retry NO; post-merge CI run 33692094703 SUCCESS on exact main; envelope functionally proven by the accepted canary executing byte-identical helper source",
+        "main_sha": "9ee6f5ce7beba66f8b9cd80cdf6a10e96c3b0157"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_TREE_DELETE_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the exact DELETE public.trees grant and proven writer privileges remain intact; the Modal tree delete path remains the fallback/default when the gate is unset",
       "next_action": "Tree DELETE direct-Neon write is Production live per the accepted #4261 terminal authority, with fresh continuity re-audit at main 1161ffe6 showing zero drift in helper, route dispatch, or wrangler gate since 9ee6f5ce. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_TREE_DELETE_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the tree-delete-direct-neon helper, tree DELETE route dispatch, the trees/memories schema or canonical FK cascade assumptions, owner authorization logic, Cloudflare Production deployment/source parity, or the single-transaction delete ordering"
@@ -398,10 +683,21 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-create-direct-neon.js",
-      "source_refs": ["#4157", "#4000"],
+      "source_refs": [
+        "#4157",
+        "#4000"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_CREATE_WRITE_RUNTIME",
-      "required_objects": { "memories": ["INSERT", "SELECT"], "trees": ["SELECT"] },
+      "required_objects": {
+        "memories": [
+          "INSERT",
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -413,7 +709,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Production live attestation accepted by CENTRAL #4000 comment 5701136554 at exact main 669635b7550b3149ac6c90a42857e12e958ebc82. The checked-in gate LB_MEMORY_CREATE_WRITE_RUNTIME=direct_neon and the previously accepted provider/gate proof remain valid; no provider readback rerun was performed merely to strengthen evidence. Final bounded browser-native Product lifecycle under authority 5700854547 passed after the Tree Create dependency reached PRODUCTION_LIVE: QA_DEV_002 Firebase sign-in exactly once; browser-native same-origin LoveBud Product API only with local HTTP LoveBud API request count 0; R1 POST /api/trees HTTP 200 direct_neon/direct-neon tree-create-complete canonical Tree/owner/public contract PASS COMMIT_OUTCOME_UNKNOWN=NO; R2 POST /api/memories HTTP 200 direct_neon/direct-neon memory-create-complete no-store request-id present canonical Memory DTO PASS, private Memory id present, Tree binding PASS, visibility public, title/memo exact, explicit fresh clientKey private match PASS, sourceType youtube, timestamps PASS, COMMIT_OUTCOME_UNKNOWN=NO; R3 DELETE same disposable Tree HTTP 200 direct_neon/direct-neon tree-delete-complete no-store request-id present deleted=true fixture match PASS COMMIT_OUTCOME_UNKNOWN=NO. Product budget exactly 3 requests (POST 2, DELETE 1), GET/PUT/PATCH/retry/discovery 0. No direct Production DB connection, no DB mutation outside Product routes, no ACL/GRANT/REVOKE/provider/secret/deploy/source mutation, and no raw credential/token/private Tree id/private Memory id/clientKey/request-id/cf-ray/DB-error output. MEMORY_CREATE_DIRECT_NEON_PRODUCTION_LIVE=ACCEPTED; FUNCTIONAL_PRODUCT_POST_PROOF=PASS; CANARY_RERUN_REQUIRED=NO; CANARY_RERUN_AUTHORIZED=NO. Required privilege envelope remains memories INSERT+SELECT + trees SELECT on direct_neon_runtime; MINIMAL_GRANT_REQUIRED=NONE and FRESH_DB_ACL_ATTESTATION=NO.",
-      "last_exact_head_evidence": {"ref":"Memory Create Production-live proof accepted by CENTRAL #4000 comment 5701136554 at exact main 669635b7550b3149ac6c90a42857e12e958ebc82: checked-in gate direct_neon with accepted provider/gate continuity; browser-native canary authority 5700854547; Tree POST 200 direct_neon/direct-neon tree-create-complete; Memory POST 200 direct_neon/direct-neon memory-create-complete no-store request-id present canonical DTO/tree binding/public/title/memo/clientKey/sourceType/timestamps PASS COMMIT_OUTCOME_UNKNOWN=NO; Tree DELETE cleanup 200 direct_neon/direct-neon tree-delete-complete deleted=true fixture match PASS; Product count 3, retries 0, local HTTP LoveBud API 0, no direct DB/ACL/provider/secret/deploy mutation","main_sha":"669635b7550b3149ac6c90a42857e12e958ebc82"},
+      "last_exact_head_evidence": {
+        "ref": "Memory Create Production-live proof accepted by CENTRAL #4000 comment 5701136554 at exact main 669635b7550b3149ac6c90a42857e12e958ebc82: checked-in gate direct_neon with accepted provider/gate continuity; browser-native canary authority 5700854547; Tree POST 200 direct_neon/direct-neon tree-create-complete; Memory POST 200 direct_neon/direct-neon memory-create-complete no-store request-id present canonical DTO/tree binding/public/title/memo/clientKey/sourceType/timestamps PASS COMMIT_OUTCOME_UNKNOWN=NO; Tree DELETE cleanup 200 direct_neon/direct-neon tree-delete-complete deleted=true fixture match PASS; Product count 3, retries 0, local HTTP LoveBud API 0, no direct DB/ACL/provider/secret/deploy mutation",
+        "main_sha": "669635b7550b3149ac6c90a42857e12e958ebc82"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed removal/unset of LB_MEMORY_CREATE_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB/ACL rollback is required merely to disable the route; the reused direct_neon_runtime writer privileges remain intact; Modal Memory Create remains fallback/default when the gate is unset or the request is outside exact explicit-public selection.",
       "next_action": "Memory Create direct-Neon is Production live at accepted exact-main evidence. Do not rerun the Memory Create canary merely to strengthen proof. Continue ordinary monitoring/regression protection only. Any future change to LB_MEMORY_CREATE_WRITE_RUNTIME, direct_neon credential boundary, Production provider/deployment, memory-create helper, route dispatch, explicit-public routing/auth ordering, client_key uniqueness capability, required privilege envelope, transaction/COMMIT ambiguity semantics, canonical DTO, or browser-vs-edge execution assumptions invalidates this attestation and requires fresh CENTRAL review."
@@ -424,10 +723,20 @@
       "method": "PATCH",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-update-direct-neon.js",
-      "source_refs": ["#4281"],
+      "source_refs": [
+        "#4281"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_UPDATE_WRITE_RUNTIME",
-      "required_objects": { "memories": ["UPDATE", "SELECT"], "trees": ["SELECT"] },
+      "required_objects": {
+        "memories": [
+          "UPDATE",
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -439,7 +748,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "C",
       "disposition_note": "Production-live attestation (source/doc/test-only). The full accepted chain: #4281 activation packet -> PR #4322 runtime gate check-in -> Production runtime marker verification -> Product canary failure diagnosis -> PR #4323 BigInt/Date success-response serialization hardening -> exact-main CI GREEN (18/18) -> exact-main Production deployment SUCCESS -> exactly one functional Product PUT canary PASS (HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, request-id present, canonical DTO PASS, field acknowledgement PASS, PUT_ATTEMPT_COUNT=1) -> owner-scoped readback confirmed the committed update (title changed, updated_at changed, commit resolved) -> final non-mutating Production header control (fresh guaranteed-nonexistent UUID, CONTROL_REQUEST_COUNT=1 no retry: HTTP 404, runtime direct_neon, upstream direct-neon, Cache-Control no-store, request-id present, route-status memory-not-found) -> #4281 FINAL ACCEPTANCE (comment 5504211578 at main c65009c7): DIRECT_NEON_PRODUCTION_CUTOVER = ACCEPTED, FUNCTIONAL_CANARY = PASS, TRANSPORT_HEADER_CONTROL = PASS. Earlier failed canaries are historical diagnostic evidence only, not the terminal state; the earlier missing Cache-Control observation was explicitly resolved as a capture artifact by the final 404 control. No raw Memory/Tree ID, Firebase UID/email, token, secret, DB URL, raw field values, request-id values, or raw Product bodies recorded. Supporting accepted comments: 5495234170, 5495294553, 5495356679, 5495667305, 5503046152, 5503981866, 5503983658, 5504211578. Required envelope re-derived from current exact-main source: memories SELECT+UPDATE, trees SELECT (owner INNER JOIN pre-check and owner EXISTS guard inside UPDATE ... RETURNING); the reparent path's SELECT pg_advisory_xact_lock(bigint) is function EXECUTE, not a table privilege.",
-      "last_exact_head_evidence": { "ref": "#4281 FINAL ACCEPTANCE comment 5504211578 at main c65009c7 (PR #4322 gate + PR #4323 serialization hardening merged, CI 18/18, Production deploy SUCCESS, gate ACTIVE): functional Product PUT canary PASS with owner readback commit confirmation and PUT_ATTEMPT_COUNT=1; final non-mutating 404 header control PASS with Cache-Control no-store; DIRECT_NEON_PRODUCTION_CUTOVER=ACCEPTED; envelope functionally proven by the accepted canary executing byte-identical helper source", "main_sha": "c65009c74157f0afb80aabbce532e5d97d5121ee" },
+      "last_exact_head_evidence": {
+        "ref": "#4281 FINAL ACCEPTANCE comment 5504211578 at main c65009c7 (PR #4322 gate + PR #4323 serialization hardening merged, CI 18/18, Production deploy SUCCESS, gate ACTIVE): functional Product PUT canary PASS with owner readback commit confirmation and PUT_ATTEMPT_COUNT=1; final non-mutating 404 header control PASS with Cache-Control no-store; DIRECT_NEON_PRODUCTION_CUTOVER=ACCEPTED; envelope functionally proven by the accepted canary executing byte-identical helper source",
+        "main_sha": "c65009c74157f0afb80aabbce532e5d97d5121ee"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_MEMORY_UPDATE_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the proven writer privileges remain intact and are not revoked merely because a future runtime rollback might occur; the Modal/Plus memory update path remains the fallback/default when the gate is unset",
       "next_action": "Memory update direct-Neon is Production live per the accepted #4281 final authority, with fresh continuity re-audit at main beaf3ecf showing zero drift in helper, route dispatch, or wrangler gate since c65009c7. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no further Product canary): any change to LB_MEMORY_UPDATE_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the memory-update-direct-neon helper, Memory PUT route dispatch, memories/trees schema assumptions, owner authorization logic, transaction/update semantics, serialization normalization, or Cloudflare Production deployment/source parity"
@@ -450,10 +762,22 @@
       "method": "DELETE",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-delete-direct-neon.js",
-      "source_refs": ["#4262", "#4334"],
+      "source_refs": [
+        "#4262",
+        "#4334"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_DELETE_WRITE_RUNTIME",
-      "required_objects": { "memories": ["DELETE", "UPDATE", "SELECT"], "trees": ["SELECT"] },
+      "required_objects": {
+        "memories": [
+          "DELETE",
+          "UPDATE",
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -465,7 +789,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "D",
       "disposition_note": "Production live attestation (source/doc/test-only) from accepted #4334 terminal cutover authority (CENTRAL acceptance comment 5513753817 at main 4b7f0d56): root cause WRITER_MISSING_DELETE_PUBLIC_MEMORIES remediated by exactly one minimal GRANT DELETE ON public.memories to the existing approved dedicated Product writer (GRANT_STATEMENT_COUNT=1, GRANT_RETRY=NO, DELETE_memories before=NO after=YES, UNRELATED_DELETE_WIDENING=NO, ROLE_MEMBERSHIP_CHANGED=NO, DEFAULT_PRIVILEGE_WIDENING=NO); bounded Product DELETE canary PASS HTTP 200 route-status memory-delete-complete with known commit outcome. #4334 acceptance is terminal and supersedes the earlier stale #4262-era claim that DELETE was already effective without the grant; no raw IDs, tokens, or request-id values recorded. Required envelope re-derived from current exact-main source: memories SELECT (owner check) + UPDATE (clear child parent links) + DELETE (RETURNING with owner EXISTS guard), trees SELECT (INNER JOIN + EXISTS authorization guard). Continuity re-audited at main 1161ffe6 with zero drift in helper, route dispatch, or wrangler gate since 4b7f0d56.",
-      "last_exact_head_evidence": { "ref": "#4334 CENTRAL Production cutover acceptance comment 5513753817 at main 4b7f0d56: exactly 1 minimal GRANT DELETE ON public.memories, DELETE before=NO after=YES, no widening; Product DELETE canary HTTP 200 memory-delete-complete known commit; envelope functionally proven by the accepted canary executing byte-identical helper source", "main_sha": "4b7f0d56097d4ef5ffb86275f1950e7b900d7d3a" },
+      "last_exact_head_evidence": {
+        "ref": "#4334 CENTRAL Production cutover acceptance comment 5513753817 at main 4b7f0d56: exactly 1 minimal GRANT DELETE ON public.memories, DELETE before=NO after=YES, no widening; Product DELETE canary HTTP 200 memory-delete-complete known commit; envelope functionally proven by the accepted canary executing byte-identical helper source",
+        "main_sha": "4b7f0d56097d4ef5ffb86275f1950e7b900d7d3a"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_MEMORY_DELETE_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the single GRANT DELETE ON public.memories and proven writer privileges remain intact; the Modal memory delete path remains the fallback/default when the gate is unset",
       "next_action": "Memory DELETE direct-Neon write is Production live per the accepted #4334 terminal authority, with fresh continuity re-audit at main 1161ffe6 showing zero drift in helper, route dispatch, or wrangler gate since 4b7f0d56. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_MEMORY_DELETE_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the memory-delete-direct-neon helper, memory DELETE route dispatch, the memories/trees schema or parent-link semantics, owner authorization logic, Cloudflare Production deployment/source parity, or the single-transaction delete ordering"
@@ -476,10 +803,25 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-fork-direct-neon.js",
-      "source_refs": ["#4157"],
+      "source_refs": [
+        "#4157"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_FORK_WRITE_RUNTIME",
-      "required_objects": { "trees": ["INSERT", "SELECT"], "memories": ["INSERT", "SELECT"], "users": ["INSERT", "UPDATE"] },
+      "required_objects": {
+        "trees": [
+          "INSERT",
+          "SELECT"
+        ],
+        "memories": [
+          "INSERT",
+          "SELECT"
+        ],
+        "users": [
+          "INSERT",
+          "UPDATE"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -491,7 +833,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
       "disposition_note": "Production-live attestation (source/doc/test-only) from the accepted #4157 Phase-4 terminal authority. Complete accepted chain: canonical users slice (#4165/#4166/#4168) -> writer privilege completion -> trees.forked_from_tree_id schema repair -> fork timestamp-casting fix PR #4170 -> exact-head and exact-main CI -> Production gate LB_TREE_FORK_WRITE_RUNTIME=direct_neon live -> final authenticated fork smoke (G5): HTTP 200 with x-lovebud-runtime=direct_neon, x-lovebud-route-status=fork-complete, request-id present, lineage binding correct (users bootstrap with account_id NULL per the #4006 model), microsecond timestamp precision preserved -> #4157 Phase-4 3/3 COMPLETE (smoke comment 5381108893, CTO verdict 5381122468, closure comment 5381761385 at main fb4826e3). Intermediate failed fork attempts are audit history only; the final accepted state is the successful Phase-4 completion. No raw historical fixture IDs or request-id values recorded. Required objects re-derived from current source: the owner-user bootstrap executes INSERT INTO users ... ON CONFLICT (id) DO UPDATE (schema-capability aware; DO NOTHING only when users.updated_at is absent, which canonical Production schema is not) — no users SELECT appears in the fork transaction.",
-      "last_exact_head_evidence": { "ref": "#4157 Phase-4 closure comment 5381761385: Fork=LIVE, PHASE4_WRITE_PATH 3/3 COMPLETE, PHASE4_RUNTIME COMPLETE, FOLLOWUP_PROVENANCE COMPLETE (PR #4171), TIMESTAMP_PARITY_AUDIT COMPLETE, PR #4172 merged, CURRENT_MAIN fb4826e3; final G5 smoke comment 5381108893 (HTTP 200 fork-complete direct_neon) and CTO verdict 5381122468; envelope functionally proven by the accepted smoke executing byte-identical helper source", "main_sha": "fb4826e32db520dbaa4db1b2e4a3ff30230dbbc9" },
+      "last_exact_head_evidence": {
+        "ref": "#4157 Phase-4 closure comment 5381761385: Fork=LIVE, PHASE4_WRITE_PATH 3/3 COMPLETE, PHASE4_RUNTIME COMPLETE, FOLLOWUP_PROVENANCE COMPLETE (PR #4171), TIMESTAMP_PARITY_AUDIT COMPLETE, PR #4172 merged, CURRENT_MAIN fb4826e3; final G5 smoke comment 5381108893 (HTTP 200 fork-complete direct_neon) and CTO verdict 5381122468; envelope functionally proven by the accepted smoke executing byte-identical helper source",
+        "main_sha": "fb4826e32db520dbaa4db1b2e4a3ff30230dbbc9"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_TREE_FORK_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the canonical users slice, trees.forked_from_tree_id repair, and proven writer privileges remain intact unless a separately proven defect requires otherwise; the Modal fork path remains the fallback/default when the gate is unset",
       "next_action": "Tree Fork direct-Neon write is Production live per the accepted #4157 Phase-4 terminal authority, with fresh continuity re-audit at main a4dbc6ab showing zero drift in helper, route dispatch, or wrangler gate since fb4826e3. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_TREE_FORK_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the tree-fork-direct-neon helper, fork route dispatch, the trees/memories/users schema (including forked_from_tree_id), Cloudflare Production deployment/source parity, auth/owner isolation, or the advisory-lock/FOR SHARE/lineage-copy transaction behavior"
@@ -502,10 +847,32 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-comment-direct-neon.js",
-      "source_refs": ["#4157"],
+      "source_refs": [
+        "#4157"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_COMMENT_WRITE_RUNTIME",
-      "required_objects": { "tree_comments": ["INSERT", "SELECT"], "social_idempotency": ["INSERT", "UPDATE", "SELECT"], "social_rate_limits": ["INSERT", "UPDATE"], "social_audit_log": ["INSERT"], "trees": ["SELECT"] },
+      "required_objects": {
+        "tree_comments": [
+          "INSERT",
+          "SELECT"
+        ],
+        "social_idempotency": [
+          "INSERT",
+          "UPDATE",
+          "SELECT"
+        ],
+        "social_rate_limits": [
+          "INSERT",
+          "UPDATE"
+        ],
+        "social_audit_log": [
+          "INSERT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -517,7 +884,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
       "disposition_note": "Production-live attestation (source/doc/test-only) from the accepted #4157 Phase-4 terminal authority. The owner-approved DDL alignment chain (comment 5367638561: social_idempotency target_memory_id NOT NULL relaxation, the unique rate-limit scope index required by the adapters' ON CONFLICT, social_outcome 'success' enum value) completed the schema prerequisites; the LB_TREE_COMMENT_WRITE_RUNTIME=direct_neon gate went live and the authenticated functional smoke returned HTTP 200 on the direct-Neon path (#4158 + production smoke per the CTO verdict table). The completed timestamp parity follow-up PR #4172 text-casts created_at/updated_at at both the completed-idempotency replay reread and the fresh INSERT ... RETURNING SQL boundaries, removing the pg timestamptz -> Date coercion risk. Closure comment 5381761385 at main fb4826e3 records Comment=LIVE with TIMESTAMP_PARITY_AUDIT COMPLETE. No new canary is claimed by this attestation; the historical accepted smoke is reused strictly as evidence. Required objects re-derived from current source: the rate-limit counter executes INSERT INTO social_rate_limits ... ON CONFLICT DO UPDATE SET request_count (source-accurate UPDATE requirement).",
-      "last_exact_head_evidence": { "ref": "#4157 Phase-4 closure comment 5381761385: Comment=LIVE, PHASE4_RUNTIME COMPLETE, TIMESTAMP_PARITY_AUDIT COMPLETE via PR #4172 (merged), CURRENT_MAIN fb4826e3; DDL alignment comment 5367638561; envelope functionally proven by the accepted authenticated smoke executing byte-identical helper source", "main_sha": "fb4826e32db520dbaa4db1b2e4a3ff30230dbbc9" },
+      "last_exact_head_evidence": {
+        "ref": "#4157 Phase-4 closure comment 5381761385: Comment=LIVE, PHASE4_RUNTIME COMPLETE, TIMESTAMP_PARITY_AUDIT COMPLETE via PR #4172 (merged), CURRENT_MAIN fb4826e3; DDL alignment comment 5367638561; envelope functionally proven by the accepted authenticated smoke executing byte-identical helper source",
+        "main_sha": "fb4826e32db520dbaa4db1b2e4a3ff30230dbbc9"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_TREE_COMMENT_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the accepted schema alignment and proven writer privileges remain intact unless a separately proven defect requires otherwise; the Modal comment path remains the fallback/default when the gate is unset",
       "next_action": "Tree Comment direct-Neon write is Production live per the accepted #4157 Phase-4 terminal authority, with fresh continuity re-audit at main a4dbc6ab showing zero drift in helper, route dispatch, or wrangler gate since fb4826e3. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_TREE_COMMENT_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the tree-comment-direct-neon helper, comments route dispatch, the tree_comments/social_* schema, Cloudflare Production deployment/source parity, auth/owner isolation, or the FOR SHARE/advisory-lock/idempotency transaction behavior"
@@ -528,10 +898,23 @@
       "method": "GET",
       "family": "READ",
       "source_helper": "functions/_shared/tree-comment-read-direct-neon.js",
-      "source_refs": ["#4000", "#4004", "#4363", "#4367", "#4369"],
+      "source_refs": [
+        "#4000",
+        "#4004",
+        "#4363",
+        "#4367",
+        "#4369"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_COMMENT_READ_RUNTIME",
-      "required_objects": { "trees": ["SELECT"], "tree_comments": ["SELECT"] },
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "tree_comments": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -543,7 +926,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
       "disposition_note": "Read-only sibling of the proven tree-comment writer (#4145). Privilege is a strict subset of the proven tree-comment grant set (trees + tree_comments SELECT only). Production gate checked in as a source/config candidate after the #4000 single-table GRANT SELECT on public.tree_comments and the fresh post-grant runtime-role ACL reattestation (SELECT_TREES/SELECT_TREE_COMMENTS = YES, TREE_COMMENTS_READ_ROLE_ACL_ATTESTED). Activation PR #4361 merged and the Production gate went live at ce16eafa (Cloudflare Pages production deployment f1779088, live provider var LB_TREE_COMMENT_READ_RUNTIME=direct_neon verified). Live read-only canary FAILED: direct-Neon path confirmed selected (x-lovebud-upstream=direct-neon, no Modal fallback) with two deterministic HTTP 500 DIRECT_NEON_QUERY_FAILED responses while the same-credential community-memories direct-Neon route returned 200 on the same deployment. Production gate rolled back via this reviewed source revert pending forensic diagnosis; SELECT privilege intentionally NOT revoked. DB-side forensics passed (privilege/schema/query-plan/zero-row execution exonerated the database); provider logs insufficient (Cloudflare Pages/Neon telemetry unavailable for the failure window). Sanitized failure diagnostics merged via #4363 expose x-lovebud-error-stage / x-lovebud-error-class / x-lovebud-sqlstate on the query-failed 500 path. Diagnostic reactivation PR #4364 merged and exactly ONE read-only live canary executed on production deployment 72f601d7 (commit 850515c7): HTTP 500 DIRECT_NEON_QUERY_FAILED with sanitized evidence ERROR_STAGE=comments-query, ERROR_CLASS=NeonDbError, SQLSTATE=42501 (insufficient_privilege); upstream=direct-neon, runtime=direct_neon, no Modal fallback; executor-init succeeded and the trees visibility SELECT succeeded before the tree_comments query was rejected by PostgreSQL. No retry. Gate rolled back again via this reviewed source revert. The actual live Pages Production database identity remains UNRESOLVED (secret_text bindings unreadable); the existing tree_comments SELECT GRANT is intentionally NOT revoked merely because the Pages runtime may target a different database. Sanitizer whitelist hardening #4367 (commit 82da755e) removed arbitrary error.name/constructor.name reflection, preserving fixed whitelist (Error/TypeError/RangeError/SyntaxError/ReferenceError -> verbatim, else UnknownError) and SQLSTATE sanitization; source/tests remain. Activation intent PR #4369 (commit 1147182c3e07780c3dc6bccf9d736063647239d9) re-checked LB_TREE_COMMENT_READ_RUNTIME=direct_neon into [env.production.vars] as candidate; checked-in gate does NOT equal live proof until verified. Production live attestation (CENTRAL accepted 2026-09-11): active Production deployment 6dbfbf43 (source 1147182c) matched approved merge, live provider selector LB_TREE_COMMENT_READ_RUNTIME=direct_neon verified (x-lovebud-runtime:direct_neon, x-lovebud-upstream:direct-neon, x-lovebud-route-status:ok). Successful Production GET /api/trees/{id}/comments for a valid public tree returned HTTP 200 with response shape PASS (comments array, nextCursor), no Modal fallback, no auth failure, no query failure, no SQLSTATE / no 42501, no secret leak, no diagnostic failure headers on success. FUNCTIONAL_LIVE_PROOF=PASS. Actual target Tree Comment GET count=2; approved protocol was exactly one; second request was non-failure local capture-path remediation after the first successful request; therefore ONE_SHOT_PROTOCOL_COMPLIANCE=FAIL; functional live proof remains PASS; no further canary was authorized or executed after CENTRAL review; historical 42501 evidence is superseded by this live proof but retained for audit trail.",
-      "last_exact_head_evidence": { "ref": "Production live proof #4000 tree-comment READ direct-Neon at exact main 1147182c (deployment 6dbfbf43): HTTP 200 direct-neon/direct_neon ok, response shape PASS, no 42501, no secret leak; bound to same deployed source SHA; supersedes prior 42501 rollback evidence which is retained for audit trail; includes sanitizer hardening #4367 and activation PR #4369", "main_sha": "1147182c3e07780c3dc6bccf9d736063647239d9" },
+      "last_exact_head_evidence": {
+        "ref": "Production live proof #4000 tree-comment READ direct-Neon at exact main 1147182c (deployment 6dbfbf43): HTTP 200 direct-neon/direct_neon ok, response shape PASS, no 42501, no secret leak; bound to same deployed source SHA; supersedes prior 42501 rollback evidence which is retained for audit trail; includes sanitizer hardening #4367 and activation PR #4369",
+        "main_sha": "1147182c3e07780c3dc6bccf9d736063647239d9"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "wrangler gate var revert via reviewed PR; Modal path remains default until live gate verified",
       "next_action": "Production direct-Neon read is live and verified at cited source/deployment evidence (commit 1147182c deployment 6dbfbf43 live runtime direct_neon, HTTP 200 direct-neon). Continue ordinary monitoring/regression protection. Any future credential/gate/provider change invalidates live attestation and requires fresh verification. No repeated canary merely to repair the historical one-shot count."
@@ -554,10 +940,34 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-like-direct-neon.js",
-      "source_refs": ["#4157"],
+      "source_refs": [
+        "#4157"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_LIKE_WRITE_RUNTIME",
-      "required_objects": { "tree_likes": ["INSERT", "UPDATE", "SELECT"], "tree_social_counts": ["INSERT", "UPDATE", "SELECT"], "social_idempotency": ["INSERT", "UPDATE", "SELECT"], "social_audit_log": ["INSERT"], "trees": ["SELECT"] },
+      "required_objects": {
+        "tree_likes": [
+          "INSERT",
+          "UPDATE",
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "INSERT",
+          "UPDATE",
+          "SELECT"
+        ],
+        "social_idempotency": [
+          "INSERT",
+          "UPDATE",
+          "SELECT"
+        ],
+        "social_audit_log": [
+          "INSERT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -569,7 +979,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "B",
       "disposition_note": "Production-live attestation (source/doc/test-only) from the accepted #4157 Phase-4 terminal authority. The LB_TREE_LIKE_WRITE_RUNTIME=direct_neon gate went LIVE and the authenticated functional smoke returned HTTP 200 with the expected Like result (#4159 + production smoke per the CTO verdict table; closure comment 5381761385 at main fb4826e3 records Like=LIVE). The #4157 final audit states Like has no database timestamp response surface — the response remains { treeId, active, likeCount } — so no timestamp concern applies to this route and none is invented here. No new canary is claimed by this attestation; the historical accepted smoke is reused strictly as evidence. Required objects re-derived from current source: the toggle executes SELECT of the active like, soft-delete UPDATE tree_likes SET deleted_at, fresh INSERT, and UPDATE of tree_social_counts (source-accurate UPDATE requirement on tree_likes); the current helper performs no social_rate_limits statement, so that table is not declared here.",
-      "last_exact_head_evidence": { "ref": "#4157 Phase-4 closure comment 5381761385: Like=LIVE, PHASE4_RUNTIME COMPLETE, TIMESTAMP_PARITY_AUDIT COMPLETE (Like: no DB timestamp response surface), CURRENT_MAIN fb4826e3; CTO verdict comment 5381122468; envelope functionally proven by the accepted authenticated smoke executing byte-identical helper source", "main_sha": "fb4826e32db520dbaa4db1b2e4a3ff30230dbbc9" },
+      "last_exact_head_evidence": {
+        "ref": "#4157 Phase-4 closure comment 5381761385: Like=LIVE, PHASE4_RUNTIME COMPLETE, TIMESTAMP_PARITY_AUDIT COMPLETE (Like: no DB timestamp response surface), CURRENT_MAIN fb4826e3; CTO verdict comment 5381122468; envelope functionally proven by the accepted authenticated smoke executing byte-identical helper source",
+        "main_sha": "fb4826e32db520dbaa4db1b2e4a3ff30230dbbc9"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_TREE_LIKE_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the canonical schema and proven writer privileges remain intact unless a separately proven defect requires otherwise; the Modal like path remains the fallback/default when the gate is unset",
       "next_action": "Tree Like direct-Neon write is Production live per the accepted #4157 Phase-4 terminal authority, with fresh continuity re-audit at main a4dbc6ab showing zero drift in helper, route dispatch, or wrangler gate since fb4826e3. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_TREE_LIKE_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the tree-like-direct-neon helper, likes route dispatch, the tree_likes/tree_social_counts/social_* schema, Cloudflare Production deployment/source parity, auth/owner isolation, or the FOR SHARE-then-advisory-lock toggle transaction behavior"
@@ -580,13 +993,24 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/tree-view-direct-neon.js",
-      "source_refs": ["#4258"],
+      "source_refs": [
+        "#4258"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_TREE_VIEW_WRITE_RUNTIME",
       "required_objects": {
-        "tree_view_dedup_events": ["INSERT", "SELECT"],
-        "tree_social_counts": ["INSERT", "UPDATE", "SELECT"],
-        "trees": ["SELECT"]
+        "tree_view_dedup_events": [
+          "INSERT",
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "INSERT",
+          "UPDATE",
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
       },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
@@ -599,7 +1023,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "D",
       "disposition_note": "Production live attestation (source/doc/test-only) from accepted #4258 terminal authority (CENTRAL final closeout comment 5535797323 at main 7eb31e9d, exact-main CI run 33837207922 SUCCESS). Full accepted chain: writer privilege readiness (dedup effective envelope proven exactly SELECT+INSERT, UPDATE/DELETE absent; prerequisite trees and tree_social_counts privileges sufficient; no widening) -> TREE_VIEW_AUTHORITY_SECRET Production binding regression isolated and repaired under separate bounded authority -> first direct-Neon canary failed HTTP 502 transaction-failed (no retry) and the gate was rolled back via PR #4343 -> zero-mutation forensics proved root cause: live unique authority was only the 4-column index while source requires the canonical 3-column dedup identity (tree_id, actor_key, counted_window_start) -> exactly one Production DDL CREATE UNIQUE INDEX CONCURRENTLY idx_tree_view_dedup_tree_actor_window verified UNIQUE/VALID/READY/NONPARTIAL with the 4-column index preserved -> Modal recovery proof HTTP 200 upstream=modal counted=true viewCount=1 -> PR #4344 reactivated only the checked-in gate/readiness row -> cross-runtime dedup Product proof: exactly 1 direct-Neon Product Tree View POST HTTP 200 runtime=direct_neon upstream=direct-neon route-status=view-deduped counted=false viewCount=1 Tree match PASS (proves Modal and direct-Neon honor the same canonical dedup identity for the same actor/day) -> disposable fixture cleanup via exactly 1 Product Tree DELETE HTTP 200. PRODUCT_RETRY=0, no direct DB cleanup, no raw IDs or request-id values recorded. Required envelope re-derived from current exact-main source: trees SELECT FOR SHARE (the helper executes no UPDATE on trees, correcting the earlier row), tree_social_counts SELECT+INSERT+UPDATE, tree_view_dedup_events INSERT via ON CONFLICT DO NOTHING RETURNING with the proven SELECT+INSERT envelope retained; the information_schema capability probe requires no table grant. Continuity re-audited at main 1161ffe6 with zero drift in helper, route dispatch, or wrangler gate since 7eb31e9d.",
-      "last_exact_head_evidence": { "ref": "#4258 CENTRAL final closeout comment 5535797323 at main 7eb31e9d (PR #4344 reactivation merged, exact-main CI 33837207922 SUCCESS): canonical 3-column dedup unique index idx_tree_view_dedup_tree_actor_window verified UNIQUE/VALID/READY/NONPARTIAL, Modal recovery PASS, cross-runtime dedup Product proof HTTP 200 runtime=direct_neon upstream=direct-neon route-status=view-deduped counted=false viewCount=1 Tree match PASS, fixture cleanup via 1 Product Tree DELETE; envelope functionally proven by the accepted canary executing byte-identical helper source", "main_sha": "7eb31e9db883134f310f04e8a91248cad19a4a83" },
+      "last_exact_head_evidence": {
+        "ref": "#4258 CENTRAL final closeout comment 5535797323 at main 7eb31e9d (PR #4344 reactivation merged, exact-main CI 33837207922 SUCCESS): canonical 3-column dedup unique index idx_tree_view_dedup_tree_actor_window verified UNIQUE/VALID/READY/NONPARTIAL, Modal recovery PASS, cross-runtime dedup Product proof HTTP 200 runtime=direct_neon upstream=direct-neon route-status=view-deduped counted=false viewCount=1 Tree match PASS, fixture cleanup via 1 Product Tree DELETE; envelope functionally proven by the accepted canary executing byte-identical helper source",
+        "main_sha": "7eb31e9db883134f310f04e8a91248cad19a4a83"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_TREE_VIEW_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the canonical 3-column unique index and proven writer privileges remain intact (the 4-column index was preserved, not dropped); the Modal view path remains the fallback/default when the gate is unset",
       "next_action": "Tree View direct-Neon write is Production live per the accepted #4258 terminal authority, with fresh continuity re-audit at main 1161ffe6 showing zero drift in helper, route dispatch, or wrangler gate since 7eb31e9d. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_TREE_VIEW_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the tree-view-direct-neon helper, views route dispatch, the tree_view_dedup_events/tree_social_counts/trees schema or canonical 3-column unique index, TREE_VIEW_AUTHORITY_SECRET binding, cross-runtime dedup semantics, Cloudflare Production deployment/source parity, or the FOR SHARE-then-dedupe transaction behavior"
@@ -610,10 +1037,32 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-reaction-direct-neon.js",
-      "source_refs": ["#4260"],
+      "source_refs": [
+        "#4260"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_REACTION_WRITE_RUNTIME",
-      "required_objects": { "reactions": ["INSERT", "DELETE", "SELECT"], "memories": ["SELECT"], "trees": ["SELECT"], "social_idempotency": ["INSERT", "UPDATE", "SELECT"], "social_audit_log": ["INSERT"] },
+      "required_objects": {
+        "reactions": [
+          "INSERT",
+          "DELETE",
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ],
+        "social_idempotency": [
+          "INSERT",
+          "UPDATE",
+          "SELECT"
+        ],
+        "social_audit_log": [
+          "INSERT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -625,7 +1074,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "D",
       "disposition_note": "Production live attestation (source/doc/test-only) from accepted #4260 terminal authority (CENTRAL cutover-complete comment 5520043693 at final main 5047a73e, PR #4339 merged, exact-main CI GREEN): bounded Product canary PASS HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, route-status=reaction-complete, active=true, COMMIT_OUTCOME=KNOWN_SUCCESS; fixture cleanup via exactly 1 authorized Product Tree DELETE (HTTP 200 tree-delete-complete direct_neon, known success, no retry, no verification GET, no direct DB cleanup) with the Reaction removed by the canonical reactions.memory_id -> memories.id ON DELETE CASCADE; social_idempotency/social_audit_log rows retained by design (operational retention, not a blocker); REAL_USER_DATA_USED=NO, SECRET_EXPOSURE=NO, no raw IDs, UIDs, tokens, or Idempotency-Key values recorded. Required envelope re-derived from current exact-main source: reactions SELECT+INSERT+DELETE (toggle), memories SELECT FOR SHARE, trees SELECT FOR SHARE (INNER JOIN authorization — added per source), social_idempotency INSERT+UPDATE with the proven SELECT retained (shared social envelope), social_audit_log INSERT; the advisory lock SELECT pg_advisory_xact_lock(bigint) is function EXECUTE, not a table privilege; the helper performs no social_rate_limits statement. Continuity re-audited at main 1161ffe6 with zero drift in helper, route dispatch, or wrangler gate since 5047a73e.",
-      "last_exact_head_evidence": { "ref": "#4260 CENTRAL cutover-complete comment 5520043693 at final main 5047a73e (PR #4339 merged, CI GREEN): Product canary HTTP 200 reaction-complete active=true KNOWN_SUCCESS direct_neon/direct-neon; cleanup via 1 authorized Product Tree DELETE with reactions FK cascade; envelope functionally proven by the accepted canary executing byte-identical helper source", "main_sha": "5047a73e871a9485f8e82156976a0678db781b16" },
+      "last_exact_head_evidence": {
+        "ref": "#4260 CENTRAL cutover-complete comment 5520043693 at final main 5047a73e (PR #4339 merged, CI GREEN): Product canary HTTP 200 reaction-complete active=true KNOWN_SUCCESS direct_neon/direct-neon; cleanup via 1 authorized Product Tree DELETE with reactions FK cascade; envelope functionally proven by the accepted canary executing byte-identical helper source",
+        "main_sha": "5047a73e871a9485f8e82156976a0678db781b16"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_MEMORY_REACTION_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the proven writer privileges and canonical FK cascade remain intact; the Modal reaction path remains the fallback/default when the gate is unset",
       "next_action": "Memory Reaction direct-Neon write is Production live per the accepted #4260 terminal authority, with fresh continuity re-audit at main 1161ffe6 showing zero drift in helper, route dispatch, or wrangler gate since 5047a73e. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_MEMORY_REACTION_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the memory-reaction-direct-neon helper, reactions route dispatch, the reactions/memories/trees/social_idempotency/social_audit_log schema or FK cascade, auth/owner-public isolation, advisory-lock-then-FOR SHARE idempotency transaction behavior, or Cloudflare Production deployment/source parity"
@@ -636,10 +1088,35 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/memory-comment-direct-neon.js",
-      "source_refs": ["#4259"],
+      "source_refs": [
+        "#4259"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_COMMENT_WRITE_RUNTIME",
-      "required_objects": { "comments": ["INSERT", "SELECT"], "memories": ["SELECT"], "trees": ["SELECT"], "social_idempotency": ["INSERT", "UPDATE", "SELECT"], "social_rate_limits": ["INSERT", "UPDATE"], "social_audit_log": ["INSERT"] },
+      "required_objects": {
+        "comments": [
+          "INSERT",
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ],
+        "social_idempotency": [
+          "INSERT",
+          "UPDATE",
+          "SELECT"
+        ],
+        "social_rate_limits": [
+          "INSERT",
+          "UPDATE"
+        ],
+        "social_audit_log": [
+          "INSERT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -651,7 +1128,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "D",
       "disposition_note": "Production live attestation (source/doc/test-only) from accepted #4259 terminal authority (CENTRAL cutover-complete comment 5520681349 at main 282c2a2c, PR #4341 merged, exact-main verify-static and Cloudflare Pages SUCCESS): writer privilege proven as SELECT+INSERT on public.comments only (COMMENTS_UPDATE=NO, COMMENTS_DELETE=NO); bounded Product canary PASS HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, route-status=comment-complete, COMMIT_OUTCOME=KNOWN_SUCCESS, response contract PASS (id present, memoryId present, body match, isOwn=true, ownerId absent), no retry; fixture cleanup via exactly 1 authorized Product Tree DELETE (HTTP 200 tree-delete-complete direct_neon known success) with fresh catalog-only proof that comments/reactions/social_idempotency/social_rate_limits/social_audit_log memory FKs are ON DELETE CASCADE with zero RESTRICT/NO-ACTION memory references, memories.parent_id live SET DEFAULT self-FK resolves NULL-safe (nullable, no default expression), and no schema fix was required; no raw IDs, tokens, or Idempotency-Key values recorded. Required envelope re-derived from current exact-main source: comments SELECT (idempotency replay resolution) + INSERT (RETURNING), memories SELECT FOR SHARE, trees SELECT FOR SHARE (INNER JOIN authorization — added per source), social_idempotency INSERT+UPDATE with the proven SELECT retained (shared social envelope), social_rate_limits INSERT+UPDATE (ON CONFLICT DO UPDATE counter — corrected from INSERT-only), social_audit_log INSERT; this helper takes no advisory lock. Continuity re-audited at main 1161ffe6 with zero drift in helper, route dispatch, or wrangler gate since 282c2a2c.",
-      "last_exact_head_evidence": { "ref": "#4259 CENTRAL cutover-complete comment 5520681349 at main 282c2a2c (PR #4341 merged): WRITER_PRIVILEGE SELECT+INSERT public.comments only (UPDATE/DELETE NO); Product canary HTTP 200 comment-complete KNOWN_SUCCESS response contract PASS; cleanup via 1 authorized Product Tree DELETE with catalog-only FK cascade proof; envelope functionally proven by the accepted canary executing byte-identical helper source", "main_sha": "282c2a2c245654431f6f413749424ec24245b48d" },
+      "last_exact_head_evidence": {
+        "ref": "#4259 CENTRAL cutover-complete comment 5520681349 at main 282c2a2c (PR #4341 merged): WRITER_PRIVILEGE SELECT+INSERT public.comments only (UPDATE/DELETE NO); Product canary HTTP 200 comment-complete KNOWN_SUCCESS response contract PASS; cleanup via 1 authorized Product Tree DELETE with catalog-only FK cascade proof; envelope functionally proven by the accepted canary executing byte-identical helper source",
+        "main_sha": "282c2a2c245654431f6f413749424ec24245b48d"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_MEMORY_COMMENT_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the proven SELECT+INSERT comments privileges and canonical FK cascade remain intact; the Modal comment path remains the fallback/default when the gate is unset",
       "next_action": "Memory Comment direct-Neon write is Production live per the accepted #4259 terminal authority, with fresh continuity re-audit at main 1161ffe6 showing zero drift in helper, route dispatch, or wrangler gate since 282c2a2c. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_MEMORY_COMMENT_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the memory-comment-direct-neon helper, comments route dispatch, the comments/memories/trees/social_* schema or FK cascade, auth/owner-public isolation, legacy idempotency/rate-limit transaction behavior, or Cloudflare Production deployment/source parity"
@@ -662,10 +1142,21 @@
       "method": "PUT",
       "family": "WRITE",
       "source_helper": "functions/_shared/hub-layout-direct-neon.js",
-      "source_refs": ["#4256", "#4346"],
+      "source_refs": [
+        "#4256",
+        "#4346"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_HUB_LAYOUT_WRITE_RUNTIME",
-      "required_objects": { "tree_hub_layouts": ["SELECT", "INSERT"], "trees": ["SELECT"] },
+      "required_objects": {
+        "tree_hub_layouts": [
+          "SELECT",
+          "INSERT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
+      },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
@@ -677,7 +1168,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "D",
       "disposition_note": "Production-live attestation (source/doc/test-only). The full accepted chain: #4346 canonical public.tree_hub_layouts schema adoption COMPLETE -> #4256 least-privilege writer ACL proven (SELECT public.trees, SELECT+INSERT public.tree_hub_layouts, EXECUTE pg_advisory_xact_lock(bigint); UPDATE/DELETE/TRUNCATE absent) -> PR #4391 checked in LB_HUB_LAYOUT_WRITE_RUNTIME=direct_neon and merged to exact main 432a69ec -> exact-main CI and Reliability Preview rehearsal SUCCESS -> Production release.json parity at release_sha 432a69ec (contract_version=1, Cache-Control no-store) -> bounded Product canary accepted by CENTRAL (#4000 comment 5653029689): exactly one PUT with HTTP 200, x-lovebud-runtime=direct_neon, x-lovebud-upstream=direct-neon, route-status=saved, request-id present, revision=1, positions=[], PUT_RETRY=0, SECOND_PUT=0; the direct-Neon PUT success body is {revision, updatedAt, positions} and does not echo layoutMode — layoutMode=manual was proven by the subsequent GET persistence readback -> one GET on the existing Modal read lane (LB_HUB_LAYOUT_READ_RUNTIME independently unset, untouched) returned revision=1, layoutMode=manual, positions=[], CROSS_RUNTIME_PERSISTENCE=YES -> one disposable Tree DELETE cleanup PASS with FK cascade. During canary: direct DB mutation=0, ACL mutation=0, provider mutation=0, deploy mutation=0.",
-      "last_exact_head_evidence": { "ref": "schema adoption #4346 -> writer ACL proof #4256 (audit comment 5652186198 + grant comment 5652255123, direct grant set exactly {SELECT, INSERT}) -> checked-in Production gate PR #4391 merged at 432a69ec -> exact-main CI green -> Production release SHA parity 432a69ec -> bounded Product PUT canary PASS (exactly 1 PUT, 0 retries, 0 second PUT; no private Tree ID, token, request-id value, or raw body recorded) -> Modal readback convergence (revision 1, layoutMode manual, positions []) -> disposable Tree cleanup PASS; CENTRAL acceptance #4000 comment 5653029689", "main_sha": "432a69ec54b86db7a125fc9254afc7b4ae42951b" },
+      "last_exact_head_evidence": {
+        "ref": "schema adoption #4346 -> writer ACL proof #4256 (audit comment 5652186198 + grant comment 5652255123, direct grant set exactly {SELECT, INSERT}) -> checked-in Production gate PR #4391 merged at 432a69ec -> exact-main CI green -> Production release SHA parity 432a69ec -> bounded Product PUT canary PASS (exactly 1 PUT, 0 retries, 0 second PUT; no private Tree ID, token, request-id value, or raw body recorded) -> Modal readback convergence (revision 1, layoutMode manual, positions []) -> disposable Tree cleanup PASS; CENTRAL acceptance #4000 comment 5653029689",
+        "main_sha": "432a69ec54b86db7a125fc9254afc7b4ae42951b"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_HUB_LAYOUT_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the proven #4346 schema and #4256 least-privilege grant remain intact unless a separate defect/authority later requires otherwise; the Modal PUT path remains the fallback/default when the gate is unset",
       "next_action": "Hub Layout PUT direct-Neon write is Production live at the cited evidence. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no further Product canary): any change to LB_HUB_LAYOUT_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the hub-layout-direct-neon helper, PUT route dispatch, the tree_hub_layouts schema, Cloudflare Production deployment/source parity, auth/owner isolation, or revision/advisory-lock transaction behavior"
@@ -688,13 +1182,27 @@
       "method": "POST",
       "family": "WRITE",
       "source_helper": "functions/_shared/appreciation-order-direct-neon.js",
-      "source_refs": ["#4043", "#4257", "#4282"],
+      "source_refs": [
+        "#4043",
+        "#4257",
+        "#4282"
+      ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_APPRECIATION_ORDER_WRITE_RUNTIME",
       "required_objects": {
-        "tree_appreciation_orders": ["SELECT", "INSERT", "UPDATE"],
-        "trees": ["SELECT", "UPDATE"],
-        "memories": ["SELECT", "UPDATE"]
+        "tree_appreciation_orders": [
+          "SELECT",
+          "INSERT",
+          "UPDATE"
+        ],
+        "trees": [
+          "SELECT",
+          "UPDATE"
+        ],
+        "memories": [
+          "SELECT",
+          "UPDATE"
+        ]
       },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
@@ -707,7 +1215,10 @@
       "production_live": "PRODUCTION_LIVE",
       "disposition_4239": "G",
       "disposition_note": "Production-live attestation (source/doc/test-only). The full accepted chain: #4282 canonical public.tree_appreciation_orders schema adoption COMPLETE -> #4257 fresh writer ACL audit proved the dedicated writer role already held the required trees/memories row-lock capabilities but lacked target-table privileges -> exactly one bounded grant of SELECT, INSERT, UPDATE on public.tree_appreciation_orders (no DELETE/TRUNCATE/sequence privileges) -> PR #4345 checked in LB_APPRECIATION_ORDER_WRITE_RUNTIME=direct_neon and merged to exact main 851376c -> exact-head CI and exact-main CI green (run 33841480947) -> Production deployment/provider verification (release parity, x-lovebud-upstream=direct-neon) -> bounded Product canary accepted by CENTRAL: POST #1 exercised the initial INSERT path and POST #2 (same disposable Tree, empty order) exercised the ON CONFLICT DO UPDATE path, both HTTP 200 with runtime direct_neon, upstream direct-neon, route status saved, PRODUCT_RETRY=0 -> cleanup PASS via one disposable Tree DELETE with post-delete 404 verification -> #4257 final closeout (comments 5535980555, 5536043657, 5536254929, 5536370299, 5536459290, 5536485011). No raw Tree/Memory ID, token, DB URL, request-id value, or raw private Product body recorded. Fresh source-continuity audit at main f1f9af8 confirms zero drift in the helper, route dispatch, required privilege envelope, or wrangler gate since the cited evidence.",
-      "last_exact_head_evidence": { "ref": "schema adoption #4282 -> fresh ACL audit + exactly one bounded writer grant #4257 (SELECT, INSERT, UPDATE on public.tree_appreciation_orders) -> checked-in Production gate PR #4345 merged at 851376c -> exact-head CI green -> exact-main CI run 33841480947 SUCCESS -> Production deployment/provider verification -> bounded Product canary PASS: 1 INSERT-path POST + 1 conflict UPDATE-path POST (same disposable Tree, empty order), both HTTP 200 direct-neon markers, 0 retries -> cleanup PASS (1 Tree DELETE + post-delete 404) -> #4257 final closeout accepted by CENTRAL (comment 5536485011); continuity re-verified at main f1f9af8 with zero helper/route/gate drift", "main_sha": "851376c6e3d44a19b9c45ba9de8bc13eff7d06d9" },
+      "last_exact_head_evidence": {
+        "ref": "schema adoption #4282 -> fresh ACL audit + exactly one bounded writer grant #4257 (SELECT, INSERT, UPDATE on public.tree_appreciation_orders) -> checked-in Production gate PR #4345 merged at 851376c -> exact-head CI green -> exact-main CI run 33841480947 SUCCESS -> Production deployment/provider verification -> bounded Product canary PASS: 1 INSERT-path POST + 1 conflict UPDATE-path POST (same disposable Tree, empty order), both HTTP 200 direct-neon markers, 0 retries -> cleanup PASS (1 Tree DELETE + post-delete 404) -> #4257 final closeout accepted by CENTRAL (comment 5536485011); continuity re-verified at main f1f9af8 with zero helper/route/gate drift",
+        "main_sha": "851376c6e3d44a19b9c45ba9de8bc13eff7d06d9"
+      },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed revert/unset of LB_APPRECIATION_ORDER_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB rollback and no ACL rollback required — the #4282 canonical schema and the #4257 proven least-privilege grant remain intact unless a separately proven defect requires otherwise; the Modal POST path remains the fallback/default when the gate is unset",
       "next_action": "Appreciation Order POST direct-Neon write is Production live at the cited evidence. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no further Product canary): any change to LB_APPRECIATION_ORDER_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the appreciation-order-direct-neon helper, route dispatch, the tree_appreciation_orders schema, trees/memories locking semantics, Cloudflare Production deployment/source parity, auth/owner isolation, or UPSERT transaction behavior"
