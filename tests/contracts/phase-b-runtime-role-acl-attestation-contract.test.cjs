@@ -203,6 +203,14 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
     );
   });
 
+  it('#4423 public.comments is an explicit static allowlisted target', () => {
+    assert.ok(TARGET_RELATIONS.includes('public.comments'));
+    assert.ok(TARGET_RELATION_NAMES.includes('comments'));
+    assert.equal(TARGET_RELATIONS.length, 7);
+    assert.ok(Object.isFrozen(TARGET_RELATIONS));
+    assert.equal(Q.COMMENTS_SELECT, "SELECT has_table_privilege($1::name, 'public.comments', 'SELECT') AS allowed");
+  });
+
   it('rejects arbitrary SQL, roles, objects, repeat, and output flags', () => {
     for (const args of [
       ['--approval-reference', APPROVAL_REFERENCE, '--purpose', SOURCE_BOUND_PURPOSE, '--sql', 'SELECT 1'],
@@ -599,7 +607,7 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
     const { fixture } = await collectFixture();
     const fixed = new Set(Object.values(Q));
     assert.ok(fixture.calls.every((call) => fixed.has(call.text)));
-    assert.ok(fixture.calls.every((call) => !/SELECT\s+\*|FROM\s+public\.(trees|memories|tree_social_counts|reactions|tree_comments|tree_hub_layouts)\b/i.test(call.text)));
+    assert.ok(fixture.calls.every((call) => !/SELECT\s+\*|FROM\s+public\.(trees|memories|tree_social_counts|reactions|comments|tree_comments|tree_hub_layouts)\b/i.test(call.text)));
     const treeCommentsProbe = fixture.calls.filter((call) => call.text === Q.TREE_COMMENTS_SELECT);
     assert.equal(treeCommentsProbe.length, 1);
     assert.deepEqual(treeCommentsProbe[0].params, [RAW_TARGET]);
@@ -831,8 +839,9 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
 
   it('#4000 public.tree_comments is an explicit static allowlisted target', () => {
     assert.ok(TARGET_RELATIONS.includes('public.tree_comments'));
+    assert.ok(TARGET_RELATIONS.includes('public.comments'));
     assert.ok(TARGET_RELATION_NAMES.includes('tree_comments'));
-    assert.equal(TARGET_RELATIONS.length, 6);
+    assert.equal(TARGET_RELATIONS.length, 7);
     assert.ok(Object.isFrozen(TARGET_RELATIONS));
     assert.equal(Q.TREE_COMMENTS_SELECT, "SELECT has_table_privilege($1::name, 'public.tree_comments', 'SELECT') AS allowed");
   });
@@ -1049,8 +1058,9 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
 
   it('#4000 public.tree_hub_layouts is an explicit static allowlisted target', () => {
     assert.ok(TARGET_RELATIONS.includes('public.tree_hub_layouts'));
+    assert.ok(TARGET_RELATIONS.includes('public.comments'));
     assert.ok(TARGET_RELATION_NAMES.includes('tree_hub_layouts'));
-    assert.equal(TARGET_RELATIONS.length, 6);
+    assert.equal(TARGET_RELATIONS.length, 7);
     assert.ok(Object.isFrozen(TARGET_RELATIONS));
     assert.equal(Q.HUB_LAYOUT_SELECT, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'SELECT') AS allowed");
     assert.equal(Q.HUB_LAYOUT_INSERT, "SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'INSERT') AS allowed");
