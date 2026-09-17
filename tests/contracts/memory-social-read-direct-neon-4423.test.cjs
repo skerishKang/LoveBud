@@ -1,6 +1,15 @@
 // Contract tests for #4423 residual Memory social GET direct-Neon source candidates.
 //
-// Source phase only: no Production gate check-in, no Product canary.
+// Phase state (frozen here so the two phases cannot drift apart):
+//   - reaction read (authenticated + public): read-role privilege is already proven by the accepted
+//     #4283 / public-memory-detail evidence, so those two gates are checked into
+//     [env.production.vars] and are awaiting separately authorized provider/gate readback.
+//   - comment read (authenticated + public): read-role comments SELECT privilege is still unproven
+//     (PRIVILEGE_UNPROVEN in the #4311 matrix), so those two gates must remain absent from
+//     Production wrangler vars. Checking one in without the privilege proof would surface a
+//     permission failure to real users.
+//
+// No Product canary is authorized by this file.
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,24 +39,54 @@ function publicEnv(gate, extra = {}) {
   return { [gate]: 'direct_neon', ...extra };
 }
 
-test('#4423 four read gates are exact and remain absent from Production wrangler vars', async () => {
-  const cases = [
-    ['memory-auth-reaction-read-direct-neon.js', 'isMemoryAuthReactionReadDirectNeonSelected', 'LB_MEMORY_AUTH_REACTION_READ_RUNTIME'],
-    ['memory-auth-comment-read-direct-neon.js', 'isMemoryAuthCommentReadDirectNeonSelected', 'LB_MEMORY_AUTH_COMMENT_READ_RUNTIME'],
-    ['memory-public-reaction-read-direct-neon.js', 'isMemoryPublicReactionReadDirectNeonSelected', 'LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME'],
-    ['memory-public-comment-read-direct-neon.js', 'isMemoryPublicCommentReadDirectNeonSelected', 'LB_MEMORY_PUBLIC_COMMENT_READ_RUNTIME']
-  ];
-  for (const [file, fn, gate] of cases) {
+const FOUR_READ_GATES = [
+  ['memory-auth-reaction-read-direct-neon.js', 'isMemoryAuthReactionReadDirectNeonSelected', 'LB_MEMORY_AUTH_REACTION_READ_RUNTIME'],
+  ['memory-auth-comment-read-direct-neon.js', 'isMemoryAuthCommentReadDirectNeonSelected', 'LB_MEMORY_AUTH_COMMENT_READ_RUNTIME'],
+  ['memory-public-reaction-read-direct-neon.js', 'isMemoryPublicReactionReadDirectNeonSelected', 'LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME'],
+  ['memory-public-comment-read-direct-neon.js', 'isMemoryPublicCommentReadDirectNeonSelected', 'LB_MEMORY_PUBLIC_COMMENT_READ_RUNTIME']
+];
+// Gates whose read-role privilege is proven and that are therefore checked in.
+const CHECKED_IN_READ_GATES = [
+  'LB_MEMORY_AUTH_REACTION_READ_RUNTIME',
+  'LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME'
+];
+// Gates whose read-role privilege is still unproven and that must stay source-only.
+const SOURCE_ONLY_READ_GATES = [
+  'LB_MEMORY_AUTH_COMMENT_READ_RUNTIME',
+  'LB_MEMORY_PUBLIC_COMMENT_READ_RUNTIME'
+];
+
+test('#4423 four read gates are exact and select only the exact direct_neon value', async () => {
+  for (const [file, fn, gate] of FOUR_READ_GATES) {
     const mod = await import('../../functions/_shared/' + file);
     assert.equal(mod[fn]({}), false);
     assert.equal(mod[fn]({ [gate]: 'modal' }), false);
     assert.equal(mod[fn]({ [gate]: 'future' }), false);
     assert.equal(mod[fn]({ [gate]: 'direct_neon' }), true);
   }
+});
 
+test('#4423 only the privilege-proven reaction read gates are checked into Production vars', () => {
   const wrangler = fs.readFileSync(path.join(ROOT, 'wrangler.toml'), 'utf8');
-  for (const gate of cases.map((item) => item[2])) {
-    assert.equal(wrangler.includes(gate), false, gate + ' must not be checked into Production in source phase');
+  const productionBlock = (wrangler.split(/^\[env\.production\.vars\]\s*$/m)[1] || '').split(/^\[/m)[0];
+  const defaultBlock = (wrangler.split(/^\[vars\]\s*$/m)[1] || '').split(/^\[/m)[0];
+
+  for (const gate of CHECKED_IN_READ_GATES) {
+    const declaration = new RegExp('^' + gate + '\\s*=\\s*"direct_neon"\\s*$', 'gm');
+    assert.equal(
+      (productionBlock.match(declaration) || []).length,
+      1,
+      gate + ' must be checked into [env.production.vars] exactly once as direct_neon'
+    );
+    assert.equal(defaultBlock.includes(gate), false, gate + ' must not be declared in the non-production [vars] scope');
+  }
+
+  for (const gate of SOURCE_ONLY_READ_GATES) {
+    assert.equal(
+      wrangler.includes(gate),
+      false,
+      gate + ' read-role privilege is unproven, so it must remain absent from Production wrangler vars'
+    );
   }
 });
 

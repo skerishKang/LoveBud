@@ -579,20 +579,20 @@
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
-      "checked_in_gate": "NOT_CHECKED_IN",
-      "live_gate_state": "LIVE_GATE_NOT_INTENDED",
+      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
-      "disposition_note": "Source candidate #4423 only. Authenticated reaction summary preserves verified Firebase principal, owner-or-exact-public Memory+Tree visibility, aggregate counts, requester-specific userReactions, no-store/request-id/direct-neon response markers, and no direct-to-Modal fallback after direct execution begins. Required read envelope is memories SELECT + trees SELECT + reactions SELECT on LOVE_PLATFORM_DATABASE_URL. Existing accepted #4283/public-memory-detail evidence already proves that exact SELECT subset on the direct_neon_runtime read boundary; no fresh DB session or GRANT is implied.",
+      "disposition_note": "Source candidate #4423 only. Authenticated reaction summary preserves verified Firebase principal, owner-or-exact-public Memory+Tree visibility, aggregate counts, requester-specific userReactions, no-store/request-id/direct-neon response markers, and no direct-to-Modal fallback after direct execution begins. Required read envelope is memories SELECT + trees SELECT + reactions SELECT on LOVE_PLATFORM_DATABASE_URL. Existing accepted #4283/public-memory-detail evidence already proves that exact SELECT subset on the direct_neon_runtime read boundary; no fresh DB session or GRANT is implied. Gate checked in at exact main c45b50f106aaa3bc497b339d15d1df2007ea2098: LB_MEMORY_AUTH_REACTION_READ_RUNTIME = \"direct_neon\" is checked into [env.production.vars] in wrangler.toml. This is AUTHENTICATED MEMORY REACTION READ GATE CHECK-IN ONLY: no Product request, no Firebase auth attempt, no Production DB connection/session, no DB DML/DDL, no ACL/GRANT/REVOKE, no provider/secret mutation, no manual deploy, no live provider/gate readback, no Product canary, and no production-live claim. live_provider_state remains NOT_FRESHLY_VERIFIED, live_gate_state is LIVE_GATE_READ_REQUIRED, diagnostic execution remains NOT_AUTHORIZED, and production_live remains NOT_PRODUCTION_LIVE. The two #4423 comment-read rows are intentionally NOT checked in here: their read-role comments SELECT privilege remains unproven.",
       "last_exact_head_evidence": {
-        "ref": "Source candidate + deterministic contracts introduced under #4423; reactions read privilege subset reuses accepted #4283 read-role evidence with no fresh DB session.",
-        "main_sha": "52503871148897972ddd4091ed78eed2911be661"
+        "ref": "Gate check-in at exact main c45b50f106aaa3bc497b339d15d1df2007ea2098: LB_MEMORY_AUTH_REACTION_READ_RUNTIME checked into [env.production.vars]; required reads memories SELECT + trees SELECT + reactions SELECT on the direct_neon_runtime read boundary, privilege reusing accepted #4283/public-memory-detail read-role evidence with no fresh DB session; gate check-in only with no Product/DB/provider/secret/deploy mutation and no production-live claim",
+        "main_sha": "c45b50f106aaa3bc497b339d15d1df2007ea2098"
       },
       "modal_retained_by_design": false,
-      "rollback_authority": "SOURCE_PHASE_DEFAULT_MODAL: runtime gate is not checked into Production; unset/modal/unknown remains the existing Modal GET path. Any future activation must retain independent gate-only rollback.",
-      "next_action": "Run exact-head source CI/parity review. If GREEN, CENTRAL may separately authorize Production gate check-in/readback/canary; no Production activation is authorized by this source row."
+      "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed removal/unset of LB_MEMORY_AUTH_REACTION_READ_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB/ACL rollback is required merely to disable the route; the reused #4283-proven direct_neon_runtime read privileges remain intact; the existing Modal authenticated reaction GET remains the default when the gate is unset",
+      "next_action": "Gate checked in at exact main c45b50f106aaa3bc497b339d15d1df2007ea2098. Do NOT promote to live on this evidence. After CENTRAL merge + post-merge exact-main GREEN: (1) separately authorized read-only Production provider/gate readback for LB_MEMORY_AUTH_REACTION_READ_RUNTIME; (2) only after that proof is accepted, separately authorized bounded authenticated reaction-read Product canary; (3) only after that, publish the Production live attestation. The #4423 comment-read rows stay source-only until read-role comments SELECT privilege is freshly proven."
     },
     {
       "id": "auth-memory-comments-get",
@@ -662,20 +662,20 @@
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
-      "checked_in_gate": "NOT_CHECKED_IN",
-      "live_gate_state": "LIVE_GATE_NOT_INTENDED",
+      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
-      "disposition_note": "Source candidate #4423 only. Anonymous public reaction summary requires exact requested Tree+Memory membership with both persisted visibility values equal to public, returns only counts+total, and exposes no viewer/account state. Required envelope memories SELECT + trees SELECT + reactions SELECT is already a proven subset of accepted #4283 public-memory-detail read-role authority.",
+      "disposition_note": "Source candidate #4423 only. Anonymous public reaction summary requires exact requested Tree+Memory membership with both persisted visibility values equal to public, returns only counts+total, and exposes no viewer/account state. Required envelope memories SELECT + trees SELECT + reactions SELECT is already a proven subset of accepted #4283 public-memory-detail read-role authority. Gate checked in at exact main c45b50f106aaa3bc497b339d15d1df2007ea2098: LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME = \"direct_neon\" is checked into [env.production.vars] in wrangler.toml. This is PUBLIC MEMORY REACTION READ GATE CHECK-IN ONLY: no Product request, no anonymous Product GET, no Production DB connection/session, no DB DML/DDL, no ACL/GRANT/REVOKE, no provider/secret mutation, no manual deploy, no live provider/gate readback, no Product canary, and no production-live claim. live_provider_state remains NOT_FRESHLY_VERIFIED, live_gate_state is LIVE_GATE_READ_REQUIRED, diagnostic execution remains NOT_AUTHORIZED, and production_live remains NOT_PRODUCTION_LIVE. The two #4423 comment-read rows are intentionally NOT checked in here: their read-role comments SELECT privilege remains unproven.",
       "last_exact_head_evidence": {
-        "ref": "Source candidate + deterministic contracts introduced under #4423; reactions read privilege subset reuses accepted #4283 read-role evidence with no fresh DB session.",
-        "main_sha": "52503871148897972ddd4091ed78eed2911be661"
+        "ref": "Gate check-in at exact main c45b50f106aaa3bc497b339d15d1df2007ea2098: LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME checked into [env.production.vars]; required reads memories SELECT + trees SELECT + reactions SELECT on the direct_neon_runtime read boundary, privilege reusing accepted #4283/public-memory-detail read-role evidence with no fresh DB session; gate check-in only with no Product/DB/provider/secret/deploy mutation and no production-live claim",
+        "main_sha": "c45b50f106aaa3bc497b339d15d1df2007ea2098"
       },
       "modal_retained_by_design": false,
-      "rollback_authority": "SOURCE_PHASE_DEFAULT_MODAL: runtime gate is not checked into Production; unset/modal/unknown remains the existing Modal public GET path. Any future activation must retain independent gate-only rollback.",
-      "next_action": "Run exact-head source CI/parity review. If GREEN, CENTRAL may separately authorize Production gate check-in/readback/canary; no Production activation is authorized by this source row."
+      "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed removal/unset of LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB/ACL rollback is required merely to disable the route; the reused #4283-proven direct_neon_runtime read privileges remain intact; the existing Modal public reaction GET remains the default when the gate is unset",
+      "next_action": "Gate checked in at exact main c45b50f106aaa3bc497b339d15d1df2007ea2098. Do NOT promote to live on this evidence. After CENTRAL merge + post-merge exact-main GREEN: (1) separately authorized read-only Production provider/gate readback for LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME; (2) only after that proof is accepted, separately authorized bounded anonymous public reaction-read Product canary; (3) only after that, publish the Production live attestation. The #4423 comment-read rows stay source-only until read-role comments SELECT privilege is freshly proven."
     },
     {
       "id": "public-memory-comments-get",
