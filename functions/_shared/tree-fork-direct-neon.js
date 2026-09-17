@@ -426,7 +426,7 @@ LIMIT 1;
 const INSERT_DEST_TREE_SQL = `
 INSERT INTO trees (id, owner_id, title, visibility, forked_from_tree_id, created_at, updated_at)
 VALUES ($1, $2, $3, 'public', $4, NOW(), NOW())
-RETURNING id, owner_id, title, visibility, forked_from_tree_id, created_at, updated_at;
+RETURNING id, owner_id, title, visibility, forked_from_tree_id, created_at::text AS created_at, updated_at::text AS updated_at;
 `;
 
 const FETCH_SOURCE_MEMORIES_FOR_SHARE_SQL = `
@@ -452,7 +452,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'public', $13, $14, $
 
 const CANONICAL_REREAD_DEST_TREE_SQL = `
 SELECT t.id, t.owner_id, t.title, t.visibility, t.forked_from_tree_id,
-       t.created_at, t.updated_at,
+       t.created_at::text AS created_at, t.updated_at::text AS updated_at,
        COUNT(m.id)::int AS memory_count
 FROM trees t
 LEFT JOIN memories m ON m.tree_id = t.id
@@ -464,7 +464,7 @@ LIMIT 1;
 
 const CANONICAL_REREAD_EXISTING_TREE_SQL = `
 SELECT t.id, t.owner_id, t.title, t.visibility, t.forked_from_tree_id,
-       t.created_at, t.updated_at,
+       t.created_at::text AS created_at, t.updated_at::text AS updated_at,
        COUNT(m.id)::int AS memory_count
 FROM trees t
 LEFT JOIN memories m ON m.tree_id = t.id
