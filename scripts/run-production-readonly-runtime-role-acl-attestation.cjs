@@ -28,6 +28,9 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const SOURCE_BOUND_ISSUE = '4000';
 const SOURCE_BOUND_PURPOSE = 'ONE_PRODUCTION_READONLY_RUNTIME_ROLE_ACL_ATTESTATION';
 const APPROVAL_REFERENCE = `issue:${SOURCE_BOUND_ISSUE}`;
+const MEMORY_SOCIAL_READ_ISSUE = '4423';
+const MEMORY_SOCIAL_READ_PURPOSE = 'ONE_PRODUCTION_READONLY_MEMORY_SOCIAL_READ_ACL_ATTESTATION';
+const MEMORY_SOCIAL_READ_APPROVAL_REFERENCE = `issue:${MEMORY_SOCIAL_READ_ISSUE}`;
 const MAX_ROLE_CHAIN_DEPTH = 16;
 const MAX_ROLE_CHAIN_ROWS = 128;
 const MAX_ACL_ROWS = 256;
@@ -38,6 +41,7 @@ const TARGET_RELATIONS = Object.freeze([
   'public.memories',
   'public.tree_social_counts',
   'public.reactions',
+  'public.comments',
   'public.tree_comments',
   'public.tree_hub_layouts',
 ]);
@@ -99,6 +103,7 @@ const Q = Object.freeze({
   REACTIONS_INSERT: `SELECT has_table_privilege($1::name, 'public.reactions', 'INSERT') AS allowed`,
   REACTIONS_UPDATE: `SELECT has_table_privilege($1::name, 'public.reactions', 'UPDATE') AS allowed`,
   REACTIONS_DELETE: `SELECT has_table_privilege($1::name, 'public.reactions', 'DELETE') AS allowed`,
+  COMMENTS_SELECT: `SELECT has_table_privilege($1::name, 'public.comments', 'SELECT') AS allowed`,
   TREE_COMMENTS_SELECT: `SELECT has_table_privilege($1::name, 'public.tree_comments', 'SELECT') AS allowed`,
   HUB_LAYOUT_SELECT: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'SELECT') AS allowed`,
   HUB_LAYOUT_INSERT: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'INSERT') AS allowed`,
@@ -207,7 +212,11 @@ function parseArgs(args) {
 }
 
 function assertSourceBoundApproval(approvalReference, purpose) {
-  if (approvalReference !== APPROVAL_REFERENCE || purpose !== SOURCE_BOUND_PURPOSE) {
+  const legacyPacket = approvalReference === APPROVAL_REFERENCE && purpose === SOURCE_BOUND_PURPOSE;
+  const memorySocialPacket =
+    approvalReference === MEMORY_SOCIAL_READ_APPROVAL_REFERENCE &&
+    purpose === MEMORY_SOCIAL_READ_PURPOSE;
+  if (!legacyPacket && !memorySocialPacket) {
     fail('ATTESTATION_SOURCE_BOUND_APPROVAL_REQUIRED');
   }
 }
@@ -516,6 +525,32 @@ function deriveTreeCommentsDecision({ identityResolved, privileges, roleAdmin, b
 }
 
 /**
+ * Memory Comment READ activation packet (#4423).
+ *
+ * This is ACL attestation only. It never grants, revokes, or repairs. A
+ * missing SELECT on public.comments is reported as a STOP disposition.
+ */
+function deriveMemoryCommentsDecision({ identityResolved, privileges, roleAdmin, broadAllTableSelect }) {
+  const baseline = privileges.DATABASE_CONNECT === true &&
+    privileges.USAGE_PUBLIC === true &&
+    privileges.SELECT_TREES === true &&
+    privileges.SELECT_MEMORIES === true;
+  if (!identityResolved) {
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'RUNTIME_ROLE_IDENTITY_UNRESOLVED' };
+  }
+  if (!baseline || roleAdmin === true || broadAllTableSelect === true) {
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP' };
+  }
+  if (privileges.SELECT_COMMENTS === true) {
+    return { target: 'RESOLVED', minimalChange: 'NO_PRIVILEGE_CHANGE', activationEligible: 'YES', finalDisposition: 'MEMORY_COMMENTS_READ_ROLE_ACL_ATTESTED' };
+  }
+  if (privileges.SELECT_COMMENTS === false) {
+    return { target: 'RESOLVED', minimalChange: 'SELECT_ON_COMMENTS_ONLY', activationEligible: 'NO', finalDisposition: 'MEMORY_COMMENTS_SELECT_MISSING_STOP' };
+  }
+  return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'MEMORY_COMMENTS_PRIVILEGE_UNRESOLVED' };
+}
+
+/**
  * Hub Layout GET diagnosis packet (#4000). Deliberately separate from the
  * #4283 reactions decision and the #4000 tree-comments decision so both
  * historical decision blocks stay byte-for-byte regression boundaries.
@@ -645,6 +680,7 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
         INSERT_REACTIONS: privilege(await client.query(Q.REACTIONS_INSERT, [target]), 'INSERT_REACTIONS'),
         UPDATE_REACTIONS: privilege(await client.query(Q.REACTIONS_UPDATE, [target]), 'UPDATE_REACTIONS'),
         DELETE_REACTIONS: privilege(await client.query(Q.REACTIONS_DELETE, [target]), 'DELETE_REACTIONS'),
+        SELECT_COMMENTS: privilege(await client.query(Q.COMMENTS_SELECT, [target]), 'COMMENTS_SELECT'),
         SELECT_TREE_COMMENTS: privilege(await client.query(Q.TREE_COMMENTS_SELECT, [target]), 'TREE_COMMENTS_SELECT'),
         SELECT_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_SELECT, [target]), 'HUB_LAYOUT_SELECT'),
         INSERT_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_INSERT, [target]), 'HUB_LAYOUT_INSERT'),
@@ -662,6 +698,7 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       memories: privileges.SELECT_MEMORIES,
       tree_social_counts: privileges.SELECT_TREE_SOCIAL_COUNTS,
       reactions: privileges.SELECT_REACTIONS,
+      comments: privileges.SELECT_COMMENTS,
       tree_comments: privileges.SELECT_TREE_COMMENTS,
       tree_hub_layouts: privileges.SELECT_TREE_HUB_LAYOUTS,
     };
@@ -670,6 +707,9 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
     }
     const decision = deriveDecision({ identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect });
     const treeCommentsDecision = deriveTreeCommentsDecision({
+      identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect,
+    });
+    const memoryCommentsDecision = deriveMemoryCommentsDecision({
       identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect,
     });
     const hubLayoutDecision = deriveHubLayoutDecision({
@@ -700,6 +740,7 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       perRelationProvenance: sanitizeRelationProvenance(grantSources.relations),
       decision,
       treeCommentsDecision,
+      memoryCommentsDecision,
       hubLayoutDecision,
       rawRoleExposed: 'NO',
       rawGranteeExposed: 'NO',
@@ -728,6 +769,7 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     targetMembershipAdminOption: 'UNKNOWN', targetMembershipSetOption: 'UNKNOWN',
     historicalRuntimeRoleRelation: 'UNRESOLVED',
     selectTrees: 'UNKNOWN', selectMemories: 'UNKNOWN', selectTreeSocialCounts: 'UNKNOWN', selectReactions: 'UNKNOWN',
+    selectComments: 'UNKNOWN',
     selectTreeComments: 'UNKNOWN',
     selectTreeHubLayouts: 'UNKNOWN',
     insertReactions: 'UNKNOWN', updateReactions: 'UNKNOWN', deleteReactions: 'UNKNOWN',
@@ -743,6 +785,10 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     treeCommentsPrivilegeTargetIdentity: 'UNRESOLVED', treeCommentsMinimalRequiredChange: 'NOT_DETERMINABLE',
     treeCommentsActivationEligible: 'NO',
     treeCommentsFinalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
+    memoryCommentsPrivilegeTargetIdentity: 'UNRESOLVED',
+    memoryCommentsMinimalRequiredChange: 'NOT_DETERMINABLE',
+    memoryCommentsActivationEligible: 'NO',
+    memoryCommentsFinalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
     hubLayoutPrivilegeTargetIdentity: 'UNKNOWN', hubLayoutMinimalRequiredChange: 'UNKNOWN',
     hubLayoutActivationEligible: 'UNKNOWN', hubLayoutFinalDisposition: 'UNKNOWN',
     finalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
@@ -773,6 +819,7 @@ function formatSuccess(result) {
     historicalRuntimeRoleRelation: result.historicalRuntimeRoleRelation,
     selectTrees: p.SELECT_TREES ? 'YES' : 'NO', selectMemories: p.SELECT_MEMORIES ? 'YES' : 'NO',
     selectTreeSocialCounts: p.SELECT_TREE_SOCIAL_COUNTS ? 'YES' : 'NO', selectReactions: p.SELECT_REACTIONS ? 'YES' : 'NO',
+    selectComments: p.SELECT_COMMENTS ? 'YES' : 'NO',
     selectTreeComments: p.SELECT_TREE_COMMENTS ? 'YES' : 'NO',
     selectTreeHubLayouts: p.SELECT_TREE_HUB_LAYOUTS ? 'YES' : 'NO',
     insertReactions: p.INSERT_REACTIONS ? 'YES' : 'NO', updateReactions: p.UPDATE_REACTIONS ? 'YES' : 'NO', deleteReactions: p.DELETE_REACTIONS ? 'YES' : 'NO',
@@ -790,6 +837,10 @@ function formatSuccess(result) {
     treeCommentsMinimalRequiredChange: result.treeCommentsDecision.minimalChange,
     treeCommentsActivationEligible: result.treeCommentsDecision.activationEligible,
     treeCommentsFinalDisposition: result.treeCommentsDecision.finalDisposition,
+    memoryCommentsPrivilegeTargetIdentity: result.memoryCommentsDecision.target,
+    memoryCommentsMinimalRequiredChange: result.memoryCommentsDecision.minimalChange,
+    memoryCommentsActivationEligible: result.memoryCommentsDecision.activationEligible,
+    memoryCommentsFinalDisposition: result.memoryCommentsDecision.finalDisposition,
     hubLayoutPrivilegeTargetIdentity: result.hubLayoutDecision.target,
     hubLayoutMinimalRequiredChange: result.hubLayoutDecision.minimalChange,
     hubLayoutActivationEligible: result.hubLayoutDecision.activationEligible,
@@ -840,6 +891,9 @@ module.exports = {
   APPROVAL_REFERENCE,
   SOURCE_BOUND_ISSUE,
   SOURCE_BOUND_PURPOSE,
+  MEMORY_SOCIAL_READ_APPROVAL_REFERENCE,
+  MEMORY_SOCIAL_READ_ISSUE,
+  MEMORY_SOCIAL_READ_PURPOSE,
   MAX_ROLE_CHAIN_DEPTH,
   TARGET_RELATIONS,
   TARGET_RELATION_NAMES,
@@ -852,6 +906,7 @@ module.exports = {
   classifySelectGrantSources,
   deriveDecision,
   deriveTreeCommentsDecision,
+  deriveMemoryCommentsDecision,
   deriveHubLayoutDecision,
   collectAttestation,
   runAttestationWithDeps,
