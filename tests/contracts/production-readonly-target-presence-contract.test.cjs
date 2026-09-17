@@ -39,6 +39,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
+const { holdRepoSecretsContractMutexForFile } = require('../helpers/repo-secrets-contract-mutex.cjs');
+
+// #4382: test 17B creates a transient fixture inside the real REPO/.secrets
+// (the Production-readonly boundary rejects any path outside .secrets), so this
+// file must never overlap another real-.secrets contract file.
+holdRepoSecretsContractMutexForFile();
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
