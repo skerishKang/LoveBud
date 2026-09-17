@@ -5,6 +5,10 @@ import {
   isInvalidPathEncodingError,
   normalizeEncodedPathSegment
 } from '../../../_shared/path-segment.js';
+import {
+  handleTreeCommentCreateDirectNeon,
+  isTreeCommentWriteDirectNeonSelected
+} from '../../../_shared/tree-comment-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -228,7 +232,11 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  return proxyTreeCommentCreate(context.request, context.env || {});
+  const env = context.env || {};
+  if (isTreeCommentWriteDirectNeonSelected(env)) {
+    return handleTreeCommentCreateDirectNeon(context.request, env);
+  }
+  return proxyTreeCommentCreate(context.request, env);
 }
 
 export async function onRequest(context) {
