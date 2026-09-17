@@ -4,6 +4,10 @@ import {
   isInvalidPathEncodingError,
   normalizeEncodedPathSegment
 } from '../../../_shared/path-segment.js';
+import {
+  isTreeLikeDirectNeonSelected,
+  handleTreeLikeDirectNeon
+} from '../../../_shared/tree-like-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -174,7 +178,19 @@ export async function onRequestGet(context) {
 }
 
 export async function onRequestPost(context) {
-  return proxyTreeLike(context.request, context.env || {});
+  const env = context.env || {};
+  // Direct-Neon gate: only POST Like toggle is affected. unset/modal/unknown
+  // falls through to the existing Modal proxy. GET remains unchanged.
+  if (isTreeLikeDirectNeonSelected(env)) {
+    const directResponse = await handleTreeLikeDirectNeon(
+      context.request,
+      env,
+      getOrCreateRequestId(context.request)
+    );
+    if (directResponse !== null) return directResponse;
+    // directResponse === null means the adapter deferred; fall through to Modal.
+  }
+  return proxyTreeLike(context.request, env);
 }
 
 export async function onRequest(context) {

@@ -133,7 +133,8 @@
   ],
   "notes": [
     "ATTESTED is valid only when every required binding field is present and verified.",
-    "Empty applied_migrations is allowed only when the bound canonical migration list is also empty; emptiness alone never proves adoption.",
+    "applied_migrations must exactly match separately trusted proven historical application evidence; canonical catalog membership alone never populates applied history.",
+    "For legacy adoption, expected_schema_digest binds the explicitly trusted inactive baseline expectation. The post-migration canonical expected-schema remains a separate provenance input and must not be silently reused as the legacy baseline comparator.",
     "UNKNOWN_DRIFT always blocks.",
     "UNSUPPORTED_LEGACY_STATE blocks without a separate approved policy path.",
     "KNOWN_DRIFT requires bounded known_variance_codes and still does not activate manifests.",

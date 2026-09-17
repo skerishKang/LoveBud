@@ -90,6 +90,10 @@ function baseArtifacts() {
 
 function validAttestation(overrides = {}, bindingOverrides = {}) {
   const arts = baseArtifacts();
+  const provenAppliedMigrations = arts.migrationManifest.migrations.map((item) => ({
+    id: item.id,
+    checksum: item.checksum,
+  }));
   const attestation = core.buildSyntheticAttestation({
     baselineCommit: arts.baselineCommit,
     migrationManifest: arts.migrationManifest,
@@ -99,6 +103,7 @@ function validAttestation(overrides = {}, bindingOverrides = {}) {
     varianceClassification: 'MATCH',
     approvalReference: 'issue:9999',
     attestationScope: 'DISPOSABLE_RECONSTRUCTION',
+    appliedMigrations: provenAppliedMigrations,
   });
   const mergedEvidence = { ...attestation, ...overrides };
   return {
@@ -112,10 +117,7 @@ function validAttestation(overrides = {}, bindingOverrides = {}) {
       approval_reference: 'issue:9999',
       environment_class: 'DISPOSABLE_CI',
       attestation_scope: 'DISPOSABLE_RECONSTRUCTION',
-      expected_migrations: arts.migrationManifest.migrations.map((item) => ({
-        id: item.id,
-        checksum: item.checksum,
-      })),
+      proven_applied_migrations: provenAppliedMigrations,
       ...bindingOverrides,
     },
   };
@@ -140,7 +142,8 @@ test('committed adoption attestation contract is strict and complete', () => {
   ]) {
     assert.ok(contract.required_top_level_fields.includes(field), field);
   }
-  assert.ok(core.REQUIRED_TRUSTED_BINDING_FIELDS.includes('expected_migrations'));
+  assert.ok(core.REQUIRED_TRUSTED_BINDING_FIELDS.includes('proven_applied_migrations'));
+  assert.equal(core.REQUIRED_TRUSTED_BINDING_FIELDS.includes('expected_migrations'), false);
   assert.ok(core.REQUIRED_TRUSTED_BINDING_FIELDS.includes('attestation_scope'));
   assert.deepEqual(contract.enums.adoption_status, ['UNATTESTED', 'ATTESTED']);
   assert.ok(contract.enums.environment_class.includes('DISPOSABLE_CI'));
@@ -202,7 +205,7 @@ test('missing individual trusted binding fields fail closed', () => {
     'approval_reference',
     'environment_class',
     'attestation_scope',
-    'expected_migrations',
+    'proven_applied_migrations',
   ];
   for (const field of fields) {
     const a = validAttestation();
@@ -217,16 +220,16 @@ test('missing individual trusted binding fields fail closed', () => {
   }
 });
 
-test('expected_migrations non-array bindings fail closed', () => {
+test('proven_applied_migrations non-array bindings fail closed', () => {
   for (const bad of [null, '[]', {}, 12]) {
-    const a = validAttestation({}, { expected_migrations: bad });
+    const a = validAttestation({}, { proven_applied_migrations: bad });
     const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
     assert.equal(result.ok, false, String(bad));
     assert.ok(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'));
   }
 });
 
-test('malformed trusted expected_migrations records fail closed', () => {
+test('malformed trusted proven_applied_migrations records fail closed', () => {
   const a = validAttestation();
   const checksum = a.arts.firstChecksum;
   const cases = [
@@ -242,10 +245,10 @@ test('malformed trusted expected_migrations records fail closed', () => {
     [null],
     ['string-record'],
   ];
-  for (const expected_migrations of cases) {
+  for (const proven_applied_migrations of cases) {
     const result = core.validateAdoptionAttestationEvidence(
       a.attestation,
-      { ...a.binding, expected_migrations },
+      { ...a.binding, proven_applied_migrations },
       contract
     );
     assert.equal(result.ok, false);
@@ -260,7 +263,7 @@ test('malformed trusted expected_migrations records fail closed', () => {
 test('empty trusted list and empty evidence list pass migration comparison', () => {
   const a = validAttestation(
     { applied_migrations: [] },
-    { expected_migrations: [] }
+    { proven_applied_migrations: [] }
   );
   // Digests still bound to original artifacts; applied list empty matches trusted empty.
   const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
@@ -269,7 +272,7 @@ test('empty trusted list and empty evidence list pass migration comparison', () 
 });
 
 test('trusted empty list with evidence migration is unknown', () => {
-  const a = validAttestation({}, { expected_migrations: [] });
+  const a = validAttestation({}, { proven_applied_migrations: [] });
   const result = core.validateAdoptionAttestationEvidence(a.attestation, a.binding, contract);
   assert.equal(result.ok, false);
   assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_UNKNOWN'));
@@ -282,19 +285,19 @@ test('trusted list with migrations and empty evidence is missing', () => {
   assert.ok(result.blockers.includes('GATE_ADOPTION_MIGRATION_MISSING'));
 });
 
-test('direct validator cannot return ok without trusted expected_migrations array', () => {
+test('direct validator cannot return ok without trusted proven applied history', () => {
   const a = validAttestation();
   const binding = { ...a.binding };
-  delete binding.expected_migrations;
+  delete binding.proven_applied_migrations;
   const result = core.validateAdoptionAttestationEvidence(a.attestation, binding, contract);
   assert.equal(result.ok, false);
   assert.ok(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'));
 });
 
-test('evaluateProvenance supplies repository-owned expected migrations', () => {
+test('evaluateProvenance derives proven applied history only after exact active ledger proof', () => {
   const a = validAttestation();
   const bindingWithoutMigrations = { ...a.binding };
-  delete bindingWithoutMigrations.expected_migrations;
+  delete bindingWithoutMigrations.proven_applied_migrations;
   const result = provenance.evaluateProvenance({
     migrationManifest: {
       status: 'ACTIVE',
@@ -309,10 +312,33 @@ test('evaluateProvenance supplies repository-owned expected migrations', () => {
     adoptionBinding: bindingWithoutMigrations,
     adoptionContract: contract,
   });
-  // With ACTIVE manifests + complete other bindings, repo injects expected_migrations.
+  // With ACTIVE manifests + exact ledger parity, repo derives proven history internally.
   assert.equal(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'), false);
   assert.equal(result.decision, 'PASS');
   assert.deepEqual(result.blockers, []);
+});
+
+test('caller-controlled expected_migrations injection fails closed', () => {
+  const a = validAttestation();
+  const forged = {
+    ...a.binding,
+    expected_migrations: a.binding.proven_applied_migrations,
+  };
+  const result = core.validateAdoptionAttestationEvidence(a.attestation, forged, contract);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'));
+});
+
+test('synthetic attestation never fabricates applied history from catalog membership', () => {
+  const arts = baseArtifacts();
+  const attestation = core.buildSyntheticAttestation({
+    baselineCommit: arts.baselineCommit,
+    migrationManifest: arts.migrationManifest,
+    expectedSchemaManifest: arts.expectedSchemaManifest,
+    catalogEvidence: arts.catalogEvidence,
+  });
+  assert.equal(arts.migrationManifest.migrations.length, 2);
+  assert.deepEqual(attestation.applied_migrations, []);
 });
 
 test('approval-reference mismatch fails closed', () => {
@@ -787,7 +813,7 @@ test('valid synthetic attestation does not activate manifests', () => {
       approval_reference: 'decision:synthetic-ok',
       environment_class: 'DISPOSABLE_CI',
       attestation_scope: 'INACTIVE_BASELINE',
-      expected_migrations: canonical.migrations.map((m) => ({ id: m.id, checksum: m.checksum })),
+      proven_applied_migrations: [],
     },
     contract
   );
@@ -836,7 +862,9 @@ test('overall provenance gate remains FAIL_CLOSED with GATE_ADOPTION_BASELINE_RE
   });
   assert.equal(result.decision, 'FAIL_CLOSED');
   assert.ok(result.blockers.includes('GATE_ADOPTION_BASELINE_REQUIRED'));
-  assert.equal(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'), false);
+  // Inactive manifests: proven_applied_migrations is never auto-derived and caller
+  // injection is rejected, so the trusted binding cannot be completed here.
+  assert.equal(result.blockers.includes('GATE_ADOPTION_TRUST_BINDING_REQUIRED'), true);
 });
 
 test('evaluateProvenance with self-consistent evidence but no trusted binding fails', () => {
@@ -1301,7 +1329,7 @@ test('ATTESTED evidence cannot fabricate applied history from catalog membership
       approval_reference: 'issue:9999',
       environment_class: 'DISPOSABLE_CI',
       attestation_scope: 'INACTIVE_BASELINE',
-      expected_migrations: [],
+      proven_applied_migrations: [],
     },
     contract
   );

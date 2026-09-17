@@ -89,8 +89,10 @@ const REQUIRED_TRUSTED_BINDING_FIELDS = Object.freeze([
   'approval_reference',
   'environment_class',
   'attestation_scope',
-  'expected_migrations',
+  'proven_applied_migrations',
 ]);
+
+const TRUSTED_BINDING_ALLOWED_FIELDS = new Set(REQUIRED_TRUSTED_BINDING_FIELDS);
 
 const FALLBACK_SENSITIVE_MARKERS = Object.freeze([
   'postgres://',
@@ -355,13 +357,24 @@ function matchPattern(value, pattern) {
 /**
  * True when binding is a complete trusted adoption binding from the invocation boundary.
  * Evidence values are claims and never establish trust by themselves.
- * expected_migrations must be an array (empty array is valid for inactive canonical manifests).
+ * proven_applied_migrations must be an array. It is independent from canonical
+ * catalog membership: CATALOGUED != APPLIED.
  */
 function hasCompleteTrustedBinding(binding) {
   if (!binding || typeof binding !== 'object' || Array.isArray(binding)) return false;
+  if (Object.getPrototypeOf(binding) !== Object.prototype) return false;
+
+  const ownKeys = Reflect.ownKeys(binding);
+  const descriptors = Object.getOwnPropertyDescriptors(binding);
+  for (const key of ownKeys) {
+    if (typeof key !== 'string' || !TRUSTED_BINDING_ALLOWED_FIELDS.has(key)) return false;
+    const descriptor = descriptors[key];
+    if (!descriptor || !descriptor.enumerable || descriptor.get || descriptor.set) return false;
+  }
+
   for (const field of REQUIRED_TRUSTED_BINDING_FIELDS) {
     const value = binding[field];
-    if (field === 'expected_migrations') {
+    if (field === 'proven_applied_migrations') {
       if (!Array.isArray(value)) return false;
       continue;
     }
@@ -371,11 +384,12 @@ function hasCompleteTrustedBinding(binding) {
 }
 
 /**
- * Validate trusted expected_migrations array shape before evidence comparison.
+ * Validate trusted proven_applied_migrations array shape before evidence comparison.
+ * This list is historical proof, never a projection of canonical catalog membership.
  * Returns true when the list is usable for authoritative ordered comparison.
  * Never echoes raw id/checksum values into blockers/errors.
  */
-function validateTrustedExpectedMigrations(expectedList, options, blockers, errors) {
+function validateTrustedProvenAppliedMigrations(expectedList, options, blockers, errors) {
   const {
     allowedMigFields,
     prohibited,
@@ -461,7 +475,8 @@ function validateTrustedExpectedMigrations(expectedList, options, blockers, erro
  * For ATTESTED evidence, binding must include every REQUIRED_TRUSTED_BINDING_FIELDS value
  * from the protected invocation boundary. Evidence never supplies its own trust source.
  *
- * expected_migrations is mandatory in the trusted binding (repository-owned list; empty allowed).
+ * proven_applied_migrations is mandatory in the trusted binding (empty allowed).
+ * Canonical catalog membership is bound independently by canonical_manifest_digest.
  *
  * Returns { ok, blockers, errors } without raw path/content leakage.
  */
@@ -780,11 +795,11 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
   const digestPattern = patterns.digest || '^sha256:[a-f0-9]{64}$';
   const maxMigrations = limits.max_applied_migrations || 256;
 
-  // Authoritative trusted migration list only. Never reconstruct from evidence.
-  let trustedExpectedMigrations = null;
+  // Authoritative proven historical migration list only. Never derive from catalog membership.
+  let trustedProvenAppliedMigrations = null;
   if (trustedBinding) {
-    const trustedListOk = validateTrustedExpectedMigrations(
-      trustedBinding.expected_migrations,
+    const trustedListOk = validateTrustedProvenAppliedMigrations(
+      trustedBinding.proven_applied_migrations,
       {
         allowedMigFields,
         prohibited,
@@ -797,7 +812,7 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
       errors
     );
     if (trustedListOk) {
-      trustedExpectedMigrations = trustedBinding.expected_migrations;
+      trustedProvenAppliedMigrations = trustedBinding.proven_applied_migrations;
     }
   }
 
@@ -811,7 +826,7 @@ function validateAdoptionAttestationEvidence(evidence, binding, contract) {
     }
 
     const seenIds = new Set();
-    const expectedList = trustedExpectedMigrations;
+    const expectedList = trustedProvenAppliedMigrations;
     const expectedIds = expectedList
       ? new Set(expectedList.map((item) => item && item.id).filter(Boolean))
       : null;
@@ -1491,12 +1506,7 @@ function buildSyntheticAttestation({
   const catalogDigest = computeObjectDigest(catalogEvidence);
   const migrations = Array.isArray(appliedMigrations)
     ? appliedMigrations
-    : Array.isArray(migrationManifest && migrationManifest.migrations)
-      ? migrationManifest.migrations.map((item) => ({
-          id: item.id,
-          checksum: item.checksum,
-        }))
-      : [];
+    : [];
 
   const attestation = {
     format_version: '1.0',
@@ -1524,6 +1534,7 @@ module.exports = {
   GATE,
   DEFAULT_CONTRACT_REL,
   REQUIRED_TRUSTED_BINDING_FIELDS,
+  TRUSTED_BINDING_ALLOWED_FIELDS,
   compareCodePoint,
   uniqueSorted,
   stableStringify,

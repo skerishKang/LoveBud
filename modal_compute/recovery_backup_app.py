@@ -32,7 +32,6 @@ import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 import modal
 
@@ -41,6 +40,8 @@ from modal_compute.recovery_backup_policy import (
     CLEANUP_COMPLETE,
     CLEANUP_FAILED,
     DAILY_TIER_MISSING,
+    DRIVE_STORAGE_NEAR_LIMIT,
+    DRIVE_STORAGE_WITHIN_LIMIT,
     EXTERNAL_STORAGE_UNPROVISIONED,
     MONTHLY_TIER_MISSING,
     SECRET_BOUNDARY_UNPROVISIONED,
@@ -51,20 +52,30 @@ from modal_compute.recovery_backup_policy import (
     evaluate_run,
     make_sanitized_status,
 )
+from modal_compute.recovery_drive_storage import (
+    TIER_DAILY,
+    TIER_MONTHLY,
+    TIER_STAGING,
+    TIER_WEEKLY,
+    build_drive_service,
+    copy_file as drive_copy_file,
+    create_encrypted_file as drive_create_file,
+    delete_file as drive_delete_file,
+    drive_secrets_present,
+    list_tier_files as drive_list_tier_files,
+    preflight_storage_quota as drive_preflight_quota,
+    select_retention_deletions as drive_select_deletions,
+    verify_uploaded_file as drive_verify_file,
+)
 
 # Fixed symbolic identifiers (values are never logged or recorded).
 RECOVERY_BACKUP_APP_NAME = "lovebud-recovery-backup"
 RECOVERY_DB_SECRET_NAME = "lovebud-db"
-RECOVERY_R2_SECRET_NAME = "lovebud-recovery-r2"
+RECOVERY_DRIVE_SECRET_NAME = "lovebud-recovery-drive"
 RECOVERY_ENCRYPTION_SECRET_NAME = "lovebud-recovery-encryption"
 
 # Symbolic environment names read from the injected secrets.
 DB_URL_ENV = "DATABASE_URL"
-R2_ACCOUNT_ID_ENV = "R2_ACCOUNT_ID"
-R2_ACCESS_KEY_ENV = "R2_ACCESS_KEY_ID"
-R2_SECRET_KEY_ENV = "R2_SECRET_ACCESS_KEY"
-R2_BUCKET_ENV = "R2_BUCKET_NAME"
-R2_ENDPOINT_ENV = "R2_ENDPOINT_URL"
 ENCRYPTION_KEY_ENV = "RECOVERY_ENCRYPTION_KEY_B64"
 
 # Bounded execution budgets.
@@ -83,8 +94,15 @@ WEEKLY_PREFIX = "weekly"
 MONTHLY_PREFIX = "monthly"
 STAGING_PREFIX = "staging"
 
+# Bounded retention: minimum valid points to retain per tier. The newest valid
+# daily point is always protected (keep >= 1). Deletions are tier-scoped and only
+# target expired app-owned encrypted artifacts.
+RETENTION_DAILY_KEEP = 8
+RETENTION_WEEKLY_KEEP = 5
+RETENTION_MONTHLY_KEEP = 4
+
 # Fixed non-private object metadata written at upload time.
-R2_OBJECT_METADATA = {
+BACKUP_OBJECT_METADATA = {
     "format-version": "LBBA1",
     "content-kind": "encrypted-postgresql-custom-dump",
 }
@@ -99,7 +117,7 @@ BACKUP_IMAGE = (
         POSTGRES_BACKUP_IMAGE,
         add_python=POSTGRES_PYTHON_VERSION,
     )
-    .pip_install("boto3", "cryptography")
+    .pip_install("requests", "cryptography")
     .add_local_python_source("modal_compute")
 )
 
@@ -120,14 +138,11 @@ def _log_phase(phase: str) -> None:
 def _secrets_present() -> bool:
     required = (
         DB_URL_ENV,
-        R2_ACCOUNT_ID_ENV,
-        R2_ACCESS_KEY_ENV,
-        R2_SECRET_KEY_ENV,
-        R2_BUCKET_ENV,
-        R2_ENDPOINT_ENV,
         ENCRYPTION_KEY_ENV,
     )
-    return all(os.environ.get(name) for name in required)
+    db_and_enc = all(os.environ.get(name) for name in required)
+    drive = drive_secrets_present()
+    return db_and_enc and drive
 
 
 def _decode_encryption_key(value: str) -> bytes:
@@ -218,16 +233,11 @@ def _streaming_decrypt(enc_path: str, out_path: str, key: bytes) -> None:
         decryptor.finalize()
 
 
-def _s3_client():
-    import boto3
-
-    return boto3.client(
-        "s3",
-        endpoint_url=os.environ[R2_ENDPOINT_ENV],
-        aws_access_key_id=os.environ[R2_ACCESS_KEY_ENV],
-        aws_secret_access_key=os.environ[R2_SECRET_KEY_ENV],
-        region_name="auto",
-    )
+def _drive_client():
+    # Provider client construction is a narrow, sanitized boundary: the Drive
+    # service carries a short-lived access token in memory only; no credential
+    # value is logged or recorded.
+    return build_drive_service()
 
 
 def _unique_run_key() -> str:
@@ -236,56 +246,82 @@ def _unique_run_key() -> str:
     return f"{stamp}-{uuid.uuid4().hex}"
 
 
-def _object_key(prefix: str, run_key: str) -> str:
-    return f"{prefix}/{run_key}"
-
-
 def _retry_object(fn):
+    # Bounded retry for idempotent provider operations only. The Drive adapter
+    # also bounds its own retries; this helper documents the shared budget.
     last_error = None
     for attempt in range(OBJECT_RETRY_MAX):
         try:
             return fn()
-        except Exception as exc:  # bounded retry for idempotent object ops only
+        except Exception as exc:  # bounded retry; raw exceptions never escape to status/logs
             last_error = exc
             if attempt < OBJECT_RETRY_MAX - 1:
                 time.sleep(OBJECT_RETRY_BACKOFF_SECONDS)
     raise last_error
 
 
-def _upload_attempt(s3, bucket: str, key: str, enc_path: str) -> Any:
-    # Retry-safe streaming upload: every attempt reopens the file with a fresh
-    # cursor, and boto3 streams the file object instead of a whole-file read.
-    with open(enc_path, "rb") as body:
-        return s3.put_object(Bucket=bucket, Key=key, Body=body, Metadata=R2_OBJECT_METADATA)
+def _drive_filename(prefix: str, run_key: str) -> str:
+    # Opaque app-owned identity only: no host, db, url, user, owner, or product id.
+    return prefix + "-" + run_key
 
 
-def _verified_upload(s3, bucket: str, key: str, enc_path: str) -> bool:
+def _quota_allows_upload(service, enc_path: str) -> bool:
+    # Quota preflight is mandatory before any files.create. The Drive adapter
+    # fetches the total account usage / provider storage limit (not only
+    # Drive-file usage) and classifies against the internal 0.90 hard ceiling.
+    # Insufficient quota or missing/unparseable quota fail closed: zero upload.
     expected_size = os.path.getsize(enc_path)
     if expected_size <= STREAM_AEAD_HEADER_BYTES + STREAM_AEAD_TAG_BYTES:
         _log_phase("upload_zero_or_truncated")
         return False
+    state = drive_preflight_quota(service, expected_size)
+    if state == DRIVE_STORAGE_WITHIN_LIMIT:
+        _log_phase("quota_within_limit")
+        return True
+    if state == DRIVE_STORAGE_NEAR_LIMIT:
+        _log_phase("quota_near_limit")
+        return True
+    # EXHAUSTED or AUTH_UNAVAILABLE: zero upload, no promotion.
+    _log_phase("quota_exhausted")
+    return False
+
+
+def _verified_upload(service, run_key: str, enc_path: str) -> str | None:
+    """Upload + verify the encrypted staging artifact; return the Drive file id.
+
+    Returns the verified file id on success, or None on any upload/verification
+    failure (including quota exhaustion). The file id is an opaque app-owned
+    identity; it is never logged or recorded in status output.
+    """
+    expected_size = os.path.getsize(enc_path)
+    if expected_size <= STREAM_AEAD_HEADER_BYTES + STREAM_AEAD_TAG_BYTES:
+        _log_phase("upload_zero_or_truncated")
+        return None
+    # Quota must PASS before any upload attempt; otherwise zero upload.
+    if not _quota_allows_upload(service, enc_path):
+        return None
     _log_phase("staging_upload")
-    _retry_object(lambda: _upload_attempt(s3, bucket, key, enc_path))
-    _log_phase("head_verify")
-    head = _retry_object(lambda: s3.head_object(Bucket=bucket, Key=key))
-    meta = (head.get("Metadata") or {}) if head else {}
-    ok = bool(
-        head
-        and head.get("ContentLength") == expected_size
-        and expected_size > STREAM_AEAD_HEADER_BYTES + STREAM_AEAD_TAG_BYTES
-        and meta.get("format-version") == R2_OBJECT_METADATA["format-version"]
-        and meta.get("content-kind") == R2_OBJECT_METADATA["content-kind"]
+    staging_name = _drive_filename(TIER_STAGING, run_key)
+    file_id = drive_create_file(
+        service,
+        staging_name,
+        enc_path,
+        TIER_STAGING,
+        run_key,
     )
+    _log_phase("head_verify")
+    ok = drive_verify_file(service, file_id, expected_size, TIER_STAGING)
     if not ok:
         _log_phase("head_verification_failed")
-    return ok
+        return None
+    return file_id
 
 
 @app.function(
     image=BACKUP_IMAGE,
     secrets=[
         modal.Secret.from_name(RECOVERY_DB_SECRET_NAME),
-        modal.Secret.from_name(RECOVERY_R2_SECRET_NAME),
+        modal.Secret.from_name(RECOVERY_DRIVE_SECRET_NAME),
         modal.Secret.from_name(RECOVERY_ENCRYPTION_SECRET_NAME),
     ],
     schedule=DAILY_SCHEDULE,
@@ -347,10 +383,10 @@ def run_logical_backup() -> dict:
     staging_delete_failed = False
     cleanup_ok = True
 
-    s3 = None
-    bucket = None
+    service = None
     run_key = None
-    staging_key = None
+    staging_file_id = None
+    daily_file_id = None
 
     try:
         # 3-4. dump + non-empty verification (single attempt, no unbounded retry)
@@ -385,19 +421,19 @@ def run_logical_backup() -> dict:
         if dump_ok and encryption_ok and plaintext_cleanup_ok:
             # Provider client construction is a narrow, sanitized boundary.
             try:
-                s3 = _s3_client()
+                service = _drive_client()
             except Exception:
                 _log_phase("storage_client_failed")
-                s3 = None
-            if s3 is not None:
-                bucket = os.environ[R2_BUCKET_ENV]
+                service = None
+            if service is not None:
                 run_key = _unique_run_key()
-                staging_key = _object_key(STAGING_PREFIX, run_key)
                 # Upload and verification are a narrow, sanitized boundary: retry
                 # exhaustion or unexpected provider responses never escape as raw
                 # exceptions; the outcome is expressed in the sanitized status.
+                # Quota preflight runs BEFORE any files.create (inside _verified_upload).
                 try:
-                    upload_ok = _verified_upload(s3, bucket, staging_key, enc_path)
+                    staging_file_id = _verified_upload(service, run_key, enc_path)
+                    upload_ok = staging_file_id is not None
                     verify_ok = upload_ok
                 except Exception:
                     upload_ok = False
@@ -405,14 +441,14 @@ def run_logical_backup() -> dict:
                     _log_phase("upload_or_verification_failed")
 
         if dump_ok and encryption_ok and plaintext_cleanup_ok and upload_ok and verify_ok:
-            # 9. daily promotion from the staging object under the unique run key
-            daily_key = _object_key(DAILY_PREFIX, run_key)
+            # 9. daily promotion from the same encrypted artifact (never a second
+            # dump). The Drive copy promotes the verified staging file to the
+            # daily tier under the same app-owned run identity.
             try:
                 _log_phase("daily_promote")
-                _retry_object(
-                    lambda: s3.copy_object(
-                        Bucket=bucket, CopySource={"Bucket": bucket, "Key": staging_key}, Key=daily_key
-                    )
+                daily_name = _drive_filename(TIER_DAILY, run_key)
+                daily_file_id = drive_copy_file(
+                    service, staging_file_id, daily_name, TIER_DAILY, run_key
                 )
                 daily_ok = True
             except Exception:
@@ -424,13 +460,11 @@ def run_logical_backup() -> dict:
             now = datetime.now(timezone.utc)
             weekly_decided = decide_weekly_promotion(True, False, now.weekday())
             if weekly_decided:
-                weekly_key = _object_key(WEEKLY_PREFIX, run_key)
                 try:
                     _log_phase("weekly_promote")
-                    _retry_object(
-                        lambda: s3.copy_object(
-                            Bucket=bucket, CopySource={"Bucket": bucket, "Key": daily_key}, Key=weekly_key
-                        )
+                    weekly_name = _drive_filename(TIER_WEEKLY, run_key)
+                    drive_copy_file(
+                        service, daily_file_id, weekly_name, TIER_WEEKLY, run_key
                     )
                     weekly_success = True
                 except Exception:
@@ -438,13 +472,11 @@ def run_logical_backup() -> dict:
                     _log_phase("weekly_promotion_failed")
             monthly_decided = decide_monthly_promotion(True, False, now.day)
             if monthly_decided:
-                monthly_key = _object_key(MONTHLY_PREFIX, run_key)
                 try:
                     _log_phase("monthly_promote")
-                    _retry_object(
-                        lambda: s3.copy_object(
-                            Bucket=bucket, CopySource={"Bucket": bucket, "Key": daily_key}, Key=monthly_key
-                        )
+                    monthly_name = _drive_filename(TIER_MONTHLY, run_key)
+                    drive_copy_file(
+                        service, daily_file_id, monthly_name, TIER_MONTHLY, run_key
                     )
                     monthly_success = True
                 except Exception:
@@ -454,10 +486,26 @@ def run_logical_backup() -> dict:
             # never deletes the valid daily object.
             try:
                 _log_phase("staging_delete")
-                _retry_object(lambda: s3.delete_object(Bucket=bucket, Key=staging_key))
+                drive_delete_file(service, staging_file_id)
             except Exception:
                 staging_delete_failed = True
                 _log_phase("staging_delete_failed")
+            # 12. bounded retention cleanup: delete expired app-owned artifacts,
+            # tier-scoped, newest valid point protected. Failures are reflected
+            # as cleanup state only and never delete the valid daily point.
+            for _tier, _keep in (
+                (TIER_DAILY, RETENTION_DAILY_KEEP),
+                (TIER_WEEKLY, RETENTION_WEEKLY_KEEP),
+                (TIER_MONTHLY, RETENTION_MONTHLY_KEEP),
+            ):
+                try:
+                    _log_phase("retention_cleanup")
+                    tier_files = drive_list_tier_files(service, _tier)
+                    for _expired_id in drive_select_deletions(tier_files, _keep):
+                        drive_delete_file(service, _expired_id)
+                except Exception:
+                    staging_delete_failed = True
+                    _log_phase("retention_cleanup_failed")
     finally:
         # 12. strict cleanup: failures are surfaced, never suppressed.
         try:

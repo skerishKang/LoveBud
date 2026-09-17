@@ -656,6 +656,41 @@ function compareLedger(expectedMigrations, ledgerEvidence) {
   return blockers;
 }
 
+// Adoption history is allowed to be an exact prefix of the canonical catalog.
+// Unlike compareLedger(), this deliberately does NOT require every catalogued
+// migration to be historically applied. CATALOGUED != APPLIED.
+function compareAppliedHistoryPrefix(canonicalMigrations, provenAppliedMigrations) {
+  if (!Array.isArray(provenAppliedMigrations)) {
+    return ['GATE_PROVEN_APPLIED_HISTORY_UNAVAILABLE'];
+  }
+  const canonical = Array.isArray(canonicalMigrations) ? canonicalMigrations : [];
+  const byId = new Map(canonical.map((migration, index) => [migration.id, { migration, index }]));
+  const seen = new Set();
+  const blockers = [];
+
+  provenAppliedMigrations.forEach((applied, index) => {
+    if (!applied || !applied.id || !SHA256_PATTERN.test(applied.checksum || '')) {
+      blockers.push('GATE_LEDGER_RECORD_INVALID');
+      return;
+    }
+    if (seen.has(applied.id)) blockers.push(`GATE_DUPLICATE_APPLIED_MIGRATION:${applied.id}`);
+    seen.add(applied.id);
+    const expected = byId.get(applied.id);
+    if (!expected) {
+      blockers.push(`GATE_UNKNOWN_APPLIED_MIGRATION:${applied.id}`);
+      return;
+    }
+    if (expected.migration.checksum !== applied.checksum) {
+      blockers.push(`GATE_EDITED_MIGRATION:${applied.id}`);
+    }
+    if (expected.index !== index) {
+      blockers.push(`GATE_REORDERED_MIGRATION:${applied.id}`);
+    }
+  });
+
+  return [...new Set(blockers)].sort();
+}
+
 function compareSchema(expectedSchemaManifest, catalogEvidence) {
   if (!catalogEvidence || !Array.isArray(catalogEvidence.objects)) {
     return ['GATE_CATALOG_EVIDENCE_UNAVAILABLE'];
@@ -729,6 +764,7 @@ function evaluateProvenance({
   const criticalObjects = Array.isArray(expectedSchemaManifest && expectedSchemaManifest.critical_objects)
     ? expectedSchemaManifest.critical_objects
     : [];
+  const ledgerBlockers = compareLedger(migrations, ledgerEvidence);
 
   if (!migrationManifest || (migrationManifest.status !== 'ACTIVE' || (expectedSchemaManifest && expectedSchemaManifest.status !== 'ACTIVE'))) {
     if (!migrationManifest || migrationManifest.status !== 'ACTIVE' || !expectedSchemaManifest || expectedSchemaManifest.status !== 'ACTIVE') {
@@ -743,18 +779,29 @@ function evaluateProvenance({
   if (!ledgerEvidence) {
     blockers.push('GATE_ADOPTION_EVIDENCE_UNAVAILABLE');
   } else {
-    // Repository-owned canonical migration sequence (never reconstructed from evidence).
+    // ACTIVE gate only: canonical membership becomes proven-applied authority only
+    // after exact ledger comparison has independently succeeded. The caller never
+    // supplies migration-history authority to this composition layer.
     const repositoryExpectedMigrations = migrations.map((item) => ({
       id: item.id,
       checksum: item.checksum
     }));
     let binding = adoptionBinding || null;
     if (adoptionBinding && typeof adoptionBinding === 'object' && !Array.isArray(adoptionBinding)) {
-      // Always attach repository-owned expected_migrations before completeness check.
-      const bindingCandidate = {
-        ...adoptionBinding,
-        expected_migrations: repositoryExpectedMigrations
-      };
+      const callerInjectedHistory =
+        Object.prototype.hasOwnProperty.call(adoptionBinding, 'expected_migrations') ||
+        Object.prototype.hasOwnProperty.call(adoptionBinding, 'proven_applied_migrations');
+      const activeAuthority =
+        migrationManifest && migrationManifest.status === 'ACTIVE' &&
+        expectedSchemaManifest && expectedSchemaManifest.status === 'ACTIVE';
+      const bindingCandidate = callerInjectedHistory
+        ? null
+        : (activeAuthority && ledgerBlockers.length === 0
+          ? {
+              ...adoptionBinding,
+              proven_applied_migrations: repositoryExpectedMigrations
+            }
+          : adoptionBinding);
       if (attestationCore.hasCompleteTrustedBinding(bindingCandidate)) {
         binding = {
           baseline_commit: bindingCandidate.baseline_commit,
@@ -764,7 +811,7 @@ function evaluateProvenance({
           approval_reference: bindingCandidate.approval_reference,
           environment_class: bindingCandidate.environment_class,
           attestation_scope: bindingCandidate.attestation_scope,
-          expected_migrations: repositoryExpectedMigrations
+          proven_applied_migrations: bindingCandidate.proven_applied_migrations
         };
       } else {
         binding = bindingCandidate;
@@ -780,7 +827,7 @@ function evaluateProvenance({
     }
   }
 
-  blockers.push(...compareLedger(migrations, ledgerEvidence));
+  blockers.push(...ledgerBlockers);
   blockers.push(...compareSchema(expectedSchemaManifest || { critical_objects: [] }, catalogEvidence));
   const uniqueBlockers = [...new Set(blockers)].sort();
   return {
@@ -795,6 +842,159 @@ function evaluateProvenance({
       observed_schema_objects: Array.isArray(catalogEvidence && catalogEvidence.objects)
         ? catalogEvidence.objects.length
         : 0
+    }
+  };
+}
+
+/**
+ * Phase-C-only source model for an existing legacy environment.
+ *
+ * Distinguishes all four authorities explicitly:
+ *   1) canonical migration catalog (future sequence),
+ *   2) separately proven historical applied prefix,
+ *   3) trusted inactive legacy-baseline schema expectation,
+ *   4) post-migration canonical expected schema.
+ *
+ * This function cannot activate manifests and never treats the post-migration
+ * expected schema as the legacy baseline comparator.
+ */
+function evaluateLegacyAdoptionBaseline({
+  migrationManifest,
+  postMigrationExpectedSchemaManifest,
+  baselineExpectedSchemaCandidate,
+  attestationEvidence,
+  catalogEvidence,
+  adoptionBinding,
+  adoptionContract
+}) {
+  const blockers = [];
+  const attestationCore = require('./adoption-attestation-core.cjs');
+  const migrations = Array.isArray(migrationManifest && migrationManifest.migrations)
+    ? migrationManifest.migrations
+    : [];
+
+  if (!migrationManifest || migrationManifest.status !== 'ADOPTION_REQUIRED') {
+    blockers.push('GATE_LEGACY_BASELINE_MANIFEST_STATUS_INVALID');
+  }
+  const baselineValidation = validateExpectedSchemaManifest(baselineExpectedSchemaCandidate);
+  if (!baselineValidation.ok || baselineExpectedSchemaCandidate.status !== 'ADOPTION_REQUIRED') {
+    blockers.push('GATE_LEGACY_BASELINE_SCHEMA_INVALID');
+  }
+  const postValidation = validateExpectedSchemaManifest(postMigrationExpectedSchemaManifest);
+  if (!postValidation.ok || postMigrationExpectedSchemaManifest.status !== 'ADOPTION_REQUIRED') {
+    blockers.push('GATE_POST_MIGRATION_SCHEMA_INVALID');
+  }
+
+  const allowedBindingFields = new Set([
+    ...attestationCore.REQUIRED_TRUSTED_BINDING_FIELDS,
+    'post_migration_expected_schema_digest'
+  ]);
+  let bindingStructurallyValid = !!adoptionBinding &&
+    typeof adoptionBinding === 'object' &&
+    !Array.isArray(adoptionBinding) &&
+    Object.getPrototypeOf(adoptionBinding) === Object.prototype;
+  if (bindingStructurallyValid) {
+    const descriptors = Object.getOwnPropertyDescriptors(adoptionBinding);
+    for (const key of Reflect.ownKeys(adoptionBinding)) {
+      const descriptor = descriptors[key];
+      if (
+        typeof key !== 'string' ||
+        !allowedBindingFields.has(key) ||
+        !descriptor ||
+        !descriptor.enumerable ||
+        descriptor.get ||
+        descriptor.set
+      ) {
+        bindingStructurallyValid = false;
+        break;
+      }
+    }
+  }
+  if (!bindingStructurallyValid || !adoptionBinding) {
+    blockers.push('GATE_ADOPTION_TRUST_BINDING_REQUIRED');
+  }
+
+  let cleanBinding = null;
+  if (bindingStructurallyValid) {
+    const canonicalDigest = attestationCore.computeObjectDigest(migrationManifest);
+    const baselineDigest = attestationCore.computeObjectDigest(baselineExpectedSchemaCandidate);
+    const catalogDigest = attestationCore.computeObjectDigest(catalogEvidence);
+    const postMigrationDigest = attestationCore.computeObjectDigest(postMigrationExpectedSchemaManifest);
+
+    // An inactive legacy baseline candidate and post-migration canonical expectation
+    // are distinct semantic authorities even if they share the same structural contract.
+    // Exact identity is a role-confusion failure, never an implicit substitution.
+    if (baselineDigest === postMigrationDigest) {
+      blockers.push('GATE_LEGACY_BASELINE_EXPECTATION_ROLE_CONFLICT');
+    }
+
+    if (adoptionBinding.canonical_manifest_digest !== canonicalDigest) {
+      blockers.push('GATE_ADOPTION_MANIFEST_DIGEST_MISMATCH');
+    }
+    if (adoptionBinding.expected_schema_digest !== baselineDigest) {
+      blockers.push('GATE_ADOPTION_EXPECTED_SCHEMA_DIGEST_MISMATCH');
+    }
+    if (adoptionBinding.catalog_evidence_digest !== catalogDigest) {
+      blockers.push('GATE_ADOPTION_CATALOG_DIGEST_MISMATCH');
+    }
+    if (
+      !SHA256_PATTERN.test(adoptionBinding.post_migration_expected_schema_digest || '') ||
+      adoptionBinding.post_migration_expected_schema_digest !== postMigrationDigest
+    ) {
+      blockers.push('GATE_POST_MIGRATION_EXPECTED_SCHEMA_DIGEST_MISMATCH');
+    }
+
+    blockers.push(...compareAppliedHistoryPrefix(
+      migrations,
+      adoptionBinding.proven_applied_migrations
+    ));
+
+    cleanBinding = {
+      baseline_commit: adoptionBinding.baseline_commit,
+      canonical_manifest_digest: adoptionBinding.canonical_manifest_digest,
+      expected_schema_digest: adoptionBinding.expected_schema_digest,
+      catalog_evidence_digest: adoptionBinding.catalog_evidence_digest,
+      approval_reference: adoptionBinding.approval_reference,
+      environment_class: adoptionBinding.environment_class,
+      attestation_scope: adoptionBinding.attestation_scope,
+      proven_applied_migrations: adoptionBinding.proven_applied_migrations
+    };
+  }
+
+  const attestationResult = attestationCore.validateAdoptionAttestationEvidence(
+    attestationEvidence,
+    cleanBinding,
+    adoptionContract
+  );
+  if (!attestationResult.ok) blockers.push(...attestationResult.blockers);
+
+  // The live legacy catalog is compared ONLY with the explicitly trusted inactive
+  // baseline candidate. The post-migration canonical schema is digest-bound above
+  // but deliberately not used as this comparator.
+  blockers.push(...compareSchema(
+    baselineExpectedSchemaCandidate || { critical_objects: [] },
+    catalogEvidence
+  ));
+
+  const uniqueBlockers = [...new Set(blockers)].sort();
+  return {
+    decision: uniqueBlockers.length === 0 ? 'PASS' : 'FAIL_CLOSED',
+    blockers: uniqueBlockers,
+    summary: {
+      canonical_catalog_migrations: migrations.length,
+      proven_applied_migrations: Array.isArray(adoptionBinding && adoptionBinding.proven_applied_migrations)
+        ? adoptionBinding.proven_applied_migrations.length
+        : 0,
+      baseline_expected_schema_objects: Array.isArray(baselineExpectedSchemaCandidate && baselineExpectedSchemaCandidate.critical_objects)
+        ? baselineExpectedSchemaCandidate.critical_objects.length
+        : 0,
+      post_migration_expected_schema_objects: Array.isArray(postMigrationExpectedSchemaManifest && postMigrationExpectedSchemaManifest.critical_objects)
+        ? postMigrationExpectedSchemaManifest.critical_objects.length
+        : 0,
+      observed_schema_objects: Array.isArray(catalogEvidence && catalogEvidence.objects)
+        ? catalogEvidence.objects.length
+        : 0,
+      expectation_mode: 'LEGACY_ADOPTION_BASELINE'
     }
   };
 }
@@ -852,6 +1052,8 @@ module.exports = {
   validateExpectedSchemaManifest,
   validateSourceConfiguration,
   compareSchema,
+  compareAppliedHistoryPrefix,
+  evaluateLegacyAdoptionBaseline,
   evaluateProvenance,
   evaluateProvenanceWithSource
 };
