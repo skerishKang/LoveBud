@@ -2346,6 +2346,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/plus-entitlement-4425.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4425 Plus entitlement boundary in-process with constructed Request/env inputs, injected Firebase verification and Firestore profile readers, proving four-field accepted-truthy normalization, missing/false denial, verified-principal ordering, fail-closed verifier/profile failures, sanitized responses, exact gate selection, no-store behavior, and production-cutover prohibition. No real network, browser, Firebase provider, Firestore, Neon database, Production secret, Product request, or Production resource is used (#4425).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/memory-social-read-direct-neon-4423.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the #4423 residual Memory social GET direct-Neon source candidates in-process with constructed Request/env inputs, injected fake Firebase verification and fake Neon SELECT executors, proving four independent exact gates, authenticated owner-or-exact-public visibility, anonymous exact public Tree+Memory membership, reaction DTO parity, authenticated legacy-array and cursor comment shapes, public bounded cursor comment shape, server-computed isOwn with zero owner identifier leakage, visible/non-deleted oldest-first comment reads, fail-closed query/config behavior, no direct-to-Modal fallback after direct execution begins, and unchanged Modal fallback source when gates are unset. No real network, browser, Firebase provider, Neon database, Production secret, Product request, or Production resource is used (#4423).",

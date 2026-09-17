@@ -520,6 +520,40 @@
       "next_action": "Private Tree capability direct-Neon read is Production live at the accepted #4424 evidence. Continue ordinary monitoring/regression protection only. No replacement Product canary is authorized. GATE_ONLY_ROLLBACK remains the recovery path. Any change to LB_PRIVATE_TREE_CAPABILITY_READ_RUNTIME, the direct_neon_runtime credential boundary, trees SELECT privilege envelope, private-tree-capability-direct-neon helper SQL, route dispatch, Firebase principal/legacyOwnerId owner binding, false-on-auth/non-owner compatibility semantics, response DTO/viewerCanEdit-only contract, request-id/no-store/direct-neon markers, or Cloudflare Production deployment/source parity invalidates this attestation and requires fresh CENTRAL review."
     },
     {
+      "id": "plus-entitlement-read",
+      "route": "internal entitlement boundary",
+      "method": "READ",
+      "family": "READ",
+      "source_helper": "functions/_shared/plus-entitlement-direct-neon.js",
+      "source_refs": [
+        "#4425"
+      ],
+      "source_state": "SOURCE_READY",
+      "runtime_gate": "LB_PLUS_ENTITLEMENT_READ_RUNTIME",
+      "required_objects": {
+        "users": [
+          "SELECT"
+        ]
+      },
+      "credential_boundary": "direct_neon_runtime",
+      "source_parity": "PASS_AT_CITED_SHA",
+      "privilege_state": "PRIVILEGE_UNPROVEN",
+      "live_provider_state": "NOT_FRESHLY_VERIFIED",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_NOT_INTENDED",
+      "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
+      "diagnostic_execution_authorized": "NOT_AUTHORIZED",
+      "production_live": "NOT_PRODUCTION_LIVE",
+      "disposition_4239": "I",
+      "last_exact_head_evidence": {
+        "ref": "#4425 Phase-B source candidate with verified Firebase principal, injected Firestore profile reader, four-field compatibility normalization, fail-closed provider errors, no-store response, and no Production gate binding.",
+        "main_sha": "764b2b6097d90d86664e29025ccee0e806cdcad1"
+      },
+      "modal_retained_by_design": false,
+      "rollback_authority": "SOURCE_PHASE_DEFAULT_MODAL: LB_PLUS_ENTITLEMENT_READ_RUNTIME remains unset/non-direct; no Production activation or provider binding is authorized.",
+      "next_action": "Resolve the Cloudflare Firestore credential/binding and read-role authority separately before any gate check-in or private-write integration."
+    },
+    {
       "id": "auth-memory-reactions-get",
       "route": "/api/memories/{id}/reactions",
       "method": "GET",
