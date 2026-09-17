@@ -11,6 +11,12 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const CORE = require(path.resolve(REPO_ROOT, 'scripts', 'role-mapping-reconciliation-core.cjs'));
 const CLI_PATH = path.resolve(REPO_ROOT, 'scripts', 'run-production-readonly-role-mapping-reconciliation.cjs');
 const CLI = require(CLI_PATH);
+const { holdRepoSecretsContractMutexForFile } = require('../helpers/repo-secrets-contract-mutex.cjs');
+
+// #4382: the T-series fixtures create transient `.test-tmp-*` entries inside
+// the real REPO/.secrets (the Production-readonly boundary requires it), so
+// this file must never overlap another real-.secrets contract file.
+holdRepoSecretsContractMutexForFile();
 
 function getBaselineCommit() {
   try {

@@ -27,6 +27,12 @@ const {
   sanitizedFailure,
 } = require('../../scripts/run-production-readonly-runtime-role-acl-attestation.cjs');
 const boundary = require('../../scripts/production-readonly-catalog-boundary-core.cjs');
+const { holdRepoSecretsContractMutexForFile } = require('../helpers/repo-secrets-contract-mutex.cjs');
+
+// #4382: role-mapping fixtures create transient `.{test,symlink}-4283-*` entries
+// inside the real REPO/.secrets (the Production-readonly boundary requires it),
+// so this file must never overlap another real-.secrets contract file.
+holdRepoSecretsContractMutexForFile();
 
 const RAW_OBSERVER = 'fixture_observer_must_never_escape';
 const RAW_TARGET = 'fixture_target_must_never_escape';

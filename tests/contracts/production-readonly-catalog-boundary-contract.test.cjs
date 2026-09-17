@@ -18,6 +18,12 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { holdRepoSecretsContractMutexForFile } = require('../helpers/repo-secrets-contract-mutex.cjs');
+
+// #4382: the `isolated temp secrets never touch real REPO/.secrets` assertion
+// snapshots the real REPO/.secrets listing, so no other real-.secrets contract
+// file may create or remove transient fixtures inside that window.
+holdRepoSecretsContractMutexForFile();
 
 const REPO = path.resolve(__dirname, '..', '..');
 const CORE = require(path.join(REPO, 'scripts/production-readonly-catalog-boundary-core.cjs'));
