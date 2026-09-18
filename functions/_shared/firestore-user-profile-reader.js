@@ -130,10 +130,18 @@ export function projectFirestoreEntitlementProfile(documentPayload) {
   if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return {};
 
   const profile = {};
-  for (const fieldName of ['privateStorageEnabled', 'plan', 'plus', 'entitlements']) {
+  for (const fieldName of ['privateStorageEnabled', 'plan', 'plus']) {
     if (!Object.hasOwn(fields, fieldName)) continue;
     const decoded = decodeFirestoreValue(fields[fieldName]);
     if (decoded !== undefined) profile[fieldName] = decoded;
+  }
+
+  if (Object.hasOwn(fields, 'entitlements')) {
+    const decoded = decodeFirestoreValue(fields.entitlements);
+    if (decoded && typeof decoded === 'object' && !Array.isArray(decoded)
+        && Object.hasOwn(decoded, 'privateStorage')) {
+      profile.entitlements = { privateStorage: decoded.privateStorage };
+    }
   }
   return profile;
 }
