@@ -9,7 +9,7 @@ import {
 } from '../../_shared/owner-memory-detail-direct-neon.js';
 import {
   handleMemoryUpdateDirectNeon,
-  isMemoryUpdateDirectNeonSelected
+  isAnyMemoryUpdateDirectNeonSelected
 } from '../../_shared/memory-update-direct-neon.js';
 import {
   handleMemoryDeleteDirectNeon,
@@ -98,15 +98,15 @@ export async function handleMemoryDetailPut(
     return proxyMemoryRouteRequest(context, routeOptions);
   }
 
-  if (!isMemoryUpdateDirectNeonSelected(context.env || {})) {
+  if (!isAnyMemoryUpdateDirectNeonSelected(context.env || {})) {
     return proxyMemoryRouteRequest(context, routeOptions);
   }
 
-  // The direct helper must inspect the bounded JSON body to preserve the
-  // explicit-private entitlement split. Clone BEFORE the direct attempt so a
-  // private update can still be forwarded to the existing Modal proxy with an
-  // untouched body stream. Once direct DB execution begins, the helper never
-  // falls back to Modal.
+  // The direct helper inspects the bounded JSON body to select the independent
+  // ordinary vs private-visibility gate. Clone BEFORE the direct attempt so a
+  // request that belongs to the other authority can still be forwarded to the
+  // existing Modal proxy with an untouched body stream. Once direct DB
+  // execution begins, the helper never falls back to Modal.
   const modalFallbackRequest = context.request.clone();
   const requestId = getOrCreateRequestId(context.request);
   const directResponse = await handleMemoryUpdateDirectNeon(
@@ -130,7 +130,7 @@ export async function handleMemoryDetailPut(
 }
 
 export async function onRequestPut(context) {
-  if (!isMemoryUpdateDirectNeonSelected(context.env || {})) {
+  if (!isAnyMemoryUpdateDirectNeonSelected(context.env || {})) {
     return proxyMemoryRouteRequest(context, withMemoryId(context));
   }
   return handleMemoryDetailPut(context);
