@@ -2346,12 +2346,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/plus-entitlement-4425.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the #4425 Plus entitlement boundary in-process with constructed Request/env inputs, injected Firebase verification and Firestore profile readers, proving four-field accepted-truthy normalization, missing/false denial, verified-principal ordering, fail-closed verifier/profile failures, sanitized responses, exact gate selection, no-store behavior, and production-cutover prohibition. No real network, browser, Firebase provider, Firestore, Neon database, Production secret, Product request, or Production resource is used (#4425).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/memory-social-read-direct-neon-4423.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the #4423 residual Memory social GET direct-Neon source candidates in-process with constructed Request/env inputs, injected fake Firebase verification and fake Neon SELECT executors, proving four independent exact gates, authenticated owner-or-exact-public visibility, anonymous exact public Tree+Memory membership, reaction DTO parity, authenticated legacy-array and cursor comment shapes, public bounded cursor comment shape, server-computed isOwn with zero owner identifier leakage, visible/non-deleted oldest-first comment reads, fail-closed query/config behavior, no direct-to-Modal fallback after direct execution begins, and unchanged Modal fallback source when gates are unset. No real network, browser, Firebase provider, Neon database, Production secret, Product request, or Production resource is used (#4423).",
@@ -2826,6 +2820,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/plus-entitlement-4425.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4425 Plus entitlement boundary in-process with constructed Request/env inputs, injected Firebase verification and Firestore profile readers, proving four-field accepted-truthy normalization, missing/false denial, verified-principal ordering, fail-closed verifier/profile failures, sanitized responses, exact gate selection, no-store behavior, and production-cutover prohibition. No real network, browser, Firebase provider, Firestore, Neon database, Production secret, Product request, or Production resource is used (#4425).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/preview-embed-sanitization-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
@@ -2841,6 +2841,12 @@
       "path": "tests/contracts/private-owner-cache-lifecycle-3928-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes production js/auth/auth-cache.js, js/auth/auth-session.js, js/auth.js, and js/my-trees/my-trees-data.js in a local node:vm fake-storage environment: asserts #3928 owner-transition regressions (A -> logout/switch -> B negative, no transient A cache paint for B, same-UID cache hit, logout coverage for all private key families, stale async A result invalidation, canonical preload cannot repopulate after UID transition) with no network, DB, Production, secrets, or external integration.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/private-storage-entitlement-neon-4425.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source/test-only contract for the #4425 Neon private-storage entitlement boundary: imports the pure helper with fake transaction inputs and statically inspects the additive migration; no real database, network, provider, credential, Product request, or Production resource.",
       "capabilities": []
     },
     {
