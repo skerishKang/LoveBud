@@ -239,21 +239,54 @@ WHERE id = $1
 LIMIT 1;
 `;
 
-function buildUpdateSql(payload, signal) {
+async function buildUpdateSql(payload, signal, tx, ownerId) {
   const assignments = [];
   const values = [];
 
   function add(column, value) {
     values.push(value);
-    assignments.push(`${column} = $${values.length}`);
+    assignments.push(`${column} = ${values.length}`);
   }
 
+  // Preserve Modal field-processing order exactly: title validation first,
+  // then visibility validation/entitlement, then groupName and keywords.
   if (Object.prototype.hasOwnProperty.call(payload, 'title')) {
     add('title', normalizeTitle(payload.title, signal));
   }
   if (Object.prototype.hasOwnProperty.call(payload, 'visibility')) {
     if (payload.visibility !== 'public' && payload.visibility !== 'private') {
       failWork(signal, 400, 'visibility: public, private', 'invalid-visibility');
+    }
+    if (payload.visibility === 'private') {
+      try {
+        await requirePrivateStorageEntitlement(tx, ownerId);
+      } catch (error) {
+        if (
+          error instanceof PrivateStorageEntitlementError
+          && error.code === PRIVATE_STORAGE_ENTITLEMENT_ERROR.REQUIRED
+        ) {
+          failWorkBody(
+            signal,
+            403,
+            {
+              error: 'Private storage requires Plus.',
+              code: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+              upgradeRequired: true
+            },
+            'plus-required-private-storage'
+          );
+        }
+        failWorkBody(
+          signal,
+          503,
+          {
+            error: 'Entitlement check temporarily unavailable.',
+            code: 'ENTITLEMENT_CHECK_UNAVAILABLE',
+            upgradeRequired: false
+          },
+          'private-storage-entitlement-unavailable'
+        );
+      }
     }
     add('visibility', payload.visibility);
   }
@@ -292,42 +325,7 @@ async function runUpdateWork(tx, signal, { treeId, ownerId, payload }) {
     failWork(signal, 400, { code: 'EMPTY_TREE_UPDATE' }, 'empty-tree-update');
   }
 
-  if (
-    Object.prototype.hasOwnProperty.call(payload, 'visibility')
-    && payload.visibility === 'private'
-  ) {
-    try {
-      await requirePrivateStorageEntitlement(tx, ownerId);
-    } catch (error) {
-      if (
-        error instanceof PrivateStorageEntitlementError
-        && error.code === PRIVATE_STORAGE_ENTITLEMENT_ERROR.REQUIRED
-      ) {
-        failWorkBody(
-          signal,
-          403,
-          {
-            error: 'Private storage requires Plus.',
-            code: 'PLUS_REQUIRED_PRIVATE_STORAGE',
-            upgradeRequired: true
-          },
-          'plus-required-private-storage'
-        );
-      }
-      failWorkBody(
-        signal,
-        503,
-        {
-          error: 'Entitlement check temporarily unavailable.',
-          code: 'ENTITLEMENT_CHECK_UNAVAILABLE',
-          upgradeRequired: false
-        },
-        'private-storage-entitlement-unavailable'
-      );
-    }
-  }
-
-  const update = buildUpdateSql(payload, signal);
+  const update = await buildUpdateSql(payload, signal, tx, ownerId);
   if (!update.assignments.length) {
     failWork(signal, 400, { code: 'EMPTY_TREE_UPDATE' }, 'empty-tree-update');
   }
