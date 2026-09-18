@@ -93,8 +93,18 @@ diverge. Rules:
   canonical-neon-phase4-write-provenance-4005-4157.md, CANONICAL_SLICE_4006_ADOPTION_BASELINE_PACKET.md;
   boundary: LOVE_PLATFORM_WRITE_DATABASE_URL). Used by #4256.
 
-NOT the runtime-read role: lb_ro_709d5f3e68f774d2 is the #4005 Phase-B
-  CATALOG_METADATA_ONLY role. It must remain unchanged and must never be used as a target.
+NOT the runtime-read role — ORIGINAL #4255-ERA ASSUMPTION, SUPERSEDED 2026-09-18:
+  lb_ro_709d5f3e68f774d2 was assumed to be the #4005 Phase-B CATALOG_METADATA_ONLY role.
+  The text above is retained for audit trail only. Fresh read-only catalog measurement taken
+  for #4423 disproves the assumption: this role is the actual direct_neon read-role boundary
+  behind LOVE_PLATFORM_DATABASE_URL. It carries SELECT on trees, memories, tree_social_counts,
+  reactions, tree_comments and tree_hub_layouts — exactly the previously granted Product read
+  envelope — and, since the #4423 one-statement restoration, SELECT on comments. Recorded
+  PRE/POST evidence: docs/architecture/direct-neon-readiness-matrix-4311.json (#4423 comment
+  read rows) and docs/architecture/DIRECT_NEON_READINESS_MATRIX_4311.md. Standing constraints
+  are unchanged: it stays read-only, and no privilege beyond the documented read envelope may
+  ever be granted to it. Any future lane that needs the read boundary must target this role and
+  must re-verify it with a fresh catalog measurement instead of trusting this packet.
 ```
 
 Target identity (from issue bodies; fresh re-verify at execution time):
