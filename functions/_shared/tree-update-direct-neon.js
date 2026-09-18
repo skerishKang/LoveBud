@@ -2,10 +2,11 @@
 //
 // This module is a gated migration candidate for PUT /api/trees/:id only.
 // Firebase remains Product identity authority and principal.legacyOwnerId is the
-// sole owner authority. Default/modal/unknown routing remains Modal-backed.
-// An explicit visibility='private' update is intentionally deferred to Modal
-// before any direct DB capability is acquired so Plus/private entitlement stays
-// owned by the existing Product authority.
+// sole owner authority. Ordinary Tree update and explicit private-visibility
+// update have independent gates. When the private gate is absent, explicit
+// visibility='private' remains Modal-backed before any direct DB capability is
+// acquired. When selected, Neon entitlement is checked after owner/allowlist
+// validation and before any UPDATE mutation in the same transaction.
 
 import {
   createNeonWsTransactionAdapter,
@@ -31,9 +32,15 @@ import {
   projectOwnerTreeDetailRow
 } from './owner-tree-detail-direct-neon.js';
 import { REQUEST_ID_HEADER } from './request-id.js';
+import {
+  requirePrivateStorageEntitlement,
+  PrivateStorageEntitlementError,
+  PRIVATE_STORAGE_ENTITLEMENT_ERROR
+} from './private-storage-entitlement-neon.js';
 
 export const TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV = Object.freeze({
   GATE_FLAG: 'LB_TREE_UPDATE_WRITE_RUNTIME',
+  PRIVATE_VISIBILITY_GATE_FLAG: 'LB_TREE_PRIVATE_VISIBILITY_WRITE_RUNTIME',
   DIRECT_NEON_VALUE: 'direct_neon',
   DATABASE_URL: 'LOVE_PLATFORM_WRITE_DATABASE_URL'
 });
@@ -62,6 +69,18 @@ export function isTreeUpdateDirectNeonSelected(env = {}) {
     ? env[TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.GATE_FLAG].trim()
     : '';
   return value === TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE;
+}
+
+export function isTreePrivateVisibilityUpdateDirectNeonSelected(env = {}) {
+  const value = typeof env?.[TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_VISIBILITY_GATE_FLAG] === 'string'
+    ? env[TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_VISIBILITY_GATE_FLAG].trim()
+    : '';
+  return value === TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE;
+}
+
+export function isAnyTreeUpdateDirectNeonSelected(env = {}) {
+  return isTreeUpdateDirectNeonSelected(env)
+    || isTreePrivateVisibilityUpdateDirectNeonSelected(env);
 }
 
 export function readTreeUpdateWriteConfig(env = {}) {
@@ -133,6 +152,10 @@ function makeWorkFailure(signal, status, body, routeStatus) {
 
 function failWork(signal, status, detail, routeStatus) {
   throw makeWorkFailure(signal, status, { detail }, routeStatus);
+}
+
+function failWorkBody(signal, status, body, routeStatus) {
+  throw makeWorkFailure(signal, status, body, routeStatus);
 }
 
 function normalizeTitle(value, signal) {
@@ -229,10 +252,10 @@ function buildUpdateSql(payload, signal) {
     add('title', normalizeTitle(payload.title, signal));
   }
   if (Object.prototype.hasOwnProperty.call(payload, 'visibility')) {
-    if (payload.visibility !== 'public') {
+    if (payload.visibility !== 'public' && payload.visibility !== 'private') {
       failWork(signal, 400, 'visibility: public, private', 'invalid-visibility');
     }
-    add('visibility', 'public');
+    add('visibility', payload.visibility);
   }
   if (Object.prototype.hasOwnProperty.call(payload, 'groupName')) {
     add('group_name', normalizeGroupName(payload.groupName, signal));
@@ -267,6 +290,41 @@ async function runUpdateWork(tx, signal, { treeId, ownerId, payload }) {
   }
   if (Object.keys(payload).length === 0) {
     failWork(signal, 400, { code: 'EMPTY_TREE_UPDATE' }, 'empty-tree-update');
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(payload, 'visibility')
+    && payload.visibility === 'private'
+  ) {
+    try {
+      await requirePrivateStorageEntitlement(tx, ownerId);
+    } catch (error) {
+      if (
+        error instanceof PrivateStorageEntitlementError
+        && error.code === PRIVATE_STORAGE_ENTITLEMENT_ERROR.REQUIRED
+      ) {
+        failWorkBody(
+          signal,
+          403,
+          {
+            error: 'Private storage requires Plus.',
+            code: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+            upgradeRequired: true
+          },
+          'plus-required-private-storage'
+        );
+      }
+      failWorkBody(
+        signal,
+        503,
+        {
+          error: 'Entitlement check temporarily unavailable.',
+          code: 'ENTITLEMENT_CHECK_UNAVAILABLE',
+          upgradeRequired: false
+        },
+        'private-storage-entitlement-unavailable'
+      );
+    }
   }
 
   const update = buildUpdateSql(payload, signal);
@@ -337,7 +395,7 @@ export async function handleTreeUpdateDirectNeon(
     boundedBodyResult = null
   } = {}
 ) {
-  if (!isTreeUpdateDirectNeonSelected(env)) return null;
+  if (!isAnyTreeUpdateDirectNeonSelected(env)) return null;
 
   // Match Modal route authority: verified Firebase principal precedes JSON parse
   // and all direct DB capability acquisition.
@@ -396,13 +454,14 @@ export async function handleTreeUpdateDirectNeon(
     }
   }
 
-  // Entitlement boundary: exact explicit private is handed back to the current
-  // Modal route before UUID normalization or direct DB acquisition. Modal then
-  // performs the existing tree-id/owner/allowlist/entitlement ordering.
-  if (
-    Object.prototype.hasOwnProperty.call(payload, 'visibility')
-    && payload.visibility === 'private'
-  ) {
+  // Route split before UUID normalization or direct DB acquisition:
+  // - explicit private requires the independent private-visibility gate;
+  // - all other updates require the ordinary Tree-update gate.
+  const explicitPrivate = Object.prototype.hasOwnProperty.call(payload, 'visibility')
+    && payload.visibility === 'private';
+  if (explicitPrivate) {
+    if (!isTreePrivateVisibilityUpdateDirectNeonSelected(env)) return null;
+  } else if (!isTreeUpdateDirectNeonSelected(env)) {
     return null;
   }
 
@@ -487,12 +546,17 @@ export const TREE_UPDATE_DIRECT_NEON_CONTRACT = Object.freeze({
   method: 'PUT',
   path: '/api/trees/:id',
   gateEnv: TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.GATE_FLAG,
+  privateVisibilityGateEnv: TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_VISIBILITY_GATE_FLAG,
   directNeonValue: TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE,
   databaseEnv: TREE_UPDATE_DIRECT_NEON_RUNTIME_ENV.DATABASE_URL,
   forbiddenFallbackEnvs: TREE_UPDATE_FORBIDDEN_FALLBACK_ENVS,
   ownerAuthority: 'verified-firebase-legacyOwnerId',
   allowedFields: ALLOWED_UPDATE_FIELDS,
-  explicitPrivate: 'modal-before-direct-db',
+  explicitPrivate: 'direct-neon-when-private-visibility-gate-selected-otherwise-modal-before-direct-db',
+  privateEntitlementSource: 'neon.public.users.private_storage_enabled',
+  privateEntitlementAfterOwnerAndAllowlistBeforeMutation: true,
+  privatePlusRequiredCode: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+  privateEntitlementUnavailableCode: 'ENTITLEMENT_CHECK_UNAVAILABLE',
   getUnchanged: true,
   deleteUnchanged: true,
   writes: true,
