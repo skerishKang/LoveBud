@@ -830,12 +830,13 @@
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
       "last_exact_head_evidence": {
-        "ref": "#4425 gate-check-in candidate at baseline main 24a8ddc4609c36d0b178be4756d0e341cda298fd: repository Production vars add LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME=direct_neon only. Source/DB/privilege boundaries are unchanged; Product live status remains false until post-merge provider/deployment readback and bounded functional proof.",
-        "main_sha": "24a8ddc4609c36d0b178be4756d0e341cda298fd"
+        "ref": "#4444 gate-check-in merged. Exact-head PR Fast Gate/CI/Reliability Preview SUCCESS; post-merge exact-main 128f810b8a8bda052aa376631a46416d6eee1f18 CI run 35388110489 SUCCESS, Reliability Preview 35388110471 SUCCESS, Cloudflare Pages deployment source 128f810 SUCCESS. Provider config readback and Product private-write canary were not executed, so no Production-live claim.",
+        "main_sha": "128f810b8a8bda052aa376631a46416d6eee1f18"
       },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: remove/unset LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME through reviewed repository configuration. Do not DROP the additive Neon entitlement column and do not alter writer privileges merely to disable this route.",
-      "next_action": "Exact-head CI this gate-only slice, merge if GREEN, then verify exact-main deployment/provider gate readback before any Product private-write canary."
+      "next_action": "Repository gate check-in and exact-main deployment are complete. Next missing proof is separately governed: read-only provider/gate readback for LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME plus bounded authenticated non-Plus 403 and Plus private-create/cleanup evidence. Do not mark PRODUCTION_LIVE or rerun unrelated public canaries before that proof.",
+      "disposition_note": "#4425 private Tree Create gate check-in is merged: `LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME=direct_neon` is present in Production vars. #4444 exact-head checks were GREEN and post-merge exact-main `128f810b8a8bda052aa376631a46416d6eee1f18` CI/Rehearsal plus Cloudflare Pages source deployment succeeded. Direct provider gate readback and bounded authenticated non-Plus 403 + Plus private-create/cleanup functional proof were not executed, so this route remains NOT_PRODUCTION_LIVE. Rollback remains gate-only removal/unset; do not drop the entitlement column."
     },
     {
       "id": "tree-update",
@@ -920,12 +921,13 @@
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
       "last_exact_head_evidence": {
-        "ref": "#4425 source candidate at baseline main 128f810b8a8bda052aa376631a46416d6eee1f18: independent private visibility PUT gate; verified Firebase owner check and payload allowlist precede Neon entitlement; strict public.users.private_storage_enabled=true required before UPDATE; stable 403 PLUS_REQUIRED_PRIVATE_STORAGE and 503 ENTITLEMENT_CHECK_UNAVAILABLE; ordinary/public Tree update performs zero entitlement reads. Gate remains absent from wrangler.toml.",
-        "main_sha": "128f810b8a8bda052aa376631a46416d6eee1f18"
+        "ref": "#4445 source merged. Exact-head PR Fast Gate/Reliability Preview and all DB-engine jobs SUCCESS; one unrelated verify-static browser timing flake passed on the single authorized same-head rerun. Post-merge exact-main 70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84 CI run 35390469329 SUCCESS, Reliability Preview 35390469243 SUCCESS, Cloudflare Pages deployment SUCCESS. Gate remains absent from wrangler.",
+        "main_sha": "70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84"
       },
       "modal_retained_by_design": false,
       "rollback_authority": "SOURCE_ONLY: while LB_TREE_PRIVATE_VISIBILITY_WRITE_RUNTIME is absent, explicit visibility=private PUT remains Modal-backed before direct DB acquisition. Future activation rollback is gate-only removal/unset; do not drop the entitlement column or alter the existing writer privilege envelope merely to disable this path.",
-      "next_action": "Exact-head CI and review source slice. Do not check in/activate this gate until the private Tree Create functional proof gap is reconciled or CENTRAL explicitly authorizes independent progression."
+      "next_action": "Source merge and exact-main validation are complete. Do not check in or activate LB_TREE_PRIVATE_VISIBILITY_WRITE_RUNTIME until the private Tree Create functional-proof gap is reconciled, unless CENTRAL explicitly authorizes independent progression.",
+      "disposition_note": "#4425 private Tree visibility PUT source is merged in #4445. Exact-head checks completed GREEN after one bounded rerun of an unrelated browser timing flake; post-merge exact-main `70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84` CI/Rehearsal and Cloudflare Pages deployment succeeded. `LB_TREE_PRIVATE_VISIBILITY_WRITE_RUNTIME` remains absent from wrangler, so explicit private visibility updates remain Modal-backed. No Production gate/provider/DB/ACL/Product mutation was performed."
     },
     {
       "id": "tree-delete",
@@ -1042,14 +1044,14 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
-      "disposition_note": "#4425 source candidate: independent private/inheritance Memory Create gate. Exact explicit-public continues to use the already-live LB_MEMORY_CREATE_WRITE_RUNTIME path. Explicit private and omitted/null visibility are candidates only when LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME is selected. Owner Tree authorization and Tree visibility resolution occur before Neon public.users.private_storage_enabled entitlement; strict true is required only when the resolved Memory visibility is private. Non-Plus returns 403 PLUS_REQUIRED_PRIVATE_STORAGE; entitlement lookup failure returns 503 ENTITLEMENT_CHECK_UNAVAILABLE. Inherited public performs zero entitlement reads. Private entitlement precedes parentId/emotionTags/clientKey/scalar validation and every INSERT, preserving current Modal error precedence. Invalid visibility values remain Modal-backed. The new gate is absent from wrangler.toml and Production remains unchanged. The shared helper remains canonically classified by the existing memory-create row; this private row therefore records source_helper=null to satisfy one-helper/one-matrix-owner classification.",
+      "disposition_note": "#4425 private/inherited Memory Create source is merged in #4446. Exact-head PR Fast Gate/CI/Reliability Preview and Cloudflare preview succeeded; post-merge exact-main `1c2463b278d4bdc26ac555b6930e3f909551989f` CI/Rehearsal and reported DB-engine checks were GREEN. `LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME` remains absent from wrangler/Production, so explicit-private and omitted/null inheritance remain Modal-backed. Existing explicit-public Memory Create remains independently Production-live.",
       "last_exact_head_evidence": {
-        "ref": "#4425 source candidate created from exact main 70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84; source and deterministic fake-runtime contract added on central/4425-memory-private-create. Exact-head CI pending at this documentation commit; no Production gate/provider/DB mutation authorized.",
-        "main_sha": "70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84"
+        "ref": "#4446 source merged. Exact-head PR Fast Gate 35396124672 SUCCESS, CI 35396124653 SUCCESS, Reliability Preview 35396124716 SUCCESS, Cloudflare preview SUCCESS. Post-merge exact-main 1c2463b278d4bdc26ac555b6930e3f909551989f CI 35396665569 SUCCESS and Reliability Preview 35396665479 SUCCESS; verify-static/db-impact and reported DB-engine jobs SUCCESS. Private gate remains absent from wrangler.",
+        "main_sha": "1c2463b278d4bdc26ac555b6930e3f909551989f"
       },
       "modal_retained_by_design": false,
       "rollback_authority": "SOURCE_ONLY: while LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME is absent, explicit-private and omitted/null Memory Create requests remain Modal-backed. Future activation rollback is gate-only removal/unset; do not drop public.users.private_storage_enabled or alter existing writer privileges merely to disable this path.",
-      "next_action": "Run exact-head CI/review for the source slice. Do not check in or activate LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME in Production as part of this PR. Private Tree Create functional Product proof remains a separate open gate."
+      "next_action": "Source merge and exact-main validation are complete. Production gate check-in/activation remains a separate governed step; do not activate LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME in this reconciliation slice. Keep the open private Tree Create functional-proof gap distinct."
     },
     {
       "id": "memory-update",
@@ -1125,14 +1127,14 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
-      "disposition_note": "#4425 source candidate: independent explicit-private Memory visibility-update gate layered onto the existing Production-live Memory update helper. Exact visibility=private is a candidate only when LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME is selected; otherwise it remains Modal-backed before direct DB acquisition. Owner authorization and unsupported/empty plus title/memo/source/sourceUrl/sourceType/thumbnail/emotionTags validation precede Neon public.users.private_storage_enabled entitlement, matching current Modal update_owner_memory precedence. Strict true is required before visibility/private mutation; non-Plus returns 403 PLUS_REQUIRED_PRIVATE_STORAGE and entitlement lookup failure returns 503 ENTITLEMENT_CHECK_UNAVAILABLE. channelId/channelName/channelUrl/artist/timestamp/parentId validation remains after entitlement as in Modal. Ordinary/public updates continue on LB_MEMORY_UPDATE_WRITE_RUNTIME and perform zero private-entitlement reads. The new gate is absent from wrangler.toml and Production remains unchanged. Shared helper ownership remains on the existing memory-update row, so source_helper=null here.",
+      "disposition_note": "#4425 explicit-private Memory visibility-update source is merged in #4447. Exact-head `dd820f64ca69c63ba45bed49111df798dbe8f05f` PR Fast Gate, Reliability Preview, CI 16/16 and Cloudflare preview were GREEN. Merge commit is current main `51c4003fbd5c8ed48be8caad168f0e059d6c6465`. `LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME` remains absent from wrangler/Production; no Production gate/provider/DB/ACL/Product mutation occurred. This reconciliation does not claim post-merge exact-main workflow evidence that is not directly available from the current connector read.",
       "last_exact_head_evidence": {
-        "ref": "#4425 source candidate created from exact main 1c2463b278d4bdc26ac555b6930e3f909551989f on central/4425-memory-private-visibility-update; source/route and deterministic fake-runtime contract added. Exact-head CI pending at this documentation commit; no Production gate/provider/DB/ACL mutation authorized.",
-        "main_sha": "1c2463b278d4bdc26ac555b6930e3f909551989f"
+        "ref": "#4447 exact-head dd820f64ca69c63ba45bed49111df798dbe8f05f accepted GREEN: PR Fast Gate 35398484544 SUCCESS, Reliability Preview 35398484579 SUCCESS, CI 35398484664 SUCCESS with 16/16 jobs including verify-static/db-impact, Cloudflare preview SUCCESS. #4447 merged as current main 51c4003fbd5c8ed48be8caad168f0e059d6c6465. Private visibility gate remains absent from wrangler; post-merge exact-main workflow state is not claimed by this evidence record.",
+        "main_sha": "dd820f64ca69c63ba45bed49111df798dbe8f05f"
       },
       "modal_retained_by_design": false,
       "rollback_authority": "SOURCE_ONLY: while LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME is absent, explicit visibility=private Memory PUT remains Modal-backed. Future activation rollback is gate-only removal/unset; do not alter the existing Production-live LB_MEMORY_UPDATE_WRITE_RUNTIME gate, entitlement column, or writer privilege envelope merely to disable this path.",
-      "next_action": "Run exact-head CI/review for this source slice. Do not check in or activate LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME in Production as part of this PR. Existing ordinary Memory Update remains Production-live and must retain its accepted gate/canary authority."
+      "next_action": "Source merge is complete and exact-head is GREEN. Obtain/record post-merge exact-main CI/deployment evidence when available; any Production gate check-in or activation remains separately governed. Existing ordinary/public Memory Update remains Production-live and unchanged."
     },
     {
       "id": "memory-delete",
