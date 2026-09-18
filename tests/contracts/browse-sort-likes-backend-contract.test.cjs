@@ -4,7 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const ROOT = path.join(__dirname, '..', '..');
-const catchAllRoute = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
+const routeHelper = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
 const modalApp = fs.readFileSync(path.join(ROOT, 'modal_compute', 'app.py'), 'utf8');
 const publicReads = fs.readFileSync(path.join(ROOT, 'modal_compute', 'public_reads.py'), 'utf8');
 const browseSnapshot = fs.readFileSync(path.join(ROOT, 'modal_compute', 'browse_latest.py'), 'utf8');
@@ -13,23 +13,21 @@ function compact(value) {
   return value.replace(/\s+/g, '').toLowerCase();
 }
 
-test('Catch-all route accepts sort=likes and maps to modal', () => {
-  // buildBrowseCacheRequest handles likes - ternary operator uses ? value for true branches
-  assert.match(catchAllRoute, /buildBrowseCacheRequest/);
-  assert.match(catchAllRoute, /===.*popular/);
-  assert.match(catchAllRoute, /===.*likes/);
-  assert.match(catchAllRoute, /\?\s*['"]popular['"]/);
-  assert.match(catchAllRoute, /\?\s*['"]likes['"]/);
+test('Canonical Browse route helper accepts sort=likes and maps to Modal', () => {
+  // buildModalUrl owns canonical sort normalization used by the exact Browse route.
+  assert.match(routeHelper, /===.*popular/);
+  assert.match(routeHelper, /===.*likes/);
+  assert.match(routeHelper, /\?\s*['"]popular['"]/);
+  assert.match(routeHelper, /\?\s*['"]likes['"]/);
 
-  // buildModalUrl handles likes for community/trees - ternary with nested ternary
-  // (uses requestedSort helper variable, also used for buildBrowseCacheRequest)
-  assert.match(catchAllRoute, /requestedSort\s*===\s*['"]popular['"]/);
-  assert.match(catchAllRoute, /requestedSort\s*===\s*['"]likes['"]/);
-  assert.match(catchAllRoute, /\?\s*['"]popular['"]/);
-  assert.match(catchAllRoute, /\?\s*['"]likes['"]/);
+  // buildModalUrl handles likes for community/trees with the requestedSort helper.
+  assert.match(routeHelper, /requestedSort\s*===\s*['"]popular['"]/);
+  assert.match(routeHelper, /requestedSort\s*===\s*['"]likes['"]/);
+  assert.match(routeHelper, /\?\s*['"]popular['"]/);
+  assert.match(routeHelper, /\?\s*['"]likes['"]/);
 
   // Final fallback is : 'latest'
-  assert.match(catchAllRoute, /:\s*['"]latest['"]/);
+  assert.match(routeHelper, /:\s*['"]latest['"]/);
 });
 
 test('Modal app validates sort=likes in browse/latest endpoint', () => {
@@ -92,8 +90,8 @@ test('Growing public tree snapshots does NOT include social counts join', () => 
 test('Browse sort=views is now enabled (delegated to views contract)', () => {
   // Router now accepts sort=views (Unit C runtime slice). The actual
   // behavior contract is locked by browse-sort-views-backend-contract.
-  assert.match(catchAllRoute, /===.*views/);
-  assert.match(catchAllRoute, /\?\s*['"]views['"]/);
+  assert.match(routeHelper, /===.*views/);
+  assert.match(routeHelper, /\?\s*['"]views['"]/);
 
   // Modal app includes "views" in safe_sort set
   assert.match(modalApp, /["']views["']/);
@@ -105,9 +103,9 @@ test('Popular sort behavior preserved (memory_count)', () => {
   assert.match(publicReads, /c\.memory_count\s+DESC/);
   assert.match(publicReads, /c\.memory_count\s+DESC,\s*t\.created_at\s+DESC/);
 
-  // Catch-all still accepts popular
-  assert.match(catchAllRoute, /===.*popular/);
-  assert.match(catchAllRoute, /\?\s*['"]popular['"]/);
+  // Canonical Browse route helper still accepts popular
+  assert.match(routeHelper, /===.*popular/);
+  assert.match(routeHelper, /\?\s*['"]popular['"]/);
 });
 
 test('Latest sort behavior preserved (created_at)', () => {
