@@ -882,6 +882,52 @@
       "next_action": "Gate checked in per #4000 CENTRAL authority comment 5679138327 — method metadata is corrected to PUT and the accepted provider/gate readback is recorded per #4000 CENTRAL authority comment 5681017728 at exact main f567aeddfa2f6750da933433b017682ff4267b43; PROVIDER/GATE PROOF = COMPLETE per readback authority 5680851997 accepted by CENTRAL comment 5681004263. FINAL BOUNDED PRODUCT CANARY COMPLETE: authority 5682700749 accepted by CENTRAL canary acceptance 5683567536; functional Product PUT proof PASS at exact main 0b278105f65cee9b2771c307af1fb26947897f60 (exactly 3 Product requests, 0 retries, 0 discovery; PUT update HTTP 200 direct_neon/direct-neon/tree-update-complete no-store request-id present value not recorded canonical DTO PASS private fixture-id match PASS private owner-binding match PASS title acknowledgement PASS COMMIT_OUTCOME_UNKNOWN = NO; DELETE cleanup HTTP 200 direct_neon/direct-neon/tree-delete-complete deleted = true cleanup PASS; POST create 1 via existing Modal Tree-create authority; GET = 0; PATCH = 0; no Production DB connection, no ACL/GRANT/REVOKE, no provider/secret mutation, no raw credential/token/private-id/request-id exposure). TREE_UPDATE_DIRECT_NEON_PRODUCTION_LIVE = ACCEPTED; FUNCTIONAL_PRODUCT_PUT_PROOF = PASS; CANARY_RERUN_REQUIRED = NO; CANARY_RERUN_AUTHORIZED = NO. Tree Update direct-Neon is Production live at the cited evidence; continue ordinary monitoring/regression protection only. Any future change to LB_TREE_UPDATE_WRITE_RUNTIME, the direct_neon credential boundary, the Production provider/deployment, the tree-update helper, route dispatch, Firebase principal / legacyOwnerId owner-authority semantics, the required privilege envelope, transaction / COMMIT ambiguity semantics, the canonical DTO, or request-id / no-store / runtime/upstream/route-status behavior invalidates this attestation and requires fresh CENTRAL review. No additional Tree Update Product canary should be requested merely to strengthen the accepted record. Rollback remains GATE_ONLY_ROLLBACK (reviewed removal/unset of LB_TREE_UPDATE_WRITE_RUNTIME only; no DB/ACL rollback)."
     },
     {
+      "id": "tree-private-visibility-update",
+      "route": "/api/trees/{id} (PUT visibility=private)",
+      "method": "PUT",
+      "family": "WRITE",
+      "source_helper": null,
+      "source_refs": [
+        "#4425",
+        "#4000",
+        "#4006"
+      ],
+      "source_state": "SOURCE_READY",
+      "runtime_gate": "LB_TREE_PRIVATE_VISIBILITY_WRITE_RUNTIME",
+      "required_objects": {
+        "users": [
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT",
+          "UPDATE"
+        ],
+        "memories": [
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "SELECT"
+        ]
+      },
+      "credential_boundary": "direct_neon_runtime",
+      "source_parity": "PASS_AT_CITED_SHA",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
+      "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
+      "diagnostic_execution_authorized": "NOT_AUTHORIZED",
+      "production_live": "NOT_PRODUCTION_LIVE",
+      "disposition_4239": "I",
+      "last_exact_head_evidence": {
+        "ref": "#4425 source candidate at baseline main 128f810b8a8bda052aa376631a46416d6eee1f18: independent private visibility PUT gate; verified Firebase owner check and payload allowlist precede Neon entitlement; strict public.users.private_storage_enabled=true required before UPDATE; stable 403 PLUS_REQUIRED_PRIVATE_STORAGE and 503 ENTITLEMENT_CHECK_UNAVAILABLE; ordinary/public Tree update performs zero entitlement reads. Gate remains absent from wrangler.toml.",
+        "main_sha": "128f810b8a8bda052aa376631a46416d6eee1f18"
+      },
+      "modal_retained_by_design": false,
+      "rollback_authority": "SOURCE_ONLY: while LB_TREE_PRIVATE_VISIBILITY_WRITE_RUNTIME is absent, explicit visibility=private PUT remains Modal-backed before direct DB acquisition. Future activation rollback is gate-only removal/unset; do not drop the entitlement column or alter the existing writer privilege envelope merely to disable this path.",
+      "next_action": "Exact-head CI and review source slice. Do not check in/activate this gate until the private Tree Create functional proof gap is reconciled or CENTRAL explicitly authorizes independent progression."
+    },
+    {
       "id": "tree-delete",
       "route": "/api/trees/{id}",
       "method": "DELETE",
