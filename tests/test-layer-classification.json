@@ -2820,12 +2820,6 @@
       "capabilities": []
     },
     {
-      "path": "tests/contracts/plus-entitlement-4425.test.cjs",
-      "layer": "EXECUTED_FAKE",
-      "rationale": "Executes the #4425 Plus entitlement boundary in-process with constructed Request/env inputs, injected Firebase verification and Firestore profile readers, proving four-field accepted-truthy normalization, missing/false denial, verified-principal ordering, fail-closed verifier/profile failures, sanitized responses, exact gate selection, no-store behavior, and production-cutover prohibition. No real network, browser, Firebase provider, Firestore, Neon database, Production secret, Product request, or Production resource is used (#4425).",
-      "capabilities": []
-    },
-    {
       "path": "tests/contracts/preview-embed-sanitization-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
