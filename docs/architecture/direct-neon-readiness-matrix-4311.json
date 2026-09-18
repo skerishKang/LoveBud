@@ -551,7 +551,7 @@
       },
       "modal_retained_by_design": false,
       "rollback_authority": "SOURCE_PHASE_DEFAULT_MODAL: LB_PLUS_ENTITLEMENT_READ_RUNTIME remains unset/non-direct; no Production activation or provider binding is authorized.",
-      "next_action": "Resolve the Cloudflare Firestore credential/binding and read-role authority separately before any gate check-in or private-write integration."
+      "next_action": "Use the reviewed request-scoped Firebase-ID-token Firestore REST shape; first prove current live Security Rules allow exactly users/{same verified uid} read. If denied, STOP for separate Rules/provider authority. No service-account fallback, gate check-in, or private-write integration is authorized yet."
     },
     {
       "id": "auth-memory-reactions-get",
