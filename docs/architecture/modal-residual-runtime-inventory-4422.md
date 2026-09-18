@@ -2,8 +2,8 @@
 
 **Parent:** #4000  
 **Phase:** 5A source/config inventory  
-**Exact baseline:** `26ecdeb9b4f5a09f1b328da90579fa236204de27`  
-**Status:** source-derived inventory only; runtime usage attribution remains separate under #4422.
+**Reconciled through current main:** `316fc35f38c7809b3289f0db45f19480997c562a`  
+**Status:** current-main reconciliation after #4423/#4424 Production-live cutovers; Phase 5B runtime attribution remains partial for inconclusive residual routes.
 
 This document records which current same-origin LoveBud routes can still reach Modal after the Direct-Neon cutovers. It deliberately distinguishes **route-level gate status** from **request-class behavior**. A route marked `PRODUCTION_LIVE` in the Direct-Neon readiness matrix may still send a subset of requests to Modal when the source contract deliberately defers them before any Direct-Neon database work.
 
@@ -22,17 +22,19 @@ No Production route, database, provider, secret, Modal configuration, or deploym
 | `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` | Source route remains, but current first-party caller was not proven; runtime usage evidence is required before retirement. |
 | `OPERATIONS_ONLY` | Operational endpoint rather than Product CRUD/read-model traffic. |
 
-## 1. Source-proven residual general reads
+## 1. General-read migrations completed since the original inventory
 
-| Browser route | Edge source | Modal endpoint | Current first-party caller | Classification |
-|---|---|---|---|---|
-| `GET /api/memories/:memoryId/reactions` | `functions/api/memories/[id]/reactions.js` | `GET /modal/private/memories/{memory_id}/reactions` | `js/postgres-client.js#fetchReactionSummary`; consumed by detail/editor/viewer code | `ACTIVE_MODAL_GENERAL_READ` |
-| `GET /api/memories/:memoryId/comments` | `functions/api/memories/[id]/comments.js` | `GET /modal/private/memories/{memory_id}/comments` | `js/postgres-client.js#fetchComments`; consumed by editor moment comments | `ACTIVE_MODAL_GENERAL_READ` |
-| `GET /api/trees/:treeId/memories/:memoryId/reactions` | `functions/api/trees/[tree_id]/memories/[memory_id]/reactions.js` | `GET /modal/public/trees/{tree_id}/memories/{memory_id}/reactions` | `js/postgres-client.js#fetchPublicMomentReactionSummary`; public viewer read-only social summary | `ACTIVE_MODAL_GENERAL_READ` |
-| `GET /api/trees/:treeId/memories/:memoryId/comments` | `functions/api/trees/[tree_id]/memories/[memory_id]/comments.js` | `GET /modal/public/trees/{tree_id}/memories/{memory_id}/comments` | `js/postgres-client.js#fetchPublicMomentComments`; public viewer read-only social summary | `ACTIVE_MODAL_GENERAL_READ` |
-| `GET /api/private/trees/:treeId/capability` | `functions/api/[[path]].js` | `GET /modal/private/trees/{tree_id}/capability` | `js/viewer/public-canvas-init.js` | `ACTIVE_MODAL_GENERAL_READ` |
+The five general-read request classes that were source-proven active at the original Phase 5A baseline no longer require Modal in Production:
 
-These routes are migration candidates, not specialized compute. Source-candidate work is tracked in #4423 and #4424.
+| Browser route | Production status | Rollback posture |
+|---|---|---|
+| `GET /api/memories/:memoryId/reactions` | `DIRECT_NEON_PRODUCTION_LIVE` (#4423) | Modal source retained as gate fallback |
+| `GET /api/memories/:memoryId/comments` | `DIRECT_NEON_PRODUCTION_LIVE` (#4423) | Modal source retained as gate fallback |
+| `GET /api/trees/:treeId/memories/:memoryId/reactions` | `DIRECT_NEON_PRODUCTION_LIVE` (#4423) | Modal source retained as gate fallback |
+| `GET /api/trees/:treeId/memories/:memoryId/comments` | `DIRECT_NEON_PRODUCTION_LIVE` (#4423) | Modal source retained as gate fallback |
+| `GET /api/private/trees/:treeId/capability` | `DIRECT_NEON_PRODUCTION_LIVE` (#4424) | Modal source retained as gate fallback |
+
+The corresponding Modal endpoints remain source-visible for rollback/default behavior, but they are no longer classified as active general-read dependencies at current Production gate state. #4423 is technically complete; #4424 is closed and complete.
 
 ## 2. Request-class splits still intentionally using Modal for private storage
 
@@ -154,20 +156,26 @@ The mere presence of those Python routes does **not** prove active Production Mo
 
 ## 6. Current contraction blockers
 
-At this baseline:
+At current main:
 
 - `MODAL_BASE_URL` removal is **not ready**;
 - `min_containers` reduction is **not ready**;
 - full general-CRUD removal from Modal is **not proven**;
 - Modal app source deletion is **not authorized**.
 
-Blocking work:
+Current state and blocking work:
 
-1. #4423 — migrate residual Memory social GET reads;
-2. #4424 — migrate private Tree capability GET;
-3. #4425 — move Plus/private-storage entitlement boundary out of Modal and migrate entitlement-bound private writes;
-4. #4422 Phase 5B — runtime usage attribution for uncertain/dead-route candidates;
-5. retain explicit specialized compute / design-retained routes until separately reconsidered.
+1. #4423 — **technical implementation complete**; all four Memory social GET request classes are Direct-Neon Production live.
+2. #4424 — **closed / complete**; private Tree capability GET is Direct-Neon Production live.
+3. #4425 — **primary active blocker**; move Plus/private-storage entitlement boundary out of Modal and migrate the four entitlement-bound private write request classes:
+   - private Tree create;
+   - Tree visibility public → private;
+   - private/inherited-private Memory create;
+   - Memory visibility public → private.
+4. #4422 Phase 5B — Tree Likes GET and generic Comment DELETE remain `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`; retirement is not authorized.
+5. Appreciation-order GET remains `KEEP_MODAL_BY_DESIGN`.
+6. YouTube playlist preview remains `ACTIVE_MODAL_SPECIALIZED_COMPUTE`.
+7. Retain explicit specialized compute / design-retained routes until separately reconsidered.
 
 ## 7. Safety
 
