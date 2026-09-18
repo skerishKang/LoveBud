@@ -539,7 +539,7 @@
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
-      "live_provider_state": "NOT_FRESHLY_VERIFIED",
+      "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
       "checked_in_gate": "NOT_CHECKED_IN",
       "live_gate_state": "LIVE_GATE_NOT_INTENDED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
@@ -547,12 +547,12 @@
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
       "last_exact_head_evidence": {
-        "ref": "#4425 Neon-source redesign at baseline e6d3bd59: transaction-scoped public.users.private_storage_enabled helper, strict boolean true, default-false schema candidate, no Firestore/service-account dependency, no Product route wiring or Production activation. Existing #4157/#4006 writer privilege evidence already covers table-level users SELECT; schema adoption remains separately required.",
-        "main_sha": "e6d3bd590d1d269d16a24696a316cb542bf8fdf7"
+        "ref": "#4425 Production Neon schema adoption accepted under explicit CTO approval: public.users.private_storage_enabled exists as boolean NOT NULL DEFAULT false; existing users=5, entitled=0, non-entitled=5, NULL=0; column comment present; no row DML, GRANT/REVOKE, provider/secret, runtime gate, or Modal mutation. Repository source baseline e4fd926dcc2a8cbbb993fe319cfd30259178c4de.",
+        "main_sha": "e4fd926dcc2a8cbbb993fe319cfd30259178c4de"
       },
       "modal_retained_by_design": false,
-      "rollback_authority": "SOURCE_ONLY: no Product route dispatch and no Production gate. The new schema migration remains unexecuted until separately authorized; current Modal private-write behavior remains the live fallback.",
-      "next_action": "Merge source/provenance slice, separately authorize and prove Neon schema adoption, then implement private Tree Create behind an independent disabled gate. Firestore Rules proof and service-account fallback are not part of the target architecture."
+      "rollback_authority": "SCHEMA_ADOPTED: entitlement column is now present in Production Neon and is additive/default-false. No Product route uses it unless a private-write gate is separately enabled. Do not DROP it merely to disable a route.",
+      "next_action": "Private Tree Create source integration may proceed behind LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME, which must remain NOT_CHECKED_IN until exact-head source/CI review and separate Production activation authority."
     },
     {
       "id": "auth-memory-reactions-get",
@@ -791,6 +791,51 @@
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK: reviewed removal/unset of LB_TREE_CREATE_WRITE_RUNTIME in Production wrangler vars via reviewed repository configuration; no DB/ACL rollback is required merely to disable the route; the reused tree-fork-proven direct_neon_runtime writer privileges remain intact; Modal Tree Create remains fallback/default when the gate is unset",
       "next_action": "Tree Create direct-Neon is Production live at accepted exact-main evidence. Do not rerun the Tree Create canary merely to strengthen proof. Memory Create may resume under its existing checked-in gate, subject to fresh exact-main verification and its separately authorized browser-native functional canary. Any future change to LB_TREE_CREATE_WRITE_RUNTIME, direct_neon credential boundary, Production provider/deployment, helper SQL, route dispatch, Firebase principal mapping, required privilege envelope, transaction/COMMIT ambiguity semantics, canonical DTO, or browser-vs-edge execution assumptions invalidates this attestation and requires fresh CENTRAL review."
+    },
+    {
+      "id": "tree-private-create",
+      "route": "/api/trees (visibility=private)",
+      "method": "POST",
+      "family": "WRITE",
+      "source_helper": null,
+      "source_refs": [
+        "#4425",
+        "#4000",
+        "#4006"
+      ],
+      "source_state": "SOURCE_READY",
+      "runtime_gate": "LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME",
+      "required_objects": {
+        "users": [
+          "SELECT",
+          "INSERT",
+          "UPDATE"
+        ],
+        "trees": [
+          "INSERT",
+          "SELECT"
+        ],
+        "memories": [
+          "SELECT"
+        ]
+      },
+      "credential_boundary": "direct_neon_runtime",
+      "source_parity": "PASS_AT_CITED_SHA",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
+      "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
+      "diagnostic_execution_authorized": "NOT_AUTHORIZED",
+      "production_live": "NOT_PRODUCTION_LIVE",
+      "disposition_4239": "I",
+      "last_exact_head_evidence": {
+        "ref": "#4425 source candidate at baseline e4fd926dcc2a8cbbb993fe319cfd30259178c4de: independent private Tree create gate, verified-Firebase owner, Neon entitlement SELECT before any mutation in the same transaction, stable 403 PLUS_REQUIRED_PRIVATE_STORAGE and 503 ENTITLEMENT_CHECK_UNAVAILABLE parity, explicit private INSERT, canonical owner reread, no Firestore dependency. Production entitlement schema is already adopted; private runtime gate remains absent.",
+        "main_sha": "e4fd926dcc2a8cbbb993fe319cfd30259178c4de"
+      },
+      "modal_retained_by_design": false,
+      "rollback_authority": "SOURCE/GATE ONLY: while LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME is absent, explicit private create remains Modal-backed. Future activation rollback is removal/unset of this private gate only; do not rollback the additive entitlement column merely to disable private Direct-Neon.",
+      "next_action": "Exact-head CI and review this source slice. If merged, separately check in/activate LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME and perform one bounded authenticated Plus/non-Plus Product proof under fresh authority; no activation or Product write is authorized by this source PR."
     },
     {
       "id": "tree-update",
