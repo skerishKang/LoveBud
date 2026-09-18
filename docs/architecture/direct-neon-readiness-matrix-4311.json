@@ -1012,7 +1012,7 @@
       "route": "/api/memories (POST visibility=private or omitted/null inheritance)",
       "method": "POST",
       "family": "WRITE",
-      "source_helper": "functions/_shared/memory-create-direct-neon.js",
+      "source_helper": null,
       "source_refs": [
         "#4425",
         "#4000",
@@ -1042,7 +1042,7 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
-      "disposition_note": "#4425 source candidate: independent private/inheritance Memory Create gate. Exact explicit-public continues to use the already-live LB_MEMORY_CREATE_WRITE_RUNTIME path. Explicit private and omitted/null visibility are candidates only when LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME is selected. Owner Tree authorization and Tree visibility resolution occur before Neon public.users.private_storage_enabled entitlement; strict true is required only when the resolved Memory visibility is private. Non-Plus returns 403 PLUS_REQUIRED_PRIVATE_STORAGE; entitlement lookup failure returns 503 ENTITLEMENT_CHECK_UNAVAILABLE. Inherited public performs zero entitlement reads. Private entitlement precedes parentId/emotionTags/clientKey/scalar validation and every INSERT, preserving current Modal error precedence. Invalid visibility values remain Modal-backed. The new gate is absent from wrangler.toml and Production remains unchanged.",
+      "disposition_note": "#4425 source candidate: independent private/inheritance Memory Create gate. Exact explicit-public continues to use the already-live LB_MEMORY_CREATE_WRITE_RUNTIME path. Explicit private and omitted/null visibility are candidates only when LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME is selected. Owner Tree authorization and Tree visibility resolution occur before Neon public.users.private_storage_enabled entitlement; strict true is required only when the resolved Memory visibility is private. Non-Plus returns 403 PLUS_REQUIRED_PRIVATE_STORAGE; entitlement lookup failure returns 503 ENTITLEMENT_CHECK_UNAVAILABLE. Inherited public performs zero entitlement reads. Private entitlement precedes parentId/emotionTags/clientKey/scalar validation and every INSERT, preserving current Modal error precedence. Invalid visibility values remain Modal-backed. The new gate is absent from wrangler.toml and Production remains unchanged. The shared helper remains canonically classified by the existing memory-create row; this private row therefore records source_helper=null to satisfy one-helper/one-matrix-owner classification.",
       "last_exact_head_evidence": {
         "ref": "#4425 source candidate created from exact main 70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84; source and deterministic fake-runtime contract added on central/4425-memory-private-create. Exact-head CI pending at this documentation commit; no Production gate/provider/DB mutation authorized.",
         "main_sha": "70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84"
