@@ -95,9 +95,15 @@ import {
 import { MAX_REQUEST_BODY_BYTES, readBoundedRequestBody } from './bounded-request-body.js';
 import { validateWritePayload } from './legacy-key-guard.js';
 import { normalizeDirectNeonTimestamp } from './tree-fork-direct-neon.js';
+import {
+  requirePrivateStorageEntitlement,
+  PrivateStorageEntitlementError,
+  PRIVATE_STORAGE_ENTITLEMENT_ERROR
+} from './private-storage-entitlement-neon.js';
 
 export const MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV = Object.freeze({
   GATE_FLAG: 'LB_MEMORY_CREATE_WRITE_RUNTIME',
+  PRIVATE_GATE_FLAG: 'LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME',
   DIRECT_NEON_VALUE: 'direct_neon',
   DATABASE_URL: 'LOVE_PLATFORM_WRITE_DATABASE_URL'
 });
@@ -141,6 +147,18 @@ export function isMemoryCreateDirectNeonSelected(env = {}) {
     ? env[MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.GATE_FLAG].trim()
     : '';
   return value === MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE;
+}
+
+export function isMemoryPrivateCreateDirectNeonSelected(env = {}) {
+  const value = typeof env?.[MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_GATE_FLAG] === 'string'
+    ? env[MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_GATE_FLAG].trim()
+    : '';
+  return value === MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE;
+}
+
+export function isAnyMemoryCreateDirectNeonSelected(env = {}) {
+  return isMemoryCreateDirectNeonSelected(env)
+    || isMemoryPrivateCreateDirectNeonSelected(env);
 }
 
 // ─── Dedicated writer config (no generic fallback) ───────────────────────
@@ -461,6 +479,17 @@ ON CONFLICT (tree_id, client_key) DO NOTHING
 RETURNING id;
 `;
 
+const INSERT_PRIVATE_WITH_CLIENT_KEY_SQL = `
+INSERT INTO memories (
+  id, tree_id, parent_id, title, memo, artist, source, source_url,
+  source_type, thumbnail, emotion_tags, timestamp, visibility,
+  channel_id, channel_name, channel_url, client_key, created_at, updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'private', $13, $14, $15, $16, NOW(), NOW())
+ON CONFLICT (tree_id, client_key) DO NOTHING
+RETURNING id;
+`;
+
 const INSERT_WITH_NULL_CLIENT_KEY_SQL = `
 INSERT INTO memories (
   id, tree_id, parent_id, title, memo, artist, source, source_url,
@@ -471,9 +500,25 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'public', $13, $14, $
 RETURNING id;
 `;
 
+const INSERT_PRIVATE_WITH_NULL_CLIENT_KEY_SQL = `
+INSERT INTO memories (
+  id, tree_id, parent_id, title, memo, artist, source, source_url,
+  source_type, thumbnail, emotion_tags, timestamp, visibility,
+  channel_id, channel_name, channel_url, client_key, created_at, updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'private', $13, $14, $15, $16, NOW(), NOW())
+RETURNING id;
+`;
+
 const INSERT_BASE_SQL = `
 INSERT INTO memories (${INSERT_BASE_COLUMNS})
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'public', $13, $14, $15, NOW(), NOW())
+RETURNING id;
+`;
+
+const INSERT_PRIVATE_BASE_SQL = `
+INSERT INTO memories (${INSERT_BASE_COLUMNS})
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'private', $13, $14, $15, NOW(), NOW())
 RETURNING id;
 `;
 
@@ -486,6 +531,10 @@ RETURNING id;
 // catch handler rebuilds the exact bounded body from the signal.
 const CREATE_WORK_OUTCOME = Object.freeze({
   TREE_NOT_OWNED: 'tree-not-owned',
+  TREE_VISIBILITY_UNRESOLVED: 'tree-visibility-unresolved',
+  PRIVATE_STORAGE_REQUIRED: 'private-storage-required',
+  PRIVATE_STORAGE_UNAVAILABLE: 'private-storage-unavailable',
+  HTTP_ERROR: 'http-error',
   INVALID_PARENT_ID: 'invalid-parent-id',
   CLIENT_KEY_SCHEMA_NOT_ACTIVATED: 'client-key-schema-not-activated',
   CLIENT_KEY_UNIQUE_NOT_ACTIVATED: 'client-key-unique-not-activated',
@@ -507,6 +556,13 @@ function createWorkError(signal, outcome, status) {
   );
 }
 
+function createHttpWorkError(signal, status, body, routeStatus) {
+  if (signal) {
+    signal.http = Object.freeze({ status, body, routeStatus });
+  }
+  return createWorkError(signal, CREATE_WORK_OUTCOME.HTTP_ERROR, status);
+}
+
 function isCreateWorkError(error, signal) {
   return error instanceof NeonWsTransactionError
     && signal
@@ -519,6 +575,42 @@ function createWorkResponse(error, signal, requestId) {
   switch (signal.outcome) {
     case CREATE_WORK_OUTCOME.TREE_NOT_OWNED:
       return jsonResponse({ error: 'Access denied: not your tree' }, status, requestId, 'tree-not-owned');
+    case CREATE_WORK_OUTCOME.TREE_VISIBILITY_UNRESOLVED:
+      return jsonResponse(
+        { detail: { code: 'TREE_VISIBILITY_UNRESOLVED' } },
+        status,
+        requestId,
+        'tree-visibility-unresolved'
+      );
+    case CREATE_WORK_OUTCOME.PRIVATE_STORAGE_REQUIRED:
+      return jsonResponse(
+        {
+          error: 'Private storage requires Plus.',
+          code: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+          upgradeRequired: true
+        },
+        status,
+        requestId,
+        'plus-required-private-storage'
+      );
+    case CREATE_WORK_OUTCOME.PRIVATE_STORAGE_UNAVAILABLE:
+      return jsonResponse(
+        {
+          error: 'Entitlement check temporarily unavailable.',
+          code: 'ENTITLEMENT_CHECK_UNAVAILABLE',
+          upgradeRequired: false
+        },
+        status,
+        requestId,
+        'private-storage-entitlement-unavailable'
+      );
+    case CREATE_WORK_OUTCOME.HTTP_ERROR:
+      return jsonResponse(
+        signal?.http?.body || { error: 'Memory creation failed' },
+        signal?.http?.status || status,
+        requestId,
+        signal?.http?.routeStatus || 'memory-create-validation-failed'
+      );
     case CREATE_WORK_OUTCOME.INVALID_PARENT_ID:
       return jsonResponse(
         { error: 'Parent Memory is invalid', code: 'INVALID_PARENT_ID' },
@@ -595,16 +687,8 @@ async function canonicalRereadAndVerify(tx, signal, {
   return normalizeMemoryRowOutput(row);
 }
 
-async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey, values }) {
-  // A. Parent Tree ownership (403 parity) inside the request-scoped
-  // transaction. Explicit-public routing already decided the visibility, so
-  // the stored visibility is not needed here.
-  const treeRows = await tx.query(OWNER_TREE_SQL, [treeId, ownerId]);
-  if (!Array.isArray(treeRows) || treeRows.length === 0) {
-    throw createWorkError(signal, CREATE_WORK_OUTCOME.TREE_NOT_OWNED, 403);
-  }
-
-  // B. Parent membership under FOR KEY SHARE (#3918 parity): blocks concurrent
+async function persistMemoryCreate(tx, signal, { ownerId, treeId, parentId, clientKey, values, visibility }) {
+  // Parent membership under FOR KEY SHARE (#3918 parity): blocks concurrent
   // DELETE/PK UPDATE of the parent row until our INSERT commits, without
   // blocking concurrent reads. Cross-tree or missing parents fail closed.
   if (parentId !== null) {
@@ -615,7 +699,7 @@ async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey,
     }
   }
 
-  // C. Schema capability detection for memories.client_key (#4058/#4411).
+  // Schema capability detection for memories.client_key (#4058/#4411).
   // Column existence and ON CONFLICT authority are separate capabilities.
   const capabilityRows = await tx.query(CLIENT_KEY_COLUMN_SQL, []);
   const hasClientKeyColumn = Array.isArray(capabilityRows) && capabilityRows.length > 0;
@@ -634,10 +718,12 @@ async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey,
       throw createWorkError(signal, CREATE_WORK_OUTCOME.CLIENT_KEY_UNIQUE_NOT_ACTIVATED, 501);
     }
 
-    insertSql = INSERT_WITH_CLIENT_KEY_SQL;
+    insertSql = visibility === 'private'
+      ? INSERT_PRIVATE_WITH_CLIENT_KEY_SQL
+      : INSERT_WITH_CLIENT_KEY_SQL;
     insertParams = [...values, clientKey];
 
-    // D. Idempotency convergence pre-check under FOR KEY SHARE: an already
+    // Idempotency convergence pre-check under FOR KEY SHARE: an already
     // persisted (tree_id, client_key) row wins; return its canonical reread.
     const existingRows = await tx.query(EXISTING_CLIENT_KEY_FOR_KEY_SHARE_SQL, [treeId, clientKey]);
     if (Array.isArray(existingRows) && existingRows.length > 0) {
@@ -649,25 +735,20 @@ async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey,
       });
     }
   } else if (hasClientKeyColumn) {
-    // Preserve Modal parity for an omitted key: explicitly persist NULL when
-    // the column exists, but do not require or invoke ON CONFLICT capability.
-    insertSql = INSERT_WITH_NULL_CLIENT_KEY_SQL;
+    insertSql = visibility === 'private'
+      ? INSERT_PRIVATE_WITH_NULL_CLIENT_KEY_SQL
+      : INSERT_WITH_NULL_CLIENT_KEY_SQL;
     insertParams = [...values, null];
   } else {
-    // Legacy compatibility: no client_key column and no explicit key.
-    insertSql = INSERT_BASE_SQL;
+    insertSql = visibility === 'private'
+      ? INSERT_PRIVATE_BASE_SQL
+      : INSERT_BASE_SQL;
     insertParams = [...values];
   }
 
-  // E. Insert. ON CONFLICT DO NOTHING is used only after exact uniqueness
-  // capability is proven for explicit clientKey writes. Omitted-key writes
-  // never depend on that capability.
   const insertedRows = await tx.query(insertSql, insertParams);
   const insertedRow = Array.isArray(insertedRows) ? insertedRows[insertedRows.length - 1] : null;
 
-  // F. Lost race -> converge on the winning canonical row via the client-key
-  // scoped canonical reread; a conflict row vanishing between insert and
-  // reread -> bounded 409 (never fabricate success from the request payload).
   if (!insertedRow) {
     if (hasClientKeyColumn && clientKey !== null) {
       return await canonicalRereadAndVerify(tx, signal, {
@@ -682,13 +763,170 @@ async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey,
     throw createWorkError(signal, CREATE_WORK_OUTCOME.MEMORY_INSERT_EMPTY, 500);
   }
 
-  // G. Canonical owner-scoped reread builds the whole response; verify the
-  // reread still belongs to the verified owner before returning. The legacy
-  // column-absent path MUST use a projection that does not reference client_key.
   return await canonicalRereadAndVerify(tx, signal, {
     memoryId: String(insertedRow.id),
     ownerId,
     hasClientKeyColumn
+  });
+}
+
+async function runCreateWork(tx, signal, { ownerId, treeId, parentId, clientKey, values }) {
+  // Existing explicit-public path: keep the accepted owner-first transaction
+  // behavior and perform zero private entitlement reads.
+  const treeRows = await tx.query(OWNER_TREE_SQL, [treeId, ownerId]);
+  if (!Array.isArray(treeRows) || treeRows.length === 0) {
+    throw createWorkError(signal, CREATE_WORK_OUTCOME.TREE_NOT_OWNED, 403);
+  }
+
+  return await persistMemoryCreate(tx, signal, {
+    ownerId,
+    treeId,
+    parentId,
+    clientKey,
+    values,
+    visibility: 'public'
+  });
+}
+
+function buildProtectedCreateInputs(payload, treeId, signal) {
+  // Modal create_owner_memory ordering AFTER visibility/entitlement:
+  // parentId -> emotionTags -> clientKey -> remaining scalar fields.
+  let parentId = null;
+  if (payload.parentId) {
+    const result = validateRequiredUuid(payload.parentId, 'parentId');
+    if (!result.ok) {
+      throw createHttpWorkError(signal, result.status, result.body, result.routeStatus);
+    }
+    parentId = result.value;
+  }
+
+  const emotionTagsResult = Object.prototype.hasOwnProperty.call(payload, 'emotionTags')
+    ? validateEmotionTags(payload.emotionTags)
+    : { ok: true, value: [] };
+  if (!emotionTagsResult.ok) {
+    throw createHttpWorkError(
+      signal,
+      emotionTagsResult.status,
+      emotionTagsResult.body,
+      emotionTagsResult.routeStatus
+    );
+  }
+
+  const clientKeyResult = validateClientKeyInput(payload.clientKey);
+  if (!clientKeyResult.ok) {
+    throw createHttpWorkError(
+      signal,
+      clientKeyResult.status,
+      clientKeyResult.body,
+      clientKeyResult.routeStatus
+    );
+  }
+
+  const scalarFields = [
+    ['title', MEMORY_FIELD_LIMITS.title, {}],
+    ['memo', MEMORY_FIELD_LIMITS.memo, {}],
+    ['artist', MEMORY_FIELD_LIMITS.artist, {}],
+    ['source', MEMORY_FIELD_LIMITS.source, {}],
+    ['sourceUrl', MEMORY_FIELD_LIMITS.sourceUrl, {}],
+    ['sourceType', MEMORY_FIELD_LIMITS.sourceType, {}],
+    ['thumbnail', MEMORY_FIELD_LIMITS.thumbnail, {}],
+    ['timestamp', MEMORY_FIELD_LIMITS.timestamp, {}],
+    ['channelId', MEMORY_FIELD_LIMITS.channelId, { emptyToNull: true }],
+    ['channelName', MEMORY_FIELD_LIMITS.channelName, { emptyToNull: true }],
+    ['channelUrl', MEMORY_FIELD_LIMITS.channelUrl, { emptyToNull: true }]
+  ];
+  const scalars = {};
+  for (const [field, max, opts] of scalarFields) {
+    const result = validateOptionalMemoryString(payload[field], field, { max, ...opts });
+    if (!result.ok) {
+      throw createHttpWorkError(signal, result.status, result.body, result.routeStatus);
+    }
+    scalars[field] = result.value;
+  }
+
+  return Object.freeze({
+    parentId,
+    clientKey: clientKeyResult.value,
+    values: Object.freeze([
+      null,
+      treeId,
+      parentId,
+      scalars.title,
+      scalars.memo,
+      scalars.artist,
+      scalars.source,
+      scalars.sourceUrl,
+      scalars.sourceType || 'youtube',
+      scalars.thumbnail,
+      emotionTagsResult.value,
+      scalars.timestamp,
+      scalars.channelId,
+      scalars.channelName,
+      scalars.channelUrl
+    ])
+  });
+}
+
+async function runPrivateOrInheritedCreateWork(tx, signal, { ownerId, treeId, payload }) {
+  // Modal parity: owner Tree lookup precedes inheritance resolution and every
+  // Plus entitlement lookup. This SELECT is read-only and is inside the same
+  // transaction that may later insert the Memory.
+  const treeRows = await tx.query(OWNER_TREE_SQL, [treeId, ownerId]);
+  const tree = Array.isArray(treeRows) && treeRows.length ? treeRows[0] : null;
+  if (!tree) {
+    throw createWorkError(signal, CREATE_WORK_OUTCOME.TREE_NOT_OWNED, 403);
+  }
+
+  const hasOwnVisibility = Object.prototype.hasOwnProperty.call(payload, 'visibility');
+  const explicitVisibility = hasOwnVisibility ? payload.visibility : undefined;
+  let visibility;
+
+  if (explicitVisibility === undefined || explicitVisibility === null) {
+    if (tree.visibility === 'public' || tree.visibility === 'private') {
+      visibility = tree.visibility;
+    } else {
+      throw createWorkError(signal, CREATE_WORK_OUTCOME.TREE_VISIBILITY_UNRESOLVED, 400);
+    }
+  } else if (explicitVisibility === 'private') {
+    visibility = 'private';
+  } else {
+    // Defensive only: route selection keeps other values on Modal before DB.
+    throw createHttpWorkError(
+      signal,
+      400,
+      { error: 'visibility: public, private' },
+      'invalid-visibility'
+    );
+  }
+
+  // Private entitlement is checked after owner/inheritance resolution and
+  // before parent/scalar validation or any mutation, matching Modal's current
+  // create_owner_memory ordering. Inherited public creates perform zero reads.
+  if (visibility === 'private') {
+    try {
+      await requirePrivateStorageEntitlement(tx, ownerId);
+    } catch (error) {
+      if (
+        error instanceof PrivateStorageEntitlementError
+        && error.code === PRIVATE_STORAGE_ENTITLEMENT_ERROR.REQUIRED
+      ) {
+        throw createWorkError(signal, CREATE_WORK_OUTCOME.PRIVATE_STORAGE_REQUIRED, 403);
+      }
+      throw createWorkError(signal, CREATE_WORK_OUTCOME.PRIVATE_STORAGE_UNAVAILABLE, 503);
+    }
+  }
+
+  const inputs = buildProtectedCreateInputs(payload, treeId, signal);
+  const values = [...inputs.values];
+  values[0] = crypto.randomUUID();
+
+  return await persistMemoryCreate(tx, signal, {
+    ownerId,
+    treeId,
+    parentId: inputs.parentId,
+    clientKey: inputs.clientKey,
+    values,
+    visibility
   });
 }
 
@@ -705,9 +943,10 @@ export async function handleMemoryCreateDirectNeon(
     boundedBodyResult = null
   } = {}
 ) {
-  if (!isMemoryCreateDirectNeonRequest(request) || !isMemoryCreateDirectNeonSelected(env)) {
-    // Default/unknown gate -> existing Modal path unchanged. Return null so the
-    // gateway continues to the Modal-owned write route.
+  if (!isMemoryCreateDirectNeonRequest(request) || !isAnyMemoryCreateDirectNeonSelected(env)) {
+    // Both public/private gates disabled or unknown -> existing Modal path
+    // unchanged. Return null so the gateway continues to the Modal-owned write
+    // route.
     return null;
   }
 
@@ -782,13 +1021,21 @@ export async function handleMemoryCreateDirectNeon(
     }
   }
 
-  // Route split BEFORE authentication so EVERY non-public request keeps the
-  // exact existing Modal behavior (including Modal's own auth error shapes):
-  // only an EXACT "public" string becomes a direct candidate. Omitted/null may
-  // inherit a private parent Tree, private stays Plus/Modal-owned, and any
-  // other value defers with zero direct DB contact. Authentication below still
-  // runs before any DB capability acquisition or transaction start.
-  if (payload.visibility !== 'public') {
+  // Route split BEFORE authentication, preserving the existing #4412 bounded
+  // routing exception. Public and private/inherited paths use independent gates:
+  // - exact public -> existing Production-live public gate only;
+  // - explicit private OR omitted/null -> new private/inheritance gate only;
+  // - invalid/other values -> unchanged Modal validation path.
+  const hasOwnVisibility = Object.prototype.hasOwnProperty.call(payload, 'visibility');
+  const rawVisibility = hasOwnVisibility ? payload.visibility : undefined;
+  let routeMode;
+  if (rawVisibility === 'public') {
+    if (!isMemoryCreateDirectNeonSelected(env)) return null;
+    routeMode = 'public';
+  } else if (rawVisibility === 'private' || rawVisibility === undefined || rawVisibility === null) {
+    if (!isMemoryPrivateCreateDirectNeonSelected(env)) return null;
+    routeMode = 'private-or-inherited';
+  } else {
     return null;
   }
 
@@ -841,77 +1088,87 @@ export async function handleMemoryCreateDirectNeon(
     return jsonResponse(treeIdResult.body, treeIdResult.status, requestId, treeIdResult.routeStatus);
   }
 
-  const hasOwnEmotionTags = Object.prototype.hasOwnProperty.call(payload, 'emotionTags');
-  const emotionTagsResult = hasOwnEmotionTags
-    ? validateEmotionTags(payload.emotionTags)
-    : { ok: true, value: [] };
-  if (!emotionTagsResult.ok) {
-    return jsonResponse(emotionTagsResult.body, emotionTagsResult.status, requestId, emotionTagsResult.routeStatus);
-  }
-
-  const clientKeyResult = validateClientKeyInput(payload.clientKey);
-  if (!clientKeyResult.ok) {
-    return jsonResponse(clientKeyResult.body, clientKeyResult.status, requestId, clientKeyResult.routeStatus);
-  }
-
-  const scalarFields = [
-    ['title', MEMORY_FIELD_LIMITS.title, {}],
-    ['memo', MEMORY_FIELD_LIMITS.memo, {}],
-    ['artist', MEMORY_FIELD_LIMITS.artist, {}],
-    ['source', MEMORY_FIELD_LIMITS.source, {}],
-    ['sourceUrl', MEMORY_FIELD_LIMITS.sourceUrl, {}],
-    ['sourceType', MEMORY_FIELD_LIMITS.sourceType, {}],
-    ['thumbnail', MEMORY_FIELD_LIMITS.thumbnail, {}],
-    ['timestamp', MEMORY_FIELD_LIMITS.timestamp, {}],
-    ['channelId', MEMORY_FIELD_LIMITS.channelId, { emptyToNull: true }],
-    ['channelName', MEMORY_FIELD_LIMITS.channelName, { emptyToNull: true }],
-    ['channelUrl', MEMORY_FIELD_LIMITS.channelUrl, { emptyToNull: true }]
-  ];
-  const scalars = {};
-  for (const [field, max, opts] of scalarFields) {
-    const result = validateOptionalMemoryString(payload[field], field, { max, ...opts });
-    if (!result.ok) {
-      return jsonResponse(result.body, result.status, requestId, result.routeStatus);
+  let publicCreateInputs = null;
+  if (routeMode === 'public') {
+    const hasOwnEmotionTags = Object.prototype.hasOwnProperty.call(payload, 'emotionTags');
+    const emotionTagsResult = hasOwnEmotionTags
+      ? validateEmotionTags(payload.emotionTags)
+      : { ok: true, value: [] };
+    if (!emotionTagsResult.ok) {
+      return jsonResponse(emotionTagsResult.body, emotionTagsResult.status, requestId, emotionTagsResult.routeStatus);
     }
-    scalars[field] = result.value;
-  }
 
-  const parentId = payload.parentId
-    ? (() => {
-        const result = validateRequiredUuid(payload.parentId, 'parentId');
-        if (!result.ok) {
-          return { error: result };
-        }
-        return { value: result.value };
-      })()
-    : { value: null };
-  if (parentId.error) {
-    return jsonResponse(
-      parentId.error.body,
-      parentId.error.status,
-      requestId,
-      parentId.error.routeStatus
-    );
-  }
+    const clientKeyResult = validateClientKeyInput(payload.clientKey);
+    if (!clientKeyResult.ok) {
+      return jsonResponse(clientKeyResult.body, clientKeyResult.status, requestId, clientKeyResult.routeStatus);
+    }
 
-  // sourceType default 'youtube' when empty/omitted (validate_optional_memory_string(p) or "youtube").
-  const safeValues = [
-    null, // placeholder for id, assigned inside the transaction
-    treeIdResult.value,
-    parentId.value,
-    scalars.title,
-    scalars.memo,
-    scalars.artist,
-    scalars.source,
-    scalars.sourceUrl,
-    scalars.sourceType || 'youtube',
-    scalars.thumbnail,
-    emotionTagsResult.value,
-    scalars.timestamp,
-    scalars.channelId,
-    scalars.channelName,
-    scalars.channelUrl
-  ];
+    const scalarFields = [
+      ['title', MEMORY_FIELD_LIMITS.title, {}],
+      ['memo', MEMORY_FIELD_LIMITS.memo, {}],
+      ['artist', MEMORY_FIELD_LIMITS.artist, {}],
+      ['source', MEMORY_FIELD_LIMITS.source, {}],
+      ['sourceUrl', MEMORY_FIELD_LIMITS.sourceUrl, {}],
+      ['sourceType', MEMORY_FIELD_LIMITS.sourceType, {}],
+      ['thumbnail', MEMORY_FIELD_LIMITS.thumbnail, {}],
+      ['timestamp', MEMORY_FIELD_LIMITS.timestamp, {}],
+      ['channelId', MEMORY_FIELD_LIMITS.channelId, { emptyToNull: true }],
+      ['channelName', MEMORY_FIELD_LIMITS.channelName, { emptyToNull: true }],
+      ['channelUrl', MEMORY_FIELD_LIMITS.channelUrl, { emptyToNull: true }]
+    ];
+    const scalars = {};
+    for (const [field, max, opts] of scalarFields) {
+      const result = validateOptionalMemoryString(payload[field], field, { max, ...opts });
+      if (!result.ok) {
+        return jsonResponse(result.body, result.status, requestId, result.routeStatus);
+      }
+      scalars[field] = result.value;
+    }
+
+    const parentId = payload.parentId
+      ? (() => {
+          const result = validateRequiredUuid(payload.parentId, 'parentId');
+          if (!result.ok) {
+            return { error: result };
+          }
+          return { value: result.value };
+        })()
+      : { value: null };
+    if (parentId.error) {
+      return jsonResponse(
+        parentId.error.body,
+        parentId.error.status,
+        requestId,
+        parentId.error.routeStatus
+      );
+    }
+
+    // sourceType default 'youtube' when empty/omitted (validate_optional_memory_string(p) or "youtube").
+    const safeValues = [
+      null, // placeholder for id, assigned inside the transaction
+      treeIdResult.value,
+      parentId.value,
+      scalars.title,
+      scalars.memo,
+      scalars.artist,
+      scalars.source,
+      scalars.sourceUrl,
+      scalars.sourceType || 'youtube',
+      scalars.thumbnail,
+      emotionTagsResult.value,
+      scalars.timestamp,
+      scalars.channelId,
+      scalars.channelName,
+      scalars.channelUrl
+    ];
+
+
+    publicCreateInputs = Object.freeze({
+      parentId: parentId.value,
+      clientKey: clientKeyResult.value,
+      values: Object.freeze(safeValues)
+    });
+  }
 
   // Dedicated writer DB authority. No generic/read-only fallback.
   const config = readMemoryCreateWriteConfig(env);
@@ -947,18 +1204,26 @@ export async function handleMemoryCreateDirectNeon(
     }
   }
 
-  const workSignal = { outcome: undefined };
+  const workSignal = { outcome: undefined, http: null };
 
   let result;
   try {
     result = await adapter.runTransaction(async (tx) => {
-      const values = [...safeValues];
+      if (routeMode === 'private-or-inherited') {
+        return await runPrivateOrInheritedCreateWork(tx, workSignal, {
+          ownerId,
+          treeId: treeIdResult.value,
+          payload
+        });
+      }
+
+      const values = [...publicCreateInputs.values];
       values[0] = crypto.randomUUID(); // fresh canonical Memory id
       return await runCreateWork(tx, workSignal, {
         ownerId,
         treeId: treeIdResult.value,
-        parentId: parentId.value,
-        clientKey: clientKeyResult.value,
+        parentId: publicCreateInputs.parentId,
+        clientKey: publicCreateInputs.clientKey,
         values
       });
     });
@@ -1021,17 +1286,21 @@ export const MEMORY_CREATE_DIRECT_NEON_CONTRACT = Object.freeze({
   method: 'POST',
   path: '/api/memories',
   gateEnv: MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.GATE_FLAG,
+  privateGateEnv: MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_GATE_FLAG,
   directNeonValue: MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE,
   databaseEnv: MEMORY_CREATE_DIRECT_NEON_RUNTIME_ENV.DATABASE_URL,
   forbiddenFallbackEnvs: MEMORY_CREATE_FORBIDDEN_FALLBACK_ENVS,
   ownerAuthority: 'verified-firebase-legacyOwnerId',
   routeSplit: Object.freeze({
-    explicitPublicOnly: 'direct-neon-candidate',
-    omittedOrNullVisibility: 'modal-before-any-db-contact-parent-inheritance-may-be-private',
-    explicitPrivate: 'modal-plus-entitlement-authority',
+    explicitPublic: 'public-gate-direct-neon-candidate',
+    omittedOrNullVisibility: 'private-gate-direct-neon-parent-inheritance-candidate',
+    explicitPrivate: 'private-gate-direct-neon-entitlement-candidate',
     otherVisibilityValues: 'modal-exact-validation-parity',
     gateUnsetOrModalOrUnknown: 'modal'
   }),
+  privateEntitlementSource: 'neon.public.users.private_storage_enabled',
+  privateEntitlementAfterOwnerBeforeMutation: true,
+  inheritedPublicEntitlementReads: 0,
   routeSplitBeforeAuthKeepsModalErrorShapes: true,
   preAuthBodyRoutingParityDecision: 'ACCEPTED_BOUNDED_ROUTING_EXCEPTION_4412',
   preAuthBodyMaxBytes: MAX_REQUEST_BODY_BYTES,
