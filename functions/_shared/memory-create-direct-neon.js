@@ -1,20 +1,27 @@
-// LOCAL-1 (#4178) Phase-4 explicit-public Memory create Cloudflare -> Neon
-// WebSocket interactive transaction candidate adapter.
+// #4178/#4425 Memory create Cloudflare -> Neon WebSocket interactive
+// transaction adapter.
 //
-// This is a gated MIGRATION CANDIDATE only. The Product Memory create route
-// remains Modal-backed unless the route-specific gate is explicitly selected:
+// Public and private/inherited create use independent gates:
 //
 //   LB_MEMORY_CREATE_WRITE_RUNTIME=direct_neon
+//   LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME=direct_neon
 //
-// unset / modal / unknown  -> existing Modal path (this adapter returns null)
-// direct_neon + visibility EXACTLY "public" -> direct-Neon candidate
+// The public gate is already Production-live. The private/inheritance gate is
+// source-only and must remain absent from Production config until separately
+// reviewed and authorized.
 //
 // Route split (decided BEFORE any direct DB connection or transaction):
-//   visibility omitted / null -> return null (Modal); parent-Tree inheritance
-//     may resolve to private, so the direct runtime never touches the DB;
-//   visibility "private" -> return null (Modal); Plus/private-storage
-//     entitlement stays Modal-owned;
-//   any other value -> return null (Modal keeps its exact validation parity).
+//   visibility exactly "public" -> existing public gate only;
+//   visibility exactly "private" -> private gate only;
+//   visibility omitted / null -> private gate only, then parent Tree visibility
+//     is resolved inside the same transaction;
+//   any other value -> unchanged Modal validation path.
+//
+// Private resolution uses Neon public.users.private_storage_enabled as the
+// entitlement source of truth. Owner Tree authorization happens first; a
+// resolved private Memory requires strict boolean true before any mutation or
+// later parent/scalar validation. Inherited public creates perform zero
+// entitlement reads.
 //
 // After explicit direct execution begins there is NO per-request direct ->
 // Modal fallback. Missing/bad direct config or any auth/query/transaction
