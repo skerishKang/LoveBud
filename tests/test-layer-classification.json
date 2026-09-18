@@ -4566,6 +4566,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-private-visibility-update-neon-4425.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source-only #4425 private Tree visibility entitlement contract using injected verifier, bounded body, and fake transaction adapter; no network, real database, provider, Product request, credential, or Production mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-social-client-surface-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
