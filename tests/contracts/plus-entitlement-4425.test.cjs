@@ -156,11 +156,11 @@ test('#4425 Firestore reader projects only entitlement compatibility fields', as
     plan: 'free',
     plus: false,
     entitlements: {
-      privateStorage: true,
-      other: 'ignored-by-entitlement-consumer'
+      privateStorage: true
     }
   });
   assert.equal(Object.hasOwn(projected, 'email'), false);
+  assert.equal(Object.hasOwn(projected.entitlements, 'other'), false);
 });
 
 test('#4425 Firestore missing user document preserves existing entitlement=false semantics', async () => {
