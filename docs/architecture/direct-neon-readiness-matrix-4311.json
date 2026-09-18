@@ -823,19 +823,19 @@
       "source_parity": "PASS_AT_CITED_SHA",
       "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
-      "checked_in_gate": "NOT_CHECKED_IN",
+      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
       "live_gate_state": "LIVE_GATE_READ_REQUIRED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
       "last_exact_head_evidence": {
-        "ref": "#4425 source candidate at baseline e4fd926dcc2a8cbbb993fe319cfd30259178c4de: independent private Tree create gate, verified-Firebase owner, Neon entitlement SELECT before any mutation in the same transaction, stable 403 PLUS_REQUIRED_PRIVATE_STORAGE and 503 ENTITLEMENT_CHECK_UNAVAILABLE parity, explicit private INSERT, canonical owner reread, no Firestore dependency. Production entitlement schema is already adopted; private runtime gate remains absent.",
-        "main_sha": "e4fd926dcc2a8cbbb993fe319cfd30259178c4de"
+        "ref": "#4425 gate-check-in candidate at baseline main 24a8ddc4609c36d0b178be4756d0e341cda298fd: repository Production vars add LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME=direct_neon only. Source/DB/privilege boundaries are unchanged; Product live status remains false until post-merge provider/deployment readback and bounded functional proof.",
+        "main_sha": "24a8ddc4609c36d0b178be4756d0e341cda298fd"
       },
       "modal_retained_by_design": false,
-      "rollback_authority": "SOURCE/GATE ONLY: while LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME is absent, explicit private create remains Modal-backed. Future activation rollback is removal/unset of this private gate only; do not rollback the additive entitlement column merely to disable private Direct-Neon.",
-      "next_action": "Exact-head CI and review this source slice. If merged, separately check in/activate LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME and perform one bounded authenticated Plus/non-Plus Product proof under fresh authority; no activation or Product write is authorized by this source PR."
+      "rollback_authority": "GATE_ONLY_ROLLBACK: remove/unset LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME through reviewed repository configuration. Do not DROP the additive Neon entitlement column and do not alter writer privileges merely to disable this route.",
+      "next_action": "Exact-head CI this gate-only slice, merge if GREEN, then verify exact-main deployment/provider gate readback before any Product private-write canary."
     },
     {
       "id": "tree-update",
