@@ -177,6 +177,38 @@ test('unsupported payload fields fail after owner check but before entitlement l
   assert.equal(q.some(x => x.includes('UPDATE trees')), false);
 });
 
+test('Modal field order is preserved around private entitlement', async () => {
+  const m = await mod();
+
+  // title is processed before visibility in Modal, so malformed title wins and
+  // entitlement is never queried.
+  const badTitle = makeAdapter({ entitled: false });
+  const titleResp = await m.handleTreeUpdateDirectNeon(
+    request(), TREE_ID, BOTH_ENV, 'rid-order-title',
+    {
+      verifyTokenOverride: verifier(),
+      transactionAdapterOverride: badTitle.adapter,
+      boundedBodyResult: bodyResult({ title: 42, visibility: 'private' })
+    }
+  );
+  assert.equal(titleResp.status, 400);
+  assert.equal(texts(badTitle.logs).some(x => x.includes('SELECT private_storage_enabled')), false);
+
+  // groupName is processed after visibility in Modal, so a non-Plus denial
+  // wins before later groupName validation.
+  const badGroup = makeAdapter({ entitled: false });
+  const groupResp = await m.handleTreeUpdateDirectNeon(
+    request(), TREE_ID, BOTH_ENV, 'rid-order-group',
+    {
+      verifyTokenOverride: verifier(),
+      transactionAdapterOverride: badGroup.adapter,
+      boundedBodyResult: bodyResult({ visibility: 'private', groupName: true })
+    }
+  );
+  assert.equal(groupResp.status, 403);
+  assert.equal((await groupResp.json()).code, 'PLUS_REQUIRED_PRIVATE_STORAGE');
+});
+
 test('non-Plus private update returns stable 403 and performs no UPDATE', async () => {
   const m = await mod();
   const fake = makeAdapter({ entitled: false });
