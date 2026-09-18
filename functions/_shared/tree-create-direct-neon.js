@@ -1,20 +1,23 @@
-// #4173 Phase-4 public Tree create Cloudflare -> Neon WebSocket interactive
-// transaction candidate adapter.
+// #4173/#4425 Tree create Cloudflare -> Neon WebSocket interactive
+// transaction adapter.
 //
-// This is a gated MIGRATION CANDIDATE only. The Product Tree create route
-// remains Modal-backed unless the route-specific gate is explicitly selected:
+// Public and private create use independent gates:
 //
 //   LB_TREE_CREATE_WRITE_RUNTIME=direct_neon
+//   LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME=direct_neon
 //
-// unset / modal / unknown  -> existing Modal path (this adapter returns null)
-// direct_neon             -> direct-Neon candidate for PUBLIC creation only
+// The public gate is already Production-live. The private gate is a source-only
+// candidate and remains disabled unless separately checked in/activated.
 //
 // Route split (decided BEFORE any direct DB connection or transaction):
-//   omitted visibility        -> public direct-Neon candidate
-//   explicit visibility=public -> public direct-Neon candidate
-//   explicit visibility=private -> this adapter returns null so the route falls
-//     through to the existing Modal authority; the Plus/private-storage
-//     entitlement stays owned by Modal and no direct DB capability is acquired.
+//   omitted/public -> Direct-Neon only when the public gate is selected;
+//   explicit private -> Direct-Neon only when the private gate is selected;
+//   otherwise -> existing Modal path with zero direct DB capability acquired.
+//
+// Private Direct-Neon execution checks the verified owner's Neon
+// public.users.private_storage_enabled entitlement inside the same transaction,
+// before any owner bootstrap or Tree INSERT. Public create never performs an
+// entitlement lookup.
 //
 // After explicit direct execution begins there is NO per-request direct ->
 // Modal fallback. Missing/bad direct config or any auth/query/transaction
@@ -38,13 +41,14 @@
 //     max 200 code points), groupName (non-string 400, trim, empty->null,
 //     max 80 code points), keywords (array-only, string items, trim, empty
 //     removed, order-preserving dedupe, max 5 items, max 24 code points each),
-//     visibility (omitted/null -> 'public', 'public' allowed, anything else
-//     400 'visibility: public, private');
+//     visibility (omitted/null -> 'public'; explicit 'public'/'private'
+//     accepted only by their matching route gate; other values -> 400);
 //   - title default 'My LoveTree' when omitted/null/empty-after-trim;
 //   - schema-capability-aware owner-user bootstrap inside the same
 //     request-scoped transaction (fail closed on unknown required non-null
 //     users columns; no fabricated values);
-//   - INSERT INTO trees (...) VALUES ('public', ...) RETURNING with
+//   - private entitlement SELECT (private only) before every mutation;
+//   - INSERT INTO trees (...) VALUES ('public'|'private', ...) RETURNING with
 //     created_at::text AS created_at / updated_at::text AS updated_at so pg
 //     never coerces timestamptz into a JS Date (no precision loss);
 //   - returned owner_id must equal the verified UID before commit;
@@ -58,10 +62,10 @@
 // The current Modal Tree create writer has NO advisory lock, NO idempotency
 // reservation, and NO audit/rate-limit writes; none are added here.
 //
-// This source child does NOT activate the Production route gate, does NOT
-// mutate Production secrets/bindings or providers, does NOT change schema or
-// GRANTs, does NOT migrate private Tree entitlement, and does NOT touch Tree
-// update/delete or Memory/social write surfaces.
+// This source child does NOT activate the private Production route gate, does
+// NOT mutate Production secrets/bindings or providers, does NOT change schema
+// or GRANTs, and does NOT touch Tree update/delete or Memory/social writes.
+// The additive Neon entitlement column was separately adopted before this child.
 
 import {
   createNeonWsTransactionAdapter,
