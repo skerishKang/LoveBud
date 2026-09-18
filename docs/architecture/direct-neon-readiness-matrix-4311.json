@@ -1091,6 +1091,50 @@
       "next_action": "Memory update direct-Neon is Production live per the accepted #4281 final authority, with fresh continuity re-audit at main beaf3ecf showing zero drift in helper, route dispatch, or wrangler gate since c65009c7. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no further Product canary): any change to LB_MEMORY_UPDATE_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the memory-update-direct-neon helper, Memory PUT route dispatch, memories/trees schema assumptions, owner authorization logic, transaction/update semantics, serialization normalization, or Cloudflare Production deployment/source parity"
     },
     {
+      "id": "memory-private-visibility-update",
+      "route": "/api/memories/{id} (PUT visibility=private)",
+      "method": "PUT",
+      "family": "WRITE",
+      "source_helper": null,
+      "source_refs": [
+        "#4425",
+        "#4000",
+        "#4006"
+      ],
+      "source_state": "SOURCE_READY",
+      "runtime_gate": "LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME",
+      "required_objects": {
+        "users": [
+          "SELECT"
+        ],
+        "memories": [
+          "UPDATE",
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ]
+      },
+      "credential_boundary": "direct_neon_runtime",
+      "source_parity": "PASS_AT_CITED_SHA",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
+      "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
+      "diagnostic_execution_authorized": "NOT_AUTHORIZED",
+      "production_live": "NOT_PRODUCTION_LIVE",
+      "disposition_4239": "I",
+      "disposition_note": "#4425 source candidate: independent explicit-private Memory visibility-update gate layered onto the existing Production-live Memory update helper. Exact visibility=private is a candidate only when LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME is selected; otherwise it remains Modal-backed before direct DB acquisition. Owner authorization and unsupported/empty plus title/memo/source/sourceUrl/sourceType/thumbnail/emotionTags validation precede Neon public.users.private_storage_enabled entitlement, matching current Modal update_owner_memory precedence. Strict true is required before visibility/private mutation; non-Plus returns 403 PLUS_REQUIRED_PRIVATE_STORAGE and entitlement lookup failure returns 503 ENTITLEMENT_CHECK_UNAVAILABLE. channelId/channelName/channelUrl/artist/timestamp/parentId validation remains after entitlement as in Modal. Ordinary/public updates continue on LB_MEMORY_UPDATE_WRITE_RUNTIME and perform zero private-entitlement reads. The new gate is absent from wrangler.toml and Production remains unchanged. Shared helper ownership remains on the existing memory-update row, so source_helper=null here.",
+      "last_exact_head_evidence": {
+        "ref": "#4425 source candidate created from exact main 1c2463b278d4bdc26ac555b6930e3f909551989f on central/4425-memory-private-visibility-update; source/route and deterministic fake-runtime contract added. Exact-head CI pending at this documentation commit; no Production gate/provider/DB/ACL mutation authorized.",
+        "main_sha": "1c2463b278d4bdc26ac555b6930e3f909551989f"
+      },
+      "modal_retained_by_design": false,
+      "rollback_authority": "SOURCE_ONLY: while LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME is absent, explicit visibility=private Memory PUT remains Modal-backed. Future activation rollback is gate-only removal/unset; do not alter the existing Production-live LB_MEMORY_UPDATE_WRITE_RUNTIME gate, entitlement column, or writer privilege envelope merely to disable this path.",
+      "next_action": "Run exact-head CI/review for this source slice. Do not check in or activate LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME in Production as part of this PR. Existing ordinary Memory Update remains Production-live and must retain its accepted gate/canary authority."
+    },
+    {
       "id": "memory-delete",
       "route": "/api/memories/{id}",
       "method": "DELETE",
