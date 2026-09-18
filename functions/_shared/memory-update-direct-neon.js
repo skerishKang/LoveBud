@@ -2,12 +2,14 @@
 //
 // Gated source candidate for PUT /api/memories/:id only. Firebase remains the
 // Product identity authority and principal.legacyOwnerId is the sole owner key.
-// Default/modal/unknown routing stays Modal-backed. Explicit visibility=private
-// is returned to Modal before any direct DB capability so the existing
-// Plus/private-storage entitlement remains authoritative.
+// Ordinary Memory update and explicit private-visibility update have independent
+// gates. When the private gate is absent, explicit visibility='private' remains
+// Modal-backed before any direct DB capability is acquired. When selected, the
+// Neon private-storage entitlement is checked in the same transaction after the
+// owner check and the Modal-preceding field validations, but before every UPDATE.
 //
-// This source does not activate Production routing, mutate provider bindings,
-// change DB grants, perform schema/data migration, or migrate Memory DELETE.
+// This source extension does not check the private gate into Production, mutate
+// provider bindings, change DB grants/schema/data, or migrate Memory DELETE.
 
 import {
   createNeonWsTransactionAdapter,
@@ -34,9 +36,15 @@ import {
 } from './memory-create-direct-neon.js';
 import { normalizeDirectNeonTimestamp } from './tree-fork-direct-neon.js';
 import { REQUEST_ID_HEADER } from './request-id.js';
+import {
+  requirePrivateStorageEntitlement,
+  PrivateStorageEntitlementError,
+  PRIVATE_STORAGE_ENTITLEMENT_ERROR
+} from './private-storage-entitlement-neon.js';
 
 export const MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV = Object.freeze({
   GATE_FLAG: 'LB_MEMORY_UPDATE_WRITE_RUNTIME',
+  PRIVATE_VISIBILITY_GATE_FLAG: 'LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME',
   DIRECT_NEON_VALUE: 'direct_neon',
   DATABASE_URL: 'LOVE_PLATFORM_WRITE_DATABASE_URL'
 });
@@ -127,6 +135,18 @@ export function isMemoryUpdateDirectNeonSelected(env = {}) {
     ? env[MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.GATE_FLAG].trim()
     : '';
   return value === MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE;
+}
+
+export function isMemoryPrivateVisibilityUpdateDirectNeonSelected(env = {}) {
+  const value = typeof env?.[MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_VISIBILITY_GATE_FLAG] === 'string'
+    ? env[MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_VISIBILITY_GATE_FLAG].trim()
+    : '';
+  return value === MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE;
+}
+
+export function isAnyMemoryUpdateDirectNeonSelected(env = {}) {
+  return isMemoryUpdateDirectNeonSelected(env)
+    || isMemoryPrivateVisibilityUpdateDirectNeonSelected(env);
 }
 
 export function readMemoryUpdateWriteConfig(env = {}) {
@@ -367,6 +387,139 @@ function validateUpdatePayloadAfterOwner(payload, signal) {
   });
 }
 
+
+async function validatePrivateVisibilityUpdatePayloadAfterOwner(payload, signal, tx, ownerId) {
+  // Preserve Modal update_owner_memory error precedence for the explicit-private
+  // slice. Owner authorization happens before this function. Then Modal checks:
+  // allowlist/empty -> title/memo/source/sourceUrl/sourceType/thumbnail ->
+  // emotionTags -> visibility validation + Plus entitlement ->
+  // channelId/channelName/channelUrl -> artist -> timestamp -> parentId.
+  const unknownFields = Object.keys(payload)
+    .filter((key) => !ALLOWED_UPDATE_SET.has(key))
+    .sort();
+  if (unknownFields.length) {
+    workFailure(signal, 400, {
+      detail: {
+        code: 'UNSUPPORTED_MEMORY_UPDATE_FIELDS',
+        fields: unknownFields
+      }
+    }, 'unsupported-memory-update-fields');
+  }
+  if (Object.keys(payload).length === 0) {
+    workFailure(signal, 400, {
+      detail: { code: 'EMPTY_MEMORY_UPDATE' }
+    }, 'empty-memory-update');
+  }
+
+  const assignments = [];
+  const values = [];
+  const normalizedRequested = {};
+  let reparentTarget = null;
+
+  function add(column, value) {
+    values.push(value);
+    assignments.push(`${column} = ${values.length}`);
+  }
+
+  const preVisibilityFields = [
+    'title', 'memo', 'source', 'sourceUrl', 'sourceType', 'thumbnail'
+  ];
+  for (const field of preVisibilityFields) {
+    if (!Object.prototype.hasOwnProperty.call(payload, field)) continue;
+    const result = validateScalar(payload[field], field);
+    if (!result.ok) {
+      workFailure(signal, result.status, result.body, result.routeStatus);
+    }
+    let value = result.value;
+    if (field === 'sourceType' && !value) value = 'youtube';
+    const column = {
+      sourceUrl: 'source_url',
+      sourceType: 'source_type'
+    }[field] || field;
+    add(column, value);
+    if (SOURCE_ACK_FIELDS.some(([requestField]) => requestField === field)) {
+      normalizedRequested[field] = value ?? '';
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'emotionTags')) {
+    const result = validateEmotionTags(payload.emotionTags);
+    if (!result.ok) {
+      workFailure(signal, result.status, result.body, result.routeStatus);
+    }
+    add('emotion_tags', result.value);
+  }
+
+  // Route selection admits this path only for the exact private literal. Keep a
+  // defensive strict check here so a future caller cannot bypass the contract.
+  if (
+    !Object.prototype.hasOwnProperty.call(payload, 'visibility')
+    || payload.visibility !== 'private'
+  ) {
+    workFailure(signal, 400, { detail: 'visibility: public, private' }, 'invalid-visibility');
+  }
+
+  try {
+    await requirePrivateStorageEntitlement(tx, ownerId);
+  } catch (error) {
+    if (
+      error instanceof PrivateStorageEntitlementError
+      && error.code === PRIVATE_STORAGE_ENTITLEMENT_ERROR.REQUIRED
+    ) {
+      workFailure(signal, 403, {
+        error: 'Private storage requires Plus.',
+        code: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+        upgradeRequired: true
+      }, 'plus-required-private-storage');
+    }
+    workFailure(signal, 503, {
+      error: 'Entitlement check temporarily unavailable.',
+      code: 'ENTITLEMENT_CHECK_UNAVAILABLE',
+      upgradeRequired: false
+    }, 'private-storage-entitlement-unavailable');
+  }
+  add('visibility', 'private');
+
+  const postVisibilityFields = [
+    'channelId', 'channelName', 'channelUrl', 'artist', 'timestamp'
+  ];
+  for (const field of postVisibilityFields) {
+    if (!Object.prototype.hasOwnProperty.call(payload, field)) continue;
+    const emptyToNull = ['channelId', 'channelName', 'channelUrl'].includes(field);
+    const result = validateScalar(payload[field], field, { emptyToNull });
+    if (!result.ok) {
+      workFailure(signal, result.status, result.body, result.routeStatus);
+    }
+    const column = {
+      channelId: 'channel_id',
+      channelName: 'channel_name',
+      channelUrl: 'channel_url'
+    }[field] || field;
+    add(column, result.value);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'parentId')) {
+    const rawParent = payload.parentId;
+    if (rawParent === null || (typeof rawParent === 'string' && rawParent.trim() === '')) {
+      assignments.push('parent_id = NULL');
+    } else {
+      const result = validateRequiredUuid(rawParent, 'parentId');
+      if (!result.ok) {
+        workFailure(signal, result.status, result.body, result.routeStatus);
+      }
+      reparentTarget = result.value;
+      add('parent_id', reparentTarget);
+    }
+  }
+
+  return Object.freeze({
+    assignments: Object.freeze(assignments),
+    values: Object.freeze(values),
+    normalizedRequested: Object.freeze(normalizedRequested),
+    reparentTarget
+  });
+}
+
 export async function computeMemoryParentLockKey(treeId) {
   const encoded = new TextEncoder().encode(`memory-parent-graph:${treeId}`);
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoded));
@@ -438,7 +591,7 @@ function enforceSourceAck(payload, row, normalizedRequested, signal) {
   }
 }
 
-async function runUpdateWork(tx, signal, { memoryId, ownerId, payload }) {
+async function runUpdateWork(tx, signal, { memoryId, ownerId, payload, privateVisibilityRoute = false }) {
   // Preserve Modal's owner-first ordering before update allowlist/scalar checks.
   const ownerRows = await tx.query(OWNER_CHECK_SQL, [memoryId]);
   const ownerRow = Array.isArray(ownerRows) && ownerRows.length ? ownerRows[0] : null;
@@ -449,7 +602,9 @@ async function runUpdateWork(tx, signal, { memoryId, ownerId, payload }) {
     workFailure(signal, 403, { detail: 'Access denied: not your memory' }, 'memory-owner-forbidden');
   }
 
-  const update = validateUpdatePayloadAfterOwner(payload, signal);
+  const update = privateVisibilityRoute
+    ? await validatePrivateVisibilityUpdatePayloadAfterOwner(payload, signal, tx, ownerId)
+    : validateUpdatePayloadAfterOwner(payload, signal);
 
   if (update.reparentTarget !== null) {
     // The transaction-local owner row is the authoritative pre-lock source row.
@@ -534,7 +689,7 @@ export async function handleMemoryUpdateDirectNeon(
     boundedBodyResult = null
   } = {}
 ) {
-  if (!isMemoryUpdateDirectNeonSelected(env)) return null;
+  if (!isAnyMemoryUpdateDirectNeonSelected(env)) return null;
 
   // Match owner-write authority: verified Firebase principal precedes JSON parse
   // and every direct DB capability acquisition.
@@ -604,8 +759,16 @@ export async function handleMemoryUpdateDirectNeon(
     );
   }
 
-  // Exact private update stays on Modal/Plus before direct DB capability.
-  if (Object.prototype.hasOwnProperty.call(payload, 'visibility') && payload.visibility === 'private') {
+  // Independent route split before UUID normalization or direct DB acquisition:
+  // - exact explicit private requires the private-visibility gate;
+  // - every other update requires the existing ordinary update gate.
+  // Thus the source-only private gate cannot steal ordinary Production traffic,
+  // and the already-live ordinary gate continues to defer private writes.
+  const explicitPrivate = Object.prototype.hasOwnProperty.call(payload, 'visibility')
+    && payload.visibility === 'private';
+  if (explicitPrivate) {
+    if (!isMemoryPrivateVisibilityUpdateDirectNeonSelected(env)) return null;
+  } else if (!isMemoryUpdateDirectNeonSelected(env)) {
     return null;
   }
 
@@ -651,7 +814,8 @@ export async function handleMemoryUpdateDirectNeon(
       return runUpdateWork(tx, signal, {
         memoryId: idResult.value,
         ownerId: principal.legacyOwnerId,
-        payload
+        payload,
+        privateVisibilityRoute: explicitPrivate
       });
     });
   } catch (error) {
@@ -688,13 +852,19 @@ export const MEMORY_UPDATE_DIRECT_NEON_CONTRACT = Object.freeze({
   method: 'PUT',
   path: '/api/memories/:id',
   gateEnv: MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.GATE_FLAG,
+  privateVisibilityGateEnv: MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_VISIBILITY_GATE_FLAG,
   directNeonValue: MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE,
   databaseEnv: MEMORY_UPDATE_DIRECT_NEON_RUNTIME_ENV.DATABASE_URL,
   forbiddenFallbackEnvs: MEMORY_UPDATE_FORBIDDEN_FALLBACK_ENVS,
   ownerAuthority: 'verified-firebase-legacyOwnerId',
   allowedFields: ALLOWED_UPDATE_FIELDS,
   clientKeyMutable: false,
-  explicitPrivate: 'modal-before-direct-db',
+  explicitPrivate: 'direct-neon-when-private-visibility-gate-selected-otherwise-modal-before-direct-db',
+  privateEntitlementSource: 'neon.public.users.private_storage_enabled',
+  privateEntitlementAfterOwnerAndPreVisibilityValidationBeforeMutation: true,
+  privatePlusRequiredCode: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+  privateEntitlementUnavailableCode: 'ENTITLEMENT_CHECK_UNAVAILABLE',
+  privateVisibilityGateCheckedIn: false,
   getUnchanged: true,
   deleteUnchanged: true,
   sourceAckBeforeCommit: true,
