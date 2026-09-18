@@ -4,10 +4,13 @@
 //   - reaction read (authenticated + public): read-role privilege is already proven by the accepted
 //     #4283 / public-memory-detail evidence, so those two gates are checked into
 //     [env.production.vars] and are awaiting separately authorized provider/gate readback.
-//   - comment read (authenticated + public): read-role comments SELECT privilege is still unproven
-//     (PRIVILEGE_UNPROVEN in the #4311 matrix), so those two gates must remain absent from
-//     Production wrangler vars. Checking one in without the privilege proof would surface a
-//     permission failure to real users.
+//   - comment read (authenticated + public): the read-role comments SELECT privilege is now freshly
+//     proven by the bounded read-only catalog ACL attestation plus exactly one owner-authorized
+//     ADDITIVE "GRANT SELECT ON public.comments" (PRE SELECT=NO -> POST SELECT=YES with every
+//     non-SELECT privilege still NO), so those two gates are checked into [env.production.vars] and
+//     are awaiting separately authorized provider/gate readback and Product canary. The proof is
+//     recorded in the #4311 matrix rows; a REVOKE of that restored SELECT invalidates the check-in.
+//     Writer-role or historical-credential evidence must never be substituted for this proof.
 //
 // No Product canary is authorized by this file.
 
@@ -45,13 +48,13 @@ const FOUR_READ_GATES = [
   ['memory-public-reaction-read-direct-neon.js', 'isMemoryPublicReactionReadDirectNeonSelected', 'LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME'],
   ['memory-public-comment-read-direct-neon.js', 'isMemoryPublicCommentReadDirectNeonSelected', 'LB_MEMORY_PUBLIC_COMMENT_READ_RUNTIME']
 ];
-// Gates whose read-role privilege is proven and that are therefore checked in.
+// Every #4423 memory social read gate is privilege-proven and therefore checked in.
+// Reaction read: accepted #4283 / public-memory-detail evidence.
+// Comment read: fresh read-only ACL attestation + exactly one owner-authorized additive
+// GRANT SELECT ON public.comments, recorded in the #4311 matrix rows.
 const CHECKED_IN_READ_GATES = [
   'LB_MEMORY_AUTH_REACTION_READ_RUNTIME',
-  'LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME'
-];
-// Gates whose read-role privilege is still unproven and that must stay source-only.
-const SOURCE_ONLY_READ_GATES = [
+  'LB_MEMORY_PUBLIC_REACTION_READ_RUNTIME',
   'LB_MEMORY_AUTH_COMMENT_READ_RUNTIME',
   'LB_MEMORY_PUBLIC_COMMENT_READ_RUNTIME'
 ];
@@ -66,7 +69,7 @@ test('#4423 four read gates are exact and select only the exact direct_neon valu
   }
 });
 
-test('#4423 only the privilege-proven reaction read gates are checked into Production vars', () => {
+test('#4423 every privilege-proven memory social read gate is checked into Production vars', () => {
   const wrangler = fs.readFileSync(path.join(ROOT, 'wrangler.toml'), 'utf8');
   const productionBlock = (wrangler.split(/^\[env\.production\.vars\]\s*$/m)[1] || '').split(/^\[/m)[0];
   const defaultBlock = (wrangler.split(/^\[vars\]\s*$/m)[1] || '').split(/^\[/m)[0];
@@ -81,13 +84,13 @@ test('#4423 only the privilege-proven reaction read gates are checked into Produ
     assert.equal(defaultBlock.includes(gate), false, gate + ' must not be declared in the non-production [vars] scope');
   }
 
-  for (const gate of SOURCE_ONLY_READ_GATES) {
-    assert.equal(
-      wrangler.includes(gate),
-      false,
-      gate + ' read-role privilege is unproven, so it must remain absent from Production wrangler vars'
-    );
-  }
+  // No #4423 memory social read gate may remain source-only: all four are privilege-proven.
+  const declaredGates = FOUR_READ_GATES.map(([, , gate]) => gate);
+  assert.deepEqual(
+    [...CHECKED_IN_READ_GATES].sort(),
+    [...declaredGates].sort(),
+    'every declared memory social read gate must be checked in once its privilege is proven'
+  );
 });
 
 test('#4423 authenticated reaction summary preserves owner/public authorization and requester state', async () => {
