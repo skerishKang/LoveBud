@@ -15,7 +15,7 @@ import {
 } from '../_shared/owner-memory-list-direct-neon.js';
 import { readBoundedRequestBody } from '../_shared/bounded-request-body.js';
 import {
-  isMemoryCreateDirectNeonSelected,
+  isAnyMemoryCreateDirectNeonSelected,
   handleMemoryCreateDirectNeon
 } from '../_shared/memory-create-direct-neon.js';
 
@@ -68,16 +68,14 @@ function rebuildPostRequestForModalPath(request, bodyBytes) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // #4178 gated explicit-public Memory create direct-Neon candidate dispatch.
-  // With the gate unset/modal/unknown the existing Modal POST behavior below
-  // is unchanged. With LB_MEMORY_CREATE_WRITE_RUNTIME=direct_neon selected,
-  // only an exact visibility:"public" runs the direct-Neon candidate;
-  // omitted/null (parent-Tree inheritance may resolve private), explicit
-  // private (Plus/private-storage entitlement stays Modal-owned), and any
-  // other value defer to the unchanged Modal authority BEFORE any direct DB
-  // connection or transaction. After direct execution begins there is no
-  // per-request direct -> Modal fallback.
-  if (isMemoryCreateDirectNeonSelected(env)) {
+  // #4178/#4425 Memory create dispatch. The existing public gate and the new
+  // private/inheritance gate are independent. Exact public remains bound to
+  // LB_MEMORY_CREATE_WRITE_RUNTIME; explicit private and omitted/null
+  // inheritance are candidates only when LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME
+  // is separately selected. Invalid/other visibility values still defer to
+  // Modal before any direct DB connection. After direct execution begins there
+  // is no per-request direct -> Modal fallback.
+  if (isAnyMemoryCreateDirectNeonSelected(env)) {
     const requestId = getOrCreateRequestId(request);
     let bodyResult;
     try {
