@@ -128,6 +128,23 @@
       ],
       "owner_domain": "hub-layout-persistence",
       "approval_reference": "issue:4277"
+    },
+    {
+      "id": "20260918144500_add-private-storage-entitlement",
+      "name": "add-private-storage-entitlement",
+      "path": "db/migrations/20260918144500_add-private-storage-entitlement.sql",
+      "checksum": "sha256:4ea913f6722d83b923bce67f9dbb43e86ab68439eec2bcf0253c896956bc17ce",
+      "depends_on": [
+        "20260822054500_canonical-users-auth-identity"
+      ],
+      "risk_class": "ADDITIVE",
+      "transaction_mode": "REQUIRED",
+      "expected_preconditions": [],
+      "expected_postconditions": [],
+      "rollback_support": "ALTER TABLE public.users DROP COLUMN IF EXISTS private_storage_enabled",
+      "destructive_operations": [],
+      "owner_domain": "private-storage-entitlement",
+      "approval_reference": "issue:4425"
     }
   ],
   "activation_rule": "No existing scripts are retroactively declared applied. A separately approved adoption baseline must be attested before this manifest changes to ACTIVE.",

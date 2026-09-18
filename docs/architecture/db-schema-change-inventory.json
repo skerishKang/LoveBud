@@ -1809,6 +1809,21 @@
       "automation": "gated",
       "ledger_candidate": "yes",
       "notes": "Source authority for the canonical public.tree_hub_layouts relation already consumed by modal_compute/hub_layouts.py and the gated Cloudflare direct-Neon GET/PUT candidate (functions/_shared/hub-layout-direct-neon.js, functions/_shared/hub-layout-read-direct-neon.js). (tree_id, revision) UNIQUE is intentionally NOT declared per #3923 acceptance criteria: the runtime enforces optimistic concurrency via a transaction-scoped pg_advisory_xact_lock + baseRevision comparison, not via a DB-level unique invariant. Adding a DB-level UNIQUE here would change a documented 409 path into a 23505 unique-violation path for any future schema-mutation anomaly; that defense-in-depth change is deferred to a separate owner-reviewed forward migration. RLS, triggers, extra indexes, and sequences are intentionally absent at this stage; refer to the migration file header for the full justification. SHA-256 of the migration file is fixed and recorded in the PR description (sha256:64951f76ec2626bd75b4532d66d7743ffb2f1191620c707e927ba5477b0045c9). Merging this PR does NOT imply Production adoption: the canonical stream remains ADOPTION_REQUIRED; activation requires the separately approved adoption baseline plus the fail-closed canonical runner protocol."
+    },
+    {
+      "path": "db/migrations/20260918144500_add-private-storage-entitlement.sql",
+      "category": "canonical_stream",
+      "engine": "postgres",
+      "operations": ["ALTER TABLE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": true,
+      "owner_or_issue": "Plus/private-storage entitlement / #4425",
+      "idempotency": "idempotent in shape (ADD COLUMN IF NOT EXISTS)",
+      "execution_actor": "runner",
+      "automation": "gated",
+      "ledger_candidate": "yes",
+      "notes": "Additive source-only Neon entitlement column on public.users. Default false / NOT NULL preserves fail-closed policy and the existing schema-capability owner bootstrap because the new column has a default. No GRANT/REVOKE, provider binding, Firestore dependency, Product route activation, or Production execution is authorized by source registration. Byte checksum sha256:4ea913f6722d83b923bce67f9dbb43e86ab68439eec2bcf0253c896956bc17ce; approval_reference issue:4425."
     }
   ]
 }

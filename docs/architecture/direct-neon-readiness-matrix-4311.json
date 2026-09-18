@@ -524,12 +524,13 @@
       "route": "internal entitlement boundary",
       "method": "READ",
       "family": "READ",
-      "source_helper": "functions/_shared/plus-entitlement-direct-neon.js",
+      "source_helper": "functions/_shared/private-storage-entitlement-neon.js",
       "source_refs": [
-        "#4425"
+        "#4425",
+        "#4006"
       ],
       "source_state": "SOURCE_READY",
-      "runtime_gate": "LB_PLUS_ENTITLEMENT_READ_RUNTIME",
+      "runtime_gate": null,
       "required_objects": {
         "users": [
           "SELECT"
@@ -537,7 +538,7 @@
       },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
-      "privilege_state": "PRIVILEGE_UNPROVEN",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
       "checked_in_gate": "NOT_CHECKED_IN",
       "live_gate_state": "LIVE_GATE_NOT_INTENDED",
@@ -546,12 +547,12 @@
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
       "last_exact_head_evidence": {
-        "ref": "#4425 Phase-B source candidate with verified Firebase principal, injected Firestore profile reader, four-field compatibility normalization, fail-closed provider errors, no-store response, and no Production gate binding.",
-        "main_sha": "764b2b6097d90d86664e29025ccee0e806cdcad1"
+        "ref": "#4425 Neon-source redesign at baseline e6d3bd59: transaction-scoped public.users.private_storage_enabled helper, strict boolean true, default-false schema candidate, no Firestore/service-account dependency, no Product route wiring or Production activation. Existing #4157/#4006 writer privilege evidence already covers table-level users SELECT; schema adoption remains separately required.",
+        "main_sha": "e6d3bd590d1d269d16a24696a316cb542bf8fdf7"
       },
       "modal_retained_by_design": false,
-      "rollback_authority": "SOURCE_PHASE_DEFAULT_MODAL: LB_PLUS_ENTITLEMENT_READ_RUNTIME remains unset/non-direct; no Production activation or provider binding is authorized.",
-      "next_action": "Use the reviewed request-scoped Firebase-ID-token Firestore REST shape; first prove current live Security Rules allow exactly users/{same verified uid} read. If denied, STOP for separate Rules/provider authority. No service-account fallback, gate check-in, or private-write integration is authorized yet."
+      "rollback_authority": "SOURCE_ONLY: no Product route dispatch and no Production gate. The new schema migration remains unexecuted until separately authorized; current Modal private-write behavior remains the live fallback.",
+      "next_action": "Merge source/provenance slice, separately authorize and prove Neon schema adoption, then implement private Tree Create behind an independent disabled gate. Firestore Rules proof and service-account fallback are not part of the target architecture."
     },
     {
       "id": "auth-memory-reactions-get",
