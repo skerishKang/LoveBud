@@ -44,6 +44,16 @@ const WRITER_ENV = {
   LOVE_PLATFORM_WRITE_DATABASE_URL: NEON_URL
 };
 
+const PRIVATE_WRITER_ENV = {
+  ...WRITER_ENV,
+  LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME: 'direct_neon'
+};
+
+const PRIVATE_ONLY_ENV = {
+  LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME: 'direct_neon',
+  LOVE_PLATFORM_WRITE_DATABASE_URL: NEON_URL
+};
+
 async function loadModule() {
   return import(MODULE_PATH);
 }
@@ -174,6 +184,14 @@ function freshCreateScript({ usersSchema = DEFAULT_USERS_SCHEMA, treeRow } = {})
     'INSERT INTO users': [],
     'INSERT INTO trees': [treeRow || makeCreatedTreeRow()],
     'COUNT(m.id)::int': [treeRow || makeCreatedTreeRow()]
+  };
+}
+
+function privateCreateScript({ entitled = true, usersSchema = DEFAULT_USERS_SCHEMA, treeRow } = {}) {
+  const row = treeRow || makeCreatedTreeRow({ visibility: 'private' });
+  return {
+    'SELECT private_storage_enabled': [{ private_storage_enabled: entitled }],
+    ...freshCreateScript({ usersSchema, treeRow: row })
   };
 }
 
@@ -939,7 +957,11 @@ test('34. contract surface: bounded frozen metadata', async () => {
   const mod = await loadModule();
   assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.gateEnv, 'LB_TREE_CREATE_WRITE_RUNTIME');
   assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.databaseEnv, 'LOVE_PLATFORM_WRITE_DATABASE_URL');
-  assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.routeSplit.explicitPrivate, 'modal-before-any-db-connection-or-transaction');
+  assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.privateGateEnv, 'LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME');
+  assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.routeSplit.explicitPrivate, 'direct-neon-private-candidate-when-private-gate-selected');
+  assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.privateEntitlementSource, 'neon.public.users.private_storage_enabled');
+  assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.privateEntitlementBeforeMutation, true);
+  assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.publicEntitlementLookup, false);
   assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.defaultTitle, 'My LoveTree');
   assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.perRequestModalFallbackAfterDirectStart, false);
   assert.equal(mod.TREE_CREATE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
@@ -949,4 +971,136 @@ test('34. contract surface: bounded frozen metadata', async () => {
     [...mod.TREE_CREATE_DIRECT_NEON_CONTRACT.responseFields],
     ['id', 'title', 'visibility', 'createdAt', 'updatedAt', 'memoryCount', 'ownerId', 'groupName', 'keywords']
   );
+});
+
+
+test('35. private gate is independent from the already-live public gate', async () => {
+  const mod = await loadModule();
+  assert.equal(mod.isTreePrivateCreateDirectNeonSelected({}), false);
+  assert.equal(mod.isTreePrivateCreateDirectNeonSelected(WRITER_ENV), false);
+  assert.equal(mod.isTreePrivateCreateDirectNeonSelected(PRIVATE_WRITER_ENV), true);
+  assert.equal(mod.isAnyTreeCreateDirectNeonSelected(WRITER_ENV), true);
+  assert.equal(mod.isAnyTreeCreateDirectNeonSelected(PRIVATE_ONLY_ENV), true);
+  assert.equal(mod.isAnyTreeCreateDirectNeonSelected({}), false);
+});
+
+test('36. private create without entitlement -> 403 before any owner/tree mutation', async () => {
+  const mod = await loadModule();
+  const factory = makeFakeClientFactory(privateCreateScript({ entitled: false }));
+  const resp = await mod.handleTreeCreateDirectNeon(
+    makeRequest({ body: { title: 'Private', visibility: 'private' } }),
+    PRIVATE_WRITER_ENV,
+    'rid-36',
+    { verifyTokenOverride: makeVerifyToken(), neonImporter: makeNeonImporter(factory) }
+  );
+
+  assert.equal(resp.status, 403);
+  const json = await resp.json();
+  assert.deepEqual(json, {
+    error: 'Private storage requires Plus.',
+    code: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+    upgradeRequired: true
+  });
+
+  const texts = factory.logs.map((l) => l.text);
+  const entitlementIndex = texts.findIndex((t) => t.includes('SELECT private_storage_enabled'));
+  assert.ok(entitlementIndex >= 0, 'entitlement read executed');
+  assert.equal(texts.some((t) => t.includes('INSERT INTO users')), false, 'no user mutation');
+  assert.equal(texts.some((t) => t.includes('INSERT INTO trees')), false, 'no tree mutation');
+  assert.ok(texts.includes('ROLLBACK'), 'transaction rolls back');
+  assert.equal(texts.includes('COMMIT'), false, 'no commit');
+});
+
+test('37. private entitlement lookup failure -> bounded 503, no mutation', async () => {
+  const mod = await loadModule();
+  const factory = makeFakeClientFactory(privateCreateScript({ entitled: true }));
+  factory.setFailOnQueryMatch('SELECT private_storage_enabled');
+
+  const resp = await mod.handleTreeCreateDirectNeon(
+    makeRequest({ body: { title: 'Private', visibility: 'private' } }),
+    PRIVATE_WRITER_ENV,
+    'rid-37',
+    { verifyTokenOverride: makeVerifyToken(), neonImporter: makeNeonImporter(factory) }
+  );
+
+  assert.equal(resp.status, 503);
+  assert.deepEqual(await resp.json(), {
+    error: 'Entitlement check temporarily unavailable.',
+    code: 'ENTITLEMENT_CHECK_UNAVAILABLE',
+    upgradeRequired: false
+  });
+  const texts = factory.logs.map((l) => l.text);
+  assert.equal(texts.some((t) => t.includes('INSERT INTO users')), false);
+  assert.equal(texts.some((t) => t.includes('INSERT INTO trees')), false);
+  assert.ok(texts.includes('ROLLBACK'));
+});
+
+test('38. entitled private create checks Neon entitlement before every mutation and returns private DTO', async () => {
+  const mod = await loadModule();
+  const privateRow = makeCreatedTreeRow({ visibility: 'private', title: 'Private Tree' });
+  const factory = makeFakeClientFactory(privateCreateScript({ entitled: true, treeRow: privateRow }));
+
+  const resp = await mod.handleTreeCreateDirectNeon(
+    makeRequest({ body: { title: 'Private Tree', visibility: 'private' } }),
+    PRIVATE_WRITER_ENV,
+    'rid-38',
+    { verifyTokenOverride: makeVerifyToken(), neonImporter: makeNeonImporter(factory) }
+  );
+
+  assert.equal(resp.status, 200);
+  const json = await resp.json();
+  assert.equal(json.visibility, 'private');
+  assert.equal(json.ownerId, AUTH_USER_ID);
+
+  const texts = factory.logs.map((l) => l.text);
+  const entitlementIndex = texts.findIndex((t) => t.includes('SELECT private_storage_enabled'));
+  const userInsertIndex = texts.findIndex((t) => t.includes('INSERT INTO users'));
+  const treeInsertIndex = texts.findIndex((t) => t.includes('INSERT INTO trees'));
+  assert.ok(entitlementIndex >= 0);
+  assert.ok(userInsertIndex > entitlementIndex, 'entitlement before owner bootstrap mutation');
+  assert.ok(treeInsertIndex > userInsertIndex, 'tree insert follows bootstrap');
+  assert.ok(texts[treeInsertIndex].includes("'private'"), 'private insert SQL is explicit');
+  assert.ok(texts.includes('COMMIT'));
+});
+
+test('39. public create never queries private-storage entitlement even when private gate is enabled', async () => {
+  const mod = await loadModule();
+  const factory = makeFakeClientFactory(privateCreateScript({ entitled: true }));
+
+  const resp = await mod.handleTreeCreateDirectNeon(
+    makeRequest({ body: { title: 'Public Tree', visibility: 'public' } }),
+    PRIVATE_WRITER_ENV,
+    'rid-39',
+    { verifyTokenOverride: makeVerifyToken(), neonImporter: makeNeonImporter(factory) }
+  );
+
+  assert.equal(resp.status, 200);
+  const texts = factory.logs.map((l) => l.text);
+  assert.equal(texts.some((t) => t.includes('SELECT private_storage_enabled')), false);
+});
+
+test('40. private-only gate does not steal public create from Modal', async () => {
+  const mod = await loadModule();
+  const factory = makeFakeClientFactory(freshCreateScript());
+  const resp = await mod.handleTreeCreateDirectNeon(
+    makeRequest({ body: { title: 'Public Tree', visibility: 'public' } }),
+    PRIVATE_ONLY_ENV,
+    'rid-40',
+    { verifyTokenOverride: makeVerifyToken(), neonImporter: makeNeonImporter(factory) }
+  );
+  assert.equal(resp, null);
+  assert.equal(factory.clients.length, 0, 'unmatched public gate acquires no DB capability');
+});
+
+test('41. public-only gate continues to defer private create to Modal with zero direct DB', async () => {
+  const mod = await loadModule();
+  const factory = makeFakeClientFactory(privateCreateScript({ entitled: true }));
+  const resp = await mod.handleTreeCreateDirectNeon(
+    makeRequest({ body: { title: 'Private Tree', visibility: 'private' } }),
+    WRITER_ENV,
+    'rid-41',
+    { verifyTokenOverride: makeVerifyToken(), neonImporter: makeNeonImporter(factory) }
+  );
+  assert.equal(resp, null);
+  assert.equal(factory.clients.length, 0, 'disabled private gate preserves Modal before DB capability');
 });

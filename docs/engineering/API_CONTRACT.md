@@ -172,7 +172,7 @@ Current main runtime state:
 
 - My Trees create payload explicitly sends `visibility: 'public'`.
 - Modal create tree path defaults omitted visibility to `public`.
-- Modal private tree/memory create and private visibility update paths call the private storage entitlement guard.
+- Private tree/memory create and public→private visibility transitions remain Plus-gated. Until each Direct-Neon private gate is activated, the corresponding live fallback remains Modal.
 - Public read paths retain parent tree visibility guards.
 - Public visibility remains separate from Browse/Search eligibility.
 
@@ -217,7 +217,7 @@ CTO 결정 기준 목표 정책은 **public-first + Plus private**입니다.
 - 기존 private tree는 자동 public 전환하지 않고 grandfathered private으로 유지합니다.
 - private 생성/전환은 Plus entitlement guard 대상입니다.
 - `public visibility`와 `browse 노출 조건`은 분리합니다.
-- Cloudflare Pages Functions와 Modal create/toggle 정책은 반드시 동기화합니다.
+- Cloudflare Pages Functions와 any remaining Modal fallback create/toggle 정책은 반드시 동기화합니다.
 - `netlify/functions/*`에는 신규 backend 정책을 구현하지 않습니다. Netlify runtime 재활성화가 명시 승인된 경우만 예외입니다.
 
 ### 3.3 public visibility와 browse 노출 분리
@@ -266,9 +266,10 @@ interface CreateTreeRequestTarget {
 - visibility 생략 시 신규 tree는 `public`으로 생성합니다.
 - My Trees 생성 payload는 `visibility: 'public'`을 명시합니다.
 - `visibility: 'private'` 생성은 Plus entitlement guard 대상입니다.
-- 현재 Modal 구현은 private visibility 요청에 대해 Firestore user profile 기반 entitlement guard를 호출합니다.
-- canonical entitlement field는 `users/{uid}.privateStorageEnabled`입니다.
-- 현재 구현은 compatibility 목적으로 `plan`, `plus`, `entitlements.privateStorage`도 확인하지만, 장기 API 계약으로 고정할지는 별도 결정이 필요합니다.
+- Target entitlement authority is Neon `public.users.private_storage_enabled`, keyed by the verified Firebase `legacyOwnerId` compatibility projection.
+- Canonical private-storage entitlement is strict boolean `true`; missing/false means not entitled.
+- Entitlement lookup failure is a distinct availability failure and must not collapse to “not Plus”.
+- Firestore profile fields are historical Modal compatibility behavior only and are not the target API authority.
 
 ### 3.5 toggle visibility 전환 계약
 
@@ -474,7 +475,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 - create tree 정책은 Cloudflare Pages Functions와 Modal에서 동기화해야 합니다.
 - private 생성/전환 guard는 active backend에서 강제해야 합니다.
-- canonical entitlement field는 `users/{uid}.privateStorageEnabled`입니다.
+- canonical entitlement field는 Neon `public.users.private_storage_enabled`입니다.
 - compatibility entitlement fields의 장기 지원 여부는 별도 contract-needed 항목입니다.
 - 기존 private tree grandfathering을 고려해야 합니다.
 - browse display filter는 public visibility와 별도로 유지합니다.

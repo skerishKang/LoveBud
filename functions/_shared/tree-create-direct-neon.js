@@ -1,20 +1,23 @@
-// #4173 Phase-4 public Tree create Cloudflare -> Neon WebSocket interactive
-// transaction candidate adapter.
+// #4173/#4425 Tree create Cloudflare -> Neon WebSocket interactive
+// transaction adapter.
 //
-// This is a gated MIGRATION CANDIDATE only. The Product Tree create route
-// remains Modal-backed unless the route-specific gate is explicitly selected:
+// Public and private create use independent gates:
 //
 //   LB_TREE_CREATE_WRITE_RUNTIME=direct_neon
+//   LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME=direct_neon
 //
-// unset / modal / unknown  -> existing Modal path (this adapter returns null)
-// direct_neon             -> direct-Neon candidate for PUBLIC creation only
+// The public gate is already Production-live. The private gate is a source-only
+// candidate and remains disabled unless separately checked in/activated.
 //
 // Route split (decided BEFORE any direct DB connection or transaction):
-//   omitted visibility        -> public direct-Neon candidate
-//   explicit visibility=public -> public direct-Neon candidate
-//   explicit visibility=private -> this adapter returns null so the route falls
-//     through to the existing Modal authority; the Plus/private-storage
-//     entitlement stays owned by Modal and no direct DB capability is acquired.
+//   omitted/public -> Direct-Neon only when the public gate is selected;
+//   explicit private -> Direct-Neon only when the private gate is selected;
+//   otherwise -> existing Modal path with zero direct DB capability acquired.
+//
+// Private Direct-Neon execution checks the verified owner's Neon
+// public.users.private_storage_enabled entitlement inside the same transaction,
+// before any owner bootstrap or Tree INSERT. Public create never performs an
+// entitlement lookup.
 //
 // After explicit direct execution begins there is NO per-request direct ->
 // Modal fallback. Missing/bad direct config or any auth/query/transaction
@@ -38,13 +41,14 @@
 //     max 200 code points), groupName (non-string 400, trim, empty->null,
 //     max 80 code points), keywords (array-only, string items, trim, empty
 //     removed, order-preserving dedupe, max 5 items, max 24 code points each),
-//     visibility (omitted/null -> 'public', 'public' allowed, anything else
-//     400 'visibility: public, private');
+//     visibility (omitted/null -> 'public'; explicit 'public'/'private'
+//     accepted only by their matching route gate; other values -> 400);
 //   - title default 'My LoveTree' when omitted/null/empty-after-trim;
 //   - schema-capability-aware owner-user bootstrap inside the same
 //     request-scoped transaction (fail closed on unknown required non-null
 //     users columns; no fabricated values);
-//   - INSERT INTO trees (...) VALUES ('public', ...) RETURNING with
+//   - private entitlement SELECT (private only) before every mutation;
+//   - INSERT INTO trees (...) VALUES ('public'|'private', ...) RETURNING with
 //     created_at::text AS created_at / updated_at::text AS updated_at so pg
 //     never coerces timestamptz into a JS Date (no precision loss);
 //   - returned owner_id must equal the verified UID before commit;
@@ -58,10 +62,10 @@
 // The current Modal Tree create writer has NO advisory lock, NO idempotency
 // reservation, and NO audit/rate-limit writes; none are added here.
 //
-// This source child does NOT activate the Production route gate, does NOT
-// mutate Production secrets/bindings or providers, does NOT change schema or
-// GRANTs, does NOT migrate private Tree entitlement, and does NOT touch Tree
-// update/delete or Memory/social write surfaces.
+// This source child does NOT activate the private Production route gate, does
+// NOT mutate Production secrets/bindings or providers, does NOT change schema
+// or GRANTs, and does NOT touch Tree update/delete or Memory/social writes.
+// The additive Neon entitlement column was separately adopted before this child.
 
 import {
   createNeonWsTransactionAdapter,
@@ -81,9 +85,15 @@ import {
 } from '../../workers/love-platform-api/firebase-read-principal.js';
 import { readBoundedRequestBody } from './bounded-request-body.js';
 import { normalizeDirectNeonTimestamp } from './tree-fork-direct-neon.js';
+import {
+  requirePrivateStorageEntitlement,
+  PrivateStorageEntitlementError,
+  PRIVATE_STORAGE_ENTITLEMENT_ERROR
+} from './private-storage-entitlement-neon.js';
 
 export const TREE_CREATE_DIRECT_NEON_RUNTIME_ENV = Object.freeze({
   GATE_FLAG: 'LB_TREE_CREATE_WRITE_RUNTIME',
+  PRIVATE_GATE_FLAG: 'LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME',
   DIRECT_NEON_VALUE: 'direct_neon',
   DATABASE_URL: 'LOVE_PLATFORM_WRITE_DATABASE_URL'
 });
@@ -115,6 +125,18 @@ export function isTreeCreateDirectNeonSelected(env = {}) {
     ? env[TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.GATE_FLAG].trim()
     : '';
   return value === TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE;
+}
+
+export function isTreePrivateCreateDirectNeonSelected(env = {}) {
+  const value = typeof env?.[TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_GATE_FLAG] === 'string'
+    ? env[TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_GATE_FLAG].trim()
+    : '';
+  return value === TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE;
+}
+
+export function isAnyTreeCreateDirectNeonSelected(env = {}) {
+  return isTreeCreateDirectNeonSelected(env)
+    || isTreePrivateCreateDirectNeonSelected(env);
 }
 
 // ─── Dedicated writer config (no generic fallback) ───────────────────────
@@ -399,7 +421,9 @@ const CREATE_WORK_OUTCOME = Object.freeze({
   TREE_INSERT_EMPTY: 'tree-insert-empty',
   OWNER_BINDING_FAILED: 'owner-binding-failed',
   CANONICAL_MISSING: 'canonical-missing',
-  USERS_SCHEMA_UNAVAILABLE: 'users-schema-unavailable'
+  USERS_SCHEMA_UNAVAILABLE: 'users-schema-unavailable',
+  PRIVATE_STORAGE_REQUIRED: 'private-storage-required',
+  PRIVATE_STORAGE_UNAVAILABLE: 'private-storage-unavailable'
 });
 
 function createWorkError(signal, outcome, status) {
@@ -435,6 +459,28 @@ function createWorkResponse(error, signal, requestId) {
       return jsonResponse({ error: 'Tree creation failed' }, status, requestId, 'canonical-missing');
     case CREATE_WORK_OUTCOME.USERS_SCHEMA_UNAVAILABLE:
       return jsonResponse({ error: 'Owner user bootstrap unavailable' }, status, requestId, 'users-schema-unavailable');
+    case CREATE_WORK_OUTCOME.PRIVATE_STORAGE_REQUIRED:
+      return jsonResponse(
+        {
+          error: 'Private storage requires Plus.',
+          code: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+          upgradeRequired: true
+        },
+        status,
+        requestId,
+        'plus-required-private-storage'
+      );
+    case CREATE_WORK_OUTCOME.PRIVATE_STORAGE_UNAVAILABLE:
+      return jsonResponse(
+        {
+          error: 'Entitlement check temporarily unavailable.',
+          code: 'ENTITLEMENT_CHECK_UNAVAILABLE',
+          upgradeRequired: false
+        },
+        status,
+        requestId,
+        'private-storage-entitlement-unavailable'
+      );
     default:
       return jsonResponse({ error: 'Tree creation failed' }, status, requestId, 'tree-create-work-failed');
   }
@@ -445,6 +491,13 @@ function createWorkResponse(error, signal, requestId) {
 const INSERT_OWNER_TREE_SQL = `
 INSERT INTO trees (id, owner_id, title, visibility, group_name, keywords, created_at, updated_at)
 VALUES ($1, $2, $3, 'public', $4, $5, NOW(), NOW())
+RETURNING id, owner_id, title, visibility, group_name, keywords,
+          created_at::text AS created_at, updated_at::text AS updated_at;
+`;
+
+const INSERT_PRIVATE_OWNER_TREE_SQL = `
+INSERT INTO trees (id, owner_id, title, visibility, group_name, keywords, created_at, updated_at)
+VALUES ($1, $2, $3, 'private', $4, $5, NOW(), NOW())
 RETURNING id, owner_id, title, visibility, group_name, keywords,
           created_at::text AS created_at, updated_at::text AS updated_at;
 `;
@@ -474,18 +527,39 @@ async function ensureOwnerUserExists(tx, signal, ownerId) {
   await tx.query(sql, params);
 }
 
-async function runCreateWork(tx, signal, { ownerId, title, groupName, keywords }) {
-  // A. Schema-capability-aware owner-user bootstrap inside the same
+async function runCreateWork(tx, signal, { ownerId, title, groupName, keywords, visibility }) {
+  // A. Private storage entitlement is checked inside the same transaction and
+  // strictly BEFORE any INSERT/UPDATE. Public creation never executes this
+  // query. A missing/disabled entitlement maps to the stable Plus-required
+  // response; lookup failure remains a distinct fail-closed availability error.
+  if (visibility === 'private') {
+    try {
+      await requirePrivateStorageEntitlement(tx, ownerId);
+    } catch (error) {
+      if (
+        error instanceof PrivateStorageEntitlementError
+        && error.code === PRIVATE_STORAGE_ENTITLEMENT_ERROR.REQUIRED
+      ) {
+        throw createWorkError(signal, CREATE_WORK_OUTCOME.PRIVATE_STORAGE_REQUIRED, 403);
+      }
+      throw createWorkError(signal, CREATE_WORK_OUTCOME.PRIVATE_STORAGE_UNAVAILABLE, 503);
+    }
+  }
+
+  // B. Schema-capability-aware owner-user bootstrap inside the same
   // request-scoped transaction. All Tree scalar validation already happened
   // before the transaction started, so a malformed scalar can never trigger
   // an owner-row upsert or a Tree INSERT.
   await ensureOwnerUserExists(tx, signal, ownerId);
 
-  // B. Tree INSERT ... RETURNING (canonical writer result authority), owned by
+  // C. Tree INSERT ... RETURNING (canonical writer result authority), owned by
   // the verified principal. Text-cast timestamps keep PostgreSQL timestamp
   // text out of JS Date coercion (no precision loss).
   const newTreeId = crypto.randomUUID();
-  const insertRows = await tx.query(INSERT_OWNER_TREE_SQL, [
+  const insertSql = visibility === 'private'
+    ? INSERT_PRIVATE_OWNER_TREE_SQL
+    : INSERT_OWNER_TREE_SQL;
+  const insertRows = await tx.query(insertSql, [
     newTreeId,
     ownerId,
     title,
@@ -497,13 +571,13 @@ async function runCreateWork(tx, signal, { ownerId, title, groupName, keywords }
     throw createWorkError(signal, CREATE_WORK_OUTCOME.TREE_INSERT_EMPTY, 500);
   }
 
-  // C. Fail closed before commit: the RETURNING owner_id must exactly match
+  // D. Fail closed before commit: the RETURNING owner_id must exactly match
   // the authenticated UID (create_owner_tree parity).
   if (String(insertedTree.owner_id || '') !== ownerId) {
     throw createWorkError(signal, CREATE_WORK_OUTCOME.OWNER_BINDING_FAILED, 500);
   }
 
-  // D. Canonical reread scoped to the verified owner. Do not fabricate
+  // E. Canonical reread scoped to the verified owner. Do not fabricate
   // canonical values solely from input; the reread owner must match too.
   const canonicalRows = await tx.canonicalReread(CANONICAL_REREAD_CREATED_TREE_SQL, [
     newTreeId,
@@ -533,9 +607,10 @@ export async function handleTreeCreateDirectNeon(
     boundedBodyResult = null
   } = {}
 ) {
-  if (!isTreeCreateDirectNeonRequest(request) || !isTreeCreateDirectNeonSelected(env)) {
-    // Default/unknown gate -> existing Modal path unchanged. Return null so the
-    // gateway continues to the Modal-owned write route.
+  if (!isTreeCreateDirectNeonRequest(request) || !isAnyTreeCreateDirectNeonSelected(env)) {
+    // Both public/private gates disabled or unknown -> existing Modal path
+    // unchanged. Return null so the gateway continues to the Modal-owned write
+    // route.
     return null;
   }
 
@@ -627,17 +702,18 @@ export async function handleTreeCreateDirectNeon(
     }
   }
 
-  // Route split BEFORE any DB connection or transaction. Explicit private
-  // visibility defers to the existing Modal authority (Plus/private-storage
-  // entitlement stays Modal-owned): returning null sends the request back to
-  // the route's unchanged Modal path with zero direct DB contact.
+  // Route split BEFORE any DB connection or transaction.
+  // - public/omitted requires the already-live public gate;
+  // - explicit private requires the independent private gate;
+  // - when the matching gate is disabled, return null and preserve Modal.
   const hasOwnVisibility = Object.prototype.hasOwnProperty.call(payload, 'visibility');
   const rawVisibility = hasOwnVisibility ? payload.visibility : undefined;
-  if (rawVisibility === 'private') {
-    return null;
-  }
   let visibility;
-  if (rawVisibility === undefined || rawVisibility === null || rawVisibility === 'public') {
+  if (rawVisibility === 'private') {
+    if (!isTreePrivateCreateDirectNeonSelected(env)) return null;
+    visibility = 'private';
+  } else if (rawVisibility === undefined || rawVisibility === null || rawVisibility === 'public') {
+    if (!isTreeCreateDirectNeonSelected(env)) return null;
     // validate_visibility(payload.get("visibility"), "public") parity.
     visibility = 'public';
   } else {
@@ -775,15 +851,17 @@ export const TREE_CREATE_DIRECT_NEON_CONTRACT = Object.freeze({
   method: 'POST',
   path: '/api/trees',
   gateEnv: TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.GATE_FLAG,
+  privateGateEnv: TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.PRIVATE_GATE_FLAG,
   directNeonValue: TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.DIRECT_NEON_VALUE,
   databaseEnv: TREE_CREATE_DIRECT_NEON_RUNTIME_ENV.DATABASE_URL,
   forbiddenFallbackEnvs: TREE_CREATE_FORBIDDEN_FALLBACK_ENVS,
   ownerAuthority: 'verified-firebase-legacyOwnerId',
   routeSplit: Object.freeze({
-    omittedVisibility: 'direct-neon-public-candidate',
-    explicitPublic: 'direct-neon-public-candidate',
-    explicitPrivate: 'modal-before-any-db-connection-or-transaction',
-    gateUnsetOrModalOrUnknown: 'modal'
+    omittedVisibility: 'direct-neon-public-candidate-when-public-gate-selected',
+    explicitPublic: 'direct-neon-public-candidate-when-public-gate-selected',
+    explicitPrivate: 'direct-neon-private-candidate-when-private-gate-selected',
+    unmatchedGate: 'modal-before-any-db-connection-or-transaction',
+    bothGatesUnsetOrModalOrUnknown: 'modal'
   }),
   defaultTitle: DEFAULT_TREE_TITLE,
   defaultVisibility: 'public',
@@ -792,6 +870,11 @@ export const TREE_CREATE_DIRECT_NEON_CONTRACT = Object.freeze({
   keywordMax: TREE_KEYWORD_MAX,
   keywordsMax: TREE_KEYWORDS_MAX,
   scalarValidationBeforeOwnerUserUpsert: true,
+  privateEntitlementSource: 'neon.public.users.private_storage_enabled',
+  privateEntitlementBeforeMutation: true,
+  publicEntitlementLookup: false,
+  privatePlusRequiredCode: 'PLUS_REQUIRED_PRIVATE_STORAGE',
+  privateEntitlementUnavailableCode: 'ENTITLEMENT_CHECK_UNAVAILABLE',
   timestampProjection: 'created_at::text AS created_at, updated_at::text AS updated_at',
   lockOrder: 'NO_ADVISORY_LOCK_CURRENT_MODAL_PARITY',
   idempotencyReservation: false,

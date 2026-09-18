@@ -1,5 +1,8 @@
 # Public-first + Plus private implementation plan
 
+> **Entitlement-source supersession (#4425, 2026-09):** Product policy remains public-first + Plus private, but all Firestore entitlement-source details below are historical planning evidence and MUST NOT govern new implementation. Current authority is Neon `public.users.private_storage_enabled boolean NOT NULL DEFAULT false`, keyed during compatibility by the verified Firebase `legacyOwnerId`. Firebase remains authentication; Firestore is not the target entitlement store.
+
+
 Status: planning only
 Owner: Feature Lead
 Scope: implementation branch split for Backend/API, Modal, Frontend, and QA
@@ -14,7 +17,7 @@ Base assumption: PR #32 and PR #33 are merged; current production behavior is pr
 5. The 3-public-memory condition is a browse listing condition, not a public visibility toggle condition.
 6. Private to public is allowed for the owner and must not use a 3-memory guard.
 7. Public to private requires Plus entitlement.
-8. The first entitlement source is the Firestore `users/{uid}` profile.
+8. Current entitlement source is Neon `public.users.private_storage_enabled`.
 9. Plus-required API failures return `403` with `PLUS_REQUIRED_PRIVATE_STORAGE`.
 10. Delete behavior remains the current hard-delete behavior in the first implementation pass.
 11. Modal write paths must perform final entitlement verification, not only frontend or Netlify API verification.
@@ -23,7 +26,7 @@ Non-goals for this implementation wave:
 
 - No automatic migration of existing private trees to public.
 - No soft delete or archive policy change.
-- No billing provider integration beyond reading the existing Firestore user profile.
+- No billing provider integration is introduced by the entitlement-source migration; Product grant/revoke mechanics remain a separate concern.
 - No browse ranking redesign beyond preserving browse visibility/listing eligibility.
 
 ## 2. Branch split
