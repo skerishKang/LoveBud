@@ -2346,6 +2346,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/memory-private-visibility-update-neon-4425.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4425 private Memory visibility-update source path in-process with constructed Request/env inputs, injected Firebase verification, bounded body bytes, and a fake transaction adapter. Proves independent ordinary/private gates, owner-before-entitlement ordering, Modal-compatible validation precedence around the entitlement check, distinct 403/503 semantics, zero private-entitlement reads for ordinary public updates, private UPDATE only after entitlement, and source-only gate absence from wrangler.toml without any real network, database, provider, credential, Product request, or Production mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/memory-create-write-read-convergence-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the real convergence core with injected fake create/reread/observer dependencies and proves the bounded write-read convergence contract: dispatch once, acknowledge once, reread once, identity presence decision, stale-result protection, privacy boundary, observer failure semantics, release SHA validation, frozen/detached output, and byte-stable canonical JSON. No real external system or production resource used.",
