@@ -55,28 +55,27 @@ LoveBud / LoveTree는 일반 북마크 정리 앱이나 관리자 도구가 아�
 
 ## 현재 인프라 우선순위
 
-현재 운영 기준 인프라는 **Cloudflare Pages + Modal**입니다.
+현재 운영 기준은 **Cloudflare Pages / Pages Functions가 사용자-facing 및 일반 API runtime을 담당하고, Neon이 canonical relational persistence를 담당하며, Modal은 아직 남아 있는 entitlement-bound request class와 specialized compute를 담당하는 단계적 혼합 구조**입니다.
 
 1. **Cloudflare Pages** — 실서비스 프론트, same-origin `/api`, 공식 사용자-facing 배포 진입점
-2. **Modal** — active API/backend target, browse summary, private/community read/write compute
-3. **Firebase** — Auth 및 client bootstrap 용도
-4. **Vercel / Netlify** — 현재 active deployment 또는 active fallback이 아님. 남아 있는 설정과 코드는 legacy artifact / removal audit 대상
+2. **Cloudflare Pages Functions** — 일반 API/read/write의 primary edge runtime. Production의 다수 route-specific gate가 Direct-Neon을 선택합니다.
+3. **Neon** — canonical relational persistence. 일반 CRUD/read-model의 다수가 Cloudflare에서 직접 접근합니다.
+4. **Firebase / Firestore** — Firebase Auth가 Product identity authority이며, 현재 Plus/private-storage entitlement source는 Firestore `users/{uid}` profile입니다.
+5. **Modal** — Direct-Neon route의 rollback/default source, 아직 이전되지 않은 entitlement-bound private writes, appreciation-order GET, YouTube playlist preview 같은 retained/specialized compute를 담당합니다.
+6. **Vercel / Netlify** — 현재 active deployment 또는 active fallback이 아님. 남아 있는 설정과 코드는 legacy artifact / removal audit 대상
 
 핵심 원칙:
 
 - 사용자 브라우저는 가능하면 **same-origin `/api`**만 사용합니다.
 - 공식 사용자-facing 주소는 **`https://lovebud.pages.dev/`** 입니다.
-- active runtime은 **Cloudflare Pages + Modal** 입니다.
-- active API path는 **browser → same-origin `/api/*` → Cloudflare Pages Functions → Modal → Neon** 입니다.
-- Firebase Auth는 client-side에서 ID token을 발급합니다. Cloudflare Pages Functions는 same-origin `/api/*` 요청의 Authorization header를 Modal backend로 전달하며, token verification과 private route authorization은 Modal backend에서 수행합니다.
-- Firebase Web `apiKey`는 client bootstrap용이며, 단독 노출만으로는 security blocker가 아닙니다. 실제 보안 경계는 authorized domains, backend token verification, owner authorization, Security Rules/App Check 적용 여부 등으로 판단합니다.
+- 일반 API의 현재 방향은 **browser → same-origin `/api/*` → Cloudflare Pages Functions → Neon**이며, route/request-class별 gate가 이미 Production에서 Direct-Neon을 선택합니다.
+- **모든 요청이 Direct-Neon인 것은 아닙니다.** Plus/private-storage entitlement가 필요한 private Tree/Memory write request class는 #4425가 완료되기 전까지 Modal의 Firebase/Firestore entitlement authority를 계속 사용합니다.
+- Modal은 제거 대상 자체가 아니라, #4000의 목표에 따라 일반 CRUD 의존성을 줄이고 specialized compute 및 명시적으로 유지된 경계에 집중시키는 중입니다.
+- Firebase Auth는 client-side에서 ID token을 발급하며 Cloudflare/Modal의 보호된 경로는 verified Firebase principal을 authorization source로 사용합니다. Firebase Web `apiKey` 노출만으로 security blocker로 판단하지 않습니다.
 - 현재 기준으로 이 프로젝트는 bundler를 사용하지 않으며, `pages/*.html` 독립 진입점과 script-order / window namespace 기반 로딩 모델을 사용합니다.
-- Vercel/Netlify 관련 설정 파일은 legacy artifact이며, 현재 active runtime은 Cloudflare Pages + Modal입니다.
-- Vercel은 현재 active deployment 또는 active fallback이 아닙니다. `vercel.json`은 legacy artifact / removal audit 대상으로만 봅니다.
-- Netlify는 현재 active deployment 또는 active fallback이 아닙니다. `netlify.toml`과 `netlify/functions/**`는 legacy artifact / removal audit 대상으로만 봅니다.
+- Vercel/Netlify 관련 설정 파일은 legacy artifact입니다. `vercel.json`, `netlify.toml`, `netlify/functions/**`는 별도 audit와 승인 없이 삭제하거나 신규 active backend 구현 위치로 사용하지 않습니다.
 - `_redirects`는 Cloudflare Pages에서도 사용할 수 있으므로 Netlify 전용 파일로 단정하지 않습니다.
-- 이번 문서 정리는 설정 파일 삭제를 포함하지 않습니다. `netlify.toml`, `vercel.json`, `_redirects`, `netlify/functions/**`는 이 PR에서 삭제하지 않습니다.
-- 신규 backend/API 구현은 **Cloudflare Pages Functions + Modal** 기준으로만 진행합니다.
+- 신규 일반 backend/API 구현은 **Cloudflare Pages Functions + Direct-Neon** 방향을 우선하되, entitlement 또는 specialized-compute 경계는 해당 authoritative issue/contract를 따릅니다.
 - browse display filter와 publication guard는 **다른 개념**으로 취급합니다.
 
 운영 상세는 아래 문서를 먼저 봅니다.
@@ -157,14 +156,14 @@ Cloudflare Pages에서는 위 경로가 사용자-facing 주소로 노출됩니�
 ### 현재 배포 구조
 
 - **Cloudflare Pages**: 공식 프론트 및 same-origin `/api` 엔트리
-- **Cloudflare Pages Functions**: browser-facing `/api/*` gateway
-- **Modal**: active backend/API target, browse / summary / private-community compute
-- **Neon**: active database target behind Modal
-- **Firebase**: Auth 및 client bootstrap 용도
+- **Cloudflare Pages Functions**: browser-facing `/api/*` gateway이자 일반 API의 primary runtime
+- **Neon**: canonical relational database. Production의 다수 read/write route가 Pages Functions에서 Direct-Neon으로 접근
+- **Firebase / Firestore**: Firebase Auth identity와 현재 Plus/private-storage entitlement source
+- **Modal**: Direct-Neon fallback source, #4425 entitlement-bound private writes, appreciation-order GET 및 YouTube playlist preview 같은 retained/specialized compute
 - **Vercel**: 현재 active deployment/fallback이 아니며, 남은 설정은 legacy artifact / removal audit 대상
 - **Netlify**: 현재 active deployment/fallback이 아니며, 남은 설정과 `netlify/functions/**`는 legacy artifact / removal audit 대상
 
-신규 backend/API 구현은 Cloudflare Pages Functions + Modal 기준으로만 진행합니다. Vercel/Netlify 설정 파일 삭제는 별도 audit와 CTO 승인 후에만 다룹니다.
+현재 일반 backend/API의 기본 방향은 Cloudflare Pages Functions + Direct-Neon입니다. Modal contraction은 #4000/#4422/#4425의 증거와 rollback contract를 따라 단계적으로 수행하며, Vercel/Netlify 설정 파일 삭제는 별도 audit와 CTO 승인 후에만 다룹니다.
 
 ---
 
