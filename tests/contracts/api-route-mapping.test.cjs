@@ -1573,13 +1573,13 @@ test('#4228 route source dispatches direct Tree update before Modal config while
   assert.ok(putStart >= 0 && deleteStart > putStart);
   const putBlock = content.slice(putStart, deleteStart);
   const deleteBlock = content.slice(deleteStart);
-  assert.ok(putBlock.includes('isTreeUpdateDirectNeonSelected(context.env)'));
+  assert.ok(putBlock.includes('isAnyTreeUpdateDirectNeonSelected(context.env)'));
   assert.ok(putBlock.includes('handleTreeUpdateDirectNeon('));
   assert.ok(
     putBlock.indexOf('handleTreeUpdateDirectNeon(') < putBlock.indexOf('MODAL_BASE_URL'),
     'direct dispatch must happen before Modal config requirement'
   );
-  assert.ok(!deleteBlock.includes('isTreeUpdateDirectNeonSelected'));
+  assert.ok(!deleteBlock.includes('isAnyTreeUpdateDirectNeonSelected'));
   assert.ok(!deleteBlock.includes('handleTreeUpdateDirectNeon'));
 });
 
@@ -1590,7 +1590,13 @@ test('#4228 contract metadata pins PUT-only, Firebase owner, no retries and no P
   assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.databaseEnv, 'LOVE_PLATFORM_WRITE_DATABASE_URL');
   assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.ownerAuthority, 'verified-firebase-legacyOwnerId');
   assert.deepEqual([...mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.allowedFields], ['title', 'visibility', 'groupName', 'keywords']);
-  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.explicitPrivate, 'modal-before-direct-db');
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.privateVisibilityGateEnv, 'LB_TREE_PRIVATE_VISIBILITY_WRITE_RUNTIME');
+  assert.equal(
+    mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.explicitPrivate,
+    'direct-neon-when-private-visibility-gate-selected-otherwise-modal-before-direct-db'
+  );
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.privateEntitlementSource, 'neon.public.users.private_storage_enabled');
+  assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.privateEntitlementAfterOwnerAndAllowlistBeforeMutation, true);
   assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.getUnchanged, true);
   assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.deleteUnchanged, true);
   assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.perRequestModalFallbackAfterDirectStart, false);
