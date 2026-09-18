@@ -4,24 +4,24 @@ const path = require('node:path');
 const test = require('node:test');
 
 const ROOT = path.join(__dirname, '..', '..');
-const catchAllRoute = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
+const routeHelper = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
 const modalApp = fs.readFileSync(path.join(ROOT, 'modal_compute', 'app.py'), 'utf8');
 const publicReads = fs.readFileSync(path.join(ROOT, 'modal_compute', 'public_reads.py'), 'utf8');
 const validation = fs.readFileSync(path.join(ROOT, 'modal_compute', 'validation.py'), 'utf8');
 const treeViews = fs.readFileSync(path.join(ROOT, 'modal_compute', 'tree_views.py'), 'utf8');
 const policy = fs.readFileSync(path.join(ROOT, 'docs', 'product', 'lovebud-browse-tree-view-count-policy.md'), 'utf8');
 
-test('Catch-all route accepts sort=views and maps to modal', () => {
-  // buildBrowseCacheRequest handles views (multiline ternary with requestedSort helper)
-  assert.match(catchAllRoute, /requestedSort\s*===\s*['"]popular['"]/);
-  assert.match(catchAllRoute, /requestedSort\s*===\s*['"]likes['"]/);
-  assert.match(catchAllRoute, /requestedSort\s*===\s*['"]views['"]/);
-  assert.match(catchAllRoute, /\?\s*['"]popular['"]/);
-  assert.match(catchAllRoute, /\?\s*['"]likes['"]/);
-  assert.match(catchAllRoute, /\?\s*['"]views['"]/);
+test('Canonical Browse route helper accepts sort=views and maps to Modal', () => {
+  // buildModalUrl handles views with the requestedSort helper.
+  assert.match(routeHelper, /requestedSort\s*===\s*['"]popular['"]/);
+  assert.match(routeHelper, /requestedSort\s*===\s*['"]likes['"]/);
+  assert.match(routeHelper, /requestedSort\s*===\s*['"]views['"]/);
+  assert.match(routeHelper, /\?\s*['"]popular['"]/);
+  assert.match(routeHelper, /\?\s*['"]likes['"]/);
+  assert.match(routeHelper, /\?\s*['"]views['"]/);
 
   // Final fallback is : 'latest' (unknown sorts still fall back)
-  assert.match(catchAllRoute, /:\s*['"]latest['"]/);
+  assert.match(routeHelper, /:\s*['"]latest['"]/);
 });
 
 test('Modal app safe_sort set includes views', () => {
@@ -107,13 +107,13 @@ test('Browse/Search summary payload now includes viewCount', () => {
 
 
 test('viewCount is exposed in both public detail and Browse/Search summary', () => {
-  assert.doesNotMatch(catchAllRoute, /조회순/);
+  assert.doesNotMatch(routeHelper, /조회순/);
   assert.doesNotMatch(modalApp, /조회순/);
   assert.doesNotMatch(publicReads, /조회순/);
 
   // sort=views is backend-only; the frontend control is Unit D work
   // and must not be wired up by this slice
-  assert.doesNotMatch(catchAllRoute, /sort.*조회순/);
+  assert.doesNotMatch(routeHelper, /sort.*조회순/);
 });
 
 test('Latest, popular, and likes sorts still work (no regression)', () => {
@@ -180,5 +180,5 @@ test('Scout live provider/fetch/network is not touched (boundary preserved)', ()
   assert.doesNotMatch(publicReads, /Scout/);
   assert.doesNotMatch(publicReads, /provider\/fetch/);
   assert.doesNotMatch(modalApp, /Scout/);
-  assert.doesNotMatch(catchAllRoute, /Scout/);
+  assert.doesNotMatch(routeHelper, /Scout/);
 });
