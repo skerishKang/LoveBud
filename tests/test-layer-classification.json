@@ -2340,6 +2340,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/memory-private-create-neon-4425.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4425 private/inherited-private Memory create source path in-process with constructed Request/env inputs, injected Firebase verification, and a fake transaction adapter. Proves independent public/private gates, owner-before-entitlement ordering, strict Neon private_storage_enabled entitlement before later validation/mutation, inherited-public zero-entitlement reads, inherited-private entitlement, unresolved Tree visibility fail-closed behavior, private INSERT selection, distinct 403/503 semantics, and Modal deferral for invalid visibility without any real network, database, provider, credential, Product request, or Production mutation.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/memory-create-write-read-convergence-contract.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the real convergence core with injected fake create/reread/observer dependencies and proves the bounded write-read convergence contract: dispatch once, acknowledge once, reread once, identity presence decision, stale-result protection, privacy boundary, observer failure semantics, release SHA validation, frozen/detached output, and byte-stable canonical JSON. No real external system or production resource used.",
