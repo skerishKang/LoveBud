@@ -1008,6 +1008,50 @@
       "next_action": "Memory Create direct-Neon is Production live at accepted exact-main evidence. Do not rerun the Memory Create canary merely to strengthen proof. Continue ordinary monitoring/regression protection only. Any future change to LB_MEMORY_CREATE_WRITE_RUNTIME, direct_neon credential boundary, Production provider/deployment, memory-create helper, route dispatch, explicit-public routing/auth ordering, client_key uniqueness capability, required privilege envelope, transaction/COMMIT ambiguity semantics, canonical DTO, or browser-vs-edge execution assumptions invalidates this attestation and requires fresh CENTRAL review."
     },
     {
+      "id": "memory-private-create",
+      "route": "/api/memories (POST visibility=private or omitted/null inheritance)",
+      "method": "POST",
+      "family": "WRITE",
+      "source_helper": "functions/_shared/memory-create-direct-neon.js",
+      "source_refs": [
+        "#4425",
+        "#4000",
+        "#4006"
+      ],
+      "source_state": "SOURCE_READY",
+      "runtime_gate": "LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME",
+      "required_objects": {
+        "users": [
+          "SELECT"
+        ],
+        "trees": [
+          "SELECT"
+        ],
+        "memories": [
+          "INSERT",
+          "SELECT"
+        ]
+      },
+      "credential_boundary": "direct_neon_runtime",
+      "source_parity": "PASS_AT_CITED_SHA",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
+      "live_provider_state": "LIVE_PROVEN_AT_CITED_SHA",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
+      "diagnostic_execution_authorized": "NOT_AUTHORIZED",
+      "production_live": "NOT_PRODUCTION_LIVE",
+      "disposition_4239": "I",
+      "disposition_note": "#4425 source candidate: independent private/inheritance Memory Create gate. Exact explicit-public continues to use the already-live LB_MEMORY_CREATE_WRITE_RUNTIME path. Explicit private and omitted/null visibility are candidates only when LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME is selected. Owner Tree authorization and Tree visibility resolution occur before Neon public.users.private_storage_enabled entitlement; strict true is required only when the resolved Memory visibility is private. Non-Plus returns 403 PLUS_REQUIRED_PRIVATE_STORAGE; entitlement lookup failure returns 503 ENTITLEMENT_CHECK_UNAVAILABLE. Inherited public performs zero entitlement reads. Private entitlement precedes parentId/emotionTags/clientKey/scalar validation and every INSERT, preserving current Modal error precedence. Invalid visibility values remain Modal-backed. The new gate is absent from wrangler.toml and Production remains unchanged.",
+      "last_exact_head_evidence": {
+        "ref": "#4425 source candidate created from exact main 70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84; source and deterministic fake-runtime contract added on central/4425-memory-private-create. Exact-head CI pending at this documentation commit; no Production gate/provider/DB mutation authorized.",
+        "main_sha": "70754e7bbd8d7ca58d1d5e08d65ffc4c9e204f84"
+      },
+      "modal_retained_by_design": false,
+      "rollback_authority": "SOURCE_ONLY: while LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME is absent, explicit-private and omitted/null Memory Create requests remain Modal-backed. Future activation rollback is gate-only removal/unset; do not drop public.users.private_storage_enabled or alter existing writer privileges merely to disable this path.",
+      "next_action": "Run exact-head CI/review for the source slice. Do not check in or activate LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME in Production as part of this PR. Private Tree Create functional Product proof remains a separate open gate."
+    },
+    {
       "id": "memory-update",
       "route": "/api/memories/{id}",
       "method": "PATCH",
