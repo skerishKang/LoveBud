@@ -436,7 +436,10 @@ test('#4116 native Firebase verifier validates RS256 signature and canonical Fir
   });
   assert.equal(await verifier(wrongAudience), null);
 
-  const tampered = `${token.slice(0, -2)}xx`;
+  const [tamperedHeader, tamperedPayload, encodedSignature] = token.split('.');
+  const tamperedSignature = Buffer.from(encodedSignature, 'base64url');
+  tamperedSignature[0] ^= 0x01;
+  const tampered = `${tamperedHeader}.${tamperedPayload}.${tamperedSignature.toString('base64url')}`;
   assert.equal(await verifier(tampered), null);
 });
 
