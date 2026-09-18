@@ -81,12 +81,6 @@ function buildPayloadTooLargeResponse(requestId = null) {
   return new Response(JSON.stringify({ error: 'Request body too large' }), { status: 413, headers });
 }
 
-function isBrowseSummaryRequest(request) {
-  if (request.method.toUpperCase() !== 'GET') return false;
-  const url = new URL(request.url);
-  const path = url.pathname.replace(/\/+$/, '');
-  return path === '/api/community/trees' && url.searchParams.get('view') === 'summary';
-}
 
 function isPrivateTreeCapabilityRequest(request) {
   if (request.method.toUpperCase() !== 'GET') return false;
@@ -120,24 +114,6 @@ function isGrowingTreesRequest(request) {
   return path === '/api/community/growing-trees';
 }
 
-function buildBrowseCacheRequest(request) {
-  const url = new URL(request.url);
-  const requestedSort = url.searchParams.get('sort');
-  const sort = requestedSort === 'popular'
-    ? 'popular'
-    : requestedSort === 'likes'
-      ? 'likes'
-      : requestedSort === 'views'
-        ? 'views'
-        : 'latest';
-  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 12) || 12, 1), 60);
-  const cacheUrl = new URL(url.origin);
-  cacheUrl.pathname = '/__cache/community/trees';
-  cacheUrl.searchParams.set('view', 'summary');
-  cacheUrl.searchParams.set('sort', sort);
-  cacheUrl.searchParams.set('limit', String(limit));
-  return new Request(cacheUrl.toString(), { method: 'GET' });
-}
 
 function normalizeGrowingTreesLimit(rawLimit) {
   return Math.min(Math.max(Number(rawLimit || 6) || 6, 3), 12);
@@ -654,70 +630,40 @@ export async function onRequest(context) {
     }
   }
 
-  if (isBrowseSummaryRequest(request)) {
-    const cache = caches.default;
-    const cacheKey = buildBrowseCacheRequest(request);
-    const cachedResponse = await cache.match(cacheKey);
-    if (cachedResponse) return await withUpstreamHeader(cachedResponse, 'modal', requestId);
-
-    try {
-      const modalResponse = await tryModalRead(request, env || {}, requestId);
-      if (modalResponse && modalResponse.ok) {
-        const cacheableResponse = new Response(modalResponse.body, {
-          status: modalResponse.status,
-          statusText: modalResponse.statusText,
-          headers: modalResponse.headers
-        });
-        cacheableResponse.headers.set('Cache-Control', 'public, max-age=420, stale-while-revalidate=120');
-        await cache.put(cacheKey, cacheableResponse.clone());
-        return await withUpstreamHeader(cacheableResponse, 'modal', requestId);
-      }
-      if (modalResponse) return await withUpstreamHeader(modalResponse, 'modal', requestId);
-    } catch (error) {
-      if (isInvalidPathEncodingError(error)) {
-        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
-      }
-      if (isModalOwned) {
-        console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
-        return buildModalUnavailableResponse(requestId);
-      }
-    }
-  } else {
-    if (isPrivateTreeCapabilityRequest(request) && !hasAuthorizationHeader(request)) {
-      return buildMissingAuthorizationResponse(requestId);
-    }
-    // Hub-layout is a private/owner read: block unauthenticated GET at the edge
-    // (auth-first) so it never triggers a Modal fetch; rely on Modal 401 only as
-    // the downstream fallback, not the primary gate.
-    if (isHubLayoutReadRequest(request) && !hasAuthorizationHeader(request)) {
-      return buildMissingAuthorizationResponse(requestId);
-    }
-    // Appreciation-order is a private/owner sub-resource (#4236): block
-    // unauthenticated GET at the edge (auth-first) so it never triggers a
-    // Modal fetch.
-    if (isAppreciationOrderRequest(request) && !hasAuthorizationHeader(request)) {
-      return buildMissingAuthorizationResponse(requestId);
-    }
-    try {
-      const modalResponse = await tryModalRead(request, env || {}, requestId);
-      if (modalResponse) {
-        let finalResponse = modalResponse;
-        if (request.method.toUpperCase() === 'GET' && hasAuthorizationHeader(request)) {
-          const path = new URL(request.url).pathname.replace(/\/+$/, '');
-          if (path.match(/^\/api\/trees\/[^/]+$/)) {
-            finalResponse = withPublicTreeCacheStatus(modalResponse, 'bypass-auth');
-          }
+  if (isPrivateTreeCapabilityRequest(request) && !hasAuthorizationHeader(request)) {
+    return buildMissingAuthorizationResponse(requestId);
+  }
+  // Hub-layout is a private/owner read: block unauthenticated GET at the edge
+  // (auth-first) so it never triggers a Modal fetch; rely on Modal 401 only as
+  // the downstream fallback, not the primary gate.
+  if (isHubLayoutReadRequest(request) && !hasAuthorizationHeader(request)) {
+    return buildMissingAuthorizationResponse(requestId);
+  }
+  // Appreciation-order is a private/owner sub-resource (#4236): block
+  // unauthenticated GET at the edge (auth-first) so it never triggers a
+  // Modal fetch.
+  if (isAppreciationOrderRequest(request) && !hasAuthorizationHeader(request)) {
+    return buildMissingAuthorizationResponse(requestId);
+  }
+  try {
+    const modalResponse = await tryModalRead(request, env || {}, requestId);
+    if (modalResponse) {
+      let finalResponse = modalResponse;
+      if (request.method.toUpperCase() === 'GET' && hasAuthorizationHeader(request)) {
+        const path = new URL(request.url).pathname.replace(/\/+$/, '');
+        if (path.match(/^\/api\/trees\/[^/]+$/)) {
+          finalResponse = withPublicTreeCacheStatus(modalResponse, 'bypass-auth');
         }
-        return await withUpstreamHeader(finalResponse, 'modal', requestId);
       }
-    } catch (error) {
-      if (isInvalidPathEncodingError(error)) {
-        return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
-      }
-      if (isModalOwned) {
-        console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
-        return buildModalUnavailableResponse(requestId);
-      }
+      return await withUpstreamHeader(finalResponse, 'modal', requestId);
+    }
+  } catch (error) {
+    if (isInvalidPathEncodingError(error)) {
+      return buildInvalidPathEncodingResponse(requestId, REQUEST_ID_HEADER);
+    }
+    if (isModalOwned) {
+      console.warn('[LoveBudCloudflareProxy] Modal read failed, returning 503', error);
+      return buildModalUnavailableResponse(requestId);
     }
   }
 
