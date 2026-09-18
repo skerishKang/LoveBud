@@ -1299,6 +1299,8 @@ export const MEMORY_CREATE_DIRECT_NEON_CONTRACT = Object.freeze({
   forbiddenFallbackEnvs: MEMORY_CREATE_FORBIDDEN_FALLBACK_ENVS,
   ownerAuthority: 'verified-firebase-legacyOwnerId',
   routeSplit: Object.freeze({
+    // Backward-compatible #4178 public contract key retained verbatim.
+    explicitPublicOnly: 'direct-neon-candidate',
     explicitPublic: 'public-gate-direct-neon-candidate',
     omittedOrNullVisibility: 'private-gate-direct-neon-parent-inheritance-candidate',
     explicitPrivate: 'private-gate-direct-neon-entitlement-candidate',
