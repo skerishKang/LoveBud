@@ -19,7 +19,7 @@ Current exact-main auth state splits into five distinct boundaries:
 - **ACTIVE LOGIN PROVIDER**: Firebase.
 - **SERVER VERIFIER**: Firebase-only.
 - **PRODUCT OWNER AUTHORITY**: Firebase legacy subject.
-- **ENTITLEMENT AUTHORITY**: Firestore keyed by Firebase UID.
+- **ENTITLEMENT AUTHORITY**: Neon `public.users.private_storage_enabled`, keyed during compatibility by the verified Firebase legacy owner UID.
 
 The active runtime flow is Firebase end to end:
 ```text
@@ -67,15 +67,15 @@ The existing Product tables and writer checks therefore treat the Firebase subje
 
 ### 2.4 Entitlement coupling
 
-Private-storage Plus entitlement is also Firebase-coupled today:
+Private-storage Plus entitlement remains identity-coupled to the verified Firebase UID during the compatibility phase, but the entitlement data itself is now Neon-native:
 
 ```text
-Firebase uid
-  -> Firestore users/{uid}
-  -> privateStorageEnabled / compatibility entitlement fields
+verified Firebase uid / legacyOwnerId
+  -> Neon public.users.id
+  -> private_storage_enabled
 ```
 
-Auth-provider migration and entitlement-source migration are separate concerns and must not be conflated.
+Auth-provider migration and entitlement-source migration remain separate concerns. Firestore is no longer the target entitlement store.
 
 ## 3. Why a direct provider swap is unsafe
 
@@ -85,7 +85,7 @@ Changing the browser login implementation to return a Neon Auth token while leav
 2. the verified subject is passed directly as Product `owner_id`;
 3. Neon Auth subject UUIDs are not the existing Firebase owner strings;
 4. token cache identity checks assume Firebase `uid`;
-5. private-storage entitlement reads Firestore by that Firebase UID.
+5. private-storage entitlement currently resolves the Neon `public.users` compatibility row by that verified Firebase UID.
 
 Therefore this is prohibited:
 
@@ -227,13 +227,13 @@ Neon-only signup UI/session validation can still be tested in non-production, bu
 
 ## 9. Entitlement transition boundary
 
-During existing-account compatibility mode, `legacyOwnerId` can preserve the current Firestore entitlement lookup for already-linked users:
+During existing-account compatibility mode, `legacyOwnerId` preserves the current Neon entitlement lookup for already-linked users:
 
 ```text
 Neon verified principal
   -> accountId
   -> legacyOwnerId
-  -> existing Firestore entitlement read
+  -> Neon public.users.private_storage_enabled read
 ```
 
 This is a temporary bridge, not the target architecture.
@@ -245,7 +245,7 @@ stable app account
   -> canonical entitlement source
 ```
 
-The entitlement source should be migrated independently and proven before Firebase/Firestore is removed.
+The entitlement source has been migrated independently to Neon under #4425; Firebase Auth removal remains a separate future identity migration.
 
 New Neon-only accounts must not receive private-storage access by inventing a Firebase document key.
 
@@ -315,7 +315,7 @@ Transition the client auth/token cache without changing Product ownership or ent
 
 ### Phase E — entitlement authority migration
 
-Move Plus/private-storage entitlement from Firebase UID/Firestore toward stable account identity with independent parity evidence.
+Move Plus/private-storage entitlement from the temporary Firebase-UID-keyed Neon `users` projection toward stable account identity with independent parity evidence.
 
 ### Phase F — stable Product owner migration
 
@@ -325,7 +325,7 @@ Only after this phase can new Neon-only accounts perform unrestricted Product ow
 
 ### Phase G — Firebase retirement
 
-Firebase token verification, Firebase auth UI/provider calls, legacy owner projection and Firestore entitlement dependency may be removed only after all preceding parity gates pass.
+Firebase token verification, Firebase auth UI/provider calls, and the legacy owner projection may be removed only after all preceding parity gates pass. Firestore entitlement dependency is already superseded by #4425.
 
 ## 12. Login-provider parity matrix
 
