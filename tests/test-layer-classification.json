@@ -47,6 +47,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/api-contract-transitional.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real js/utils/normalize.js browser IIFE in a node:vm sandbox with a fake window and no real network, database, browser, or deployment resource; proves canonical camelCase memory/tree input passes through unchanged and legacy snake_case input converges to the same canonical output (#4450).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/api-memory-detail-auth-routing-3288.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes it in a local process with injected fake/mock/stub dependencies (e.g., vm context with fake DOM or mocked fetch/localStorage); no real external system or production resource used.",
@@ -3207,6 +3213,12 @@
       "path": "tests/contracts/runtime-boundary-guardrail-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
+      "capabilities": []
+    },
+    {
+      "path": "tests/contracts/same-origin-navigation-failure-tracker-3899.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the real tests/helpers/same-origin-navigation-failure-tracker.cjs tracker against injected fake Playwright page and request stubs in-process; asserts intentional-navigation abort classification without launching a browser or contacting any network, database, or deployment resource (#3899).",
       "capabilities": []
     },
     {
