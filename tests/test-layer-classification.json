@@ -4338,6 +4338,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/test-runner-reachability-contract.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads repository test files, package.json node --test script commands, and repository-owned GitHub Actions run commands to prove every *.test.cjs has an execution path. Uses only source/static filesystem inspection and in-memory negative controls; does not execute the target runtime, network, database, browser, or provider (#4450).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/test-suite-count-authority-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads fixed repository-owned classification/registry/package sources and executes the pure canonical test-suite count authority with synthetic fixtures and negative controls; derives deterministic frozen default-CI counts and supplemental totals without network, child process, filesystem write, database, browser, or Production access (#3838).",
