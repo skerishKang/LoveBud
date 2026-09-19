@@ -57,11 +57,53 @@ function collectDirectNeonHelpers() {
 }
 
 function collectCheckedInGates() {
-  const text = fs.readFileSync(path.resolve(REPO_ROOT, 'wrangler.toml'), 'utf8');
-  const section = text.split(/^\[env\.production\.vars\]\s*$/m)[1] || '';
+  return parseWranglerProductionGates(fs.readFileSync(path.resolve(REPO_ROOT, 'wrangler.toml'), 'utf8'));
+}
+
+// ─── #4451: .env.example / wrangler.toml gate drift authority ────────────────
+//
+// Both parsers are text-in / Set-out so the drift guard can be exercised against
+// in-memory fixtures without mutating repository files.
+
+const ENV_EXAMPLE_PATH = path.resolve(REPO_ROOT, '.env.example');
+
+function parseWranglerProductionGates(text) {
+  const parts = String(text).split(/^\[env\.production\.vars\]\s*$/m);
+  const section = parts.length > 1 ? parts[1] : '';
   const gates = new Set();
   for (const m of section.matchAll(/^(LB_[A-Z0-9_]+_RUNTIME)\s*=\s*"direct_neon"\s*$/gm)) gates.add(m[1]);
   return gates;
+}
+
+function parseDocumentedGates(text) {
+  const gates = new Set();
+  for (const line of String(text).split('\n')) {
+    const s = line.trim();
+    if (!s || s.startsWith('#')) continue;
+    const m = /^(LB_[A-Z0-9_]+_RUNTIME)\s*=\s*direct_neon\s*$/.exec(s);
+    if (m) gates.add(m[1]);
+  }
+  return gates;
+}
+
+function diffGateSets(authorityGates, documentedGates) {
+  const missing = [...authorityGates].filter((g) => !documentedGates.has(g)).sort();
+  const stale = [...documentedGates].filter((g) => !authorityGates.has(g)).sort();
+  const codes = [];
+  if (missing.length) codes.push('MISSING_DOCUMENTED_GATE');
+  if (stale.length) codes.push('STALE_DOCUMENTED_GATE');
+  return { missing, stale, codes };
+}
+
+function readEnvExample() {
+  return fs.readFileSync(ENV_EXAMPLE_PATH, 'utf8');
+}
+
+function activeLines(text) {
+  return String(text)
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'));
 }
 
 describe('#4311 direct-neon readiness matrix contract', () => {
@@ -201,5 +243,99 @@ describe('#4311 direct-neon readiness matrix contract', () => {
       assert.ok(route.next_action.length > 0, `${route.id}: next_action required`);
       assert.ok(Array.isArray(route.source_refs) && route.source_refs.length > 0, `${route.id}: source_refs required`);
     }
+  });
+});
+
+describe('#4451 .env.example direct-neon gate drift guard', () => {
+  it('.env.example documents exactly the checked-in Production direct-neon gate set', () => {
+    const authority = collectCheckedInGates();
+    const documented = parseDocumentedGates(readEnvExample());
+    const { missing, stale, codes } = diffGateSets(authority, documented);
+
+    assert.ok(authority.size > 0, 'wrangler Production direct_neon gate set must not be empty');
+    assert.deepEqual(codes, [], `gate drift codes: ${codes.join(', ')}`);
+    assert.deepEqual(missing, [], `MISSING_DOCUMENTED_GATE: ${missing.join(', ')}`);
+    assert.deepEqual(stale, [], `STALE_DOCUMENTED_GATE: ${stale.join(', ')}`);
+    assert.equal(documented.size, authority.size, 'documented gate count must equal checked-in gate count');
+  });
+
+  it('NC1: removing a real checked-in gate from .env.example is detected', () => {
+    const authority = collectCheckedInGates();
+    const documented = parseDocumentedGates(readEnvExample());
+    const removed = [...authority].sort()[0];
+    const mutated = new Set(documented);
+    mutated.delete(removed);
+
+    const { missing, codes } = diffGateSets(authority, mutated);
+    assert.ok(codes.includes('MISSING_DOCUMENTED_GATE'), 'removing a real gate must fail closed');
+    assert.deepEqual(missing, [removed]);
+  });
+
+  it('NC2: a bogus stale gate added to .env.example is detected', () => {
+    const authority = collectCheckedInGates();
+    const documented = parseDocumentedGates(readEnvExample());
+    const mutated = new Set(documented);
+    mutated.add('LB_BOGUS_STALE_RUNTIME');
+
+    const { stale, codes } = diffGateSets(authority, mutated);
+    assert.ok(codes.includes('STALE_DOCUMENTED_GATE'), 'an unknown gate must fail closed');
+    assert.deepEqual(stale, ['LB_BOGUS_STALE_RUNTIME']);
+  });
+
+  it('a matching count is not sufficient — a swapped gate name must still fail', () => {
+    // This is the guard against a weak "count == 31" contract: replace one real
+    // gate with one bogus gate so the cardinality is unchanged.
+    const authority = collectCheckedInGates();
+    const documented = parseDocumentedGates(readEnvExample());
+    const removed = [...authority].sort()[0];
+    const mutated = new Set(documented);
+    mutated.delete(removed);
+    mutated.add('LB_BOGUS_STALE_RUNTIME');
+
+    assert.equal(mutated.size, documented.size, 'precondition: cardinality unchanged');
+    const { missing, stale, codes } = diffGateSets(authority, mutated);
+    assert.deepEqual([...codes].sort(), ['MISSING_DOCUMENTED_GATE', 'STALE_DOCUMENTED_GATE']);
+    assert.deepEqual(missing, [removed]);
+    assert.deepEqual(stale, ['LB_BOGUS_STALE_RUNTIME']);
+  });
+
+  it('.env.example no longer presents Netlify-era or service-account env as active', () => {
+    const lines = activeLines(readEnvExample());
+
+    for (const legacy of ['NETLIFY_DATABASE_URL', 'FIREBASE_SERVICE_ACCOUNT_JSON', 'FIREBASE_SERVICE_ACCOUNT']) {
+      const offending = lines.filter((l) => new RegExp(`^${legacy}\\s*=`).test(l));
+      assert.deepEqual(offending, [], `${legacy} must not be an active assignment in .env.example`);
+    }
+
+    const genericDatabaseUrl = lines.filter((l) => /^DATABASE_URL\s*=/.test(l));
+    assert.deepEqual(genericDatabaseUrl, [], 'generic DATABASE_URL must not be documented as active');
+
+    const staleScript = lines.filter((l) => /verify-env\.js\b/.test(l));
+    assert.deepEqual(staleScript, [], '.env.example must reference scripts/verify-env.cjs, not verify-env.js');
+  });
+
+  it('.env.example documents the read and write DB authority as separate envs', () => {
+    const lines = activeLines(readEnvExample());
+    assert.ok(lines.some((l) => /^LOVE_PLATFORM_DATABASE_URL\s*=/.test(l)), 'read authority must be documented');
+    assert.ok(lines.some((l) => /^LOVE_PLATFORM_WRITE_DATABASE_URL\s*=/.test(l)), 'write authority must be documented');
+    assert.ok(lines.some((l) => /^MODAL_BASE_URL\s*=/.test(l)), 'MODAL_BASE_URL must be documented');
+    assert.ok(lines.some((l) => /^FIREBASE_PROJECT_ID\s*=/.test(l)), 'FIREBASE_PROJECT_ID must be documented');
+  });
+
+  it('verify-env.cjs derives the gate inventory from repository source, not a duplicated list', () => {
+    const src = fs.readFileSync(path.resolve(REPO_ROOT, 'scripts', 'verify-env.cjs'), 'utf8');
+    const hardCoded = [...collectCheckedInGates()].filter((gate) => src.includes(gate));
+    assert.deepEqual(hardCoded, [], `verify-env.cjs must not hard-code checked-in gate names: ${hardCoded.join(', ')}`);
+    assert.ok(src.includes('wrangler.toml'), 'verify-env.cjs must read wrangler.toml as gate authority');
+    assert.ok(src.includes('.env.example'), 'verify-env.cjs must read .env.example for documented drift');
+  });
+
+  it('verify-env.cjs keeps the Cloudflare production host and drops legacy Netlify function validation', () => {
+    const src = fs.readFileSync(path.resolve(REPO_ROOT, 'scripts', 'verify-env.cjs'), 'utf8');
+    assert.ok(src.includes('https://lovebud.pages.dev'), 'production host must remain lovebud.pages.dev');
+    assert.ok(src.includes('--remote'), 'the --remote CLI surface must be preserved');
+
+    const legacyMarker = ['netlify', 'functions'].join('/');
+    assert.equal(src.split(legacyMarker).length - 1, 0, 'legacy Netlify function syntax validation must be removed');
   });
 });
