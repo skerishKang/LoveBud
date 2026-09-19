@@ -295,6 +295,69 @@ test('ordinary public update performs zero entitlement reads', async () => {
   assert.equal(texts(fake.logs).some(x => x.includes('SELECT private_storage_enabled')), false);
 });
 
+// --- #4460 SQL placeholder regression contracts --------------------------
+//
+// This file previously asserted only that an UPDATE happened after
+// entitlement. It never inspected the generated assignment placeholders, so
+// the shared `${column} = ${values.length}` regression went undetected here.
+
+function privateUpdateEntry(logs) {
+  return logs.find((entry) => entry.kind === 'query' && entry.sql.includes('UPDATE trees'));
+}
+
+function privateAssignmentClause(sql) {
+  const match = /SET ([\s\S]*?), updated_at = NOW\(\)/.exec(sql);
+  assert.ok(match, `UPDATE trees SET clause not found in: ${sql}`);
+  return match[1];
+}
+
+test('#4460 private visibility update binds $1 and tree/owner as $2/$3', async () => {
+  const m = await mod();
+  const fake = makeAdapter({ entitled: true, canonicalVisibility: 'private' });
+  const resp = await m.handleTreeUpdateDirectNeon(
+    request(), TREE_ID, BOTH_ENV, 'rid-4460-private-single',
+    {
+      verifyTokenOverride: verifier(),
+      transactionAdapterOverride: fake.adapter,
+      boundedBodyResult: bodyResult({ visibility: 'private' })
+    }
+  );
+  assert.equal(resp.status, 200);
+
+  const update = privateUpdateEntry(fake.logs);
+  assert.ok(update, 'UPDATE trees must execute');
+
+  assert.equal(privateAssignmentClause(update.sql), 'visibility = $1');
+  // Negative control: the pre-#4460 regression rendered `visibility = 1`.
+  assert.doesNotMatch(update.sql, /visibility = \d/);
+
+  assert.match(update.sql, /WHERE id = \$2\s+AND owner_id = \$3/);
+  assert.deepEqual(update.values, ['private', TREE_ID, OWNER_ID]);
+});
+
+test('#4460 private mixed payload numbers title/visibility then tree/owner', async () => {
+  const m = await mod();
+  const fake = makeAdapter({ entitled: true, canonicalVisibility: 'private' });
+  const resp = await m.handleTreeUpdateDirectNeon(
+    request(), TREE_ID, BOTH_ENV, 'rid-4460-private-mixed',
+    {
+      verifyTokenOverride: verifier(),
+      transactionAdapterOverride: fake.adapter,
+      boundedBodyResult: bodyResult({ title: 'Private Tree', visibility: 'private' })
+    }
+  );
+  assert.equal(resp.status, 200);
+
+  const update = privateUpdateEntry(fake.logs);
+  assert.ok(update, 'UPDATE trees must execute');
+
+  assert.equal(privateAssignmentClause(update.sql), 'title = $1, visibility = $2');
+  assert.doesNotMatch(update.sql, /(?:title|visibility) = \d/);
+
+  assert.match(update.sql, /WHERE id = \$3\s+AND owner_id = \$4/);
+  assert.deepEqual(update.values, ['Private Tree', 'private', TREE_ID, OWNER_ID]);
+});
+
 test('contract metadata binds private visibility to Neon entitlement and independent gate', async () => {
   const m = await mod();
   const c = m.TREE_UPDATE_DIRECT_NEON_CONTRACT;

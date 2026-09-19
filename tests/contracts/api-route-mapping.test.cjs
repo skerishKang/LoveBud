@@ -1458,6 +1458,91 @@ test('#4228 happy path uses verified owner predicate and returns canonical DB re
   ]);
 });
 
+// --- #4460 SQL placeholder regression contracts --------------------------
+//
+// The earlier #4228 coverage asserted only the WHERE clause and the bound
+// values, so a bare `${values.length}` assignment (which renders `title = 1`)
+// still passed. These contracts pin the exact generated assignment
+// placeholders and prove the numbering continues into tree/owner predicates.
+
+function treeUpdateAssignmentClause(sql) {
+  const match = /SET ([\s\S]*?), updated_at = NOW\(\)/.exec(sql);
+  assert.ok(match, `UPDATE trees SET clause not found in: ${sql}`);
+  return match[1];
+}
+
+test('#4460 single-field update binds $1 for the assignment and $2/$3 for tree/owner', async () => {
+  const mod = await loadTreeUpdateModule();
+  const fake = makeTreeUpdateFakeAdapter({
+    canonicalRow: makeTreeUpdateCanonicalRow({ title: 'Updated Tree' })
+  });
+  const response = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({ body: { title: 'Updated Tree' } }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4460-single',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: fake.adapter }
+  );
+  assert.equal(response.status, 200);
+
+  const updateEvent = fake.events.find((event) => event.text && event.text.includes('UPDATE trees'));
+  assert.ok(updateEvent, 'UPDATE trees must execute');
+
+  assert.equal(treeUpdateAssignmentClause(updateEvent.text), 'title = $1');
+  // Negative control: the pre-#4460 regression rendered `title = 1`.
+  assert.doesNotMatch(updateEvent.text, /title = \d/);
+
+  assert.match(updateEvent.text, /WHERE id = \$2\s+AND owner_id = \$3/);
+  assert.deepEqual(updateEvent.values, ['Updated Tree', TREE_UPDATE_ID, TREE_UPDATE_OWNER]);
+});
+
+test('#4460 multi-field update numbers $1..$4 then tree/owner as $5/$6', async () => {
+  const mod = await loadTreeUpdateModule();
+  const fake = makeTreeUpdateFakeAdapter({
+    canonicalRow: makeTreeUpdateCanonicalRow({
+      title: 'Updated Tree',
+      visibility: 'public',
+      group_name: 'Group A',
+      keywords: ['alpha', 'beta']
+    })
+  });
+  const response = await mod.handleTreeUpdateDirectNeon(
+    makeTreeUpdateRequest({
+      body: {
+        title: 'Updated Tree',
+        visibility: 'public',
+        groupName: 'Group A',
+        keywords: ['alpha', 'beta']
+      }
+    }),
+    TREE_UPDATE_ID,
+    TREE_UPDATE_ENV,
+    'rid-4460-multi',
+    { verifyTokenOverride: async () => ({ uid: TREE_UPDATE_OWNER }), transactionAdapterOverride: fake.adapter }
+  );
+  assert.equal(response.status, 200);
+
+  const updateEvent = fake.events.find((event) => event.text && event.text.includes('UPDATE trees'));
+  assert.ok(updateEvent, 'UPDATE trees must execute');
+
+  assert.equal(
+    treeUpdateAssignmentClause(updateEvent.text),
+    'title = $1, visibility = $2, group_name = $3, keywords = $4'
+  );
+  // No assignment may degrade to a bare positional integer.
+  assert.doesNotMatch(updateEvent.text, /(?:title|visibility|group_name|keywords) = \d/);
+
+  assert.match(updateEvent.text, /WHERE id = \$5\s+AND owner_id = \$6/);
+  assert.deepEqual(updateEvent.values, [
+    'Updated Tree',
+    'public',
+    'Group A',
+    ['alpha', 'beta'],
+    TREE_UPDATE_ID,
+    TREE_UPDATE_OWNER
+  ]);
+});
+
 test('#4228 canonical UUID and missing/foreign targets fail without mutation', async () => {
   const mod = await loadTreeUpdateModule();
   const invalidFake = makeTreeUpdateFakeAdapter();
