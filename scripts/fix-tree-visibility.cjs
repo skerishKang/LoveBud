@@ -1,6 +1,6 @@
 /**
  * LoveBud - trees.visibility를 public으로 업데이트
- * 사용법: node scripts/fix-tree-visibility.js "postgresql://..."
+ * 사용법: node scripts/fix-tree-visibility.cjs "postgresql://..."
  */
 
 const { Pool } = require('pg');
@@ -9,7 +9,7 @@ const DATABASE_URL = process.argv[2] || process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
   console.error('❌ DATABASE_URL이 필요합니다.');
-  console.error('사용법: node scripts/fix-tree-visibility.js "postgresql://username:password@host/database"');
+  console.error('사용법: node scripts/fix-tree-visibility.cjs "postgresql://username:password@host/database"');
   process.exit(1);
 }
 

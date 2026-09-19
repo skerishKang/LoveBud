@@ -4,14 +4,14 @@
  * 
  * 사용법:
  *   # 환경변수 설정 후 실행
- *   DATABASE_URL=postgresql://... node scripts/seed-public-trees.js
+ *   DATABASE_URL=postgresql://... node scripts/seed-public-trees.cjs
  *   
  *   # Dry-run (실제 삽입 없이 미리보기)
- *   DRY_RUN=true DATABASE_URL=... node scripts/seed-public-trees.js
+ *   DRY_RUN=true DATABASE_URL=... node scripts/seed-public-trees.cjs
  *   
  *   # Phase 지정 (phase1=3개, phase2=7개)
- *   SEED_STAGE=phase1 DATABASE_URL=... node scripts/seed-public-trees.js
- *   SEED_STAGE=phase2 DATABASE_URL=... node scripts/seed-public-trees.js
+ *   SEED_STAGE=phase1 DATABASE_URL=... node scripts/seed-public-trees.cjs
+ *   SEED_STAGE=phase2 DATABASE_URL=... node scripts/seed-public-trees.cjs
  * 
  * Demo Owner: demo-owner-lovebud (실제 Firebase UID 아님, synthetic owner)
  */
@@ -27,7 +27,7 @@ const SEED_STAGE = process.env.SEED_STAGE || 'phase1'; // 'phase1' | 'phase2' | 
 
 if (!DATABASE_URL) {
   console.error('❌ DATABASE_URL 또는 NETLIFY_DATABASE_URL 환경변수가 필요합니다');
-  console.error('   예시: DATABASE_URL=postgresql://... node scripts/seed-public-trees.js');
+  console.error('   예시: DATABASE_URL=postgresql://... node scripts/seed-public-trees.cjs');
   process.exit(1);
 }
 

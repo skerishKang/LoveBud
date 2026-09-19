@@ -8,7 +8,7 @@
  * 2. editor local fallback null 처리 - createdMemory null/undefined guard
  * 3. currentTreeMemories null/array guard - window.currentTreeMemories 안전성
  *
- * 사용법: node scripts/verify-core-flows.js
+ * 사용법: node scripts/verify-core-flows.cjs
  */
 
 const fs = require('fs');

@@ -9,9 +9,9 @@
  * 환경변수/DB/Firebase 의존성 없이 실행 가능한 항목을 우선 검사합니다.
  *
  * 사용법:
- *   node scripts/pre-deploy.js             # 빠른 검사 (syntax, i18n, routes, html)
- *   node scripts/pre-deploy.js --full      # 위 + env/DB/Firebase 원격 검사
- *   node scripts/pre-deploy.js --remote https://lovebud.pages.dev
+ *   node scripts/pre-deploy.cjs             # 빠른 검사 (syntax, i18n, routes, html)
+ *   node scripts/pre-deploy.cjs --full      # 위 + env/DB/Firebase 원격 검사
+ *   node scripts/pre-deploy.cjs --remote https://lovebud.pages.dev
  *
  * Note: Netlify hosts (*.netlify.app) are stale/legacy and must not be used
  * as --remote defaults or production validation targets (#3348).
@@ -299,13 +299,13 @@ async function verifyFull() {
     return;
   }
 
-  const verifyEnvPath = path.join(ROOT, 'scripts/verify-env.js');
+  const verifyEnvPath = path.join(ROOT, 'scripts/verify-env.cjs');
   if (!fs.existsSync(verifyEnvPath)) {
-    check('verify-env.js 존재', false, '스킵');
+    check('verify-env.cjs 존재', false, '스킵');
     return;
   }
 
-  console.log('\n=== env/DB/Firebase 검사 (verify-env.js) ===');
+  console.log('\n=== env/DB/Firebase 검사 (verify-env.cjs) ===');
   try {
     const cmd = REMOTE_URL
       ? `node "${verifyEnvPath}" --remote ${REMOTE_URL}`

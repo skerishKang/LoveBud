@@ -35,7 +35,7 @@ function parseArgs(argv) {
 
 function printHelp() {
   console.log([
-    'Usage: node scripts/ops-auth-credential-preflight.js [--file .local/test-accounts.json] [--key accounts.user] [--compare-key accounts.user10]',
+    'Usage: node scripts/ops-auth-credential-preflight.cjs [--file .local/test-accounts.json] [--key accounts.user] [--compare-key accounts.user10]',
     '',
     'Secret-safe local credential preflight for browser auth verification.',
     'The script never prints email, password, token, session, cookie, UID, or private values.',

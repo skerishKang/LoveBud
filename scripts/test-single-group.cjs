@@ -2,7 +2,7 @@
  * LoveBud Single Group Test Runner
  * 특정 그룹만 테스트 (빠른 검증용)
  *
- * 사용법: node scripts/test-single-group.js kiiikiii
+ * 사용법: node scripts/test-single-group.cjs kiiikiii
  */
 
 const fs = require('fs');
@@ -21,9 +21,9 @@ const CONFIG = {
 // 명령행 인수 파싱
 const args = process.argv.slice(2);
 if (args.length === 0) {
-  console.error('❌ 사용법: node scripts/test-single-group.js <groupId>');
-  console.error('   예시: node scripts/test-single-group.js kiiikiii');
-  console.error('   또는: node scripts/test-single-group.js ive');
+  console.error('❌ 사용법: node scripts/test-single-group.cjs <groupId>');
+  console.error('   예시: node scripts/test-single-group.cjs kiiikiii');
+  console.error('   또는: node scripts/test-single-group.cjs ive');
   process.exit(1);
 }
 

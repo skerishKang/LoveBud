@@ -82,4 +82,4 @@ Document the current coverage and classification of page transition and reveal e
 
 - [design/UI_DESIGN_SYSTEM.md](../design/UI_DESIGN_SYSTEM.md) — motion principles
 - [engineering/MANUAL_TEST_CHECKLIST.md](../engineering/MANUAL_TEST_CHECKLIST.md) — manual smoke verification
-- `scripts/e2e-ui-regression-smoke.js` — existing UI smoke script
+- `scripts/e2e-ui-regression-smoke.cjs` — existing UI smoke script

@@ -791,21 +791,6 @@
       "notes": "Legacy direct-connect read-only diagnostic with no sanitized evidence envelope; can reveal private rows/payloads. Prohibited for new use; replace with the sanitized catalog adapter. Carried forward from migration-path-inventory.json."
     },
     {
-      "path": "scripts/inspect-schema.js",
-      "category": "direct_connect_diagnostic",
-      "engine": "postgres",
-      "operations": ["READ_ONLY"],
-      "canonical_status": "PROHIBITED_FOR_NEW_USE",
-      "destructive": false,
-      "production_capable": false,
-      "owner_or_issue": "legacy operator tooling / #3458",
-      "idempotency": "not_applicable",
-      "execution_actor": "developer",
-      "automation": "manual",
-      "ledger_candidate": "no",
-      "notes": "Alias of inspect-schema.cjs. Prohibited for new use. Carried forward from migration-path-inventory.json."
-    },
-    {
       "path": "scripts/verify-db.cjs",
       "category": "direct_connect_diagnostic",
       "engine": "postgres",
@@ -819,21 +804,6 @@
       "automation": "manual",
       "ledger_candidate": "no",
       "notes": "Legacy direct-connect read-only verification with no sanitized evidence envelope. Prohibited for new use. Carried forward from migration-path-inventory.json."
-    },
-    {
-      "path": "scripts/verify-db.js",
-      "category": "direct_connect_diagnostic",
-      "engine": "postgres",
-      "operations": ["READ_ONLY"],
-      "canonical_status": "PROHIBITED_FOR_NEW_USE",
-      "destructive": false,
-      "production_capable": false,
-      "owner_or_issue": "legacy operator tooling / #3458",
-      "idempotency": "not_applicable",
-      "execution_actor": "developer",
-      "automation": "manual",
-      "ledger_candidate": "no",
-      "notes": "Alias of verify-db.cjs. Prohibited for new use. Carried forward from migration-path-inventory.json."
     },
     {
       "path": "scripts/seed-public-trees.cjs",
@@ -851,21 +821,6 @@
       "notes": "Fixture data seeder (DML only, no DDL). Never a schema reconstruction input. Carried forward from migration-path-inventory.json."
     },
     {
-      "path": "scripts/seed-public-trees.js",
-      "category": "seed_or_data_script",
-      "engine": "postgres",
-      "operations": ["DML"],
-      "canonical_status": "TEST_FIXTURE_ONLY",
-      "destructive": false,
-      "production_capable": false,
-      "owner_or_issue": "test fixtures / #3458",
-      "idempotency": "unknown",
-      "execution_actor": "developer",
-      "automation": "manual",
-      "ledger_candidate": "no",
-      "notes": "Alias of seed-public-trees.cjs. Fixture data only. Carried forward from migration-path-inventory.json."
-    },
-    {
       "path": "scripts/seed-public-multi-branch-fixture.cjs",
       "category": "seed_or_data_script",
       "engine": "postgres",
@@ -881,21 +836,6 @@
       "notes": "Fixture data seeder (DML only). Never a schema reconstruction input. Carried forward from migration-path-inventory.json."
     },
     {
-      "path": "scripts/seed-public-multi-branch-fixture.js",
-      "category": "seed_or_data_script",
-      "engine": "postgres",
-      "operations": ["DML"],
-      "canonical_status": "TEST_FIXTURE_ONLY",
-      "destructive": false,
-      "production_capable": false,
-      "owner_or_issue": "test fixtures / #3458",
-      "idempotency": "unknown",
-      "execution_actor": "developer",
-      "automation": "manual",
-      "ledger_candidate": "no",
-      "notes": "Alias of seed-public-multi-branch-fixture.cjs. Fixture data only. Carried forward from migration-path-inventory.json."
-    },
-    {
       "path": "scripts/run_seed.cjs",
       "category": "seed_or_data_script",
       "engine": "postgres",
@@ -909,21 +849,6 @@
       "automation": "manual",
       "ledger_candidate": "no",
       "notes": "Seed runner (DML only, no DDL). Fixture/local data; not a schema-change path."
-    },
-    {
-      "path": "scripts/run_seed.js",
-      "category": "seed_or_data_script",
-      "engine": "postgres",
-      "operations": ["DML"],
-      "canonical_status": "TEST_FIXTURE_ONLY",
-      "destructive": false,
-      "production_capable": false,
-      "owner_or_issue": "test fixtures / #3458",
-      "idempotency": "unknown",
-      "execution_actor": "developer",
-      "automation": "manual",
-      "ledger_candidate": "no",
-      "notes": "Alias of run_seed.cjs. Fixture/local data only."
     },
     {
       "path": "scripts/insert-memories.cjs",
@@ -954,21 +879,6 @@
       "automation": "manual",
       "ledger_candidate": "no",
       "notes": "Data repair helper (DML only, no DDL). Repairs row values, not schema. Requires separate approval before any Production use."
-    },
-    {
-      "path": "scripts/fix-tree-visibility.js",
-      "category": "seed_or_data_script",
-      "engine": "postgres",
-      "operations": ["DML"],
-      "canonical_status": "INCIDENT_REPAIR_ONLY",
-      "destructive": false,
-      "production_capable": false,
-      "owner_or_issue": "data repair / #3458",
-      "idempotency": "unknown",
-      "execution_actor": "operator",
-      "automation": "manual",
-      "ledger_candidate": "no",
-      "notes": "Alias of fix-tree-visibility.cjs. Data repair (DML) only."
     },
     {
       "path": "scripts/prepare-legacy-tree-entity-repair.cjs",

@@ -3,7 +3,7 @@
  * 모든 그룹 데이터를 순회하며 테스트 실행
  * 실패 시 중지하고 결과 저장 후 다음 그룹으로 진행
  * 
- * 사용법: node scripts/batch-test-runner.js
+ * 사용법: node scripts/batch-test-runner.cjs
  */
 
 const fs = require('fs');
