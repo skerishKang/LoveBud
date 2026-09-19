@@ -19,12 +19,16 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 
+// The `.js` twins of these scripts were removed under #4450. The repository is
+// declared `"type": "module"`, so a CommonJS script written with
+// `require()`/`module.exports` and a `.js` extension cannot execute at all
+// (`ReferenceError: require is not defined in ES module scope`). Listing such a
+// file as an ACTIVE script asserted against a file that could never run, and
+// left two copies of each script for a reader to pick from. `.cjs` is the
+// authority extension, matching `scripts.test` in package.json.
 const ACTIVE_SCRIPTS = [
-  'scripts/verify-env.js',
   'scripts/verify-env.cjs',
-  'scripts/pre-deploy.js',
   'scripts/pre-deploy.cjs',
-  'scripts/fix-tree-visibility.js',
   'scripts/fix-tree-visibility.cjs',
 ];
 
@@ -61,7 +65,7 @@ test('active scripts do not use lovebud.netlify.app as default/remote production
 
 test('active scripts default remote/examples use lovebud.pages.dev', () => {
   // verify-env and pre-deploy must default to pages.dev when --remote is set without value
-  for (const rel of ['scripts/verify-env.js', 'scripts/verify-env.cjs', 'scripts/pre-deploy.js', 'scripts/pre-deploy.cjs']) {
+  for (const rel of ['scripts/verify-env.cjs', 'scripts/pre-deploy.cjs']) {
     const src = read(rel);
     assert.ok(
       src.includes('https://lovebud.pages.dev'),

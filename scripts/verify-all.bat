@@ -10,4 +10,4 @@ if "%NETLIFY_DATABASE_URL%"=="" if "%DATABASE_URL%"=="" (
 
 if "%NETLIFY_DATABASE_URL%"=="" set NETLIFY_DATABASE_URL=%DATABASE_URL%
 
-node scripts\verify-db.js
+node scripts\verify-db.cjs

@@ -176,26 +176,6 @@
       "content_checksum": "sha256:544a7d14330a8e7b57c50be63ff52455faa84415900f3693392e44edfb01f169"
     },
     {
-      "path": "scripts/inspect-schema.js",
-      "operation_class": "manual_catalog_inspection_alias",
-      "schema_objects": [
-        "legacy diagnostic database path"
-      ],
-      "invocation_path": "local direct database script",
-      "current_owner_domain": "legacy operator tooling",
-      "classification": "PROHIBITED_FOR_NEW_USE",
-      "transaction_behavior": "read-only script with no sanitized evidence envelope",
-      "idempotency_claim": "not applicable",
-      "rollback_claim": "not applicable",
-      "production_relevance": "legacy local diagnostic only",
-      "evidence": "direct connection tooling predates provenance boundary",
-      "risk": "can reveal private rows or payloads",
-      "recommended_disposition": "replace with sanitized catalog evidence adapter",
-      "linked_issue": "#3458",
-      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:544a7d14330a8e7b57c50be63ff52455faa84415900f3693392e44edfb01f169"
-    },
-    {
       "path": "scripts/migration-add-channel-fields.sql",
       "operation_class": "legacy_schema_migration",
       "schema_objects": [
@@ -460,26 +440,6 @@
       "content_checksum": "sha256:6ec74250922a08a284da8768c7849d5545126d2334daa5184136d88673c7c713"
     },
     {
-      "path": "scripts/seed-public-multi-branch-fixture.js",
-      "operation_class": "test_fixture_seed_alias",
-      "schema_objects": [
-        "fixture tree and moment records"
-      ],
-      "invocation_path": "local fixture script",
-      "current_owner_domain": "test fixtures",
-      "classification": "TEST_FIXTURE_ONLY",
-      "transaction_behavior": "fixture-specific",
-      "idempotency_claim": "fixture-specific",
-      "rollback_claim": "fixture cleanup is separate from schema rollback",
-      "production_relevance": "not a production migration path",
-      "evidence": "seed-named local fixture source",
-      "risk": "must not be used as schema reconstruction source",
-      "recommended_disposition": "keep isolated from canonical migrations",
-      "linked_issue": "#3458",
-      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:6ec74250922a08a284da8768c7849d5545126d2334daa5184136d88673c7c713"
-    },
-    {
       "path": "scripts/seed-public-trees.cjs",
       "operation_class": "test_fixture_seed",
       "schema_objects": [
@@ -497,27 +457,7 @@
       "recommended_disposition": "keep isolated from canonical migrations",
       "linked_issue": "#3458",
       "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:4d2b0f87fc30222e01374d81e80787641704f2fdfa9db77757634a97ab214612"
-    },
-    {
-      "path": "scripts/seed-public-trees.js",
-      "operation_class": "test_fixture_seed_alias",
-      "schema_objects": [
-        "fixture tree records"
-      ],
-      "invocation_path": "local fixture script",
-      "current_owner_domain": "test fixtures",
-      "classification": "TEST_FIXTURE_ONLY",
-      "transaction_behavior": "fixture-specific",
-      "idempotency_claim": "fixture-specific",
-      "rollback_claim": "fixture cleanup is separate from schema rollback",
-      "production_relevance": "not a production migration path",
-      "evidence": "duplicate fixture source",
-      "risk": "must not be used as schema reconstruction source",
-      "recommended_disposition": "keep isolated from canonical migrations",
-      "linked_issue": "#3458",
-      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:4d2b0f87fc30222e01374d81e80787641704f2fdfa9db77757634a97ab214612"
+      "content_checksum": "sha256:fd19c18595f970a02fe66eccfa135e54241b9a1a39689e6a71b396c5860d2548"
     },
     {
       "path": "scripts/verify-db.cjs",
@@ -533,26 +473,6 @@
       "rollback_claim": "not applicable",
       "production_relevance": "legacy local diagnostic only",
       "evidence": "direct connection tooling predates provenance boundary",
-      "risk": "can reveal private rows or payloads",
-      "recommended_disposition": "replace with sanitized catalog evidence adapter",
-      "linked_issue": "#3458",
-      "baseline_sha": "5d601154cfa45a4885e30fc190446ce3b9623aa0",
-      "content_checksum": "sha256:0bb71fa6450899241fbcfe3c169bf1995ac1e97d05389d9e01ac4b6516654ec8"
-    },
-    {
-      "path": "scripts/verify-db.js",
-      "operation_class": "manual_database_verification_alias",
-      "schema_objects": [
-        "legacy trees verification"
-      ],
-      "invocation_path": "local direct database script",
-      "current_owner_domain": "legacy operator tooling",
-      "classification": "PROHIBITED_FOR_NEW_USE",
-      "transaction_behavior": "read-only script with no sanitized evidence envelope",
-      "idempotency_claim": "not applicable",
-      "rollback_claim": "not applicable",
-      "production_relevance": "legacy local diagnostic only",
-      "evidence": "duplicate direct connection diagnostic source",
       "risk": "can reveal private rows or payloads",
       "recommended_disposition": "replace with sanitized catalog evidence adapter",
       "linked_issue": "#3458",

@@ -115,7 +115,7 @@ git status && git diff && git diff --staged
 
 # ✅ 권장: 특정 파일만 staging
 git add js/editor.js
-git add scripts/verify-core-flows.js
+git add scripts/verify-core-flows.cjs
 
 # 직전 커밋 확인
 git log --oneline -1

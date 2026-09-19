@@ -225,31 +225,25 @@ Flags: 5 entries are `destructive`; 20 entries are `production_capable` (technic
 | --- | --- | --- | --- | --- |
 | `docs/ops/bulk-public-all-test-data.sql` | postgres | MANUAL_ONLY | no | yes |
 
-### seed_or_data_script (12)
+### seed_or_data_script (8)
 
 | Path | Engine | Canonical status | Destructive | Prod-capable |
 | --- | --- | --- | --- | --- |
 | `scripts/seed-public-trees.cjs` | postgres | TEST_FIXTURE_ONLY | no | no |
-| `scripts/seed-public-trees.js` | postgres | TEST_FIXTURE_ONLY | no | no |
 | `scripts/seed-public-multi-branch-fixture.cjs` | postgres | TEST_FIXTURE_ONLY | no | no |
-| `scripts/seed-public-multi-branch-fixture.js` | postgres | TEST_FIXTURE_ONLY | no | no |
 | `scripts/run_seed.cjs` | postgres | TEST_FIXTURE_ONLY | no | no |
-| `scripts/run_seed.js` | postgres | TEST_FIXTURE_ONLY | no | no |
 | `scripts/insert-memories.cjs` | postgres | MANUAL_ONLY | no | no |
 | `scripts/fix-tree-visibility.cjs` | postgres | INCIDENT_REPAIR_ONLY | no | no |
-| `scripts/fix-tree-visibility.js` | postgres | INCIDENT_REPAIR_ONLY | no | no |
 | `scripts/prepare-legacy-tree-entity-repair.cjs` | none | INCIDENT_REPAIR_ONLY | no | no |
 | `scripts/run-seed.ps1` | postgres | TEST_FIXTURE_ONLY | no | no |
 | `scripts/verify-seed.ps1` | postgres | TEST_FIXTURE_ONLY | no | no |
 
-### direct_connect_diagnostic (4)
+### direct_connect_diagnostic (2)
 
 | Path | Engine | Canonical status | Destructive | Prod-capable |
 | --- | --- | --- | --- | --- |
 | `scripts/inspect-schema.cjs` | postgres | PROHIBITED_FOR_NEW_USE | no | no |
-| `scripts/inspect-schema.js` | postgres | PROHIBITED_FOR_NEW_USE | no | no |
 | `scripts/verify-db.cjs` | postgres | PROHIBITED_FOR_NEW_USE | no | no |
-| `scripts/verify-db.js` | postgres | PROHIBITED_FOR_NEW_USE | no | no |
 
 ### test_fixture_sql (9)
 

@@ -89,7 +89,8 @@ test('#3313 no script depends on Windows drive absolute paths', () => {
 });
 
 test('#3313 issue-1069-delete-smoke resolves service account via env or repo-relative path', () => {
-  for (const ext of ['.js', '.cjs']) {
+  // #4450: the unrunnable CommonJS `.js` twin was removed; `.cjs` is canonical.
+  for (const ext of ['.cjs']) {
     const file = path.join(SCRIPTS_DIR, `issue-1069-delete-smoke${ext}`);
     const content = fs.readFileSync(file, 'utf8');
     assert.ok(

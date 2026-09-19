@@ -1,9 +1,9 @@
 /**
  * 스크린샷 캡처 및 복사 스크립트
  * 
- * 사용법: node scripts/capture-screenshots.js [결과폴더명]
- * 예시: node scripts/capture-screenshots.js xg-test-2026-04-18-1100
- * 예시: node scripts/capture-screenshots.js --prefix xg-test
+ * 사용법: node scripts/capture-screenshots.cjs [결과폴더명]
+ * 예시: node scripts/capture-screenshots.cjs xg-test-2026-04-18-1100
+ * 예시: node scripts/capture-screenshots.cjs --prefix xg-test
  */
 
 const { chromium } = require('playwright');
