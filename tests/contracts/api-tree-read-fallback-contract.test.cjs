@@ -296,7 +296,7 @@ test('#3933 catch-all source guard: no Tree-detail cache persistence remains', (
   assert.ok(!code.includes('__cache/public/trees'), 'no Tree-detail cache key in catch-all');
   assert.ok(!code.includes('x-lovebud-public-tree-cache-expires-at'), 'no 30s expiry header');
   assert.ok(!code.includes('isVerifiedPublicTreeCacheCandidate'), 'no Tree-detail cache candidate logic');
-  assert.ok(code.includes('/__cache/community/trees'), 'legacy catch-all Browse key may remain while exact /api/community/trees route owns revocation-safe reads');
+  assert.ok(!code.includes('/__cache/community/trees'), 'retired catch-all Browse cache key must stay removed');
   assert.ok(code.includes("headers.set('Cache-Control', 'no-store')"), 'anonymous Tree detail is no-store');
 });
 // ─── Test 5: Existing public behavior remains unchanged ────────────────────
