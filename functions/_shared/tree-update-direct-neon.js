@@ -245,7 +245,7 @@ async function buildUpdateSql(payload, signal, tx, ownerId) {
 
   function add(column, value) {
     values.push(value);
-    assignments.push(`${column} = ${values.length}`);
+    assignments.push(`${column} = $${values.length}`);
   }
 
   // Preserve Modal field-processing order exactly: title validation first,
