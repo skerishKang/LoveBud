@@ -325,7 +325,8 @@ HTTP status 후보:
 - `GET /api/community/trees?view=summary&sort=latest&limit=3`
 
 **Active route**
-- Cloudflare Pages `functions/api/[[path]].js`
+- Cloudflare Pages `functions/api/community/trees.js` (route-specific authority, `Cache-Control: no-store`)
+- shared Modal URL mapping helper: `buildModalUrl()` from `functions/api/[[path]].js`
 - Modal `/modal/browse/latest`
 
 **Response shape**

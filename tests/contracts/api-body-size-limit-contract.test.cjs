@@ -69,7 +69,7 @@ test('Cloudflare oversized body response is safe JSON and does not echo request 
   const responseBlock = sliceBetween(
     source,
     /function\s+buildPayloadTooLargeResponse\s*\(/,
-    /function\s+isBrowseSummaryRequest\s*\(/
+    /function\s+isPrivateTreeCapabilityRequest\s*\(/
   );
 
   assert.match(responseBlock, /status:\s*413/);

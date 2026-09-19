@@ -106,15 +106,19 @@ test('Audit document lists related docs and contract coverage', () => {
   }
 });
 
-test('Runtime locking: router accepts latest/popular/likes/views and falls back to latest', () => {
+test('Runtime locking: exact Browse route uses canonical latest/popular/likes/views mapping without persistent Cache API', () => {
   const router = read(path.join('functions', 'api', '[[path]].js'));
+  const exactBrowseRoute = read(path.join('functions', 'api', 'community', 'trees.js'));
 
-  assert.match(router, /function buildBrowseCacheRequest/);
+  assert.doesNotMatch(router, /caches\.default/);
+  assert.doesNotMatch(router, /function buildBrowseCacheRequest/);
   assert.match(router, /function buildModalUrl/);
   assert.match(router, /requestedSort === 'popular'/);
   assert.match(router, /requestedSort === 'likes'/);
   assert.match(router, /requestedSort === 'views'/);
   assert.match(router, /: 'latest'/);
+  assert.match(exactBrowseRoute, /buildModalUrl\(request, env \|\| \{\}\)/);
+  assert.match(exactBrowseRoute, /headers\.set\('Cache-Control', 'no-store'\)/);
 });
 
 test('Runtime locking: modal app safe_sort set includes latest/popular/likes/views', () => {

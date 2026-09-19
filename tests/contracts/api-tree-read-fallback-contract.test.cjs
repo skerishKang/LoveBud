@@ -296,7 +296,7 @@ test('#3933 catch-all source guard: no Tree-detail cache persistence remains', (
   assert.ok(!code.includes('__cache/public/trees'), 'no Tree-detail cache key in catch-all');
   assert.ok(!code.includes('x-lovebud-public-tree-cache-expires-at'), 'no 30s expiry header');
   assert.ok(!code.includes('isVerifiedPublicTreeCacheCandidate'), 'no Tree-detail cache candidate logic');
-  assert.ok(code.includes('/__cache/community/trees'), 'legacy catch-all Browse key may remain while exact /api/community/trees route owns revocation-safe reads');
+  assert.ok(!code.includes('/__cache/community/trees'), 'retired catch-all Browse cache key must stay removed');
   assert.ok(code.includes("headers.set('Cache-Control', 'no-store')"), 'anonymous Tree detail is no-store');
 });
 // ─── Test 5: Existing public behavior remains unchanged ────────────────────
@@ -497,4 +497,16 @@ test('#4051 Browse source guard: exact route owns summary reads with no persiste
   assert.ok(!code.includes('max-age=420'), 'retired Browse body TTL must not exist on exact route');
   assert.ok(code.includes("headers.set('Cache-Control', 'no-store')"), 'Browse responses must be no-store');
   assert.ok(code.includes('buildModalUrl(request, env || {})'), 'exact route must reuse canonical Browse sort/limit mapping');
+});
+
+test('#4448 Browse source guard: catch-all cannot silently revive retired persistent caching', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const code = fs.readFileSync(path.resolve(__dirname, '../../functions/api/[[path]].js'), 'utf8');
+
+  assert.ok(!code.includes('caches.default'), 'catch-all must not access persistent Cache API for Browse');
+  assert.ok(!code.includes('buildBrowseCacheRequest'), 'retired Browse cache-key helper must stay removed');
+  assert.ok(!code.includes('isBrowseSummaryRequest'), 'retired catch-all Browse dispatcher must stay removed');
+  assert.ok(!code.includes('max-age=420'), 'retired Browse response-body TTL must stay removed from catch-all');
+  assert.ok(code.includes("path === '/api/community/trees'"), 'shared buildModalUrl Browse mapping must remain for exact route reuse');
 });
