@@ -115,6 +115,18 @@ function queries(fake) {
   return fake.logs.map((entry) => entry.sql);
 }
 
+function updateEntry(fake) {
+  const entry = fake.logs.find((item) => item.sql.includes('UPDATE memories'));
+  assert.ok(entry, 'expected one UPDATE memories query');
+  return entry;
+}
+
+function assignmentClause(sql) {
+  const match = sql.match(/UPDATE memories\s+SET\s+([\s\S]*?),\s*updated_at = NOW\(\)\s+WHERE/i);
+  assert.ok(match, 'expected UPDATE assignment clause before updated_at');
+  return match[1].replace(/\s+/g, ' ').trim();
+}
+
 async function invoke(m, env, payload, fake, requestId = 'rid-memory-private-4425') {
   return m.handleMemoryUpdateDirectNeon(
     request(),
@@ -265,6 +277,68 @@ test('Plus private update performs entitlement before UPDATE and returns canonic
   const entitlement = q.findIndex((sql) => sql.includes('FROM public.users'));
   const update = q.findIndex((sql) => sql.includes('UPDATE memories'));
   assert.ok(owner >= 0 && entitlement > owner && update > entitlement);
+});
+
+test('#4461 private visibility-only update uses real placeholders and owner predicates after values', async () => {
+  const m = await mod();
+  const fake = makeAdapter({ entitled: true, responseVisibility: 'private' });
+  const resp = await invoke(m, BOTH_ENV, { visibility: 'private' }, fake);
+  assert.equal(resp.status, 200);
+
+  const update = updateEntry(fake);
+  assert.equal(assignmentClause(update.sql), 'visibility = $1');
+  assert.match(update.sql, /WHERE id = \$2[\s\S]*t\.owner_id = \$3/);
+  assert.doesNotMatch(update.sql, /visibility = 1(?:\D|$)/);
+  assert.deepEqual(update.values, ['private', MEMORY_ID, OWNER_ID]);
+});
+
+test('#4461 pre-visibility field numbers title and private visibility before predicates', async () => {
+  const m = await mod();
+  const fake = makeAdapter({ entitled: true, responseVisibility: 'private' });
+  const resp = await invoke(
+    m,
+    BOTH_ENV,
+    { title: 'Private memory', visibility: 'private' },
+    fake
+  );
+  assert.equal(resp.status, 200);
+
+  const update = updateEntry(fake);
+  assert.equal(assignmentClause(update.sql), 'title = $1, visibility = $2');
+  assert.match(update.sql, /WHERE id = \$3[\s\S]*t\.owner_id = \$4/);
+  assert.doesNotMatch(update.sql, /(?:title|visibility) = [12](?:\D|$)/);
+  assert.deepEqual(update.values, ['Private memory', 'private', MEMORY_ID, OWNER_ID]);
+});
+
+test('#4461 mixed pre/post-visibility fields keep sequential placeholders through owner predicates', async () => {
+  const m = await mod();
+  const fake = makeAdapter({ entitled: true, responseVisibility: 'private' });
+  const resp = await invoke(
+    m,
+    BOTH_ENV,
+    {
+      title: 'Private memory',
+      visibility: 'private',
+      channelId: 'channel-private-4425'
+    },
+    fake
+  );
+  assert.equal(resp.status, 200);
+
+  const update = updateEntry(fake);
+  assert.equal(
+    assignmentClause(update.sql),
+    'title = $1, visibility = $2, channel_id = $3'
+  );
+  assert.match(update.sql, /WHERE id = \$4[\s\S]*t\.owner_id = \$5/);
+  assert.doesNotMatch(update.sql, /(?:title|visibility|channel_id) = [123](?:\D|$)/);
+  assert.deepEqual(update.values, [
+    'Private memory',
+    'private',
+    'channel-private-4425',
+    MEMORY_ID,
+    OWNER_ID
+  ]);
 });
 
 test('ordinary public update performs zero private-entitlement reads even when both gates exist', async () => {

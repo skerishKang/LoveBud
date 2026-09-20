@@ -418,7 +418,7 @@ async function validatePrivateVisibilityUpdatePayloadAfterOwner(payload, signal,
 
   function add(column, value) {
     values.push(value);
-    assignments.push(`${column} = ${values.length}`);
+    assignments.push(`${column} = $${values.length}`);
   }
 
   const preVisibilityFields = [
