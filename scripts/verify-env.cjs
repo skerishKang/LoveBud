@@ -20,7 +20,9 @@ require('dotenv').config();
  *
  * 이 스크립트는 gate 이름 목록을 자체적으로 복제하지 않는다. authority는 항상 repo source다.
  *   - Production gate inventory : wrangler.toml [env.production.vars]
- *   - gate -> adapter            : functions 트리 JS 의 GATE_FLAG / PRIVATE_GATE_FLAG 선언
+ *   - gate -> adapter            : functions 트리 JS 의 *_GATE_FLAG 속성 선언 (GATE_FLAG,
+ *                                  PRIVATE_GATE_FLAG, PRIVATE_VISIBILITY_GATE_FLAG 등 접두사와 무관하게
+ *                                  키 이름이 *_GATE_FLAG conventions면 인식)
  *   - adapter -> DB env          : 같은 파일의 DATABASE_URL 심볼 선언
  *   - 금지 fallback              : 같은 파일의 *_FORBIDDEN_FALLBACK_ENVS 선언
  *
@@ -129,7 +131,7 @@ function collectAdapterDeclarations() {
     const rel = path.relative(ROOT, abs).split(path.sep).join('/');
     const src = fs.readFileSync(abs, 'utf8');
 
-    for (const m of src.matchAll(/\b(?:GATE_FLAG|PRIVATE_GATE_FLAG)\s*:\s*'([A-Z0-9_]+)'/g)) {
+    for (const m of src.matchAll(/\b[A-Z0-9_]*GATE_FLAG\s*:\s*'([A-Z0-9_]+)'/g)) {
       if (!GATE_NAME_RE.test(m[1])) continue;
       if (!gateOwners.has(m[1])) gateOwners.set(m[1], new Set());
       gateOwners.get(m[1]).add(rel);
