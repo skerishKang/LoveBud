@@ -1101,7 +1101,8 @@
       "source_refs": [
         "#4425",
         "#4000",
-        "#4006"
+        "#4006",
+        "#4461"
       ],
       "source_state": "SOURCE_READY",
       "runtime_gate": "LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME",
@@ -1127,14 +1128,14 @@
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "I",
-      "disposition_note": "#4425 explicit-private Memory visibility-update source is merged in #4447. Exact-head `dd820f64ca69c63ba45bed49111df798dbe8f05f` PR Fast Gate, Reliability Preview, CI 16/16 and Cloudflare preview were GREEN. Merge commit is current main `51c4003fbd5c8ed48be8caad168f0e059d6c6465`. `LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME` remains absent from wrangler/Production; no Production gate/provider/DB/ACL/Product mutation occurred. This reconciliation does not claim post-merge exact-main workflow evidence that is not directly available from the current connector read.",
+      "disposition_note": "#4425 explicit-private Memory visibility-update source originally merged in #4447. That historical #4447 evidence was later found insufficient for source correctness because #4461 identified a PostgreSQL placeholder defect in validatePrivateVisibilityUpdatePayloadAfterOwner(...): the private builder emitted bare ordinals instead of $1..$N bind placeholders. PR #4468 repaired only that private assignment construction and added executed exact-SQL/bound-value regression coverage for visibility-only, pre-field+visibility, and mixed pre/post-visibility updates, including Memory id and owner id predicate numbering. #4468 merged as exact main dde421366e6e9300723631775c614481a20e231a. CENTRAL post-merge verification at that repaired main observed 18/18 check-runs SUCCESS, including CI, Reliability Preview Rehearsal and Cloudflare Pages. The ordinary Memory Update path remains independently unchanged. LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME remains absent from wrangler/Production, so this repaired source is NOT yet activated: checked_in_gate remains NOT_CHECKED_IN, live_gate_state remains LIVE_GATE_READ_REQUIRED, production_live remains NOT_PRODUCTION_LIVE and disposition_4239 remains I. No provider gate mutation, Product proof, Firebase auth, Production DB DML, entitlement mutation or ACL/GRANT/REVOKE occurred in the repair/reconciliation.",
       "last_exact_head_evidence": {
-        "ref": "#4447 exact-head dd820f64ca69c63ba45bed49111df798dbe8f05f accepted GREEN: PR Fast Gate 35398484544 SUCCESS, Reliability Preview 35398484579 SUCCESS, CI 35398484664 SUCCESS with 16/16 jobs including verify-static/db-impact, Cloudflare preview SUCCESS. #4447 merged as current main 51c4003fbd5c8ed48be8caad168f0e059d6c6465. Private visibility gate remains absent from wrangler; post-merge exact-main workflow state is not claimed by this evidence record.",
-        "main_sha": "dd820f64ca69c63ba45bed49111df798dbe8f05f"
+        "ref": "#4461 repaired-source evidence at exact main dde421366e6e9300723631775c614481a20e231a after PR #4468 merge: private Memory visibility assignment placeholders use real PostgreSQL $1..$N binds; exact SQL/value regression coverage pins visibility-only, pre-field+visibility and mixed pre/post cases plus trailing Memory id/owner id predicates; exact-main 18/18 check-runs SUCCESS including CI, Reliability Preview Rehearsal and Cloudflare Pages. LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME remains absent from wrangler/Production, so this evidence establishes repaired source readiness only and does not claim gate check-in, Product proof, LIVE_GATE_VERIFIED or PRODUCTION_LIVE.",
+        "main_sha": "dde421366e6e9300723631775c614481a20e231a"
       },
       "modal_retained_by_design": false,
       "rollback_authority": "SOURCE_ONLY: while LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME is absent, explicit visibility=private Memory PUT remains Modal-backed. Future activation rollback is gate-only removal/unset; do not alter the existing Production-live LB_MEMORY_UPDATE_WRITE_RUNTIME gate, entitlement column, or writer privilege envelope merely to disable this path.",
-      "next_action": "Source merge is complete and exact-head is GREEN. Obtain/record post-merge exact-main CI/deployment evidence when available; any Production gate check-in or activation remains separately governed. Existing ordinary/public Memory Update remains Production-live and unchanged."
+      "next_action": "Repaired source is merged and exact-main green. Any repository gate check-in for LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME, provider readback, entitlement-bounded Product proof, LIVE_GATE_VERIFIED promotion or PRODUCTION_LIVE promotion requires a separate fresh CENTRAL gate under #4425. Until then explicit visibility=private Memory PUT remains Modal-backed. Existing ordinary/public Memory Update remains Production-live and unchanged."
     },
     {
       "id": "memory-delete",
