@@ -2,8 +2,8 @@
 
 **Parent:** #4000  
 **Phase:** 5A source/config inventory  
-**Reconciled through current main:** `316fc35f38c7809b3289f0db45f19480997c562a`  
-**Status:** current-main reconciliation after #4423/#4424 Production-live cutovers; Phase 5B runtime attribution remains partial for inconclusive residual routes.
+**Reconciled against source/config baseline:** `fc84f642efe386a69106ef02dc721f553b1fff16`  
+**Status:** #4423/#4424/#4425 Production-live completion reflected; residual Phase-5 uncertainty remains limited to the no-gate Tree Likes GET and generic Comment DELETE surfaces.
 
 This document records which current same-origin LoveBud routes can still reach Modal after the Direct-Neon cutovers. It deliberately distinguishes **route-level gate status** from **request-class behavior**. A route marked `PRODUCTION_LIVE` in the Direct-Neon readiness matrix may still send a subset of requests to Modal when the source contract deliberately defers them before any Direct-Neon database work.
 
@@ -11,16 +11,19 @@ No Production route, database, provider, secret, Modal configuration, or deploym
 
 ## Classification vocabulary
 
+Product-route classifications (closed set):
+
 | Classification | Meaning |
 |---|---|
 | `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY` | Production gate selects Direct-Neon for this exact method/request class; Modal source remains only as rollback/default fallback. |
 | `ACTIVE_MODAL_GENERAL_READ` | Current source has a first-party Product caller and the request is still handled by Modal as a general read. |
 | `ACTIVE_MODAL_GENERAL_WRITE` | Current source still routes this write class to Modal as ordinary Product persistence/business logic. |
-| `ENTITLEMENT_BOUND_MODAL_WRITE` | The write intentionally stays on Modal because Plus/private-storage entitlement remains Modal-owned. |
 | `ACTIVE_MODAL_SPECIALIZED_COMPUTE` | Current Product route intentionally uses Modal for provider/Python-heavy specialized compute. |
 | `KEEP_MODAL_BY_DESIGN` | Current architecture explicitly retains this route on Modal. |
+| `LEGACY_OR_UNREACHABLE_MODAL_SOURCE` | The current source graph proves the route is no longer reachable; retirement may be considered separately. |
 | `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` | Source route remains, but current first-party caller was not proven; runtime usage evidence is required before retirement. |
-| `OPERATIONS_ONLY` | Operational endpoint rather than Product CRUD/read-model traffic. |
+
+`GET /modal/health` is an operational endpoint, **outside the Product CRUD/read-model classification set**; it is not assigned a Product-route classification.
 
 ## 1. General-read migrations completed since the original inventory
 
@@ -34,76 +37,118 @@ The five general-read request classes that were source-proven active at the orig
 | `GET /api/trees/:treeId/memories/:memoryId/comments` | `DIRECT_NEON_PRODUCTION_LIVE` (#4423) | Modal source retained as gate fallback |
 | `GET /api/private/trees/:treeId/capability` | `DIRECT_NEON_PRODUCTION_LIVE` (#4424) | Modal source retained as gate fallback |
 
-The corresponding Modal endpoints remain source-visible for rollback/default behavior, but they are no longer classified as active general-read dependencies at current Production gate state. #4423 is technically complete; #4424 is closed and complete.
+The corresponding Modal endpoints remain source-visible for rollback/default behavior, but they are no longer classified as active general-read dependencies at current Production gate state. #4423 and #4424 are both complete.
 
-## 2. Request-class splits still intentionally using Modal for private storage
+## 2. Entitlement-bound private write migrations completed
 
-The current Direct-Neon write gates are not complete route replacements.
+The four request classes below previously deferred to Modal because the Plus/private-storage entitlement boundary was Modal-owned. That boundary work is now complete (#4425 closed), and all four classes are Direct-Neon Production live, with Modal retained only as the gated rollback/default fallback.
 
-### Tree Create
+| Request class | Browser route | Production gate | Current classification |
+|---|---|---|---|
+| private Tree Create | `POST /api/trees` (explicit `visibility: "private"`) | `LB_TREE_PRIVATE_CREATE_WRITE_RUNTIME` | `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY` |
+| private Tree visibility update | `PUT /api/trees/:id` (public → `visibility: "private"`) | `LB_TREE_PRIVATE_VISIBILITY_WRITE_RUNTIME` | `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY` |
+| private / inherited-private Memory Create | `POST /api/memories` (private, or omitted/null visibility that may resolve private) | `LB_MEMORY_PRIVATE_CREATE_WRITE_RUNTIME` | `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY` |
+| private Memory visibility update | `PUT /api/memories/:id` (`visibility: "private"`) | `LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME` | `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY` |
 
-`POST /api/trees`
+Current readiness authority for all four gates:
 
-- omitted visibility -> Direct-Neon public create;
-- explicit `visibility: "public"` -> Direct-Neon;
-- explicit `visibility: "private"` -> the Direct-Neon helper returns `null` before DB acquisition and the route falls through to Modal;
-- reason: Plus/private-storage entitlement remains owned by the Modal path.
+```text
+CHECKED_IN_PRODUCTION_GATE
+LIVE_GATE_VERIFIED
+PRODUCTION_LIVE
+disposition C
+```
 
-Classification:
+#4425 status: **CLOSED / COMPLETE** — entitlement blocker cleared.
 
-- public slice: `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY`;
-- private slice: `ENTITLEMENT_BOUND_MODAL_WRITE`.
+Current first-party UI continues to expose private visibility transitions. Examples include `js/my-trees/my-trees-actions.js` and `js/editor/editor-tree-helpers.js`, which toggle Tree visibility through the canonical API. Those private-write paths are now served by Direct-Neon, with Modal retained as the gated fallback rather than as the active private path.
 
-### Memory Create
-
-`POST /api/memories`
-
-- exact explicit `visibility: "public"` -> Direct-Neon;
-- omitted/null visibility -> Modal, because parent Tree inheritance may resolve private;
-- explicit private -> Modal;
-- other non-public values stay on the existing Modal parity/validation path.
-
-Classification:
-
-- explicit-public slice: `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY`;
-- omitted/private entitlement-sensitive slice: `ENTITLEMENT_BOUND_MODAL_WRITE`.
-
-### Tree Update
-
-`PUT /api/trees/:id`
-
-- ordinary non-private updates use the live Direct-Neon gate;
-- explicit update to `visibility: "private"` intentionally defers to Modal before direct DB work.
-
-Classification:
-
-- non-private slice: `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY`;
-- private-visibility slice: `ENTITLEMENT_BOUND_MODAL_WRITE`.
-
-### Memory Update
-
-`PUT /api/memories/:id`
-
-- ordinary non-private updates use the live Direct-Neon gate;
-- explicit `visibility: "private"` defers to Modal before direct DB work.
-
-Classification:
-
-- non-private slice: `DIRECT_NEON_ACTIVE_MODAL_FALLBACK_ONLY`;
-- private-visibility slice: `ENTITLEMENT_BOUND_MODAL_WRITE`.
-
-Current first-party UI continues to expose private visibility transitions. Examples include `js/my-trees/my-trees-actions.js` and `js/editor/editor-tree-helpers.js`, which toggle Tree visibility through the canonical API. Therefore these private-write paths cannot be treated as dead fallback code.
-
-The entitlement-convergence work needed before Modal contraction is tracked in #4425.
+Historical note — **prior to #4425 completion** — these four classes fell through to Modal as the active private path, and the Plus/private-storage entitlement was Modal-owned. That transition state is superseded and must not be read as the current state.
 
 ## 3. Source-present routes requiring runtime usage evidence
 
-| Browser route | Edge source | Modal endpoint | Source observation | Classification |
-|---|---|---|---|---|
-| `GET /api/trees/:treeId/likes` | `functions/api/trees/[tree_id]/likes.js` | `GET /modal/private/trees/{tree_id}/likes` | POST Like has a current first-party caller; no current first-party GET caller was found in source search | `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` |
-| `DELETE /api/comments/:commentId` | `functions/api/comments/[id].js` | `DELETE /modal/private/comments/{comment_id}` | edge route remains; no current first-party JS caller was found in source search | `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` |
+Both residual routes below are reachable from the edge to Modal with **no runtime gate** at the source/config baseline. Neither may be deleted or migrated from source alone.
 
-Neither route may be deleted from source based on caller search alone. #4422 Phase 5B runtime attribution is the required next evidence.
+### Tree Likes GET
+
+```text
+GET /api/trees/:treeId/likes
+
+edge =
+functions/api/trees/[tree_id]/likes.js
+
+source behavior =
+onRequestGet -> proxyTreeLike -> Modal
+
+Modal endpoint =
+GET /modal/private/trees/{tree_id}/likes
+```
+
+Direct-Neon helper:
+
+```text
+functions/_shared/tree-like-direct-neon.js
+
+method = POST only
+gate = LB_TREE_LIKE_WRITE_RUNTIME
+```
+
+Therefore:
+
+```text
+GET direct-Neon read helper = absent
+GET read gate = absent
+```
+
+POST Like has a current first-party caller; **no current first-party GET caller was found** in source search. No zero-traffic proof exists for this route.
+
+```text
+no caller found != dead route
+```
+
+Classification: `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`.
+
+### Generic Comment DELETE
+
+```text
+DELETE /api/comments/:commentId
+
+edge =
+functions/api/comments/[id].js
+
+source behavior =
+onRequestDelete -> Modal
+
+Modal endpoint =
+DELETE /modal/private/comments/{comment_id}
+```
+
+Current source:
+
+```text
+dedicated Direct-Neon DELETE helper = absent
+dedicated runtime gate = absent
+```
+
+No current first-party DELETE caller was found in source search. However:
+
+```text
+tests/contracts/self-comment-delete-contract.test.cjs
+```
+
+pins the current Modal-backed contract, so this route is **not** retirement-ready.
+
+Classification: `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`.
+
+### Evidence posture for both routes
+
+```text
+no zero-traffic proof exists for B1/B2;
+retirement or migration requires a separate caller-evidence /
+route-disposition preflight.
+
+Do not generate Product traffic merely to manufacture telemetry.
+```
 
 ## 4. Explicit Modal retention
 
@@ -121,9 +166,9 @@ No migration or removal is authorized solely by #4422.
 
 `POST /api/import/youtube/playlist/preview`
 
-The edge route is a bounded same-origin proxy to `/modal/private/import/youtube/playlist/preview`, and `js/api/import-youtube-playlist-preview.js` is a current first-party caller. The Modal implementation uses provider/Python-heavy logic and is aligned with #4000's intended specialized-compute role.
+The edge route is a bounded same-origin proxy to `/modal/private/import/youtube/playlist/preview`; the Modal target path is fixed, the proxy uses `MODAL_BASE_URL`, and `js/api/import-youtube-playlist-preview.js` is a current first-party caller. The Modal implementation uses provider/Python-heavy logic and is aligned with #4000's intended specialized-compute role.
 
-Provisional classification: `ACTIVE_MODAL_SPECIALIZED_COMPUTE`.
+Current classification: `ACTIVE_MODAL_SPECIALIZED_COMPUTE`.
 
 This route should be retained unless a separate design proves that specialized compute is no longer required.
 
@@ -131,7 +176,7 @@ This route should be retained unless a separate design proves that specialized c
 
 `GET /modal/health`
 
-Classification: `OPERATIONS_ONLY`.
+Operational endpoint outside the Product-route classification set (`OPERATIONS_ONLY`).
 
 Retain until the final specialized-compute runtime contract and health monitoring path are explicitly updated.
 
@@ -152,11 +197,11 @@ Retain until the final specialized-compute runtime contract and health monitorin
 - YouTube playlist preview;
 - public social reads.
 
-The mere presence of those Python routes does **not** prove active Production Modal traffic. For many of them, current Production edge gates select Direct-Neon, leaving the Modal endpoint as fallback/rollback source only. Phase 5B must attribute actual usage before any endpoint removal.
+The mere presence of those Python routes does **not** prove active Production Modal traffic. For many of them, current Production edge gates select Direct-Neon, leaving the Modal endpoint as fallback/rollback source only. No zero-traffic proof exists for the residual no-gate surfaces, so a separate caller-evidence / route-disposition preflight is required before any endpoint removal.
 
 ## 6. Current contraction blockers
 
-At current main:
+At source/config baseline `fc84f642efe386a69106ef02dc721f553b1fff16`:
 
 - `MODAL_BASE_URL` removal is **not ready**;
 - `min_containers` reduction is **not ready**;
@@ -165,17 +210,54 @@ At current main:
 
 Current state and blocking work:
 
-1. #4423 — **technical implementation complete**; all four Memory social GET request classes are Direct-Neon Production live.
-2. #4424 — **closed / complete**; private Tree capability GET is Direct-Neon Production live.
-3. #4425 — **primary active blocker**; move Plus/private-storage entitlement boundary out of Modal and migrate the four entitlement-bound private write request classes:
-   - private Tree create;
-   - Tree visibility public → private;
-   - private/inherited-private Memory create;
-   - Memory visibility public → private.
-4. #4422 Phase 5B — Tree Likes GET and generic Comment DELETE remain `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`; retirement is not authorized.
+1. #4423 — **complete**; all four Memory social GET request classes are Direct-Neon Production live.
+2. #4424 — **complete**; private Tree capability GET is Direct-Neon Production live.
+3. #4425 — **complete / closed**; the Plus/private-storage entitlement boundary is out of Modal, and the four entitlement-bound private write request classes are Direct-Neon Production live. The entitlement blocker is cleared.
+4. The residual Phase-5 general-route problem is limited to two no-gate Modal surfaces:
+   - `GET /api/trees/:treeId/likes` — `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`;
+   - `DELETE /api/comments/:commentId` — `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`.
+   Retirement is not authorized for either.
 5. Appreciation-order GET remains `KEEP_MODAL_BY_DESIGN`.
 6. YouTube playlist preview remains `ACTIVE_MODAL_SPECIALIZED_COMPUTE`.
 7. Retain explicit specialized compute / design-retained routes until separately reconsidered.
+
+Disposition at this baseline:
+
+```text
+ENTITLEMENT_BLOCKER_4425 = CLEARED
+
+GENERAL_MODAL_TRAFFIC_ZERO_BY_SOURCE = NO
+
+MODAL_GENERAL_CRUD_SOURCE_CONTRACTION_READY = NO
+
+MODAL_BASE_URL_REMOVAL_READY = NO
+
+MIN_CONTAINERS_REEVALUATION_READY = NO
+
+DEAD_ROUTE_REMOVAL_READY = NO
+```
+
+`GENERAL_MODAL_TRAFFIC_ZERO_BY_SOURCE = NO` is **not** a claim that measured runtime traffic is greater than zero. It means:
+
+```text
+current source still exposes two unconditional Modal general-route handlers,
+so zero general Modal reachability is not established.
+```
+
+### Next action
+
+```text
+NEXT_PHASE =
+separate B1/B2 caller-evidence and route-disposition preflight
+```
+
+Not authorized by this document:
+
+- migration implementation;
+- route deletion;
+- Modal endpoint deletion;
+- `MODAL_BASE_URL` removal;
+- `min_containers` mutation.
 
 ## 7. Safety
 
