@@ -864,7 +864,7 @@ export const MEMORY_UPDATE_DIRECT_NEON_CONTRACT = Object.freeze({
   privateEntitlementAfterOwnerAndPreVisibilityValidationBeforeMutation: true,
   privatePlusRequiredCode: 'PLUS_REQUIRED_PRIVATE_STORAGE',
   privateEntitlementUnavailableCode: 'ENTITLEMENT_CHECK_UNAVAILABLE',
-  privateVisibilityGateCheckedIn: false,
+  privateVisibilityGateCheckedIn: true,
   getUnchanged: true,
   deleteUnchanged: true,
   sourceAckBeforeCommit: true,
