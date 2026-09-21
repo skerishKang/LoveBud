@@ -3216,6 +3216,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/runtime-read-role-identity-reconciliation-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4422 runtime read-role identity reconciliation collector against an injected fake client and synthetic catalog fixtures; proves the source-bound issue:4422 approval pair, the fixed seven-relation required SELECT fingerprint with public.tree_likes excluded from the query surface, the 64-candidate bound, rejection of superuser/createdb/createrole/bypassrls/replication/admin-option/relation-owner/PUBLIC-dependent/broad-grant/write-positive candidates, the observer-equals-target stop, raw-role redaction, fixed-path wx exclusive-create mapping behavior, and that the private mapping write is ordered only after ROLLBACK and disconnect complete, without Production DB/network, credentials, Product rows, GRANT or REVOKE.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/same-origin-navigation-failure-tracker-3899.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the real tests/helpers/same-origin-navigation-failure-tracker.cjs tracker against injected fake Playwright page and request stubs in-process; asserts intentional-navigation abort classification without launching a browser or contacting any network, database, or deployment resource (#3899).",

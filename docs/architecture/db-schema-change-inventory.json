@@ -761,6 +761,21 @@
       "notes": "Pure validator for a Phase B collection receipt. No database access; validates sanitized receipt structure only."
     },
     {
+      "path": "scripts/run-production-readonly-runtime-read-role-identity-reconciliation.cjs",
+      "category": "provenance_tooling",
+      "engine": "postgres",
+      "operations": ["READ_ONLY", "VALIDATE"],
+      "canonical_status": "CANONICAL_CANDIDATE",
+      "destructive": false,
+      "production_capable": false,
+      "owner_or_issue": "database architecture / #4422 #4000 #3458",
+      "idempotency": "idempotent",
+      "execution_actor": "runner",
+      "automation": "gated",
+      "ledger_candidate": "no",
+      "notes": "#4422 production read-only runtime read-role identity reconciliation runner. Uses one BEGIN READ ONLY session guarded by SHOW transaction_read_only, fixed pg_catalog and privilege-function queries over a bounded 64-candidate enumeration, an in-memory seven-relation required SELECT fingerprint decision, then ROLLBACK and disconnect before any private one-entry target-role mapping is exclusive-created under .secrets/. No schema mutation, Product row read, SET ROLE, GRANT, REVOKE, retry, or write capability. public.tree_likes is deliberately excluded from the query surface so identity reconciliation cannot collapse into the #4422 B1 privilege measurement. Source-bound approval remains the exact issue:4422/purpose pair. production_capable=false because it cannot mutate schema; it does require Production READ access that is not granted by this slice. Registered because the source contains catalog and privilege vocabulary detected by the static inventory guard."
+    },
+    {
       "path": "scripts/run-production-readonly-runtime-role-acl-attestation.cjs",
       "category": "provenance_tooling",
       "engine": "postgres",
