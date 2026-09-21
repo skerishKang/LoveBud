@@ -87,6 +87,10 @@ const FAILURE = Object.freeze({
   IDENTITY_CATALOG_SHAPE_INVALID: 'IDENTITY_CATALOG_SHAPE_INVALID',
   IDENTITY_CANDIDATE_BOUND_EXCEEDED: 'IDENTITY_CANDIDATE_BOUND_EXCEEDED',
   IDENTITY_READ_ONLY_NOT_VERIFIED: 'IDENTITY_READ_ONLY_NOT_VERIFIED',
+  IDENTITY_CONNECT_FAILED: 'IDENTITY_CONNECT_FAILED',
+  IDENTITY_BEGIN_READ_ONLY_FAILED: 'IDENTITY_BEGIN_READ_ONLY_FAILED',
+  IDENTITY_READ_ONLY_VERIFY_FAILED: 'IDENTITY_READ_ONLY_VERIFY_FAILED',
+  IDENTITY_CATALOG_QUERY_FAILED: 'IDENTITY_CATALOG_QUERY_FAILED',
   IDENTITY_CLEANUP_FAILED: 'IDENTITY_CLEANUP_FAILED',
   IDENTITY_OBSERVER_EQUALS_TARGET_STOP: 'IDENTITY_OBSERVER_EQUALS_TARGET_STOP',
   IDENTITY_PRIVATE_OUTPUT_EXISTS: 'IDENTITY_PRIVATE_OUTPUT_EXISTS',
@@ -223,10 +227,14 @@ const FORBIDDEN_FLAGS = new Set([
   '--role-mapping-file', '--repo-root', '--mapping-file',
 ]);
 
-function fail(category) {
+function categorizedError(category) {
   const error = new Error(category);
   error.category = category;
-  throw error;
+  return error;
+}
+
+function fail(category) {
+  throw categorizedError(category);
 }
 
 function safeBoolean(row, field) {
@@ -528,6 +536,37 @@ function writePrivateMapping(repoRoot, payload) {
 }
 
 /**
+ * Where the live session actually got to. Reported instead of a single invocation
+ * counter so that a failure before `connect()` can never be read as a Production
+ * connection having been established.
+ */
+function createIdentityLifecycle() {
+  return {
+    invocationStarted: false,
+    connectionAttempted: false,
+    connectionEstablished: false,
+    transactionStarted: false,
+    readOnlyVerified: false,
+  };
+}
+
+/**
+ * A network or driver failure arrives without any category of its own. It is
+ * replaced by exactly one fixed category chosen from how far the lifecycle
+ * reached. The original error is deliberately not retained as `cause`, so no raw
+ * driver message, SQLSTATE, host, user, database or stack can be emitted or
+ * logged downstream, and a live-stage failure can never be mislabelled as a
+ * pre-execution stop.
+ */
+function classifyLiveStageFailure(error, lifecycle) {
+  if (error && typeof error.category === 'string') return error;
+  if (!lifecycle.connectionEstablished) return categorizedError(FAILURE.IDENTITY_CONNECT_FAILED);
+  if (!lifecycle.transactionStarted) return categorizedError(FAILURE.IDENTITY_BEGIN_READ_ONLY_FAILED);
+  if (!lifecycle.readOnlyVerified) return categorizedError(FAILURE.IDENTITY_READ_ONLY_VERIFY_FAILED);
+  return categorizedError(FAILURE.IDENTITY_CATALOG_QUERY_FAILED);
+}
+
+/**
  * One bounded read-only collection session. `client` is injectable so the
  * contract suite can drive every branch without a database.
  *
@@ -535,21 +574,26 @@ function writePrivateMapping(repoRoot, payload) {
  * mapping write after ROLLBACK and the disconnect have completed, and a cleanup
  * failure suppresses that write instead of being swallowed.
  */
-async function collectIdentityReconciliation({ client, repoRoot = REPO_ROOT, writeMapping = writePrivateMapping }) {
-  let transactionStarted = false;
-  let connected = false;
+async function collectIdentityReconciliation({
+  client,
+  repoRoot = REPO_ROOT,
+  writeMapping = writePrivateMapping,
+  lifecycle = createIdentityLifecycle(),
+}) {
   let outcome = null;
   let collectionError = null;
   try {
+    lifecycle.connectionAttempted = true;
     await client.connect();
-    connected = true;
+    lifecycle.connectionEstablished = true;
     await client.query(Q.BEGIN_RO);
-    transactionStarted = true;
+    lifecycle.transactionStarted = true;
     const readOnly = safeBoolean(
       safeQueryResult(await client.query(Q.SHOW_RO), 'READ_ONLY', { allowEmpty: false })[0],
       'transaction_read_only',
     );
     if (readOnly !== true) fail(FAILURE.IDENTITY_READ_ONLY_NOT_VERIFIED);
+    lifecycle.readOnlyVerified = true;
 
     const identity = safeQueryResult(await client.query(Q.IDENTITY), 'IDENTITY', { allowEmpty: false })[0];
     if (!identity || typeof identity.current_user !== 'string' || typeof identity.session_user !== 'string') {
@@ -632,14 +676,14 @@ async function collectIdentityReconciliation({ client, repoRoot = REPO_ROOT, wri
   }
 
   let cleanupFailed = false;
-  if (transactionStarted) {
+  if (lifecycle.transactionStarted) {
     try { await client.query(Q.ROLLBACK); } catch { cleanupFailed = true; }
   }
-  if (connected) {
+  if (lifecycle.connectionEstablished) {
     try { await client.end(); } catch { cleanupFailed = true; }
   }
 
-  if (collectionError) throw collectionError;
+  if (collectionError) throw classifyLiveStageFailure(collectionError, lifecycle);
   if (cleanupFailed) fail(FAILURE.IDENTITY_CLEANUP_FAILED);
 
   return finalize({
@@ -681,12 +725,15 @@ function finalize({
   });
 }
 
-function sanitizedFailure(category, runnerInvocationCount = 0) {
+function sanitizedFailure(category, lifecycle = createIdentityLifecycle()) {
   return {
-    runnerInvocationCount,
-    productionConnectionCount: runnerInvocationCount,
-    collectionSessionCount: runnerInvocationCount,
-    transactionReadOnly: runnerInvocationCount ? 'FAILED' : 'NOT_REACHED',
+    runnerInvocationCount: lifecycle.invocationStarted ? 1 : 0,
+    connectionAttemptedCount: lifecycle.connectionAttempted ? 1 : 0,
+    productionConnectionCount: lifecycle.connectionEstablished ? 1 : 0,
+    collectionSessionCount: lifecycle.transactionStarted ? 1 : 0,
+    transactionReadOnly: !lifecycle.transactionStarted
+      ? 'NOT_REACHED'
+      : (lifecycle.readOnlyVerified ? 'VERIFIED' : 'FAILED'),
     candidateCount: 0,
     identityDisposition: category === FAILURE.IDENTITY_OBSERVER_EQUALS_TARGET_STOP
       ? IDENTITY_DISPOSITION.AMBIGUOUS
@@ -708,12 +755,13 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
   };
 }
 
-function formatSuccess(result) {
+function formatSuccess(result, lifecycle = createIdentityLifecycle()) {
   return {
-    runnerInvocationCount: 1,
-    productionConnectionCount: 1,
-    collectionSessionCount: 1,
-    transactionReadOnly: 'VERIFIED',
+    runnerInvocationCount: lifecycle.invocationStarted ? 1 : 0,
+    connectionAttemptedCount: lifecycle.connectionAttempted ? 1 : 0,
+    productionConnectionCount: lifecycle.connectionEstablished ? 1 : 0,
+    collectionSessionCount: lifecycle.transactionStarted ? 1 : 0,
+    transactionReadOnly: lifecycle.readOnlyVerified ? 'VERIFIED' : 'NOT_REACHED',
     candidateCount: result.candidateCount,
     identityDisposition: result.identityDisposition,
     applicationRoleClass: result.applicationRoleClass,
@@ -732,7 +780,7 @@ function formatSuccess(result) {
 }
 
 async function main() {
-  let runnerInvocationCount = 0;
+  const lifecycle = createIdentityLifecycle();
   try {
     const args = parseArgs(process.argv.slice(2));
     assertSourceBoundApproval(args.approval_reference, args.purpose);
@@ -741,14 +789,17 @@ async function main() {
     const secretUrl = boundary.loadDedicatedProductionReadonlyDatabaseUrl(REPO_ROOT, args.secret_file);
     const pgConfig = boundary.parseProductionReadonlyDatabaseUrl(secretUrl);
 
-    // The sole live invocation starts only after all source-bound and input checks.
-    runnerInvocationCount = 1;
     const { Client } = require('pg');
-    const result = await collectIdentityReconciliation({ client: new Client(pgConfig) });
-    process.stdout.write(`${JSON.stringify(formatSuccess(result), null, 2)}\n`);
+    const client = new Client(pgConfig);
+    // The live invocation starts only after every source-bound, input and
+    // client-construction check, so nothing before connect() is reported as a
+    // connection attempt.
+    lifecycle.invocationStarted = true;
+    const result = await collectIdentityReconciliation({ client, lifecycle });
+    process.stdout.write(`${JSON.stringify(formatSuccess(result, lifecycle), null, 2)}\n`);
   } catch (error) {
     const category = error && typeof error.category === 'string' ? error.category : FAILURE.IDENTITY_PREEXECUTION_STOP;
-    process.stdout.write(`${JSON.stringify(sanitizedFailure(category, runnerInvocationCount), null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(sanitizedFailure(category, lifecycle), null, 2)}\n`);
     process.exitCode = 1;
   }
 }
@@ -782,6 +833,8 @@ module.exports = {
   buildPrivateMappingPayload,
   writePrivateMapping,
   collectIdentityReconciliation,
+  createIdentityLifecycle,
+  classifyLiveStageFailure,
   sanitizedFailure,
   formatSuccess,
 };
