@@ -87,6 +87,7 @@ const FAILURE = Object.freeze({
   IDENTITY_CATALOG_SHAPE_INVALID: 'IDENTITY_CATALOG_SHAPE_INVALID',
   IDENTITY_CANDIDATE_BOUND_EXCEEDED: 'IDENTITY_CANDIDATE_BOUND_EXCEEDED',
   IDENTITY_READ_ONLY_NOT_VERIFIED: 'IDENTITY_READ_ONLY_NOT_VERIFIED',
+  IDENTITY_CLEANUP_FAILED: 'IDENTITY_CLEANUP_FAILED',
   IDENTITY_OBSERVER_EQUALS_TARGET_STOP: 'IDENTITY_OBSERVER_EQUALS_TARGET_STOP',
   IDENTITY_PRIVATE_OUTPUT_EXISTS: 'IDENTITY_PRIVATE_OUTPUT_EXISTS',
   IDENTITY_PRIVATE_OUTPUT_INVALID: 'IDENTITY_PRIVATE_OUTPUT_INVALID',
@@ -529,10 +530,16 @@ function writePrivateMapping(repoRoot, payload) {
 /**
  * One bounded read-only collection session. `client` is injectable so the
  * contract suite can drive every branch without a database.
+ *
+ * Candidate resolution is computed in memory only; `finalize` performs the private
+ * mapping write after ROLLBACK and the disconnect have completed, and a cleanup
+ * failure suppresses that write instead of being swallowed.
  */
 async function collectIdentityReconciliation({ client, repoRoot = REPO_ROOT, writeMapping = writePrivateMapping }) {
   let transactionStarted = false;
   let connected = false;
+  let outcome = null;
+  let collectionError = null;
   try {
     await client.connect();
     connected = true;
@@ -562,71 +569,87 @@ async function collectIdentityReconciliation({ client, repoRoot = REPO_ROOT, wri
     }
 
     if (candidateRows.length === 0) {
-      return finalize({ disposition: IDENTITY_DISPOSITION.UNRESOLVED, candidateCount: 0, observerEqualsTarget: false, mapped: null });
-    }
+      outcome = {
+        disposition: IDENTITY_DISPOSITION.UNRESOLVED,
+        candidateCount: 0,
+        observerEqualsTarget: false,
+        mapped: null,
+      };
+    } else {
+      const oids = candidateRows.map((row) => String(row.oid));
+      const flagRows = safeQueryResult(await client.query(Q.CANDIDATE_FLAGS, [oids]), 'CANDIDATE_FLAGS');
+      const baselineRows = safeQueryResult(
+        await client.query(Q.DATABASE_SCHEMA_BASELINE, [oids]),
+        'DATABASE_SCHEMA_BASELINE',
+      );
+      const adminRows = safeQueryResult(
+        await client.query(Q.DIRECT_ADMIN_MEMBERSHIP, [oids]),
+        'DIRECT_ADMIN_MEMBERSHIP',
+      );
+      const matrixRows = safeQueryResult(
+        await client.query(Q.PRIVILEGE_MATRIX, [oids]),
+        'PRIVILEGE_MATRIX',
+        { allowEmpty: false },
+      );
+      const ownerRows = safeQueryResult(await client.query(Q.RELATION_OWNERS, [REQUIRED_SELECT_RELATION_NAMES]), 'RELATION_OWNERS');
+      const grantRows = safeQueryResult(await client.query(Q.REQUIRED_RELATION_GRANTS, [REQUIRED_SELECT_RELATION_NAMES]), 'REQUIRED_RELATION_GRANTS');
+      const ancestryRows = safeQueryResult(
+        await client.query(Q.CANDIDATE_ANCESTRY, [oids, MAX_ROLE_CHAIN_DEPTH]),
+        'CANDIDATE_ANCESTRY',
+        { allowEmpty: false },
+      );
+      if (ancestryRows.length > MAX_ROLE_CHAIN_ROWS * MAX_CANDIDATE_ROLES) {
+        fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+      }
+      const ancestryOids = [...new Set(ancestryRows.map((row) => String(row.member_oid)))];
+      if (ancestryOids.length > MAX_ROLE_CHAIN_ROWS) fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+      const broadRows = safeQueryResult(
+        await client.query(Q.BROAD_SELECT_GRANTS, [ancestryOids]),
+        'BROAD_SELECT_GRANTS',
+      );
 
-    const oids = candidateRows.map((row) => String(row.oid));
-    const flagRows = safeQueryResult(await client.query(Q.CANDIDATE_FLAGS, [oids]), 'CANDIDATE_FLAGS');
-    const baselineRows = safeQueryResult(
-      await client.query(Q.DATABASE_SCHEMA_BASELINE, [oids]),
-      'DATABASE_SCHEMA_BASELINE',
-    );
-    const adminRows = safeQueryResult(
-      await client.query(Q.DIRECT_ADMIN_MEMBERSHIP, [oids]),
-      'DIRECT_ADMIN_MEMBERSHIP',
-    );
-    const matrixRows = safeQueryResult(
-      await client.query(Q.PRIVILEGE_MATRIX, [oids]),
-      'PRIVILEGE_MATRIX',
-      { allowEmpty: false },
-    );
-    const ownerRows = safeQueryResult(await client.query(Q.RELATION_OWNERS, [REQUIRED_SELECT_RELATION_NAMES]), 'RELATION_OWNERS');
-    const grantRows = safeQueryResult(await client.query(Q.REQUIRED_RELATION_GRANTS, [REQUIRED_SELECT_RELATION_NAMES]), 'REQUIRED_RELATION_GRANTS');
-    const ancestryRows = safeQueryResult(
-      await client.query(Q.CANDIDATE_ANCESTRY, [oids, MAX_ROLE_CHAIN_DEPTH]),
-      'CANDIDATE_ANCESTRY',
-      { allowEmpty: false },
-    );
-    if (ancestryRows.length > MAX_ROLE_CHAIN_ROWS * MAX_CANDIDATE_ROLES) {
-      fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+      const facts = deriveCandidateFacts({
+        candidates: candidateRows,
+        flagRows,
+        adminRows,
+        baselineRows,
+        matrixRows,
+        ownerRows,
+        grantRows,
+        ancestryRows,
+        broadRows,
+      });
+      const resolution = resolveIdentity({ facts, sessionUser, currentUser });
+      outcome = {
+        disposition: resolution.identityDisposition,
+        candidateCount: resolution.candidateCount,
+        observerEqualsTarget: resolution.observerEqualsTarget,
+        mapped: resolution.resolved,
+      };
     }
-    const ancestryOids = [...new Set(ancestryRows.map((row) => String(row.member_oid)))];
-    if (ancestryOids.length > MAX_ROLE_CHAIN_ROWS) fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
-    const broadRows = safeQueryResult(
-      await client.query(Q.BROAD_SELECT_GRANTS, [ancestryOids]),
-      'BROAD_SELECT_GRANTS',
-    );
-
-    const facts = deriveCandidateFacts({
-      candidates: candidateRows,
-      flagRows,
-      adminRows,
-      baselineRows,
-      matrixRows,
-      ownerRows,
-      grantRows,
-      ancestryRows,
-      broadRows,
-    });
-    const resolution = resolveIdentity({ facts, sessionUser, currentUser });
-    return finalize({
-      disposition: resolution.identityDisposition,
-      candidateCount: resolution.candidateCount,
-      observerEqualsTarget: resolution.observerEqualsTarget,
-      mapped: resolution.resolved,
-      sessionUser,
-      currentUser,
-      writeMapping,
-      repoRoot,
-    });
-  } finally {
-    if (transactionStarted) {
-      try { await client.query(Q.ROLLBACK); } catch { /* best effort, no retry */ }
-    }
-    if (connected) {
-      try { await client.end(); } catch { /* best effort */ }
-    }
+  } catch (error) {
+    collectionError = error;
   }
+
+  let cleanupFailed = false;
+  if (transactionStarted) {
+    try { await client.query(Q.ROLLBACK); } catch { cleanupFailed = true; }
+  }
+  if (connected) {
+    try { await client.end(); } catch { cleanupFailed = true; }
+  }
+
+  if (collectionError) throw collectionError;
+  if (cleanupFailed) fail(FAILURE.IDENTITY_CLEANUP_FAILED);
+
+  return finalize({
+    disposition: outcome.disposition,
+    candidateCount: outcome.candidateCount,
+    observerEqualsTarget: outcome.observerEqualsTarget,
+    mapped: outcome.mapped,
+    writeMapping,
+    repoRoot,
+  });
 }
 
 function finalize({

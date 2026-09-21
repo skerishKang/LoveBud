@@ -123,8 +123,11 @@ function makeFakeClient(catalog, {
   readOnly = true,
   failOn = null,
   connectError = null,
+  failOnRollback = false,
+  failOnEnd = false,
+  events = null,
 } = {}) {
-  const calls = [];
+  const calls = events || [];
   const state = { connects: 0, ends: 0 };
   return {
     calls,
@@ -134,10 +137,15 @@ function makeFakeClient(catalog, {
       state.connects += 1;
       if (connectError) throw Object.assign(new Error(connectError), { category: connectError });
     },
-    async end() { calls.push('end'); state.ends += 1; },
+    async end() {
+      calls.push('end');
+      if (failOnEnd) throw new Error('disconnect failure');
+      state.ends += 1;
+    },
     async query(text) {
       calls.push(text);
       if (failOn && text === failOn) throw new Error('catalog failure');
+      if (failOnRollback && text === Q.ROLLBACK) throw new Error('rollback failure');
       if (text === Q.BEGIN_RO || text === Q.ROLLBACK) return { rows: [] };
       if (text === Q.SHOW_RO) return { rows: [{ transaction_read_only: readOnly }] };
       if (text === Q.IDENTITY) {
@@ -150,16 +158,37 @@ function makeFakeClient(catalog, {
   };
 }
 
-function collectFixture(options = {}) {
-  const catalog = buildCatalog(options.catalog);
-  const client = makeFakeClient(catalog, options.client);
+/**
+ * One shared event sequence records every client call and the private mapping write
+ * together, so a test can compare the write against the cleanup itself rather than
+ * checking the client call list and the write list separately.
+ */
+function makeHarness(catalogOptions = {}, clientOptions = {}) {
+  const events = [];
+  const client = makeFakeClient(buildCatalog(catalogOptions), { ...clientOptions, events });
   const writes = [];
   const writeMapping = (repoRoot, payload) => {
+    events.push('writeMapping');
     writes.push({ repoRoot, payload });
     return PRIVATE_OUTPUT_REL_PATH;
   };
-  return collectIdentityReconciliation({ client, writeMapping })
-    .then((result) => ({ result, client, writes }));
+  return {
+    client,
+    events,
+    writes,
+    writeCount: () => events.filter((event) => event === 'writeMapping').length,
+    run: () => collectIdentityReconciliation({ client, writeMapping }),
+  };
+}
+
+function collectFixture(options = {}) {
+  const harness = makeHarness(options.catalog, options.client);
+  return harness.run().then((result) => ({
+    result,
+    client: harness.client,
+    writes: harness.writes,
+    events: harness.events,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -493,6 +522,92 @@ describe('LoveBud #4422 identity reconciliation transaction lifecycle', () => {
     assert.equal(client.calls.filter((call) => call === Q.ROLLBACK).length, 1);
     assert.equal(client.state.ends, 1);
     assert.equal(writes, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cleanup-before-private-write ordering
+// ---------------------------------------------------------------------------
+
+describe('LoveBud #4422 identity private mapping is written only after cleanup completes', () => {
+  const RESOLVED = { roles: [{ name: 'app_read_role', oid: '100' }] };
+  const DISQUALIFIED = { roles: [{ name: 'app_read_role', oid: '100', flags: { rolcanlogin: false } }] };
+  const TWO_CANDIDATES = { roles: [{ name: 'app_read_a', oid: '100' }, { name: 'app_read_b', oid: '101' }] };
+
+  it('pins the fixed cleanup-failure category', () => {
+    assert.equal(FAILURE.IDENTITY_CLEANUP_FAILED, 'IDENTITY_CLEANUP_FAILED');
+  });
+
+  it('orders a resolved candidate as ROLLBACK, then disconnect, then exactly one write', async () => {
+    const harness = makeHarness(RESOLVED);
+    const result = await harness.run();
+    const { events } = harness;
+    const rollbackIndex = events.indexOf(Q.ROLLBACK);
+    const endIndex = events.indexOf('end');
+    const writeIndex = events.indexOf('writeMapping');
+
+    assert.equal(result.identityDisposition, IDENTITY_DISPOSITION.RESOLVED);
+    assert.equal(result.privateMappingWritten, 'YES');
+    assert.ok(rollbackIndex > events.indexOf(Q.BROAD_SELECT_GRANTS), 'ROLLBACK must follow every catalog query');
+    assert.ok(endIndex > rollbackIndex, 'disconnect must follow ROLLBACK');
+    assert.ok(writeIndex > endIndex, 'the private write must follow the disconnect');
+    assert.equal(events[events.length - 1], 'writeMapping', 'no client call may follow the private write');
+    assert.equal(harness.writeCount(), 1);
+    assert.equal(harness.writes.length, 1);
+  });
+
+  it('writes no mapping when ROLLBACK fails although the candidate resolved', async () => {
+    const harness = makeHarness(RESOLVED, { failOnRollback: true });
+    await assert.rejects(() => harness.run(), /IDENTITY_CLEANUP_FAILED/);
+    assert.equal(harness.writeCount(), 0);
+    assert.equal(harness.client.calls.filter((call) => call === Q.ROLLBACK).length, 1);
+    assert.equal(harness.client.state.ends, 1, 'the disconnect is still attempted');
+  });
+
+  it('writes no mapping when the disconnect fails although the candidate resolved', async () => {
+    const harness = makeHarness(RESOLVED, { failOnEnd: true });
+    await assert.rejects(() => harness.run(), /IDENTITY_CLEANUP_FAILED/);
+    assert.equal(harness.writeCount(), 0);
+    assert.equal(harness.client.calls.filter((call) => call === Q.ROLLBACK).length, 1);
+    assert.equal(harness.client.state.ends, 0);
+  });
+
+  it('writes no mapping when a catalog query fails', async () => {
+    const harness = makeHarness(RESOLVED, { failOn: Q.PRIVILEGE_MATRIX });
+    await assert.rejects(() => harness.run(), /catalog failure/);
+    assert.equal(harness.writeCount(), 0);
+    assert.ok(harness.events.indexOf('end') > harness.events.indexOf(Q.ROLLBACK));
+  });
+
+  it('writes no mapping when connect fails', async () => {
+    const harness = makeHarness(RESOLVED, { connectError: 'ETIMEDOUT' });
+    await assert.rejects(() => harness.run(), /ETIMEDOUT/);
+    assert.equal(harness.writeCount(), 0);
+    assert.equal(harness.events.filter((event) => event === Q.ROLLBACK || event === 'end').length, 0);
+  });
+
+  it('writes no mapping on an unresolved identity', async () => {
+    const harness = makeHarness(DISQUALIFIED);
+    const result = await harness.run();
+    assert.equal(result.identityDisposition, IDENTITY_DISPOSITION.UNRESOLVED);
+    assert.equal(result.privateMappingWritten, 'NO');
+    assert.equal(harness.writeCount(), 0);
+  });
+
+  it('writes no mapping on an ambiguous identity', async () => {
+    const harness = makeHarness(TWO_CANDIDATES);
+    const result = await harness.run();
+    assert.equal(result.identityDisposition, IDENTITY_DISPOSITION.AMBIGUOUS);
+    assert.equal(result.privateMappingWritten, 'NO');
+    assert.equal(harness.writeCount(), 0);
+  });
+
+  it('writes no mapping when the observer is the resolved candidate', async () => {
+    const harness = makeHarness(RESOLVED, { sessionUser: 'app_read_role' });
+    const result = await harness.run();
+    assert.equal(result.observerEqualsTarget, 'YES');
+    assert.equal(result.privateMappingWritten, 'NO');
+    assert.equal(harness.writeCount(), 0);
   });
 });
 
