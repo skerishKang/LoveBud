@@ -489,9 +489,12 @@ function runSmokeProcess(opts = {}) {
     command = customCmd;
     cmdArgs = customArgs || [];
   } else {
-    // Default: use npm test
+    // Default: run the serialized CI test script. The concurrency flag must be
+    // placed BEFORE the positional globs; appending it after them (e.g.
+    // `npm test -- --test-concurrency=1`) makes Node treat the flag as a test
+    // path and fail with "Could not find '.../--test-concurrency=1'".
     command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    cmdArgs = ['test'];
+    cmdArgs = ['run', 'test:ci-serial'];
   }
 
   const childEnv = { ...env };
