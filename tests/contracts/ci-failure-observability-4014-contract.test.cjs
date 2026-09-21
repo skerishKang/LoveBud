@@ -442,3 +442,114 @@ test('runSmokeProcess preserves failing evidence occurring strictly after >10MiB
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
+// ─── 10. Default-command serialization contract (Issue #4472) ────────────────
+
+test('runSmokeProcess default command forwards --test-concurrency=1 to the npm test script', async () => {
+  const mockStdout = createMockStream();
+  const mockStderr = createMockStream();
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-smoke-serial-'));
+  const stepSummaryFile = path.join(tempDir, 'step_summary.md');
+
+  // Minimal fixture package. Its `test` script echoes the argv it actually
+  // received, so this test observes the REAL forwarded arguments rather than a
+  // source-string pattern.
+  fs.writeFileSync(
+    path.join(tempDir, 'package.json'),
+    JSON.stringify(
+      {
+        name: 'smoke-default-argv-fixture',
+        version: '1.0.0',
+        private: true,
+        scripts: { test: 'node print-argv.cjs' },
+      },
+      null,
+      2
+    ),
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(tempDir, 'print-argv.cjs'),
+    "console.log('FIXTURE_ARGV=' + JSON.stringify(process.argv.slice(2)));\n",
+    'utf8'
+  );
+
+  try {
+    // No cmd/args: this exercises the DEFAULT Smoke invocation path.
+    const result = await runSmokeProcess({
+      cwd: tempDir,
+      stepSummaryFile,
+      stdout: mockStdout,
+      stderr: mockStderr,
+    });
+
+    const stdout = mockStdout.getContent();
+    const match = stdout.match(/FIXTURE_ARGV=(\[.*?\])/);
+    assert.ok(match, `Fixture must report its argv; stdout was ${JSON.stringify(stdout)}`);
+    const forwarded = JSON.parse(match[1]);
+
+    // 1. Serialization flag is really forwarded to the underlying test command.
+    assert.ok(
+      forwarded.includes('--test-concurrency=1'),
+      `Default Smoke execution must forward --test-concurrency=1; got ${JSON.stringify(forwarded)}`
+    );
+
+    // 2. It is the only concurrency control, and it can never be widened/disabled.
+    assert.equal(
+      forwarded.filter((a) => a.startsWith('--test-concurrency')).length,
+      1,
+      'Exactly one --test-concurrency flag may be forwarded'
+    );
+    assert.ok(!forwarded.includes('--test-concurrency=0'), 'Must not disable concurrency limiting');
+
+    // 3. No retry / quarantine / skip / weakening flag may accompany serialization.
+    const FORBIDDEN_FLAGS = [
+      '--test-retry',
+      '--test-retry-count',
+      '--retry',
+      '--test-force-exit',
+      '--test-only',
+      '--test-skip',
+      '--test-shard',
+    ];
+    for (const flag of FORBIDDEN_FLAGS) {
+      assert.ok(
+        !forwarded.some((a) => a === flag || a.startsWith(`${flag}=`)),
+        `Containment must not introduce weakening flag ${flag}`
+      );
+    }
+
+    // 4. Exit code is still strictly preserved for a passing run.
+    assert.equal(result.exitCode, 0, 'Exit code must be exactly 0 for the passing fixture');
+    assert.equal(result.failures.length, 0, 'Passing fixture must produce 0 failures');
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('ci-smoke-runner serializes the default Smoke command without retry or timeout weakening', () => {
+  // EOL-normalized so this holds on both LF (CI) and CRLF (Windows) checkouts.
+  const src = fs.readFileSync(RUNNER_PATH, 'utf8').replace(/\r\n/g, '\n');
+
+  // The serialized default invocation is the containment itself.
+  assert.match(
+    src,
+    /cmdArgs\s*=\s*\[\s*'test'\s*,\s*'--'\s*,\s*'--test-concurrency=1'\s*\]/,
+    "Default Smoke command must be `npm test -- --test-concurrency=1`"
+  );
+
+  // The default branch must still be npm test (no alternative runner substituted).
+  assert.match(
+    src,
+    /command = process\.platform === 'win32' \? 'npm\.cmd' : 'npm';/,
+    'Default Smoke command must remain npm/npm.cmd'
+  );
+
+  // No retry / quarantine / timeout-weakening machinery may be introduced.
+  // Comments are stripped so prose cannot satisfy or defeat the assertion.
+  const code = src.replace(/\/\/[^\n]*/g, '');
+  for (const banned of ['retry', 'retries', 'quarantine', 'flaky']) {
+    assert.ok(!new RegExp(banned, 'i').test(code), `Runner must not introduce ${banned} logic`);
+  }
+  assert.ok(!/\.skip\s*\(/.test(code), 'Runner must not skip tests');
+  assert.ok(!/continue-on-error/.test(code), 'Runner must not tolerate failures');
+});

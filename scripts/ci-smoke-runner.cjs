@@ -489,9 +489,11 @@ function runSmokeProcess(opts = {}) {
     command = customCmd;
     cmdArgs = customArgs || [];
   } else {
-    // Default: use npm test
+    // Default: npm test, serialized so one test file runs at a time.
+    // #4472: the verify-static browser group is not stable under full-suite
+    // file concurrency, so default Smoke execution is deliberately serial.
     command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    cmdArgs = ['test'];
+    cmdArgs = ['test', '--', '--test-concurrency=1'];
   }
 
   const childEnv = { ...env };
