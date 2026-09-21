@@ -350,7 +350,7 @@ test('ordinary public update performs zero private-entitlement reads even when b
   assert.equal(queries(fake).some((sql) => sql.includes('FROM public.users')), false);
 });
 
-test('contract and source configuration keep private visibility source-only', async () => {
+test('contract and source configuration reflect the checked-in private visibility repository gate', async () => {
   const m = await mod();
   const c = m.MEMORY_UPDATE_DIRECT_NEON_CONTRACT;
   assert.equal(c.privateVisibilityGateEnv, 'LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME');
@@ -358,11 +358,16 @@ test('contract and source configuration keep private visibility source-only', as
   assert.equal(c.privateEntitlementAfterOwnerAndPreVisibilityValidationBeforeMutation, true);
   assert.equal(c.privatePlusRequiredCode, 'PLUS_REQUIRED_PRIVATE_STORAGE');
   assert.equal(c.privateEntitlementUnavailableCode, 'ENTITLEMENT_CHECK_UNAVAILABLE');
-  assert.equal(c.privateVisibilityGateCheckedIn, false);
+  assert.equal(c.privateVisibilityGateCheckedIn, true);
 
   const root = path.resolve(__dirname, '..', '..');
   const wrangler = fs.readFileSync(path.join(root, 'wrangler.toml'), 'utf8');
-  assert.doesNotMatch(wrangler, /LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME/);
+  const productionSection = wrangler.split(/^\[env\.production\.vars\]\s*$/m)[1] || '';
+  assert.match(
+    productionSection,
+    /^LB_MEMORY_PRIVATE_VISIBILITY_WRITE_RUNTIME\s*=\s*"direct_neon"\s*$/m,
+    'private visibility gate is checked in the Production vars scope'
+  );
 
   const route = fs.readFileSync(path.join(root, 'functions/api/memories/[id].js'), 'utf8');
   assert.match(route, /isAnyMemoryUpdateDirectNeonSelected/);
