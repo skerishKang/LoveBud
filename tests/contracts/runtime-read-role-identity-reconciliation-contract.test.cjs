@@ -125,6 +125,7 @@ function makeFakeClient(catalog, {
   connectError = null,
   failOnRollback = false,
   failOnEnd = false,
+  rawConnectError = null,
   events = null,
 } = {}) {
   const calls = events || [];
@@ -136,6 +137,7 @@ function makeFakeClient(catalog, {
       calls.push('connect');
       state.connects += 1;
       if (connectError) throw Object.assign(new Error(connectError), { category: connectError });
+      if (rawConnectError) throw new Error(rawConnectError);
     },
     async end() {
       calls.push('end');
@@ -511,14 +513,17 @@ describe('LoveBud #4422 identity reconciliation transaction lifecycle', () => {
     assert.equal(writes, 0);
   });
 
-  it('rolls back, disconnects and never maps when a catalog query fails', async () => {
+  it('classifies a catalog query failure by stage and never surfaces the driver message', async () => {
     const catalog = buildCatalog({ roles: [{ name: 'app_read_role', oid: '100' }] });
     const client = makeFakeClient(catalog, { failOn: Q.PRIVILEGE_MATRIX });
     let writes = 0;
-    await assert.rejects(
-      () => collectIdentityReconciliation({ client, writeMapping: () => { writes += 1; return PRIVATE_OUTPUT_REL_PATH; } }),
-      /catalog failure/,
-    );
+    const error = await collectIdentityReconciliation({
+      client, writeMapping: () => { writes += 1; return PRIVATE_OUTPUT_REL_PATH; },
+    }).then(() => null, (caught) => caught);
+    assert.equal(error.category, 'IDENTITY_CATALOG_QUERY_FAILED');
+    assert.equal(error.message, 'IDENTITY_CATALOG_QUERY_FAILED');
+    assert.equal(String(error.message).includes('catalog failure'), false, 'raw driver text must not survive');
+    assert.equal(error.cause, undefined, 'the original error must not be retained');
     assert.equal(client.calls.filter((call) => call === Q.ROLLBACK).length, 1);
     assert.equal(client.state.ends, 1);
     assert.equal(writes, 0);
@@ -574,7 +579,7 @@ describe('LoveBud #4422 identity private mapping is written only after cleanup c
 
   it('writes no mapping when a catalog query fails', async () => {
     const harness = makeHarness(RESOLVED, { failOn: Q.PRIVILEGE_MATRIX });
-    await assert.rejects(() => harness.run(), /catalog failure/);
+    await assert.rejects(() => harness.run(), /IDENTITY_CATALOG_QUERY_FAILED/);
     assert.equal(harness.writeCount(), 0);
     assert.ok(harness.events.indexOf('end') > harness.events.indexOf(Q.ROLLBACK));
   });
@@ -667,12 +672,19 @@ describe('LoveBud #4422 private mapping output', () => {
   });
 
   it('reports a sanitized failure shape with no raw identifiers', () => {
-    const failure = identity.sanitizedFailure(FAILURE.IDENTITY_CANDIDATE_BOUND_EXCEEDED, 1);
+    const lifecycle = identity.createIdentityLifecycle();
+    lifecycle.invocationStarted = true;
+    lifecycle.connectionAttempted = true;
+    lifecycle.connectionEstablished = true;
+    lifecycle.transactionStarted = true;
+    lifecycle.readOnlyVerified = true;
+    const failure = identity.sanitizedFailure(FAILURE.IDENTITY_CANDIDATE_BOUND_EXCEEDED, lifecycle);
     assert.equal(failure.rawRoleExposed, 'NO');
     assert.equal(failure.rawGranteeExposed, 'NO');
     assert.equal(failure.rawSecretExposed, 'NO');
     assert.equal(failure.privateMappingWritten, 'NO');
     assert.equal(failure.errorCategory, FAILURE.IDENTITY_CANDIDATE_BOUND_EXCEEDED);
+    assert.equal(failure.transactionReadOnly, 'VERIFIED');
     const serialized = JSON.stringify(failure);
     assert.equal(serialized.includes('lb_ro_'), false);
     assert.equal(serialized.includes('app_read_role'), false);
@@ -718,5 +730,101 @@ describe('LoveBud #4422 identity pure reducers', () => {
       () => deriveCandidateFacts({ ...catalog, candidates: catalog.candidateRows }),
       /IDENTITY_CATALOG_SHAPE_INVALID/,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #4479 live-stage classification and connection accounting
+// ---------------------------------------------------------------------------
+
+describe('LoveBud #4479 identity live-stage classification and connection accounting', () => {
+  const RESOLVED = { roles: [{ name: 'app_read_role', oid: '100' }] };
+  // A synthetic credential-shaped string used only to prove that driver text can
+  // never reach the report. It is not a real host, user, password or database.
+  const SYNTHETIC_DRIVER_TEXT = 'connect failed for postgres://synthetic_user:synthetic_pw@synthetic-host.invalid:5432/syntheticdb';
+
+  async function attempt(clientOptions) {
+    const lifecycle = identity.createIdentityLifecycle();
+    lifecycle.invocationStarted = true;
+    const client = makeFakeClient(buildCatalog(RESOLVED), { ...clientOptions, events: [] });
+    let writes = 0;
+    let error = null;
+    await collectIdentityReconciliation({
+      client,
+      lifecycle,
+      writeMapping: () => { writes += 1; return PRIVATE_OUTPUT_REL_PATH; },
+    }).then(() => undefined, (caught) => { error = caught; });
+    return {
+      lifecycle,
+      client,
+      error,
+      writes,
+      envelope: identity.sanitizedFailure(error.category, lifecycle),
+    };
+  }
+
+  it('pins the four fixed live-stage categories and keeps them distinct from pre-execution stops', () => {
+    assert.equal(FAILURE.IDENTITY_CONNECT_FAILED, 'IDENTITY_CONNECT_FAILED');
+    assert.equal(FAILURE.IDENTITY_BEGIN_READ_ONLY_FAILED, 'IDENTITY_BEGIN_READ_ONLY_FAILED');
+    assert.equal(FAILURE.IDENTITY_READ_ONLY_VERIFY_FAILED, 'IDENTITY_READ_ONLY_VERIFY_FAILED');
+    assert.equal(FAILURE.IDENTITY_CATALOG_QUERY_FAILED, 'IDENTITY_CATALOG_QUERY_FAILED');
+    assert.notEqual(FAILURE.IDENTITY_CONNECT_FAILED, FAILURE.IDENTITY_PREEXECUTION_STOP);
+  });
+
+  it('reports a connect failure as zero established connections and zero sessions', async () => {
+    const run = await attempt({ rawConnectError: SYNTHETIC_DRIVER_TEXT });
+    assert.equal(run.error.category, 'IDENTITY_CONNECT_FAILED');
+    assert.equal(run.error.message, 'IDENTITY_CONNECT_FAILED');
+    assert.equal(run.error.cause, undefined, 'the driver error must not be retained');
+    assert.equal(run.writes, 0);
+    assert.equal(run.client.state.connects, 1);
+    assert.equal(run.lifecycle.connectionAttempted, true);
+    assert.equal(run.lifecycle.connectionEstablished, false);
+    assert.equal(run.envelope.connectionAttemptedCount, 1);
+    assert.equal(run.envelope.productionConnectionCount, 0);
+    assert.equal(run.envelope.collectionSessionCount, 0);
+    assert.equal(run.envelope.transactionReadOnly, 'NOT_REACHED');
+    const serialized = JSON.stringify(run.envelope);
+    for (const fragment of ['synthetic_user', 'synthetic_pw', 'synthetic-host', 'syntheticdb', 'postgres://']) {
+      assert.equal(serialized.includes(fragment), false, `${fragment} must never appear in the report`);
+    }
+  });
+
+  it('separates an established connection from a session once BEGIN fails', async () => {
+    const run = await attempt({ failOn: Q.BEGIN_RO });
+    assert.equal(run.error.category, 'IDENTITY_BEGIN_READ_ONLY_FAILED');
+    assert.equal(run.envelope.productionConnectionCount, 1);
+    assert.equal(run.envelope.collectionSessionCount, 0);
+    assert.equal(run.envelope.transactionReadOnly, 'NOT_REACHED');
+    assert.equal(run.writes, 0);
+  });
+
+  it('reports the transaction as FAILED when read-only verification itself fails', async () => {
+    const run = await attempt({ failOn: Q.SHOW_RO });
+    assert.equal(run.error.category, 'IDENTITY_READ_ONLY_VERIFY_FAILED');
+    assert.equal(run.envelope.productionConnectionCount, 1);
+    assert.equal(run.envelope.collectionSessionCount, 1);
+    assert.equal(run.envelope.transactionReadOnly, 'FAILED');
+    assert.equal(run.writes, 0);
+  });
+
+  it('reports read-only as VERIFIED once the session is live and only a catalog read fails', async () => {
+    const run = await attempt({ failOn: Q.BROAD_SELECT_GRANTS });
+    assert.equal(run.error.category, 'IDENTITY_CATALOG_QUERY_FAILED');
+    assert.equal(run.envelope.transactionReadOnly, 'VERIFIED');
+    assert.equal(run.envelope.collectionSessionCount, 1);
+    assert.equal(run.client.calls.filter((call) => call === Q.ROLLBACK).length, 1);
+    assert.equal(run.client.state.ends, 1);
+    assert.equal(run.writes, 0);
+  });
+
+  it('never derives a connection count from the invocation count', () => {
+    const untouched = identity.sanitizedFailure(FAILURE.IDENTITY_INPUT_INVALID, identity.createIdentityLifecycle());
+    assert.equal(untouched.runnerInvocationCount, 0);
+    assert.equal(untouched.connectionAttemptedCount, 0);
+    assert.equal(untouched.productionConnectionCount, 0);
+    assert.equal(untouched.collectionSessionCount, 0);
+    assert.equal(untouched.transactionReadOnly, 'NOT_REACHED');
+    assert.equal(untouched.privateMappingWritten, 'NO');
   });
 });
