@@ -489,11 +489,12 @@ function runSmokeProcess(opts = {}) {
     command = customCmd;
     cmdArgs = customArgs || [];
   } else {
-    // Default: npm test, serialized so one test file runs at a time.
-    // #4472: the verify-static browser group is not stable under full-suite
-    // file concurrency, so default Smoke execution is deliberately serial.
+    // Default: run the serialized CI test script. The concurrency flag must be
+    // placed BEFORE the positional globs; appending it after them (e.g.
+    // `npm test -- --test-concurrency=1`) makes Node treat the flag as a test
+    // path and fail with "Could not find '.../--test-concurrency=1'".
     command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    cmdArgs = ['test', '--', '--test-concurrency=1'];
+    cmdArgs = ['run', 'test:ci-serial'];
   }
 
   const childEnv = { ...env };

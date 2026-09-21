@@ -444,23 +444,38 @@ test('runSmokeProcess preserves failing evidence occurring strictly after >10MiB
 });
 // ─── 10. Default-command serialization contract (Issue #4472) ────────────────
 
-test('runSmokeProcess default command forwards --test-concurrency=1 to the npm test script', async () => {
+// Shared predicate: `--test-concurrency=1` must appear BEFORE the positional
+// test globs. Node treats a flag placed after positional paths as a test path.
+function serialFlagPrecedesGlobs(command) {
+  const tokens = command.split(/\s+/).filter(Boolean);
+  const testIdx = tokens.indexOf('--test');
+  const flagIdx = tokens.indexOf('--test-concurrency=1');
+  const firstGlobIdx = tokens.findIndex((t) => t.includes('*'));
+  if (testIdx === -1 || flagIdx === -1 || firstGlobIdx === -1) return false;
+  return testIdx < flagIdx && flagIdx < firstGlobIdx;
+}
+
+const CANONICAL_TEST_SCRIPT =
+  'node --test tests/smoke/*.test.cjs tests/routes/*.test.cjs tests/contracts/*.test.cjs';
+const SERIAL_TEST_SCRIPT =
+  'node --test --test-concurrency=1 tests/smoke/*.test.cjs tests/routes/*.test.cjs tests/contracts/*.test.cjs';
+
+test('runSmokeProcess default command executes the npm run test:ci-serial script', async () => {
   const mockStdout = createMockStream();
   const mockStderr = createMockStream();
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-smoke-serial-'));
   const stepSummaryFile = path.join(tempDir, 'step_summary.md');
 
-  // Minimal fixture package. Its `test` script echoes the argv it actually
-  // received, so this test observes the REAL forwarded arguments rather than a
-  // source-string pattern.
+  // Fixture package: proves which npm script the DEFAULT runner actually selects,
+  // instead of asserting a source string.
   fs.writeFileSync(
     path.join(tempDir, 'package.json'),
     JSON.stringify(
       {
-        name: 'smoke-default-argv-fixture',
+        name: 'smoke-default-script-fixture',
         version: '1.0.0',
         private: true,
-        scripts: { test: 'node print-argv.cjs' },
+        scripts: { 'test:ci-serial': 'node print-marker.cjs' },
       },
       null,
       2
@@ -468,8 +483,8 @@ test('runSmokeProcess default command forwards --test-concurrency=1 to the npm t
     'utf8'
   );
   fs.writeFileSync(
-    path.join(tempDir, 'print-argv.cjs'),
-    "console.log('FIXTURE_ARGV=' + JSON.stringify(process.argv.slice(2)));\n",
+    path.join(tempDir, 'print-marker.cjs'),
+    "console.log('FIXTURE_SCRIPT_EXECUTED=test:ci-serial');\n",
     'utf8'
   );
 
@@ -483,42 +498,10 @@ test('runSmokeProcess default command forwards --test-concurrency=1 to the npm t
     });
 
     const stdout = mockStdout.getContent();
-    const match = stdout.match(/FIXTURE_ARGV=(\[.*?\])/);
-    assert.ok(match, `Fixture must report its argv; stdout was ${JSON.stringify(stdout)}`);
-    const forwarded = JSON.parse(match[1]);
-
-    // 1. Serialization flag is really forwarded to the underlying test command.
     assert.ok(
-      forwarded.includes('--test-concurrency=1'),
-      `Default Smoke execution must forward --test-concurrency=1; got ${JSON.stringify(forwarded)}`
+      stdout.includes('FIXTURE_SCRIPT_EXECUTED=test:ci-serial'),
+      `Default runner must execute the test:ci-serial script; stdout was ${JSON.stringify(stdout)}`
     );
-
-    // 2. It is the only concurrency control, and it can never be widened/disabled.
-    assert.equal(
-      forwarded.filter((a) => a.startsWith('--test-concurrency')).length,
-      1,
-      'Exactly one --test-concurrency flag may be forwarded'
-    );
-    assert.ok(!forwarded.includes('--test-concurrency=0'), 'Must not disable concurrency limiting');
-
-    // 3. No retry / quarantine / skip / weakening flag may accompany serialization.
-    const FORBIDDEN_FLAGS = [
-      '--test-retry',
-      '--test-retry-count',
-      '--retry',
-      '--test-force-exit',
-      '--test-only',
-      '--test-skip',
-      '--test-shard',
-    ];
-    for (const flag of FORBIDDEN_FLAGS) {
-      assert.ok(
-        !forwarded.some((a) => a === flag || a.startsWith(`${flag}=`)),
-        `Containment must not introduce weakening flag ${flag}`
-      );
-    }
-
-    // 4. Exit code is still strictly preserved for a passing run.
     assert.equal(result.exitCode, 0, 'Exit code must be exactly 0 for the passing fixture');
     assert.equal(result.failures.length, 0, 'Passing fixture must produce 0 failures');
   } finally {
@@ -526,25 +509,80 @@ test('runSmokeProcess default command forwards --test-concurrency=1 to the npm t
   }
 });
 
-test('ci-smoke-runner serializes the default Smoke command without retry or timeout weakening', () => {
+test('repository test:ci-serial script places --test-concurrency=1 before the test globs', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+
+  // 1. The canonical default test command must stay byte-semantically unchanged.
+  assert.equal(
+    pkg.scripts.test,
+    CANONICAL_TEST_SCRIPT,
+    'scripts.test must remain the canonical default test command'
+  );
+
+  // 2. The serial script is the one the default Smoke runner executes.
+  assert.equal(
+    pkg.scripts['test:ci-serial'],
+    SERIAL_TEST_SCRIPT,
+    'scripts["test:ci-serial"] must serialize concurrency before the globs'
+  );
+
+  // 3. Flag ordering is the exact bug being guarded: --test, then
+  //    --test-concurrency=1, then the positional globs.
+  assert.ok(
+    serialFlagPrecedesGlobs(pkg.scripts['test:ci-serial']),
+    'test:ci-serial must place --test-concurrency=1 before the positional test globs'
+  );
+
+  // Negative control: the previously shipped ordering MUST be rejected, so this
+  // contract cannot silently pass if the flag drifts back after the globs.
+  assert.equal(
+    serialFlagPrecedesGlobs(
+      'node --test tests/smoke/*.test.cjs tests/routes/*.test.cjs tests/contracts/*.test.cjs --test-concurrency=1'
+    ),
+    false,
+    'Contract must fail when --test-concurrency=1 appears after the globs'
+  );
+
+  // 4. Test membership must be identical between the two scripts (delta 0).
+  const globsOf = (cmd) => cmd.split(/\s+/).filter((t) => t.includes('*')).join(' ');
+  assert.equal(
+    globsOf(pkg.scripts['test:ci-serial']),
+    globsOf(pkg.scripts.test),
+    'test:ci-serial must cover exactly the same test globs, in the same order'
+  );
+});
+
+test('ci-smoke-runner default selection and no-weakening contract', () => {
   // EOL-normalized so this holds on both LF (CI) and CRLF (Windows) checkouts.
   const src = fs.readFileSync(RUNNER_PATH, 'utf8').replace(/\r\n/g, '\n');
 
-  // The serialized default invocation is the containment itself.
+  // The default branch selects the serial npm script, rather than appending a
+  // flag after the package script command.
   assert.match(
     src,
-    /cmdArgs\s*=\s*\[\s*'test'\s*,\s*'--'\s*,\s*'--test-concurrency=1'\s*\]/,
-    "Default Smoke command must be `npm test -- --test-concurrency=1`"
+    /cmdArgs\s*=\s*\[\s*'run'\s*,\s*'test:ci-serial'\s*\]/,
+    'Default Smoke command must be `npm run test:ci-serial`'
   );
-
-  // The default branch must still be npm test (no alternative runner substituted).
   assert.match(
     src,
     /command = process\.platform === 'win32' \? 'npm\.cmd' : 'npm';/,
     'Default Smoke command must remain npm/npm.cmd'
   );
 
-  // No retry / quarantine / timeout-weakening machinery may be introduced.
+  // The buggy shape must be gone from the default path.
+  assert.ok(
+    !/cmdArgs\s*=\s*\[\s*'test'\s*,\s*'--'\s*,\s*'--test-concurrency=1'\s*\]/.test(src),
+    'Default path must not append --test-concurrency=1 after the package script'
+  );
+
+  // The custom cmd/args path (PR Fast Gate) stays intact.
+  assert.match(
+    src,
+    /if \(customCmd\) \{\n\s*command = customCmd;\n\s*cmdArgs = customArgs \|\| \[\];/,
+    'Custom cmd/args path must remain unchanged'
+  );
+
+  // No retry / quarantine / skip / timeout-inflation machinery may be introduced.
   // Comments are stripped so prose cannot satisfy or defeat the assertion.
   const code = src.replace(/\/\/[^\n]*/g, '');
   for (const banned of ['retry', 'retries', 'quarantine', 'flaky']) {
@@ -552,4 +590,5 @@ test('ci-smoke-runner serializes the default Smoke command without retry or time
   }
   assert.ok(!/\.skip\s*\(/.test(code), 'Runner must not skip tests');
   assert.ok(!/continue-on-error/.test(code), 'Runner must not tolerate failures');
+  assert.ok(!/60000|5000|2000/.test(code), 'Runner must not inflate timeouts');
 });
