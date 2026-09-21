@@ -576,18 +576,35 @@ test('NC3. removing the package contracts glob un-wires representative contracts
     'the representative must not be this contract, so the assertion is not self-referential'
   );
   assert.ok(REAL.wired.has(representative), 'precondition: wired on the real tree');
-  const mutatedPackage = {
-    ...REAL_INPUTS.packageJson,
-    scripts: {
-      ...REAL_INPUTS.packageJson.scripts,
-      test: stripTarget(REAL_INPUTS.packageJson.scripts.test, CONTRACTS_GLOB),
-    },
-  };
+  // Every package-owned script is execution authority (see collectAuthorities), so the
+  // mutation must strip the glob from ALL of them - not just `test`. Stripping only
+  // `scripts.test` leaves any second glob-bearing script (for example a serialized CI
+  // variant) still wiring these files, and this negative control then silently stops
+  // testing what it claims to test.
+  const originalScripts = REAL_INPUTS.packageJson.scripts;
+  assert.ok(
+    Object.values(originalScripts).some(
+      (command) => typeof command === 'string' && command.includes(CONTRACTS_GLOB)
+    ),
+    `precondition: at least one package script must carry ${CONTRACTS_GLOB}`
+  );
+  const mutatedScripts = {};
+  for (const [name, command] of Object.entries(originalScripts)) {
+    mutatedScripts[name] =
+      typeof command === 'string' ? stripTarget(command, CONTRACTS_GLOB) : command;
+  }
+  assert.ok(
+    Object.values(mutatedScripts).every(
+      (command) => typeof command !== 'string' || !command.includes(CONTRACTS_GLOB)
+    ),
+    `precondition: the mutation must remove ${CONTRACTS_GLOB} from every package script`
+  );
+  const mutatedPackage = { ...REAL_INPUTS.packageJson, scripts: mutatedScripts };
   const result = analyze({ ...REAL_INPUTS, packageJson: mutatedPackage });
   assert.equal(
     result.wired.has(representative),
     false,
-    `${representative} must become NOT_WIRED once ${CONTRACTS_GLOB} leaves scripts.test`
+    `${representative} must become NOT_WIRED once ${CONTRACTS_GLOB} leaves every package script`
   );
   // Exactly the files that ONLY the contracts glob reached must lose reachability.
   const contractsGlobMatcher = targetToRegExp(CONTRACTS_GLOB);
