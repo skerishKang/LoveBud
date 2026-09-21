@@ -3,6 +3,9 @@
 Status: TEMPLATE-ONLY HANDOFF CHECKLIST. No live proof was executed by KILO2.
 Pinned source of truth: `main` @ `ac5618c512bc7de8fdc372c58a637382b0cff88f`
 (merged packet `docs/ops/privilege-proof/4255-4256-4254-live-proof-packet.md`).
+That pin is preparation-time only. The identity assertions below were re-checked against
+`main` @ `5f284b4f84eb659a6c5d64f94d4dc29344b973c3` and two of them were stale; an executor must
+re-verify against the current head rather than treat this pin as an execution-time authority.
 
 Refs #4255 (Hub Layout GET privilege readiness)
 Refs #4256 (Hub Layout PUT writer privilege readiness)
@@ -10,6 +13,8 @@ Refs #4254 (public Memory detail reactions privilege readiness)
 Refs #4346 (schema adoption dependency)
 Refs #4283 (runtime role reconciliation)
 Refs #4311 (direct-Neon readiness matrix)
+Refs #4422 (runtime read-role identity reconciliation)
+Refs #4000 (Modal → Cloudflare/Neon runtime boundary)
 
 This checklist is for the future live executor (Web CTO or an explicitly delegated
 operator with separate authorization). It sequences the merged live-proof packet into
@@ -24,12 +29,18 @@ execution phases and states what remains excluded. It proves nothing itself.
   connection strings may ever appear in executor output routed back to issues.
 - Each lane returns **exactly one** decision. Never bundle lanes into a single grant.
 - Writer lane target: `lb_product_rw_a3f8c2d1` (literal, packet §3).
-- Runtime-read lane target: `<runtime_read_role>` — **no repo literal exists**; it is
-  the private role-mapping input of
+- Runtime-read lane target: `<runtime_read_role>` — no repo **source or config** literal exists. A
+  documentation-era literal is recorded in packet §3 and in the #4311 readiness-matrix rows, but that is
+  historical evidence, not authority, and it must not be copied forward as an answer. The target remains
+  only the private one-entry role-mapping input of
   `scripts/run-production-readonly-runtime-role-acl-attestation.cjs` (#4283 vehicle).
   Unresolvable or ambiguous → `HOLD_RUNTIME_ROLE_IDENTITY_GAP`.
-- `lb_ro_709d5f3e68f774d2` is the #4005 CATALOG_METADATA_ONLY role and is **never** a
-  privilege target for these lanes.
+- `lb_ro_709d5f3e68f774d2` is the #4005 audit-era CATALOG_METADATA_ONLY characterization. That characterization is
+  **superseded for privilege-target purposes** by packet §3, which is marked `SUPERSEDED 2026-09-18` and
+  records a fresh read-only catalog measurement placing SELECT on this lane's read boundary. Whether the
+  documented literal is the current runtime read role is `RUNTIME_READ_ROLE_IDENTITY_PRODUCTION =
+  NOT_MEASURED`, pending the #4422 identity reconciliation. This bullet records a superseded
+  characterization only and must not be transcribed into the private mapping as an answer.
 
 ---
 
