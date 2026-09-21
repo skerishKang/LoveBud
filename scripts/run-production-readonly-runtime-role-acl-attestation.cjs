@@ -16,7 +16,9 @@
  *
  * TARGET_RELATIONS is a static source-reviewed allowlist. There is no caller
  * controlled object, table, role, or SQL input, and this runner never issues
- * GRANT, REVOKE, or any DDL/DML.
+ * GRANT, REVOKE, or any DDL/DML. The #4422 B1 Tree Like READ packet adds
+ * public.tree_likes only for its own exact approval-reference/purpose pair, so
+ * no historical packet gains a new catalog probe or observation surface.
  */
 
 const fs = require('node:fs');
@@ -31,6 +33,9 @@ const APPROVAL_REFERENCE = `issue:${SOURCE_BOUND_ISSUE}`;
 const MEMORY_SOCIAL_READ_ISSUE = '4423';
 const MEMORY_SOCIAL_READ_PURPOSE = 'ONE_PRODUCTION_READONLY_MEMORY_SOCIAL_READ_ACL_ATTESTATION';
 const MEMORY_SOCIAL_READ_APPROVAL_REFERENCE = `issue:${MEMORY_SOCIAL_READ_ISSUE}`;
+const TREE_LIKE_READ_ISSUE = '4422';
+const TREE_LIKE_READ_PURPOSE = 'ONE_PRODUCTION_READONLY_TREE_LIKE_READ_ACL_ATTESTATION';
+const TREE_LIKE_READ_APPROVAL_REFERENCE = `issue:${TREE_LIKE_READ_ISSUE}`;
 const MAX_ROLE_CHAIN_DEPTH = 16;
 const MAX_ROLE_CHAIN_ROWS = 128;
 const MAX_ACL_ROWS = 256;
@@ -47,6 +52,14 @@ const TARGET_RELATIONS = Object.freeze([
 ]);
 const TARGET_RELATION_NAMES = Object.freeze(TARGET_RELATIONS.map((value) => value.slice('public.'.length)));
 const TARGET_SET = new Set(TARGET_RELATIONS);
+
+// #4422 B1 Tree Like READ packet. public.tree_likes is deliberately NOT added to
+// TARGET_RELATIONS: every historical packet must keep its exact observation
+// surface, so the extra relation is only in scope for the purpose that needs it.
+const TREE_LIKE_TARGET_RELATIONS = Object.freeze(TARGET_RELATIONS.concat('public.tree_likes'));
+const TREE_LIKE_TARGET_RELATION_NAMES = Object.freeze(
+  TREE_LIKE_TARGET_RELATIONS.map((value) => value.slice('public.'.length)),
+);
 
 const Q = Object.freeze({
   BEGIN_RO: 'BEGIN READ ONLY',
@@ -112,6 +125,13 @@ const Q = Object.freeze({
   HUB_LAYOUT_TRUNCATE: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'TRUNCATE') AS allowed`,
   HUB_LAYOUT_REFERENCES: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'REFERENCES') AS allowed`,
   HUB_LAYOUT_TRIGGER: `SELECT has_table_privilege($1::name, 'public.tree_hub_layouts', 'TRIGGER') AS allowed`,
+  TREE_LIKES_SELECT: `SELECT has_table_privilege($1::name, 'public.tree_likes', 'SELECT') AS allowed`,
+  TREE_LIKES_INSERT: `SELECT has_table_privilege($1::name, 'public.tree_likes', 'INSERT') AS allowed`,
+  TREE_LIKES_UPDATE: `SELECT has_table_privilege($1::name, 'public.tree_likes', 'UPDATE') AS allowed`,
+  TREE_LIKES_DELETE: `SELECT has_table_privilege($1::name, 'public.tree_likes', 'DELETE') AS allowed`,
+  TREE_LIKES_TRUNCATE: `SELECT has_table_privilege($1::name, 'public.tree_likes', 'TRUNCATE') AS allowed`,
+  TREE_LIKES_REFERENCES: `SELECT has_table_privilege($1::name, 'public.tree_likes', 'REFERENCES') AS allowed`,
+  TREE_LIKES_TRIGGER: `SELECT has_table_privilege($1::name, 'public.tree_likes', 'TRIGGER') AS allowed`,
   RELATION_ACL: `SELECT c.relname::text AS relation_name,
                       (c.relacl IS NULL) AS relacl_was_null,
                       c.relowner::bigint AS owner_oid,
@@ -216,9 +236,32 @@ function assertSourceBoundApproval(approvalReference, purpose) {
   const memorySocialPacket =
     approvalReference === MEMORY_SOCIAL_READ_APPROVAL_REFERENCE &&
     purpose === MEMORY_SOCIAL_READ_PURPOSE;
-  if (!legacyPacket && !memorySocialPacket) {
+  const treeLikeReadPacket =
+    approvalReference === TREE_LIKE_READ_APPROVAL_REFERENCE &&
+    purpose === TREE_LIKE_READ_PURPOSE;
+  if (!legacyPacket && !memorySocialPacket && !treeLikeReadPacket) {
     fail('ATTESTATION_SOURCE_BOUND_APPROVAL_REQUIRED');
   }
+}
+
+/**
+ * Purpose-scoped observation surface. Historical purposes keep the exact
+ * 7-relation surface; only the #4422 B1 Tree Like READ packet adds
+ * public.tree_likes, so no existing packet gains a new catalog probe.
+ */
+function attestationScopeForPurpose(purpose) {
+  if (purpose === TREE_LIKE_READ_PURPOSE) {
+    return Object.freeze({
+      purpose: TREE_LIKE_READ_PURPOSE,
+      relationNames: TREE_LIKE_TARGET_RELATION_NAMES,
+      treeLikesRead: true,
+    });
+  }
+  return Object.freeze({
+    purpose: purpose || null,
+    relationNames: TARGET_RELATION_NAMES,
+    treeLikesRead: false,
+  });
 }
 
 function assertBaseline(repoRoot, baselineCommit) {
@@ -365,12 +408,12 @@ function buildRoleChainSemantics({ chain, targetRuntimeRole }) {
   };
 }
 
-function classifyRelationAclSources({ rows, targetRuntimeRole, chain }) {
+function classifyRelationAclSources({ rows, targetRuntimeRole, chain, relationNames = TARGET_RELATION_NAMES }) {
   const target = assertTargetRuntimeRole(targetRuntimeRole).toLowerCase();
   const semantics = buildRoleChainSemantics({ chain, targetRuntimeRole: target });
   if (!Array.isArray(rows) || rows.length > MAX_ACL_ROWS) fail('ATTESTATION_ACL_SHAPE_INVALID');
 
-  const relations = Object.fromEntries(TARGET_RELATION_NAMES.map((name) => [name, {
+  const relations = Object.fromEntries(relationNames.map((name) => [name, {
     effectiveSelect: 'UNKNOWN',
     publicGrant: 'NO',
     directTargetGrant: 'NO',
@@ -383,7 +426,7 @@ function classifyRelationAclSources({ rows, targetRuntimeRole, chain }) {
   const seenRelations = new Set();
   for (const row of rows) {
     if (!row || typeof row !== 'object' || typeof row.relation_name !== 'string' ||
-        !TARGET_RELATION_NAMES.includes(row.relation_name) ||
+        !relationNames.includes(row.relation_name) ||
         typeof row.grantee_name !== 'string' || !row.grantee_name ||
         typeof row.privilege_type !== 'string' || typeof row.owner_name !== 'string' || !row.owner_name) {
       fail('ATTESTATION_ACL_SHAPE_INVALID');
@@ -414,7 +457,7 @@ function classifyRelationAclSources({ rows, targetRuntimeRole, chain }) {
     else if (semantics.inheritsFrom.has(grantee)) relation.inheritedGrant = 'YES';
     else if (semantics.membershipOnly.has(grantee)) relation.membershipOnlyGrant = 'YES';
   }
-  if (seenRelations.size !== TARGET_RELATION_NAMES.length) fail('ATTESTATION_ACL_RELATION_MISSING');
+  if (seenRelations.size !== relationNames.length) fail('ATTESTATION_ACL_RELATION_MISSING');
   return relations;
 }
 
@@ -434,8 +477,8 @@ function validateBroadSelectAclRows(rows) {
   return rows;
 }
 
-function sanitizeRelationProvenance(relations) {
-  return Object.fromEntries(TARGET_RELATION_NAMES.map((name) => {
+function sanitizeRelationProvenance(relations, relationNames = TARGET_RELATION_NAMES) {
+  return Object.fromEntries(relationNames.map((name) => {
     const relation = relations[name];
     return [name, {
       effectiveSelect: relation.effectiveSelect,
@@ -449,13 +492,13 @@ function sanitizeRelationProvenance(relations) {
   }));
 }
 
-function summarizeRelationSource(relations, field) {
-  const values = TARGET_RELATION_NAMES.map((name) => relations[name][field]);
+function summarizeRelationSource(relations, field, relationNames = TARGET_RELATION_NAMES) {
+  const values = relationNames.map((name) => relations[name][field]);
   return values.every((value) => value === 'YES') ? 'YES' :
     values.every((value) => value === 'NO') ? 'NO' : 'MIXED';
 }
 
-function classifySelectGrantSources({ rows, targetRuntimeRole, chain, chainNames }) {
+function classifySelectGrantSources({ rows, targetRuntimeRole, chain, chainNames, relationNames = TARGET_RELATION_NAMES }) {
   const roleChain = chain || (Array.isArray(chainNames)
     ? chainNames.map((roleName, index) => ({
       role_name: roleName,
@@ -468,11 +511,11 @@ function classifySelectGrantSources({ rows, targetRuntimeRole, chain, chainNames
       set_option: false,
     }))
     : null);
-  const relations = classifyRelationAclSources({ rows, targetRuntimeRole, chain: roleChain });
+  const relations = classifyRelationAclSources({ rows, targetRuntimeRole, chain: roleChain, relationNames });
   return {
-    public: summarizeRelationSource(relations, 'publicGrant'),
-    direct: summarizeRelationSource(relations, 'directTargetGrant'),
-    inherited: summarizeRelationSource(relations, 'inheritedGrant'),
+    public: summarizeRelationSource(relations, 'publicGrant', relationNames),
+    direct: summarizeRelationSource(relations, 'directTargetGrant', relationNames),
+    inherited: summarizeRelationSource(relations, 'inheritedGrant', relationNames),
     relations,
   };
 }
@@ -580,7 +623,45 @@ function deriveHubLayoutDecision({ identityResolved, privileges, roleAdmin, broa
   return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'HUB_LAYOUT_PRIVILEGE_UNRESOLVED' };
 }
 
-async function collectAttestation({ client, targetRuntimeRole, roleMapping, artifact }) {
+const TREE_LIKES_WRITE_PRIVILEGES = Object.freeze([
+  'INSERT_TREE_LIKES',
+  'UPDATE_TREE_LIKES',
+  'DELETE_TREE_LIKES',
+  'TRUNCATE_TREE_LIKES',
+  'REFERENCES_TREE_LIKES',
+  'TRIGGER_TREE_LIKES',
+]);
+
+/**
+ * Tree Like READ activation packet (#4422 B1). Attestation only: a missing
+ * SELECT is a STOP, and this runner never grants, revokes, or repairs.
+ *
+ * Unlike the hub-layout diagnosis, the tree_likes widening signals are
+ * load-bearing here. The B1 route is read-only, so any tree_likes write
+ * privilege on the runtime read role is envelope drift and blocks activation.
+ */
+function deriveTreeLikesDecision({ identityResolved, privileges, roleAdmin, broadAllTableSelect }) {
+  const baseline = privileges.DATABASE_CONNECT === true && privileges.USAGE_PUBLIC === true &&
+    privileges.SELECT_TREES === true && privileges.SELECT_TREE_SOCIAL_COUNTS === true;
+  if (!identityResolved) {
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'RUNTIME_ROLE_IDENTITY_UNRESOLVED' };
+  }
+  const anyTreeLikesWrite = TREE_LIKES_WRITE_PRIVILEGES.some((key) => privileges[key] === true);
+  if (!baseline || anyTreeLikesWrite || roleAdmin === true || broadAllTableSelect === true) {
+    return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'BASELINE_PRIVILEGE_DRIFT_STOP' };
+  }
+  if (privileges.SELECT_TREE_LIKES === true) {
+    return { target: 'RESOLVED', minimalChange: 'NO_PRIVILEGE_CHANGE', activationEligible: 'YES', finalDisposition: 'TREE_LIKES_READ_ROLE_ACL_ATTESTED' };
+  }
+  if (privileges.SELECT_TREE_LIKES === false) {
+    return { target: 'RESOLVED', minimalChange: 'SELECT_ON_TREE_LIKES_ONLY', activationEligible: 'NO', finalDisposition: 'TREE_LIKES_SELECT_MISSING_STOP' };
+  }
+  return { target: 'UNRESOLVED', minimalChange: 'NOT_DETERMINABLE', activationEligible: 'NO', finalDisposition: 'TREE_LIKES_PRIVILEGE_UNRESOLVED' };
+}
+
+async function collectAttestation({ client, targetRuntimeRole, roleMapping, artifact, purpose = null }) {
+  const scope = attestationScopeForPurpose(purpose);
+  const { relationNames } = scope;
   const target = assertTargetRuntimeRole(targetRuntimeRole);
   if (!roleMapping || Object.keys(roleMapping).length !== 1 ||
       Object.keys(roleMapping)[0] !== target) fail('ATTESTATION_TARGET_ROLE_MAPPING_AMBIGUOUS');
@@ -658,7 +739,7 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
 
     const aclFacts = await stage('ATTESTATION_ACL_CATALOG_FAILED', async () => {
       const aclRows = safeQueryResult(
-        await client.query(Q.RELATION_ACL, [TARGET_RELATION_NAMES]),
+        await client.query(Q.RELATION_ACL, [relationNames]),
         'RELATION_ACL',
       );
       const chainOids = [...new Set(chainSemantics.inheritingOids.concat(Number(chainSemantics.targetRole.oid)))];
@@ -667,8 +748,8 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
         await client.query(Q.BROAD_SELECT_ACL, [chainOids.concat(0)]),
         'BROAD_SELECT_ACL',
       ));
-      const broadAllTableSelect = roleAdmin || broadRows.some((row) => !TARGET_RELATION_NAMES.includes(String(row.relation_name)));
-      const grantSources = classifySelectGrantSources({ rows: aclRows, targetRuntimeRole: target, chain });
+      const broadAllTableSelect = roleAdmin || broadRows.some((row) => !relationNames.includes(String(row.relation_name)));
+      const grantSources = classifySelectGrantSources({ rows: aclRows, targetRuntimeRole: target, chain, relationNames });
       const privilege = (query, field) => safeBoolean(safeQueryResult(query, field)[0]);
       const privileges = {
         DATABASE_CONNECT: privilege(await client.query(Q.DATABASE_CONNECT, [target]), 'DATABASE_CONNECT'),
@@ -690,6 +771,16 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
         REFERENCES_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_REFERENCES, [target]), 'HUB_LAYOUT_REFERENCES'),
         TRIGGER_TREE_HUB_LAYOUTS: privilege(await client.query(Q.HUB_LAYOUT_TRIGGER, [target]), 'HUB_LAYOUT_TRIGGER'),
       };
+      // B1-only probes. No historical purpose ever issues a tree_likes query.
+      if (scope.treeLikesRead) {
+        privileges.SELECT_TREE_LIKES = privilege(await client.query(Q.TREE_LIKES_SELECT, [target]), 'TREE_LIKES_SELECT');
+        privileges.INSERT_TREE_LIKES = privilege(await client.query(Q.TREE_LIKES_INSERT, [target]), 'TREE_LIKES_INSERT');
+        privileges.UPDATE_TREE_LIKES = privilege(await client.query(Q.TREE_LIKES_UPDATE, [target]), 'TREE_LIKES_UPDATE');
+        privileges.DELETE_TREE_LIKES = privilege(await client.query(Q.TREE_LIKES_DELETE, [target]), 'TREE_LIKES_DELETE');
+        privileges.TRUNCATE_TREE_LIKES = privilege(await client.query(Q.TREE_LIKES_TRUNCATE, [target]), 'TREE_LIKES_TRUNCATE');
+        privileges.REFERENCES_TREE_LIKES = privilege(await client.query(Q.TREE_LIKES_REFERENCES, [target]), 'TREE_LIKES_REFERENCES');
+        privileges.TRIGGER_TREE_LIKES = privilege(await client.query(Q.TREE_LIKES_TRIGGER, [target]), 'TREE_LIKES_TRIGGER');
+      }
       return { broadAllTableSelect, grantSources, privileges };
     });
     const { broadAllTableSelect, grantSources, privileges } = aclFacts;
@@ -701,8 +792,9 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       comments: privileges.SELECT_COMMENTS,
       tree_comments: privileges.SELECT_TREE_COMMENTS,
       tree_hub_layouts: privileges.SELECT_TREE_HUB_LAYOUTS,
+      tree_likes: privileges.SELECT_TREE_LIKES,
     };
-    for (const relationName of TARGET_RELATION_NAMES) {
+    for (const relationName of relationNames) {
       grantSources.relations[relationName].effectiveSelect = effectiveByRelation[relationName] ? 'YES' : 'NO';
     }
     const decision = deriveDecision({ identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect });
@@ -715,6 +807,11 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
     const hubLayoutDecision = deriveHubLayoutDecision({
       identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect,
     });
+    const treeLikesDecision = scope.treeLikesRead
+      ? deriveTreeLikesDecision({
+        identityResolved: relation.currentIdentityResolved, privileges, roleAdmin, broadAllTableSelect,
+      })
+      : null;
     return {
       transactionReadOnly: 'VERIFIED',
       sessionRole: 'PRESENT_REDACTED',
@@ -737,11 +834,12 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
       publicSelectGrant: grantSources.public,
       directTargetSelectGrant: grantSources.direct,
       inheritedTargetSelectGrant: grantSources.inherited,
-      perRelationProvenance: sanitizeRelationProvenance(grantSources.relations),
+      perRelationProvenance: sanitizeRelationProvenance(grantSources.relations, relationNames),
       decision,
       treeCommentsDecision,
       memoryCommentsDecision,
       hubLayoutDecision,
+      ...(treeLikesDecision ? { treeLikesDecision } : {}),
       rawRoleExposed: 'NO',
       rawGranteeExposed: 'NO',
       rawSecretExposed: 'NO',
@@ -756,7 +854,8 @@ async function collectAttestation({ client, targetRuntimeRole, roleMapping, arti
   }
 }
 
-function sanitizedFailure(category, runnerInvocationCount = 0) {
+function sanitizedFailure(category, runnerInvocationCount = 0, purpose = null) {
+  const { relationNames, treeLikesRead } = attestationScopeForPurpose(purpose);
   return {
     runnerInvocationCount,
     productionConnectionCount: runnerInvocationCount,
@@ -777,7 +876,7 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     truncateTreeHubLayouts: 'UNKNOWN', referencesTreeHubLayouts: 'UNKNOWN', triggerTreeHubLayouts: 'UNKNOWN',
     usagePublic: 'UNKNOWN', databaseConnect: 'UNKNOWN', broadAllTableSelect: 'UNKNOWN', roleAdmin: 'UNKNOWN',
     publicSelectGrant: 'UNKNOWN', directTargetSelectGrant: 'UNKNOWN', inheritedTargetSelectGrant: 'UNKNOWN',
-    perRelationProvenance: Object.fromEntries(TARGET_RELATION_NAMES.map((name) => [name, {
+    perRelationProvenance: Object.fromEntries(relationNames.map((name) => [name, {
       effectiveSelect: 'UNKNOWN', publicGrant: 'UNKNOWN', directTargetGrant: 'UNKNOWN',
       inheritedGrant: 'UNKNOWN', membershipOnlyGrant: 'UNKNOWN', ownerSelect: 'UNKNOWN', relaclWasNull: 'UNKNOWN', ownerOid: 'UNKNOWN',
     }])),
@@ -791,6 +890,15 @@ function sanitizedFailure(category, runnerInvocationCount = 0) {
     memoryCommentsFinalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
     hubLayoutPrivilegeTargetIdentity: 'UNKNOWN', hubLayoutMinimalRequiredChange: 'UNKNOWN',
     hubLayoutActivationEligible: 'UNKNOWN', hubLayoutFinalDisposition: 'UNKNOWN',
+    ...(treeLikesRead ? {
+      selectTreeLikes: 'UNKNOWN', insertTreeLikes: 'UNKNOWN', updateTreeLikes: 'UNKNOWN',
+      deleteTreeLikes: 'UNKNOWN', truncateTreeLikes: 'UNKNOWN', referencesTreeLikes: 'UNKNOWN',
+      triggerTreeLikes: 'UNKNOWN',
+      treeLikesPrivilegeTargetIdentity: 'UNRESOLVED',
+      treeLikesMinimalRequiredChange: 'NOT_DETERMINABLE',
+      treeLikesActivationEligible: 'NO',
+      treeLikesFinalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
+    } : {}),
     finalDisposition: category === 'ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP' ? 'BASELINE_PRIVILEGE_DRIFT_STOP' : 'RUNTIME_ROLE_IDENTITY_UNRESOLVED',
     errorCategory: category,
   };
@@ -845,6 +953,19 @@ function formatSuccess(result) {
     hubLayoutMinimalRequiredChange: result.hubLayoutDecision.minimalChange,
     hubLayoutActivationEligible: result.hubLayoutDecision.activationEligible,
     hubLayoutFinalDisposition: result.hubLayoutDecision.finalDisposition,
+    ...(result.treeLikesDecision ? {
+      selectTreeLikes: p.SELECT_TREE_LIKES ? 'YES' : 'NO',
+      insertTreeLikes: p.INSERT_TREE_LIKES ? 'YES' : 'NO',
+      updateTreeLikes: p.UPDATE_TREE_LIKES ? 'YES' : 'NO',
+      deleteTreeLikes: p.DELETE_TREE_LIKES ? 'YES' : 'NO',
+      truncateTreeLikes: p.TRUNCATE_TREE_LIKES ? 'YES' : 'NO',
+      referencesTreeLikes: p.REFERENCES_TREE_LIKES ? 'YES' : 'NO',
+      triggerTreeLikes: p.TRIGGER_TREE_LIKES ? 'YES' : 'NO',
+      treeLikesPrivilegeTargetIdentity: result.treeLikesDecision.target,
+      treeLikesMinimalRequiredChange: result.treeLikesDecision.minimalChange,
+      treeLikesActivationEligible: result.treeLikesDecision.activationEligible,
+      treeLikesFinalDisposition: result.treeLikesDecision.finalDisposition,
+    } : {}),
     rawRoleExposed: 'NO', rawGranteeExposed: 'NO', rawSecretExposed: 'NO',
   };
 }
@@ -858,9 +979,12 @@ async function runAttestationWithDeps({ approvalReference, purpose, baselineComm
 
 async function main() {
   let runnerInvocationCount = 0;
+  let attestationPurpose = null;
   try {
     const args = parseArgs(process.argv.slice(2));
     assertSourceBoundApproval(args.approval_reference, args.purpose);
+    // Only an approved purpose may select a widened observation surface.
+    attestationPurpose = args.purpose;
     assertBaseline(REPO_ROOT, args.baseline_commit);
     if (!args.secret_file || !args.role_mapping_file) fail('ATTESTATION_INPUT_INVALID');
     const targetInput = loadTargetRoleMapping(REPO_ROOT, args.role_mapping_file);
@@ -876,11 +1000,12 @@ async function main() {
       targetRuntimeRole: targetInput.targetRuntimeRole,
       roleMapping: targetInput.roleMapping,
       artifact,
+      purpose: args.purpose,
     });
     process.stdout.write(JSON.stringify(formatSuccess(result), null, 2) + '\n');
   } catch (error) {
     const category = error && typeof error.category === 'string' ? error.category : 'ATTESTATION_PREEXECUTION_STOP';
-    process.stdout.write(JSON.stringify(sanitizedFailure(category, runnerInvocationCount), null, 2) + '\n');
+    process.stdout.write(JSON.stringify(sanitizedFailure(category, runnerInvocationCount, attestationPurpose), null, 2) + '\n');
     process.exitCode = 1;
   }
 }
@@ -894,13 +1019,19 @@ module.exports = {
   MEMORY_SOCIAL_READ_APPROVAL_REFERENCE,
   MEMORY_SOCIAL_READ_ISSUE,
   MEMORY_SOCIAL_READ_PURPOSE,
+  TREE_LIKE_READ_APPROVAL_REFERENCE,
+  TREE_LIKE_READ_ISSUE,
+  TREE_LIKE_READ_PURPOSE,
   MAX_ROLE_CHAIN_DEPTH,
   TARGET_RELATIONS,
   TARGET_RELATION_NAMES,
+  TREE_LIKE_TARGET_RELATIONS,
+  TREE_LIKE_TARGET_RELATION_NAMES,
   Q,
   parseArgs,
   assertSourceBoundApproval,
   assertTargetRuntimeRole,
+  attestationScopeForPurpose,
   loadTargetRoleMapping,
   buildRoleMappingRelation,
   classifySelectGrantSources,
@@ -908,6 +1039,7 @@ module.exports = {
   deriveTreeCommentsDecision,
   deriveMemoryCommentsDecision,
   deriveHubLayoutDecision,
+  deriveTreeLikesDecision,
   collectAttestation,
   runAttestationWithDeps,
   sanitizedFailure,

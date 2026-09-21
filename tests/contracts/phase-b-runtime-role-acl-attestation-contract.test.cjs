@@ -9,10 +9,15 @@ const {
   SOURCE_BOUND_PURPOSE,
   MEMORY_SOCIAL_READ_APPROVAL_REFERENCE,
   MEMORY_SOCIAL_READ_PURPOSE,
+  TREE_LIKE_READ_APPROVAL_REFERENCE,
+  TREE_LIKE_READ_PURPOSE,
+  TREE_LIKE_TARGET_RELATIONS,
+  TREE_LIKE_TARGET_RELATION_NAMES,
   Q,
   parseArgs,
   assertSourceBoundApproval,
   assertTargetRuntimeRole,
+  attestationScopeForPurpose,
   TARGET_RELATIONS,
   TARGET_RELATION_NAMES,
   buildRoleMappingRelation,
@@ -21,6 +26,7 @@ const {
   deriveTreeCommentsDecision,
   deriveMemoryCommentsDecision,
   deriveHubLayoutDecision,
+  deriveTreeLikesDecision,
   collectAttestation,
   loadTargetRoleMapping,
   runAttestationWithDeps,
@@ -50,8 +56,8 @@ function baseIdentity(overrides = {}) {
   };
 }
 
-function aclRowsFor(sources = {}, relaclNullRelations = new Set()) {
-  return TARGET_RELATION_NAMES.flatMap((relationName) => {
+function aclRowsFor(sources = {}, relaclNullRelations = new Set(), relationNames = TARGET_RELATION_NAMES) {
+  return relationNames.flatMap((relationName) => {
     const entries = sources[relationName] || [{ grantee_name: 'PUBLIC', grantee_oid: 0 }];
     return entries.map((entry) => ({
       relation_name: relationName,
@@ -73,7 +79,8 @@ function fakeClient({
   chain,
   flags,
   privileges,
-  aclRows = aclRowsFor(),
+  relationNames = TARGET_RELATION_NAMES,
+  aclRows = aclRowsFor({}, new Set(), relationNames),
   broadAclRows,
 } = {}) {
   const calls = [];
@@ -119,6 +126,13 @@ function fakeClient({
     TRUNCATE_TREE_HUB_LAYOUTS: false,
     REFERENCES_TREE_HUB_LAYOUTS: false,
     TRIGGER_TREE_HUB_LAYOUTS: false,
+    SELECT_TREE_LIKES: false,
+    INSERT_TREE_LIKES: false,
+    UPDATE_TREE_LIKES: false,
+    DELETE_TREE_LIKES: false,
+    TRUNCATE_TREE_LIKES: false,
+    REFERENCES_TREE_LIKES: false,
+    TRIGGER_TREE_LIKES: false,
     ...privileges,
   };
   const bool = (key) => [{ allowed: p[key] }];
@@ -154,6 +168,13 @@ function fakeClient({
       if (text === Q.HUB_LAYOUT_TRUNCATE) return { rows: bool('TRUNCATE_TREE_HUB_LAYOUTS') };
       if (text === Q.HUB_LAYOUT_REFERENCES) return { rows: bool('REFERENCES_TREE_HUB_LAYOUTS') };
       if (text === Q.HUB_LAYOUT_TRIGGER) return { rows: bool('TRIGGER_TREE_HUB_LAYOUTS') };
+      if (text === Q.TREE_LIKES_SELECT) return { rows: bool('SELECT_TREE_LIKES') };
+      if (text === Q.TREE_LIKES_INSERT) return { rows: bool('INSERT_TREE_LIKES') };
+      if (text === Q.TREE_LIKES_UPDATE) return { rows: bool('UPDATE_TREE_LIKES') };
+      if (text === Q.TREE_LIKES_DELETE) return { rows: bool('DELETE_TREE_LIKES') };
+      if (text === Q.TREE_LIKES_TRUNCATE) return { rows: bool('TRUNCATE_TREE_LIKES') };
+      if (text === Q.TREE_LIKES_REFERENCES) return { rows: bool('REFERENCES_TREE_LIKES') };
+      if (text === Q.TREE_LIKES_TRIGGER) return { rows: bool('TRIGGER_TREE_LIKES') };
       throw new Error('unexpected fixture query');
     },
   };
@@ -162,12 +183,18 @@ function fakeClient({
 
 async function collectFixture(options = {}) {
   const targetRole = options.targetRole || RAW_TARGET;
-  const fixture = fakeClient({ ...options, targetRole });
+  const purpose = options.purpose || null;
+  const fixture = fakeClient({
+    relationNames: attestationScopeForPurpose(purpose).relationNames,
+    ...options,
+    targetRole,
+  });
   const result = await collectAttestation({
     client: fixture.client,
     targetRuntimeRole: targetRole,
     roleMapping: options.roleMapping || { [targetRole]: 'APPLICATION' },
     artifact: options.artifact || { unmapped_grantees: [RAW_GRANTEE, 'historical_role'] },
+    purpose,
   });
   return { result, fixture };
 }
@@ -1408,5 +1435,313 @@ describe('LoveBud #4283/#4000 target-role runtime ACL attestation contract', () 
       assert.equal(text.includes(RAW_TARGET), false);
       assert.equal(text.includes(RAW_OBSERVER), false);
     }
+  });
+});
+
+describe('LoveBud #4422 B1 Tree Like READ purpose-scoped ACL attestation contract', () => {
+  const TREE_LIKES_PROBE_KEYS = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'];
+  const treeLikesFixture = (privileges = {}, extras = {}) => collectFixture({
+    purpose: TREE_LIKE_READ_PURPOSE,
+    privileges: { SELECT_TREE_LIKES: true, ...privileges },
+    ...extras,
+  });
+
+  it('keeps public.tree_likes out of the global allowlist and inside the B1-scoped set only', () => {
+    assert.equal(TARGET_RELATIONS.length, 7);
+    assert.equal(TARGET_RELATIONS.includes('public.tree_likes'), false);
+    assert.equal(TARGET_RELATION_NAMES.includes('tree_likes'), false);
+    assert.equal(TREE_LIKE_TARGET_RELATIONS.length, 8);
+    assert.ok(Object.isFrozen(TREE_LIKE_TARGET_RELATIONS));
+    assert.ok(TREE_LIKE_TARGET_RELATIONS.includes('public.tree_likes'));
+    assert.deepEqual(TREE_LIKE_TARGET_RELATION_NAMES, TARGET_RELATION_NAMES.concat('tree_likes'));
+  });
+
+  it('accepts only the exact #4422 B1 approval/purpose pair and rejects every cross pairing', () => {
+    assert.doesNotThrow(() => assertSourceBoundApproval(TREE_LIKE_READ_APPROVAL_REFERENCE, TREE_LIKE_READ_PURPOSE));
+    for (const pairing of [
+      [TREE_LIKE_READ_APPROVAL_REFERENCE, SOURCE_BOUND_PURPOSE],
+      [TREE_LIKE_READ_APPROVAL_REFERENCE, MEMORY_SOCIAL_READ_PURPOSE],
+      [APPROVAL_REFERENCE, TREE_LIKE_READ_PURPOSE],
+      [MEMORY_SOCIAL_READ_APPROVAL_REFERENCE, TREE_LIKE_READ_PURPOSE],
+      ['issue:4423', TREE_LIKE_READ_PURPOSE],
+      ['issue:9999', TREE_LIKE_READ_PURPOSE],
+      [TREE_LIKE_READ_APPROVAL_REFERENCE, 'ARBITRARY_PURPOSE'],
+    ]) {
+      assert.throws(
+        () => assertSourceBoundApproval(pairing[0], pairing[1]),
+        /ATTESTATION_SOURCE_BOUND_APPROVAL_REQUIRED/,
+        `pairing must fail closed: ${pairing.join(' + ')}`,
+      );
+    }
+  });
+
+  it('selects the tree_likes observation surface only for the B1 purpose', () => {
+    assert.deepEqual(attestationScopeForPurpose(TREE_LIKE_READ_PURPOSE), {
+      purpose: TREE_LIKE_READ_PURPOSE,
+      relationNames: TREE_LIKE_TARGET_RELATION_NAMES,
+      treeLikesRead: true,
+    });
+    for (const purpose of [null, undefined, '', SOURCE_BOUND_PURPOSE, MEMORY_SOCIAL_READ_PURPOSE, 'UNKNOWN_PURPOSE']) {
+      assert.deepEqual(attestationScopeForPurpose(purpose), {
+        purpose: purpose || null,
+        relationNames: TARGET_RELATION_NAMES,
+        treeLikesRead: false,
+      });
+    }
+  });
+
+  it('adds static B1 SELECT and negative write probes as catalog-only privileged-name queries', () => {
+    for (const privilege of TREE_LIKES_PROBE_KEYS) {
+      assert.equal(
+        Q[`TREE_LIKES_${privilege}`],
+        `SELECT has_table_privilege($1::name, 'public.tree_likes', '${privilege}') AS allowed`,
+      );
+    }
+    const statements = TREE_LIKES_PROBE_KEYS.map((privilege) => Q[`TREE_LIKES_${privilege}`]).join('\n');
+    for (const banned of [/\bGRANT\b/i, /\bREVOKE\b/i, /\bCOMMIT\b/i, /\bCREATE\b/i, /\bALTER\b/i, /\bDROP\b/i,
+      /\bINSERT\s+INTO\b/i, /\bDELETE\s+FROM\b/i, /\bUPDATE\s+\w+\s+SET\b/i, /\bSELECT\s+\*\s+FROM\b/i]) {
+      assert.equal(banned.test(statements), false, `unexpected mutation-shaped statement: ${banned}`);
+    }
+  });
+
+  it('runs the B1 probes once each against target B and reports tree_likes provenance', async () => {
+    const { result, fixture } = await treeLikesFixture();
+    const aclProbe = fixture.calls.filter((call) => call.text === Q.RELATION_ACL);
+    assert.equal(aclProbe.length, 1);
+    assert.equal(aclProbe[0].params[0].filter((name) => name === 'tree_likes').length, 1,
+      'tree_likes is targeted exactly once');
+    for (const privilege of TREE_LIKES_PROBE_KEYS) {
+      const probe = fixture.calls.filter((call) => call.text === Q[`TREE_LIKES_${privilege}`]);
+      assert.equal(probe.length, 1, `${privilege} probe runs exactly once`);
+      assert.deepEqual(probe[0].params, [RAW_TARGET], `${privilege} probe is asked of target B only`);
+    }
+    assert.equal(result.perRelationProvenance.tree_likes.effectiveSelect, 'YES');
+    assert.equal(result.perRelationProvenance.tree_likes.publicGrant, 'YES');
+    assert.equal(result.perRelationProvenance.tree_likes.directTargetGrant, 'NO');
+    assert.equal(JSON.stringify(result).includes(RAW_TARGET), false);
+    assert.equal(JSON.stringify(result).includes(RAW_OBSERVER), false);
+    for (const statement of fixture.calls.map((call) => call.text)) {
+      assert.ok(/^\s*(SELECT|SHOW|BEGIN|ROLLBACK|WITH)\b/i.test(statement),
+        `non-catalog statement shape: ${statement.slice(0, 24)}`);
+    }
+  });
+
+  it('never adds a tree_likes probe or output field to the historical purposes', async () => {
+    for (const purpose of [null, SOURCE_BOUND_PURPOSE, MEMORY_SOCIAL_READ_PURPOSE]) {
+      const { result, fixture } = await collectFixture({ purpose });
+      assert.equal(fixture.calls.filter((call) => /tree_likes/i.test(call.text)).length, 0,
+        `purpose ${purpose} must not probe tree_likes`);
+      assert.equal(Object.prototype.hasOwnProperty.call(result.privileges, 'SELECT_TREE_LIKES'), false);
+      assert.equal(Object.prototype.hasOwnProperty.call(result.perRelationProvenance, 'tree_likes'), false);
+      assert.equal(Object.prototype.hasOwnProperty.call(result, 'treeLikesDecision'), false);
+      assert.equal(Object.keys(result.perRelationProvenance).length, 7);
+      assert.equal(result.treeCommentsDecision.finalDisposition, 'TREE_COMMENTS_SELECT_MISSING_STOP');
+      assert.equal(result.memoryCommentsDecision.finalDisposition, 'MEMORY_COMMENTS_SELECT_MISSING_STOP');
+    }
+    const historical = await collectFixture();
+    const historicalOutput = await runAttestationWithDeps({
+      approvalReference: APPROVAL_REFERENCE,
+      purpose: SOURCE_BOUND_PURPOSE,
+      baselineCommit: 'a'.repeat(40),
+      currentHead: 'a'.repeat(40),
+      loadPrivateInputs: async () => ({}),
+      collect: async () => historical.result,
+    });
+    for (const key of ['selectTreeLikes', 'insertTreeLikes', 'treeLikesPrivilegeTargetIdentity',
+      'treeLikesMinimalRequiredChange', 'treeLikesActivationEligible', 'treeLikesFinalDisposition']) {
+      assert.equal(Object.prototype.hasOwnProperty.call(historicalOutput, key), false, `${key} must stay absent`);
+    }
+  });
+
+  it('attests NO_PRIVILEGE_CHANGE when tree_likes SELECT is present and writes are closed', async () => {
+    const { result } = await treeLikesFixture();
+    assert.equal(result.privileges.SELECT_TREE_LIKES, true);
+    assert.equal(result.treeLikesDecision.target, 'RESOLVED');
+    assert.equal(result.treeLikesDecision.minimalChange, 'NO_PRIVILEGE_CHANGE');
+    assert.equal(result.treeLikesDecision.activationEligible, 'YES');
+    assert.equal(result.treeLikesDecision.finalDisposition, 'TREE_LIKES_READ_ROLE_ACL_ATTESTED');
+    assert.equal(result.decision.minimalChange, 'SELECT_ON_REACTIONS_ONLY');
+    assert.equal(result.decision.finalDisposition, 'RUNTIME_READ_ROLE_ACL_ATTESTED');
+    assert.equal(result.decision.canProceed, 'YES');
+    assert.equal(result.treeCommentsDecision.finalDisposition, 'TREE_COMMENTS_SELECT_MISSING_STOP');
+  });
+
+  it('reports SELECT_ON_TREE_LIKES_ONLY as a STOP without a grant recommendation when SELECT is missing', async () => {
+    const { result } = await treeLikesFixture({ SELECT_TREE_LIKES: false });
+    assert.equal(result.treeLikesDecision.target, 'RESOLVED');
+    assert.equal(result.treeLikesDecision.minimalChange, 'SELECT_ON_TREE_LIKES_ONLY');
+    assert.equal(result.treeLikesDecision.activationEligible, 'NO');
+    assert.equal(result.treeLikesDecision.finalDisposition, 'TREE_LIKES_SELECT_MISSING_STOP');
+    assert.equal(JSON.stringify(result.treeLikesDecision).toLowerCase().includes('grant'), false);
+  });
+
+  it('treats any tree_likes write privilege as baseline envelope drift', async () => {
+    for (const widening of ['INSERT_TREE_LIKES', 'UPDATE_TREE_LIKES', 'DELETE_TREE_LIKES',
+      'TRUNCATE_TREE_LIKES', 'REFERENCES_TREE_LIKES', 'TRIGGER_TREE_LIKES']) {
+      const { result } = await treeLikesFixture({ [widening]: true });
+      assert.equal(result.treeLikesDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP', widening);
+      assert.equal(result.treeLikesDecision.activationEligible, 'NO', widening);
+      assert.equal(result.treeLikesDecision.minimalChange, 'NOT_DETERMINABLE', widening);
+    }
+    const writeWithoutSelect = await treeLikesFixture({ SELECT_TREE_LIKES: false, UPDATE_TREE_LIKES: true });
+    assert.equal(writeWithoutSelect.result.treeLikesDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+  });
+
+  it('blocks B1 eligibility on baseline, identity, admin, and broad-SELECT drift', async () => {
+    for (const breaking of [{ SELECT_TREES: false }, { SELECT_TREE_SOCIAL_COUNTS: false },
+      { USAGE_PUBLIC: false }, { DATABASE_CONNECT: false }]) {
+      const { result } = await treeLikesFixture({ ...breaking, SELECT_TREE_LIKES: true });
+      assert.equal(result.treeLikesDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP', JSON.stringify(breaking));
+      assert.equal(result.treeLikesDecision.activationEligible, 'NO', JSON.stringify(breaking));
+    }
+    const admin = await treeLikesFixture({}, { flags: [{ role_name: RAW_TARGET, rolsuper: true }] });
+    assert.equal(admin.result.treeLikesDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+    assert.equal(admin.result.treeLikesDecision.target, 'UNRESOLVED');
+    const unlisted = await treeLikesFixture({}, {
+      broadAclRows: [{ relation_name: 'unrelated_table', grantee_oid: 100, grantee_name: RAW_TARGET, privilege_type: 'SELECT' }],
+    });
+    assert.equal(unlisted.result.broadAllTableSelect, 'YES');
+    assert.equal(unlisted.result.treeLikesDecision.finalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+    assert.equal(deriveTreeLikesDecision({
+      identityResolved: false,
+      privileges: {
+        DATABASE_CONNECT: true, USAGE_PUBLIC: true, SELECT_TREES: true,
+        SELECT_TREE_SOCIAL_COUNTS: true, SELECT_TREE_LIKES: true,
+      },
+      roleAdmin: false,
+      broadAllTableSelect: false,
+    }).finalDisposition, 'RUNTIME_ROLE_IDENTITY_UNRESOLVED');
+  });
+
+  it('keeps deriveTreeLikesDecision closed over an unknown privilege shape', () => {
+    const base = { identityResolved: true, roleAdmin: false, broadAllTableSelect: false };
+    const cleanBaseline = {
+      DATABASE_CONNECT: true, USAGE_PUBLIC: true, SELECT_TREES: true, SELECT_TREE_SOCIAL_COUNTS: true,
+    };
+    assert.deepEqual(deriveTreeLikesDecision({ ...base, privileges: cleanBaseline }), {
+      target: 'UNRESOLVED',
+      minimalChange: 'NOT_DETERMINABLE',
+      activationEligible: 'NO',
+      finalDisposition: 'TREE_LIKES_PRIVILEGE_UNRESOLVED',
+    });
+    assert.deepEqual(deriveTreeLikesDecision({
+      ...base,
+      privileges: {
+        ...cleanBaseline,
+        SELECT_TREE_LIKES: true,
+        INSERT_TREE_LIKES: false,
+        UPDATE_TREE_LIKES: false,
+        DELETE_TREE_LIKES: false,
+        TRUNCATE_TREE_LIKES: false,
+        REFERENCES_TREE_LIKES: false,
+        TRIGGER_TREE_LIKES: false,
+      },
+    }), {
+      target: 'RESOLVED',
+      minimalChange: 'NO_PRIVILEGE_CHANGE',
+      activationEligible: 'YES',
+      finalDisposition: 'TREE_LIKES_READ_ROLE_ACL_ATTESTED',
+    });
+  });
+
+  it('fails closed when the tree_likes catalog relation row is absent', async () => {
+    const fixture = fakeClient({
+      relationNames: TREE_LIKE_TARGET_RELATION_NAMES,
+      aclRows: aclRowsFor({}, new Set(), TREE_LIKE_TARGET_RELATION_NAMES)
+        .filter((row) => row.relation_name !== 'tree_likes'),
+    });
+    await assert.rejects(
+      collectAttestation({
+        client: fixture.client,
+        targetRuntimeRole: RAW_TARGET,
+        roleMapping: TARGET_MAPPING,
+        purpose: TREE_LIKE_READ_PURPOSE,
+      }),
+      { category: 'ATTESTATION_ACL_RELATION_MISSING' },
+    );
+    assert.equal(fixture.counts().connectCount, 1);
+    assert.equal(fixture.counts().endCount, 1);
+    assert.equal(fixture.calls.filter((call) => call.text === Q.ROLLBACK).length, 1);
+  });
+
+  it('classifies a direct tree_likes grant without weakening the base classifier default surface', () => {
+    const classified = classifySelectGrantSources({
+      rows: aclRowsFor(
+        { tree_likes: [{ grantee_name: RAW_TARGET, grantee_oid: 100 }] },
+        new Set(),
+        TREE_LIKE_TARGET_RELATION_NAMES,
+      ),
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+      relationNames: TREE_LIKE_TARGET_RELATION_NAMES,
+    });
+    assert.equal(classified.relations.tree_likes.directTargetGrant, 'YES');
+    assert.equal(classified.relations.tree_likes.publicGrant, 'NO');
+    const baseDefault = classifySelectGrantSources({
+      rows: aclRowsFor(),
+      targetRuntimeRole: RAW_TARGET,
+      chainNames: [RAW_TARGET],
+    });
+    assert.equal(Object.prototype.hasOwnProperty.call(baseDefault.relations, 'tree_likes'), false);
+    assert.equal(Object.keys(baseDefault.relations).length, 7);
+  });
+
+  it('flattens the B1 verdict into the sanitized public output', async () => {
+    const granted = await treeLikesFixture();
+    const output = await runAttestationWithDeps({
+      approvalReference: TREE_LIKE_READ_APPROVAL_REFERENCE,
+      purpose: TREE_LIKE_READ_PURPOSE,
+      baselineCommit: 'a'.repeat(40),
+      currentHead: 'a'.repeat(40),
+      loadPrivateInputs: async () => ({}),
+      collect: async () => granted.result,
+    });
+    assert.equal(output.selectTreeLikes, 'YES');
+    assert.equal(output.insertTreeLikes, 'NO');
+    assert.equal(output.updateTreeLikes, 'NO');
+    assert.equal(output.deleteTreeLikes, 'NO');
+    assert.equal(output.truncateTreeLikes, 'NO');
+    assert.equal(output.referencesTreeLikes, 'NO');
+    assert.equal(output.triggerTreeLikes, 'NO');
+    assert.equal(output.treeLikesPrivilegeTargetIdentity, 'RESOLVED');
+    assert.equal(output.treeLikesMinimalRequiredChange, 'NO_PRIVILEGE_CHANGE');
+    assert.equal(output.treeLikesActivationEligible, 'YES');
+    assert.equal(output.treeLikesFinalDisposition, 'TREE_LIKES_READ_ROLE_ACL_ATTESTED');
+    assert.equal(output.productionConnectionCount, 1);
+    assert.equal(output.rawRoleExposed, 'NO');
+    assert.equal(JSON.stringify(output).includes(RAW_TARGET), false);
+  });
+
+  it('reports tree_likes UNKNOWN with zero session only for the approved B1 purpose', () => {
+    const b1Failure = sanitizedFailure('ATTESTATION_ACL_CATALOG_FAILED', 1, TREE_LIKE_READ_PURPOSE);
+    assert.equal(b1Failure.selectTreeLikes, 'UNKNOWN');
+    assert.equal(b1Failure.treeLikesPrivilegeTargetIdentity, 'UNRESOLVED');
+    assert.equal(b1Failure.treeLikesMinimalRequiredChange, 'NOT_DETERMINABLE');
+    assert.equal(b1Failure.treeLikesActivationEligible, 'NO');
+    assert.equal(b1Failure.treeLikesFinalDisposition, 'RUNTIME_ROLE_IDENTITY_UNRESOLVED');
+    assert.equal(b1Failure.perRelationProvenance.tree_likes.effectiveSelect, 'UNKNOWN');
+    assert.equal(Object.keys(b1Failure.perRelationProvenance).length, 8);
+    const drift = sanitizedFailure('ATTESTATION_BASELINE_PRIVILEGE_DRIFT_STOP', 1, TREE_LIKE_READ_PURPOSE);
+    assert.equal(drift.treeLikesFinalDisposition, 'BASELINE_PRIVILEGE_DRIFT_STOP');
+    const baseFailure = sanitizedFailure('ATTESTATION_ACL_CATALOG_FAILED', 1, SOURCE_BOUND_PURPOSE);
+    assert.equal(Object.prototype.hasOwnProperty.call(baseFailure, 'selectTreeLikes'), false);
+    assert.equal(Object.keys(baseFailure.perRelationProvenance).length, 7);
+    const unapproved = sanitizedFailure('ATTESTATION_SOURCE_BOUND_APPROVAL_REQUIRED', 0, 'ARBITRARY_PURPOSE');
+    assert.equal(Object.prototype.hasOwnProperty.call(unapproved, 'selectTreeLikes'), false);
+    const text = JSON.stringify(b1Failure);
+    assert.equal(text.includes(RAW_TARGET), false);
+    assert.equal(text.includes(RAW_OBSERVER), false);
+  });
+
+  it('keeps the B1 relation non-configurable through caller arguments', () => {
+    const valid = ['--approval-reference', TREE_LIKE_READ_APPROVAL_REFERENCE, '--purpose', TREE_LIKE_READ_PURPOSE,
+      '--baseline-commit', 'a'.repeat(40), '--secret-file', '.secrets/x.env',
+      '--role-mapping-file', '.secrets/y.json'];
+    assert.equal(parseArgs(valid).purpose, TREE_LIKE_READ_PURPOSE);
+    for (const flag of ['--table', '--object', '--objects', '--sql', '--query', '--role', '--schema', '--repeat',
+      '--connection-string']) {
+      assert.throws(() => parseArgs(valid.slice(0, 2).concat([flag, 'public.tree_likes'])), /ATTESTATION_INPUT_INVALID/);
+    }
+    assert.throws(() => parseArgs(valid.concat(['--purpose', 'ANOTHER_PURPOSE'])), /ATTESTATION_INPUT_INVALID/);
   });
 });
