@@ -104,6 +104,13 @@ function buildCatalog({
   return { candidateRows, flagRows, baselineRows, adminRows, matrixRows, ownerRows, grantRows, ancestryRows, broadRows };
 }
 
+function makeDriverError(code, message = 'synthetic driver failure', properties = {}) {
+  const error = new Error(message);
+  if (code !== undefined) error.code = code;
+  Object.assign(error, properties);
+  return error;
+}
+
 const QUERY_ROUTES = new Map([
   [Q.CANDIDATE_ROLES, 'candidateRows'],
   [Q.CANDIDATE_FLAGS, 'flagRows'],
@@ -126,6 +133,7 @@ function makeFakeClient(catalog, {
   failOnRollback = false,
   failOnEnd = false,
   rawConnectError = null,
+  rawQueryError = null,
   events = null,
 } = {}) {
   const calls = events || [];
@@ -136,8 +144,16 @@ function makeFakeClient(catalog, {
     async connect() {
       calls.push('connect');
       state.connects += 1;
-      if (connectError) throw Object.assign(new Error(connectError), { category: connectError });
-      if (rawConnectError) throw new Error(rawConnectError);
+      if (connectError) {
+        const error = typeof connectError === 'string'
+          ? Object.assign(new Error(connectError), { code: connectError })
+          : connectError;
+        throw error;
+      }
+      if (rawConnectError) {
+        const error = typeof rawConnectError === 'string' ? new Error(rawConnectError) : rawConnectError;
+        throw error;
+      }
     },
     async end() {
       calls.push('end');
@@ -146,6 +162,7 @@ function makeFakeClient(catalog, {
     },
     async query(text) {
       calls.push(text);
+      if (rawQueryError && text === rawQueryError.text) throw rawQueryError.error;
       if (failOn && text === failOn) throw new Error('catalog failure');
       if (failOnRollback && text === Q.ROLLBACK) throw new Error('rollback failure');
       if (text === Q.BEGIN_RO || text === Q.ROLLBACK) return { rows: [] };
@@ -503,11 +520,11 @@ describe('LoveBud #4422 identity reconciliation transaction lifecycle', () => {
 
   it('never opens a second connection and never maps when connect fails', async () => {
     const catalog = buildCatalog({ roles: [{ name: 'app_read_role', oid: '100' }] });
-    const client = makeFakeClient(catalog, { connectError: 'ETIMEDOUT' });
+    const client = makeFakeClient(catalog, { connectError: makeDriverError('ETIMEDOUT') });
     let writes = 0;
     await assert.rejects(
       () => collectIdentityReconciliation({ client, writeMapping: () => { writes += 1; return PRIVATE_OUTPUT_REL_PATH; } }),
-      /ETIMEDOUT/,
+      /IDENTITY_CONNECT_TIMEOUT/,
     );
     assert.equal(client.state.connects, 1);
     assert.equal(writes, 0);
@@ -585,8 +602,8 @@ describe('LoveBud #4422 identity private mapping is written only after cleanup c
   });
 
   it('writes no mapping when connect fails', async () => {
-    const harness = makeHarness(RESOLVED, { connectError: 'ETIMEDOUT' });
-    await assert.rejects(() => harness.run(), /ETIMEDOUT/);
+    const harness = makeHarness(RESOLVED, { connectError: makeDriverError('ETIMEDOUT') });
+    await assert.rejects(() => harness.run(), /IDENTITY_CONNECT_TIMEOUT/);
     assert.equal(harness.writeCount(), 0);
     assert.equal(harness.events.filter((event) => event === Q.ROLLBACK || event === 'end').length, 0);
   });
@@ -739,17 +756,36 @@ describe('LoveBud #4422 identity pure reducers', () => {
 
 describe('LoveBud #4479 identity live-stage classification and connection accounting', () => {
   const RESOLVED = { roles: [{ name: 'app_read_role', oid: '100' }] };
-  // Fragments of a fabricated driver message, used only to prove that whatever the
-  // driver reports can never reach the report. Deliberately not written as a
-  // credential-shaped literal: a test fixture must not trip the org secret scanner.
+  // These harmless fragments are assembled at runtime. No real DSN or
+  // credential-shaped literal is placed in the source-controlled test.
   const SYNTHETIC_DRIVER_FRAGMENT_A = 'synthetic_driver_detail_do_not_leak';
-  const SYNTHETIC_DRIVER_FRAGMENT_B = 'synthetic-host-do-not-leak.invalid';
-  const SYNTHETIC_DRIVER_TEXT = `connect failed for ${SYNTHETIC_DRIVER_FRAGMENT_A} on ${SYNTHETIC_DRIVER_FRAGMENT_B}`;
+  const SYNTHETIC_HOST_FRAGMENT_A = 'synthetic-host-';
+  const SYNTHETIC_HOST_FRAGMENT_B = 'do-not-leak.invalid';
+  const SYNTHETIC_CREDENTIAL_MARKER = 'synthetic-credential-marker';
+  const SYNTHETIC_STACK_MARKER = 'synthetic-stack-cause-marker';
+  const SYNTHETIC_CAUSE_MARKER = 'synthetic-cause-marker';
+  const SYNTHETIC_RAW_CODE_MARKER = 'SYNTHETIC_RAW_CODE_MARKER';
+  const SYNTHETIC_RAW_MESSAGE_MARKER = 'synthetic-raw-message-marker';
+  const SYNTHETIC_RAW_SQLSTATE_MARKER = 'SYNTHETIC_RAW_SQLSTATE_MARKER';
+  const SYNTHETIC_RAW_ERRNO = -31337;
+  const SYNTHETIC_UNTRUSTED_HOLD = 'HOLD_SYNTHETIC_UNTRUSTED_MARKER';
+  const SYNTHETIC_HOST_MARKER = `${SYNTHETIC_HOST_FRAGMENT_A}${SYNTHETIC_HOST_FRAGMENT_B}`;
+  const SYNTHETIC_DRIVER_TEXT = `connect failed for ${SYNTHETIC_DRIVER_FRAGMENT_A} on ${SYNTHETIC_HOST_MARKER}`;
+  const SYNTHETIC_RAW_CATEGORY = [
+    'raw-category-marker',
+    SYNTHETIC_RAW_CODE_MARKER,
+    SYNTHETIC_RAW_MESSAGE_MARKER,
+    SYNTHETIC_RAW_SQLSTATE_MARKER,
+    SYNTHETIC_CAUSE_MARKER,
+    SYNTHETIC_DRIVER_TEXT,
+    SYNTHETIC_CREDENTIAL_MARKER,
+    SYNTHETIC_STACK_MARKER,
+  ].join('|');
 
-  async function attempt(clientOptions) {
+  async function attemptWithCatalog(catalog, clientOptions = {}) {
     const lifecycle = identity.createIdentityLifecycle();
     lifecycle.invocationStarted = true;
-    const client = makeFakeClient(buildCatalog(RESOLVED), { ...clientOptions, events: [] });
+    const client = makeFakeClient(catalog, { ...clientOptions, events: [] });
     let writes = 0;
     let error = null;
     await collectIdentityReconciliation({
@@ -766,7 +802,80 @@ describe('LoveBud #4479 identity live-stage classification and connection accoun
     };
   }
 
-  it('pins the four fixed live-stage categories and keeps them distinct from pre-execution stops', () => {
+  async function attempt(clientOptions = {}) {
+    return attemptWithCatalog(buildCatalog(RESOLVED), clientOptions);
+  }
+
+  function assertConnectFailureLifecycle(run, expectedCategory) {
+    assert.ok(run.error instanceof Error);
+    assert.equal(run.error.category, expectedCategory);
+    assert.equal(run.error.message, expectedCategory);
+    assert.equal(run.error.code, undefined, 'raw error.code must not be retained');
+    assert.equal(run.error.errno, undefined, 'raw errno must not be retained');
+    assert.equal(run.error.sqlstate, undefined, 'raw SQLSTATE must not be retained');
+    assert.equal(run.error.cause, undefined, 'the driver error must not be retained as cause');
+    assert.equal(run.writes, 0);
+    assert.equal(run.client.state.connects, 1);
+    assert.equal(run.lifecycle.invocationStarted, true);
+    assert.equal(run.lifecycle.connectionAttempted, true);
+    assert.equal(run.lifecycle.connectionEstablished, false);
+    assert.equal(run.lifecycle.transactionStarted, false);
+    assert.equal(run.envelope.runnerInvocationCount, 1);
+    assert.equal(run.envelope.connectionAttemptedCount, 1);
+    assert.equal(run.envelope.productionConnectionCount, 0);
+    assert.equal(run.envelope.collectionSessionCount, 0);
+    assert.equal(run.envelope.transactionReadOnly, 'NOT_REACHED');
+    assert.equal(run.envelope.privateMappingWritten, 'NO');
+  }
+
+  function makeUntrustedLifecycleError(category) {
+    return makeDriverError(SYNTHETIC_RAW_CODE_MARKER, SYNTHETIC_RAW_MESSAGE_MARKER, {
+      category,
+      cause: new Error(SYNTHETIC_CAUSE_MARKER),
+      errno: SYNTHETIC_RAW_ERRNO,
+      sqlstate: SYNTHETIC_RAW_SQLSTATE_MARKER,
+      stack: `${SYNTHETIC_STACK_MARKER}\n${SYNTHETIC_RAW_MESSAGE_MARKER}`,
+    });
+  }
+
+  function assertPostConnectFailureLifecycle(run, expectedCategory, transactionReadOnly) {
+    assert.ok(run.error instanceof Error);
+    assert.equal(run.error.category, expectedCategory);
+    assert.equal(run.error.message, expectedCategory);
+    assert.equal(run.error.code, undefined);
+    assert.equal(run.error.errno, undefined);
+    assert.equal(run.error.sqlstate, undefined);
+    assert.equal(run.error.cause, undefined);
+    assert.equal(run.writes, 0);
+    assert.equal(run.client.state.connects, 1);
+    assert.equal(run.client.state.ends, 1);
+    assert.equal(run.lifecycle.invocationStarted, true);
+    assert.equal(run.lifecycle.connectionAttempted, true);
+    assert.equal(run.lifecycle.connectionEstablished, true);
+    assert.equal(run.lifecycle.transactionStarted, transactionReadOnly !== 'NOT_REACHED');
+    assert.equal(run.lifecycle.readOnlyVerified, transactionReadOnly === 'VERIFIED');
+    assert.equal(run.envelope.runnerInvocationCount, 1);
+    assert.equal(run.envelope.connectionAttemptedCount, 1);
+    assert.equal(run.envelope.productionConnectionCount, 1);
+    assert.equal(run.envelope.collectionSessionCount, transactionReadOnly === 'NOT_REACHED' ? 0 : 1);
+    assert.equal(run.envelope.transactionReadOnly, transactionReadOnly);
+    assert.equal(run.envelope.privateMappingWritten, 'NO');
+  }
+
+  function assertNoRawMarkers(run, markers) {
+    const serialized = JSON.stringify(run.envelope);
+    for (const marker of markers) {
+      assert.equal(serialized.includes(marker), false, `${marker} must not reach the envelope`);
+      assert.equal(String(run.error.stack).includes(marker), false, `${marker} must not reach the replacement stack`);
+    }
+  }
+
+  it('pins the fixed live-stage and connect subcategories', () => {
+    assert.equal(FAILURE.IDENTITY_CONNECT_TIMEOUT, 'IDENTITY_CONNECT_TIMEOUT');
+    assert.equal(FAILURE.IDENTITY_CONNECT_REFUSED, 'IDENTITY_CONNECT_REFUSED');
+    assert.equal(FAILURE.IDENTITY_CONNECT_DNS, 'IDENTITY_CONNECT_DNS');
+    assert.equal(FAILURE.IDENTITY_CONNECT_AUTH_REJECTED, 'IDENTITY_CONNECT_AUTH_REJECTED');
+    assert.equal(FAILURE.IDENTITY_CONNECT_TLS_FAILED, 'IDENTITY_CONNECT_TLS_FAILED');
     assert.equal(FAILURE.IDENTITY_CONNECT_FAILED, 'IDENTITY_CONNECT_FAILED');
     assert.equal(FAILURE.IDENTITY_BEGIN_READ_ONLY_FAILED, 'IDENTITY_BEGIN_READ_ONLY_FAILED');
     assert.equal(FAILURE.IDENTITY_READ_ONLY_VERIFY_FAILED, 'IDENTITY_READ_ONLY_VERIFY_FAILED');
@@ -774,23 +883,125 @@ describe('LoveBud #4479 identity live-stage classification and connection accoun
     assert.notEqual(FAILURE.IDENTITY_CONNECT_FAILED, FAILURE.IDENTITY_PREEXECUTION_STOP);
   });
 
-  it('reports a connect failure as zero established connections and zero sessions', async () => {
-    const run = await attempt({ rawConnectError: SYNTHETIC_DRIVER_TEXT });
-    assert.equal(run.error.category, 'IDENTITY_CONNECT_FAILED');
-    assert.equal(run.error.message, 'IDENTITY_CONNECT_FAILED');
-    assert.equal(run.error.cause, undefined, 'the driver error must not be retained');
-    assert.equal(run.writes, 0);
-    assert.equal(run.client.state.connects, 1);
-    assert.equal(run.lifecycle.connectionAttempted, true);
-    assert.equal(run.lifecycle.connectionEstablished, false);
-    assert.equal(run.envelope.connectionAttemptedCount, 1);
-    assert.equal(run.envelope.productionConnectionCount, 0);
-    assert.equal(run.envelope.collectionSessionCount, 0);
-    assert.equal(run.envelope.transactionReadOnly, 'NOT_REACHED');
+  const CONNECT_CASES = [
+    ['timeout', 'ETIMEDOUT', FAILURE.IDENTITY_CONNECT_TIMEOUT],
+    ['connection refused', 'ECONNREFUSED', FAILURE.IDENTITY_CONNECT_REFUSED],
+    ['DNS lookup', 'ENOTFOUND', FAILURE.IDENTITY_CONNECT_DNS],
+    ['temporary DNS lookup', 'EAI_AGAIN', FAILURE.IDENTITY_CONNECT_DNS],
+    ['authorization rejection', '28000', FAILURE.IDENTITY_CONNECT_AUTH_REJECTED],
+    ['password rejection', '28P01', FAILURE.IDENTITY_CONNECT_AUTH_REJECTED],
+    ['certificate verification', 'CERT_HAS_EXPIRED', FAILURE.IDENTITY_CONNECT_TLS_FAILED],
+    ['TLS hostname verification', 'ERR_TLS_CERT_ALTNAME_INVALID', FAILURE.IDENTITY_CONNECT_TLS_FAILED],
+    ['unknown code', 'EUNMAPPED_CONNECT_CODE', FAILURE.IDENTITY_CONNECT_FAILED],
+    ['missing code', undefined, FAILURE.IDENTITY_CONNECT_FAILED],
+  ];
+  for (const [label, code, expectedCategory] of CONNECT_CASES) {
+    it(`maps ${label} to ${expectedCategory} with zero established connections`, async () => {
+      const run = await attempt({ connectError: makeDriverError(code) });
+      assertConnectFailureLifecycle(run, expectedCategory);
+    });
+  }
+
+  it('redacts raw code, driver text, host-like, credential-like, and cause/stack markers', async () => {
+    const rawCause = new Error(SYNTHETIC_STACK_MARKER);
+    const rawError = makeDriverError('ETIMEDOUT', SYNTHETIC_DRIVER_TEXT, {
+      category: SYNTHETIC_RAW_CATEGORY,
+      cause: rawCause,
+      errno: -113,
+      sqlstate: SYNTHETIC_STACK_MARKER,
+      stack: `${SYNTHETIC_DRIVER_TEXT}\n${SYNTHETIC_STACK_MARKER}`,
+    });
+    const run = await attempt({ connectError: rawError });
+    assertConnectFailureLifecycle(run, FAILURE.IDENTITY_CONNECT_TIMEOUT);
     const serialized = JSON.stringify(run.envelope);
-    for (const fragment of [SYNTHETIC_DRIVER_FRAGMENT_A, SYNTHETIC_DRIVER_FRAGMENT_B, SYNTHETIC_DRIVER_TEXT]) {
-      assert.equal(serialized.includes(fragment), false, `${fragment} must never appear in the report`);
+    for (const marker of [
+      'ETIMEDOUT',
+      SYNTHETIC_DRIVER_FRAGMENT_A,
+      SYNTHETIC_HOST_MARKER,
+      SYNTHETIC_CREDENTIAL_MARKER,
+      SYNTHETIC_STACK_MARKER,
+      SYNTHETIC_DRIVER_TEXT,
+      SYNTHETIC_RAW_CATEGORY,
+    ]) {
+      assert.equal(serialized.includes(marker), false, `${marker} must never appear in the report`);
+      assert.equal(String(run.error.stack).includes(marker), false, `${marker} must not survive on the replacement error`);
     }
+  });
+
+  it('does not trust a raw post-connect category that impersonates a fixed connect category', async () => {
+    const rawError = makeUntrustedLifecycleError(FAILURE.IDENTITY_CONNECT_TIMEOUT);
+    const run = await attempt({ rawQueryError: { text: Q.BEGIN_RO, error: rawError } });
+    assertPostConnectFailureLifecycle(run, FAILURE.IDENTITY_BEGIN_READ_ONLY_FAILED, 'NOT_REACHED');
+    assertNoRawMarkers(run, [
+      FAILURE.IDENTITY_CONNECT_TIMEOUT,
+      SYNTHETIC_RAW_CODE_MARKER,
+      SYNTHETIC_RAW_MESSAGE_MARKER,
+      SYNTHETIC_RAW_SQLSTATE_MARKER,
+      String(SYNTHETIC_RAW_ERRNO),
+      SYNTHETIC_STACK_MARKER,
+      SYNTHETIC_CAUSE_MARKER,
+    ]);
+  });
+
+  it('replaces a raw HOLD-like category with the actual lifecycle stage', async () => {
+    const rawError = makeUntrustedLifecycleError(SYNTHETIC_UNTRUSTED_HOLD);
+    const run = await attempt({ rawQueryError: { text: Q.SHOW_RO, error: rawError } });
+    assertPostConnectFailureLifecycle(run, FAILURE.IDENTITY_READ_ONLY_VERIFY_FAILED, 'FAILED');
+    assertNoRawMarkers(run, [
+      SYNTHETIC_UNTRUSTED_HOLD,
+      SYNTHETIC_RAW_CODE_MARKER,
+      SYNTHETIC_RAW_MESSAGE_MARKER,
+      SYNTHETIC_RAW_SQLSTATE_MARKER,
+      String(SYNTHETIC_RAW_ERRNO),
+      SYNTHETIC_STACK_MARKER,
+      SYNTHETIC_CAUSE_MARKER,
+    ]);
+  });
+
+  it('preserves provenance-marked internal fail categories and rejects raw lookalikes', async () => {
+    const readOnlyFailure = await attempt({ readOnly: false });
+    assertPostConnectFailureLifecycle(
+      readOnlyFailure,
+      FAILURE.IDENTITY_READ_ONLY_NOT_VERIFIED,
+      'FAILED',
+    );
+
+    const malformedCatalog = buildCatalog(RESOLVED);
+    malformedCatalog.candidateRows[0].role_name = null;
+    const shapeFailure = await attemptWithCatalog(malformedCatalog);
+    assertPostConnectFailureLifecycle(shapeFailure, FAILURE.IDENTITY_CATALOG_SHAPE_INVALID, 'VERIFIED');
+
+    const boundedCatalog = buildCatalog({
+      roles: Array.from({ length: MAX_CANDIDATE_ROLES + 1 }, (_, index) => ({
+        name: `candidate_role_${index}`,
+        oid: String(1000 + index),
+      })),
+    });
+    const boundFailure = await attemptWithCatalog(boundedCatalog);
+    assertPostConnectFailureLifecycle(boundFailure, FAILURE.IDENTITY_CANDIDATE_BOUND_EXCEEDED, 'VERIFIED');
+
+    const rawLookalike = makeUntrustedLifecycleError(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+    const rawFailure = await attempt({
+      rawQueryError: { text: Q.BROAD_SELECT_GRANTS, error: rawLookalike },
+    });
+    assertPostConnectFailureLifecycle(rawFailure, FAILURE.IDENTITY_CATALOG_QUERY_FAILED, 'VERIFIED');
+  });
+
+  it('redacts raw category, code, message, errno, SQLSTATE, stack, and cause after connect', async () => {
+    const rawError = makeUntrustedLifecycleError(SYNTHETIC_RAW_CATEGORY);
+    const run = await attempt({ rawQueryError: { text: Q.BROAD_SELECT_GRANTS, error: rawError } });
+    assertPostConnectFailureLifecycle(run, FAILURE.IDENTITY_CATALOG_QUERY_FAILED, 'VERIFIED');
+    assertNoRawMarkers(run, [
+      SYNTHETIC_RAW_CATEGORY,
+      SYNTHETIC_RAW_CODE_MARKER,
+      SYNTHETIC_RAW_MESSAGE_MARKER,
+      SYNTHETIC_RAW_SQLSTATE_MARKER,
+      String(SYNTHETIC_RAW_ERRNO),
+      SYNTHETIC_STACK_MARKER,
+      SYNTHETIC_CAUSE_MARKER,
+    ]);
+    assert.equal(run.error.message.includes(SYNTHETIC_RAW_MESSAGE_MARKER), false);
+    assert.equal(run.error.cause, undefined);
   });
 
   it('separates an established connection from a session once BEGIN fails', async () => {

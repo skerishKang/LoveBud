@@ -87,6 +87,11 @@ const FAILURE = Object.freeze({
   IDENTITY_CATALOG_SHAPE_INVALID: 'IDENTITY_CATALOG_SHAPE_INVALID',
   IDENTITY_CANDIDATE_BOUND_EXCEEDED: 'IDENTITY_CANDIDATE_BOUND_EXCEEDED',
   IDENTITY_READ_ONLY_NOT_VERIFIED: 'IDENTITY_READ_ONLY_NOT_VERIFIED',
+  IDENTITY_CONNECT_TIMEOUT: 'IDENTITY_CONNECT_TIMEOUT',
+  IDENTITY_CONNECT_REFUSED: 'IDENTITY_CONNECT_REFUSED',
+  IDENTITY_CONNECT_DNS: 'IDENTITY_CONNECT_DNS',
+  IDENTITY_CONNECT_AUTH_REJECTED: 'IDENTITY_CONNECT_AUTH_REJECTED',
+  IDENTITY_CONNECT_TLS_FAILED: 'IDENTITY_CONNECT_TLS_FAILED',
   IDENTITY_CONNECT_FAILED: 'IDENTITY_CONNECT_FAILED',
   IDENTITY_BEGIN_READ_ONLY_FAILED: 'IDENTITY_BEGIN_READ_ONLY_FAILED',
   IDENTITY_READ_ONLY_VERIFY_FAILED: 'IDENTITY_READ_ONLY_VERIFY_FAILED',
@@ -98,6 +103,98 @@ const FAILURE = Object.freeze({
   IDENTITY_CATALOG_MISSING: 'IDENTITY_CATALOG_MISSING',
   IDENTITY_PREEXECUTION_STOP: 'IDENTITY_PREEXECUTION_STOP',
 });
+
+/*
+ * Connect classification is deliberately a closed, source-controlled lookup.
+ * The pg/Node runtime exposes these machine-readable codes; no message, SQLSTATE
+ * text, errno, address, or driver payload is inspected. Keep the lists explicit
+ * so an unknown code always reaches the fail-closed fallback below.
+ *
+ * PostgreSQL 17/18 documents the class-28 authentication codes 28000 and 28P01.
+ * Node's TLS documentation enumerates the certificate codes below. A TLS
+ * handshake timeout remains a timeout; certificate and protocol failures are
+ * reported as TLS failures.
+ */
+const CONNECT_TIMEOUT_CODES = new Set([
+  'ETIMEDOUT',
+  'ESOCKETTIMEDOUT',
+  'ERR_SOCKET_CONNECTION_TIMEOUT',
+  'ERR_TLS_HANDSHAKE_TIMEOUT',
+]);
+const CONNECT_REFUSED_CODES = new Set([
+  'ECONNREFUSED',
+]);
+const CONNECT_DNS_CODES = new Set([
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'EAI_NODATA',
+  'EAI_NONAME',
+]);
+const CONNECT_AUTH_CODES = new Set([
+  '28000',
+  '28P01',
+]);
+const CONNECT_TLS_CODES = new Set([
+  // Node/OpenSSL X.509 certificate verification failures.
+  'UNABLE_TO_GET_ISSUER_CERT',
+  'UNABLE_TO_GET_CRL',
+  'UNABLE_TO_DECRYPT_CERT_SIGNATURE',
+  'UNABLE_TO_DECRYPT_CRL_SIGNATURE',
+  'UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY',
+  'CERT_SIGNATURE_FAILURE',
+  'CRL_SIGNATURE_FAILURE',
+  'CERT_NOT_YET_VALID',
+  'CERT_HAS_EXPIRED',
+  'CRL_NOT_YET_VALID',
+  'CRL_HAS_EXPIRED',
+  'ERROR_IN_CERT_NOT_BEFORE_FIELD',
+  'ERROR_IN_CERT_NOT_AFTER_FIELD',
+  'ERROR_IN_CRL_LAST_UPDATE_FIELD',
+  'ERROR_IN_CRL_NEXT_UPDATE_FIELD',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'CERT_CHAIN_TOO_LONG',
+  'CERT_REVOKED',
+  'INVALID_CA',
+  'PATH_LENGTH_EXCEEDED',
+  'INVALID_PURPOSE',
+  'CERT_UNTRUSTED',
+  'CERT_REJECTED',
+  'HOSTNAME_MISMATCH',
+  // Node TLS and OpenSSL protocol/handshake failures.
+  'ERR_TLS_CERT_ALTNAME_FORMAT',
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'ERR_TLS_INVALID_CONTEXT',
+  'ERR_TLS_INVALID_PROTOCOL_METHOD',
+  'ERR_TLS_INVALID_PROTOCOL_VERSION',
+  'ERR_TLS_INVALID_STATE',
+  'ERR_TLS_PROTOCOL_VERSION_CONFLICT',
+  'ERR_TLS_RENEGOTIATION_DISABLED',
+  'ERR_TLS_RENEGOTIATION_FAILED',
+  'ERR_TLS_RENEGOTIATION_UNSUPPORTED',
+  'ERR_TLS_REQUIRED_SERVER_NAME',
+  'ERR_TLS_SESSION_ATTACK',
+  'ERR_TLS_SNI_FROM_SERVER',
+  'ERR_SSL_ERROR',
+  'ERR_SSL_INVALID_CIPHER',
+  'ERR_SSL_INVALID_STATE',
+  'ERR_SSL_NO_CIPHERS_AVAILABLE',
+  'ERR_SSL_PACKET_LENGTH_TOO_LONG',
+  'ERR_SSL_UNEXPECTED_MESSAGE',
+  'ERR_SSL_WRONG_VERSION_NUMBER',
+]);
+
+function classifyConnectFailureCode(error) {
+  const code = error && typeof error.code === 'string' ? error.code : null;
+  if (CONNECT_TIMEOUT_CODES.has(code)) return FAILURE.IDENTITY_CONNECT_TIMEOUT;
+  if (CONNECT_REFUSED_CODES.has(code)) return FAILURE.IDENTITY_CONNECT_REFUSED;
+  if (CONNECT_DNS_CODES.has(code)) return FAILURE.IDENTITY_CONNECT_DNS;
+  if (CONNECT_AUTH_CODES.has(code)) return FAILURE.IDENTITY_CONNECT_AUTH_REJECTED;
+  if (CONNECT_TLS_CODES.has(code)) return FAILURE.IDENTITY_CONNECT_TLS_FAILED;
+  return FAILURE.IDENTITY_CONNECT_FAILED;
+}
 
 /**
  * Build the fixed (relation, privilege) matrix from source constants only.
@@ -227,14 +324,24 @@ const FORBIDDEN_FLAGS = new Set([
   '--role-mapping-file', '--repo-root', '--mapping-file',
 ]);
 
+// Only errors created by this module's fail()/categorizedError() carry this
+// module-private provenance marker. Error.category values alone are untrusted.
+const SOURCE_CONTROLLED_ERROR = Symbol('source-controlled-error');
+
 function categorizedError(category) {
   const error = new Error(category);
   error.category = category;
+  Object.defineProperty(error, SOURCE_CONTROLLED_ERROR, { value: true });
   return error;
 }
 
 function fail(category) {
   throw categorizedError(category);
+}
+
+function isSourceControlledError(error) {
+  return Boolean(error && error[SOURCE_CONTROLLED_ERROR] === true
+    && typeof error.category === 'string');
 }
 
 function safeBoolean(row, field) {
@@ -551,16 +658,23 @@ function createIdentityLifecycle() {
 }
 
 /**
- * A network or driver failure arrives without any category of its own. It is
- * replaced by exactly one fixed category chosen from how far the lifecycle
- * reached. The original error is deliberately not retained as `cause`, so no raw
- * driver message, SQLSTATE, host, user, database or stack can be emitted or
- * logged downstream, and a live-stage failure can never be mislabelled as a
- * pre-execution stop.
+ * A network or driver failure may carry an untrusted category. It is replaced
+ * by exactly one fixed category chosen from how far the lifecycle reached.
+ * Only an error carrying this module's private categorized-error
+ * provenance marker may preserve an internal category; an equal category string
+ * on a raw driver error is not trusted. The original error is deliberately not
+ * retained as `cause`, so no raw driver message, SQLSTATE, host, user, database
+ * or stack can be emitted or logged downstream, and a live-stage failure can
+ * never be mislabelled as a pre-execution stop.
  */
 function classifyLiveStageFailure(error, lifecycle) {
-  if (error && typeof error.category === 'string') return error;
-  if (!lifecycle.connectionEstablished) return categorizedError(FAILURE.IDENTITY_CONNECT_FAILED);
+  if (!lifecycle.connectionEstablished) {
+    return categorizedError(classifyConnectFailureCode(error));
+  }
+
+  if (isSourceControlledError(error)) {
+    return categorizedError(error.category);
+  }
   if (!lifecycle.transactionStarted) return categorizedError(FAILURE.IDENTITY_BEGIN_READ_ONLY_FAILED);
   if (!lifecycle.readOnlyVerified) return categorizedError(FAILURE.IDENTITY_READ_ONLY_VERIFY_FAILED);
   return categorizedError(FAILURE.IDENTITY_CATALOG_QUERY_FAILED);
