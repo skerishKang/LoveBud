@@ -133,6 +133,7 @@ function makeFakeClient(catalog, {
   failOnRollback = false,
   failOnEnd = false,
   rawConnectError = null,
+  rawQueryError = null,
   events = null,
 } = {}) {
   const calls = events || [];
@@ -161,6 +162,7 @@ function makeFakeClient(catalog, {
     },
     async query(text) {
       calls.push(text);
+      if (rawQueryError && text === rawQueryError.text) throw rawQueryError.error;
       if (failOn && text === failOn) throw new Error('catalog failure');
       if (failOnRollback && text === Q.ROLLBACK) throw new Error('rollback failure');
       if (text === Q.BEGIN_RO || text === Q.ROLLBACK) return { rows: [] };
@@ -761,19 +763,29 @@ describe('LoveBud #4479 identity live-stage classification and connection accoun
   const SYNTHETIC_HOST_FRAGMENT_B = 'do-not-leak.invalid';
   const SYNTHETIC_CREDENTIAL_MARKER = 'synthetic-credential-marker';
   const SYNTHETIC_STACK_MARKER = 'synthetic-stack-cause-marker';
+  const SYNTHETIC_CAUSE_MARKER = 'synthetic-cause-marker';
+  const SYNTHETIC_RAW_CODE_MARKER = 'SYNTHETIC_RAW_CODE_MARKER';
+  const SYNTHETIC_RAW_MESSAGE_MARKER = 'synthetic-raw-message-marker';
+  const SYNTHETIC_RAW_SQLSTATE_MARKER = 'SYNTHETIC_RAW_SQLSTATE_MARKER';
+  const SYNTHETIC_RAW_ERRNO = -31337;
+  const SYNTHETIC_UNTRUSTED_HOLD = 'HOLD_SYNTHETIC_UNTRUSTED_MARKER';
   const SYNTHETIC_HOST_MARKER = `${SYNTHETIC_HOST_FRAGMENT_A}${SYNTHETIC_HOST_FRAGMENT_B}`;
   const SYNTHETIC_DRIVER_TEXT = `connect failed for ${SYNTHETIC_DRIVER_FRAGMENT_A} on ${SYNTHETIC_HOST_MARKER}`;
   const SYNTHETIC_RAW_CATEGORY = [
     'raw-category-marker',
+    SYNTHETIC_RAW_CODE_MARKER,
+    SYNTHETIC_RAW_MESSAGE_MARKER,
+    SYNTHETIC_RAW_SQLSTATE_MARKER,
+    SYNTHETIC_CAUSE_MARKER,
     SYNTHETIC_DRIVER_TEXT,
     SYNTHETIC_CREDENTIAL_MARKER,
     SYNTHETIC_STACK_MARKER,
   ].join('|');
 
-  async function attempt(clientOptions = {}) {
+  async function attemptWithCatalog(catalog, clientOptions = {}) {
     const lifecycle = identity.createIdentityLifecycle();
     lifecycle.invocationStarted = true;
-    const client = makeFakeClient(buildCatalog(RESOLVED), { ...clientOptions, events: [] });
+    const client = makeFakeClient(catalog, { ...clientOptions, events: [] });
     let writes = 0;
     let error = null;
     await collectIdentityReconciliation({
@@ -788,6 +800,10 @@ describe('LoveBud #4479 identity live-stage classification and connection accoun
       writes,
       envelope: identity.sanitizedFailure(error.category, lifecycle),
     };
+  }
+
+  async function attempt(clientOptions = {}) {
+    return attemptWithCatalog(buildCatalog(RESOLVED), clientOptions);
   }
 
   function assertConnectFailureLifecycle(run, expectedCategory) {
@@ -810,6 +826,48 @@ describe('LoveBud #4479 identity live-stage classification and connection accoun
     assert.equal(run.envelope.collectionSessionCount, 0);
     assert.equal(run.envelope.transactionReadOnly, 'NOT_REACHED');
     assert.equal(run.envelope.privateMappingWritten, 'NO');
+  }
+
+  function makeUntrustedLifecycleError(category) {
+    return makeDriverError(SYNTHETIC_RAW_CODE_MARKER, SYNTHETIC_RAW_MESSAGE_MARKER, {
+      category,
+      cause: new Error(SYNTHETIC_CAUSE_MARKER),
+      errno: SYNTHETIC_RAW_ERRNO,
+      sqlstate: SYNTHETIC_RAW_SQLSTATE_MARKER,
+      stack: `${SYNTHETIC_STACK_MARKER}\n${SYNTHETIC_RAW_MESSAGE_MARKER}`,
+    });
+  }
+
+  function assertPostConnectFailureLifecycle(run, expectedCategory, transactionReadOnly) {
+    assert.ok(run.error instanceof Error);
+    assert.equal(run.error.category, expectedCategory);
+    assert.equal(run.error.message, expectedCategory);
+    assert.equal(run.error.code, undefined);
+    assert.equal(run.error.errno, undefined);
+    assert.equal(run.error.sqlstate, undefined);
+    assert.equal(run.error.cause, undefined);
+    assert.equal(run.writes, 0);
+    assert.equal(run.client.state.connects, 1);
+    assert.equal(run.client.state.ends, 1);
+    assert.equal(run.lifecycle.invocationStarted, true);
+    assert.equal(run.lifecycle.connectionAttempted, true);
+    assert.equal(run.lifecycle.connectionEstablished, true);
+    assert.equal(run.lifecycle.transactionStarted, transactionReadOnly !== 'NOT_REACHED');
+    assert.equal(run.lifecycle.readOnlyVerified, transactionReadOnly === 'VERIFIED');
+    assert.equal(run.envelope.runnerInvocationCount, 1);
+    assert.equal(run.envelope.connectionAttemptedCount, 1);
+    assert.equal(run.envelope.productionConnectionCount, 1);
+    assert.equal(run.envelope.collectionSessionCount, transactionReadOnly === 'NOT_REACHED' ? 0 : 1);
+    assert.equal(run.envelope.transactionReadOnly, transactionReadOnly);
+    assert.equal(run.envelope.privateMappingWritten, 'NO');
+  }
+
+  function assertNoRawMarkers(run, markers) {
+    const serialized = JSON.stringify(run.envelope);
+    for (const marker of markers) {
+      assert.equal(serialized.includes(marker), false, `${marker} must not reach the envelope`);
+      assert.equal(String(run.error.stack).includes(marker), false, `${marker} must not reach the replacement stack`);
+    }
   }
 
   it('pins the fixed live-stage and connect subcategories', () => {
@@ -868,6 +926,82 @@ describe('LoveBud #4479 identity live-stage classification and connection accoun
       assert.equal(serialized.includes(marker), false, `${marker} must never appear in the report`);
       assert.equal(String(run.error.stack).includes(marker), false, `${marker} must not survive on the replacement error`);
     }
+  });
+
+  it('does not trust a raw post-connect category that impersonates a fixed connect category', async () => {
+    const rawError = makeUntrustedLifecycleError(FAILURE.IDENTITY_CONNECT_TIMEOUT);
+    const run = await attempt({ rawQueryError: { text: Q.BEGIN_RO, error: rawError } });
+    assertPostConnectFailureLifecycle(run, FAILURE.IDENTITY_BEGIN_READ_ONLY_FAILED, 'NOT_REACHED');
+    assertNoRawMarkers(run, [
+      FAILURE.IDENTITY_CONNECT_TIMEOUT,
+      SYNTHETIC_RAW_CODE_MARKER,
+      SYNTHETIC_RAW_MESSAGE_MARKER,
+      SYNTHETIC_RAW_SQLSTATE_MARKER,
+      String(SYNTHETIC_RAW_ERRNO),
+      SYNTHETIC_STACK_MARKER,
+      SYNTHETIC_CAUSE_MARKER,
+    ]);
+  });
+
+  it('replaces a raw HOLD-like category with the actual lifecycle stage', async () => {
+    const rawError = makeUntrustedLifecycleError(SYNTHETIC_UNTRUSTED_HOLD);
+    const run = await attempt({ rawQueryError: { text: Q.SHOW_RO, error: rawError } });
+    assertPostConnectFailureLifecycle(run, FAILURE.IDENTITY_READ_ONLY_VERIFY_FAILED, 'FAILED');
+    assertNoRawMarkers(run, [
+      SYNTHETIC_UNTRUSTED_HOLD,
+      SYNTHETIC_RAW_CODE_MARKER,
+      SYNTHETIC_RAW_MESSAGE_MARKER,
+      SYNTHETIC_RAW_SQLSTATE_MARKER,
+      String(SYNTHETIC_RAW_ERRNO),
+      SYNTHETIC_STACK_MARKER,
+      SYNTHETIC_CAUSE_MARKER,
+    ]);
+  });
+
+  it('preserves provenance-marked internal fail categories and rejects raw lookalikes', async () => {
+    const readOnlyFailure = await attempt({ readOnly: false });
+    assertPostConnectFailureLifecycle(
+      readOnlyFailure,
+      FAILURE.IDENTITY_READ_ONLY_NOT_VERIFIED,
+      'FAILED',
+    );
+
+    const malformedCatalog = buildCatalog(RESOLVED);
+    malformedCatalog.candidateRows[0].role_name = null;
+    const shapeFailure = await attemptWithCatalog(malformedCatalog);
+    assertPostConnectFailureLifecycle(shapeFailure, FAILURE.IDENTITY_CATALOG_SHAPE_INVALID, 'VERIFIED');
+
+    const boundedCatalog = buildCatalog({
+      roles: Array.from({ length: MAX_CANDIDATE_ROLES + 1 }, (_, index) => ({
+        name: `candidate_role_${index}`,
+        oid: String(1000 + index),
+      })),
+    });
+    const boundFailure = await attemptWithCatalog(boundedCatalog);
+    assertPostConnectFailureLifecycle(boundFailure, FAILURE.IDENTITY_CANDIDATE_BOUND_EXCEEDED, 'VERIFIED');
+
+    const rawLookalike = makeUntrustedLifecycleError(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+    const rawFailure = await attempt({
+      rawQueryError: { text: Q.BROAD_SELECT_GRANTS, error: rawLookalike },
+    });
+    assertPostConnectFailureLifecycle(rawFailure, FAILURE.IDENTITY_CATALOG_QUERY_FAILED, 'VERIFIED');
+  });
+
+  it('redacts raw category, code, message, errno, SQLSTATE, stack, and cause after connect', async () => {
+    const rawError = makeUntrustedLifecycleError(SYNTHETIC_RAW_CATEGORY);
+    const run = await attempt({ rawQueryError: { text: Q.BROAD_SELECT_GRANTS, error: rawError } });
+    assertPostConnectFailureLifecycle(run, FAILURE.IDENTITY_CATALOG_QUERY_FAILED, 'VERIFIED');
+    assertNoRawMarkers(run, [
+      SYNTHETIC_RAW_CATEGORY,
+      SYNTHETIC_RAW_CODE_MARKER,
+      SYNTHETIC_RAW_MESSAGE_MARKER,
+      SYNTHETIC_RAW_SQLSTATE_MARKER,
+      String(SYNTHETIC_RAW_ERRNO),
+      SYNTHETIC_STACK_MARKER,
+      SYNTHETIC_CAUSE_MARKER,
+    ]);
+    assert.equal(run.error.message.includes(SYNTHETIC_RAW_MESSAGE_MARKER), false);
+    assert.equal(run.error.cause, undefined);
   });
 
   it('separates an established connection from a session once BEGIN fails', async () => {

@@ -196,27 +196,6 @@ function classifyConnectFailureCode(error) {
   return FAILURE.IDENTITY_CONNECT_FAILED;
 }
 
-const SOURCE_CONTROLLED_FAILURE_CATEGORIES = new Set([
-  ...Object.values(FAILURE),
-  'IDENTITY_TARGET_ROLE_INVALID',
-  'IDENTITY_READ_ONLY_MISSING',
-  'IDENTITY_IDENTITY_MISSING',
-  'IDENTITY_CANDIDATE_ROLES_MISSING',
-  'IDENTITY_CANDIDATE_FLAGS_MISSING',
-  'IDENTITY_DATABASE_SCHEMA_BASELINE_MISSING',
-  'IDENTITY_DIRECT_ADMIN_MEMBERSHIP_MISSING',
-  'IDENTITY_PRIVILEGE_MATRIX_MISSING',
-  'IDENTITY_RELATION_OWNERS_MISSING',
-  'IDENTITY_REQUIRED_RELATION_GRANTS_MISSING',
-  'IDENTITY_CANDIDATE_ANCESTRY_MISSING',
-  'IDENTITY_BROAD_SELECT_GRANTS_MISSING',
-]);
-
-function isSourceControlledFailureCategory(category) {
-  return SOURCE_CONTROLLED_FAILURE_CATEGORIES.has(category)
-    || (typeof category === 'string' && /^HOLD_[A-Z0-9_]+$/.test(category));
-}
-
 /**
  * Build the fixed (relation, privilege) matrix from source constants only.
  * Literals are re-validated here so no value can ever reach SQL unverified.
@@ -345,14 +324,24 @@ const FORBIDDEN_FLAGS = new Set([
   '--role-mapping-file', '--repo-root', '--mapping-file',
 ]);
 
+// Only errors created by this module's fail()/categorizedError() carry this
+// module-private provenance marker. Error.category values alone are untrusted.
+const SOURCE_CONTROLLED_ERROR = Symbol('source-controlled-error');
+
 function categorizedError(category) {
   const error = new Error(category);
   error.category = category;
+  Object.defineProperty(error, SOURCE_CONTROLLED_ERROR, { value: true });
   return error;
 }
 
 function fail(category) {
   throw categorizedError(category);
+}
+
+function isSourceControlledError(error) {
+  return Boolean(error && error[SOURCE_CONTROLLED_ERROR] === true
+    && typeof error.category === 'string');
 }
 
 function safeBoolean(row, field) {
@@ -669,21 +658,22 @@ function createIdentityLifecycle() {
 }
 
 /**
- * A network or driver failure arrives without any category of its own. It is
- * replaced by exactly one fixed category chosen from how far the lifecycle
- * reached. The original error is deliberately not retained as `cause`, so no raw
- * driver message, SQLSTATE, host, user, database or stack can be emitted or
- * logged downstream, and a live-stage failure can never be mislabelled as a
- * pre-execution stop.
+ * A network or driver failure may carry an untrusted category. It is replaced
+ * by exactly one fixed category chosen from how far the lifecycle reached.
+ * Only an error carrying this module's private categorized-error
+ * provenance marker may preserve an internal category; an equal category string
+ * on a raw driver error is not trusted. The original error is deliberately not
+ * retained as `cause`, so no raw driver message, SQLSTATE, host, user, database
+ * or stack can be emitted or logged downstream, and a live-stage failure can
+ * never be mislabelled as a pre-execution stop.
  */
 function classifyLiveStageFailure(error, lifecycle) {
   if (!lifecycle.connectionEstablished) {
     return categorizedError(classifyConnectFailureCode(error));
   }
 
-  const category = error && typeof error.category === 'string' ? error.category : null;
-  if (isSourceControlledFailureCategory(category)) {
-    return categorizedError(category);
+  if (isSourceControlledError(error)) {
+    return categorizedError(error.category);
   }
   if (!lifecycle.transactionStarted) return categorizedError(FAILURE.IDENTITY_BEGIN_READ_ONLY_FAILED);
   if (!lifecycle.readOnlyVerified) return categorizedError(FAILURE.IDENTITY_READ_ONLY_VERIFY_FAILED);
