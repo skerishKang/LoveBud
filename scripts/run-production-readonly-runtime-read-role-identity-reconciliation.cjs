@@ -437,6 +437,16 @@ function deriveIdentityDisposition(candidateCount) {
   return IDENTITY_DISPOSITION.AMBIGUOUS;
 }
 
+function normalizeRequiredRelationName(value) {
+  if (typeof value !== 'string') fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+  if (REQUIRED_RELATION_SET.has(value)) return value;
+  if (value.startsWith('public.')) {
+    const unqualified = value.slice('public.'.length);
+    if (REQUIRED_RELATION_SET.has(unqualified)) return unqualified;
+  }
+  fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+}
+
 /** Reduce raw catalog rows into per-candidate booleans. Pure: no I/O. */
 function deriveCandidateFacts({
   candidates,
@@ -457,13 +467,13 @@ function deriveCandidateFacts({
   const requiredSelectByOid = new Map();
   const writePositiveByOid = new Map();
   for (const row of matrixRows) {
-    if (!row || typeof row.relation_name !== 'string') fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
-    if (!REQUIRED_RELATION_SET.has(row.relation_name)) fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+    if (!row || typeof row !== 'object') fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+    const relationName = normalizeRequiredRelationName(row.relation_name);
     const oid = String(row.oid);
     const allowed = safeBoolean(row, 'allowed');
     if (row.privilege_type === 'SELECT') {
       if (!requiredSelectByOid.has(oid)) requiredSelectByOid.set(oid, {});
-      requiredSelectByOid.get(oid)[row.relation_name] = allowed;
+      requiredSelectByOid.get(oid)[relationName] = allowed;
     } else if (WRITE_PRIVILEGES.includes(row.privilege_type)) {
       writePositiveByOid.set(oid, (writePositiveByOid.get(oid) || false) || allowed);
     } else {
