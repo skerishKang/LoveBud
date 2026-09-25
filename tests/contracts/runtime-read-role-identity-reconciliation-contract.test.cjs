@@ -68,13 +68,15 @@ function buildCatalog({
     for (const relation of REQUIRED_SELECT_RELATIONS) {
       const name = relation.slice('public.'.length);
       const selectValue = role.select === undefined ? true : role.select[name];
+      // Q.PRIVILEGE_MATRIX returns the source-controlled qualified t.rel value
+      // (for example public.trees). Keep the fixture byte-shape aligned with live SQL.
       matrixRows.push({
-        oid: role.oid, relation_name: name, privilege_type: 'SELECT', allowed: selectValue === true,
+        oid: role.oid, relation_name: relation, privilege_type: 'SELECT', allowed: selectValue === true,
       });
       for (const privilege of WRITE_PRIVILEGES) {
         const writeValue = role.write === undefined ? false : role.write[privilege] === true;
         matrixRows.push({
-          oid: role.oid, relation_name: name, privilege_type: privilege, allowed: writeValue,
+          oid: role.oid, relation_name: relation, privilege_type: privilege, allowed: writeValue,
         });
       }
     }
@@ -722,8 +724,9 @@ describe('LoveBud #4422 private mapping output', () => {
 // ---------------------------------------------------------------------------
 
 describe('LoveBud #4422 identity pure reducers', () => {
-  it('derives facts and resolves identity without touching the candidate list order', () => {
+  it('derives facts from the live schema-qualified matrix shape and resolves identity without touching candidate order', () => {
     const catalog = buildCatalog({ roles: [{ name: 'app_read_role', oid: '100' }] });
+    assert.equal(catalog.matrixRows.every((row) => row.relation_name.startsWith('public.')), true);
     const facts = deriveCandidateFacts({ ...catalog, candidates: catalog.candidateRows });
     assert.equal(facts.length, 1);
     assert.equal(facts[0].roleName, 'app_read_role');
@@ -740,13 +743,17 @@ describe('LoveBud #4422 identity pure reducers', () => {
     assert.equal(observer.identityDisposition, IDENTITY_DISPOSITION.AMBIGUOUS);
   });
 
-  it('rejects a malformed catalog row instead of silently accepting it', () => {
-    const catalog = buildCatalog({ roles: [{ name: 'app_read_role', oid: '100' }] });
-    catalog.matrixRows.push({ oid: '100', relation_name: 'tree_likes', privilege_type: 'SELECT', allowed: true });
-    assert.throws(
-      () => deriveCandidateFacts({ ...catalog, candidates: catalog.candidateRows }),
-      /IDENTITY_CATALOG_SHAPE_INVALID/,
-    );
+  it('rejects unknown relations and foreign schemas instead of silently normalizing them', () => {
+    for (const relationName of ['public.tree_likes', 'private.trees']) {
+      const catalog = buildCatalog({ roles: [{ name: 'app_read_role', oid: '100' }] });
+      catalog.matrixRows.push({
+        oid: '100', relation_name: relationName, privilege_type: 'SELECT', allowed: true,
+      });
+      assert.throws(
+        () => deriveCandidateFacts({ ...catalog, candidates: catalog.candidateRows }),
+        /IDENTITY_CATALOG_SHAPE_INVALID/,
+      );
+    }
   });
 });
 
