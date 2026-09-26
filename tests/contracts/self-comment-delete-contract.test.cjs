@@ -193,3 +193,292 @@ function extractDecoratorLine(filePath, functionName) {
   const decoratorLine = lastNewline === -1 ? beforeDef : beforeDef.slice(lastNewline + 1);
   return decoratorLine.trim();
 }
+
+
+// ─── #4492 DIRECT-NEON SOURCE CANDIDATE ───────────────────────────────────
+
+const COMMENT_DELETE_DIRECT_JS = path.join(ROOT, 'functions/_shared/comment-delete-direct-neon.js');
+const COMMENT_ID_4492 = '44920000-0000-4000-8000-000000000001';
+const MEMORY_ID_4492 = '44920000-0000-4000-8000-000000000002';
+const ACTOR_ID_4492 = 'firebase-owner-4492';
+const WRITE_DB_4492 = 'postgresql://ep-comment-delete-4492.us-east-1.neon.tech/neondb?sslmode=require';
+
+function commentDeleteRequest4492({
+  commentId = COMMENT_ID_4492,
+  auth = 'Bearer comment-delete-token-4492'
+} = {}) {
+  const headers = new Headers({ 'x-lovebud-request-id': 'req-comment-delete-4492' });
+  if (auth) headers.set('authorization', auth);
+  return new Request(`https://lovebud.pages.dev/api/comments/${commentId}`, {
+    method: 'DELETE',
+    headers
+  });
+}
+
+function commentDeleteEnv4492(extra = {}) {
+  return {
+    LB_COMMENT_DELETE_WRITE_RUNTIME: 'direct_neon',
+    LOVE_PLATFORM_WRITE_DATABASE_URL: WRITE_DB_4492,
+    ...extra
+  };
+}
+
+function makeCommentDeleteAdapter4492({
+  row = {
+    id: COMMENT_ID_4492,
+    owner_id: ACTOR_ID_4492,
+    memory_id: MEMORY_ID_4492,
+    status: 'visible',
+    deleted_at: null
+  }
+} = {}) {
+  const calls = [];
+  let runCalls = 0;
+  const adapter = {
+    async runTransaction(work) {
+      runCalls += 1;
+      const tx = {
+        async query(text, values = []) {
+          calls.push({ text, values: Array.isArray(values) ? [...values] : values });
+          if (/FROM comments[\s\S]*WHERE id = \$1/i.test(text)) {
+            return row ? [{ ...row }] : [];
+          }
+          if (/UPDATE comments[\s\S]*SET status = 'deleted'/i.test(text)) return [];
+          if (/INSERT INTO social_audit_log/i.test(text)) return [];
+          throw new Error('unexpected fake query');
+        }
+      };
+      return { value: await work(tx), outcome: 'committed' };
+    }
+  };
+  return {
+    adapter,
+    calls,
+    get runCalls() { return runCalls; }
+  };
+}
+
+test('15. #4492 direct-Neon Comment DELETE gate is source-only and dedicated-writer-only', async () => {
+  assert.ok(fs.existsSync(COMMENT_DELETE_DIRECT_JS), 'direct helper must exist');
+  const direct = await import('../../functions/_shared/comment-delete-direct-neon.js');
+
+  assert.equal(direct.isCommentDeleteDirectNeonSelected({}), false);
+  assert.equal(direct.isCommentDeleteDirectNeonSelected({ LB_COMMENT_DELETE_WRITE_RUNTIME: 'modal' }), false);
+  assert.equal(direct.isCommentDeleteDirectNeonSelected({ LB_COMMENT_DELETE_WRITE_RUNTIME: 'future' }), false);
+  assert.equal(direct.isCommentDeleteDirectNeonSelected({ LB_COMMENT_DELETE_WRITE_RUNTIME: ' direct_neon ' }), true);
+
+  assert.equal(direct.COMMENT_DELETE_DIRECT_NEON_CONTRACT.databaseEnv, 'LOVE_PLATFORM_WRITE_DATABASE_URL');
+  assert.equal(direct.COMMENT_DELETE_DIRECT_NEON_CONTRACT.productionDeletePrivilegeAuthorized, false);
+  assert.equal(direct.COMMENT_DELETE_DIRECT_NEON_CONTRACT.productionGateActivationAuthorized, false);
+  assert.equal(direct.COMMENT_DELETE_DIRECT_NEON_CONTRACT.providerMutationAuthorized, false);
+  assert.equal(direct.COMMENT_DELETE_DIRECT_NEON_CONTRACT.perRequestModalFallbackAfterDirectStart, false);
+  assert.equal(direct.COMMENT_DELETE_DIRECT_NEON_CONTRACT.automaticWholeTransactionRetry, false);
+  assert.equal(direct.COMMENT_DELETE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
+
+  const routeSource = readFileContent(CF_COMMENTS_ID_JS);
+  assert.ok(hasString(routeSource, 'isCommentDeleteDirectNeonSelected'));
+  assert.ok(hasString(routeSource, 'handleCommentDeleteDirectNeon'));
+  assert.ok(hasString(routeSource, '/modal/private/comments/'), 'Modal fallback must remain source-visible');
+});
+
+test('16. #4492 direct DELETE verifies Firebase actor then preserves lookup -> soft-delete -> audit ordering', async () => {
+  const direct = await import('../../functions/_shared/comment-delete-direct-neon.js');
+  const fixture = makeCommentDeleteAdapter4492();
+  let verifiedToken = null;
+
+  const response = await direct.handleCommentDeleteDirectNeon(
+    commentDeleteRequest4492(),
+    COMMENT_ID_4492,
+    commentDeleteEnv4492(),
+    'req-comment-delete-4492',
+    {
+      verifyTokenOverride: async (token) => {
+        verifiedToken = token;
+        return { uid: ACTOR_ID_4492, email: 'ignored@example.invalid' };
+      },
+      transactionAdapterOverride: fixture.adapter
+    }
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(verifiedToken, 'comment-delete-token-4492');
+  assert.equal(fixture.runCalls, 1);
+  assert.equal(fixture.calls.length, 3);
+
+  assert.match(fixture.calls[0].text, /SELECT[\s\S]*owner_id[\s\S]*memory_id[\s\S]*FROM comments/i);
+  assert.deepEqual(fixture.calls[0].values, [COMMENT_ID_4492]);
+
+  assert.match(fixture.calls[1].text, /UPDATE comments[\s\S]*status = 'deleted'[\s\S]*deleted_at = NOW\(\)[\s\S]*deleted_by = \$1/i);
+  assert.deepEqual(fixture.calls[1].values, [ACTOR_ID_4492, COMMENT_ID_4492]);
+
+  assert.match(fixture.calls[2].text, /INSERT INTO social_audit_log/i);
+  assert.match(fixture.calls[2].text, /'comment\.soft_delete'/);
+  assert.deepEqual(fixture.calls[2].values.slice(1), [ACTOR_ID_4492, MEMORY_ID_4492]);
+
+  assert.equal(response.headers.get('x-lovebud-upstream'), 'direct-neon');
+  assert.equal(response.headers.get('x-lovebud-runtime'), 'direct_neon');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await response.json(), { id: COMMENT_ID_4492, status: 'deleted' });
+});
+
+test('17. #4492 missing/non-author Comment DELETE fails before mutation with Modal error parity', async () => {
+  const direct = await import('../../functions/_shared/comment-delete-direct-neon.js');
+
+  for (const scenario of [
+    { row: null, status: 404, message: 'Comment not found' },
+    {
+      row: {
+        id: COMMENT_ID_4492,
+        owner_id: 'different-owner',
+        memory_id: MEMORY_ID_4492,
+        status: 'visible',
+        deleted_at: null
+      },
+      status: 403,
+      message: 'Only the comment author can delete this comment'
+    }
+  ]) {
+    const fixture = makeCommentDeleteAdapter4492({ row: scenario.row });
+    const response = await direct.handleCommentDeleteDirectNeon(
+      commentDeleteRequest4492(),
+      COMMENT_ID_4492,
+      commentDeleteEnv4492(),
+      'req-comment-delete-authz-4492',
+      {
+        verifyTokenOverride: async () => ({ uid: ACTOR_ID_4492 }),
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+
+    assert.equal(response.status, scenario.status);
+    assert.equal(fixture.calls.length, 1);
+    const body = await response.json();
+    assert.equal(body.code, 'SOCIAL_WRITE_UNAVAILABLE');
+    assert.equal(body.error, scenario.message);
+  }
+});
+
+test('18. #4492 already non-visible Comment DELETE is idempotent and emits no second mutation/audit', async () => {
+  const direct = await import('../../functions/_shared/comment-delete-direct-neon.js');
+  for (const status of ['deleted', 'hidden']) {
+    const fixture = makeCommentDeleteAdapter4492({
+      row: {
+        id: COMMENT_ID_4492,
+        owner_id: ACTOR_ID_4492,
+        memory_id: MEMORY_ID_4492,
+        status,
+        deleted_at: '2026-09-26T00:00:00Z'
+      }
+    });
+    const response = await direct.handleCommentDeleteDirectNeon(
+      commentDeleteRequest4492(),
+      COMMENT_ID_4492,
+      commentDeleteEnv4492(),
+      'req-comment-delete-idempotent-4492',
+      {
+        verifyTokenOverride: async () => ({ uid: ACTOR_ID_4492 }),
+        transactionAdapterOverride: fixture.adapter
+      }
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(fixture.calls.length, 1);
+    assert.deepEqual(await response.json(), { id: COMMENT_ID_4492, status });
+  }
+});
+
+test('19. #4492 invalid UUID and forbidden generic/read DB fallback fail before direct transaction work', async () => {
+  const direct = await import('../../functions/_shared/comment-delete-direct-neon.js');
+  let runs = 0;
+  const neverAdapter = {
+    async runTransaction() {
+      runs += 1;
+      throw new Error('must not run');
+    }
+  };
+
+  const invalid = await direct.handleCommentDeleteDirectNeon(
+    commentDeleteRequest4492({ commentId: 'not-a-uuid' }),
+    'not-a-uuid',
+    commentDeleteEnv4492(),
+    'req-comment-delete-invalid-4492',
+    {
+      verifyTokenOverride: async () => ({ uid: ACTOR_ID_4492 }),
+      transactionAdapterOverride: neverAdapter
+    }
+  );
+  assert.equal(invalid.status, 400);
+  assert.equal(runs, 0);
+
+  const forbiddenEnv = commentDeleteEnv4492({
+    LOVE_PLATFORM_WRITE_DATABASE_URL: '',
+    LOVE_PLATFORM_DATABASE_URL: WRITE_DB_4492
+  });
+  const forbidden = await direct.handleCommentDeleteDirectNeon(
+    commentDeleteRequest4492(),
+    COMMENT_ID_4492,
+    forbiddenEnv,
+    'req-comment-delete-config-4492',
+    {
+      verifyTokenOverride: async () => ({ uid: ACTOR_ID_4492 }),
+      transactionAdapterOverride: neverAdapter
+    }
+  );
+  assert.equal(forbidden.status, 503);
+  assert.equal((await forbidden.json()).code, 'DIRECT_NEON_CONFIG_FORBIDDEN_FALLBACK');
+  assert.equal(runs, 0);
+});
+
+test('20. #4492 transaction failure and unknown COMMIT outcome are sanitized and never retried', async () => {
+  const direct = await import('../../functions/_shared/comment-delete-direct-neon.js');
+  const txmod = await import('../../functions/_shared/db/neon-ws-transaction-adapter.js');
+
+  let queryFailureRuns = 0;
+  const queryFailure = await direct.handleCommentDeleteDirectNeon(
+    commentDeleteRequest4492(),
+    COMMENT_ID_4492,
+    commentDeleteEnv4492(),
+    'req-comment-delete-query-fail-4492',
+    {
+      verifyTokenOverride: async () => ({ uid: ACTOR_ID_4492 }),
+      transactionAdapterOverride: {
+        async runTransaction() {
+          queryFailureRuns += 1;
+          throw new txmod.NeonWsTransactionError(
+            txmod.NEON_WS_TRANSACTION_ERROR.QUERY_FAILURE,
+            'private query sentinel 4492'
+          );
+        }
+      }
+    }
+  );
+  assert.equal(queryFailureRuns, 1);
+  assert.ok([500, 502].includes(queryFailure.status));
+  assert.doesNotMatch(await queryFailure.text(), /private query sentinel 4492|postgresql:|comment-delete-token-4492/);
+
+  let unknownRuns = 0;
+  const unknown = await direct.handleCommentDeleteDirectNeon(
+    commentDeleteRequest4492(),
+    COMMENT_ID_4492,
+    commentDeleteEnv4492(),
+    'req-comment-delete-unknown-4492',
+    {
+      verifyTokenOverride: async () => ({ uid: ACTOR_ID_4492 }),
+      transactionAdapterOverride: {
+        async runTransaction() {
+          unknownRuns += 1;
+          throw new txmod.NeonWsTransactionError(
+            txmod.NEON_WS_TRANSACTION_ERROR.COMMIT_OUTCOME_UNKNOWN,
+            'private commit sentinel 4492'
+          );
+        }
+      }
+    }
+  );
+  assert.equal(unknownRuns, 1);
+  assert.equal(unknown.status, 502);
+  assert.equal(unknown.headers.get('x-lovebud-route-status'), 'commit-outcome-unknown');
+  const unknownBody = await unknown.text();
+  assert.match(unknownBody, /COMMIT_OUTCOME_UNKNOWN/);
+  assert.doesNotMatch(unknownBody, /private commit sentinel 4492|postgresql:|comment-delete-token-4492/);
+});
