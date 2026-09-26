@@ -1,3 +1,8 @@
+import {
+  handleCommentDeleteDirectNeon,
+  isCommentDeleteDirectNeonSelected
+} from '../../_shared/comment-delete-direct-neon.js';
+
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MODAL_FETCH_TIMEOUT_MS = 25000;
 
@@ -83,12 +88,26 @@ export async function onRequestDelete(context) {
     return build401Response(requestId);
   }
 
+  const commentId = context.params?.id;
+
+  // #4492 gated generic self Comment DELETE direct-Neon source candidate.
+  // Missing/modal/unknown gate values preserve the existing Modal path below.
+  // Once direct execution starts, the helper never falls back to Modal.
+  if (isCommentDeleteDirectNeonSelected(context.env || {})) {
+    const directResponse = await handleCommentDeleteDirectNeon(
+      request,
+      commentId,
+      context.env || {},
+      requestId
+    );
+    if (directResponse !== null) return directResponse;
+  }
+
   const modalBaseUrl = stripTrailingSlash(context.env?.MODAL_BASE_URL);
   if (!modalBaseUrl) {
     return build503Response(requestId);
   }
 
-  const commentId = context.params?.id;
   const target = new URL(`/modal/private/comments/${commentId}`, modalBaseUrl);
 
   let response;
