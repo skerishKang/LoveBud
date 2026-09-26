@@ -437,6 +437,57 @@ function deriveIdentityDisposition(candidateCount) {
   return IDENTITY_DISPOSITION.AMBIGUOUS;
 }
 
+const CANDIDATE_REASON_KEYS = Object.freeze([
+  'NOT_LOGIN_CAPABLE',
+  'SUPERUSER',
+  'CREATEDB',
+  'CREATEROLE',
+  'BYPASSRLS',
+  'REPLICATION',
+  'MEMBERSHIP_ADMIN_OPTION',
+  'RELATION_OWNER',
+  'DATABASE_CONNECT_MISSING',
+  'PUBLIC_SCHEMA_USAGE_MISSING',
+  'PUBLIC_GRANT_DEPENDENCY',
+  'BROAD_ALL_TABLE_SELECT',
+  'WRITE_PRIVILEGE_PRESENT',
+  ...REQUIRED_SELECT_RELATION_NAMES.map((relation) => `SELECT_MISSING:${relation}`),
+]);
+const CANDIDATE_REASON_SET = new Set(CANDIDATE_REASON_KEYS);
+
+function summarizeCandidateFacts({ facts, sessionUser, currentUser }) {
+  const observerNames = new Set([sessionUser, currentUser]);
+  let observerCandidateCount = 0;
+  let nonObserverAcceptedCount = 0;
+  const reasonCounts = new Map();
+
+  for (const row of facts) {
+    if (!row || typeof row.roleName !== 'string' || !Array.isArray(row.reasons)) {
+      fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+    }
+    const isObserver = observerNames.has(row.roleName);
+    if (isObserver) {
+      observerCandidateCount += 1;
+      continue;
+    }
+    if (row.accepted === true) nonObserverAcceptedCount += 1;
+    for (const reason of row.reasons) {
+      if (!CANDIDATE_REASON_SET.has(reason)) fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
+      reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
+    }
+  }
+
+  return Object.freeze({
+    totalLoginCandidateCount: facts.length,
+    observerCandidateCount,
+    nonObserverCandidateCount: facts.length - observerCandidateCount,
+    nonObserverAcceptedCount,
+    nonObserverReasonCounts: Object.freeze(Object.fromEntries(
+      [...reasonCounts.entries()].sort(([left], [right]) => left.localeCompare(right)),
+    )),
+  });
+}
+
 function normalizeRequiredRelationName(value) {
   if (typeof value !== 'string') fail(FAILURE.IDENTITY_CATALOG_SHAPE_INVALID);
   if (REQUIRED_RELATION_SET.has(value)) return value;
@@ -742,6 +793,7 @@ async function collectIdentityReconciliation({
         candidateCount: 0,
         observerEqualsTarget: false,
         mapped: null,
+        candidateSummary: summarizeCandidateFacts({ facts: [], sessionUser, currentUser }),
       };
     } else {
       const oids = candidateRows.map((row) => String(row.oid));
@@ -793,6 +845,7 @@ async function collectIdentityReconciliation({
         candidateCount: resolution.candidateCount,
         observerEqualsTarget: resolution.observerEqualsTarget,
         mapped: resolution.resolved,
+        candidateSummary: summarizeCandidateFacts({ facts, sessionUser, currentUser }),
       };
     }
   } catch (error) {
@@ -815,6 +868,7 @@ async function collectIdentityReconciliation({
     candidateCount: outcome.candidateCount,
     observerEqualsTarget: outcome.observerEqualsTarget,
     mapped: outcome.mapped,
+    candidateSummary: outcome.candidateSummary,
     writeMapping,
     repoRoot,
   });
@@ -825,6 +879,7 @@ function finalize({
   candidateCount,
   observerEqualsTarget,
   mapped,
+  candidateSummary,
   writeMapping = writePrivateMapping,
   repoRoot = REPO_ROOT,
 }) {
@@ -846,6 +901,11 @@ function finalize({
     databaseConnectBaseline: 'VERIFIED',
     usagePublicBaseline: 'VERIFIED',
     broadAllTableSelect: 'NO',
+    totalLoginCandidateCount: candidateSummary.totalLoginCandidateCount,
+    observerCandidateCount: candidateSummary.observerCandidateCount,
+    nonObserverCandidateCount: candidateSummary.nonObserverCandidateCount,
+    nonObserverAcceptedCount: candidateSummary.nonObserverAcceptedCount,
+    nonObserverReasonCounts: candidateSummary.nonObserverReasonCounts,
   });
 }
 
@@ -897,6 +957,11 @@ function formatSuccess(result, lifecycle = createIdentityLifecycle()) {
     usagePublicBaseline: result.usagePublicBaseline,
     broadAllTableSelect: result.broadAllTableSelect,
     observerEqualsTarget: result.observerEqualsTarget,
+    totalLoginCandidateCount: result.totalLoginCandidateCount,
+    observerCandidateCount: result.observerCandidateCount,
+    nonObserverCandidateCount: result.nonObserverCandidateCount,
+    nonObserverAcceptedCount: result.nonObserverAcceptedCount,
+    nonObserverReasonCounts: result.nonObserverReasonCounts,
     rawRoleExposed: 'NO',
     rawGranteeExposed: 'NO',
     rawSecretExposed: 'NO',
@@ -953,6 +1018,7 @@ module.exports = {
   evaluateCandidate,
   deriveIdentityDisposition,
   deriveCandidateFacts,
+  summarizeCandidateFacts,
   resolveIdentity,
   buildPrivateMappingPayload,
   writePrivateMapping,
