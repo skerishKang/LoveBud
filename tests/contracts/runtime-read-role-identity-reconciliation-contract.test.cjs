@@ -25,6 +25,7 @@ const {
   evaluateCandidate,
   deriveIdentityDisposition,
   deriveCandidateFacts,
+  summarizeCandidateFacts,
   resolveIdentity,
   buildPrivateMappingPayload,
   writePrivateMapping,
@@ -346,6 +347,11 @@ describe('LoveBud #4422 identity candidate decisions', () => {
     assert.equal(result.observerEqualsTarget, 'YES');
     assert.equal(result.privateMappingWritten, 'NO');
     assert.equal(result.requiredSelectFingerprintMatched, 'NO');
+    assert.equal(result.totalLoginCandidateCount, 1);
+    assert.equal(result.observerCandidateCount, 1);
+    assert.equal(result.nonObserverCandidateCount, 0);
+    assert.equal(result.nonObserverAcceptedCount, 0);
+    assert.deepEqual(result.nonObserverReasonCounts, {});
     assert.equal(writes.length, 0);
   });
 
@@ -741,6 +747,35 @@ describe('LoveBud #4422 identity pure reducers', () => {
     assert.equal(observer.resolved, null);
     assert.equal(observer.observerEqualsTarget, true);
     assert.equal(observer.identityDisposition, IDENTITY_DISPOSITION.AMBIGUOUS);
+  });
+
+  it('summarizes non-observer rejection reasons without serializing role identities', () => {
+    const hiddenRole = ['private', 'candidate'].join('_');
+    const catalog = buildCatalog({
+      roles: [
+        { name: 'observer_role', oid: '100' },
+        { name: hiddenRole, oid: '101', databaseConnect: false, flags: { rolsuper: true } },
+      ],
+      broadRelations: { 101: ['unrelated_table'] },
+    });
+    const facts = deriveCandidateFacts({ ...catalog, candidates: catalog.candidateRows });
+    const summary = summarizeCandidateFacts({
+      facts,
+      sessionUser: 'observer_role',
+      currentUser: 'observer_role',
+    });
+
+    assert.equal(summary.totalLoginCandidateCount, 2);
+    assert.equal(summary.observerCandidateCount, 1);
+    assert.equal(summary.nonObserverCandidateCount, 1);
+    assert.equal(summary.nonObserverAcceptedCount, 0);
+    assert.equal(summary.nonObserverReasonCounts.SUPERUSER, 1);
+    assert.equal(summary.nonObserverReasonCounts.DATABASE_CONNECT_MISSING, 1);
+    assert.equal(summary.nonObserverReasonCounts.BROAD_ALL_TABLE_SELECT, 1);
+
+    const serialized = JSON.stringify(summary);
+    assert.equal(serialized.includes(hiddenRole), false);
+    assert.equal(serialized.includes('101'), false);
   });
 
   it('rejects unknown relations and foreign schemas instead of silently normalizing them', () => {
