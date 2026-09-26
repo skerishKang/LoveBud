@@ -53,6 +53,20 @@ Draft-by-default is advisory. A PR may be Draft or Ready according to the contra
 
 The Web Developer may create/update the PR but does not merge it. The Web CTO owns final merge judgment.
 
+## CI evidence on branch pushes
+
+An ordinary feature-branch push may have **zero GitHub Actions runs** because the canonical repository workflows are PR-triggered or restricted to `main` pushes.
+
+Therefore:
+
+- `0 runs` is **not** PASS, neutral CI, or exact-head CI evidence;
+- do not cite a branch-push SHA as CI-verified unless matching successful check runs actually exist for that exact SHA;
+- when CENTRAL acceptance requires CI, create or update the Draft PR so the canonical `pull_request` workflows run against the candidate head;
+- focused local tests are supporting evidence and do not replace missing repository CI;
+- when a task intentionally remains branch-only, report `CI_EVIDENCE=NOT_AVAILABLE_FOR_BRANCH_PUSH` rather than implying green status.
+
+This rule closes the evidence gap without broadening workflow triggers to every remote branch. A lane that needs pre-PR remote CI must receive a separate workflow/dispatch contract rather than treating an empty run list as success.
+
 ## Review depth by risk
 
 ### U0
