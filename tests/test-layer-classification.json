@@ -4578,6 +4578,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/tree-like-read-direct-neon-product-adapter.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the #4494 Tree Likes GET Direct-Neon source candidate in-process with constructed Request/env inputs, an injected fake Firebase verifyToken, and an injected read executor, proving independent read gating, auth-first ordering, exact-public Tree visibility, requester active-like and likeCount response parity, missing-aggregate zero behavior without writes, fail-closed config/query errors, sanitized output, and unchanged POST writer routing. No real network, database, provider, secret, Product, ACL, or Production resource is used (#4494).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/tree-like-hardening-3359.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
