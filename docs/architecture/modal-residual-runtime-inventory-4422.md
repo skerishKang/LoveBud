@@ -2,7 +2,7 @@
 
 **Parent:** #4000  
 **Phase:** 5A source/config inventory  
-**Reconciled against source/config baseline:** `fc84f642efe386a69106ef02dc721f553b1fff16`  
+**Reconciled against source/config baseline:** `17b207dae7c1e0ee8a8d483d366d2c28aec6abda`  
 **Status:** #4423/#4424/#4425 Production-live completion reflected; residual Phase-5 uncertainty remains limited to the no-gate Tree Likes GET and generic Comment DELETE surfaces.
 
 This document records which current same-origin LoveBud routes can still reach Modal after the Direct-Neon cutovers. It deliberately distinguishes **route-level gate status** from **request-class behavior**. A route marked `PRODUCTION_LIVE` in the Direct-Neon readiness matrix may still send a subset of requests to Modal when the source contract deliberately defers them before any Direct-Neon database work.
@@ -116,29 +116,53 @@ DELETE /api/comments/:commentId
 edge =
 functions/api/comments/[id].js
 
-source behavior =
-onRequestDelete -> Modal
-
 Modal endpoint =
 DELETE /modal/private/comments/{comment_id}
 ```
 
-Current source:
+#4492 adds a **source-only gated Direct-Neon candidate**:
 
 ```text
-dedicated Direct-Neon DELETE helper = absent
-dedicated runtime gate = absent
+helper =
+functions/_shared/comment-delete-direct-neon.js
+
+gate =
+LB_COMMENT_DELETE_WRITE_RUNTIME=direct_neon
+
+writer authority =
+LOVE_PLATFORM_WRITE_DATABASE_URL
 ```
 
-No current first-party DELETE caller was found in source search. However:
+The source candidate preserves the current Modal self-delete contract: verified
+Firebase actor authority, UUID validation, author-only deletion, idempotent return
+for already non-visible rows, `status='deleted'` / `deleted_at` /
+`deleted_by` mutation, `comment.soft_delete` audit, atomic commit, and explicit
+`COMMIT_OUTCOME_UNKNOWN` with no blind retry.
+
+At the reconciled Production baseline, #4492 **does not activate this gate**.
+Absent / `modal` / unknown values still route to the existing Modal endpoint.
+No current first-party DELETE caller was found in source search, but the route
+remains contract-pinned by:
 
 ```text
 tests/contracts/self-comment-delete-contract.test.cjs
 ```
 
-pins the current Modal-backed contract, so this route is **not** retirement-ready.
+Therefore the route is still **not retirement-ready**, and source-candidate
+availability is not evidence that Production general Modal traffic is zero.
 
-Classification: `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`.
+Current disposition:
+
+```text
+SOURCE_CANDIDATE = PRESENT
+PRODUCTION_GATE_ACTIVATION = NOT_AUTHORIZED
+PRODUCTION_DB_OR_ACL_MUTATION = NOT_AUTHORIZED
+DEFAULT_PRODUCTION_AUTHORITY = MODAL
+```
+
+Classification at current Production gate state:
+`INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` for retirement; migration activation is a
+separate #4422 authority/lifecycle.
 
 ### Evidence posture for both routes
 
@@ -213,9 +237,9 @@ Current state and blocking work:
 1. #4423 — **complete**; all four Memory social GET request classes are Direct-Neon Production live.
 2. #4424 — **complete**; private Tree capability GET is Direct-Neon Production live.
 3. #4425 — **complete / closed**; the Plus/private-storage entitlement boundary is out of Modal, and the four entitlement-bound private write request classes are Direct-Neon Production live. The entitlement blocker is cleared.
-4. The residual Phase-5 general-route problem is limited to two no-gate Modal surfaces:
-   - `GET /api/trees/:treeId/likes` — `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`;
-   - `DELETE /api/comments/:commentId` — `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`.
+4. The residual Phase-5 general-route problem remains two Production-Modal surfaces:
+   - `GET /api/trees/:treeId/likes` — no Direct-Neon read helper/gate; `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`;
+   - `DELETE /api/comments/:commentId` — #4492 source candidate present, but Production gate activation/ACL is not authorized and the default route remains Modal-backed.
    Retirement is not authorized for either.
 5. Appreciation-order GET remains `KEEP_MODAL_BY_DESIGN`.
 6. YouTube playlist preview remains `ACTIVE_MODAL_SPECIALIZED_COMPUTE`.
