@@ -26,16 +26,42 @@ versions upload
 
 must not be executed as written.
 
+## Wrangler compatibility floor
+
+The declarative Durable Object `exports` lifecycle requires a Wrangler release
+that understands and transmits that configuration shape. Provider Preview
+operators must not rely on a dry-run from an older CLI that can parse the file
+without applying the `exports` lifecycle during deployment.
+
+Authoritative execution floor:
+
+```text
+DECLARATIVE_EXPORTS_WRANGLER_MIN_VERSION = 4.107.0
+WRANGLER_SELECTION = EXACT_PIN_AT_OR_ABOVE_MINIMUM
+DRY_RUN_DEPLOY_VERSION_EQUALITY = REQUIRED
+BELOW_MINIMUM = STOP_ZERO_PROVIDER_MUTATION
+EXPORTS_MODEL = RETAIN
+LEGACY_MIGRATIONS_SWITCH = FORBIDDEN_IN_THIS_LANE
+```
+
+Before any Stage 2 provider mutation, record the exact Wrangler version and
+require it to be at least `4.107.0`. Stage 1 dry-run and Stage 2 deploy must use
+that same exact version. If the resolved version is below the floor, stop before
+provider mutation. A failed attempt with an older CLI is not evidence that the
+repository should revert from declarative `exports` to legacy `migrations`.
+
 ## Corrected fail-closed ladder
 
 ```text
 1. SOURCE VALIDATION
    focused reliability-preview tests
-   + pinned Wrangler deploy --dry-run only
+   + exact-pinned Wrangler >= 4.107.0 deploy --dry-run only
+   + record exact resolved Wrangler version
    PROVIDER MUTATION = NONE
 
 2. DISABLED NONPROD PROVIDER DEPLOY
    explicit owner approval required
+   same exact Wrangler version used by Stage 1 dry-run
    wrangler deploy using the checked-in reliability-preview config
    Worker/SQLite DO lifecycle may be created
    crons = []
@@ -74,6 +100,12 @@ must not be executed as written.
 
 ```text
 EXPORTS_WITH_VERSIONS_UPLOAD = FORBIDDEN
+DECLARATIVE_EXPORTS_WRANGLER_MIN_VERSION = 4.107.0
+WRANGLER_SELECTION = EXACT_PIN_AT_OR_ABOVE_MINIMUM
+DRY_RUN_DEPLOY_VERSION_EQUALITY = REQUIRED
+BELOW_MINIMUM = STOP_ZERO_PROVIDER_MUTATION
+EXPORTS_MODEL = RETAIN
+LEGACY_MIGRATIONS_SWITCH = FORBIDDEN_IN_THIS_LANE
 BASE_PROVIDER_DEPLOY_CRONS = []
 BASE_PROVIDER_DEPLOY_READ_SENTINEL = OFF
 BASE_PROVIDER_DEPLOY_ALERT = OFF

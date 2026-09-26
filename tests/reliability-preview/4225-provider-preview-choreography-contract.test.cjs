@@ -77,6 +77,37 @@ test('#4225 source documentation forbids versions upload with exports and keeps 
   );
 });
 
+test('#4496 Provider Preview pins an exports-compatible Wrangler floor and exact-version reuse', () => {
+  const addendum = read(ADDENDUM);
+
+  for (const invariant of [
+    'DECLARATIVE_EXPORTS_WRANGLER_MIN_VERSION = 4.107.0',
+    'WRANGLER_SELECTION = EXACT_PIN_AT_OR_ABOVE_MINIMUM',
+    'DRY_RUN_DEPLOY_VERSION_EQUALITY = REQUIRED',
+    'BELOW_MINIMUM = STOP_ZERO_PROVIDER_MUTATION',
+    'EXPORTS_MODEL = RETAIN',
+    'LEGACY_MIGRATIONS_SWITCH = FORBIDDEN_IN_THIS_LANE',
+  ]) {
+    assert.ok(addendum.includes(invariant), invariant);
+  }
+
+  assert.match(
+    addendum,
+    /exact-pinned Wrangler >= 4\.107\.0 deploy --dry-run only/,
+    'Stage 1 must reject Wrangler versions that predate declarative exports'
+  );
+  assert.match(
+    addendum,
+    /same exact Wrangler version used by Stage 1 dry-run/,
+    'Stage 2 deploy must reuse the exact Stage 1 Wrangler version'
+  );
+  assert.match(
+    addendum,
+    /stop before\s+provider mutation/i,
+    'below-floor tooling must stop before provider mutation'
+  );
+});
+
 test('#4225 correction remains non-activating and carries no Production credential binding', () => {
   const addendum = read(ADDENDUM);
 
