@@ -84,29 +84,48 @@ Modal endpoint =
 GET /modal/private/trees/{tree_id}/likes
 ```
 
-Direct-Neon helper:
+#4494 adds a **source-only gated Direct-Neon read candidate**:
 
 ```text
-functions/_shared/tree-like-direct-neon.js
+helper =
+functions/_shared/tree-like-read-direct-neon.js
 
-method = POST only
-gate = LB_TREE_LIKE_WRITE_RUNTIME
+gate =
+LB_TREE_LIKE_READ_RUNTIME=direct_neon
+
+read authority =
+LOVE_PLATFORM_DATABASE_URL
+
+required privilege envelope =
+trees SELECT
+tree_likes SELECT
+tree_social_counts SELECT
 ```
 
-Therefore:
+The candidate preserves the observable authenticated GET contract with SELECT-only
+queries: verified Firebase requester identity, exact-public Tree boundary, active
+requester Like detection, and `likeCount` with missing aggregate treated as zero.
+It deliberately does not reproduce Modal's incidental aggregate-row INSERT/COMMIT,
+because that write is not observable in the GET response.
+
+At the reconciled Production baseline, #4494 **does not activate this gate**.
+Absent / `modal` / unknown values still route GET to Modal. POST Like remains
+independently governed by `LB_TREE_LIKE_WRITE_RUNTIME`.
+
+No current first-party GET caller was found in source search. No zero-traffic
+proof exists for this route.
 
 ```text
-GET direct-Neon read helper = absent
-GET read gate = absent
-```
-
-POST Like has a current first-party caller; **no current first-party GET caller was found** in source search. No zero-traffic proof exists for this route.
-
-```text
+SOURCE_CANDIDATE = PRESENT
+PRODUCTION_GATE_ACTIVATION = NOT_AUTHORIZED
+B1_ACL_ATTESTATION = NOT_AUTHORIZED
+DEFAULT_PRODUCTION_AUTHORITY = MODAL
 no caller found != dead route
 ```
 
-Classification: `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`.
+Classification at current Production gate state:
+`INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` for retirement; Production migration
+remains a separate #4422/#4486 authority lifecycle.
 
 ### Generic Comment DELETE
 
@@ -238,7 +257,7 @@ Current state and blocking work:
 2. #4424 — **complete**; private Tree capability GET is Direct-Neon Production live.
 3. #4425 — **complete / closed**; the Plus/private-storage entitlement boundary is out of Modal, and the four entitlement-bound private write request classes are Direct-Neon Production live. The entitlement blocker is cleared.
 4. The residual Phase-5 general-route problem remains two Production-Modal surfaces:
-   - `GET /api/trees/:treeId/likes` — no Direct-Neon read helper/gate; `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE`;
+   - `GET /api/trees/:treeId/likes` — #4494 source candidate present, but Production read gate activation/B1 ACL is not authorized and the default route remains Modal-backed;
    - `DELETE /api/comments/:commentId` — #4492 source candidate present, but Production gate activation/ACL is not authorized and the default route remains Modal-backed.
    Retirement is not authorized for either.
 5. Appreciation-order GET remains `KEEP_MODAL_BY_DESIGN`.
