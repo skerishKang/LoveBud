@@ -332,8 +332,8 @@ function describe(file) {
 test('1. enumerates every tests/**/*.test.cjs recursively, without duplicates', () => {
   assert.equal(
     REAL.testFiles.length,
-    899,
-    `expected 899 tests/**/*.test.cjs files (898 at main plus this contract), found ${REAL.testFiles.length}`
+    900,
+    `expected 900 tests/**/*.test.cjs files (899 at the #4494 branch baseline plus this contract addition), found ${REAL.testFiles.length}`
   );
   assert.equal(
     new Set(REAL.testFiles).size,
@@ -363,8 +363,8 @@ test('2. the default-CI globs reach exactly the package-owned default layer', ()
   );
   assert.equal(
     REAL.defaultCi.length,
-    881,
-    `expected 881 default-CI reachable files, found ${REAL.defaultCi.length}`
+    882,
+    `expected 882 default-CI reachable files, found ${REAL.defaultCi.length}`
   );
   assert.equal(
     REAL.outsideDefault.length,
