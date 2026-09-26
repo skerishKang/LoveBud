@@ -1518,6 +1518,47 @@
       "next_action": "Memory Comment direct-Neon write is Production live per the accepted #4259 terminal authority, with fresh continuity re-audit at main 1161ffe6 showing zero drift in helper, route dispatch, or wrangler gate since 282c2a2c. Continue ordinary monitoring/regression protection only. Invalidating changes requiring fresh CENTRAL review (and this attestation authorizes no new Product canary): any change to LB_MEMORY_COMMENT_WRITE_RUNTIME, the writer credential boundary, the required privilege envelope, the memory-comment-direct-neon helper, comments route dispatch, the comments/memories/trees/social_* schema or FK cascade, auth/owner-public isolation, legacy idempotency/rate-limit transaction behavior, or Cloudflare Production deployment/source parity"
     },
     {
+      "id": "generic-comment-delete",
+      "route": "/api/comments/{id}",
+      "method": "DELETE",
+      "family": "WRITE",
+      "source_helper": "functions/_shared/comment-delete-direct-neon.js",
+      "source_refs": [
+        "#4492",
+        "#4422"
+      ],
+      "source_state": "SOURCE_READY",
+      "runtime_gate": "LB_COMMENT_DELETE_WRITE_RUNTIME",
+      "required_objects": {
+        "comments": [
+          "SELECT",
+          "UPDATE"
+        ],
+        "social_audit_log": [
+          "INSERT"
+        ]
+      },
+      "credential_boundary": "direct_neon_runtime",
+      "source_parity": "PASS_AT_CITED_SHA",
+      "privilege_state": "PRIVILEGE_UNPROVEN",
+      "privilege_block_reason": "Production writer privileges for comments SELECT+UPDATE and social_audit_log INSERT have not been freshly attested for this route. #4492 authorizes source only; no Production DB/ACL work.",
+      "live_provider_state": "NOT_FRESHLY_VERIFIED",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
+      "diagnostic_execution_authorized": "NOT_AUTHORIZED",
+      "production_live": "NOT_PRODUCTION_LIVE",
+      "disposition_4239": "D",
+      "disposition_note": "Source-only #4492 candidate at branch exact head f3e05e0c72cece726f71035be94adbdd6b798cfa. Deterministic contract coverage for gate selection, verified Firebase actor authority, author-only 403/404 parity, idempotent already-non-visible return, soft-delete + comment.soft_delete audit ordering, forbidden DB fallback, sanitized transaction failure, and explicit COMMIT_OUTCOME_UNKNOWN all passed inside Full CI smoke. The first Full CI run itself stopped only because this new helper/gate lacked a readiness-matrix row; no Product/Production DB/provider/secret/ACL mutation occurred. Production gate activation and privilege attestation remain separately unauthorized.",
+      "last_exact_head_evidence": {
+        "ref": "PR #4493 first exact-head CI at f3e05e0c72cece726f71035be94adbdd6b798cfa: #4492 self-comment-delete tests 15-20 all PASS; only readiness-matrix coverage assertions failed because the new helper/gate had no matrix entry. Source baseline main remained 17b207dae7c1e0ee8a8d483d366d2c28aec6abda.",
+        "main_sha": "17b207dae7c1e0ee8a8d483d366d2c28aec6abda"
+      },
+      "modal_retained_by_design": false,
+      "rollback_authority": "GATE_ONLY_ROLLBACK after any future activation: reviewed removal/unset of LB_COMMENT_DELETE_WRITE_RUNTIME; until separately activated, the existing Modal self-comment DELETE remains the default authority and no DB/ACL rollback is implied by this source candidate.",
+      "next_action": "Keep LB_COMMENT_DELETE_WRITE_RUNTIME NOT_CHECKED_IN. Before any Production migration, obtain separate fresh authority to attest only the minimal writer privilege envelope (comments SELECT+UPDATE and social_audit_log INSERT), then separately review checked-in gate activation and bounded Product verification. No Production connection, SQL, ACL, provider, secret, or Product mutation is authorized by #4492."
+    },
+    {
       "id": "hub-layout-put",
       "route": "/api/trees/{id}/hub-layout",
       "method": "PUT",
