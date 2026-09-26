@@ -1316,6 +1316,50 @@
       "next_action": "Production direct-Neon read is live and verified at cited source/deployment evidence (commit 1147182c deployment 6dbfbf43 live runtime direct_neon, HTTP 200 direct-neon). Continue ordinary monitoring/regression protection. Any future credential/gate/provider change invalidates live attestation and requires fresh verification. No repeated canary merely to repair the historical one-shot count."
     },
     {
+      "id": "tree-like-read",
+      "route": "/api/trees/{id}/likes",
+      "method": "GET",
+      "family": "READ",
+      "source_helper": "functions/_shared/tree-like-read-direct-neon.js",
+      "source_refs": [
+        "#4494",
+        "#4422",
+        "#4486"
+      ],
+      "source_state": "SOURCE_READY",
+      "runtime_gate": "LB_TREE_LIKE_READ_RUNTIME",
+      "required_objects": {
+        "trees": [
+          "SELECT"
+        ],
+        "tree_likes": [
+          "SELECT"
+        ],
+        "tree_social_counts": [
+          "SELECT"
+        ]
+      },
+      "credential_boundary": "direct_neon_runtime",
+      "source_parity": "NOT_FRESHLY_PROVEN",
+      "privilege_state": "PRIVILEGE_UNPROVEN",
+      "privilege_block_reason": "Production runtime read-role identity remains unresolved under #4486, so the minimal SELECT privilege envelope has not been freshly attested. #4494 authorizes source only.",
+      "live_provider_state": "NOT_FRESHLY_VERIFIED",
+      "checked_in_gate": "NOT_CHECKED_IN",
+      "live_gate_state": "LIVE_GATE_READ_REQUIRED",
+      "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
+      "diagnostic_execution_authorized": "NOT_AUTHORIZED",
+      "production_live": "NOT_PRODUCTION_LIVE",
+      "disposition_4239": "D",
+      "disposition_note": "Source-only #4494 Tree Likes GET candidate added from exact main 3bcdda9231f4eae93455a84e3b24c1a6d35e4ca0. Observable Modal parity is implemented with SELECT-only reads; exact-head CI attestation is pending. Production activation and B1 ACL remain separately unauthorized.",
+      "last_exact_head_evidence": {
+        "ref": "Source implementation prepared under #4494 from exact main 3bcdda9231f4eae93455a84e3b24c1a6d35e4ca0; exact-head CI pending before parity can be marked PASS_AT_CITED_SHA.",
+        "main_sha": "3bcdda9231f4eae93455a84e3b24c1a6d35e4ca0"
+      },
+      "modal_retained_by_design": false,
+      "rollback_authority": "GATE_ONLY_ROLLBACK after any future activation: reviewed removal/unset of LB_TREE_LIKE_READ_RUNTIME; until separately activated, existing Modal GET remains the default authority and no DB/ACL rollback is implied by this source candidate.",
+      "next_action": "Keep LB_TREE_LIKE_READ_RUNTIME NOT_CHECKED_IN. First obtain exact-head source/contract CI. Production migration then requires separate fresh #4486/#4422 authority to resolve/attest only trees/tree_likes/tree_social_counts SELECT for the runtime read role before any gate activation or Product verification."
+    },
+    {
       "id": "tree-like",
       "route": "/api/trees/{id}/likes",
       "method": "POST",

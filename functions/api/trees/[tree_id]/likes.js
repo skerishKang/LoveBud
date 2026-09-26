@@ -8,6 +8,10 @@ import {
   isTreeLikeDirectNeonSelected,
   handleTreeLikeDirectNeon
 } from '../../../_shared/tree-like-direct-neon.js';
+import {
+  isTreeLikeReadDirectNeonSelected,
+  handleTreeLikeReadDirectNeon
+} from '../../../_shared/tree-like-read-direct-neon.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
@@ -174,7 +178,19 @@ async function proxyTreeLike(request, env) {
 }
 
 export async function onRequestGet(context) {
-  return proxyTreeLike(context.request, context.env || {});
+  const env = context.env || {};
+  // #4494 gated Tree Likes GET Direct-Neon source candidate.
+  // Missing/modal/unknown values preserve the existing Modal path below.
+  // Once direct execution starts, the helper never falls back to Modal.
+  if (isTreeLikeReadDirectNeonSelected(env)) {
+    const directResponse = await handleTreeLikeReadDirectNeon(
+      context.request,
+      env,
+      getOrCreateRequestId(context.request)
+    );
+    if (directResponse !== null) return directResponse;
+  }
+  return proxyTreeLike(context.request, env);
 }
 
 export async function onRequestPost(context) {
