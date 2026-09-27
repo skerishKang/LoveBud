@@ -101,6 +101,47 @@ test('exact required signal classes and public states are frozen', () => {
   assert.deepEqual(core.CAPABILITIES, []);
 });
 
+test('structural descriptor hard-signal identities are unique, deterministic, and calibration-free', () => {
+  const { baseline } = loadAll({ evaluate() { throw new Error('unused'); } });
+  const expected = {
+    MEMORY_TREE_PARENT_ORPHAN_COUNT: baseline.SIGNAL_CLASSES.CROSS_TABLE_INVARIANT,
+    MEMORY_PARENT_ORPHAN_COUNT: baseline.SIGNAL_CLASSES.ABSOLUTE_INVARIANT,
+    STRUCTURAL_SCHEMA_DRIFT_CHECK: baseline.SIGNAL_CLASSES.ABSOLUTE_INVARIANT,
+    MIGRATION_LEDGER_CATALOG_PARITY_CHECK: baseline.SIGNAL_CLASSES.CROSS_TABLE_INVARIANT,
+  };
+  assert.equal(new Set(Object.keys(expected)).size, 4);
+  for (const [signalId, signalClass] of Object.entries(expected)) {
+    assert.equal(baseline.SIGNAL_IDS[signalId], signalId);
+    assert.equal(baseline.SIGNAL_ID_TO_CLASS[signalId], signalClass);
+    assert.equal(baseline.validateSignalIdentity(signalId, signalClass), true);
+    assert.equal(baseline.isBaselineAwareClass(signalClass), false);
+  }
+});
+
+test('multiple descriptor-specific hard signals need no calibration and failure precedence is preserved', async () => {
+  const loaded = loadAll({ evaluate() { throw new Error('hard signals must not call baseline store'); } });
+  const healthy = hardSignal(
+    loaded.baseline,
+    'MEMORY_PARENT_ORPHAN_COUNT',
+    structuralSummary(loaded.taxonomy, loaded.taxonomy.OUTCOME_CODES.CONFIRMED)
+  );
+  const incident = hardSignal(
+    loaded.baseline,
+    'STRUCTURAL_SCHEMA_DRIFT_CHECK',
+    structuralSummary(
+      loaded.taxonomy,
+      loaded.taxonomy.OUTCOME_CODES.STRUCTURAL_DRIFT_DETECTED,
+      'STRUCTURAL_SCHEMA_CHECK'
+    )
+  );
+  const result = await loaded.evaluator.evaluate({
+    release_sha: SHA,
+    signals: [healthy, incident],
+    calibration: [],
+  });
+  assert.equal(result.state, 'INCIDENT_CONFIRMED');
+});
+
 test('absolute invariant violation is non-healthy without any baseline', async () => {
   let storeCalls = 0;
   const loaded = loadAll({ evaluate() { storeCalls += 1; throw new Error('must not call'); } });

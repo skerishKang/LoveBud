@@ -141,7 +141,10 @@
           var signals = [];
           for (var i = 0; i < collected.signals.length; i++) {
             var signal = collected.signals[i];
-            if (Object.prototype.hasOwnProperty.call(calibrationBySignal, signal.signal_id)) {
+            var isHardStructuralSignal = isPlainRecord(signal) &&
+              Object.prototype.hasOwnProperty.call(signal, 'structural_summary');
+            if (isHardStructuralSignal ||
+                Object.prototype.hasOwnProperty.call(calibrationBySignal, signal.signal_id)) {
               signals.push(signal);
             }
           }
