@@ -86,6 +86,20 @@ function disabledRunRecord(triggerClass) {
   };
 }
 
+const DISABLED_SCHEDULED_GATE_MARKER = Object.freeze({
+  event_class: 'RELIABILITY_PREVIEW_SCHEDULED_GATE',
+  run_class: 'RUN_DISABLED',
+  gate_class: 'READ_ONLY_SENTINEL_DISABLED'
+});
+
+function emitDisabledScheduledGateMarker() {
+  try {
+    console.log(JSON.stringify(DISABLED_SCHEDULED_GATE_MARKER));
+  } catch (_) {
+    // Observability failure must never widen capability or alter fail-closed order.
+  }
+}
+
 // Bridges the Cloudflare SQLite Durable Object storage seam (state.storage.sql)
 // to the prepare/run/get/all contract the store module is written against, so
 // the same runtime module binds to a real DO without semantic drift.
@@ -213,6 +227,7 @@ export default {
         return invalidProvenanceRecord(triggerClass);
       }
       if (config.kill_switches.read_only_sentinel !== 'ENABLED') {
+        emitDisabledScheduledGateMarker();
         return disabledRunRecord(triggerClass);
       }
       const ns = env.RELIABILITY_PREVIEW_STORE;
