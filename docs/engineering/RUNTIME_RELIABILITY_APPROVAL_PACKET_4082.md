@@ -24,7 +24,7 @@ This document is the bounded owner/Web-CTO decision packet requested by #4082. I
 This section supersedes stale state labels elsewhere in this packet where they conflict with later issue authority or completed #4227 evidence.
 
 ```text
-CURRENT_MAIN = f7c8e3bcf8737046ec3049ec442c947eab1895bc
+CURRENT_MAIN = 569836d0a3df7a995cc02c4eef23d16f365eb1a5
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 WORKER_EXISTS = YES
 SQLITE_DO_NAMESPACE = ESTABLISHED
@@ -48,12 +48,19 @@ DEAD_MAN_CONTROL_PLANE = MODAL_SCHEDULED_FUNCTION / SELECTED_NOT_BOUND
 RUNTIME_BOUNDS = SELECTED_NOT_BOUND
 INITIAL_COLLECTOR_SIGNAL_SET = SELECTED_NOT_BOUND
 READONLY_EXECUTOR_SECURITY_ENVELOPE = SELECTED_NOT_BOUND
+INITIAL_SIGNAL_CALIBRATION_POLICY = SELECTED_NOT_BOUND
+AGGREGATE_COUNT_CALIBRATION = NO_NUMERIC_BASELINE_CALIBRATION / ABSOLUTE_ZERO_NONZERO_STRUCTURAL_INVARIANT
+PARITY_EVIDENCE_CALIBRATION = NO_NUMERIC_CALIBRATION / CATEGORICAL_PARITY_TRANSLATION_ONLY
+DEFERRED_SIGNAL_CALIBRATION = EXCLUDED
+STRUCTURAL_RUNTIME_COMPOSITION_SOURCE = COMPLETE_#4500_#4501
+CALIBRATION_FREE_HARD_SIGNALS = WIRED_SOURCE_ONLY
+INITIAL_STRUCTURAL_SIGNAL_IDENTITY = DETERMINISTIC
 ```
 
 `SELECTED_NOT_BOUND` is not activation authority. The remaining blockers are capability/binding gates, not provider-preview or component-selection gaps:
 
 ```text
-SIGNAL_CALIBRATION = NOT_APPROVED
+NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 CRON_ATTACHMENT_AUTHORITY = NO
 READ_ONLY_DB_CREDENTIAL_RUNTIME_BINDING = NOT_CREATED
 REAL_PRODUCTION_READONLY_COLLECTOR_BOUND = NO
@@ -95,13 +102,13 @@ Approval of one gate does not approve either of the others.
 Current overall authority:
 
 ```text
-APPROVAL_PACKET_PREPARATION = ALLOWED
+APPROVAL_PACKET_PREPARATION = COMPLETE_CURRENTNESS_RECONCILIATION
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_569836d0a3df7a995cc02c4eef23d16f365eb1a5
+C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
 PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
 ALERT_PROVIDER_BINDING = NO
-READY = NO
-MERGE = NO
 ```
 
 ## 2. Current merged source-authority matrix
@@ -228,9 +235,9 @@ Release provenance (#4175): the exact deployed source revision is injected exter
 
 Kill-switch env wiring (#4175): the NONPROD preview worker passes `env[RELIABILITY_READ_ONLY_SENTINEL_ENABLED]` and `env[RELIABILITY_ALERT_DELIVERY_ENABLED]` into `createPreviewConfig(...)`. Values are trimmed and lowercased; normalized `"true"` enables a switch, while every other value stays DISABLED. The two switches stay independent and both default DISABLED. This wiring creates no Cloudflare variable and activates nothing.
 
-Intentionally unbound seams (#4175): `previewCollectEffect()` remains `Promise.resolve([])` and `calibrationBySignal` remains empty — real Production collector/calibration binding requires separate approval and is outside this reconciliation.
+Current unbound runtime seams: `previewCollectEffect()` remains `Promise.resolve([])`, so no real Production collector is bound. `calibrationBySignal` remains empty by design for the selected initial structural hard signals: #4499 selected no numeric calibration for aggregate-count/parity evidence, and #4500/#4501 wired those hard signals through the runner without weakening calibration requirements for future baseline-aware signals.
 
-Dead-man reader status: `createPreviewDeadManReader()` remains a source factory only; no external owner or control plane invokes it anywhere in this package (`DEAD_MAN_READER = OWNER_DECISION_REQUIRED` unchanged).
+Dead-man reader status: `createPreviewDeadManReader()` remains a source factory only. #4207 selected a Modal scheduled function as the independent control plane and #4210 selected a 7-minute stale threshold, but the reader/runtime binding and bounded probe authority remain unbound (`DEAD_MAN_READER = SOURCE_FACTORY_ONLY`).
 
 Provider Preview choreography is governed by the post-#4225 declarative-`exports` correction. The first three stages are now completed evidence from #4227; later capability stages remain independently gated:
 
@@ -364,13 +371,13 @@ raw exception / stack
 
 ### Retention / corruption / unavailable behavior
 
-No numeric retention constant is authorized by this packet.
+Decision-only child #4210 selected the initial runtime bounds, but they remain not bound to an activated Production runtime.
 
 ```text
-MAX_SAMPLES_PER_SIGNAL = OWNER_CONFIG_REQUIRED
-MAX_HISTORY_AGE = OWNER_CONFIG_REQUIRED
-MAX_DEDUPE_ENTRIES = OWNER_CONFIG_REQUIRED
-MAX_HEARTBEAT_HISTORY = OWNER_CONFIG_REQUIRED
+MAX_SAMPLES_PER_SIGNAL = 8640 / SELECTED_NOT_BOUND
+MAX_HISTORY_AGE = 30d / SELECTED_NOT_BOUND
+MAX_DEDUPE_ENTRIES = 2048 / SELECTED_NOT_BOUND
+MAX_HEARTBEAT_HISTORY = 2016 / SELECTED_NOT_BOUND
 ```
 
 Retention must be bounded by both count and/or age as appropriate and exercised in Preview/non-Production before activation.
@@ -514,24 +521,25 @@ The secret name is source-defined, but no secret is created and no secret value 
 The primary runner must not be the sole authority that decides whether the primary runner is alive.
 
 ```text
-PRIMARY_RUNNER = PROPOSED_CLOUDFLARE_CRON_RELIABILITY_WORKER
-HEARTBEAT_WRITER = PRIMARY_RUNNER_TO_PRIVATE_RELIABILITY_STORE
-DEAD_MAN_READER = OWNER_DECISION_REQUIRED
+PRIMARY_RUNNER = CLOUDFLARE_CRON_RELIABILITY_WORKER / SELECTED_NOT_BOUND
+HEARTBEAT_WRITER = PRIMARY_RUNNER_TO_PRIVATE_RELIABILITY_STORE / SELECTED_NOT_BOUND
+DEAD_MAN_READER = SOURCE_FACTORY_ONLY
+DEAD_MAN_CONTROL_PLANE = MODAL_SCHEDULED_FUNCTION / SELECTED_NOT_BOUND
 DEAD_MAN_CONTROL_PLANE_INDEPENDENT = REQUIRED_NOT_BOUND
-DEAD_MAN_OWNER = OWNER_DECISION_REQUIRED
+DEAD_MAN_STALE_THRESHOLD = 7m / SELECTED_NOT_BOUND
 ```
 
 Required design:
 
 1. Primary runner writes a bounded success/failure heartbeat after each run attempt, subject to private-store availability.
 2. A separate control plane, not the primary Cron execution path, reads or probes only a bounded heartbeat projection.
-3. Stale heartbeat threshold is owner-approved runtime configuration; no numeric threshold is embedded in source by this packet.
+3. The initial stale heartbeat threshold is selected as 7 minutes by #4210, but remains not bound until the independent dead-man runtime is separately authorized.
 4. If the primary scheduler is silent, the independent reader must classify the heartbeat as stale and surface the condition without invoking the primary scheduler.
 5. If the heartbeat store/probe is unavailable, the reader must classify monitoring authority as unavailable rather than treating missing evidence as healthy.
 6. If the alert provider is unavailable, provider delivery failure must remain visible through the independent control-plane/operator health surface. A single provider cannot be considered proof of its own availability.
 7. Duplicate primary runners are rejected by the private run lease/fence; a stale runner cannot write heartbeat as current authority after losing its fence.
 
-A Modal schedule or another explicitly approved external control plane is a plausible dead-man candidate because it is distinct from the Cloudflare primary scheduler, but this packet does not choose or bind one.
+A Modal scheduled function is the selected-not-bound independent dead-man control plane from #4207. This packet does not bind or activate it.
 
 Unresolved owner decisions:
 
@@ -731,7 +739,7 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 ## 17. Single-document decision summary
 
 1. **What is source-complete?** #4061 structural/parity translation, #4079 baseline/anomaly core, #4080 write-outcome classification, #4081 synthetic lifecycle, #4091 catalog-populated PREPARED/UNATTESTED adoption model, #3861 bounded alert delivery core, and #3874 provider-unselected adapter are merged source authorities.
-2. **What still needs owner approval?** Runtime/provider bindings and all three Production activation gates. Scheduler, private store, dead-man platform, alert provider, runtime bounds, initial signal set, and read-only executor envelope are selected-not-bound; calibration, credentials, collector binding, QA identity, and Production capability approvals remain unactivated.
+2. **What still needs owner approval?** Runtime/provider bindings and all three Production activation gates. Scheduler, private store, dead-man platform, alert provider, runtime bounds, initial signal set, read-only executor envelope, and initial structural calibration policy are selected-not-bound; credentials, collector binding, remaining non-Production rehearsal gates, QA identity, and Production capability approvals remain unactivated.
 3. **Selected runtime components?** Dedicated Cloudflare Worker Cron Trigger for the primary runner and a SQLite-backed Durable Object for private bounded reliability state, both `SELECTED_NOT_BOUND`; the disabled NONPROD Worker/SQLite namespace now exists from #4227 but Cron remains unattached.
 4. **What capability is currently zero?** Production read, Production synthetic write, alert delivery, scheduler/Cron activation, real collector binding, QA identity creation, secret placement, Product traffic, and schema mutation. The disabled NONPROD Worker and SQLite DO namespace are the only established provider resources from #4227.
 5. **What remains before Production read?** #4091 has resolved the source-model composition defect, but canonical runner adoption remains HOLD/NOT ACTIVE and Production Phase-B read still requires separate explicit approval; least-privilege SELECT-only credential/allowlist, read-only transaction/timeouts, runtime bindings, dead-man, rehearsal evidence, and owner approval also remain.
@@ -743,11 +751,13 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 
 ## 18. Final packet disposition
 
-```text
-C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
+The packet document is current after #4499/#4500/#4501, but the #4082 completion marker is still not satisfied. Historical CENTRAL authority held C4 until the required Preview/non-Production runtime rehearsal evidence and prerequisite capability authorities are actually present. #4227 proves only the disabled base Provider Preview; the remaining runtime/capability rehearsal rows in §13 are still unexecuted.
 
-READY = NO
-MERGE = NO
+```text
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_569836d0a3df7a995cc02c4eef23d16f365eb1a5
+C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
+C4_BLOCKER_CLASS = RUNTIME_REHEARSAL_AND_CAPABILITY_AUTHORITY
+NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 #4082_CLOSE = NO
 #3461_KEEP_OPEN = YES
 #1882_KEEP_OPEN = YES
@@ -756,7 +766,10 @@ RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
 PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
 ALERT_PROVIDER_BINDING = NO
-SIGNAL_CALIBRATION = NOT_APPROVED
+INITIAL_SIGNAL_CALIBRATION_POLICY = SELECTED_NOT_BOUND
+AGGREGATE_COUNT_CALIBRATION = NO_NUMERIC_BASELINE_CALIBRATION
+PARITY_EVIDENCE_CALIBRATION = CATEGORICAL_TRANSLATION_ONLY
+STRUCTURAL_RUNTIME_COMPOSITION_SOURCE = COMPLETE_#4500_#4501
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 
 SOURCE_MODEL_BLOCKER_4091 = RESOLVED
@@ -788,10 +801,13 @@ DEAD_MAN_CONTROL_PLANE_INDEPENDENT = REQUIRED_NOT_BOUND
 NONPROD_PREVIEW_SOURCE_PACKAGE = PUBLISHED_#4149_RECONCILED_#4175
 RELEASE_SHA_PROVENANCE = INJECTED_FAIL_CLOSED_INVALID_RELEASE_SHA
 KILL_SWITCH_ENV_WIRING = WIRED_SOURCE_LEVEL_DEFAULT_DISABLED
-COLLECTOR_AND_CALIBRATION = INTENTIONALLY_UNBOUND
+REAL_PRODUCTION_COLLECTOR = UNBOUND
+INITIAL_STRUCTURAL_CALIBRATION = SELECTED_NOT_BOUND
+BASELINE_AWARE_CALIBRATION = UNBOUND_UNTIL_SELECTED_SIGNAL_REQUIRES_IT
 ACTUAL_PROVIDER_PREVIEW = PASS_#4227
+NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 
-RECOMMENDATION = WEB_CTO_FINAL_REVIEW_REQUIRED
+RECOMMENDATION = COMPLETE_REMAINING_NONPROD_RUNTIME_REHEARSAL_GATES_BEFORE_C4
 ```
 
 Refs #4082.
