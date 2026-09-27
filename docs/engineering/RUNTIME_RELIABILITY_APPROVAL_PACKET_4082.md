@@ -8,7 +8,7 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@da767d46f696f532176fd78def46d1e78da200b5`
+Current-main reconciliation snapshot: `main@624db97d7f772558b1367e464c38acb2a1f25457`
 
 Post-#4227 disabled NONPROD Provider Preview reconciliation: **PROVIDER PREVIEW COMPLETE / PASS; WORKER EXISTS; SQLITE DO NAMESPACE ESTABLISHED; CRON/SENTINEL/ALERT/PRODUCTION/PRODUCT REMAIN DISABLED OR UNBOUND**
 
@@ -24,7 +24,7 @@ This document is the bounded owner/Web-CTO decision packet requested by #4082. I
 This section supersedes stale state labels elsewhere in this packet where they conflict with later issue authority or completed #4227 evidence.
 
 ```text
-CURRENT_MAIN = da767d46f696f532176fd78def46d1e78da200b5
+CURRENT_MAIN = 624db97d7f772558b1367e464c38acb2a1f25457
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
 NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
@@ -38,6 +38,12 @@ DUPLICATE_RUNNER_REHEARSAL = PASS_HERMETIC_36340617006
 ALERT_PROVIDER_UNAVAILABLE_REHEARSAL = PASS_HERMETIC_36340617006
 ALERT_KILL_SWITCH_REHEARSAL = PASS_HERMETIC_36340617006
 PRIVACY_SCAN_REHEARSAL = PASS_HERMETIC_36340617006
+SYNTHETIC_SOURCE_ONLY_FULL_CI_RUN = 36346112525
+SYNTHETIC_SOURCE_ONLY_VERIFY_STATIC_JOB = 108695464741
+SYNTHETIC_SOURCE_ONLY_FAKE_LIFECYCLE = PASS_HERMETIC_FULL_CI_36346112525
+UNKNOWN_WRITE_RECONCILIATION_REHEARSAL = PASS_HERMETIC_FULL_CI_36346112525
+POST_WRITE_OWNERSHIP_LOSS_REHEARSAL = PASS_HERMETIC_FULL_CI_36346112525
+BROWSE_NEGATIVE_CONFIRMATION_REHEARSAL = PASS_HERMETIC_FULL_CI_36346112525
 WORKER_EXISTS = YES
 SQLITE_DO_NAMESPACE = ESTABLISHED
 SQLITE_STORAGE_BACKEND = SQLITE
@@ -115,7 +121,7 @@ Current overall authority:
 
 ```text
 APPROVAL_PACKET_PREPARATION = COMPLETE_CURRENTNESS_RECONCILIATION
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_da767d46f696f532176fd78def46d1e78da200b5
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_624db97d7f772558b1367e464c38acb2a1f25457
 C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
@@ -634,6 +640,8 @@ Before any Production synthetic write can be considered:
 
 ## 13. Preview / non-Production rehearsal matrix
 
+Exact-main Full CI run `36346112525` also executed the hermetic #4081 canary lifecycle contract with injected fake effects and zero network/DB/provider/Production capability. CENTRAL accepts that source-only target only for rows whose required evidence is fully represented by the #4081 dependency-injected lifecycle; it does not satisfy the separately-defined runtime synthetic kill switch or provider rollback rows.
+
 Repository-owned hermetic Preview evidence is accepted for rows whose full required behavior is dependency-injected and fully exercised by `.github/workflows/reliability-preview.yml`. Exact main push run `36340617006` executed `node --test tests/reliability-preview/*.test.cjs` and completed **62/62 PASS**. This hermetic target does **not** substitute for provider, Production-DB transaction, structural/parity runtime-binding, synthetic-runtime, or rollback evidence where those rows require capabilities not exercised by the workflow.
 
 The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disabled rows are completed evidence. Every other row below remains a **plan** until separately executed and accepted.
@@ -655,10 +663,10 @@ The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disab
 | Alert provider unavailable | bounded delivery-unavailable result; Product path unaffected | `PASS_HERMETIC_36340617006` |
 | Alert kill switch ON/OFF | transport invocation count proves independent disable | `PASS_HERMETIC_36340617006` |
 | Synthetic canary disabled | zero QA auth/fixture/write capability invoked | `PLANNED_NOT_EXECUTED` |
-| Synthetic source-only fake lifecycle | #4081 injected fake effects exercise lifecycle without Production capability | `PLANNED_NOT_EXECUTED` |
-| Unknown-write reconciliation | canonical reread first; second write dispatch count remains zero | `PLANNED_NOT_EXECUTED` |
-| Post-write ownership loss | `FENCED`; no cleanup mutation by stale owner | `PLANNED_NOT_EXECUTED` |
-| Browse negative confirmation | standard canary remains private/non-Browse; malformed observer fails closed | `PLANNED_NOT_EXECUTED` |
+| Synthetic source-only fake lifecycle | #4081 injected fake effects exercise lifecycle without Production capability | `PASS_HERMETIC_FULL_CI_36346112525` |
+| Unknown-write reconciliation | canonical reread first; second write dispatch count remains zero | `PASS_HERMETIC_FULL_CI_36346112525` |
+| Post-write ownership loss | `FENCED`; no cleanup mutation by stale owner | `PASS_HERMETIC_FULL_CI_36346112525` |
+| Browse negative confirmation | standard canary remains private/non-Browse; malformed observer fails closed | `PASS_HERMETIC_FULL_CI_36346112525` |
 | Privacy scan | no secret/token/UID/email/Tree/Memory/content/raw SQL/raw row/raw error leakage | `PASS_HERMETIC_36340617006` |
 | Rollback | all three kill switches independently disable; scheduler/provider/store bindings removable without Product-path dependency | `PLANNED_NOT_EXECUTED` |
 
@@ -824,7 +832,8 @@ NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
 DEPLOYED_DISABLED_GATE_MARKER = PASS_#4507
 HERMETIC_NONPROD_REHEARSAL_RUN = 36340617006 / 62_OF_62_PASS
 HERMETIC_REHEARSAL_ROWS_PROMOTED = 8
-NONPROD_REHEARSAL_ROWS_PASS = 11_OF_21
+SYNTHETIC_SOURCE_ONLY_ROWS_PROMOTED = 4
+NONPROD_REHEARSAL_ROWS_PASS = 15_OF_21
 NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 
 RECOMMENDATION = COMPLETE_REMAINING_NONPROD_RUNTIME_REHEARSAL_GATES_BEFORE_C4
