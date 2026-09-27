@@ -121,9 +121,16 @@ The checked-in `workers/reliability-preview/wrangler.reliability-preview.toml` i
 
 ## Current gate consequence
 
+The choreography correction is merged authority and the disabled NONPROD Provider Preview has since completed under #4227. That completion does not authorize later stages.
+
 ```text
-SOURCE_CHOREOGRAPHY_CORRECTION = PREPARED
-ACTUAL_PROVIDER_PREVIEW = NOT_EXECUTED
+SOURCE_CHOREOGRAPHY_CORRECTION = MERGED
+ACTUAL_PROVIDER_PREVIEW = PASS_#4227
+DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
+WORKER_EXISTS = YES
+SQLITE_DO_LIFECYCLE = ESTABLISHED
+DO_INSTANCE_INITIALIZED = UNOBSERVED
+CRON_ATTACHMENT = NO
 READ_ONLY_SENTINEL_ACTIVATION = NO
 ALERT_DELIVERY_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
