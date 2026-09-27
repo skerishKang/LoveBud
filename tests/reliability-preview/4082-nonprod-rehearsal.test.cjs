@@ -1219,6 +1219,69 @@ test('4505 INVALID PROVENANCE — disabled-gate marker is not emitted before pro
   assert.equal(logs.length, 0);
 });
 
+test('4505 LOGGING FAILURE — disabled gate remains fail-closed and never resolves the Durable Object', async function () {
+  const { default: workerModule } = await import('file://' + WORKER_SOURCE_PATH.split('\\').join('/'));
+  let idFromNameCalls = 0;
+  const originalLog = console.log;
+  console.log = function () { throw new Error('observability unavailable'); };
+  try {
+    const record = await workerModule.scheduled(
+      { cron: '*/5 * * * *' },
+      makeEnv({
+        RELIABILITY_PREVIEW_RELEASE_SHA: 'b'.repeat(40),
+        RELIABILITY_PREVIEW_STORE: {
+          idFromName: function () { idFromNameCalls += 1; throw new Error('DO must not resolve'); }
+        }
+      }),
+      {}
+    );
+    assert.equal(record.run_class, 'RUN_DISABLED');
+    assert.equal(record.heartbeat_class, 'NOT_RECORDED_DISABLED');
+  } finally {
+    console.log = originalLog;
+  }
+  assert.equal(idFromNameCalls, 0);
+});
+
+test('4505 ENABLED SENTINEL — disabled-gate marker is absent on the Durable Object path', async function () {
+  const { default: workerModule } = await import('file://' + WORKER_SOURCE_PATH.split('\\').join('/'));
+  const logs = [];
+  let idFromNameCalls = 0;
+  let getCalls = 0;
+  let runCalls = 0;
+  const originalLog = console.log;
+  console.log = function () { logs.push(Array.prototype.slice.call(arguments).join(' ')); };
+  try {
+    const record = await workerModule.scheduled(
+      { cron: '*/5 * * * *' },
+      makeEnv({
+        RELIABILITY_PREVIEW_RELEASE_SHA: 'c'.repeat(40),
+        RELIABILITY_READ_ONLY_SENTINEL_ENABLED: 'true',
+        RELIABILITY_PREVIEW_STORE: {
+          idFromName: function () { idFromNameCalls += 1; return 'bounded-id'; },
+          get: function () {
+            getCalls += 1;
+            return {
+              runPreview: async function () {
+                runCalls += 1;
+                return { run_class: 'RUN_COMPLETED', trigger_class: 'CRON_TRIGGER' };
+              }
+            };
+          }
+        }
+      }),
+      {}
+    );
+    assert.equal(record.run_class, 'RUN_COMPLETED');
+  } finally {
+    console.log = originalLog;
+  }
+  assert.equal(idFromNameCalls, 1);
+  assert.equal(getCalls, 1);
+  assert.equal(runCalls, 1);
+  assert.equal(logs.length, 0);
+});
+
 test('4175 PRIVACY AUDIT — reconciliation surfaces stay free of private markers', function () {
   trackPrivacy('worker-source-audit', { bytes: fs.statSync(WORKER_SOURCE_PATH).size });
   trackPrivacy('wrangler-contract-audit', { bytes: fs.statSync(WRANGLER_CONFIG_PATH).size });
