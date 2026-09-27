@@ -8,7 +8,7 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@624db97d7f772558b1367e464c38acb2a1f25457`
+Current-main reconciliation snapshot: `main@e8546098edbf6fe7ddd2c35f5eb734bbfbb0c607`
 
 Post-#4227 disabled NONPROD Provider Preview reconciliation: **PROVIDER PREVIEW COMPLETE / PASS; WORKER EXISTS; SQLITE DO NAMESPACE ESTABLISHED; CRON/SENTINEL/ALERT/PRODUCTION/PRODUCT REMAIN DISABLED OR UNBOUND**
 
@@ -24,7 +24,7 @@ This document is the bounded owner/Web-CTO decision packet requested by #4082. I
 This section supersedes stale state labels elsewhere in this packet where they conflict with later issue authority or completed #4227 evidence.
 
 ```text
-CURRENT_MAIN = 624db97d7f772558b1367e464c38acb2a1f25457
+CURRENT_MAIN = e8546098edbf6fe7ddd2c35f5eb734bbfbb0c607
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
 NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
@@ -44,6 +44,10 @@ SYNTHETIC_SOURCE_ONLY_FAKE_LIFECYCLE = PASS_HERMETIC_FULL_CI_36346112525
 UNKNOWN_WRITE_RECONCILIATION_REHEARSAL = PASS_HERMETIC_FULL_CI_36346112525
 POST_WRITE_OWNERSHIP_LOSS_REHEARSAL = PASS_HERMETIC_FULL_CI_36346112525
 BROWSE_NEGATIVE_CONFIRMATION_REHEARSAL = PASS_HERMETIC_FULL_CI_36346112525
+STRUCTURAL_PARITY_DB_ENGINE_RUN = 36357161756
+STRUCTURAL_PARITY_MISMATCH_REHEARSAL = PASS_DB_ENGINE_36357161756
+STRUCTURAL_PARITY_MUTATION_COUNT = 0
+STRUCTURAL_PARITY_MIGRATION_EXECUTION_COUNT = 0
 WORKER_EXISTS = YES
 SQLITE_DO_NAMESPACE = ESTABLISHED
 SQLITE_STORAGE_BACKEND = SQLITE
@@ -121,7 +125,7 @@ Current overall authority:
 
 ```text
 APPROVAL_PACKET_PREPARATION = COMPLETE_CURRENTNESS_RECONCILIATION
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_624db97d7f772558b1367e464c38acb2a1f25457
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_e8546098edbf6fe7ddd2c35f5eb734bbfbb0c607
 C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
@@ -640,6 +644,8 @@ Before any Production synthetic write can be considered:
 
 ## 13. Preview / non-Production rehearsal matrix
 
+Exact-main Full CI run `36357161756` additionally supplies disposable-PostgreSQL structural/parity evidence: `PARITY_MISMATCH` is produced with no raw leakage or mutation, the preflight leaves no activation/residual state and executes no migration or ledger append, and the #4061 source contract maps only that bounded mismatch to `STRUCTURAL_DRIFT_DETECTED` while retaining zero capabilities.
+
 Exact-main Full CI run `36346112525` also executed the hermetic #4081 canary lifecycle contract with injected fake effects and zero network/DB/provider/Production capability. CENTRAL accepts that source-only target only for rows whose required evidence is fully represented by the #4081 dependency-injected lifecycle; it does not satisfy the separately-defined runtime synthetic kill switch or provider rollback rows.
 
 Repository-owned hermetic Preview evidence is accepted for rows whose full required behavior is dependency-injected and fully exercised by `.github/workflows/reliability-preview.yml`. Exact main push run `36340617006` executed `node --test tests/reliability-preview/*.test.cjs` and completed **62/62 PASS**. This hermetic target does **not** substitute for provider, Production-DB transaction, structural/parity runtime-binding, synthetic-runtime, or rollback evidence where those rows require capabilities not exercised by the workflow.
@@ -656,7 +662,7 @@ The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disab
 | Store corruption/malformed state | fail closed; bounded reset/rollback procedure | `PLANNED_NOT_EXECUTED` |
 | DB collector timeout | bounded timeout, read-only transaction closes, normal Product path unaffected | `PLANNED_NOT_EXECUTED` |
 | Malformed DB result | no fabricated completeness/healthy result | `PLANNED_NOT_EXECUTED` |
-| Structural/parity mismatch | #4061 bounded non-success translation; no auto-migration | `PLANNED_NOT_EXECUTED` |
+| Structural/parity mismatch | #4061 bounded non-success translation; no auto-migration | `PASS_DB_ENGINE_36357161756` |
 | Heartbeat stale | independent reader detects stale primary | `PASS_HERMETIC_36340617006` |
 | Heartbeat store unavailable | independent reader surfaces authority unavailable | `PASS_HERMETIC_36340617006` |
 | Duplicate runner | lease/fence rejects stale/superseded runner | `PASS_HERMETIC_36340617006` |
@@ -833,7 +839,7 @@ DEPLOYED_DISABLED_GATE_MARKER = PASS_#4507
 HERMETIC_NONPROD_REHEARSAL_RUN = 36340617006 / 62_OF_62_PASS
 HERMETIC_REHEARSAL_ROWS_PROMOTED = 8
 SYNTHETIC_SOURCE_ONLY_ROWS_PROMOTED = 4
-NONPROD_REHEARSAL_ROWS_PASS = 15_OF_21
+NONPROD_REHEARSAL_ROWS_PASS = 16_OF_21
 NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 
 RECOMMENDATION = COMPLETE_REMAINING_NONPROD_RUNTIME_REHEARSAL_GATES_BEFORE_C4
