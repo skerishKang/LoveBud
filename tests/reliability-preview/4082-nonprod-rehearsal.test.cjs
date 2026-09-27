@@ -956,17 +956,22 @@ test('4175 NO HARDCODED HISTORICAL MAIN SHA — worker/config sources carry no f
   assert.equal(/[0-9a-fA-F]{40}/.test(configCodeOnly), false, 'config must not embed any 40-hex literal');
 });
 
-test('4175 PACKET INVENTORY PARITY — packet distinguishes SOURCE DECLARATION EXISTS from NOT CREATED / NOT DONE / NOT RUN / NO authority', function () {
+test('4082 PACKET INVENTORY PARITY — packet records Provider Preview PASS while capability gates remain disabled', function () {
   const packet = fs.readFileSync(PACKET_DOC_PATH, 'utf8');
   assert.equal(packet.includes('SOURCE DECLARATION = EXISTS'), true);
-  assert.equal(packet.includes('PROVIDER RESOURCE  = NOT CREATED'), true);
+  assert.equal(packet.includes('PROVIDER RESOURCE  = CREATED_DISABLED_NONPROD'), true);
   assert.equal(packet.includes('CRON ACTIVATION    = NOT DONE'), true);
-  assert.equal(packet.includes('PROVIDER PREVIEW   = NOT RUN'), true);
+  assert.equal(packet.includes('PROVIDER PREVIEW   = PASS'), true);
+  assert.equal(packet.includes('DO INSTANCE INITIALIZATION = UNOBSERVED'), true);
+  assert.equal(packet.includes('DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS'), true);
   assert.equal(packet.includes('PRODUCTION AUTHORITY = NO'), true);
-  assert.equal(packet.includes('#4149'), true);
+  assert.equal(packet.includes('#4227'), true);
   assert.equal(packet.includes('RELIABILITY_PREVIEW_RELEASE_SHA'), true);
   assert.equal(packet.includes('wrangler versions upload'), true);
   assert.equal(packet.includes('wrangler triggers deploy'), true);
+  // Superseded provider-preview inventory claims must not survive.
+  assert.equal(packet.includes('PROVIDER RESOURCE  = NOT CREATED'), false);
+  assert.equal(packet.includes('PROVIDER PREVIEW   = NOT RUN'), false);
   // Stale pre-#4149 claims must not survive unqualified.
   assert.equal(packet.includes('- no repository reliability `scheduled()` handler or Cron binding exists;'), false);
   assert.equal(packet.includes('- no repository Durable Object reliability namespace/binding exists;'), false);
