@@ -8,7 +8,7 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@204a51f36dbd23f43e2b0d71f656d89229e78b69`
+Current-main reconciliation snapshot: `main@da767d46f696f532176fd78def46d1e78da200b5`
 
 Post-#4227 disabled NONPROD Provider Preview reconciliation: **PROVIDER PREVIEW COMPLETE / PASS; WORKER EXISTS; SQLITE DO NAMESPACE ESTABLISHED; CRON/SENTINEL/ALERT/PRODUCTION/PRODUCT REMAIN DISABLED OR UNBOUND**
 
@@ -24,7 +24,7 @@ This document is the bounded owner/Web-CTO decision packet requested by #4082. I
 This section supersedes stale state labels elsewhere in this packet where they conflict with later issue authority or completed #4227 evidence.
 
 ```text
-CURRENT_MAIN = 569836d0a3df7a995cc02c4eef23d16f365eb1a5
+CURRENT_MAIN = da767d46f696f532176fd78def46d1e78da200b5
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
 NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
@@ -59,10 +59,11 @@ CALIBRATION_FREE_HARD_SIGNALS = WIRED_SOURCE_ONLY
 INITIAL_STRUCTURAL_SIGNAL_IDENTITY = DETERMINISTIC
 ```
 
-`SELECTED_NOT_BOUND` is not activation authority. The remaining blockers are capability/binding gates, not provider-preview or component-selection gaps:
+`SELECTED_NOT_BOUND` is not activation authority. #4509 now distinguishes C4 packet-readiness evidence from later capability-activation rehearsals. Core C4 verification is complete, while capability/binding gates remain independently closed:
 
 ```text
-NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
+C4_CORE_VERIFICATION = COMPLETE_#4509
+NONPROD_RUNTIME_REHEARSAL_MATRIX = C4_CORE_COMPLETE_POST_C4_CAPABILITY_ROWS_REMAIN
 CRON_ATTACHMENT_AUTHORITY = NO
 READ_ONLY_DB_CREDENTIAL_RUNTIME_BINDING = NOT_CREATED
 REAL_PRODUCTION_READONLY_COLLECTOR_BOUND = NO
@@ -75,7 +76,7 @@ PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
 PRODUCTION_ACTIVATION_AUTHORITY = NO
 ```
 
-The completed #4227 Provider Preview does not itself authorize any of these gates.
+The completed #4227 Provider Preview, #4507 scheduler evidence, and #4509 evidence-mode decision do not authorize any of these capability gates.
 
 It does **not** grant Production read authority, Production synthetic-write authority, scheduler activation, Durable Object binding, alert-provider binding, secret placement, QA-account creation, deployment authority, or schema mutation authority.
 
@@ -85,7 +86,7 @@ The following dimensions are independent:
 
 ```text
 SOURCE_AUTHORITY = MERGED_FOR_#4061_#4079_#4080_#4081_#4091_#3861_#3874
-RUNTIME_BINDING_DECISION = RECOMMENDATION_ONLY
+RUNTIME_BINDING_DECISION = SELECTED_NOT_BOUND / PACKET_READY
 PRODUCTION_ACTIVATION_AUTHORITY = NONE
 ```
 
@@ -105,8 +106,9 @@ Current overall authority:
 
 ```text
 APPROVAL_PACKET_PREPARATION = COMPLETE_CURRENTNESS_RECONCILIATION
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_204a51f36dbd23f43e2b0d71f656d89229e78b69
-C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_da767d46f696f532176fd78def46d1e78da200b5
+C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = YES
+C4_CAPABILITY_ACTIVATION = NONE
 RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
 PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
@@ -218,7 +220,7 @@ Current repository evidence supports the following placement facts:
 - PROVIDER PREVIEW = PASS: the disabled NONPROD Worker exists and the `ReliabilityPreviewStore` Durable Object namespace is established on SQLite. No Durable Object instance initialization is claimed (`DO_INSTANCE_INITIALIZED = UNOBSERVED`). Cron remains unattached, sentinel and alert remain disabled, and no Production/Product capability is bound;
 - #4079, #4080, #4081, #3861, and #3874 source modules are pure/source-only or injected-effect contracts, not live runtime integrations.
 
-Therefore the packet recommends new **isolated reliability runtime components**, but does not create any of them.
+Therefore the packet records the selected isolated reliability runtime components and their bounded evidence. The disabled NONPROD Worker/SQLite namespace exists and scheduler rehearsal has completed, but Production collector, credential, alert, dead-man, synthetic, Product, and Production bindings remain unbound.
 
 ### Post-#4149 NONPROD reliability-preview reconciliation (#4175)
 
@@ -624,33 +626,60 @@ Before any Production synthetic write can be considered:
 
 ## 13. Preview / non-Production rehearsal matrix
 
-The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disabled rows are completed evidence. Every other row below remains a **plan** until separately executed and accepted.
+#4509 selects the evidence mode per rehearsal class. Provider-target evidence is required only for claims that depend on actual Cloudflare wiring/control-plane behavior. Deterministic runtime/failure semantics may be satisfied by exact-head executable hermetic rehearsal against the real runtime modules with dependency injection. Capability-specific synthetic rows remain post-C4 activation gates.
 
-| Rehearsal | Required evidence | Current status |
-| --- | --- | --- |
-| Disabled Provider Preview | Worker exists; SQLite DO namespace established; 404-only public surface; Cron/sentinel/alert/Production/Product disabled | `PASS_#4227` |
-| Scheduler invocation | scheduled handler executes only in approved Preview/non-Production environment and records bounded run class | `PASS_#4507` |
-| Scheduler disabled | read-only kill switch short-circuits before DB credential use | `PASS_#4507` |
-| Baseline store happy path | bounded append/read/prune/retention behavior and deterministic evaluation | `PLANNED_NOT_EXECUTED` |
-| Store unavailable | `MONITORING_FAILED`/`AUTHORITY_UNAVAILABLE`; never healthy; no fallback Product write | `PLANNED_NOT_EXECUTED` |
-| Store corruption/malformed state | fail closed; bounded reset/rollback procedure | `PLANNED_NOT_EXECUTED` |
-| DB collector timeout | bounded timeout, read-only transaction closes, normal Product path unaffected | `PLANNED_NOT_EXECUTED` |
-| Malformed DB result | no fabricated completeness/healthy result | `PLANNED_NOT_EXECUTED` |
-| Structural/parity mismatch | #4061 bounded non-success translation; no auto-migration | `PLANNED_NOT_EXECUTED` |
-| Heartbeat stale | independent reader detects stale primary | `PLANNED_NOT_EXECUTED` |
-| Heartbeat store unavailable | independent reader surfaces authority unavailable | `PLANNED_NOT_EXECUTED` |
-| Duplicate runner | lease/fence rejects stale/superseded runner | `PLANNED_NOT_EXECUTED` |
-| Alert provider unavailable | bounded delivery-unavailable result; Product path unaffected | `PLANNED_NOT_EXECUTED` |
-| Alert kill switch ON/OFF | transport invocation count proves independent disable | `PLANNED_NOT_EXECUTED` |
-| Synthetic canary disabled | zero QA auth/fixture/write capability invoked | `PLANNED_NOT_EXECUTED` |
-| Synthetic source-only fake lifecycle | #4081 injected fake effects exercise lifecycle without Production capability | `PLANNED_NOT_EXECUTED` |
-| Unknown-write reconciliation | canonical reread first; second write dispatch count remains zero | `PLANNED_NOT_EXECUTED` |
-| Post-write ownership loss | `FENCED`; no cleanup mutation by stale owner | `PLANNED_NOT_EXECUTED` |
-| Browse negative confirmation | standard canary remains private/non-Browse; malformed observer fails closed | `PLANNED_NOT_EXECUTED` |
-| Privacy scan | no secret/token/UID/email/Tree/Memory/content/raw SQL/raw row/raw error leakage | `PLANNED_NOT_EXECUTED` |
-| Rollback | all three kill switches independently disable; scheduler/provider/store bindings removable without Product-path dependency | `PLANNED_NOT_EXECUTED` |
+```text
+EVIDENCE_MODE_POLICY = SELECTED_#4509
+LIVE_PROVIDER_FAULT_INJECTION_REQUIRED_FOR_C4 = NO
+LIVE_STORE_CORRUPTION_REQUIRED_FOR_C4 = NO
+LIVE_PRODUCTION_DB_TIMEOUT_REQUIRED_FOR_C4 = NO
+LIVE_ALERT_PROVIDER_OUTAGE_REQUIRED_FOR_C4 = NO
+```
 
-No rehearsal row may be promoted to `PASS` until it is actually executed against the approved non-Production target and its bounded evidence is independently reviewed.
+| Rehearsal | Required evidence | Evidence mode | Current status |
+| --- | --- | --- | --- |
+| Disabled Provider Preview | Worker exists; SQLite DO namespace established; 404-only public surface; Cron/sentinel/alert/Production/Product disabled | Provider target | `PASS_PROVIDER_#4227` |
+| Scheduler invocation | natural scheduled handler executes in approved NONPROD target and records bounded run class | Provider target | `PASS_PROVIDER_#4507` |
+| Scheduler disabled | read-only kill switch short-circuits before DO/DB capability use | Provider target | `PASS_PROVIDER_#4507` |
+| Baseline store happy path | bounded append/read/prune/retention behavior and deterministic evaluation | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Store unavailable | `MONITORING_FAILED`/authority unavailable; never healthy; no fallback Product write | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Store corruption/malformed state | malformed/unknown store evidence fails closed; no fabricated healthy/completeness result | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| DB collector timeout | bounded timeout and fail-closed collector result; no raw error leakage | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Malformed DB result | no fabricated completeness/healthy result | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Structural/parity mismatch | #4061/#4079 bounded non-success translation; no auto-migration | Hermetic contract + exact-head CI | `PASS_HERMETIC_EXACT_HEAD_36340617028` |
+| Heartbeat stale | independent reader classifies stale primary at selected 7-minute threshold | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Heartbeat store unavailable | independent reader surfaces `AUTHORITY_UNAVAILABLE`, never healthy | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Duplicate runner | lease/fence rejects overlapping or stale/superseded runner | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Alert provider unavailable | Slack-specific transport classifies 4xx/5xx/throw/timeout with a single attempt and no automatic retry | Hermetic provider-specific transport contract | `PASS_HERMETIC_36340617006` |
+| Alert kill switch ON/OFF | transport invocation count proves independent disable | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Synthetic canary disabled | zero QA auth/fixture/write capability invoked | Capability-specific post-C4 gate | `POST_C4_CAPABILITY_GATE` |
+| Synthetic source-only fake lifecycle | #4081 injected fake effects exercise lifecycle without Production capability | Source-only capability rehearsal | `PASS_SOURCE_ONLY_#4081_POST_C4` |
+| Unknown-write reconciliation | canonical reread first; second write dispatch count remains zero | Source-only capability rehearsal | `PASS_SOURCE_ONLY_#4081_POST_C4` |
+| Post-write ownership loss | `FENCED`; no cleanup mutation by stale owner | Source-only capability rehearsal | `PASS_SOURCE_ONLY_#4081_POST_C4` |
+| Browse negative confirmation | explicit negative confirmation required; malformed observer fails closed | Source-only capability rehearsal | `PASS_SOURCE_ONLY_#4081_POST_C4` |
+| Privacy scan | no secret/token/UID/email/Tree/Memory/content/raw SQL/raw row/raw error leakage | Composite hermetic + provider marker | `PASS_COMPOSITE_#4507_36340617006` |
+| Rollback | temporary Cron attach/detach proven; logical sentinel/alert switches fail disabled; no destructive namespace deletion required for C4 | Composite provider + hermetic | `PASS_COMPOSITE_#4507_36340617006` |
+
+C4 uses the core verification classes named by the #4082 issue, not every later capability-specific activation rehearsal:
+
+```text
+PREVIEW_NONPROD_RUNTIME_REHEARSAL = PASS_#4227_#4507
+DEAD_MAN_HEARTBEAT_FAILURE_TEST = PASS_HERMETIC_36340617006
+STORE_FAILURE_COLLECTOR_TIMEOUT_FAIL_CLOSED = PASS_HERMETIC_36340617006
+PROVIDER_SPECIFIC_TRANSPORT_CONTRACT_TESTS = PASS_HERMETIC_36340617006
+PRIVACY_RUNTIME_LOG_ALERT_CONTRACT = PASS_HERMETIC_PLUS_PROVIDER_MARKER
+EXACT_HEAD_CI = PASS_36340617028
+C4_CORE_VERIFICATION = COMPLETE
+```
+
+Baseline-store nuance: the store contract is executable and the hermetic baseline-aware path injects `recordBaselineSample(...)`. The currently selected initial structural signals do not require numeric baseline calibration, so runtime baseline append is not required for that initial set. A future baseline-aware active signal must add and separately approve its runtime append binding before activation.
+
+```text
+INITIAL_STRUCTURAL_SIGNAL_SET_BASELINE_APPEND_REQUIRED = NO
+FUTURE_BASELINE_AWARE_SIGNAL_RUNTIME_APPEND_BINDING = UNBOUND
+```
+
+Synthetic lifecycle evidence remains useful source authority, but QA identity, runtime effect binding, credentials, and any write capability remain separate post-C4 gates. No row in this table grants another capability.
 
 ## 14. Privacy and capability boundary
 
@@ -689,7 +718,7 @@ Required before `READ_ONLY_SENTINEL_ACTIVATION = YES` can even be proposed:
 - explicit read-only transaction + timeout enforcement;
 - scheduler Worker and private-store bindings implemented in a separate runtime child;
 - independent dead-man platform/owner decided;
-- Preview/non-Production matrix executed and independently accepted;
+- applicable capability-specific Preview/non-Production rehearsals executed and independently accepted;
 - read-only kill switch proven fail-disabled;
 - explicit owner/Web-CTO Production read Phase-B approval.
 
@@ -749,51 +778,73 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 7. **What remains before alert delivery?** Slack App Incoming Webhook is already selected-not-bound; runtime/secret binding, delivery/dedupe/retry/health rehearsal, kill-switch proof, and explicit alert activation approval remain.
 8. **Who detects monitor death?** Modal scheduled function is the selected-not-bound independent control plane; its reader/runtime binding and bounded probe authority remain unbound, so dead-man activation is not yet complete.
 9. **How is immediate disable/rollback performed?** Three independent fail-disabled switches; scheduler trigger/provider/store bindings are secondary rollback/removal mechanisms and never substitute for the switches.
-10. **What evidence is still required?** #4227 disabled Provider Preview is `PASS`, and #4507 promotes Scheduler invocation + Scheduler disabled to `PASS`; every other §13 runtime/capability rehearsal row remains `PLANNED_NOT_EXECUTED` until separately authorized and executed.
+10. **What evidence is still required?** Core C4 verification is complete under #4227/#4507/#4509 plus exact-head hermetic rehearsal. Remaining synthetic and capability-binding rehearsals are post-C4 activation gates and do not authorize themselves.
 
 ## 18. Final packet disposition
 
-The packet document is current through #4507, but the #4082 completion marker is still not satisfied. #4227 proves the disabled base Provider Preview and #4507 proves the natural scheduler invocation plus fail-disabled scheduler short-circuit. The remaining runtime/capability rehearsal rows in §13 are still unexecuted, so C4 remains blocked.
+The packet is current through #4509. #4227 proves the disabled Provider Preview, #4507 proves natural scheduler execution plus the fail-disabled scheduler short-circuit on the deployed Worker, and #4509 establishes that deterministic runtime fault semantics are authoritatively exercised by the exact-head hermetic rehearsal rather than by manufacturing live provider corruption/outages.
+
+The #4082 completion marker is therefore satisfied as a **non-activating packet-readiness decision**. This is not runtime activation and grants no Production or provider capability.
 
 ```text
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_569836d0a3df7a995cc02c4eef23d16f365eb1a5
-C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
-C4_BLOCKER_CLASS = RUNTIME_REHEARSAL_AND_CAPABILITY_AUTHORITY
-NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
-#4082_CLOSE = NO
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_da767d46f696f532176fd78def46d1e78da200b5
+C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = YES
+C4_CORE_VERIFICATION = COMPLETE
+C4_CAPABILITY_ACTIVATION = NONE
+NONPROD_RUNTIME_REHEARSAL_MATRIX = C4_CORE_COMPLETE_POST_C4_CAPABILITY_ROWS_REMAIN
+#4082_CLOSE = YES_AFTER_MERGE_AND_POST_MERGE_GREEN
 #3461_KEEP_OPEN = YES
 #1882_KEEP_OPEN = YES
 
 RUNTIME_ACTIVATION = NO
+READ_ONLY_SENTINEL_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
 PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
+SYNTHETIC_CANARY_ACTIVATION = NO
 ALERT_PROVIDER_BINDING = NO
+ALERT_DELIVERY_ACTIVATION = NO
+INDEPENDENT_DEAD_MAN_RUNTIME_BOUND = NO
+
 INITIAL_SIGNAL_CALIBRATION_POLICY = SELECTED_NOT_BOUND
 AGGREGATE_COUNT_CALIBRATION = NO_NUMERIC_BASELINE_CALIBRATION
 PARITY_EVIDENCE_CALIBRATION = CATEGORICAL_TRANSLATION_ONLY
 STRUCTURAL_RUNTIME_COMPOSITION_SOURCE = COMPLETE_#4500_#4501
-DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
+DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS_#4227
+NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
+NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
+DEPLOYED_DISABLED_GATE_MARKER = PASS_#4507
+
+PREVIEW_NONPROD_RUNTIME_REHEARSAL = PASS_#4227_#4507
+DEAD_MAN_HEARTBEAT_FAILURE_TEST = PASS_HERMETIC_36340617006
+STORE_FAILURE_COLLECTOR_TIMEOUT_FAIL_CLOSED = PASS_HERMETIC_36340617006
+PROVIDER_SPECIFIC_TRANSPORT_CONTRACT_TESTS = PASS_HERMETIC_36340617006
+PRIVACY_RUNTIME_LOG_ALERT_CONTRACT = PASS_HERMETIC_PLUS_PROVIDER_MARKER
+EXACT_HEAD_CI = PASS_36340617028
 
 SOURCE_MODEL_BLOCKER_4091 = RESOLVED
 CATALOG_POPULATED_PREPARED_MODEL = VALID_UNATTESTED
 FABRICATED_APPLIED_HISTORY = 0
 CANONICAL_RUNNER_ADOPTION = HOLD_NOT_ACTIVE
 PRODUCTION_PHASE_B_READ_AUTHORITY = NOT_AUTHORIZED
-#4005_RUNTIME_GATE_IMPACT = BLOCKED
+#4005_RUNTIME_GATE_IMPACT = BLOCKED_FOR_ACTIVATION_NOT_C4_PACKET_READINESS
 
 PRIMARY_SCHEDULER = CLOUDFLARE_WORKER_CRON_TRIGGER_DEDICATED_RELIABILITY_WORKER
 PRIMARY_SCHEDULER_STATE = SELECTED_NOT_BOUND
 SCHEDULER_ACTIVATION = NO
 CRON_ATTACHMENT_AUTHORITY = NO
+FINAL_CRON_TRIGGERS = NONE
 
 PRIVATE_RELIABILITY_STORE = SQLITE_BACKED_CLOUDFLARE_DURABLE_OBJECT
 PRIVATE_STORE_STATE = SELECTED_NOT_BOUND
 PRIVATE_STORE_ACTIVATION = DISABLED_NONPROD_NAMESPACE_ESTABLISHED_ONLY
 
 READ_ONLY_EXECUTOR_DESIGN = READY
+READ_ONLY_DB_CREDENTIAL_RUNTIME_BINDING = NOT_CREATED
+REAL_PRODUCTION_READONLY_COLLECTOR = UNBOUND
 PRODUCTION_READ_PHASE_B = NOT_AUTHORIZED__OWNER_APPROVAL_REQUIRED
 
 ALERT_PROVIDER = SLACK_APP_INCOMING_WEBHOOK / SELECTED_NOT_BOUND
+SLACK_APP_WEBHOOK_SECRET_BOUND = NO
 ALERT_DELIVERY_ACTIVATION = NO
 
 DEAD_MAN_READER = SOURCE_FACTORY_ONLY
@@ -801,18 +852,20 @@ DEAD_MAN_CONTROL_PLANE = MODAL_SCHEDULED_FUNCTION / SELECTED_NOT_BOUND
 DEAD_MAN_CONTROL_PLANE_INDEPENDENT = REQUIRED_NOT_BOUND
 
 NONPROD_PREVIEW_SOURCE_PACKAGE = PUBLISHED_#4149_RECONCILED_#4175
+DEPLOYED_RELIABILITY_PREVIEW_SOURCE = 204a51f36dbd23f43e2b0d71f656d89229e78b69
+CURRENT_REPOSITORY_MAIN = da767d46f696f532176fd78def46d1e78da200b5
 RELEASE_SHA_PROVENANCE = INJECTED_FAIL_CLOSED_INVALID_RELEASE_SHA
 KILL_SWITCH_ENV_WIRING = WIRED_SOURCE_LEVEL_DEFAULT_DISABLED
-REAL_PRODUCTION_COLLECTOR = UNBOUND
 INITIAL_STRUCTURAL_CALIBRATION = SELECTED_NOT_BOUND
 BASELINE_AWARE_CALIBRATION = UNBOUND_UNTIL_SELECTED_SIGNAL_REQUIRES_IT
-ACTUAL_PROVIDER_PREVIEW = PASS_#4227
-NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
-NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
-DEPLOYED_DISABLED_GATE_MARKER = PASS_#4507
-NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
+FUTURE_BASELINE_AWARE_SIGNAL_RUNTIME_APPEND_BINDING = UNBOUND
 
-RECOMMENDATION = COMPLETE_REMAINING_NONPROD_RUNTIME_REHEARSAL_GATES_BEFORE_C4
+LIVE_PROVIDER_FAULT_INJECTION_REQUIRED_FOR_C4 = NO
+LIVE_STORE_CORRUPTION_REQUIRED_FOR_C4 = NO
+LIVE_PRODUCTION_DB_TIMEOUT_REQUIRED_FOR_C4 = NO
+LIVE_ALERT_PROVIDER_OUTAGE_REQUIRED_FOR_C4 = NO
+
+RECOMMENDATION = CLOSE_#4082_AFTER_THIS_RECONCILIATION_MERGES_AND_POST_MERGE_CI_IS_GREEN
 ```
 
 Refs #4082.
