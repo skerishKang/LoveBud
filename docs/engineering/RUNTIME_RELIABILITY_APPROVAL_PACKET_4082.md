@@ -8,7 +8,7 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@204a51f36dbd23f43e2b0d71f656d89229e78b69`
+Current-main reconciliation snapshot: `main@da767d46f696f532176fd78def46d1e78da200b5`
 
 Post-#4227 disabled NONPROD Provider Preview reconciliation: **PROVIDER PREVIEW COMPLETE / PASS; WORKER EXISTS; SQLITE DO NAMESPACE ESTABLISHED; CRON/SENTINEL/ALERT/PRODUCTION/PRODUCT REMAIN DISABLED OR UNBOUND**
 
@@ -24,10 +24,20 @@ This document is the bounded owner/Web-CTO decision packet requested by #4082. I
 This section supersedes stale state labels elsewhere in this packet where they conflict with later issue authority or completed #4227 evidence.
 
 ```text
-CURRENT_MAIN = 569836d0a3df7a995cc02c4eef23d16f365eb1a5
+CURRENT_MAIN = da767d46f696f532176fd78def46d1e78da200b5
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
 NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
+HERMETIC_NONPROD_REHEARSAL_RUN = 36340617006
+HERMETIC_NONPROD_REHEARSAL_TESTS = 62/62 PASS
+BASELINE_STORE_HAPPY_PATH_REHEARSAL = PASS_HERMETIC_36340617006
+STORE_UNAVAILABLE_REHEARSAL = PASS_HERMETIC_36340617006
+HEARTBEAT_STALE_REHEARSAL = PASS_HERMETIC_36340617006
+HEARTBEAT_STORE_UNAVAILABLE_REHEARSAL = PASS_HERMETIC_36340617006
+DUPLICATE_RUNNER_REHEARSAL = PASS_HERMETIC_36340617006
+ALERT_PROVIDER_UNAVAILABLE_REHEARSAL = PASS_HERMETIC_36340617006
+ALERT_KILL_SWITCH_REHEARSAL = PASS_HERMETIC_36340617006
+PRIVACY_SCAN_REHEARSAL = PASS_HERMETIC_36340617006
 WORKER_EXISTS = YES
 SQLITE_DO_NAMESPACE = ESTABLISHED
 SQLITE_STORAGE_BACKEND = SQLITE
@@ -105,7 +115,7 @@ Current overall authority:
 
 ```text
 APPROVAL_PACKET_PREPARATION = COMPLETE_CURRENTNESS_RECONCILIATION
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_204a51f36dbd23f43e2b0d71f656d89229e78b69
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_da767d46f696f532176fd78def46d1e78da200b5
 C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
@@ -624,6 +634,8 @@ Before any Production synthetic write can be considered:
 
 ## 13. Preview / non-Production rehearsal matrix
 
+Repository-owned hermetic Preview evidence is accepted for rows whose full required behavior is dependency-injected and fully exercised by `.github/workflows/reliability-preview.yml`. Exact main push run `36340617006` executed `node --test tests/reliability-preview/*.test.cjs` and completed **62/62 PASS**. This hermetic target does **not** substitute for provider, Production-DB transaction, structural/parity runtime-binding, synthetic-runtime, or rollback evidence where those rows require capabilities not exercised by the workflow.
+
 The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disabled rows are completed evidence. Every other row below remains a **plan** until separately executed and accepted.
 
 | Rehearsal | Required evidence | Current status |
@@ -631,26 +643,26 @@ The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disab
 | Disabled Provider Preview | Worker exists; SQLite DO namespace established; 404-only public surface; Cron/sentinel/alert/Production/Product disabled | `PASS_#4227` |
 | Scheduler invocation | scheduled handler executes only in approved Preview/non-Production environment and records bounded run class | `PASS_#4507` |
 | Scheduler disabled | read-only kill switch short-circuits before DB credential use | `PASS_#4507` |
-| Baseline store happy path | bounded append/read/prune/retention behavior and deterministic evaluation | `PLANNED_NOT_EXECUTED` |
-| Store unavailable | `MONITORING_FAILED`/`AUTHORITY_UNAVAILABLE`; never healthy; no fallback Product write | `PLANNED_NOT_EXECUTED` |
+| Baseline store happy path | bounded append/read/prune/retention behavior and deterministic evaluation | `PASS_HERMETIC_36340617006` |
+| Store unavailable | `MONITORING_FAILED`/`AUTHORITY_UNAVAILABLE`; never healthy; no fallback Product write | `PASS_HERMETIC_36340617006` |
 | Store corruption/malformed state | fail closed; bounded reset/rollback procedure | `PLANNED_NOT_EXECUTED` |
 | DB collector timeout | bounded timeout, read-only transaction closes, normal Product path unaffected | `PLANNED_NOT_EXECUTED` |
 | Malformed DB result | no fabricated completeness/healthy result | `PLANNED_NOT_EXECUTED` |
 | Structural/parity mismatch | #4061 bounded non-success translation; no auto-migration | `PLANNED_NOT_EXECUTED` |
-| Heartbeat stale | independent reader detects stale primary | `PLANNED_NOT_EXECUTED` |
-| Heartbeat store unavailable | independent reader surfaces authority unavailable | `PLANNED_NOT_EXECUTED` |
-| Duplicate runner | lease/fence rejects stale/superseded runner | `PLANNED_NOT_EXECUTED` |
-| Alert provider unavailable | bounded delivery-unavailable result; Product path unaffected | `PLANNED_NOT_EXECUTED` |
-| Alert kill switch ON/OFF | transport invocation count proves independent disable | `PLANNED_NOT_EXECUTED` |
+| Heartbeat stale | independent reader detects stale primary | `PASS_HERMETIC_36340617006` |
+| Heartbeat store unavailable | independent reader surfaces authority unavailable | `PASS_HERMETIC_36340617006` |
+| Duplicate runner | lease/fence rejects stale/superseded runner | `PASS_HERMETIC_36340617006` |
+| Alert provider unavailable | bounded delivery-unavailable result; Product path unaffected | `PASS_HERMETIC_36340617006` |
+| Alert kill switch ON/OFF | transport invocation count proves independent disable | `PASS_HERMETIC_36340617006` |
 | Synthetic canary disabled | zero QA auth/fixture/write capability invoked | `PLANNED_NOT_EXECUTED` |
 | Synthetic source-only fake lifecycle | #4081 injected fake effects exercise lifecycle without Production capability | `PLANNED_NOT_EXECUTED` |
 | Unknown-write reconciliation | canonical reread first; second write dispatch count remains zero | `PLANNED_NOT_EXECUTED` |
 | Post-write ownership loss | `FENCED`; no cleanup mutation by stale owner | `PLANNED_NOT_EXECUTED` |
 | Browse negative confirmation | standard canary remains private/non-Browse; malformed observer fails closed | `PLANNED_NOT_EXECUTED` |
-| Privacy scan | no secret/token/UID/email/Tree/Memory/content/raw SQL/raw row/raw error leakage | `PLANNED_NOT_EXECUTED` |
+| Privacy scan | no secret/token/UID/email/Tree/Memory/content/raw SQL/raw row/raw error leakage | `PASS_HERMETIC_36340617006` |
 | Rollback | all three kill switches independently disable; scheduler/provider/store bindings removable without Product-path dependency | `PLANNED_NOT_EXECUTED` |
 
-No rehearsal row may be promoted to `PASS` until it is actually executed against the approved non-Production target and its bounded evidence is independently reviewed.
+Only the rows above carrying `PASS_#...` or `PASS_HERMETIC_...` have completed execution plus independent CENTRAL review. Rows still marked `PLANNED_NOT_EXECUTED` remain blocked; partial source tests are not treated as completion evidence.
 
 ## 14. Privacy and capability boundary
 
@@ -810,6 +822,9 @@ ACTUAL_PROVIDER_PREVIEW = PASS_#4227
 NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
 NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
 DEPLOYED_DISABLED_GATE_MARKER = PASS_#4507
+HERMETIC_NONPROD_REHEARSAL_RUN = 36340617006 / 62_OF_62_PASS
+HERMETIC_REHEARSAL_ROWS_PROMOTED = 8
+NONPROD_REHEARSAL_ROWS_PASS = 11_OF_21
 NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 
 RECOMMENDATION = COMPLETE_REMAINING_NONPROD_RUNTIME_REHEARSAL_GATES_BEFORE_C4
