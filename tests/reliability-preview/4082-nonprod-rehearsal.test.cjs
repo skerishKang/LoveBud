@@ -967,8 +967,10 @@ test('4082 PACKET INVENTORY PARITY — packet records Provider Preview PASS whil
   assert.equal(packet.includes('PRODUCTION AUTHORITY = NO'), true);
   assert.equal(packet.includes('#4227'), true);
   assert.equal(packet.includes('RELIABILITY_PREVIEW_RELEASE_SHA'), true);
-  assert.equal(packet.includes('wrangler versions upload'), true);
-  assert.equal(packet.includes('wrangler triggers deploy'), true);
+  assert.equal(packet.includes('DECLARATIVE_EXPORTS_WRANGLER_MIN_VERSION = 4.107.0'), true);
+  assert.equal(packet.includes('EXPORTS_WITH_VERSIONS_UPLOAD = FORBIDDEN'), true);
+  assert.equal(packet.includes('LEGACY_MIGRATIONS_SWITCH = FORBIDDEN_IN_THIS_LANE'), true);
+  assert.equal(packet.includes('4. Cron attachment ...................... SEPARATE_OWNER_GATE / NOT AUTHORIZED'), true);
   // Superseded provider-preview inventory claims must not survive.
   assert.equal(packet.includes('PROVIDER RESOURCE  = NOT CREATED'), false);
   assert.equal(packet.includes('PROVIDER PREVIEW   = NOT RUN'), false);
