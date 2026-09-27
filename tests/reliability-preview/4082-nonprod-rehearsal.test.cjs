@@ -9,7 +9,8 @@
 // clocks/timers, injected collection/fetch effects. This suite proves source
 // behavior ONLY. It is not Cloudflare Preview execution, not Durable Object
 // provider behavior, not Cron binding, not secret binding, and not Slack
-// delivery. Those remain ACTUAL_PROVIDER_PREVIEW = NOT_EXECUTED.
+// delivery. Provider Preview evidence exists separately; this suite remains
+// source-only and grants no runtime/provider activation authority.
 //
 // Refs #4082. Refs #4079/#4080/#4081/#3835/#3861/#3874.
 // Refs #3461 — Keep OPEN. Refs #1882 — Keep OPEN.
@@ -138,6 +139,28 @@ function baselineSignal(valueBucket) {
   return { signal_id: SIGNAL_ID, signal_class: SIGNAL_CLASS };
 }
 
+function structuralHardSignal(signalId, outcomeCode, operationClass) {
+  const positive = outcomeCode === taxonomy.OUTCOME_CODES.ORPHAN_SIGNAL_DETECTED ||
+    outcomeCode === taxonomy.OUTCOME_CODES.STRUCTURAL_DRIFT_DETECTED;
+  return {
+    signal_id: signalId,
+    signal_class: baselineContract.SIGNAL_ID_TO_CLASS[signalId],
+    structural_summary: taxonomy.buildBoundedResult({
+      operation_class: operationClass || taxonomy.OPERATION_CLASSES.MEMORY_PARENT_INTEGRITY_CHECK,
+      stage: taxonomy.CONVERGENCE_STAGES.REQUEST_DISPATCHED,
+      outcome_code: outcomeCode,
+      release_sha: MAIN_SHA,
+      count_bucket: positive ? taxonomy.COUNT_BUCKETS.POSITIVE : taxonomy.COUNT_BUCKETS.ZERO,
+      baseline_deviation: positive ?
+        taxonomy.BASELINE_DEVIATION_CLASSES.MATERIAL_DEVIATION :
+        taxonomy.BASELINE_DEVIATION_CLASSES.NONE,
+      severity: positive ? taxonomy.SEVERITIES.WARNING : taxonomy.SEVERITIES.INFO,
+      owner_action: positive ? taxonomy.OWNER_ACTIONS.INVESTIGATE : taxonomy.OWNER_ACTIONS.NO_ACTION,
+      evidence_completeness: taxonomy.EVIDENCE_COMPLETENESS.COMPLETE
+    })
+  };
+}
+
 function makeTransport(fetchScript, callsOut) {
   return previewTransport.createSlackPreviewTransport({
     fetchEffect: async function (url, init) {
@@ -220,6 +243,66 @@ test('4082 SCHEDULER REHEARSAL — logical disable short-circuits before any cap
   assert.equal(store.countHeartbeatRows(), 0);
   assert.equal(store.hasActiveLease(clock.now()), false);
   trackPrivacy('run-record-disabled', record);
+});
+
+test('4500 HARD SIGNAL COMPOSITION — calibration-free structural signal reaches evaluator', async function () {
+  const clock = makeClock(1_500_000);
+  const store = makeStore(clock);
+  const runner = makeRunner({
+    clock,
+    config: makeConfig({ kill_switch_sentinel: true }),
+    store,
+    collector: makeCollector(function () {
+      return [structuralHardSignal(
+        'MEMORY_PARENT_ORPHAN_COUNT',
+        taxonomy.OUTCOME_CODES.ORPHAN_SIGNAL_DETECTED
+      )];
+    }),
+    evaluator: makeEvaluator(store),
+    calibrationBySignal: {}
+  });
+  const record = await runner.run('CRON_TRIGGER');
+  assert.equal(record.run_class, 'RUN_COMPLETED');
+  assert.equal(record.collector_outcome, 'COLLECTED');
+  assert.equal(record.evaluation_state, 'INCIDENT_CONFIRMED');
+  assert.equal(record.alert_decision, 'ALERT_DISABLED_BY_KILL_SWITCH');
+  assert.equal(record.heartbeat_class, 'RECORDED');
+});
+
+test('4500 BASELINE GATE — baseline-aware signal without calibration is not treated as calibrated', async function () {
+  const clock = makeClock(1_600_000);
+  const store = makeStore(clock);
+  const runner = makeRunner({
+    clock,
+    config: makeConfig({ kill_switch_sentinel: true }),
+    store,
+    collector: makeCollector(function () { return [baselineSignal()]; }),
+    evaluator: makeEvaluator(store),
+    calibrationBySignal: {}
+  });
+  const record = await runner.run('CRON_TRIGGER');
+  assert.equal(record.run_class, 'RUN_COMPLETED');
+  assert.equal(record.collector_outcome, 'COLLECTED');
+  assert.equal(record.evaluation_state, 'INSUFFICIENT_EVIDENCE');
+  assert.equal(record.alert_decision, 'NOT_ALERTABLE_STATE');
+});
+
+test('4500 STRUCTURAL IDENTITY — selected descriptor identities are unique and collector-valid', async function () {
+  const selected = [
+    ['MEMORY_TREE_PARENT_ORPHAN_COUNT', taxonomy.OUTCOME_CODES.CONFIRMED, taxonomy.OPERATION_CLASSES.TREE_PARENT_INTEGRITY_CHECK],
+    ['MEMORY_PARENT_ORPHAN_COUNT', taxonomy.OUTCOME_CODES.CONFIRMED, taxonomy.OPERATION_CLASSES.MEMORY_PARENT_INTEGRITY_CHECK],
+    ['STRUCTURAL_SCHEMA_DRIFT_CHECK', taxonomy.OUTCOME_CODES.CONFIRMED, taxonomy.OPERATION_CLASSES.STRUCTURAL_SCHEMA_CHECK],
+    ['MIGRATION_LEDGER_CATALOG_PARITY_CHECK', taxonomy.OUTCOME_CODES.STRUCTURAL_DRIFT_DETECTED, taxonomy.OPERATION_CLASSES.STRUCTURAL_SCHEMA_CHECK]
+  ];
+  assert.equal(new Set(selected.map(function (entry) { return entry[0]; })).size, 4);
+  const collector = makeCollector(function () {
+    return selected.map(function (entry) {
+      return structuralHardSignal(entry[0], entry[1], entry[2]);
+    });
+  });
+  const result = await collector.collect();
+  assert.equal(result.outcome, 'COLLECTED');
+  assert.equal(result.signals.length, 4);
 });
 
 test('4082 SCHEDULER REHEARSAL — one run per trigger acquires and releases the lease', async function () {
