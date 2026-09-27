@@ -256,7 +256,7 @@ LEGACY_MIGRATIONS_SWITCH = FORBIDDEN_IN_THIS_LANE
 1. source validation .................... COMPLETE / PASS
 2. disabled NONPROD Provider deploy ..... COMPLETE / PASS (#4227; exact Wrangler 4.141.0; one deploy; retry 0)
 3. disabled Provider evidence ........... COMPLETE / PASS (#4227; Worker exists; SQLite DO namespace established; instance initialization unobserved)
-4. Cron attachment ...................... SEPARATE_OWNER_GATE / NOT AUTHORIZED
+4. Cron attachment rehearsal ............ PASS_#4507 via exact Workers Scripts Schedules API / final Cron NONE / future activation NOT AUTHORIZED
 5. read-only sentinel ................... SEPARATE_OWNER_GATE / NOT AUTHORIZED
 6. alert delivery ....................... SEPARATE_PROVIDER_SECRET_GATE / NOT AUTHORIZED
 7. Production ........................... EXPLICIT_OWNER_WEB_CTO_GATE / NOT AUTHORIZED
@@ -643,22 +643,22 @@ LIVE_ALERT_PROVIDER_OUTAGE_REQUIRED_FOR_C4 = NO
 | Scheduler disabled | read-only kill switch short-circuits before DO/DB capability use | Provider target | `PASS_PROVIDER_#4507` |
 | Baseline store happy path | bounded append/read/prune/retention behavior and deterministic evaluation | Hermetic runtime | `PASS_HERMETIC_36340617006` |
 | Store unavailable | `MONITORING_FAILED`/authority unavailable; never healthy; no fallback Product write | Hermetic runtime | `PASS_HERMETIC_36340617006` |
-| Store corruption/malformed state | malformed/unknown store evidence fails closed; no fabricated healthy/completeness result | Hermetic runtime | `PASS_HERMETIC_36340617006` |
-| DB collector timeout | bounded timeout and fail-closed collector result; no raw error leakage | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Store corruption/malformed state | malformed/unknown store evidence fails closed; no fabricated healthy/completeness result; destructive/reset operations remain activation-time operational procedure | Hermetic runtime for C4 | `PASS_C4_HERMETIC_36340617006 / RESET_POST_C4_OPERATIONAL` |
+| DB collector timeout | bounded timeout and fail-closed collector result; live read-only transaction closure remains part of the separately gated Production-read executor binding | Hermetic runtime for C4 | `PASS_C4_HERMETIC_36340617006 / LIVE_DB_BINDING_POST_C4` |
 | Malformed DB result | no fabricated completeness/healthy result | Hermetic runtime | `PASS_HERMETIC_36340617006` |
 | Structural/parity mismatch | #4061/#4079 bounded non-success translation; no auto-migration | Hermetic contract + exact-head CI | `PASS_HERMETIC_EXACT_HEAD_36340617028` |
 | Heartbeat stale | independent reader classifies stale primary at selected 7-minute threshold | Hermetic runtime | `PASS_HERMETIC_36340617006` |
 | Heartbeat store unavailable | independent reader surfaces `AUTHORITY_UNAVAILABLE`, never healthy | Hermetic runtime | `PASS_HERMETIC_36340617006` |
 | Duplicate runner | lease/fence rejects overlapping or stale/superseded runner | Hermetic runtime | `PASS_HERMETIC_36340617006` |
-| Alert provider unavailable | Slack-specific transport classifies 4xx/5xx/throw/timeout with a single attempt and no automatic retry | Hermetic provider-specific transport contract | `PASS_HERMETIC_36340617006` |
-| Alert kill switch ON/OFF | transport invocation count proves independent disable | Hermetic runtime | `PASS_HERMETIC_36340617006` |
+| Alert provider unavailable | Slack-specific transport classifies 4xx/5xx/throw/timeout with a single attempt and no automatic retry; real Slack resource/delivery remains separately gated | Hermetic provider-specific transport contract for C4 | `PASS_C4_HERMETIC_36340617006 / LIVE_SLACK_DELIVERY_POST_C4` |
+| Alert kill switch ON/OFF | transport invocation count proves independent disable; provider secret/delivery binding remains separately gated | Hermetic runtime for C4 | `PASS_C4_HERMETIC_36340617006 / LIVE_SLACK_DELIVERY_POST_C4` |
 | Synthetic canary disabled | zero QA auth/fixture/write capability invoked | Capability-specific post-C4 gate | `POST_C4_CAPABILITY_GATE` |
 | Synthetic source-only fake lifecycle | #4081 injected fake effects exercise lifecycle without Production capability | Source-only capability rehearsal | `PASS_SOURCE_ONLY_#4081_POST_C4` |
 | Unknown-write reconciliation | canonical reread first; second write dispatch count remains zero | Source-only capability rehearsal | `PASS_SOURCE_ONLY_#4081_POST_C4` |
 | Post-write ownership loss | `FENCED`; no cleanup mutation by stale owner | Source-only capability rehearsal | `PASS_SOURCE_ONLY_#4081_POST_C4` |
 | Browse negative confirmation | explicit negative confirmation required; malformed observer fails closed | Source-only capability rehearsal | `PASS_SOURCE_ONLY_#4081_POST_C4` |
 | Privacy scan | no secret/token/UID/email/Tree/Memory/content/raw SQL/raw row/raw error leakage | Composite hermetic + provider marker | `PASS_COMPOSITE_#4507_36340617006` |
-| Rollback | temporary Cron attach/detach proven; logical sentinel/alert switches fail disabled; no destructive namespace deletion required for C4 | Composite provider + hermetic | `PASS_COMPOSITE_#4507_36340617006` |
+| Rollback | temporary Cron attach/detach proven; logical sentinel/alert switches fail disabled; no destructive namespace deletion required for C4; synthetic rollback remains its own capability gate | Composite provider + hermetic for C4 | `PASS_C4_COMPOSITE_#4507_36340617006 / SYNTHETIC_ROLLBACK_POST_C4` |
 
 C4 uses the core verification classes named by the #4082 issue, not every later capability-specific activation rehearsal:
 
