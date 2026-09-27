@@ -8,7 +8,7 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@569836d0a3df7a995cc02c4eef23d16f365eb1a5`
+Current-main reconciliation snapshot: `main@204a51f36dbd23f43e2b0d71f656d89229e78b69`
 
 Post-#4227 disabled NONPROD Provider Preview reconciliation: **PROVIDER PREVIEW COMPLETE / PASS; WORKER EXISTS; SQLITE DO NAMESPACE ESTABLISHED; CRON/SENTINEL/ALERT/PRODUCTION/PRODUCT REMAIN DISABLED OR UNBOUND**
 
@@ -26,6 +26,8 @@ This section supersedes stale state labels elsewhere in this packet where they c
 ```text
 CURRENT_MAIN = 569836d0a3df7a995cc02c4eef23d16f365eb1a5
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
+NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
+NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
 WORKER_EXISTS = YES
 SQLITE_DO_NAMESPACE = ESTABLISHED
 SQLITE_STORAGE_BACKEND = SQLITE
@@ -103,7 +105,7 @@ Current overall authority:
 
 ```text
 APPROVAL_PACKET_PREPARATION = COMPLETE_CURRENTNESS_RECONCILIATION
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_569836d0a3df7a995cc02c4eef23d16f365eb1a5
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_204a51f36dbd23f43e2b0d71f656d89229e78b69
 C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
@@ -622,13 +624,13 @@ Before any Production synthetic write can be considered:
 
 ## 13. Preview / non-Production rehearsal matrix
 
-The #4227 disabled Provider Preview row is completed evidence. Every other row below remains a **plan** until separately executed and accepted.
+The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disabled rows are completed evidence. Every other row below remains a **plan** until separately executed and accepted.
 
 | Rehearsal | Required evidence | Current status |
 | --- | --- | --- |
 | Disabled Provider Preview | Worker exists; SQLite DO namespace established; 404-only public surface; Cron/sentinel/alert/Production/Product disabled | `PASS_#4227` |
-| Scheduler invocation | scheduled handler executes only in approved Preview/non-Production environment and records bounded run class | `PLANNED_NOT_EXECUTED` |
-| Scheduler disabled | read-only kill switch short-circuits before DB credential use | `PLANNED_NOT_EXECUTED` |
+| Scheduler invocation | scheduled handler executes only in approved Preview/non-Production environment and records bounded run class | `PASS_#4507` |
+| Scheduler disabled | read-only kill switch short-circuits before DB credential use | `PASS_#4507` |
 | Baseline store happy path | bounded append/read/prune/retention behavior and deterministic evaluation | `PLANNED_NOT_EXECUTED` |
 | Store unavailable | `MONITORING_FAILED`/`AUTHORITY_UNAVAILABLE`; never healthy; no fallback Product write | `PLANNED_NOT_EXECUTED` |
 | Store corruption/malformed state | fail closed; bounded reset/rollback procedure | `PLANNED_NOT_EXECUTED` |
@@ -747,11 +749,11 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 7. **What remains before alert delivery?** Slack App Incoming Webhook is already selected-not-bound; runtime/secret binding, delivery/dedupe/retry/health rehearsal, kill-switch proof, and explicit alert activation approval remain.
 8. **Who detects monitor death?** Modal scheduled function is the selected-not-bound independent control plane; its reader/runtime binding and bounded probe authority remain unbound, so dead-man activation is not yet complete.
 9. **How is immediate disable/rollback performed?** Three independent fail-disabled switches; scheduler trigger/provider/store bindings are secondary rollback/removal mechanisms and never substitute for the switches.
-10. **What evidence is still required?** #4227 disabled Provider Preview is `PASS`; the remaining §13 runtime/capability rehearsal rows remain `PLANNED_NOT_EXECUTED` until separately authorized and executed.
+10. **What evidence is still required?** #4227 disabled Provider Preview is `PASS`, and #4507 promotes Scheduler invocation + Scheduler disabled to `PASS`; every other §13 runtime/capability rehearsal row remains `PLANNED_NOT_EXECUTED` until separately authorized and executed.
 
 ## 18. Final packet disposition
 
-The packet document is current after #4499/#4500/#4501, but the #4082 completion marker is still not satisfied. Historical CENTRAL authority held C4 until the required Preview/non-Production runtime rehearsal evidence and prerequisite capability authorities are actually present. #4227 proves only the disabled base Provider Preview; the remaining runtime/capability rehearsal rows in §13 are still unexecuted.
+The packet document is current through #4507, but the #4082 completion marker is still not satisfied. #4227 proves the disabled base Provider Preview and #4507 proves the natural scheduler invocation plus fail-disabled scheduler short-circuit. The remaining runtime/capability rehearsal rows in §13 are still unexecuted, so C4 remains blocked.
 
 ```text
 PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_569836d0a3df7a995cc02c4eef23d16f365eb1a5
@@ -805,6 +807,9 @@ REAL_PRODUCTION_COLLECTOR = UNBOUND
 INITIAL_STRUCTURAL_CALIBRATION = SELECTED_NOT_BOUND
 BASELINE_AWARE_CALIBRATION = UNBOUND_UNTIL_SELECTED_SIGNAL_REQUIRES_IT
 ACTUAL_PROVIDER_PREVIEW = PASS_#4227
+NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
+NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
+DEPLOYED_DISABLED_GATE_MARKER = PASS_#4507
 NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 
 RECOMMENDATION = COMPLETE_REMAINING_NONPROD_RUNTIME_REHEARSAL_GATES_BEFORE_C4
