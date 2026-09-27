@@ -8,15 +8,65 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@590d22b22bbeaacb7157f402115e873b03ed1743`
+Current-main reconciliation snapshot: `main@f7c8e3bcf8737046ec3049ec442c947eab1895bc`
 
-Post-#4148/#4149 NONPROD preview source reconciliation (#4175): **SOURCE PACKAGE RECONCILED AT main@fb4826e32db520dbaa4db1b2e4a3ff30230dbbc9; PROVIDER RESOURCE STILL NOT CREATED; PROVIDER PREVIEW STILL NOT RUN**
+Post-#4227 disabled NONPROD Provider Preview reconciliation: **PROVIDER PREVIEW COMPLETE / PASS; WORKER EXISTS; SQLITE DO NAMESPACE ESTABLISHED; CRON/SENTINEL/ALERT/PRODUCTION/PRODUCT REMAIN DISABLED OR UNBOUND**
 
 Post-#4081 reconciliation: **COMPLETE FOR SOURCE AUTHORITY; RUNTIME ACTIVATION REMAINS UNAUTHORIZED**
 
 Post-#4091 provenance source-model reconciliation: **COMPLETE FOR SOURCE MODEL; RUNNER ADOPTION / PRODUCTION PHASE-B REMAIN SEPARATELY UNAUTHORIZED**
 
 This document is the bounded owner/Web-CTO decision packet requested by #4082. It records what source authority now exists, recommends runtime components, and enumerates every separate approval that still blocks Production capability.
+
+
+### 2026-09-27 superseding current-authority reconciliation
+
+This section supersedes stale state labels elsewhere in this packet where they conflict with later issue authority or completed #4227 evidence.
+
+```text
+CURRENT_MAIN = f7c8e3bcf8737046ec3049ec442c947eab1895bc
+DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
+WORKER_EXISTS = YES
+SQLITE_DO_NAMESPACE = ESTABLISHED
+SQLITE_STORAGE_BACKEND = SQLITE
+SQLITE_DO_LIFECYCLE = ESTABLISHED
+DO_INSTANCE_INITIALIZED = UNOBSERVED
+CRON_TRIGGER_ATTACHED = NO
+READ_ONLY_SENTINEL_ACTIVATION = NO
+ALERT_DELIVERY_ACTIVATION = NO
+PRODUCTION_RUNTIME_READ_AUTHORITY = NO
+PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
+```
+
+Decision-only children already resolved the former design-selection gaps:
+
+```text
+PRIMARY_SCHEDULER = CLOUDFLARE_WORKER_CRON_TRIGGER_DEDICATED_RELIABILITY_WORKER / SELECTED_NOT_BOUND
+PRIVATE_STORE = SQLITE_BACKED_CLOUDFLARE_DURABLE_OBJECT / SELECTED_NOT_BOUND
+ALERT_PROVIDER = SLACK_APP_INCOMING_WEBHOOK / SELECTED_NOT_BOUND
+DEAD_MAN_CONTROL_PLANE = MODAL_SCHEDULED_FUNCTION / SELECTED_NOT_BOUND
+RUNTIME_BOUNDS = SELECTED_NOT_BOUND
+INITIAL_COLLECTOR_SIGNAL_SET = SELECTED_NOT_BOUND
+READONLY_EXECUTOR_SECURITY_ENVELOPE = SELECTED_NOT_BOUND
+```
+
+`SELECTED_NOT_BOUND` is not activation authority. The remaining blockers are capability/binding gates, not provider-preview or component-selection gaps:
+
+```text
+SIGNAL_CALIBRATION = NOT_APPROVED
+CRON_ATTACHMENT_AUTHORITY = NO
+READ_ONLY_DB_CREDENTIAL_RUNTIME_BINDING = NOT_CREATED
+REAL_PRODUCTION_READONLY_COLLECTOR_BOUND = NO
+PRODUCTION_RUNTIME_READ_AUTHORITY = NO
+SLACK_APP_WEBHOOK_SECRET_BOUND = NO
+ALERT_DELIVERY_ACTIVATION = NO
+INDEPENDENT_DEAD_MAN_RUNTIME_BOUND = NO
+SYNTHETIC_CANARY_ACTIVATION = NO
+PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
+PRODUCTION_ACTIVATION_AUTHORITY = NO
+```
+
+The completed #4227 Provider Preview does not itself authorize any of these gates.
 
 It does **not** grant Production read authority, Production synthetic-write authority, scheduler activation, Durable Object binding, alert-provider binding, secret placement, QA-account creation, deployment authority, or schema mutation authority.
 
@@ -156,7 +206,7 @@ Current repository evidence supports the following placement facts:
 - repository GitHub Actions workflows are CI/concurrency workflows; no repository-owned scheduled reliability workflow exists;
 - since PR #4149 merged, `workers/reliability-preview/reliability-preview-worker.mjs` publishes a dedicated reliability `scheduled()` handler source and `workers/reliability-preview/wrangler.reliability-preview.toml` declares an env-specific Cron trigger shape (`*/5 * * * *`) — SOURCE DECLARATION ONLY;
 - the same Wrangler config declares a SQLite Durable Object class export (`ReliabilityPreviewStore`, storage="sqlite") and its environment binding — SOURCE DECLARATION ONLY;
-- CRON ACTIVATION = NOT DONE and PROVIDER RESOURCE = NOT CREATED: no Cron trigger has been attached, no Durable Object namespace has been provisioned, and no `lovebud-reliability-preview` Worker exists on Cloudflare;
+- PROVIDER PREVIEW = PASS: the disabled NONPROD Worker exists and the `ReliabilityPreviewStore` Durable Object namespace is established on SQLite. No Durable Object instance initialization is claimed (`DO_INSTANCE_INITIALIZED = UNOBSERVED`). Cron remains unattached, sentinel and alert remain disabled, and no Production/Product capability is bound;
 - #4079, #4080, #4081, #3861, and #3874 source modules are pure/source-only or injected-effect contracts, not live runtime integrations.
 
 Therefore the packet recommends new **isolated reliability runtime components**, but does not create any of them.
@@ -167,9 +217,10 @@ PR #4149 published the eight-file NONPROD preview runtime package (#4148). The p
 
 ```text
 SOURCE DECLARATION = EXISTS        (scheduled() entrypoint, SQLite DO export/binding, */5 cron shape, observability declaration)
-PROVIDER RESOURCE  = NOT CREATED   (no DO namespace provisioned, no Worker deployed)
+PROVIDER RESOURCE  = CREATED_DISABLED_NONPROD   (Worker exists; SQLite DO namespace established)
 CRON ACTIVATION    = NOT DONE      (no trigger attached)
-PROVIDER PREVIEW   = NOT RUN       (ACTUAL_PROVIDER_PREVIEW = NOT_EXECUTED)
+PROVIDER PREVIEW   = PASS          (#4227 completed)
+DO INSTANCE INITIALIZATION = UNOBSERVED
 PRODUCTION AUTHORITY = NO
 ```
 
@@ -181,28 +232,36 @@ Intentionally unbound seams (#4175): `previewCollectEffect()` remains `Promise.r
 
 Dead-man reader status: `createPreviewDeadManReader()` remains a source factory only; no external owner or control plane invokes it anywhere in this package (`DEAD_MAN_READER = OWNER_DECISION_REQUIRED` unchanged).
 
-Provider Preview preparation ladder — stage 1 source validation completed locally with zero provider mutation; stages 2–7 remain separate owner/Web-CTO approvals and were not executed by the source-only lane:
+Provider Preview choreography is governed by the post-#4225 declarative-`exports` correction. The first three stages are now completed evidence from #4227; later capability stages remain independently gated:
 
 ```text
-1. source validation .................... focused tests + pinned-Wrangler `deploy --dry-run --outdir <temp>`
-2. version upload approval .............. `wrangler versions upload` (uploads a Version; NO traffic, NO triggers)
-3. disabled Provider deployment approval . first `wrangler deploy` (provisions the SQLite DO namespace; kill switches still DISABLED)
-4. trigger attachment approval .......... `wrangler triggers deploy` (attaches the cron; SEPARATE command/gate from stage 2; propagation may take up to ~15 minutes)
-5. read-only sentinel approval .......... `RELIABILITY_READ_ONLY_SENTINEL_ENABLED="true"`
-6. alert delivery approval .............. `RELIABILITY_ALERT_DELIVERY_ENABLED="true"` (+ separately approved provider/secret)
-7. Production approval .................. explicit owner/Web-CTO authority
+DECLARATIVE_EXPORTS_WRANGLER_MIN_VERSION = 4.107.0
+WRANGLER_SELECTION = EXACT_PIN_AT_OR_ABOVE_MINIMUM
+DRY_RUN_DEPLOY_VERSION_EQUALITY = REQUIRED
+EXPORTS_MODEL = RETAIN
+EXPORTS_WITH_VERSIONS_UPLOAD = FORBIDDEN
+LEGACY_MIGRATIONS_SWITCH = FORBIDDEN_IN_THIS_LANE
+
+1. source validation .................... COMPLETE / PASS
+2. disabled NONPROD Provider deploy ..... COMPLETE / PASS (#4227; exact Wrangler 4.141.0; one deploy; retry 0)
+3. disabled Provider evidence ........... COMPLETE / PASS (#4227; Worker exists; SQLite DO namespace established; instance initialization unobserved)
+4. Cron attachment ...................... SEPARATE_OWNER_GATE / NOT AUTHORIZED
+5. read-only sentinel ................... SEPARATE_OWNER_GATE / NOT AUTHORIZED
+6. alert delivery ....................... SEPARATE_PROVIDER_SECRET_GATE / NOT AUTHORIZED
+7. Production ........................... EXPLICIT_OWNER_WEB_CTO_GATE / NOT AUTHORIZED
 ```
 
-Current Cloudflare contracts honored by this reconciliation: `exports` and legacy `migrations` are mutually exclusive (a config carrying both is rejected at validation); `wrangler versions upload` does NOT apply Durable Object lifecycle changes — only `wrangler deploy` does; first deployment of a live `exports` entry provisions the namespace; version upload and trigger attachment are distinct commands with a hard boundary between them. `compatibility_date` stays pinned at `2025-05-01` pending evidence of runtime semantic drift.
+The disabled base Provider deployment keeps `crons = []`, read-only sentinel OFF, alert delivery OFF, Production credential absent, and synthetic capability absent. A future Cron attachment is a separate provider/config mutation and must not silently broaden read-only, alert, Product, or Production authority. `compatibility_date` stays pinned at `2025-05-01` pending evidence of runtime semantic drift.
 
 ## 5. Scheduler decision
 
-### Recommendation
+### Selected topology (not bound)
 
 ```text
-SCHEDULER_RECOMMENDATION = CLOUDFLARE_WORKER_CRON_TRIGGER_DEDICATED_RELIABILITY_WORKER
+PRIMARY_SCHEDULER = CLOUDFLARE_WORKER_CRON_TRIGGER_DEDICATED_RELIABILITY_WORKER
+PRIMARY_SCHEDULER_STATE = SELECTED_NOT_BOUND
 SCHEDULER_ACTIVATION = NO
-SCHEDULER_OWNER_APPROVAL_REQUIRED = YES
+CRON_ATTACHMENT_AUTHORITY = NO
 ```
 
 A dedicated reliability Worker with a Cron Trigger is the preferred primary runner because it fits the repository's existing Cloudflare edge ownership while remaining outside normal user request paths.
@@ -245,12 +304,12 @@ Cloudflare Cron configuration changes, including deletion, may take time to prop
 
 ## 6. Private baseline / dedupe / heartbeat store decision
 
-### Recommendation
+### Selected topology (not bound)
 
 ```text
-PRIVATE_STORE_RECOMMENDATION = SQLITE_BACKED_CLOUDFLARE_DURABLE_OBJECT
-PRIVATE_STORE_BINDING_AUTHORITY = OWNER_APPROVAL_REQUIRED
-PRIVATE_STORE_ACTIVATION = NO
+PRIVATE_RELIABILITY_STORE = SQLITE_BACKED_CLOUDFLARE_DURABLE_OBJECT
+PRIVATE_STORE_STATE = SELECTED_NOT_BOUND
+PRIVATE_STORE_ACTIVATION = DISABLED_NONPROD_NAMESPACE_ESTABLISHED_ONLY
 ```
 
 Why this store:
@@ -424,24 +483,22 @@ No Production DDL/DML is required or authorized by this packet.
 
 ## 9. Alert delivery / provider state
 
-Current merged transport authority remains provider-unselected.
+Decision-only child #4208 selected Slack App Incoming Webhook as the alert provider, but no Slack resource, webhook secret, or delivery binding has been created.
 
 ```text
-ALERT_PROVIDER = PROVIDER_UNSELECTED
+ALERT_PROVIDER = SLACK_APP_INCOMING_WEBHOOK
+ALERT_PROVIDER_STATE = SELECTED_NOT_BOUND
 ALERT_RUNTIME_BINDING = NOT_BOUND
-ALERT_PROVIDER_APPROVED = NO
 ALERT_DELIVERY_ACTIVATION = NO
 ALERT_PROVIDER_BINDING = NO
-OWNER_DECISION_REQUIRED = YES
+ALERT_SECRET_NAME = RELIABILITY_PREVIEW_SLACK_WEBHOOK_URL
+ALERT_SECRET_PLACEMENT = NOT_AUTHORIZED
 ```
 
-Do not select Slack, Discord, email, PagerDuty, webhook, or any other provider by inference.
+Provider selection is complete; provider activation is not. Any future alert-binding child must separately approve:
 
-Any future provider-specific child must separately approve:
-
-- provider selection;
-- runtime placement;
-- secret store/injection;
+- Slack App/webhook resource creation;
+- runtime placement and secret injection;
 - Preview/Production separation;
 - request timeout;
 - bounded retry semantics;
@@ -450,7 +507,7 @@ Any future provider-specific child must separately approve:
 - provider-disable path;
 - provider-health/self-failure detection.
 
-A symbolic future secret name may be proposed, such as `RELIABILITY_ALERT_PROVIDER_CREDENTIAL`; no secret is created and no secret value is recorded.
+The secret name is source-defined, but no secret is created and no secret value is recorded.
 
 ## 10. Independent heartbeat / dead-man design
 
@@ -479,13 +536,13 @@ A Modal schedule or another explicitly approved external control plane is a plau
 Unresolved owner decisions:
 
 ```text
-DEAD_MAN_PLATFORM = OWNER_DECISION_REQUIRED
-DEAD_MAN_STALE_THRESHOLD = OWNER_CONFIG_REQUIRED
-DEAD_MAN_BOUNDED_PROBE_AUTH = OWNER_DECISION_REQUIRED
+DEAD_MAN_PLATFORM = MODAL_SCHEDULED_FUNCTION / SELECTED_NOT_BOUND
+DEAD_MAN_STALE_THRESHOLD = 7m / SELECTED_NOT_BOUND
+DEAD_MAN_BOUNDED_PROBE_AUTH = NOT_BOUND
 ALERT_PROVIDER_SELF_MONITOR = OWNER_DECISION_REQUIRED
 ```
 
-Until those decisions are made and rehearsed, dead-man readiness is **design-complete enough for review but not activation-ready**.
+Decision-only child #4207 selects a Modal scheduled function as the independent dead-man control plane, and #4210 selects a 7-minute stale threshold. The reader/runtime binding and any bounded probe credential remain unbound, so dead-man readiness is **selected-but-not-bound and not activation-ready**.
 
 ## 11. Three independent kill switches
 
@@ -557,10 +614,11 @@ Before any Production synthetic write can be considered:
 
 ## 13. Preview / non-Production rehearsal matrix
 
-Every row below is a **plan**, not completed evidence.
+The #4227 disabled Provider Preview row is completed evidence. Every other row below remains a **plan** until separately executed and accepted.
 
 | Rehearsal | Required evidence | Current status |
 | --- | --- | --- |
+| Disabled Provider Preview | Worker exists; SQLite DO namespace established; 404-only public surface; Cron/sentinel/alert/Production/Product disabled | `PASS_#4227` |
 | Scheduler invocation | scheduled handler executes only in approved Preview/non-Production environment and records bounded run class | `PLANNED_NOT_EXECUTED` |
 | Scheduler disabled | read-only kill switch short-circuits before DB credential use | `PLANNED_NOT_EXECUTED` |
 | Baseline store happy path | bounded append/read/prune/retention behavior and deterministic evaluation | `PLANNED_NOT_EXECUTED` |
@@ -653,15 +711,15 @@ Required before `ALERT_DELIVERY_ACTIVATION = YES` can even be proposed:
 The packet is intentionally not an activation approval. Outstanding decisions include:
 
 ```text
-PRIMARY_SCHEDULER_APPROVAL = OWNER_DECISION_REQUIRED
-PRIVATE_STORE_BINDING_APPROVAL = OWNER_DECISION_REQUIRED
-READ_ONLY_CREDENTIAL_AND_ALLOWLIST = OWNER_DECISION_REQUIRED
-CADENCE_AND_TIMEOUTS = OWNER_CONFIG_REQUIRED
-RETENTION_POLICY = OWNER_CONFIG_REQUIRED
-DEAD_MAN_PLATFORM = OWNER_DECISION_REQUIRED
-DEAD_MAN_OWNER = OWNER_DECISION_REQUIRED
-ALERT_PROVIDER = OWNER_DECISION_REQUIRED
-ALERT_PROVIDER_SECRET_PLACEMENT = OWNER_DECISION_REQUIRED
+PRIMARY_SCHEDULER = SELECTED_NOT_BOUND
+PRIVATE_STORE = SELECTED_NOT_BOUND
+READ_ONLY_CREDENTIAL_AND_ALLOWLIST = SELECTED_NOT_BOUND_SECURITY_ENVELOPE / CREDENTIAL_NOT_CREATED
+CADENCE_AND_TIMEOUTS = SELECTED_NOT_BOUND
+RETENTION_POLICY = SELECTED_NOT_BOUND
+DEAD_MAN_PLATFORM = MODAL_SCHEDULED_FUNCTION / SELECTED_NOT_BOUND
+DEAD_MAN_OWNER = SELECTED_NOT_BOUND
+ALERT_PROVIDER = SLACK_APP_INCOMING_WEBHOOK / SELECTED_NOT_BOUND
+ALERT_PROVIDER_SECRET_PLACEMENT = NOT_AUTHORIZED
 QA_IDENTITY_AND_CREDENTIAL = OWNER_DECISION_REQUIRED
 CANONICAL_RUNNER_ADOPTION = HOLD_NOT_ACTIVE
 POST_#4091_#4005_REEVALUATION = OWNER_WEB_CTO_DECISION_REQUIRED
@@ -673,15 +731,15 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 ## 17. Single-document decision summary
 
 1. **What is source-complete?** #4061 structural/parity translation, #4079 baseline/anomaly core, #4080 write-outcome classification, #4081 synthetic lifecycle, #4091 catalog-populated PREPARED/UNATTESTED adoption model, #3861 bounded alert delivery core, and #3874 provider-unselected adapter are merged source authorities.
-2. **What still needs owner approval?** Every runtime binding and all three Production activation gates; canonical runner adoption, Production Phase-B read, scheduler/store/dead-man/provider/QA identity/cadence/retention choices remain unactivated.
-3. **Recommended runtime components?** Dedicated Cloudflare Worker Cron Trigger for the primary runner and a SQLite-backed Durable Object for private bounded reliability state.
-4. **What capability is currently zero?** Production read, Production synthetic write, alert-provider transport, scheduler activation, Durable Object binding, QA identity creation, secret placement, and schema mutation.
+2. **What still needs owner approval?** Runtime/provider bindings and all three Production activation gates. Scheduler, private store, dead-man platform, alert provider, runtime bounds, initial signal set, and read-only executor envelope are selected-not-bound; calibration, credentials, collector binding, QA identity, and Production capability approvals remain unactivated.
+3. **Selected runtime components?** Dedicated Cloudflare Worker Cron Trigger for the primary runner and a SQLite-backed Durable Object for private bounded reliability state, both `SELECTED_NOT_BOUND`; the disabled NONPROD Worker/SQLite namespace now exists from #4227 but Cron remains unattached.
+4. **What capability is currently zero?** Production read, Production synthetic write, alert delivery, scheduler/Cron activation, real collector binding, QA identity creation, secret placement, Product traffic, and schema mutation. The disabled NONPROD Worker and SQLite DO namespace are the only established provider resources from #4227.
 5. **What remains before Production read?** #4091 has resolved the source-model composition defect, but canonical runner adoption remains HOLD/NOT ACTIVE and Production Phase-B read still requires separate explicit approval; least-privilege SELECT-only credential/allowlist, read-only transaction/timeouts, runtime bindings, dead-man, rehearsal evidence, and owner approval also remain.
 6. **What remains before synthetic write?** QA identity/credential, exact #4081 effect binding, fencing/ownership/cleanup/reconciliation/exclusion rehearsal, independent kill switch, and explicit synthetic-write approval.
-7. **What remains before alert delivery?** Provider selection, runtime/secret binding, delivery/dedupe/retry/health design, rehearsal, kill switch, and explicit alert approval.
-8. **Who detects monitor death?** A separately-approved independent dead-man reader; platform and owner remain an explicit decision, so dead-man activation is not yet complete.
+7. **What remains before alert delivery?** Slack App Incoming Webhook is already selected-not-bound; runtime/secret binding, delivery/dedupe/retry/health rehearsal, kill-switch proof, and explicit alert activation approval remain.
+8. **Who detects monitor death?** Modal scheduled function is the selected-not-bound independent control plane; its reader/runtime binding and bounded probe authority remain unbound, so dead-man activation is not yet complete.
 9. **How is immediate disable/rollback performed?** Three independent fail-disabled switches; scheduler trigger/provider/store bindings are secondary rollback/removal mechanisms and never substitute for the switches.
-10. **What evidence is still required?** Every Preview/non-Production row in §13 remains `PLANNED_NOT_EXECUTED`.
+10. **What evidence is still required?** #4227 disabled Provider Preview is `PASS`; the remaining §13 runtime/capability rehearsal rows remain `PLANNED_NOT_EXECUTED` until separately authorized and executed.
 
 ## 18. Final packet disposition
 
@@ -698,6 +756,8 @@ RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
 PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
 ALERT_PROVIDER_BINDING = NO
+SIGNAL_CALIBRATION = NOT_APPROVED
+DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 
 SOURCE_MODEL_BLOCKER_4091 = RESOLVED
 CATALOG_POPULATED_PREPARED_MODEL = VALID_UNATTESTED
@@ -706,29 +766,30 @@ CANONICAL_RUNNER_ADOPTION = HOLD_NOT_ACTIVE
 PRODUCTION_PHASE_B_READ_AUTHORITY = NOT_AUTHORIZED
 #4005_RUNTIME_GATE_IMPACT = BLOCKED
 
-SCHEDULER_RECOMMENDATION = CLOUDFLARE_WORKER_CRON_TRIGGER_DEDICATED_RELIABILITY_WORKER
+PRIMARY_SCHEDULER = CLOUDFLARE_WORKER_CRON_TRIGGER_DEDICATED_RELIABILITY_WORKER
+PRIMARY_SCHEDULER_STATE = SELECTED_NOT_BOUND
 SCHEDULER_ACTIVATION = NO
-SCHEDULER_OWNER_APPROVAL_REQUIRED = YES
+CRON_ATTACHMENT_AUTHORITY = NO
 
-PRIVATE_STORE_RECOMMENDATION = SQLITE_BACKED_CLOUDFLARE_DURABLE_OBJECT
-PRIVATE_STORE_BINDING_AUTHORITY = OWNER_APPROVAL_REQUIRED
-PRIVATE_STORE_ACTIVATION = NO
+PRIVATE_RELIABILITY_STORE = SQLITE_BACKED_CLOUDFLARE_DURABLE_OBJECT
+PRIVATE_STORE_STATE = SELECTED_NOT_BOUND
+PRIVATE_STORE_ACTIVATION = DISABLED_NONPROD_NAMESPACE_ESTABLISHED_ONLY
 
 READ_ONLY_EXECUTOR_DESIGN = READY
 PRODUCTION_READ_PHASE_B = NOT_AUTHORIZED__OWNER_APPROVAL_REQUIRED
 
-ALERT_PROVIDER = PROVIDER_UNSELECTED
+ALERT_PROVIDER = SLACK_APP_INCOMING_WEBHOOK / SELECTED_NOT_BOUND
 ALERT_DELIVERY_ACTIVATION = NO
 
-DEAD_MAN_READER = OWNER_DECISION_REQUIRED
+DEAD_MAN_READER = SOURCE_FACTORY_ONLY
+DEAD_MAN_CONTROL_PLANE = MODAL_SCHEDULED_FUNCTION / SELECTED_NOT_BOUND
 DEAD_MAN_CONTROL_PLANE_INDEPENDENT = REQUIRED_NOT_BOUND
-DEAD_MAN_OWNER = OWNER_DECISION_REQUIRED
 
 NONPROD_PREVIEW_SOURCE_PACKAGE = PUBLISHED_#4149_RECONCILED_#4175
 RELEASE_SHA_PROVENANCE = INJECTED_FAIL_CLOSED_INVALID_RELEASE_SHA
 KILL_SWITCH_ENV_WIRING = WIRED_SOURCE_LEVEL_DEFAULT_DISABLED
 COLLECTOR_AND_CALIBRATION = INTENTIONALLY_UNBOUND
-ACTUAL_PROVIDER_PREVIEW = NOT_EXECUTED
+ACTUAL_PROVIDER_PREVIEW = PASS_#4227
 
 RECOMMENDATION = WEB_CTO_FINAL_REVIEW_REQUIRED
 ```
