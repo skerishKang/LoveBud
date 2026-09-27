@@ -232,23 +232,30 @@ Intentionally unbound seams (#4175): `previewCollectEffect()` remains `Promise.r
 
 Dead-man reader status: `createPreviewDeadManReader()` remains a source factory only; no external owner or control plane invokes it anywhere in this package (`DEAD_MAN_READER = OWNER_DECISION_REQUIRED` unchanged).
 
-Provider Preview preparation ladder — stage 1 source validation completed locally with zero provider mutation; stages 2–7 remain separate owner/Web-CTO approvals and were not executed by the source-only lane:
+Provider Preview choreography is governed by the post-#4225 declarative-`exports` correction. The first three stages are now completed evidence from #4227; later capability stages remain independently gated:
 
 ```text
-1. source validation .................... focused tests + pinned-Wrangler `deploy --dry-run --outdir <temp>`
-2. version upload approval .............. `wrangler versions upload` (uploads a Version; NO traffic, NO triggers)
-3. disabled Provider deployment approval . first `wrangler deploy` (provisions the SQLite DO namespace; kill switches still DISABLED)
-4. trigger attachment approval .......... `wrangler triggers deploy` (attaches the cron; SEPARATE command/gate from stage 2; propagation may take up to ~15 minutes)
-5. read-only sentinel approval .......... `RELIABILITY_READ_ONLY_SENTINEL_ENABLED="true"`
-6. alert delivery approval .............. `RELIABILITY_ALERT_DELIVERY_ENABLED="true"` (+ separately approved provider/secret)
-7. Production approval .................. explicit owner/Web-CTO authority
+DECLARATIVE_EXPORTS_WRANGLER_MIN_VERSION = 4.107.0
+WRANGLER_SELECTION = EXACT_PIN_AT_OR_ABOVE_MINIMUM
+DRY_RUN_DEPLOY_VERSION_EQUALITY = REQUIRED
+EXPORTS_MODEL = RETAIN
+EXPORTS_WITH_VERSIONS_UPLOAD = FORBIDDEN
+LEGACY_MIGRATIONS_SWITCH = FORBIDDEN_IN_THIS_LANE
+
+1. source validation .................... COMPLETE / PASS
+2. disabled NONPROD Provider deploy ..... COMPLETE / PASS (#4227; exact Wrangler 4.141.0; one deploy; retry 0)
+3. disabled Provider evidence ........... COMPLETE / PASS (#4227; Worker exists; SQLite DO namespace established; instance initialization unobserved)
+4. Cron attachment ...................... SEPARATE_OWNER_GATE / NOT AUTHORIZED
+5. read-only sentinel ................... SEPARATE_OWNER_GATE / NOT AUTHORIZED
+6. alert delivery ....................... SEPARATE_PROVIDER_SECRET_GATE / NOT AUTHORIZED
+7. Production ........................... EXPLICIT_OWNER_WEB_CTO_GATE / NOT AUTHORIZED
 ```
 
-Current Cloudflare contracts honored by this reconciliation: `exports` and legacy `migrations` are mutually exclusive (a config carrying both is rejected at validation); `wrangler versions upload` does NOT apply Durable Object lifecycle changes — only `wrangler deploy` does; first deployment of a live `exports` entry provisions the namespace; version upload and trigger attachment are distinct commands with a hard boundary between them. `compatibility_date` stays pinned at `2025-05-01` pending evidence of runtime semantic drift.
+The disabled base Provider deployment keeps `crons = []`, read-only sentinel OFF, alert delivery OFF, Production credential absent, and synthetic capability absent. A future Cron attachment is a separate provider/config mutation and must not silently broaden read-only, alert, Product, or Production authority. `compatibility_date` stays pinned at `2025-05-01` pending evidence of runtime semantic drift.
 
 ## 5. Scheduler decision
 
-### Recommendation
+### Selected topology (not bound)
 
 ```text
 PRIMARY_SCHEDULER = CLOUDFLARE_WORKER_CRON_TRIGGER_DEDICATED_RELIABILITY_WORKER
@@ -297,7 +304,7 @@ Cloudflare Cron configuration changes, including deletion, may take time to prop
 
 ## 6. Private baseline / dedupe / heartbeat store decision
 
-### Recommendation
+### Selected topology (not bound)
 
 ```text
 PRIVATE_RELIABILITY_STORE = SQLITE_BACKED_CLOUDFLARE_DURABLE_OBJECT
