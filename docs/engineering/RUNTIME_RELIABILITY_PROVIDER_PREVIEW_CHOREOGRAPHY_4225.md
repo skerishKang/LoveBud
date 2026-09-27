@@ -121,21 +121,34 @@ The checked-in `workers/reliability-preview/wrangler.reliability-preview.toml` i
 
 ## Current gate consequence
 
-The choreography correction is merged authority and the disabled NONPROD Provider Preview has since completed under #4227. That completion does not authorize later stages.
+The choreography correction is merged authority. The disabled NONPROD Provider Preview completed under #4227, and #4507 later proved the temporary Cron attachment/natural invocation/fail-disabled marker/detach path. #4509 classifies the remaining deterministic C4 fault semantics as exact-head hermetic runtime evidence rather than live provider fault injection.
+
+C4 is therefore packet-ready, but every capability activation remains independently closed.
 
 ```text
 SOURCE_CHOREOGRAPHY_CORRECTION = MERGED
 ACTUAL_PROVIDER_PREVIEW = PASS_#4227
-DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
+DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS_#4227
 WORKER_EXISTS = YES
 SQLITE_DO_LIFECYCLE = ESTABLISHED
 DO_INSTANCE_INITIALIZED = UNOBSERVED
+
+NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
+NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
+DEPLOYED_DISABLED_GATE_MARKER = PASS_#4507
+FINAL_CRON_TRIGGERS = NONE
+
+DEPLOYED_RELIABILITY_PREVIEW_SOURCE = 204a51f36dbd23f43e2b0d71f656d89229e78b69
+CURRENT_REPOSITORY_MAIN = da767d46f696f532176fd78def46d1e78da200b5
+
 CRON_ATTACHMENT = NO
 READ_ONLY_SENTINEL_ACTIVATION = NO
 ALERT_DELIVERY_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
 PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
-C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
+
+C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = YES
+C4_CAPABILITY_ACTIVATION = NONE
 ```
 
 Refs #4225.
