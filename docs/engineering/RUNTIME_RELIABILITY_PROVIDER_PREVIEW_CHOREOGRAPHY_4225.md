@@ -81,6 +81,10 @@ repository should revert from declarative `exports` to legacy `migrations`.
    separate owner-approved mutation only
    target cadence candidate = */5 * * * *
    attachment is not implied by stage 2
+   #4504/#4507 accepted trigger-only contract = Workers Scripts Schedules API
+   attach body = top-level JSON array [{"cron":"*/5 * * * *"}]
+   rollback body = []
+   rehearsal PASS does not authorize persistent scheduler activation
 
 5. READ-ONLY SENTINEL
    separate owner approval
@@ -111,7 +115,7 @@ BASE_PROVIDER_DEPLOY_READ_SENTINEL = OFF
 BASE_PROVIDER_DEPLOY_ALERT = OFF
 PRODUCTION_CREDENTIAL_IN_BASE_PREVIEW = NO
 SYNTHETIC_CAPABILITY_IN_BASE_PREVIEW = ABSENT
-CRON_ATTACHMENT = SEPARATE_OWNER_GATE
+CRON_ATTACHMENT = SEPARATE_OWNER_GATE / REHEARSAL_PASS_#4507 / CURRENTLY_DETACHED
 PROVIDER_PREVIEW_EXECUTED_BY_THIS_CHANGE = NO
 PROVIDER_MUTATION = NONE
 PRODUCTION_MUTATION = NONE
