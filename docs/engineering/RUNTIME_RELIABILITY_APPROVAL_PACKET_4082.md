@@ -476,24 +476,22 @@ No Production DDL/DML is required or authorized by this packet.
 
 ## 9. Alert delivery / provider state
 
-Current merged transport authority remains provider-unselected.
+Decision-only child #4208 selected Slack App Incoming Webhook as the alert provider, but no Slack resource, webhook secret, or delivery binding has been created.
 
 ```text
-ALERT_PROVIDER = PROVIDER_UNSELECTED
+ALERT_PROVIDER = SLACK_APP_INCOMING_WEBHOOK
+ALERT_PROVIDER_STATE = SELECTED_NOT_BOUND
 ALERT_RUNTIME_BINDING = NOT_BOUND
-ALERT_PROVIDER_APPROVED = NO
 ALERT_DELIVERY_ACTIVATION = NO
 ALERT_PROVIDER_BINDING = NO
-OWNER_DECISION_REQUIRED = YES
+ALERT_SECRET_NAME = RELIABILITY_PREVIEW_SLACK_WEBHOOK_URL
+ALERT_SECRET_PLACEMENT = NOT_AUTHORIZED
 ```
 
-Do not select Slack, Discord, email, PagerDuty, webhook, or any other provider by inference.
+Provider selection is complete; provider activation is not. Any future alert-binding child must separately approve:
 
-Any future provider-specific child must separately approve:
-
-- provider selection;
-- runtime placement;
-- secret store/injection;
+- Slack App/webhook resource creation;
+- runtime placement and secret injection;
 - Preview/Production separation;
 - request timeout;
 - bounded retry semantics;
@@ -502,7 +500,7 @@ Any future provider-specific child must separately approve:
 - provider-disable path;
 - provider-health/self-failure detection.
 
-A symbolic future secret name may be proposed, such as `RELIABILITY_ALERT_PROVIDER_CREDENTIAL`; no secret is created and no secret value is recorded.
+The secret name is source-defined, but no secret is created and no secret value is recorded.
 
 ## 10. Independent heartbeat / dead-man design
 
@@ -537,7 +535,7 @@ DEAD_MAN_BOUNDED_PROBE_AUTH = NOT_BOUND
 ALERT_PROVIDER_SELF_MONITOR = OWNER_DECISION_REQUIRED
 ```
 
-Until those decisions are made and rehearsed, dead-man readiness is **design-complete enough for review but not activation-ready**.
+Decision-only child #4207 selects a Modal scheduled function as the independent dead-man control plane, and #4210 selects a 7-minute stale threshold. The reader/runtime binding and any bounded probe credential remain unbound, so dead-man readiness is **selected-but-not-bound and not activation-ready**.
 
 ## 11. Three independent kill switches
 
@@ -609,10 +607,11 @@ Before any Production synthetic write can be considered:
 
 ## 13. Preview / non-Production rehearsal matrix
 
-Every row below is a **plan**, not completed evidence.
+The #4227 disabled Provider Preview row is completed evidence. Every other row below remains a **plan** until separately executed and accepted.
 
 | Rehearsal | Required evidence | Current status |
 | --- | --- | --- |
+| Disabled Provider Preview | Worker exists; SQLite DO namespace established; 404-only public surface; Cron/sentinel/alert/Production/Product disabled | `PASS_#4227` |
 | Scheduler invocation | scheduled handler executes only in approved Preview/non-Production environment and records bounded run class | `PLANNED_NOT_EXECUTED` |
 | Scheduler disabled | read-only kill switch short-circuits before DB credential use | `PLANNED_NOT_EXECUTED` |
 | Baseline store happy path | bounded append/read/prune/retention behavior and deterministic evaluation | `PLANNED_NOT_EXECUTED` |
@@ -725,15 +724,15 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 ## 17. Single-document decision summary
 
 1. **What is source-complete?** #4061 structural/parity translation, #4079 baseline/anomaly core, #4080 write-outcome classification, #4081 synthetic lifecycle, #4091 catalog-populated PREPARED/UNATTESTED adoption model, #3861 bounded alert delivery core, and #3874 provider-unselected adapter are merged source authorities.
-2. **What still needs owner approval?** Every runtime binding and all three Production activation gates; canonical runner adoption, Production Phase-B read, scheduler/store/dead-man/provider/QA identity/cadence/retention choices remain unactivated.
-3. **Recommended runtime components?** Dedicated Cloudflare Worker Cron Trigger for the primary runner and a SQLite-backed Durable Object for private bounded reliability state.
-4. **What capability is currently zero?** Production read, Production synthetic write, alert-provider transport, scheduler activation, Durable Object binding, QA identity creation, secret placement, and schema mutation.
+2. **What still needs owner approval?** Runtime/provider bindings and all three Production activation gates. Scheduler, private store, dead-man platform, alert provider, runtime bounds, initial signal set, and read-only executor envelope are selected-not-bound; calibration, credentials, collector binding, QA identity, and Production capability approvals remain unactivated.
+3. **Selected runtime components?** Dedicated Cloudflare Worker Cron Trigger for the primary runner and a SQLite-backed Durable Object for private bounded reliability state, both `SELECTED_NOT_BOUND`; the disabled NONPROD Worker/SQLite namespace now exists from #4227 but Cron remains unattached.
+4. **What capability is currently zero?** Production read, Production synthetic write, alert delivery, scheduler/Cron activation, real collector binding, QA identity creation, secret placement, Product traffic, and schema mutation. The disabled NONPROD Worker and SQLite DO namespace are the only established provider resources from #4227.
 5. **What remains before Production read?** #4091 has resolved the source-model composition defect, but canonical runner adoption remains HOLD/NOT ACTIVE and Production Phase-B read still requires separate explicit approval; least-privilege SELECT-only credential/allowlist, read-only transaction/timeouts, runtime bindings, dead-man, rehearsal evidence, and owner approval also remain.
 6. **What remains before synthetic write?** QA identity/credential, exact #4081 effect binding, fencing/ownership/cleanup/reconciliation/exclusion rehearsal, independent kill switch, and explicit synthetic-write approval.
-7. **What remains before alert delivery?** Provider selection, runtime/secret binding, delivery/dedupe/retry/health design, rehearsal, kill switch, and explicit alert approval.
-8. **Who detects monitor death?** A separately-approved independent dead-man reader; platform and owner remain an explicit decision, so dead-man activation is not yet complete.
+7. **What remains before alert delivery?** Slack App Incoming Webhook is already selected-not-bound; runtime/secret binding, delivery/dedupe/retry/health rehearsal, kill-switch proof, and explicit alert activation approval remain.
+8. **Who detects monitor death?** Modal scheduled function is the selected-not-bound independent control plane; its reader/runtime binding and bounded probe authority remain unbound, so dead-man activation is not yet complete.
 9. **How is immediate disable/rollback performed?** Three independent fail-disabled switches; scheduler trigger/provider/store bindings are secondary rollback/removal mechanisms and never substitute for the switches.
-10. **What evidence is still required?** Every Preview/non-Production row in §13 remains `PLANNED_NOT_EXECUTED`.
+10. **What evidence is still required?** #4227 disabled Provider Preview is `PASS`; the remaining §13 runtime/capability rehearsal rows remain `PLANNED_NOT_EXECUTED` until separately authorized and executed.
 
 ## 18. Final packet disposition
 
@@ -750,6 +749,8 @@ RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
 PRODUCTION_SYNTHETIC_WRITE_AUTHORITY = NO
 ALERT_PROVIDER_BINDING = NO
+SIGNAL_CALIBRATION = NOT_APPROVED
+DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 
 SOURCE_MODEL_BLOCKER_4091 = RESOLVED
 CATALOG_POPULATED_PREPARED_MODEL = VALID_UNATTESTED
