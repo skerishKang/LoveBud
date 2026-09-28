@@ -790,7 +790,7 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 6. **What remains before synthetic write?** QA identity/credential, exact #4081 effect binding, fencing/ownership/cleanup/reconciliation/exclusion rehearsal, independent kill switch, and explicit synthetic-write approval.
 7. **What remains before alert delivery?** Slack App Incoming Webhook is already selected-not-bound; runtime/secret binding, delivery/dedupe/retry/health rehearsal, kill-switch proof, and explicit alert activation approval remain.
 8. **Who detects monitor death?** Modal scheduled function is the selected-not-bound independent control plane; its reader/runtime binding and bounded probe authority remain unbound, so dead-man activation is not yet complete.
-9. **How is immediate disable/rollback performed?** Three independent fail-disabled switches; scheduler trigger/provider/store bindings are secondary rollback/removal mechanisms and never substitute for the switches.
+9. **How is immediate disable/rollback performed?** Three independent fail-disabled switches are the logical controls; #4507 directly proves provider Cron detach. Other runtime/provider/store bindings remain unbound or separately gated, and #4509 does not require destructive Durable Object namespace deletion for C4.
 10. **What evidence is still required?** #4227 disabled Provider Preview, #4507 scheduler invocation/disabled and direct Cron detach, accepted hermetic/source-only rows, structural/parity mismatch, #4518 synthetic-disabled evidence, #4509-authorized collector failure evidence, and composite rollback evidence are accepted. The only remaining §13 row is store corruption/malformed state, which remains `PLANNED_NOT_EXECUTED` until separately implemented/reconciled.
 
 ## 18. Final packet disposition
