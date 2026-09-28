@@ -8,7 +8,7 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@e8546098edbf6fe7ddd2c35f5eb734bbfbb0c607`
+Current-main reconciliation snapshot: `main@f274b37dc2b32f54ee9d52b590380235e50412ae`
 
 Post-#4227 disabled NONPROD Provider Preview reconciliation: **PROVIDER PREVIEW COMPLETE / PASS; WORKER EXISTS; SQLITE DO NAMESPACE ESTABLISHED; CRON/SENTINEL/ALERT/PRODUCTION/PRODUCT REMAIN DISABLED OR UNBOUND**
 
@@ -24,7 +24,7 @@ This document is the bounded owner/Web-CTO decision packet requested by #4082. I
 This section supersedes stale state labels elsewhere in this packet where they conflict with later issue authority or completed #4227 evidence.
 
 ```text
-CURRENT_MAIN = e8546098edbf6fe7ddd2c35f5eb734bbfbb0c607
+CURRENT_MAIN = f274b37dc2b32f54ee9d52b590380235e50412ae
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
 NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
@@ -48,6 +48,12 @@ STRUCTURAL_PARITY_DB_ENGINE_RUN = 36357161756
 STRUCTURAL_PARITY_MISMATCH_REHEARSAL = PASS_DB_ENGINE_36357161756
 STRUCTURAL_PARITY_MUTATION_COUNT = 0
 STRUCTURAL_PARITY_MIGRATION_EXECUTION_COUNT = 0
+SYNTHETIC_DISABLED_EXACT_HEAD_RELIABILITY_PREVIEW_RUN = 36375432647
+SYNTHETIC_DISABLED_POST_MERGE_RELIABILITY_PREVIEW_RUN = 36390833308
+SYNTHETIC_DISABLED_POST_MERGE_FULL_CI_RUN = 36390833369
+SYNTHETIC_DISABLED_GATE_REHEARSAL = PASS_EXACT_MAIN_36390833308
+SYNTHETIC_DISABLED_DO_RESOLUTION_COUNT = 0
+SYNTHETIC_DISABLED_RUNTIME_CAPABILITY = UNBOUND
 WORKER_EXISTS = YES
 SQLITE_DO_NAMESPACE = ESTABLISHED
 SQLITE_STORAGE_BACKEND = SQLITE
@@ -125,7 +131,7 @@ Current overall authority:
 
 ```text
 APPROVAL_PACKET_PREPARATION = COMPLETE_CURRENTNESS_RECONCILIATION
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_e8546098edbf6fe7ddd2c35f5eb734bbfbb0c607
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_f274b37dc2b32f54ee9d52b590380235e50412ae
 C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
@@ -255,7 +261,7 @@ PRODUCTION AUTHORITY = NO
 
 Release provenance (#4175): the exact deployed source revision is injected externally through `RELIABILITY_PREVIEW_RELEASE_SHA` — precisely one 40-character hexadecimal full SHA (lowercase normalization allowed); missing/malformed/non-hex/all-zero values classify `INVALID_RELEASE_SHA` and fail closed BEFORE any collector, store, or transport invocation. No SHA is hard-coded in source and there is no current-main fallback. The variable is plain deploy configuration, not a secret, so no value is recorded in this packet.
 
-Kill-switch env wiring (#4175): the NONPROD preview worker passes `env[RELIABILITY_READ_ONLY_SENTINEL_ENABLED]` and `env[RELIABILITY_ALERT_DELIVERY_ENABLED]` into `createPreviewConfig(...)`. Values are trimmed and lowercased; normalized `"true"` enables a switch, while every other value stays DISABLED. The two switches stay independent and both default DISABLED. This wiring creates no Cloudflare variable and activates nothing.
+Kill-switch env wiring (#4175/#4518): the NONPROD preview worker passes `env[RELIABILITY_READ_ONLY_SENTINEL_ENABLED]`, `env[RELIABILITY_SYNTHETIC_CANARY_ENABLED]`, and `env[RELIABILITY_ALERT_DELIVERY_ENABLED]` into `createPreviewConfig(...)`. Values are trimmed and lowercased; normalized `"true"` enables only the corresponding classification, while every other value stays DISABLED. The three switches stay independent and all default DISABLED. Synthetic classification is source-only: it binds no QA identity, lifecycle, fixture, write, cleanup, network, DB, provider, or Production capability.
 
 Current unbound runtime seams: `previewCollectEffect()` remains `Promise.resolve([])`, so no real Production collector is bound. `calibrationBySignal` remains empty by design for the selected initial structural hard signals: #4499 selected no numeric calibration for aggregate-count/parity evidence, and #4500/#4501 wired those hard signals through the runner without weakening calibration requirements for future baseline-aware signals.
 
@@ -576,7 +582,7 @@ Decision-only child #4207 selects a Modal scheduled function as the independent 
 
 ## 11. Three independent kill switches
 
-These are symbolic configuration names only. No Cloudflare env/secret/config is created or changed. As of #4175 the NONPROD preview worker reads these exact names from its environment inputs (source-level wiring only); the variables themselves are not created anywhere and both default DISABLED.
+These are symbolic configuration names only. No Cloudflare env/secret/config is created or changed. As of #4518 the NONPROD preview worker reads all three exact names from its environment inputs (source-level wiring only); the variables themselves are not created anywhere and all three default DISABLED.
 
 ### A. Read-only sentinel
 
@@ -644,13 +650,15 @@ Before any Production synthetic write can be considered:
 
 ## 13. Preview / non-Production rehearsal matrix
 
+Exact-main merge `f274b37dc2b32f54ee9d52b590380235e50412ae` plus post-merge Reliability Preview run `36390833308` and Full CI run `36390833369` supply the synthetic-disabled gate evidence from #4518/#4519: the synthetic control defaults and malformed values fail to `DISABLED`; `synthetic=true` remains independent of sentinel/alert state; sentinel-disabled scheduling returns `RUN_DISABLED` before Durable Object resolution; lifecycle/QA/fixture/write bindings remain absent; and runtime capabilities remain empty. CENTRAL accepts this only for the `Synthetic canary disabled` row and does not grant synthetic activation or Production write authority.
+
 Exact-main Full CI run `36357161756` additionally supplies disposable-PostgreSQL structural/parity evidence: `PARITY_MISMATCH` is produced with no raw leakage or mutation, the preflight leaves no activation/residual state and executes no migration or ledger append, and the #4061 source contract maps only that bounded mismatch to `STRUCTURAL_DRIFT_DETECTED` while retaining zero capabilities.
 
 Exact-main Full CI run `36346112525` also executed the hermetic #4081 canary lifecycle contract with injected fake effects and zero network/DB/provider/Production capability. CENTRAL accepts that source-only target only for rows whose required evidence is fully represented by the #4081 dependency-injected lifecycle; it does not satisfy the separately-defined runtime synthetic kill switch or provider rollback rows.
 
 Repository-owned hermetic Preview evidence is accepted for rows whose full required behavior is dependency-injected and fully exercised by `.github/workflows/reliability-preview.yml`. Exact main push run `36340617006` executed `node --test tests/reliability-preview/*.test.cjs` and completed **62/62 PASS**. This hermetic target does **not** substitute for provider, Production-DB transaction, structural/parity runtime-binding, synthetic-runtime, or rollback evidence where those rows require capabilities not exercised by the workflow.
 
-The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disabled rows are completed evidence. Every other row below remains a **plan** until separately executed and accepted.
+The #4227 disabled Provider Preview row, #4507 scheduler invocation/disabled rows, accepted hermetic/source-only rows, structural/parity mismatch, and #4518 synthetic-disabled gate are completed evidence. Rows below still marked `PLANNED_NOT_EXECUTED` remain plans until separately executed and accepted.
 
 | Rehearsal | Required evidence | Current status |
 | --- | --- | --- |
@@ -668,7 +676,7 @@ The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disab
 | Duplicate runner | lease/fence rejects stale/superseded runner | `PASS_HERMETIC_36340617006` |
 | Alert provider unavailable | bounded delivery-unavailable result; Product path unaffected | `PASS_HERMETIC_36340617006` |
 | Alert kill switch ON/OFF | transport invocation count proves independent disable | `PASS_HERMETIC_36340617006` |
-| Synthetic canary disabled | zero QA auth/fixture/write capability invoked | `PLANNED_NOT_EXECUTED` |
+| Synthetic canary disabled | zero QA auth/fixture/write capability invoked | `PASS_EXACT_MAIN_36390833308` |
 | Synthetic source-only fake lifecycle | #4081 injected fake effects exercise lifecycle without Production capability | `PASS_HERMETIC_FULL_CI_36346112525` |
 | Unknown-write reconciliation | canonical reread first; second write dispatch count remains zero | `PASS_HERMETIC_FULL_CI_36346112525` |
 | Post-write ownership loss | `FENCED`; no cleanup mutation by stale owner | `PASS_HERMETIC_FULL_CI_36346112525` |
@@ -676,7 +684,7 @@ The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disab
 | Privacy scan | no secret/token/UID/email/Tree/Memory/content/raw SQL/raw row/raw error leakage | `PASS_HERMETIC_36340617006` |
 | Rollback | all three kill switches independently disable; scheduler/provider/store bindings removable without Product-path dependency | `PLANNED_NOT_EXECUTED` |
 
-Only the rows above carrying `PASS_#...` or `PASS_HERMETIC_...` have completed execution plus independent CENTRAL review. Rows still marked `PLANNED_NOT_EXECUTED` remain blocked; partial source tests are not treated as completion evidence.
+Only the rows above carrying a `PASS_...` status have completed execution plus independent CENTRAL review. Rows still marked `PLANNED_NOT_EXECUTED` remain blocked; partial source tests are not treated as completion evidence.
 
 ## 14. Privacy and capability boundary
 
@@ -775,14 +783,14 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 7. **What remains before alert delivery?** Slack App Incoming Webhook is already selected-not-bound; runtime/secret binding, delivery/dedupe/retry/health rehearsal, kill-switch proof, and explicit alert activation approval remain.
 8. **Who detects monitor death?** Modal scheduled function is the selected-not-bound independent control plane; its reader/runtime binding and bounded probe authority remain unbound, so dead-man activation is not yet complete.
 9. **How is immediate disable/rollback performed?** Three independent fail-disabled switches; scheduler trigger/provider/store bindings are secondary rollback/removal mechanisms and never substitute for the switches.
-10. **What evidence is still required?** #4227 disabled Provider Preview is `PASS`, and #4507 promotes Scheduler invocation + Scheduler disabled to `PASS`; every other §13 runtime/capability rehearsal row remains `PLANNED_NOT_EXECUTED` until separately authorized and executed.
+10. **What evidence is still required?** #4227 disabled Provider Preview, #4507 scheduler invocation/disabled, hermetic/source-only rows, structural/parity mismatch, and #4518 synthetic-disabled evidence are accepted. The remaining §13 rows are store corruption/malformed state, DB collector timeout, malformed DB result, and rollback; each remains `PLANNED_NOT_EXECUTED` until separately authorized and executed.
 
 ## 18. Final packet disposition
 
-The packet document is current through #4507, but the #4082 completion marker is still not satisfied. #4227 proves the disabled base Provider Preview and #4507 proves the natural scheduler invocation plus fail-disabled scheduler short-circuit. The remaining runtime/capability rehearsal rows in §13 are still unexecuted, so C4 remains blocked.
+The packet document is current through #4518/#4519 synthetic-disabled evidence, but the #4082 completion marker is still not satisfied. The remaining §13 rows are store corruption/malformed state, DB collector timeout, malformed DB result, and rollback; all remain unexecuted, so C4 remains blocked.
 
 ```text
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_569836d0a3df7a995cc02c4eef23d16f365eb1a5
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_f274b37dc2b32f54ee9d52b590380235e50412ae
 C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 C4_BLOCKER_CLASS = RUNTIME_REHEARSAL_AND_CAPABILITY_AUTHORITY
 NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
@@ -839,7 +847,8 @@ DEPLOYED_DISABLED_GATE_MARKER = PASS_#4507
 HERMETIC_NONPROD_REHEARSAL_RUN = 36340617006 / 62_OF_62_PASS
 HERMETIC_REHEARSAL_ROWS_PROMOTED = 8
 SYNTHETIC_SOURCE_ONLY_ROWS_PROMOTED = 4
-NONPROD_REHEARSAL_ROWS_PASS = 16_OF_21
+SYNTHETIC_DISABLED_GATE_REHEARSAL = PASS_EXACT_MAIN_36390833308
+NONPROD_REHEARSAL_ROWS_PASS = 17_OF_21
 NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 
 RECOMMENDATION = COMPLETE_REMAINING_NONPROD_RUNTIME_REHEARSAL_GATES_BEFORE_C4
