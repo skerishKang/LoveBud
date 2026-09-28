@@ -35,6 +35,7 @@
 
   var KILL_SWITCH_NAMES = Object.freeze({
     READ_ONLY_SENTINEL: 'RELIABILITY_READ_ONLY_SENTINEL_ENABLED',
+    SYNTHETIC_CANARY: 'RELIABILITY_SYNTHETIC_CANARY_ENABLED',
     ALERT_DELIVERY: 'RELIABILITY_ALERT_DELIVERY_ENABLED'
   });
 
@@ -97,6 +98,8 @@
     }
     var sentinelRaw = Object.prototype.hasOwnProperty.call(overrides, 'kill_switch_sentinel') ?
       overrides.kill_switch_sentinel : KILL_SWITCH_DEFAULT;
+    var syntheticRaw = Object.prototype.hasOwnProperty.call(overrides, 'kill_switch_synthetic') ?
+      overrides.kill_switch_synthetic : KILL_SWITCH_DEFAULT;
     var alertRaw = Object.prototype.hasOwnProperty.call(overrides, 'kill_switch_alert') ?
       overrides.kill_switch_alert : KILL_SWITCH_DEFAULT;
     var releaseShaRaw = Object.prototype.hasOwnProperty.call(overrides, 'release_sha_env') ?
@@ -109,6 +112,7 @@
       KILL_SWITCH_NAMES: KILL_SWITCH_NAMES,
       kill_switches: Object.freeze({
         read_only_sentinel: classifyKillSwitch(sentinelRaw),
+        synthetic_canary: classifyKillSwitch(syntheticRaw),
         alert_delivery: classifyKillSwitch(alertRaw)
       }),
       release_sha_var_name: RELEASE_SHA_VAR_NAME,
