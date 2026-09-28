@@ -90,23 +90,19 @@ let passCount = 0;
 let failCount = 0;
 
 function pass(label) {
-  console.log(`  ✓ ${label}`);
+  void label;
   passCount++;
 }
 
 function fail(label, reason) {
-  console.error(`  ✗ FAIL: ${label}`);
-  if (reason) console.error(`         ${reason}`);
+  void label;
+  void reason;
   failCount++;
 }
 
 // ─── Suites ──────────────────────────────────────────────────────────────────
 
 async function run() {
-  console.log(
-    '\n[scout-api-key-provider-transport-gates-contract] Starting contract checks'
-  );
-
   // ── 0. File presence ────────────────────────────────────────────────────────
   await suite('0. File presence', async () => {
     if (fs.existsSync(MODULE_PATH)) {
@@ -616,19 +612,11 @@ async function run() {
   });
 
   // ── Summary ─────────────────────────────────────────────────────────────────
-  console.log('\n────────────────────────────────────────────────────────');
-  console.log(
-    `[scout-api-key-provider-transport-gates-contract] ${passCount} passed, ${failCount} failed`
-  );
   if (failCount > 0) {
     process.exit(1);
   }
 }
 
-run().catch((err) => {
-  console.error(
-    '[scout-api-key-provider-transport-gates-contract] Uncaught:',
-    err.message || String(err)
-  );
+run().catch(() => {
   process.exit(1);
 });
