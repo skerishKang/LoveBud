@@ -206,8 +206,10 @@ test('4082 FIXED NONPROD DECISIONS — runtime bounds and kill-switch defaults',
   assert.equal(config.RUNTIME_BOUNDS.HEARTBEAT_HISTORY_MAX, 2016);
   assert.equal(config.RUNTIME_BOUNDS.DEADMAN_STALE_THRESHOLD_MS, 7 * 60 * 1000);
   assert.equal(config.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(config.kill_switches.synthetic_canary, 'DISABLED');
   assert.equal(config.kill_switches.alert_delivery, 'DISABLED');
   assert.equal(previewConfig.KILL_SWITCH_NAMES.READ_ONLY_SENTINEL, 'RELIABILITY_READ_ONLY_SENTINEL_ENABLED');
+  assert.equal(previewConfig.KILL_SWITCH_NAMES.SYNTHETIC_CANARY, 'RELIABILITY_SYNTHETIC_CANARY_ENABLED');
   assert.equal(previewConfig.KILL_SWITCH_NAMES.ALERT_DELIVERY, 'RELIABILITY_ALERT_DELIVERY_ENABLED');
 });
 
@@ -922,9 +924,11 @@ test('4175 RELEASE PROVENANCE — config contract classifies injected SHA values
 test('4175 KILL SWITCH WIRING — env names classify through createPreviewConfig exactly like documented', function () {
   const enabledConfig = previewConfig.createPreviewConfig({
     kill_switch_sentinel: makeEnv({})['RELIABILITY_READ_ONLY_SENTINEL_ENABLED'],
+    kill_switch_synthetic: makeEnv({ RELIABILITY_SYNTHETIC_CANARY_ENABLED: 'true' })['RELIABILITY_SYNTHETIC_CANARY_ENABLED'],
     kill_switch_alert: makeEnv({ RELIABILITY_READ_ONLY_SENTINEL_ENABLED: 'true' })['RELIABILITY_READ_ONLY_SENTINEL_ENABLED']
   });
   assert.equal(enabledConfig.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(enabledConfig.kill_switches.synthetic_canary, 'ENABLED');
   assert.equal(enabledConfig.kill_switches.alert_delivery, 'ENABLED');
 
   const classificationCases = [
@@ -945,20 +949,29 @@ test('4175 KILL SWITCH WIRING — env names classify through createPreviewConfig
   for (const [value, expected] of classificationCases) {
     const config = previewConfig.createPreviewConfig({
       kill_switch_sentinel: value,
+      kill_switch_synthetic: value,
       kill_switch_alert: value
     });
     assert.equal(config.kill_switches.read_only_sentinel, expected, 'sentinel for ' + JSON.stringify(value));
+    assert.equal(config.kill_switches.synthetic_canary, expected, 'synthetic for ' + JSON.stringify(value));
     assert.equal(config.kill_switches.alert_delivery, expected, 'alert for ' + JSON.stringify(value));
   }
 });
 
-test('4175 KILL SWITCH INDEPENDENCE — alert enablement never implies sentinel enablement', function () {
-  const config = previewConfig.createPreviewConfig({ kill_switch_sentinel: false, kill_switch_alert: true });
-  assert.equal(config.kill_switches.read_only_sentinel, 'DISABLED');
-  assert.equal(config.kill_switches.alert_delivery, 'ENABLED');
+test('4518 KILL SWITCH INDEPENDENCE — synthetic/alert enablement never widens sentinel authority', function () {
+  const syntheticOnly = previewConfig.createPreviewConfig({ kill_switch_synthetic: true });
+  assert.equal(syntheticOnly.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(syntheticOnly.kill_switches.synthetic_canary, 'ENABLED');
+  assert.equal(syntheticOnly.kill_switches.alert_delivery, 'DISABLED');
+
+  const alertOnly = previewConfig.createPreviewConfig({ kill_switch_alert: true });
+  assert.equal(alertOnly.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(alertOnly.kill_switches.synthetic_canary, 'DISABLED');
+  assert.equal(alertOnly.kill_switches.alert_delivery, 'ENABLED');
 
   const defaults = previewConfig.createPreviewConfig();
   assert.equal(defaults.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(defaults.kill_switches.synthetic_canary, 'DISABLED');
   assert.equal(defaults.kill_switches.alert_delivery, 'DISABLED');
 });
 
@@ -1097,6 +1110,7 @@ test('4175 DEFAULT CONFIG REMAINS FAIL CLOSED — unchanged bounds, disabled swi
   assert.equal(config.RUNTIME_BOUNDS.FULL_RUN_TIMEOUT_MS, 30000);
   assert.equal(config.RUNTIME_BOUNDS.LEASE_DURATION_MS, 90000);
   assert.equal(config.kill_switches.read_only_sentinel, 'DISABLED');
+  assert.equal(config.kill_switches.synthetic_canary, 'DISABLED');
   assert.equal(config.kill_switches.alert_delivery, 'DISABLED');
   assert.equal(config.release_provenance.status, 'INVALID_RELEASE_SHA');
   assert.equal(Object.freeze(previewConfig.CAPABILITIES).length, 0);
@@ -1280,6 +1294,51 @@ test('4505 ENABLED SENTINEL — disabled-gate marker is absent on the Durable Ob
   assert.equal(getCalls, 1);
   assert.equal(runCalls, 1);
   assert.equal(logs.length, 0);
+});
+
+test('4518 SYNTHETIC DISABLED GATE — enabled synthetic classification cannot bypass disabled sentinel or resolve capability', async function () {
+  const { default: workerModule } = await import('file://' + WORKER_SOURCE_PATH.split('\\').join('/'));
+  let idFromNameCalls = 0;
+  let getCalls = 0;
+  const logs = [];
+  const originalLog = console.log;
+  console.log = function () { logs.push(Array.prototype.slice.call(arguments).join(' ')); };
+  try {
+    const record = await workerModule.scheduled(
+      { cron: '*/5 * * * *' },
+      makeEnv({
+        RELIABILITY_PREVIEW_RELEASE_SHA: 'd'.repeat(40),
+        RELIABILITY_SYNTHETIC_CANARY_ENABLED: 'true',
+        RELIABILITY_PREVIEW_STORE: {
+          idFromName: function () { idFromNameCalls += 1; return 'forbidden'; },
+          get: function () { getCalls += 1; throw new Error('capability must not resolve'); }
+        }
+      }),
+      {}
+    );
+    assert.equal(record.run_class, 'RUN_DISABLED');
+    assert.equal(record.heartbeat_class, 'NOT_RECORDED_DISABLED');
+  } finally {
+    console.log = originalLog;
+  }
+  assert.equal(idFromNameCalls, 0);
+  assert.equal(getCalls, 0);
+  assert.equal(logs.length, 1);
+});
+
+test('4518 SYNTHETIC SOURCE BOUNDARY — control is wired but lifecycle and QA/write effects remain unbound', function () {
+  const workerSource = fs.readFileSync(WORKER_SOURCE_PATH, 'utf8');
+  const configSource = fs.readFileSync(
+    path.join(ROOT, 'workers', 'reliability-preview', 'reliability-preview-config.cjs'), 'utf8');
+
+  assert.equal(configSource.includes('RELIABILITY_SYNTHETIC_CANARY_ENABLED'), true);
+  assert.equal(configSource.includes('SYNTHETIC_CANARY'), true);
+  assert.equal(workerSource.includes('KILL_SWITCH_NAMES.SYNTHETIC_CANARY'), true);
+
+  assert.equal(workerSource.includes('reliability-canary-lifecycle-core'), false);
+  assert.equal(workerSource.includes('createCanaryLifecycle'), false);
+  assert.equal(workerSource.includes('QA_IDENTITY'), false);
+  assert.equal(previewConfig.CAPABILITIES.length, 0);
 });
 
 test('4175 PRIVACY AUDIT — reconciliation surfaces stay free of private markers', function () {
