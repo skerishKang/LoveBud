@@ -11,11 +11,12 @@
 //   config contract; a missing/malformed/all-zero value classifies as
 //   INVALID_RELEASE_SHA and fails closed BEFORE any collector, store, or
 //   transport invocation.
-// - Both kill switches are now wired to their real environment inputs
-//   (RELIABILITY_READ_ONLY_SENTINEL_ENABLED / RELIABILITY_ALERT_DELIVERY_ENABLED).
-//   Values are trimmed and lowercased; normalized "true" enables and every
-//   other value stays DISABLED. Each switch remains independent and neither
-//   defaults to enabled.
+// - The reliability control switches are wired to their symbolic environment
+//   inputs. Values are trimmed/lowercased; normalized "true" enables and every
+//   other value stays DISABLED. Each switch remains independent and none
+//   defaults to enabled. The synthetic control is classification-only here:
+//   no QA identity, lifecycle, fixture, write, cleanup, network, or DB binding
+//   is composed by this Worker.
 // - previewCollectEffect() remains an intentionally unbound empty probe and
 //   calibrationBySignal remains intentionally empty: real Production collector
 //   binding is a separate approval and is NOT part of this package.
@@ -140,6 +141,7 @@ export class ReliabilityPreviewStore {
     // symbolic config names; only normalized "true" classifies ENABLED.
     this.config = configApi.createPreviewConfig({
       kill_switch_sentinel: env[configApi.KILL_SWITCH_NAMES.READ_ONLY_SENTINEL],
+      kill_switch_synthetic: env[configApi.KILL_SWITCH_NAMES.SYNTHETIC_CANARY],
       kill_switch_alert: env[configApi.KILL_SWITCH_NAMES.ALERT_DELIVERY],
       release_sha_env: env[configApi.RELEASE_SHA_VAR_NAME]
     });
@@ -220,6 +222,7 @@ export default {
     try {
       const config = configApi.createPreviewConfig({
         kill_switch_sentinel: env[configApi.KILL_SWITCH_NAMES.READ_ONLY_SENTINEL],
+        kill_switch_synthetic: env[configApi.KILL_SWITCH_NAMES.SYNTHETIC_CANARY],
         kill_switch_alert: env[configApi.KILL_SWITCH_NAMES.ALERT_DELIVERY],
         release_sha_env: env[configApi.RELEASE_SHA_VAR_NAME]
       });
