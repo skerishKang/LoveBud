@@ -658,7 +658,7 @@ Exact-main Full CI run `36346112525` also executed the hermetic #4081 canary lif
 
 Repository-owned hermetic Preview evidence is accepted for rows whose full required behavior is dependency-injected and fully exercised by `.github/workflows/reliability-preview.yml`. Exact main push run `36340617006` executed `node --test tests/reliability-preview/*.test.cjs` and completed **62/62 PASS**. This hermetic target does **not** substitute for provider, Production-DB transaction, structural/parity runtime-binding, synthetic-runtime, or rollback evidence where those rows require capabilities not exercised by the workflow.
 
-The #4227 disabled Provider Preview row and the #4507 scheduler invocation/disabled rows are completed evidence. Every other row below remains a **plan** until separately executed and accepted.
+The #4227 disabled Provider Preview row, #4507 scheduler invocation/disabled rows, accepted hermetic/source-only rows, structural/parity mismatch, and #4518 synthetic-disabled gate are completed evidence. Rows below still marked `PLANNED_NOT_EXECUTED` remain plans until separately executed and accepted.
 
 | Rehearsal | Required evidence | Current status |
 | --- | --- | --- |
@@ -787,7 +787,7 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 
 ## 18. Final packet disposition
 
-The packet document is current through #4507, but the #4082 completion marker is still not satisfied. #4227 proves the disabled base Provider Preview and #4507 proves the natural scheduler invocation plus fail-disabled scheduler short-circuit. The remaining runtime/capability rehearsal rows in §13 are still unexecuted, so C4 remains blocked.
+The packet document is current through #4518/#4519 synthetic-disabled evidence, but the #4082 completion marker is still not satisfied. The remaining §13 rows are store corruption/malformed state, DB collector timeout, malformed DB result, and rollback; all remain unexecuted, so C4 remains blocked.
 
 ```text
 PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_f274b37dc2b32f54ee9d52b590380235e50412ae
