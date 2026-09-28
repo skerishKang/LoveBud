@@ -526,6 +526,53 @@ test('4082 FAILURE SEMANTICS — malformed store result classifies INSUFFICIENT,
   assert.equal(result.evidence_completeness, 'invalid');
 });
 
+test('4526 STORE CORRUPTION REHEARSAL — malformed persisted baseline fails closed and reset is signal-bounded', async function () {
+  const clock = makeClock(9_750_000);
+  const database = new DatabaseSync(':memory:');
+  const store = previewStore.createPreviewStore({
+    database,
+    config: makeConfig(),
+    now: clock.now
+  });
+  const otherSignalId = 'ENTITY_RATE_OF_CHANGE';
+
+  store.recordBaselineSample(SIGNAL_ID, 100, clock.now());
+  clock.advance(1000);
+  store.recordBaselineSample(SIGNAL_ID, 101, clock.now());
+  store.recordBaselineSample(otherSignalId, 200, clock.now());
+  store.acquireLease('corruption-reset-holder', clock.now());
+  store.recordDedupe('a'.repeat(64), clock.now());
+  store.recordHeartbeat('RUN_COMPLETED', MAIN_SHA, clock.now());
+
+  database.prepare('UPDATE baseline_samples SET value = ? WHERE signal_id = ?')
+    .run('CORRUPT_PRIVATE_VALUE', SIGNAL_ID);
+
+  const boundary = baselineContract.createBaselineStoreBoundary({ store, taxonomy });
+  const failed = await boundary.evaluateBaselineSignal({
+    signal_id: SIGNAL_ID,
+    signal_class: SIGNAL_CLASS,
+    calibration: CALIBRATION
+  });
+  assert.equal(failed.status, 'MONITORING_FAILED');
+  assert.equal(failed.baseline_deviation, 'UNKNOWN');
+  assert.equal(JSON.stringify(failed).includes('CORRUPT_PRIVATE_VALUE'), false);
+
+  assert.equal(store.resetBaselineSignal(SIGNAL_ID), true);
+  assert.equal(store.countBaselineSamples(SIGNAL_ID), 0);
+  assert.equal(store.countBaselineSamples(otherSignalId), 1);
+  assert.equal(store.hasActiveLease(clock.now()), true);
+  assert.equal(store.countDedupeEntries(), 1);
+  assert.equal(store.countHeartbeatRows(), 1);
+
+  const afterReset = await boundary.evaluateBaselineSignal({
+    signal_id: SIGNAL_ID,
+    signal_class: SIGNAL_CLASS,
+    calibration: CALIBRATION
+  });
+  assert.equal(afterReset.status, 'INSUFFICIENT');
+  assert.equal(afterReset.baseline_deviation, 'UNKNOWN');
+});
+
 test('4082 FAILURE SEMANTICS — contract-valid ESTABLISHED with UNKNOWN deviation fails closed at evaluation', async function () {
   const ambiguousStore = {
     evaluate: async function () {

@@ -127,10 +127,30 @@
       }
     }
 
+    function isValidPersistedBaselineRow(row) {
+      return isPlainRecord(row) &&
+        typeof row.measured_at === 'number' &&
+        Number.isFinite(row.measured_at) &&
+        typeof row.value === 'number' &&
+        Number.isFinite(row.value);
+    }
+
     function getBaselineSamples(signalId) {
-      return database.prepare(
+      var rows = database.prepare(
         'SELECT measured_at, value FROM baseline_samples WHERE signal_id = ? ORDER BY measured_at ASC, id ASC'
       ).all(signalId);
+      for (var i = 0; i < rows.length; i++) {
+        if (!isValidPersistedBaselineRow(rows[i])) {
+          throw new TypeError('CORRUPT_BASELINE_STATE');
+        }
+      }
+      return rows;
+    }
+
+    function resetBaselineSignal(signalId) {
+      if (typeof signalId !== 'string' || !signalId) throw new TypeError('INVALID_SIGNAL');
+      database.prepare('DELETE FROM baseline_samples WHERE signal_id = ?').run(signalId);
+      return true;
     }
 
     function countBaselineSamples(signalId) {
@@ -272,6 +292,7 @@
       evaluate: evaluate,
       recordBaselineSample: recordBaselineSample,
       getBaselineSamples: getBaselineSamples,
+      resetBaselineSignal: resetBaselineSignal,
       countBaselineSamples: countBaselineSamples,
       acquireLease: acquireLease,
       releaseLease: releaseLease,
