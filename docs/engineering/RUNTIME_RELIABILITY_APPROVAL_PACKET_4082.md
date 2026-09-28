@@ -8,7 +8,7 @@ Protected: #1882 — KEEP OPEN
 
 Packet owner: WEB-3
 
-Current-main reconciliation snapshot: `main@0c40a48d089fae7ea3d6781fe31ffcfafb99cdb5`
+Current-main reconciliation snapshot: `main@e24a4260efa51b72a78f5036e1a44c4b4b848ba3`
 
 Post-#4227 disabled NONPROD Provider Preview reconciliation: **PROVIDER PREVIEW COMPLETE / PASS; WORKER EXISTS; SQLITE DO NAMESPACE ESTABLISHED; CRON/SENTINEL/ALERT/PRODUCTION/PRODUCT REMAIN DISABLED OR UNBOUND**
 
@@ -24,7 +24,7 @@ This document is the bounded owner/Web-CTO decision packet requested by #4082. I
 This section supersedes stale state labels elsewhere in this packet where they conflict with later issue authority or completed #4227 evidence.
 
 ```text
-CURRENT_MAIN = 0c40a48d089fae7ea3d6781fe31ffcfafb99cdb5
+CURRENT_MAIN = e24a4260efa51b72a78f5036e1a44c4b4b848ba3
 DISABLED_NONPROD_PROVIDER_PREVIEW_REHEARSAL = PASS
 NONPROD_SCHEDULER_INVOCATION_REHEARSAL = PASS_#4507
 NONPROD_SCHEDULER_DISABLED_REHEARSAL = PASS_#4507
@@ -58,6 +58,10 @@ COLLECTOR_FAILURE_EXACT_MAIN_RELIABILITY_PREVIEW_RUN = 36395281529
 DB_COLLECTOR_TIMEOUT_REHEARSAL = PASS_HERMETIC_36395281529
 MALFORMED_DB_RESULT_REHEARSAL = PASS_HERMETIC_36395281529
 LIVE_PRODUCTION_DB_TIMEOUT_REQUIRED_FOR_C4 = NO
+ROLLBACK_EXACT_MAIN_RELIABILITY_PREVIEW_RUN = 36408733149
+ROLLBACK_DIRECT_PROVIDER_EVIDENCE = PASS_#4507
+ROLLBACK_REHEARSAL = PASS_COMPOSITE_#4507_36408733149
+DESTRUCTIVE_DO_NAMESPACE_DELETION_REQUIRED_FOR_C4 = NO
 WORKER_EXISTS = YES
 SQLITE_DO_NAMESPACE = ESTABLISHED
 SQLITE_STORAGE_BACKEND = SQLITE
@@ -135,7 +139,7 @@ Current overall authority:
 
 ```text
 APPROVAL_PACKET_PREPARATION = COMPLETE_CURRENTNESS_RECONCILIATION
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_0c40a48d089fae7ea3d6781fe31ffcfafb99cdb5
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_e24a4260efa51b72a78f5036e1a44c4b4b848ba3
 C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 RUNTIME_ACTIVATION = NO
 PRODUCTION_READ_AUTHORITY = NO
@@ -660,7 +664,7 @@ Exact-main Full CI run `36357161756` additionally supplies disposable-PostgreSQL
 
 Exact-main Full CI run `36346112525` also executed the hermetic #4081 canary lifecycle contract with injected fake effects and zero network/DB/provider/Production capability. CENTRAL accepts that source-only target only for rows whose required evidence is fully represented by the #4081 dependency-injected lifecycle; it does not satisfy the separately-defined runtime synthetic kill switch or provider rollback rows.
 
-Repository-owned hermetic Preview evidence is accepted for rows whose full required behavior is dependency-injected and fully exercised by `.github/workflows/reliability-preview.yml`. Exact main push run `36340617006` executed `node --test tests/reliability-preview/*.test.cjs` and completed **62/62 PASS**. #4509 subsequently selected `HERMETIC_RUNTIME_REHEARSAL_SUFFICIENT` for deterministic `DB collector timeout` and `Malformed DB result` semantics and explicitly set `LIVE_PRODUCTION_DB_TIMEOUT_REQUIRED_FOR_C4 = NO`; current exact-main run `36395281529` re-executes those collector contracts successfully. This evidence does not claim that a live Production DB timeout was induced or that a Production read-only collector/transaction binding exists.
+Repository-owned hermetic Preview evidence is accepted for rows whose full required behavior is dependency-injected and fully exercised by `.github/workflows/reliability-preview.yml`. Exact main push run `36340617006` executed `node --test tests/reliability-preview/*.test.cjs` and completed **62/62 PASS**. #4509 subsequently selected `HERMETIC_RUNTIME_REHEARSAL_SUFFICIENT` for deterministic `DB collector timeout`, `Malformed DB result`, and `Rollback` semantics. Current exact-main Reliability Preview run `36408733149` re-executes the kill-switch and disabled-path contracts successfully; #4507 separately supplies direct provider Cron attach/detach rollback evidence with `FINAL_CRON_TRIGGERS = NONE`. #4509 explicitly states destructive Durable Object namespace deletion is not required for C4. This evidence does not claim removal of unbound Production/provider capabilities.
 
 The #4227 disabled Provider Preview row, #4507 scheduler invocation/disabled rows, accepted hermetic/source-only rows, structural/parity mismatch, and #4518 synthetic-disabled gate are completed evidence. Rows below still marked `PLANNED_NOT_EXECUTED` remain plans until separately executed and accepted.
 
@@ -686,7 +690,7 @@ The #4227 disabled Provider Preview row, #4507 scheduler invocation/disabled row
 | Post-write ownership loss | `FENCED`; no cleanup mutation by stale owner | `PASS_HERMETIC_FULL_CI_36346112525` |
 | Browse negative confirmation | standard canary remains private/non-Browse; malformed observer fails closed | `PASS_HERMETIC_FULL_CI_36346112525` |
 | Privacy scan | no secret/token/UID/email/Tree/Memory/content/raw SQL/raw row/raw error leakage | `PASS_HERMETIC_36340617006` |
-| Rollback | all three kill switches independently disable; scheduler/provider/store bindings removable without Product-path dependency | `PLANNED_NOT_EXECUTED` |
+| Rollback | #4507 directly proves provider Cron detach; all three logical kill switches fail disabled/remain independent; destructive DO namespace deletion is not required by #4509 | `PASS_COMPOSITE_#4507_36408733149` |
 
 Only the rows above carrying a `PASS_...` status have completed execution plus independent CENTRAL review. Rows still marked `PLANNED_NOT_EXECUTED` remain blocked; partial source tests are not treated as completion evidence.
 
@@ -787,14 +791,14 @@ ALERT_DELIVERY_PRODUCTION = OWNER_APPROVAL_REQUIRED
 7. **What remains before alert delivery?** Slack App Incoming Webhook is already selected-not-bound; runtime/secret binding, delivery/dedupe/retry/health rehearsal, kill-switch proof, and explicit alert activation approval remain.
 8. **Who detects monitor death?** Modal scheduled function is the selected-not-bound independent control plane; its reader/runtime binding and bounded probe authority remain unbound, so dead-man activation is not yet complete.
 9. **How is immediate disable/rollback performed?** Three independent fail-disabled switches; scheduler trigger/provider/store bindings are secondary rollback/removal mechanisms and never substitute for the switches.
-10. **What evidence is still required?** #4227 disabled Provider Preview, #4507 scheduler invocation/disabled, accepted hermetic/source-only rows, structural/parity mismatch, #4518 synthetic-disabled evidence, and #4509-authorized collector timeout/malformed-result evidence are accepted. The remaining §13 rows are store corruption/malformed state and rollback; both remain `PLANNED_NOT_EXECUTED` until separately reconciled.
+10. **What evidence is still required?** #4227 disabled Provider Preview, #4507 scheduler invocation/disabled and direct Cron detach, accepted hermetic/source-only rows, structural/parity mismatch, #4518 synthetic-disabled evidence, #4509-authorized collector failure evidence, and composite rollback evidence are accepted. The only remaining §13 row is store corruption/malformed state, which remains `PLANNED_NOT_EXECUTED` until separately implemented/reconciled.
 
 ## 18. Final packet disposition
 
-The packet document is current through #4520/#4521 plus the #4509-authorized collector failure evidence. The #4082 completion marker is still not satisfied: `Store corruption/malformed state` and `Rollback` remain unreconciled, so C4 remains blocked.
+The packet document is current through #4522/#4523 collector failure evidence plus #4507/#4509/current-main composite rollback evidence. The #4082 completion marker is still not satisfied: `Store corruption/malformed state` remains unreconciled, so C4 remains blocked.
 
 ```text
-PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_0c40a48d089fae7ea3d6781fe31ffcfafb99cdb5
+PACKET_DOCUMENT_CURRENTNESS = CURRENT_AT_e24a4260efa51b72a78f5036e1a44c4b4b848ba3
 C4_RUNTIME_BINDING_APPROVAL_PACKET_READY = NO
 C4_BLOCKER_CLASS = RUNTIME_REHEARSAL_AND_CAPABILITY_AUTHORITY
 NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
@@ -854,7 +858,8 @@ SYNTHETIC_SOURCE_ONLY_ROWS_PROMOTED = 4
 SYNTHETIC_DISABLED_GATE_REHEARSAL = PASS_EXACT_MAIN_36390833308
 DB_COLLECTOR_TIMEOUT_REHEARSAL = PASS_HERMETIC_36395281529
 MALFORMED_DB_RESULT_REHEARSAL = PASS_HERMETIC_36395281529
-NONPROD_REHEARSAL_ROWS_PASS = 19_OF_21
+ROLLBACK_REHEARSAL = PASS_COMPOSITE_#4507_36408733149
+NONPROD_REHEARSAL_ROWS_PASS = 20_OF_21
 NONPROD_RUNTIME_REHEARSAL_MATRIX = INCOMPLETE
 
 RECOMMENDATION = COMPLETE_REMAINING_NONPROD_RUNTIME_REHEARSAL_GATES_BEFORE_C4
