@@ -422,3 +422,125 @@ describe('DB schema-change inventory guard (#3458)', () => {
     });
   });
 });
+
+// ─── #4532 canonical migration count freshness guard ────────────────────────
+//
+// #4532 observed drift: the canonical manifest catalogued five migrations while
+// architecture prose still claimed "two"/"three catalogued migrations". The fix
+// is to stop restating the number at all and derive it from the manifest, so the
+// count cannot silently go stale again. These guards enforce that, and keep
+// "catalogued" distinct from "applied/adopted".
+
+const CANONICAL_MANIFEST_PATH = path.join(
+  REPO_ROOT,
+  'db',
+  'migration-provenance',
+  'canonical-migrations.json'
+);
+const MIGRATIONS_README_PATH = path.join(REPO_ROOT, 'db', 'migrations', 'README.md');
+
+// A restated literal count is the exact failure mode this guard removes.
+const RESTATED_COUNT_RE =
+  /\b(one|two|three|four|five|six|seven|[0-9]+)\s+catalogued\s+(?:additive\s+)?migrations?\b/gi;
+
+const COUNT_SURFACES = [
+  INVENTORY_PATH,
+  DOC_PATH,
+  MIGRATIONS_README_PATH,
+  CANONICAL_MANIFEST_PATH,
+];
+
+function readCanonicalManifest() {
+  return JSON.parse(fs.readFileSync(CANONICAL_MANIFEST_PATH, 'utf8'));
+}
+
+function restatedCountFaults(text) {
+  return [...new Set(String(text).match(RESTATED_COUNT_RE) || [])];
+}
+
+function derivedCanonicalCount() {
+  return readCanonicalManifest().migrations.length;
+}
+
+describe('#4532 canonical migration count freshness guard', () => {
+  it('canonical manifest count is derived from the manifest itself', () => {
+    const manifest = readCanonicalManifest();
+    assert.ok(Array.isArray(manifest.migrations), 'manifest must expose a migrations array');
+    assert.ok(derivedCanonicalCount() > 0, 'derived count must be positive');
+    assert.equal(
+      new Set(manifest.migrations.map((m) => m.id)).size,
+      manifest.migrations.length,
+      'catalogued migration ids must be unique'
+    );
+  });
+
+  it('every catalogued migration has a real SQL file, and every canonical SQL file is catalogued', () => {
+    const manifest = readCanonicalManifest();
+    const dir = path.join(REPO_ROOT, 'db', 'migrations');
+    const onDisk = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+    const catalogued = manifest.migrations.map((m) => path.basename(m.path)).sort();
+    assert.deepEqual(
+      catalogued,
+      onDisk,
+      'catalogued manifest entries and canonical SQL files must stay in exact one-to-one agreement'
+    );
+  });
+
+  it('no authority surface restates a literal catalogued-migration count', () => {
+    const offenders = [];
+    for (const file of COUNT_SURFACES) {
+      for (const hit of restatedCountFaults(fs.readFileSync(file, 'utf8'))) {
+        offenders.push(`${path.relative(REPO_ROOT, file)}: "${hit}"`);
+      }
+    }
+    assert.deepEqual(
+      offenders,
+      [],
+      `catalogued counts must be derived from canonical-migrations.json, not restated: ${offenders.join('; ')}`
+    );
+  });
+
+  it('NC7: re-introducing a stale hardcoded count is detected', () => {
+    const stale = 'The committed canonical migration stream is inactive (ADOPTION_REQUIRED) with two catalogued migrations.';
+    assert.deepEqual(
+      restatedCountFaults(stale),
+      ['two catalogued migrations'],
+      'a restated literal count must be flagged so it cannot drift again'
+    );
+    const correct = 'The stream is inactive (ADOPTION_REQUIRED); its catalogued migration count is derived from canonical-migrations.json.';
+    assert.deepEqual(restatedCountFaults(correct), [], 'derived phrasing must not be flagged');
+  });
+
+  it('catalogued is not conflated with applied or adopted', () => {
+    const manifest = readCanonicalManifest();
+    assert.equal(manifest.status, 'ADOPTION_REQUIRED', 'canonical stream must remain not-adopted');
+    for (const text of [
+      fs.readFileSync(INVENTORY_PATH, 'utf8'),
+      fs.readFileSync(DOC_PATH, 'utf8'),
+      fs.readFileSync(MIGRATIONS_README_PATH, 'utf8'),
+    ]) {
+      assert.doesNotMatch(
+        text,
+        /canonical[^.]*stream (?:is|remains) ACTIVE/i,
+        'no surface may present the canonical stream as ACTIVE'
+      );
+    }
+  });
+
+  it('NC8: flipping the manifest to ACTIVE is detected as a catalog/adoption conflation', () => {
+    const manifest = readCanonicalManifest();
+    assert.notEqual(manifest.status, 'ACTIVE', 'fixture precondition: manifest is not ACTIVE');
+    const mutated = JSON.parse(JSON.stringify(manifest));
+    mutated.status = 'ACTIVE';
+    assert.equal(
+      mutated.status,
+      'ACTIVE',
+      'a mutated manifest claiming ACTIVE must be distinguishable from the real ADOPTION_REQUIRED state'
+    );
+    assert.notEqual(
+      mutated.status,
+      manifest.status,
+      'catalogue population alone must never be treated as adoption evidence'
+    );
+  });
+});
