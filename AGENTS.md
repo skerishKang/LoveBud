@@ -209,12 +209,16 @@ Implementation path names may use `search`; user-facing experience should normal
 
 - Production frontend: `https://lovebud.pages.dev/`
 - Entry/runtime: Cloudflare Pages and same-origin `/api/*`
-- Primary backend/compute: Modal
+- General CRUD/read-model runtime: Cloudflare Pages Functions with checked-in Direct-Neon route gates where selected
+- Authentication authority: shared Firebase Auth during the current migration phase
+- Modal: retained for explicit residual/default fallback routes and specialized compute; it is not the universal backend for every Production API request
 - Database: Neon where applicable
 - Vercel: secondary/transitional
 - Netlify: legacy artifact, not active fallback
 
-These bullets describe the current LoveBud runtime surface, not the final cross-repository Product authority. Shared-platform convergence is governed by #4004/#152; a current Modal/Neon/Firebase implementation detail must not be mistaken for permission to create a competing LoveTree or LoveBud authority.
+Runtime ownership is route-specific. The presence of a Modal endpoint or fallback implementation does not prove that the corresponding Production request is Modal-owned; inspect the route module, current checked-in `LB_*_RUNTIME` gate, and the current residual-Modal authority (#4422) before changing runtime behavior.
+
+These bullets describe the current LoveBud runtime surface, not the final cross-repository Product authority. Shared-platform convergence is governed by #4004/#152; a current Cloudflare/Direct-Neon/Modal/Neon/Firebase implementation detail must not be mistaken for permission to create a competing LoveTree or LoveBud authority.
 
 Browser requests should use same-origin `/api/*` when possible.
 
