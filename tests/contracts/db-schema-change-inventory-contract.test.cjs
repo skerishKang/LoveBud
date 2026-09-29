@@ -440,8 +440,20 @@ const CANONICAL_MANIFEST_PATH = path.join(
 const MIGRATIONS_README_PATH = path.join(REPO_ROOT, 'db', 'migrations', 'README.md');
 
 // A restated literal count is the exact failure mode this guard removes.
-const RESTATED_COUNT_RE =
-  /\b(one|two|three|four|five|six|seven|[0-9]+)\s+catalogued\s+(?:additive\s+)?migrations?\b/gi;
+//
+// #4539 correction: the original pattern only tolerated the `additive` modifier,
+// so an equivalent phrasing such as "two catalogued canonical migrations"
+// bypassed the active-normative guard even though it restates the same
+// hand-maintained count. Modifiers are now handled as a bounded, explicitly
+// enumerated set of known catalogue qualifiers that must sit between
+// "catalogued" and "migrations". The trailing `migrations?` is deliberately
+// required so unrelated phrases (for example "two catalogued critical objects",
+// tracked separately in #4541) are not swept into this guard.
+const COUNT_MODIFIERS = ['additive', 'canonical', 'committed', 'current', 'executable', 'registered'];
+const RESTATED_COUNT_RE = new RegExp(
+  String.raw`\b(one|two|three|four|five|six|seven|[0-9]+)\s+catalogued\s+(?:(?:${COUNT_MODIFIERS.join('|')})\s+){0,3}migrations?\b`,
+  'gi'
+);
 
 const COUNT_SURFACES = [
   INVENTORY_PATH,
@@ -536,6 +548,54 @@ describe('#4539 active-normative migration count guard', () => {
       ['two catalogued migrations'],
       'an active normative restatement must be flagged'
     );
+  });
+
+  it('NC9b: an equivalent canonical-modifier literal count cannot bypass the active normative guard', () => {
+    // #4539 correction: the original detector only tolerated the `additive`
+    // modifier, so "two catalogued canonical migrations" — the exact phrasing this
+    // PR removed from canonical-memory-lineage-write-contract-4005.md — could be
+    // re-introduced on an active normative surface and still pass.
+    for (const phrase of [
+      'two catalogued canonical migrations',
+      '2 catalogued canonical migrations',
+    ]) {
+      assert.deepEqual(
+        restatedCountFaults(`The manifest currently holds ${phrase}.`),
+        [phrase],
+        `equivalent phrasing must be flagged: ${phrase}`
+      );
+    }
+    // And the already-covered word/number forms must still be detected.
+    for (const phrase of [
+      'two catalogued migrations',
+      '2 catalogued migrations',
+      'two catalogued additive migrations',
+      '2 catalogued additive migrations',
+    ]) {
+      assert.deepEqual(
+        restatedCountFaults(`The manifest currently holds ${phrase}.`),
+        [phrase],
+        `baseline phrasing must stay detected: ${phrase}`
+      );
+    }
+  });
+
+  it('NC9c: the broadened detector still does not sweep in unrelated catalogue counts', () => {
+    // Modifiers are bounded to a known qualifier list, and the trailing
+    // "migrations" token is required, so unrelated phrasing (including the
+    // expected-schema critical-objects count tracked separately in #4541) is not
+    // misreported as a canonical migration count.
+    for (const phrase of [
+      'two catalogued critical objects',
+      'two catalogued objects',
+      'its catalogued migration count is derived',
+    ]) {
+      assert.deepEqual(
+        restatedCountFaults(`The manifest note says ${phrase} here.`),
+        [],
+        `must not be flagged: ${phrase}`
+      );
+    }
   });
 
   it('NC10: manifest-derived phrasing is accepted on active surfaces', () => {
