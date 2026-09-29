@@ -219,7 +219,7 @@ The existing validator checks:
 
 Only when `validateSourceConfiguration` returns `{ ok: true }`.
 
-Current committed source (inactive `ADOPTION_REQUIRED` manifests; two catalogued migrations; two catalogued critical objects) is expected to PASS.
+Current committed source (inactive `ADOPTION_REQUIRED` manifests; canonical migration catalogue manifest-derived from `db/migration-provenance/canonical-migrations.json`; two catalogued critical objects) is expected to PASS.
 
 `PASS` does NOT mean:
 - Manifest ACTIVE

@@ -121,7 +121,7 @@ Provable from repository source alone (this slice):
 - The manifest checksum matches the current bytes of each declared canonical file.
 - ID format, canonical path ownership, `.sql` extension, basename/ID agreement, and ascending order rules.
 - Synthetic ledger-evidence mismatch detection (edited/unknown/missing/reordered/duplicate) using bounded synthetic evidence.
-- The committed canonical manifest remains `ADOPTION_REQUIRED` with two catalogued migrations (catalog population is distinct from adoption).
+- The committed canonical manifest remains `ADOPTION_REQUIRED`; its catalogue is the `migrations` array in `db/migration-provenance/canonical-migrations.json` and the count is manifest-derived rather than restated here (catalog population is distinct from adoption).
 
 Not provable from repository source alone (requires a separately approved read-only adoption baseline and target evidence):
 
@@ -147,7 +147,7 @@ The contract test creates throwaway canonical repository layouts under the OS te
 | Production mutation | No |
 | Secrets used | No `DATABASE_URL` or secret value was used |
 | Canonical migration added | No |
-| Canonical stream activated | No (`status` remains `ADOPTION_REQUIRED`; 2 catalogued migrations, no runner activation) |
+| Canonical stream activated | No (`status` remains `ADOPTION_REQUIRED`; catalogue is the `migrations` array in `db/migration-provenance/canonical-migrations.json` and is manifest-derived, no runner activation) |
 | Ledger relation DDL written | No |
 | Existing migration file modified | No |
 

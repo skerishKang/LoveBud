@@ -314,10 +314,7 @@ DB-engine coverage is required for D/E because source-only tests cannot prove un
 
 ## 12. Migration gate
 
-The repository's canonical migration manifest (`db/migration-provenance/canonical-migrations.json`) remains `status: ADOPTION_REQUIRED`. However, its `migrations` array is no longer empty: it currently contains two catalogued canonical migrations:
-
-1. `20260802094500_bootstrap-migration-ledger`
-2. `20260812213000_add-tree-appreciation-orders`
+The repository's canonical migration manifest (`db/migration-provenance/canonical-migrations.json`) remains `status: ADOPTION_REQUIRED`. However, its `migrations` array is no longer empty: the current canonical catalogue is exactly that `migrations` array, and its count is manifest-derived rather than restated here. (The catalogued entries at the time this contract slice was written were `20260802094500_bootstrap-migration-ledger` and `20260812213000_add-tree-appreciation-orders`; the authoritative current set is read from the manifest.)
 
 This demonstrates that **canonical catalog population can proceed while ADOPTION_REQUIRED**. The manifest activation/runner adoption is a separate gate from catalog entry addition. No Production apply is authorized until the repository's adoption protocol and runner requirements are satisfied.
 
