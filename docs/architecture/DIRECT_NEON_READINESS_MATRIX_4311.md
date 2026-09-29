@@ -4,10 +4,19 @@
 Authority: refs #4000 #4004 #4311
 Rendering of: docs/architecture/direct-neon-readiness-matrix-4311.json (JSON is authoritative)
 as_of_main_sha: 1147182c3e07780c3dc6bccf9d736063647239d9
+as_of_main_sha_role: HISTORICAL_REGISTRY_RECONCILIATION_BASELINE (historical baseline / fallback evidence boundary)
+current main SHA: NOT RECORDED HERE — query it live (git rev-parse origin/main) at verification time
+row-specific precedence: a route's own cited evidence (last_exact_head_evidence / source_refs) is the
+  authoritative record for that observation and may post-date or supersede the global baseline; most
+  routes carry a different, more recent evidence SHA than as_of_main_sha
+not a freshness claim: as_of_main_sha is NOT a current-main freshness signal and is NOT a claim that
+  every route was last verified at that head; it is retained as-is for auditability and is never
+  rewritten to a newer main
 Contract: docs/architecture/DIRECT_NEON_EPHEMERAL_PRODUCTION_DIAGNOSTIC_ACTIVATION_CONTRACT_4311.md
 Refs #1882 — KEEP OPEN.
 This matrix authorizes no Production connection, GRANT/REVOKE, DML/DDL, deploy, or gate activation.
-Every state is bound to its cited evidence; main movement invalidates diagnostic authority (INVALIDATED_STALE_MAIN).
+Main movement invalidates diagnostic authority (INVALIDATED_STALE_MAIN); each route state is bound to
+its own cited evidence, with as_of_main_sha only as the historical registry baseline fallback.
 ```
 
 | route id | route/method | helper | gate | wrangler | source | parity | privilege | live provider | live gate | diag support | diag auth | prod live | 4239 | target | next action |

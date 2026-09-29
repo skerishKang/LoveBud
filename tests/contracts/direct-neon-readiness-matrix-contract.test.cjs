@@ -376,6 +376,79 @@ function readAuthorityFile() {
   return JSON.parse(fs.readFileSync(MATRIX_PATH, 'utf8')).authority;
 }
 
+// ─── #4532 CENTRAL correction: global-SHA baseline semantics ──────────────────
+//
+// The global as_of_main_sha is a historical registry reconciliation baseline,
+// NOT "the head at which every route was last verified" (37 of 38 rows carry a
+// different, more recent evidence SHA) and NOT a current-main freshness signal.
+// These checks assert the *semantics*, not an exact sentence, so wording may be
+// adjusted without silently reintroducing the misinterpretation.
+
+const MATRIX_DOC_PATH = path.resolve(REPO_ROOT, 'docs', 'architecture', 'DIRECT_NEON_READINESS_MATRIX_4311.md');
+
+function readMatrixDocHeader() {
+  const text = fs.readFileSync(MATRIX_DOC_PATH, 'utf8');
+  const m = /```text\r?\n([\s\S]*?)```/.exec(text);
+  return m ? m[1] : '';
+}
+
+function baselineSemanticFaults(authority) {
+  const meaning = String(authority.as_of_main_sha_meaning || '');
+  const staleness = String(authority.staleness_rule || '');
+  const faults = [];
+
+  // 1. must be described as a historical baseline / evidence boundary
+  if (!/historical/i.test(meaning) || !/(baseline|boundary)/i.test(meaning)) {
+    faults.push('MEANING_NOT_HISTORICAL_BASELINE');
+  }
+  // 2. must deny the current-main freshness reading
+  if (!/not a current[- ]main freshness signal|not a freshness signal|is not a current/i.test(meaning)) {
+    faults.push('MEANING_DOES_NOT_DENY_CURRENT_FRESHNESS');
+  }
+  // 3. must deny "every route was last verified at this head"
+  if (!/not a claim that every route|not every route|is not a claim that every route/i.test(meaning)) {
+    faults.push('MEANING_DOES_NOT_DENY_PER_ROUTE_VERIFICATION_CLAIM');
+  }
+  // 4. must grant row-specific evidence precedence over the global baseline
+  if (!/row-specific|more specific|authoritative record|supersede/i.test(meaning)) {
+    faults.push('MEANING_LACKS_ROW_SPECIFIC_EVIDENCE_PRECEDENCE');
+  }
+  // 5. must state the historical SHA is not rewritten
+  if (!/never rewritten|not rewritten|retained as-is/i.test(meaning)) {
+    faults.push('MEANING_DOES_NOT_STATE_BASELINE_IS_PRESERVED');
+  }
+  // 6. staleness rule must bind row state to the row's own evidence, not to the
+  //    global SHA alone
+  if (!/own cited evidence|its own cited evidence/i.test(staleness)) {
+    faults.push('STALENESS_RULE_BINDS_STATE_TO_GLOBAL_SHA_ONLY');
+  }
+  if (!/INVALIDATED/.test(staleness)) {
+    faults.push('STALENESS_RULE_MISSING_INVALIDATION');
+  }
+  return faults;
+}
+
+function matrixDocSemanticFaults(header) {
+  const faults = [];
+  if (!/as_of_main_sha_role/i.test(header)) faults.push('DOC_MISSING_AS_OF_MAIN_SHA_ROLE');
+  if (!/historical/i.test(header) || !/(baseline|boundary)/i.test(header)) {
+    faults.push('DOC_ROLE_NOT_HISTORICAL');
+  }
+  if (!/current main sha\s*:?\s*not recorded/i.test(header)) {
+    faults.push('DOC_MISSING_CURRENT_MAIN_NOT_RECORDED');
+  }
+  if (!/row-specific|may post-date|supersede/i.test(header)) {
+    faults.push('DOC_MISSING_ROW_SPECIFIC_PRECEDENCE');
+  }
+  if (!/not a freshness claim|not a current[- ]main freshness/i.test(header)) {
+    faults.push('DOC_MISSING_NOT_A_FRESHNESS_CLAIM');
+  }
+  if (!/rev-parse origin\/main|query it live|live/i.test(header)) {
+    faults.push('DOC_MISSING_LIVE_CURRENT_MAIN_HINT');
+  }
+  return faults;
+}
+
 function authorityFreshnessFaults(authority) {
   const faults = [];
   for (const field of AUTHORITY_FRESHNESS_FIELDS) {
@@ -388,8 +461,8 @@ function authorityFreshnessFaults(authority) {
       faults.push(`MASQUERADING_CURRENT_MAIN_FIELD:${field}`);
     }
   }
-  if (authority.as_of_main_sha_role && authority.as_of_main_sha_role !== 'HISTORICAL_EXACT_HEAD_EVIDENCE_BOUNDARY') {
-    faults.push(`AS_OF_MAIN_ROLE_NOT_HISTORICAL:${authority.as_of_main_sha_role}`);
+  if (authority.as_of_main_sha_role && authority.as_of_main_sha_role !== 'HISTORICAL_REGISTRY_RECONCILIATION_BASELINE') {
+    faults.push(`AS_OF_MAIN_ROLE_NOT_HISTORICAL_BASELINE:${authority.as_of_main_sha_role}`);
   }
   if (authority.current_main_sha_claim && authority.current_main_sha_claim !== 'NOT_RECORDED_IN_THIS_FILE') {
     faults.push(`CURRENT_MAIN_CLAIM_PRESENT:${authority.current_main_sha_claim}`);
@@ -465,7 +538,7 @@ describe('#4532 direct-neon matrix authority freshness guard', () => {
     const authority = JSON.parse(JSON.stringify(readAuthorityFile()));
     authority.as_of_main_sha_role = 'CURRENT_MAIN_VERIFIED';
     assert.ok(
-      authorityFreshnessFaults(authority).some((f) => f.startsWith('AS_OF_MAIN_ROLE_NOT_HISTORICAL')),
+      authorityFreshnessFaults(authority).some((f) => f.startsWith('AS_OF_MAIN_ROLE_NOT_HISTORICAL_BASELINE')),
       'as_of_main_sha must stay a historical evidence boundary'
     );
   });
@@ -479,6 +552,80 @@ describe('#4532 direct-neon matrix authority freshness guard', () => {
         /^[0-9a-f]{40}$/,
         `${route.id}: historical evidence SHA must stay a full SHA and must not be rewritten to a newer main`
       );
+    }
+  });
+
+  it('global as_of_main_sha meaning is a historical baseline that yields to row-specific evidence', () => {
+    const authority = readAuthorityFile();
+    assert.deepEqual(baselineSemanticFaults(authority), []);
+  });
+
+  it('NC9: an "every route verified at this head" meaning is rejected', () => {
+    const authority = JSON.parse(JSON.stringify(readAuthorityFile()));
+    authority.as_of_main_sha_meaning =
+      'The exact main at which every route state below was last reconciled and verified against current source.';
+    const faults = baselineSemanticFaults(authority);
+    assert.ok(
+      faults.includes('MEANING_DOES_NOT_DENY_PER_ROUTE_VERIFICATION_CLAIM'),
+      'a per-route verification claim must be rejected'
+    );
+    assert.ok(
+      faults.includes('MEANING_LACKS_ROW_SPECIFIC_EVIDENCE_PRECEDENCE'),
+      'row-specific evidence precedence must be stated'
+    );
+  });
+
+  it('NC10: a meaning without a current-freshness denial or preservation promise is rejected', () => {
+    const authority = JSON.parse(JSON.stringify(readAuthorityFile()));
+    authority.as_of_main_sha_meaning = 'Historical baseline for the registry.';
+    const faults = baselineSemanticFaults(authority);
+    assert.ok(faults.includes('MEANING_DOES_NOT_DENY_CURRENT_FRESHNESS'), 'freshness denial required');
+    assert.ok(
+      faults.includes('MEANING_DOES_NOT_DENY_PER_ROUTE_VERIFICATION_CLAIM'),
+      'per-route denial required'
+    );
+    assert.ok(
+      faults.includes('MEANING_DOES_NOT_STATE_BASELINE_IS_PRESERVED'),
+      'baseline preservation must be stated'
+    );
+  });
+
+  it('NC11: a staleness rule that binds state to the global SHA alone is rejected', () => {
+    const authority = JSON.parse(JSON.stringify(readAuthorityFile()));
+    authority.staleness_rule =
+      'Every *_state value below is bound to as_of_main_sha. Main movement invalidates DIAGNOSTIC_EXECUTION_AUTHORIZED (INVALIDATED).';
+    assert.ok(
+      baselineSemanticFaults(authority).includes('STALENESS_RULE_BINDS_STATE_TO_GLOBAL_SHA_ONLY'),
+      'state must be bound to the row’s own cited evidence'
+    );
+  });
+
+  it('Markdown rendering carries the same baseline / not-current semantics', () => {
+    const header = readMatrixDocHeader();
+    assert.ok(header.length > 0, 'matrix markdown authority header block must exist');
+    assert.deepEqual(matrixDocSemanticFaults(header), []);
+  });
+
+  it('NC12: a Markdown header that omits current-main-not-recorded is rejected', () => {
+    const stripped = 'as_of_main_sha: 1147182c3e07780c3dc6bccf9d736063647239d9\nas_of_main_sha_role: historical baseline\n';
+    assert.ok(
+      matrixDocSemanticFaults(stripped).includes('DOC_MISSING_CURRENT_MAIN_NOT_RECORDED'),
+      'a bare SHA with no not-recorded note must be rejected'
+    );
+  });
+
+  it('Markdown header global SHA stays identical to the JSON authority value', () => {
+    const header = readMatrixDocHeader();
+    const authority = readAuthorityFile();
+    assert.ok(
+      header.includes(authority.as_of_main_sha),
+      'markdown must render the same historical baseline SHA as the authoritative JSON'
+    );
+    // Per-row evidence in markdown may be abbreviated; the full historical SHA in the
+    // JSON authority is what this guard protects. Row evidence is never rewritten.
+    for (const route of MATRIX.routes) {
+      const evidence = route.last_exact_head_evidence || {};
+      if (evidence.main_sha) assert.match(evidence.main_sha, /^[0-9a-f]{40}$/, `${route.id}: full SHA kept in JSON`);
     }
   });
 
