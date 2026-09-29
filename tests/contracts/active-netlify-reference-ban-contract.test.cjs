@@ -39,6 +39,15 @@ const ACTIVE_DOCS = [
   'docs/ops/NETLIFY_STALE_HOST_POLICY.md',
 ];
 
+const CURRENT_RUNTIME_DOCS = [
+  'AGENTS.md',
+  'docs/doc_index.md',
+  'functions/README.md',
+  'modal_compute/README.md',
+  'docs/backend/backend.md',
+  'docs/engineering/API_CONTRACT.md',
+];
+
 function read(rel) {
   const abs = path.join(ROOT, rel);
   assert.ok(fs.existsSync(abs), `Expected file to exist: ${rel}`);
@@ -157,5 +166,46 @@ test('functions/ directory is preserved as Cloudflare Pages Functions', () => {
         /not.*active production backend/i.test(text),
       'functions/README.md must not claim Netlify Functions is the active backend'
     );
+  }
+});
+
+
+// ─── 7. Current runtime truth reflects route-selected Direct-Neon + Modal ───
+
+test('current Production config contains checked-in Direct-Neon general runtime gates', () => {
+  const wrangler = read('wrangler.toml');
+  for (const expected of [
+    'LB_TREE_CREATE_WRITE_RUNTIME = "direct_neon"',
+    'LB_OWNER_TREES_READ_RUNTIME = "direct_neon"',
+    'LB_OWNER_MEMORIES_READ_RUNTIME = "direct_neon"',
+    'LB_COMMUNITY_MEMORIES_READ_RUNTIME = "direct_neon"',
+  ]) {
+    assert.ok(wrangler.includes(expected), `wrangler.toml must preserve current gate: ${expected}`);
+  }
+});
+
+test('current runtime entrypoint docs do not restore a universal Modal backend claim', () => {
+  const forbidden = [
+    /Primary backend\/compute:\s*Modal/i,
+    /Modal compute handles the backend execution/i,
+    /All backend execution for production routes runs here via Modal deployment/i,
+    /Current active runtime is Cloudflare Pages Functions\s*→\s*Modal/i,
+  ];
+
+  for (const rel of CURRENT_RUNTIME_DOCS) {
+    const src = read(rel);
+    assert.match(src, /Direct-Neon/i, `${rel} must acknowledge Direct-Neon current runtime ownership`);
+    assert.match(src, /Modal/i, `${rel} must preserve retained Modal runtime context`);
+    for (const pattern of forbidden) {
+      assert.doesNotMatch(src, pattern, `${rel} must not claim Modal is the universal current backend`);
+    }
+  }
+});
+
+test('runtime docs distinguish retained Modal fallback/specialized ownership from Direct-Neon selection', () => {
+  for (const rel of ['functions/README.md', 'modal_compute/README.md', 'docs/backend/backend.md']) {
+    const src = read(rel);
+    assert.match(src, /route-specific|route-selected/i, `${rel} must describe per-route runtime selection`);
+    assert.match(src, /fallback|residual|specialized/i, `${rel} must classify retained Modal responsibility`);
   }
 });
