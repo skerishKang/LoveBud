@@ -2,30 +2,26 @@
 
 ## Current production/test slot runtime truth
 
-Current `lovebud.pages.dev` production/test slot API runtime is not Netlify Functions.
+Current `lovebud.pages.dev` API entry is Cloudflare Pages same-origin `/api/*`, implemented by Pages Functions under `functions/api/*`.
 
-Observed production / test1 / test2 / test3 route matrix:
-
-- `/api/trees`: `x-lovebud-upstream: modal`
-- `/api/memories`: `x-lovebud-upstream: modal`
-- `modal-function-call-id` exists
-- `server: cloudflare`
-- `cf-cache-status: DYNAMIC`
-- No Netlify Functions invocation evidence was observed
-
-Current active runtime path:
+Runtime ownership after the Pages Function boundary is route-specific:
 
 ```text
 Browser
 → Cloudflare Pages same-origin /api/*
-→ Cloudflare Pages Functions under functions/api/*
-→ Modal
-→ Neon PostgreSQL
+→ Cloudflare Pages Functions
+   ├─ Direct-Neon for checked-in general CRUD/read-model route gates
+   └─ Modal for explicit residual/default fallback and specialized compute
+→ Neon PostgreSQL where persistence applies
 ```
+
+Firebase Auth remains the current Product authentication authority during the shared-platform migration.
+
+Earlier Production/test-slot observations that showed `x-lovebud-upstream: modal` for broad routes are **historical evidence**, not a current universal routing rule. Current ownership must be read from the concrete Pages Function route plus the checked-in `LB_*_RUNTIME` gate. #4422 is the current residual-Modal contraction authority.
 
 `netlify/functions/*` is a legacy artifact only. It is not the current production backend for `lovebud.pages.dev`. Do not implement new backend policy in `netlify/functions/*` unless CTO explicitly reactivates Netlify runtime.
 
-PR #38 was closed because it targeted legacy `netlify/functions/*` rather than the active Cloudflare/Modal runtime.
+PR #38 remains historical evidence for the Netlify deprecation decision; it must not be used to infer that every current route is Modal-owned.
 
 ---
 
@@ -113,44 +109,39 @@ Both are server-side only.
 
 ## Visibility / private storage policy note
 
-The public-first + Plus private policy must be implemented against the active runtime, not this legacy artifact.
+The public-first + Plus-private policy belongs to the active Cloudflare runtime, not the legacy Netlify artifact.
 
-Active implementation targets:
+Current active implementation surfaces include:
 
-- `functions/api/*` Cloudflare Pages Functions
-- Modal private/public/community endpoints
-- Modal/Neon data flow
+- route-specific Cloudflare Pages Functions under `functions/api/*`;
+- Direct-Neon helpers under `functions/_shared/*-direct-neon.js` where the checked-in route gate selects `direct_neon`;
+- retained Modal fallback/residual/specialized endpoints under `modal_compute/`;
+- Firebase verified identity projected into the current compatibility owner boundary;
+- Neon PostgreSQL as the canonical writable Tree/Memory/social data authority.
 
-Do not implement new visibility/private-storage behavior in `netlify/functions/*` unless Netlify runtime is explicitly reactivated.
+For Direct-Neon private writes, the canonical private-storage entitlement source is Neon `public.users.private_storage_enabled` with strict-true semantics. Retained Modal compatibility code still has legacy entitlement behavior; #4531 owns the source-level rollback-parity reconciliation. Do not assume a runtime-gate rollback is business-semantics-equivalent until that contract is satisfied.
 
 ### Current active behavior status
 
-Current production behavior must be verified against Cloudflare/Modal runtime.
+Current Production behavior must be verified against the route-specific Cloudflare dispatch and checked-in gate, not against a generic "Cloudflare → Modal" topology.
 
-The legacy Netlify code may still describe older private-first behavior, but it is not authoritative for `lovebud.pages.dev` production/test slots.
-
-### Target policy
-
-CTO-approved direction is public-first + Plus private.
-
-- New trees should transition to public-first in the active runtime.
-- Existing private trees must not be automatically made public.
-- Existing private trees are grandfathered private.
-- Private creation and public → private transition require Plus entitlement after the entitlement source is defined.
-- Public visibility and browse display eligibility are separate concepts.
-- Cloudflare/Modal policy must be changed together.
+- General CRUD/read-model migration is late-stage and predominantly Direct-Neon.
+- Modal still participates in explicit residual/default fallback routes and specialized compute.
+- Residual Modal removal, `MODAL_BASE_URL` removal, and `min_containers` changes are not implied by this document; #4422 governs those decisions.
+- Public visibility remains separate from Browse/Search eligibility.
+- Existing private content is not automatically made public.
 
 ---
 
 ## Current Status
 
-**Active production/test slot backend:**
+**Active production/test slot entry and runtime layers:**
 
-- Cloudflare Pages `functions/api/trees.js`
-- Cloudflare Pages `functions/api/memories.js`
-- Cloudflare Pages `functions/api/trees/[id].js` where applicable
-- Cloudflare Pages `functions/api/[[path]].js`
-- Modal `/modal/*` endpoints
+- Cloudflare Pages and Pages Functions under `functions/api/*`;
+- checked-in Direct-Neon route gates for general CRUD/read-model work;
+- retained Modal endpoints for explicit residual/fallback/specialized responsibilities;
+- Neon PostgreSQL for canonical persisted Tree/Memory/social data;
+- Firebase Auth as the current Product authentication authority.
 
 **Legacy artifact still present:**
 
@@ -158,46 +149,19 @@ CTO-approved direction is public-first + Plus private.
 - `netlify.toml`
 - Netlify route contract tests and docs references pending transition
 
----
+## Runtime-truth maintenance
 
-## Public-first transition TODO
+When documenting a route:
 
-Before code changes:
-
-1. Update active Cloudflare/Modal API contract and tests.
-2. Define Plus entitlement source.
-3. Define grandfathered private behavior.
-4. Update Cloudflare and Modal policy together.
-5. Separate visibility change from browse display eligibility.
-6. Prepare frontend UX copy and error handling.
-
-Implementation split:
-
-### Active backend workstream
-
-- Change active tree create behavior in Cloudflare/Modal path.
-- Add entitlement guard for private creation in the active runtime.
-- Add entitlement guard for public → private toggle in the active runtime.
-- Preserve grandfathered private owner access.
-- Keep browse summary filter separate.
-
-### Modal workstream
-
-- Mirror create tree policy.
-- Mirror private endpoint entitlement policy.
-- Keep browse latest/growing filters public-only.
-
-### Frontend workstream
-
-- Do not change createTree payload until backend/Modal are ready.
-- Update My Trees create modal after API policy is ready.
-- Update Editor visibility badge and toggle copy.
-- Add Plus-required UX only after error contract is fixed.
-
----
+1. name the same-origin Pages Function entry;
+2. identify the concrete route module/helper;
+3. state the checked-in runtime gate when one exists;
+4. distinguish an active Direct-Neon selection from a retained Modal fallback implementation;
+5. use #4422 for residual Modal contraction state;
+6. never promote historical route observations into a new current universal topology.
 
 ## Archive note
 
-Immediate archive is not performed in the Netlify legacy deprecation documentation PR.
+Immediate Netlify archive is not performed here.
 
-Archive requires tests/docs reference transition first. In particular, `netlify.toml` and Netlify route contract tests still reference this legacy tree.
+Archive requires tests/docs reference transition first. In particular, `netlify.toml` and Netlify route contract tests still reference the legacy tree.

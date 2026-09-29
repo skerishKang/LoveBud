@@ -2,15 +2,29 @@
 
 ## Role
 
-`functions/api/[[path]].js` is the **active same-origin `/api/*` entry point** for this project, served via Cloudflare Pages Functions.
+`functions/api/` is the **active same-origin `/api/*` runtime surface** for this project, served via Cloudflare Pages Functions.
+
+Route-specific modules and the catch-all `functions/api/[[path]].js` cooperate to select the runtime for each API path.
 
 ## Request Flow
 
-```
-browser → same-origin /api/* → Cloudflare Pages Functions → Modal compute
+```text
+browser
+→ same-origin /api/*
+→ Cloudflare Pages Functions
+   ├─ Direct-Neon for checked-in general CRUD/read-model route gates
+   └─ Modal for explicit residual/default fallback and specialized compute
+→ Neon PostgreSQL where persistence applies
 ```
 
-All browser API requests route through this entry. Modal compute handles the backend execution.
+The upstream is route-specific. Do not infer that every request passes through Modal merely because a Modal endpoint or fallback implementation exists.
+
+## Runtime selection rules
+
+- Current Production configuration checks in many `LB_*_RUNTIME = "direct_neon"` gates for general Tree/Memory/social reads and writes.
+- Unset/modal/unknown gates preserve the reviewed fallback/default behavior for that route.
+- Once a Direct-Neon write execution begins, its helper must fail closed according to its contract rather than silently replaying the same request through Modal.
+- Residual Modal contraction and retained specialized-compute ownership are tracked under #4422.
 
 ## Ownership Rules
 
@@ -21,10 +35,6 @@ All browser API requests route through this entry. Modal compute handles the bac
 
 ## Active Production Path
 
-`lovebud.pages.dev` production path:
-
-```
-Cloudflare Pages (this folder) → Modal compute (modal_compute/)
-```
+`lovebud.pages.dev` enters the API through Cloudflare Pages Functions. The next hop is selected by the concrete route and checked-in runtime gate: Direct-Neon is the primary general CRUD/read-model path, while Modal remains for explicit residual/fallback and specialized-compute responsibilities.
 
 Netlify Functions are **not** the active production backend. See `netlify/README.md`.

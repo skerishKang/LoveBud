@@ -8,26 +8,23 @@
 
 ## 0. Runtime source of truth
 
-Current production/test slot API runtime is:
+Current repository-selected Production API topology is route-specific:
 
 ```text
 Cloudflare Pages same-origin /api/*
 → Cloudflare Pages Functions under functions/api/*
-→ Modal
+   ├─ Direct-Neon for checked-in general CRUD/read-model route gates
+   └─ Modal for explicit residual/default fallback and specialized compute
+→ Neon PostgreSQL where persistence applies
 ```
 
-Production / test1 / test2 / test3 route matrix observation:
+Firebase Auth remains the current Product authentication authority during the migration phase.
 
-- `/api/trees`: `x-lovebud-upstream: modal`
-- `/api/memories`: `x-lovebud-upstream: modal`
-- `modal-function-call-id` exists
-- `server: cloudflare`
-- `cf-cache-status: DYNAMIC`
-- No Netlify Functions invocation evidence was observed
+Earlier Production/test-slot observations that showed `x-lovebud-upstream: modal` for broad routes are historical evidence, not a current universal routing rule. For current ownership, inspect the concrete Pages Function route and the checked-in `LB_*_RUNTIME` gate. Residual Modal contraction is tracked under #4422.
 
 `netlify/functions/*` is a legacy artifact only. It is not the current production backend for `lovebud.pages.dev`. Do not implement new backend policy in `netlify/functions/*` unless CTO explicitly reactivates Netlify runtime.
 
-PR #38 was closed because it targeted legacy `netlify/functions/*` rather than the active Cloudflare/Modal runtime.
+PR #38 remains historical evidence for the Netlify deprecation decision; it does not imply that all current Cloudflare routes are Modal-owned.
 
 Archive is not performed by this documentation update. Archive requires tests/docs reference transition first.
 
@@ -81,10 +78,11 @@ Archive is not performed by this documentation update. Archive requires tests/do
 
 ### 2.1 Memory 단건
 
-Active runtime contract source:
+Active runtime contract sources:
 
 - Cloudflare Pages Functions under `functions/api/*`
-- Modal `/modal/*` endpoints
+- Direct-Neon helpers under `functions/_shared/*-direct-neon.js` where the checked-in route gate selects `direct_neon`
+- retained Modal `/modal/*` endpoints for explicit residual/default fallback and specialized compute
 
 Legacy reference only:
 
@@ -158,22 +156,23 @@ interface TreeDetail extends Tree {
 
 ### 3.1 현재 active runtime 계약
 
-Current active runtime is Cloudflare Pages Functions → Modal.
-
-Current production behavior must be verified against that active route, not `netlify/functions/*`.
+Current API entry is Cloudflare Pages Functions. The upstream after that boundary is selected per route.
 
 Current document baseline:
 
-- `POST /api/trees` and `GET /api/trees` route through `functions/api/trees.js` to Modal `/modal/private/trees`.
-- `POST /api/memories` and `GET /api/memories` route through `functions/api/memories.js` to Modal `/modal/private/memories`.
-- `netlify/functions/*` may still contain older private-first code, but it is not authoritative for `lovebud.pages.dev` production/test slots.
+- checked-in `LB_*_RUNTIME = "direct_neon"` gates select Direct-Neon for many general Tree/Memory/social reads and writes;
+- unset/modal/unknown route gates preserve the reviewed fallback/default behavior for that route;
+- retained Modal endpoints remain valid fallback/residual/specialized implementations and must not be treated as proof that the corresponding Production route is currently Modal-owned;
+- `netlify/functions/*` may still contain older code, but it is not authoritative for `lovebud.pages.dev` Production/test slots.
 
-Current main runtime state:
+Current policy state:
 
 - My Trees create payload explicitly sends `visibility: 'public'`.
-- Modal create tree path defaults omitted visibility to `public`.
-- Private tree/memory create and public→private visibility transitions remain Plus-gated. Until each Direct-Neon private gate is activated, the corresponding live fallback remains Modal.
-- Public read paths retain parent tree visibility guards.
+- New Tree creation is public-first unless an explicit private request passes the separately governed private-storage policy.
+- Private Tree/Memory creation and public→private visibility transitions remain Plus-gated.
+- Direct-Neon private writes use Neon `public.users.private_storage_enabled` as the canonical entitlement authority.
+- Retained Modal compatibility entitlement behavior is tracked for rollback parity under #4531.
+- Public read paths retain parent Tree visibility guards.
 - Public visibility remains separate from Browse/Search eligibility.
 
 ### 3.4 Memory `clientKey` idempotency contract (#4058, #4004, #4005)
@@ -249,8 +248,12 @@ interface VisibilityPolicyState {
 ```text
 /api/trees
 → functions/api/trees.js
-→ Modal /modal/private/trees
+→ route-selected runtime
+   ├─ Direct-Neon when the applicable checked-in Tree-create gate selects direct_neon
+   └─ retained Modal fallback/default otherwise
 ```
+
+Private Tree creation has its own separately governed Direct-Neon gate and entitlement contract; do not infer its activation state solely from the public/default create gate.
 
 Request target:
 
@@ -326,8 +329,8 @@ HTTP status 후보:
 
 **Active route**
 - Cloudflare Pages `functions/api/community/trees.js` (route-specific authority, `Cache-Control: no-store`)
-- shared Modal URL mapping helper: `buildModalUrl()` from `functions/api/[[path]].js`
-- Modal `/modal/browse/latest`
+- current checked-in route selection may answer through Direct-Neon
+- shared Modal URL mapping remains a reviewed fallback/default compatibility path where the route contract requires it
 
 **Response shape**
 
@@ -361,7 +364,8 @@ type BrowseTreeSummaryList = BrowseTreeSummary[];
 
 **Active route**
 - Cloudflare Pages `functions/api/[[path]].js`
-- Modal `/modal/community/memories`
+- current Production configuration selects the gated Direct-Neon community-memory path
+- Modal `/modal/community/memories` remains a fallback/default compatibility implementation
 
 ```typescript
 type BrowseHydrationMemoryList = Memory[];
@@ -422,7 +426,7 @@ interface BrowseTreeSummaryExtension {
 
 ## 6. Private owner write security contract
 
-Private owner write paths are part of the active Cloudflare/Modal runtime security contract. This section documents ownership boundaries only; it does not change route paths, SQL implementation, or response shape.
+Private owner write paths are part of the active Cloudflare route-selected runtime security contract. This section documents ownership boundaries only; it does not change route paths, SQL implementation, or response shape.
 
 ### 6.1 Tree owner write guard
 
@@ -470,7 +474,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ### 8.1 직렬화기 사용 의무
 
-모든 API 응답은 active Cloudflare/Modal runtime에서 flat camelCase contract를 유지해야 합니다.
+모든 API 응답은 active Cloudflare route-selected Direct-Neon/Modal runtime에서 flat camelCase contract를 유지해야 합니다.
 
 ### 8.2 visibility guard 원칙
 
@@ -511,7 +515,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 
 ### 10.1 public-first runtime drift watch
 
-- Cloudflare/Modal create tree public-first 상태 유지
+- Cloudflare/Direct-Neon create Tree public-first 상태와 retained Modal fallback semantics 정합성 유지
 - API 계약 테스트 추가
 - existing private tree 자동 public 전환 금지 유지
 
@@ -542,7 +546,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 |-----------|------|
 | 새 코드에 `{id, data}` 접근 | PR reject |
 | active API 응답에 flat camelCase 계약 미준수 | PR reject |
-| Cloudflare와 Modal visibility 정책 불일치 | PR reject |
+| Direct-Neon과 retained Modal fallback의 visibility/entitlement 정책 불일치 | PR reject |
 | Plus private을 frontend-only로 잠금 | PR reject |
 | 기존 private tree 자동 public 전환 | PR reject |
 | public visibility를 browse 노출로 설명 | 정책 위반으로 수정 |
