@@ -8,7 +8,17 @@
     ],
     "reconciled_predecessor": 4239,
     "as_of_main_sha": "1147182c3e07780c3dc6bccf9d736063647239d9",
-    "staleness_rule": "Every *_state value below is bound to as_of_main_sha or to the cited evidence ref. Main movement or prior consumption invalidates any DIAGNOSTIC_EXECUTION_AUTHORIZED value. This matrix never re-enables historical authority; fresh exact-head verification is required before any Production claim.",
+    "as_of_main_sha_role": "HISTORICAL_REGISTRY_RECONCILIATION_BASELINE",
+    "as_of_main_sha_meaning": "Historical registry reconciliation baseline (a fallback evidence boundary), not a current-main freshness signal. It is NOT a claim that every route was last verified at this head: most routes carry a different, more recent last_exact_head_evidence SHA. Where a route cites more specific evidence (source_refs, disposition_note, or last_exact_head_evidence), that row-specific evidence is the authoritative record for that observation and may post-date or supersede this baseline. The baseline is retained as-is for auditability and is never rewritten to a newer main.",
+    "current_main_sha_claim": "NOT_RECORDED_IN_THIS_FILE",
+    "current_main_sha_claim_meaning": "This file deliberately stores no current-main SHA, because a mirrored SHA silently re-ages into a false 'verified at current main' claim. Current repository main is only ever read live from git (for example `git rev-parse origin/main`) and is reported in the verifying report, never written here.",
+    "claim_vocabulary": {
+      "HISTORICAL_EXACT_HEAD_EVIDENCE": "SHA-bound evidence that something was actually observed at that head (Production live proof, provider readback, Product canary, DB ACL attestation). Never rewritten to a newer main; only superseded by a newer evidence entry.",
+      "REPOSITORY_DERIVED_INTENT": "What checked-in source/config state asserts (gate vars, exports, contract tests). Proves intent and structure only, never deployment or Production behaviour.",
+      "LIVE_PROVIDER_ATTESTATION": "Provider-side observation recorded under separate authority. Absent from this file unless a route cites it in last_exact_head_evidence.",
+      "DERIVED_SUMMARY": "Counts or consistency facts computed from checked-in source at verification time. Recomputed by contract tests rather than restated here."
+    },
+    "staleness_rule": "Each route's *_state value is bound to that route's own cited evidence (last_exact_head_evidence / source_refs), and as_of_main_sha is only the historical registry baseline used when a row cites no more specific evidence. Main movement or prior consumption moves any DIAGNOSTIC_EXECUTION_AUTHORIZED value to INVALIDATED_STALE_MAIN. This matrix never re-enables historical authority; fresh exact-head verification is required before any Production claim.",
     "never_infer_rule": "A route is PRODUCTION_LIVE only from fresh live provider evidence; checked-in gate vars prove repository intent only."
   },
   "classification_vocabulary": {
