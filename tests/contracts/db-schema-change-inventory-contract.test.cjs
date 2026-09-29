@@ -440,8 +440,20 @@ const CANONICAL_MANIFEST_PATH = path.join(
 const MIGRATIONS_README_PATH = path.join(REPO_ROOT, 'db', 'migrations', 'README.md');
 
 // A restated literal count is the exact failure mode this guard removes.
-const RESTATED_COUNT_RE =
-  /\b(one|two|three|four|five|six|seven|[0-9]+)\s+catalogued\s+(?:additive\s+)?migrations?\b/gi;
+//
+// #4539 correction: the original pattern only tolerated the `additive` modifier,
+// so an equivalent phrasing such as "two catalogued canonical migrations"
+// bypassed the active-normative guard even though it restates the same
+// hand-maintained count. Modifiers are now handled as a bounded, explicitly
+// enumerated set of known catalogue qualifiers that must sit between
+// "catalogued" and "migrations". The trailing `migrations?` is deliberately
+// required so unrelated phrases (for example "two catalogued critical objects",
+// tracked separately in #4541) are not swept into this guard.
+const COUNT_MODIFIERS = ['additive', 'canonical', 'committed', 'current', 'executable', 'registered'];
+const RESTATED_COUNT_RE = new RegExp(
+  String.raw`\b(one|two|three|four|five|six|seven|[0-9]+)\s+catalogued\s+(?:(?:${COUNT_MODIFIERS.join('|')})\s+){0,3}migrations?\b`,
+  'gi'
+);
 
 const COUNT_SURFACES = [
   INVENTORY_PATH,
@@ -461,6 +473,171 @@ function restatedCountFaults(text) {
 function derivedCanonicalCount() {
   return readCanonicalManifest().migrations.length;
 }
+
+// ─── #4539 active-normative count guard (bounded) ────────────────────────────
+//
+// #4532 fixed the primary inventory surfaces; #4539 removes the remaining
+// hand-maintained catalogue counts from the other active architecture/governance
+// contracts. This is deliberately a BOUNDED allowlist, not a repo-wide regex
+// ban: historical evidence (dated audits, decision records bound to a snapshot)
+// and regression fixtures in THIS test file may legitimately contain a literal
+// historical count, and those must not be misreported as current claims.
+
+const ACTIVE_NORMATIVE_COUNT_SURFACES = [
+  'docs/architecture/DB_MIGRATION_PROVENANCE_GATE.md',
+  'docs/architecture/DB_MIGRATION_PROVENANCE_CLEAN_TARGET_ADOPTION_DECISION.md',
+  'docs/architecture/db-canonical-runner-protocol-contract.md',
+  'docs/architecture/db-destructive-ddl-approval-contract.md',
+  'docs/architecture/db-migration-identity-order-checksum-contract.md',
+  'docs/architecture/db-migration-precondition-authority-contract.md',
+  'docs/architecture/db-migration-source-validation-adapter-contract.md',
+  'docs/architecture/canonical-memory-lineage-write-contract-4005.md',
+  'docs/architecture/db-schema-change-inventory.json',
+  'docs/architecture/db-schema-change-inventory.md',
+  'db/migrations/README.md',
+  'tests/test-layer-classification.json',
+];
+
+// Deliberately NOT in the active set: this test file (holds the NC fixture) and
+// dated historical audits whose count is an explicitly bound snapshot.
+const HISTORICAL_OR_FIXTURE_SURFACES = [
+  'tests/contracts/db-schema-change-inventory-contract.test.cjs',
+  'docs/architecture/canonical-neon-schema-data-convergence-audit-4005.md',
+];
+
+function activeNormativeCountFaults() {
+  const offenders = [];
+  for (const rel of ACTIVE_NORMATIVE_COUNT_SURFACES) {
+    const abs = path.join(REPO_ROOT, rel);
+    if (!fs.existsSync(abs)) {
+      offenders.push(`MISSING_ACTIVE_SURFACE:${rel}`);
+      continue;
+    }
+    for (const hit of restatedCountFaults(fs.readFileSync(abs, 'utf8'))) {
+      offenders.push(`${rel}: "${hit}"`);
+    }
+  }
+  return offenders;
+}
+
+describe('#4539 active-normative migration count guard', () => {
+  it('no active normative surface restates a hand-maintained catalogue count', () => {
+    assert.deepEqual(
+      activeNormativeCountFaults(),
+      [],
+      'active normative surfaces must derive the count from canonical-migrations.json, not restate it'
+    );
+  });
+
+  it('the bounded allowlist is real: every listed surface exists and the list is non-trivial', () => {
+    assert.ok(
+      ACTIVE_NORMATIVE_COUNT_SURFACES.length >= 8,
+      'allowlist must actually cover the active architecture/governance contracts'
+    );
+    const missing = ACTIVE_NORMATIVE_COUNT_SURFACES.filter(
+      (rel) => !fs.existsSync(path.join(REPO_ROOT, rel))
+    );
+    assert.deepEqual(missing, [], `allowlist entries must exist: ${missing.join(', ')}`);
+  });
+
+  it('NC9: re-introducing a literal count into an active normative surface is detected', () => {
+    const injected =
+      'The current canonical manifest remains ADOPTION_REQUIRED with two catalogued migrations.';
+    assert.deepEqual(
+      restatedCountFaults(injected),
+      ['two catalogued migrations'],
+      'an active normative restatement must be flagged'
+    );
+  });
+
+  it('NC9b: an equivalent canonical-modifier literal count cannot bypass the active normative guard', () => {
+    // #4539 correction: the original detector only tolerated the `additive`
+    // modifier, so "two catalogued canonical migrations" — the exact phrasing this
+    // PR removed from canonical-memory-lineage-write-contract-4005.md — could be
+    // re-introduced on an active normative surface and still pass.
+    for (const phrase of [
+      'two catalogued canonical migrations',
+      '2 catalogued canonical migrations',
+    ]) {
+      assert.deepEqual(
+        restatedCountFaults(`The manifest currently holds ${phrase}.`),
+        [phrase],
+        `equivalent phrasing must be flagged: ${phrase}`
+      );
+    }
+    // And the already-covered word/number forms must still be detected.
+    for (const phrase of [
+      'two catalogued migrations',
+      '2 catalogued migrations',
+      'two catalogued additive migrations',
+      '2 catalogued additive migrations',
+    ]) {
+      assert.deepEqual(
+        restatedCountFaults(`The manifest currently holds ${phrase}.`),
+        [phrase],
+        `baseline phrasing must stay detected: ${phrase}`
+      );
+    }
+  });
+
+  it('NC9c: the broadened detector still does not sweep in unrelated catalogue counts', () => {
+    // Modifiers are bounded to a known qualifier list, and the trailing
+    // "migrations" token is required, so unrelated phrasing (including the
+    // expected-schema critical-objects count tracked separately in #4541) is not
+    // misreported as a canonical migration count.
+    for (const phrase of [
+      'two catalogued critical objects',
+      'two catalogued objects',
+      'its catalogued migration count is derived',
+    ]) {
+      assert.deepEqual(
+        restatedCountFaults(`The manifest note says ${phrase} here.`),
+        [],
+        `must not be flagged: ${phrase}`
+      );
+    }
+  });
+
+  it('NC10: manifest-derived phrasing is accepted on active surfaces', () => {
+    const derived =
+      'The canonical manifest remains ADOPTION_REQUIRED. Its current catalogue is the migrations ' +
+      'array in db/migration-provenance/canonical-migrations.json; the count is derived from that manifest.';
+    assert.deepEqual(
+      restatedCountFaults(derived),
+      [],
+      'manifest-derived wording must not be flagged'
+    );
+  });
+
+  it('historical evidence and negative-control fixtures are not misreported as current claims', () => {
+    // Positive control: the preserved literal counts live only outside the active set.
+    const fixture = restatedCountFaults(
+      'The committed canonical migration stream is inactive (ADOPTION_REQUIRED) with two catalogued migrations.'
+    );
+    assert.deepEqual(
+      fixture,
+      ['two catalogued migrations'],
+      'the regression fixture intentionally keeps its literal'
+    );
+    for (const rel of HISTORICAL_OR_FIXTURE_SURFACES) {
+      assert.ok(
+        !ACTIVE_NORMATIVE_COUNT_SURFACES.includes(rel),
+        `${rel} must stay outside the active-normative count guard`
+      );
+    }
+    // The active set must not contain the fixture/historical files it preserves.
+    const overlap = ACTIVE_NORMATIVE_COUNT_SURFACES.filter((rel) =>
+      HISTORICAL_OR_FIXTURE_SURFACES.includes(rel)
+    );
+    assert.deepEqual(overlap, [], 'active and historical sets must be disjoint');
+  });
+
+  it('catalogued is still not treated as applied, adopted, or ACTIVE', () => {
+    const manifest = readCanonicalManifest();
+    assert.equal(manifest.status, 'ADOPTION_REQUIRED', 'catalogue population must not activate the manifest');
+    assert.ok(derivedCanonicalCount() > 0, 'catalogue must still be populated');
+  });
+});
 
 describe('#4532 canonical migration count freshness guard', () => {
   it('canonical manifest count is derived from the manifest itself', () => {

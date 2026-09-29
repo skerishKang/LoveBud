@@ -77,7 +77,7 @@ owner_domain
 approval_reference
 ```
 
-The current canonical catalog is populated while the manifest remains `ADOPTION_REQUIRED`: `canonical-migrations.json` contains two catalogued migrations (`20260802094500_bootstrap-migration-ledger`, `20260812213000_add-tree-appreciation-orders`) and the matching SQL files exist under `db/migrations/`. Catalog population is distinct from adoption: runner activation and the `ACTIVE` gate are a separate approval, and past execution of these files is not inferred.
+The current canonical catalog is populated while the manifest remains `ADOPTION_REQUIRED`. Its current catalogue is the `migrations` array in `canonical-migrations.json`, and the count is derived from that manifest rather than restated here; each catalogued entry's matching SQL file exists under `db/migrations/`. Catalog population is distinct from adoption: runner activation and the `ACTIVE` gate are a separate approval, and past execution of these files is not inferred.
 
 File renames are content changes for provenance purposes: the manifest path, immutable id, and checksum must be reviewed together. Migration content cannot be edited in place after application. A necessary correction is a new forward-fix migration with a new id.
 
