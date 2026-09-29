@@ -1253,7 +1253,7 @@
       "execution_actor": "none",
       "automation": "none",
       "ledger_candidate": "yes",
-      "notes": "Sanitized expected-catalog manifest. ADOPTION_REQUIRED with empty critical_objects; an empty manifest must never be read as an empty Production schema."
+      "notes": "Sanitized expected-catalog manifest. ADOPTION_REQUIRED and catalog-populated; its critical-object set and count are derived from the manifest's own `critical_objects` array and are not restated here; a manifest that is empty or not yet adopted must never be read as an empty Production schema."
     },
     {
       "path": "db/migration-provenance/catalog-metadata-contract.json",

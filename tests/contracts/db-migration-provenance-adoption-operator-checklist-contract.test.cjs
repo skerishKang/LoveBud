@@ -71,7 +71,7 @@ describe('DB Migration Provenance Adoption Operator Checklist Contract (#3622)',
       assert.match(doc, /ADOPTION_REQUIRED/);
       assert.match(doc, /[Mm]igrations[^0]*0/);
     });
-    it('Documents expected-schema-manifest.json ADOPTION_REQUIRED and 0 critical objects', () => {
+    it('Documents expected-schema-manifest.json ADOPTION_REQUIRED with a manifest-derived critical-object count', () => {
       assert.match(doc, /ADOPTION_REQUIRED/);
       assert.match(doc, /[Cc]ritical.?(objects|[^0]*).*0/);
       assert.match(doc, /expected-schema-manifest\.json/);
