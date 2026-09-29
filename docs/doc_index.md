@@ -34,12 +34,16 @@ U3 runtime-sensitive UI: full relevant runtime path
 
 - Production frontend: `https://lovebud.pages.dev/`
 - User-facing entry and same-origin `/api/*`: Cloudflare Pages
-- Primary backend/compute: Modal
+- General CRUD/read-model runtime: Cloudflare Pages Functions with checked-in Direct-Neon route gates where selected
+- Authentication authority: shared Firebase Auth during the current migration phase
+- Modal: retained residual/default fallback and specialized compute; not a universal backend hop
 - Database: Neon where applicable
 - Vercel: secondary/transitional
 - Netlify: legacy artifact, not active fallback
 - Local default: Windows + PowerShell 7
 - WSL: explicit authorization only
+
+Runtime ownership is route-specific. For a concrete API path, read the Pages Function route, current `LB_*_RUNTIME` gate, and #4422 instead of inferring ownership from an older Cloudflare → Modal topology description.
 
 ## 4. Document-family indexes
 
