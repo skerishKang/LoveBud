@@ -339,3 +339,208 @@ describe('#4451 .env.example direct-neon gate drift guard', () => {
     assert.equal(src.split(legacyMarker).length - 1, 0, 'legacy Netlify function syntax validation must be removed');
   });
 });
+
+// ─── #4532 authority freshness semantics + row-state/action coherence ─────────
+//
+// #4532 hazard: `authority.as_of_main_sha` used to read as "this whole matrix was
+// verified at current main" even though it is an immutable historical evidence
+// boundary. These guards make that role explicit, forbid a re-mirrored
+// current-main field from creeping back in, and reject a next_action that
+// logically contradicts its own row state.
+
+const AUTHORITY_FRESHNESS_FIELDS = [
+  'as_of_main_sha_role',
+  'as_of_main_sha_meaning',
+  'current_main_sha_claim',
+  'current_main_sha_claim_meaning',
+  'claim_vocabulary',
+];
+
+const CLAIM_VOCABULARY_KEYS = [
+  'HISTORICAL_EXACT_HEAD_EVIDENCE',
+  'REPOSITORY_DERIVED_INTENT',
+  'LIVE_PROVIDER_ATTESTATION',
+  'DERIVED_SUMMARY',
+];
+
+// Field names that would re-introduce a masquerading "current main" claim.
+const MASQUERADE_FIELDS = [
+  'current_main_sha',
+  'as_of_current_main_sha',
+  'verified_at_main_sha',
+  'current_main',
+  'main_sha',
+];
+
+function readAuthorityFile() {
+  return JSON.parse(fs.readFileSync(MATRIX_PATH, 'utf8')).authority;
+}
+
+function authorityFreshnessFaults(authority) {
+  const faults = [];
+  for (const field of AUTHORITY_FRESHNESS_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(authority, field)) {
+      faults.push(`MISSING_FRESHNESS_FIELD:${field}`);
+    }
+  }
+  for (const field of MASQUERADE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(authority, field)) {
+      faults.push(`MASQUERADING_CURRENT_MAIN_FIELD:${field}`);
+    }
+  }
+  if (authority.as_of_main_sha_role && authority.as_of_main_sha_role !== 'HISTORICAL_EXACT_HEAD_EVIDENCE_BOUNDARY') {
+    faults.push(`AS_OF_MAIN_ROLE_NOT_HISTORICAL:${authority.as_of_main_sha_role}`);
+  }
+  if (authority.current_main_sha_claim && authority.current_main_sha_claim !== 'NOT_RECORDED_IN_THIS_FILE') {
+    faults.push(`CURRENT_MAIN_CLAIM_PRESENT:${authority.current_main_sha_claim}`);
+  }
+  const vocab = authority.claim_vocabulary || {};
+  for (const key of CLAIM_VOCABULARY_KEYS) {
+    if (typeof vocab[key] !== 'string' || vocab[key].length < 10) faults.push(`CLAIM_VOCABULARY_WEAK:${key}`);
+  }
+  return faults;
+}
+
+function isTerminalLive(route) {
+  return (
+    route.production_live === 'PRODUCTION_LIVE' &&
+    route.live_gate_state === 'LIVE_GATE_VERIFIED' &&
+    route.checked_in_gate === 'CHECKED_IN_PRODUCTION_GATE'
+  );
+}
+
+// Logical contradictions between a row's own state fields and its next_action.
+// Deliberately narrow: a terminal row may legitimately state that *future*
+// changes would require fresh verification, so only unresolved-obligation and
+// direct state-contradiction phrasings are rejected.
+function nextActionContradictions(route) {
+  const action = String(route.next_action || '');
+  const faults = [];
+  const terminal = isTerminalLive(route);
+  if (terminal) {
+    if (/first obtain/i.test(action)) faults.push('TERMINAL_ROW_STILL_FIRST_OBTAIN');
+    if (/not yet (?:Production )?(?:live|verified|proven|activated)/i.test(action)) {
+      faults.push('TERMINAL_ROW_CLAIMS_NOT_YET');
+    }
+    if (/is not (?:yet )?Production live/i.test(action)) faults.push('TERMINAL_ROW_CLAIMS_NOT_LIVE');
+    if (/requires? (?:a |an |another |one )?(?:separate |fresh )?(?:Product |production )?canary\b/i.test(action)) {
+      faults.push('TERMINAL_ROW_REQUIRES_CANARY');
+    }
+  }
+  if (route.checked_in_gate === 'NOT_CHECKED_IN' && /\bis Production live\b/i.test(action)) {
+    faults.push('GATE_NOT_CHECKED_IN_BUT_ACTION_CLAIMS_LIVE');
+  }
+  if (route.production_live === 'NOT_PRODUCTION_LIVE' && /\bis Production live\b/i.test(action)) {
+    faults.push('ROW_NOT_LIVE_BUT_ACTION_CLAIMS_LIVE');
+  }
+  return faults;
+}
+
+describe('#4532 direct-neon matrix authority freshness guard', () => {
+  it('authority block declares explicit freshness semantics', () => {
+    const authority = readAuthorityFile();
+    assert.deepEqual(authorityFreshnessFaults(authority), []);
+    assert.match(authority.as_of_main_sha, /^[0-9a-f]{40}$/, 'historical evidence boundary must stay a full SHA');
+  });
+
+  it('NC1: a matrix without explicit freshness semantics fails closed', () => {
+    const authority = JSON.parse(JSON.stringify(readAuthorityFile()));
+    delete authority.as_of_main_sha_role;
+    assert.ok(
+      authorityFreshnessFaults(authority).includes('MISSING_FRESHNESS_FIELD:as_of_main_sha_role'),
+      'dropping the historical role must be detected'
+    );
+  });
+
+  it('NC2: re-mirroring a current-main SHA into the matrix fails closed', () => {
+    const authority = JSON.parse(JSON.stringify(readAuthorityFile()));
+    authority.current_main_sha = 'a'.repeat(40);
+    assert.ok(
+      authorityFreshnessFaults(authority).some((f) => f.startsWith('MASQUERADING_CURRENT_MAIN_FIELD')),
+      'a current_main_sha field must be rejected as a masquerading freshness claim'
+    );
+  });
+
+  it('NC3: relabelling as_of_main_sha as a current claim fails closed', () => {
+    const authority = JSON.parse(JSON.stringify(readAuthorityFile()));
+    authority.as_of_main_sha_role = 'CURRENT_MAIN_VERIFIED';
+    assert.ok(
+      authorityFreshnessFaults(authority).some((f) => f.startsWith('AS_OF_MAIN_ROLE_NOT_HISTORICAL')),
+      'as_of_main_sha must stay a historical evidence boundary'
+    );
+  });
+
+  it('every route keeps SHA-bound historical evidence intact', () => {
+    for (const route of MATRIX.routes) {
+      const evidence = route.last_exact_head_evidence || {};
+      assert.ok(evidence.ref && evidence.ref.length > 0, `${route.id}: evidence ref required`);
+      assert.match(
+        evidence.main_sha,
+        /^[0-9a-f]{40}$/,
+        `${route.id}: historical evidence SHA must stay a full SHA and must not be rewritten to a newer main`
+      );
+    }
+  });
+
+  it('no route next_action contradicts its own row state', () => {
+    const offenders = [];
+    for (const route of MATRIX.routes) {
+      for (const fault of nextActionContradictions(route)) offenders.push(`${route.id}:${fault}`);
+    }
+    assert.deepEqual(offenders, [], `next_action/row-state contradictions: ${offenders.join(', ')}`);
+  });
+
+  it('NC4: a terminal row carrying a stale pending action is detected', () => {
+    const fixture = JSON.parse(JSON.stringify(MATRIX.routes[0]));
+    fixture.next_action = 'First obtain exact-head source/CI evidence, then complete the audit before Production.';
+    assert.ok(
+      nextActionContradictions(fixture).includes('TERMINAL_ROW_STILL_FIRST_OBTAIN'),
+      'a live terminal row must not restart an outstanding evidence obligation'
+    );
+  });
+
+  it('NC5: a terminal row demanding another canary is detected', () => {
+    const fixture = JSON.parse(JSON.stringify(MATRIX.routes[0]));
+    fixture.next_action = 'Route requires a fresh Product canary to re-establish the live record.';
+    assert.ok(
+      nextActionContradictions(fixture).includes('TERMINAL_ROW_REQUIRES_CANARY'),
+      'a live terminal row must not demand a replacement canary as its next action'
+    );
+  });
+
+  it('NC6: gate/state disagreement is detected in both directions', () => {
+    const notLive = JSON.parse(JSON.stringify(MATRIX.routes[0]));
+    notLive.checked_in_gate = 'NOT_CHECKED_IN';
+    assert.ok(
+      nextActionContradictions(notLive).includes('GATE_NOT_CHECKED_IN_BUT_ACTION_CLAIMS_LIVE'),
+      'a NOT_CHECKED_IN row must not read as Production live'
+    );
+    const notLiveRow = JSON.parse(
+      JSON.stringify(MATRIX.routes.find((r) => r.production_live === 'NOT_PRODUCTION_LIVE'))
+    );
+    assert.equal(
+      notLiveRow.checked_in_gate,
+      'NOT_CHECKED_IN',
+      'fixture precondition: pick a genuinely non-live row'
+    );
+    notLiveRow.next_action = 'This direct-Neon read is Production live and verified at current main.';
+    assert.ok(
+      nextActionContradictions(notLiveRow).includes('ROW_NOT_LIVE_BUT_ACTION_CLAIMS_LIVE'),
+      'a NOT_PRODUCTION_LIVE row must not claim Production live in its next action'
+    );
+  });
+
+  it('matrix checked_in_gate never contradicts the checked-in wrangler runtime gate', () => {
+    const checkedIn = collectCheckedInGates();
+    const offenders = [];
+    for (const route of MATRIX.routes) {
+      if (!route.runtime_gate) continue;
+      const inWrangler = checkedIn.has(route.runtime_gate);
+      const claimed = route.checked_in_gate === 'CHECKED_IN_PRODUCTION_GATE';
+      if (inWrangler !== claimed) {
+        offenders.push(`${route.id}:${route.runtime_gate}:wrangler=${inWrangler}:matrix=${route.checked_in_gate}`);
+      }
+    }
+    assert.deepEqual(offenders, [], `matrix/wrangler gate contradictions: ${offenders.join(', ')}`);
+  });
+});
