@@ -41,6 +41,13 @@ coverage/
 .local/test-accounts.json
 .local/*
 !.local/test-accounts.example.json
+
+# Reusable QA credential material must never be tracked (Issue #4545).
+# The public Git credential bundle channel is retired; README.md stays trackable.
+docs/ops/qa-credential-bundle/*.zip
+docs/ops/qa-credential-bundle/*.age
+docs/ops/qa-credential-bundle/*.json
+
 # Local agent docs / notes (ignored from public repo)
 AGENT.md
 LOCAL_AGENT.md

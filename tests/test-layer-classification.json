@@ -3117,6 +3117,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/qa-credential-public-git-boundary-4545.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Reads the retired QA credential channel through deterministic local git metadata (git ls-files paths only, git check-ignore status only) plus ops/security documentation, .gitignore, and the channel directory listing by name; asserts on path strings, regex, file existence, and required status keys; never opens, lists contents of, extracts, or inspects any credential archive; does not contact a network, auth provider, database, browser, deployment target, or Production, and does not rotate or retire any credential (#4545).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/public-viewer-tree-comment-composer-3527.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Reads production module source and executes public-viewer tree comment composer + panel in a local process with fake DOM and injectable createTreeComment; asserts guest/auth UX, idempotency, stale guards, and tree-vs-moment separation (#3527).",

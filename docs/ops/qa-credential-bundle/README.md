@@ -1,91 +1,99 @@
-# QA Credential Bundle — Status
+# QA Credential Bundle — Retired Public Git Channel
 
-> ## Current Status
->
-> **✅ BUNDLE COMMITTED — v1**
->
-> The persistent encrypted bundle has been added to this directory.
-> A new verifier **can restore QA credentials** from this path using the bundle password obtained via secure channel from the CTO.
+Refs #4545
+Refs #873
 
----
+This directory is a **tombstone**. It is retained so the historical record stays
+accurate and so nobody re-creates the retired channel by accident.
 
-## Bundle File
+```text
+STATUS=RETIRED_PUBLIC_GIT_CREDENTIAL_CHANNEL
 
-```
-docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
-```
+NO_CREDENTIAL_MATERIAL_TRACKED_HERE
 
-| Property | Value |
-|----------|-------|
-| Format | Password-protected ZIP |
-| Contents | `qa-test-accounts-consolidated.json` (13 accounts) |
-| SHA-256 | `34dce3c1235e53e36ccbe715c164429137efa06f5b79cf0b2e503e74bff4a7a9` |
-| Created | 2026-05-12 |
-| Status | ✅ Committed (v1) |
+APPROVED_CURRENT_SOURCE=
+approved non-public password manager / custodian-controlled secret store
+(public-safe inventory: ../QA_ACCOUNT_REGISTRY.md)
 
----
+HISTORICAL_NOTE=
+an encrypted bundle of reusable QA/AI account credentials was previously
+committed at docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
+(Issue #873, 2026-05-12). The archive password was never committed.
 
-## Bundle Commit Record
+HISTORICAL_GIT_COPY=NONAUTHORITATIVE
 
-| Version | Status | Committed by | Date | Commit SHA |
-|---------|--------|--------------|------|------------|
-| v1 | ✅ Committed | Issue #873 agent | 2026-05-12 | <!-- SHA inserted on commit --> |
+ROTATION_STATUS=ROTATION_REQUIRED
+rotation and retirement of the affected accounts are separately authorized
+operations and were NOT executed by the removal of this channel
 
----
-
-## Restoration Procedure
-
-1. Pull the latest branch containing the bundle
-2. Locate bundle: `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`
-3. Obtain the bundle password via secure channel from the CTO / bundle custodian
-4. Extract using the bundle password
-5. Copy extracted `qa-test-accounts-consolidated.json` to `.local/test-accounts.json`
-6. Verify format matches `.local/test-accounts.example.json` without printing values
-7. Run credential preflight: `npm run check:auth-credentials -- --key accounts.personaA001`
-
-### Multi-Clone / Worktree Setup
-
-```bash
-# In each repository clone/worktree
-mkdir -p .local
-# Copy restored credentials from your master restore location
-cp /path/to/your/restored/test-accounts.json .local/
+DO_NOT=
+- restore reusable credentials from Git history, old commits, tags, or forks
+- extract the historical archive for verification or convenience
+- recommit any credential bundle, encrypted or plaintext, to this repository
+- treat any surviving historical copy as a current credential source
 ```
 
-Do not print the restored file contents.
+## Why this channel was retired
 
----
+Issue #4545 — the repository is public. Distributing an encrypted archive of
+reusable QA/AI account credentials through public Git publishes that archive to
+every clone, fork, and mirror even when the archive itself is encrypted. The
+distribution channel, not the archive encryption, was the defect.
 
-## Legacy Temporary Handoff
+Removing the tracked archive from the current tip reduces future exposure. It
+does **not** and cannot remove copies that already exist in history:
 
-The temporary handoff (Issue #351, branch `ops/temp-qa-credential-handoff`) is **superseded** by this persistent bundle. New verifiers should use this bundle instead.
-
----
-
-## Procedure Validation Result
-
-When reporting credential restore attempts, use this format:
-
-```
-procedure validation result: PROCEDURE WORKS | PARTIALLY WORKS | BLOCKED
-credential source:           persistent bundle | temporary handoff (Issue #351) | pre-existing local file
-secret values exposed:       NO
-bundle committed to repo:    YES | NO
+```text
+HISTORICAL_BLOB_EXISTS_POSSIBLY=YES
+CREDENTIAL_ROTATION_REQUIRED=YES
 ```
 
-**Expected result for verifiers with this bundle:**
-```
-procedure validation result: PROCEDURE WORKS
-credential source:           persistent bundle
-secret values exposed:       NO
-bundle committed to repo:    YES
+This document asserts nothing about whether any historical archive was ever
+opened, whether any password was ever guessed, guessed correctly, leaked, or
+compromised, or whether any account was ever accessed. Those questions are not
+answered here and are not answered by this change.
+
+## Current credential model
+
+```text
+Tier 0 — Public-safe metadata (this repository)
+         account labels, credential keys, persona/role, environment, status,
+         sensitivity class, custodian labels. No credential values.
+
+Tier 1 — Local runtime file
+         .local/test-accounts.json  (gitignored, runtime convenience only,
+         NOT a source of truth)
+
+Tier 2 — Approved non-public credential custody
+         approved password manager / custodian-controlled secret store.
+         This is the canonical location.
 ```
 
----
+Never commit plaintext `.local/test-accounts.json`. Never commit any credential
+archive. `.gitignore` blocks `docs/ops/qa-credential-bundle/*.zip`, `*.age`, and
+`*.json` so that this README stays trackable while credential artifacts do not.
+
+## Rotation
+
+Rotation of the accounts referenced by the historical bundle is custodian and
+provider work under separate authority. Do not perform rotation by committing an
+updated bundle, and do not rotate as part of a documentation change.
+
+See [Issue #4545](https://github.com/skerishKang/LoveBud/issues/4545) for the
+remaining rotation/retirement work.
+
+## Regression guard
+
+`tests/contracts/qa-credential-public-git-boundary-4545.test.cjs` fails closed if
+any credential archive is tracked under this directory, or if any documentation
+re-introduces this directory as a current restore source or allowed secret
+location.
 
 ## Related
 
-- [../QA_CREDENTIALS.md](../QA_CREDENTIALS.md) — full workflow documentation
-- [../QA_ACCOUNT_REGISTRY.md](../QA_ACCOUNT_REGISTRY.md) — public-safe account inventory for password manager registration
-- [../SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md](../SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md) — account strategy and three-track model
-- Issue [#873](https://github.com/skerishKang/LoveBud/issues/873) — Qa account registration
+- [../QA_CREDENTIALS.md](../QA_CREDENTIALS.md) — current credential workflow
+- [../QA_CREDENTIALS.txt](../QA_CREDENTIALS.txt) — 한국어 mirror
+- [../QA_ACCOUNT_REGISTRY.md](../QA_ACCOUNT_REGISTRY.md) — public-safe account inventory
+- [../SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md](../SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md) — account strategy and storage tiers
+- Issue [#873](https://github.com/skerishKang/LoveBud/issues/873) — QA account registration
+- Issue [#4545](https://github.com/skerishKang/LoveBud/issues/4545) — removal of reusable QA credential material from public Git distribution

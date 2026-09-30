@@ -1,10 +1,18 @@
 # QA and AI Actor Account Registry
 
+Refs #4545
+Refs #873
+
 > **Purpose:** Public-safe inventory of all reusable QA and AI actor accounts registered in the approved password manager.
 > **Status:** ✅ All accounts registered (v1)
 > **Password Manager:** Bitwarden Free (recommended) / Proton Pass Free
 > **Custodian:** CTO_MANAGED
 > **Refs:** Issue #873, SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md
+>
+> **This document is public-safe metadata only.** It never contains credential
+> values, and no credential archive is tracked in this repository. The retired
+> repository credential channel is documented in
+> [qa-credential-bundle/README.md](./qa-credential-bundle/README.md).
 
 ---
 
@@ -88,7 +96,8 @@ persona: <PERSONA_ID or AI_ROLE>
 environment: fixed_slot
 custodian: CTO_MANAGED
 sensitivity: STANDARD_QA_REUSABLE or LOW_QA_DISPOSABLE
-bundle: docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
+credential_location: APPROVED_PASSWORD_MANAGER (canonical custody)
+local_runtime_file: .local/test-accounts.json (gitignored, runtime only)
 ```
 
 **URI field:** `https://test5.lovebud.pages.dev` (or appropriate slot domain)
@@ -100,9 +109,22 @@ bundle: docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
 | Tier | Location | Purpose | Contains Secrets? |
 |------|----------|---------|-------------------|
 | **Tier 0** — Public-safe registry | This document, GitHub Issues, PRs | Account inventory, status tracking | ❌ No |
-| **Tier 1** — Local runtime | `.local/test-accounts.json` (gitignored) | Browser login, automation | ✅ Yes |
-| **Tier 2** — Encrypted backup | `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip` | Cross-machine restore, password manager import | ✅ Yes (encrypted) |
-| **Tier 3** — Password manager | Bitwarden Free / Proton Pass Free | Secure credential vault | ✅ Yes (encrypted) |
+| **Tier 1** — Local runtime | `.local/test-accounts.json` (gitignored) | Browser login, automation. Runtime convenience only — **not a source of truth**. | ✅ Yes |
+| **Tier 2** — Approved non-public custody | Bitwarden Free / Proton Pass Free (or equivalent custodian-controlled secret store) | Canonical credential custody across machines and agents | ✅ Yes (encrypted) |
+| **Tier 3** — Repository credential archive | ❌ **RETIRED** (Issue #4545) | Previously an encrypted backup in-repo. No credential archive may be tracked here. | — |
+
+Notes:
+
+- The Git repository is **public-safe metadata only** at every tier.
+- An encrypted backup in-repository was retired under Issue #4545; see [qa-credential-bundle/README.md](./qa-credential-bundle/README.md).
+- Historical copies may still exist in Git history, clones, and forks:
+
+```text
+HISTORICAL_BLOB_EXISTS_POSSIBLY=YES
+CREDENTIAL_ROTATION_REQUIRED=YES
+```
+
+- Rotation and retirement of the affected accounts are separately authorized custodian/provider work and are **not** performed by removing the channel.
 
 ---
 
@@ -110,20 +132,23 @@ bundle: docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
 
 | Class | Count | Examples | Storage | Reuse |
 |-------|-------|----------|---------|-------|
-| `STANDARD_QA_REUSABLE` | 11 | Personas A-E, Dev 1-2, Admin, AI Guides 1-2, AI Sample | Local + encrypted backup + password manager | Reusable |
-| `LOW_QA_DISPOSABLE` | 2 | Signup disposable accounts | Local runtime + optional backup | Short-term, may retire after run |
+| `STANDARD_QA_REUSABLE` | 11 | Personas A-E, Dev 1-2, Admin, AI Guides 1-2, AI Sample | Approved non-public store + local runtime (gitignored) | Reusable |
+| `LOW_QA_DISPOSABLE` | 2 | Signup disposable accounts | Approved non-public store + local runtime (gitignored) | Short-term, may retire after run |
 
 ---
 
 ## Security Rules
 
 1. **Never** commit plaintext credentials to the repository
-2. **Never** paste credential values in GitHub Issues, PRs, comments, docs, screenshots, or logs
-3. **Never** print credential values in reports
-4. **Never** store bundle passwords in the repository
-5. **Always** distribute bundle passwords through secure channels (encrypted chat, in-person, etc.)
-6. **Always** run `npm run check:auth-credentials -- --key <credential_key>` before browser auth verification
-7. **Always** report only safe status labels in public
+2. **Never** commit any credential archive (`.zip`, `.age`, or otherwise) to the repository
+3. **Never** restore reusable credentials from Git history, old commits, tags, or forks
+4. **Never** extract a historical credential archive for verification or convenience
+5. **Never** paste credential values in GitHub Issues, PRs, comments, docs, screenshots, or logs
+6. **Never** print credential values in reports
+7. **Never** document credential passwords in the repository
+8. **Always** distribute credentials through the approved non-public store and secure operator channels
+9. **Always** run `npm run check:auth-credentials -- --key <credential_key>` before browser auth verification
+10. **Always** report only safe status labels in public
 
 ### Allowed Report Fields
 
@@ -184,7 +209,7 @@ Notes: <any>
 - [SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md](./SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md) — strategy and three-track model
 - [QA_CREDENTIALS.md](./QA_CREDENTIALS.md) — credential workflow documentation
 - [QA_ACCOUNT_USAGE.md](./QA_ACCOUNT_USAGE.md) — QA account usage policy (한국어)
-- [qa-credential-bundle/README.md](./qa-credential-bundle/README.md) — encrypted bundle status
+- [qa-credential-bundle/README.md](./qa-credential-bundle/README.md) — retired credential channel tombstone (no secrets)
 - [TEST_PREVIEW_SLOTS.md](./TEST_PREVIEW_SLOTS.md) — fixed test slot policy
 - Issue [#873](https://github.com/skerishKang/LoveBud/issues/873) — this issue
 

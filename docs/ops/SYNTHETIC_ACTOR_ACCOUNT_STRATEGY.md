@@ -4,6 +4,7 @@ Refs #849
 Refs #851
 Refs #838
 Refs #846
+Refs #4545
 
 ## Purpose
 
@@ -261,6 +262,9 @@ PR comments
 QA reports
 ```
 
+GitHub and this repository are **public-safe metadata only**. No credential values
+and no credential archive may ever be tracked here.
+
 Allowed fields:
 
 ```text
@@ -315,12 +319,12 @@ Rules:
 - local preflight must report only safe status;
 - models should not read the file contents.
 
-### Tier 2 — Encrypted shared backup / restore source
+### Tier 2 — Approved non-public credential custody
 
 Purpose:
 
 ```text
-restore credentials across machines
+canonical credential custody across machines and agents
 avoid orphaned long-lived QA accounts
 support account rotation
 support custodian handoff
@@ -329,18 +333,30 @@ support custodian handoff
 Allowed target locations:
 
 ```text
-docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
-docs/ops/qa-credential-bundle/test-accounts.json.age
-approved password manager export/import controlled by custodian
+approved password manager (Bitwarden Free / Proton Pass Free)
+CTO-managed secret storage controlled by the custodian
 ```
 
 Rules:
 
-- encrypted bundle only;
-- plaintext credential file must not be committed;
-- bundle password must not be documented in repository;
-- restore procedure must report only existence/status;
-- production-grade or AI Guide credentials should prefer approved password manager or CTO-managed secret storage over ad-hoc local files.
+- the approved non-public store is the canonical location; Tier 1 is runtime convenience only;
+- no credential archive may be tracked in this repository, encrypted or plaintext;
+- `docs/ops/qa-credential-bundle/` is a RETIRED public Git credential channel and is **not** an allowed credential location. An archive previously committed there is non-authoritative. See `docs/ops/qa-credential-bundle/README.md`;
+- credentials must not be restored from Git history, old commits, tags, or forks;
+- credential values must not be documented in the repository;
+- retrieval procedures must report only existence/status;
+- production-grade or AI Guide credentials should prefer the approved password manager or CTO-managed secret storage over ad-hoc local files.
+
+An encrypted in-repository backup was retired under Issue #4545. Historical copies may
+still exist in Git history, clones, and forks:
+
+```text
+HISTORICAL_BLOB_EXISTS_POSSIBLY=YES
+CREDENTIAL_ROTATION_REQUIRED=YES
+```
+
+Rotation and retirement remain separately authorized custodian/provider work. Do not
+rotate by creating and committing a replacement archive.
 
 ## Account sensitivity classes
 
@@ -348,9 +364,9 @@ Not every account has the same risk. Assign a class before creating or storing c
 
 | Class | Examples | Storage requirement | Reuse policy | Rotation policy |
 |------|----------|---------------------|--------------|-----------------|
-| `LOW_QA_DISPOSABLE` | signup disposable, one-off onboarding check | local runtime + optional encrypted backup | short-term only | may retire after run |
-| `STANDARD_QA_REUSABLE` | persona A/B/C/D/E, fixed-slot user | local runtime + encrypted backup | reusable | rotate on schedule or when leaked/lost |
-| `PRIVILEGED_QA` | admin/moderation/test admin | password manager or CTO-managed secret + encrypted backup metadata | tightly controlled | rotate more frequently |
+| `LOW_QA_DISPOSABLE` | signup disposable, one-off onboarding check | approved non-public store + local runtime (gitignored) | short-term only | may retire after run |
+| `STANDARD_QA_REUSABLE` | persona A/B/C/D/E, fixed-slot user | approved non-public store + local runtime (gitignored) | reusable | rotate on schedule or when leaked/lost |
+| `PRIVILEGED_QA` | admin/moderation/test admin | approved password manager or CTO-managed secret | tightly controlled | rotate more frequently |
 | `AI_GUIDE_PRODUCT` | user-facing AI guide account | product-managed secret storage / password manager | long-lived | rotation + audit required |
 | `AI_SAMPLE_CREATOR` | labeled sample content creator | password manager or product-managed | reusable with disclosure | rotate on schedule |
 
@@ -363,7 +379,7 @@ Allowed custodian labels:
 ```text
 CTO_MANAGED
 LOCAL_VERIFIER_MANAGED
-OPS_BUNDLE_CUSTODIAN
+APPROVED_PASSWORD_MANAGER_CUSTODIAN
 PRODUCT_AI_CUSTODIAN
 UNKNOWN_CUSTODIAN
 ```
@@ -371,7 +387,7 @@ UNKNOWN_CUSTODIAN
 Required rule:
 
 ```text
-If custodian is UNKNOWN_CUSTODIAN and credentials are not recoverable from encrypted backup, mark account status as ORPHANED_TEST_ACCOUNT.
+If custodian is UNKNOWN_CUSTODIAN and credentials are not recoverable from the approved non-public store, mark account status as ORPHANED_TEST_ACCOUNT.
 ```
 
 ## Account inventory template
@@ -424,7 +440,8 @@ Models or executors have created accounts during browser verification but did no
 - Create disposable accounts only when signup, clean onboarding, or account-isolation behavior is under test.
 - Never store passwords in GitHub issues, PRs, comments, docs, screenshots, or logs.
 - Store only safe labels and metadata in GitHub reports.
-- Store actual credentials only in an approved local secret store, encrypted QA credential handoff, approved password manager, or CTO-managed secret store.
+- Store actual credentials only in an approved local secret store, the approved password manager, or a CTO-managed secret store.
+- Never commit a credential archive to this repository, and never restore credentials from Git history.
 - If credentials are lost, mark the account as `UNKNOWN_CREDENTIALS` or `ORPHANED_TEST_ACCOUNT` by safe label only.
 - Do not attempt to recover or print secrets through logs.
 - For reusable accounts, record credential location label and custodian label at creation time.
@@ -468,12 +485,14 @@ Allowed labels:
 
 ```text
 LOCAL_SECRET_STORE
-ENCRYPTED_QA_HANDOFF
 APPROVED_PASSWORD_MANAGER
 CTO_MANAGED_SECRET
 PRODUCT_MANAGED_SECRET
 UNKNOWN_CREDENTIALS
 ```
+
+The `ENCRYPTED_QA_HANDOFF` label no longer names a current location. Encrypted
+credential archives in this public repository are retired (Issue #4545).
 
 Do not include real paths if the path itself exposes private user information. Path-only references may be used only when already approved by ops security policy.
 
