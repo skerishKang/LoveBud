@@ -11,6 +11,7 @@
     "authority_note": "Machine-readable per-sink inventory derived from the exact checked-in js/ tree. It stores no current-main SHA (a mirrored SHA silently re-ages into a false freshness claim); current main is only ever read live from git. Every sink record is re-derived and compared 1:1 by the layer-2 contract test, so a new sink, a removed sink, or a same-count semantic edit fails the test.",
     "scope": "innerHTML / outerHTML / insertAdjacentHTML occurrences under js/**.js only.",
     "identity_rule": "identity = path :: sinkType :: #occurrence :: statementDigest. Digest is computed over the whitespace-normalised statement, so pure reformatting is tolerated while any real edit changes identity. Line numbers are recorded for humans only and are never identity.",
+    "approved_renderer_rule": "APPROVED_RENDERER_BOUNDARY is granted only by an entry of APPROVED_RENDERER_CONTRACTS in tests/helpers/dom-sink-scan.cjs: exact owning source + exact declared call sites + a bounded producer list whose returned fragments are re-proven from that source on every run. There is no global same-name helper lookup, no cross-file safety resolution, and no approval from an escape token that merely appears somewhere in a helper body. A returned fragment is proven only when every user-bearing value in it sits inside an escaping boundary (escapeHtml/sanitizeUrl/safeUrl/normalizeUrl/encodeURIComponent/encodeURI) or a numeric/boolean coercion, or is produced by another declared producer; local variables are proven through their exact definitions, and a local definition is never replaced by the on-disk text of the same path.",
     "classification_vocabulary": [
       "CLEAR_CONTAINER",
       "STATIC_TRUSTED_TEMPLATE",
@@ -35,7 +36,7 @@
     "DORMANT_UNLINKED_SINKS": 27,
     "MOCK_PROTOTYPE_SINKS": 6,
     "ACTIVE_REVIEW_NEEDED_COUNT": 0,
-    "SEMANTIC_REVIEW_NEEDED_COUNT": 2,
+    "SEMANTIC_REVIEW_NEEDED_COUNT": 4,
     "CLEAR_CONTAINER": 29,
     "STATIC_TRUSTED_TEMPLATE": 85,
     "EXPLICIT_ESCAPED_DYNAMIC": 31,
@@ -397,7 +398,7 @@
       "classifications": {
         "STATIC_TRUSTED_TEMPLATE": 3,
         "CLEAR_CONTAINER": 1,
-        "APPROVED_RENDERER_BOUNDARY": 1
+        "REVIEW_NEEDED": 1
       }
     },
     {
@@ -431,7 +432,7 @@
       "classifications": {
         "STATIC_TRUSTED_TEMPLATE": 3,
         "CLEAR_CONTAINER": 1,
-        "APPROVED_RENDERER_BOUNDARY": 1
+        "REVIEW_NEEDED": 1
       }
     },
     {
@@ -946,7 +947,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/detail/detail-render.js",
@@ -2258,7 +2259,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/my-trees/my-trees-preview-state.js",
@@ -2413,12 +2414,12 @@
       "statementPreview": ".innerHTML = state.growingTrees .slice(0, 3) .map((tree, index) => CardRenderer.renderTreeCard(tree, index + 1)) .join('');",
       "line": 189,
       "classification": "DORMANT_OR_MOCK",
-      "semanticClassification": "APPROVED_RENDERER_BOUNDARY",
+      "semanticClassification": "REVIEW_NEEDED",
       "dynamic": true,
-      "safeBoundary": "approved-renderer",
+      "safeBoundary": "none",
       "surface": "DORMANT_UNLINKED",
       "active": false,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "user-controlled value reaches the sink with no provable safe boundary (state.growingTrees\r\n            .slice(0, 3)\r\n            .map((tree, index) => CardRenderer.renderTreeCard(tree, index)"
     },
     {
       "path": "js/search/index.js",
@@ -2573,12 +2574,12 @@
       "statementPreview": ".innerHTML = state.growingTrees .slice(0, 3) .map((tree, index) => CardRenderer.renderTreeCard(tree, index + 1)) .join('');",
       "line": 247,
       "classification": "DORMANT_OR_MOCK",
-      "semanticClassification": "APPROVED_RENDERER_BOUNDARY",
+      "semanticClassification": "REVIEW_NEEDED",
       "dynamic": true,
-      "safeBoundary": "approved-renderer",
+      "safeBoundary": "none",
       "surface": "DORMANT_UNLINKED",
       "active": false,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "user-controlled value reaches the sink with no provable safe boundary (state.growingTrees\r\n            .slice(0, 3)\r\n            .map((tree, index) => CardRenderer.renderTreeCard(tree, index)"
     },
     {
       "path": "js/search/search-preview-hub-dom-patch.js",
@@ -2658,7 +2659,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/search/search-preview-playable-hub-patch.js",
@@ -2674,7 +2675,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/search/search-preview-renderer.js",
@@ -2754,7 +2755,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/search/search-preview-renderer.js",
@@ -2770,7 +2771,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/search/search-preview-renderer.js",
@@ -2802,7 +2803,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/search/search-preview-renderer.js",
@@ -2818,7 +2819,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/search/search-preview-renderer.js",
@@ -2834,7 +2835,7 @@
       "safeBoundary": "approved-renderer",
       "surface": "ACTIVE_PRODUCT",
       "active": true,
-      "reason": "delegated to a helper whose chain reaches an escaping boundary (approved-renderer)"
+      "reason": "delegated to a declared renderer contract whose returned user-bearing fragments are proven escaped from its exact source (approved-renderer)"
     },
     {
       "path": "js/search/search-preview-renderer.js",

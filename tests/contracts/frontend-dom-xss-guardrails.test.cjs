@@ -93,12 +93,39 @@ function countSinks(sourceText) {
   return (sourceText.match(re) || []).length;
 }
 
-function classifySnippet(sourceText) {
+function classifySnippet(sourceText, filePath, options) {
   const re = /\.(?:innerHTML|outerHTML)\s*=|\.insertAdjacentHTML\s*\(/g;
   const m = re.exec(sourceText);
   assert.ok(m, 'snippet must contain a sink');
   const stmt = scan.extractStatement(sourceText, m.index);
-  return scan.classifyStatement(stmt, sourceText).classification;
+  return scan.classifyStatement(stmt, sourceText, filePath, options).classification;
+}
+
+// Classify the LAST sink of a source, so a fixture can append its own sink to a
+// real file's source and still be analysed at the declared call-site path.
+function classifyLastSink(sourceText, filePath, options) {
+  const re = new RegExp(HTML_SINK_PATTERN.source, 'g');
+  let m;
+  let last = -1;
+  while ((m = re.exec(sourceText)) !== null) last = m.index;
+  assert.ok(last >= 0, 'fixture must contain a sink');
+  const stmt = scan.extractStatement(sourceText, last);
+  return scan.classifyStatement(stmt, sourceText, filePath, options).classification;
+}
+
+function sinkStatementFor(sink) {
+  const source = read(sink.path);
+  const pattern = scan.sinkPattern();
+  let match;
+  let seen = 0;
+  let found = null;
+  while ((match = pattern.exec(source)) !== null) {
+    if (match[1].trim() !== sink.sinkType) continue;
+    seen += 1;
+    if (seen === sink.occurrence) { found = match; break; }
+  }
+  assert.ok(found, `${sink.identity}: recorded sink occurrence must still exist`);
+  return { source, statement: scan.extractStatement(source, found.index) };
 }
 
 test('frontend DOM XSS rendering policy document exists', () => {
@@ -309,23 +336,24 @@ test('NC1 same-count escaping removal is detected by the semantic guard', () => 
 });
 
 test('NC2 same-count approved renderer replacement is detected', () => {
-  const fixture = [
-    'function renderSafe(tree) { return `<div>${escapeHtml(tree.title)}</div>`; }',
-    'target.innerHTML = renderSafe(tree);',
-    ''
-  ].join('\n');
+  const callSite = 'js/search/search-preview-renderer.js';
+  const sinkLine = 'el.innerHTML = renderEmotionTags(tree.emotionTags);';
   const broken = [
-    'function renderSafe(tree) { return `<div>${tree.title}</div>`; }',
-    'target.innerHTML = renderSafe(tree);',
+    read(callSite),
+    'function renderEmotionTags(tags) {',
+    "  return '<span>' + tags.join(',') + '</span>';",
+    '}',
+    sinkLine,
     ''
   ].join('\n');
-  const replaced = 'target.innerHTML = tree.title;\n';
+  const replaced = `${read(callSite)}\nel.innerHTML = tree.emotionTags.join(',');\n`;
 
-  assert.equal(countSinks(fixture), countSinks(broken), 'the file-level sink count must be unchanged');
-  assert.equal(classifySnippet(fixture), 'APPROVED_RENDERER_BOUNDARY');
-  assert.equal(classifySnippet(broken), 'REVIEW_NEEDED',
-    'an approved boundary that stops escaping must fail');
-  assert.equal(classifySnippet(replaced), 'REVIEW_NEEDED',
+  assert.equal(countSinks(broken), countSinks(replaced), 'the file-level sink count must be unchanged');
+  assert.equal(classifyLastSink(`${read(callSite)}\n${sinkLine}\n`, callSite), 'APPROVED_RENDERER_BOUNDARY',
+    'the declared contract must approve its own call site');
+  assert.equal(classifyLastSink(broken, callSite), 'REVIEW_NEEDED',
+    'an approved boundary that stops escaping its returned fragment must fail');
+  assert.equal(classifyLastSink(replaced, callSite), 'REVIEW_NEEDED',
     'replacing the approved renderer with a raw user value must fail');
 });
 
@@ -366,6 +394,157 @@ test('NC5 a clear-container sink is still accepted', () => {
   const snippet = "el.innerHTML = '';\n";
   assert.equal(countSinks(snippet), 1);
   assert.equal(classifySnippet(snippet), 'CLEAR_CONTAINER');
+});
+
+// ─── #4533 correction: return-proven renderer contracts ─────────────────────
+
+test('#4533 every declared renderer contract is exact-source-bound and return-proven', () => {
+  const contracts = Object.entries(scan.APPROVED_RENDERER_CONTRACTS);
+  assert.ok(contracts.length > 0, 'at least one renderer contract must be declared');
+
+  const failures = [];
+  for (const [name, contract] of contracts) {
+    if (!fs.existsSync(path.join(ROOT, contract.source))) failures.push(`${name}: owner source ${contract.source} is missing`);
+    if (!Array.isArray(contract.callSites) || contract.callSites.length === 0) failures.push(`${name}: no call site declared`);
+    for (const site of contract.callSites || []) {
+      if (!fs.existsSync(path.join(ROOT, site))) failures.push(`${name}: declared call site ${site} is missing`);
+    }
+    if (!Array.isArray(contract.producers) || contract.producers.length === 0) failures.push(`${name}: no producer declared`);
+    for (const producer of contract.producers || []) {
+      if (!fs.existsSync(path.join(ROOT, producer.source))) failures.push(`${name}: producer source ${producer.source} is missing`);
+    }
+    // the proof is re-derived from the exact owner source on every run — never
+    // from the helper name, and never from another file's same-name helper
+    const verdict = scan.rendererApproval(name, contract.source, read(contract.source));
+    if (!verdict.ok) failures.push(`${name}: ${verdict.why}`);
+  }
+
+  assert.deepEqual(failures, [], `every declared contract must be provable from its exact source:\n${failures.join('\n')}`);
+});
+
+test('#4533 a declared producer that stops escaping its returned fragment loses approval', () => {
+  const callSite = 'js/search/search-preview-playable-hub-patch.js';
+  const producer = 'js/search/search-share-link.js';
+  const callerSource = read(callSite);
+  const producerSource = read(producer);
+
+  assert.equal(scan.rendererApproval('renderSocialBar', callSite, callerSource).ok, true,
+    'the real cross-file delegating contract must be proven');
+
+  // remove the escaping of a user-bearing value from the producer's returned fragment
+  const stripped = producerSource.replace("escapeHtml(String(tree.id || ''))", "String(tree.id || '')");
+  assert.notEqual(stripped, producerSource, 'the negative control must actually remove an escaping call');
+
+  const verdict = scan.rendererApproval('renderSocialBar', callSite, callerSource, { sources: { [producer]: stripped } });
+  assert.equal(verdict.ok, false, 'a producer return that stops escaping must lose the approval');
+  assert.match(verdict.why, /is not proven/, 'the failure must be reported as an unproven returned fragment');
+});
+
+test('#4533 every approved renderer sink is bound to a declared, proven contract', () => {
+  const { sinks } = scan.buildSinkInventory();
+  const approved = sinks.filter((s) => s.classification === 'APPROVED_RENDERER_BOUNDARY');
+  const names = Object.keys(scan.APPROVED_RENDERER_CONTRACTS);
+
+  // signed expectation: a new approval needs a declared contract, not a new name
+  assert.equal(approved.length, 9,
+    'the approved-renderer sink set changed — declare a contract with exact-source return proofs instead of relying on a name');
+
+  const unbound = [];
+  for (const s of approved) {
+    assert.equal(s.surface, 'ACTIVE_PRODUCT', `${s.identity} must be an active surface`);
+    assert.equal(s.safeBoundary, 'approved-renderer', `${s.identity} must carry the approved-renderer boundary`);
+    const { source, statement } = sinkStatementFor(s);
+    const bound = names.filter((n) => new RegExp(`\\b${n}\\b`).test(statement));
+    if (bound.length === 0) unbound.push(`${s.identity}: no declared contract name in the sink statement`);
+    for (const name of bound) {
+      const verdict = scan.rendererApproval(name, s.path, source);
+      if (!verdict.ok) unbound.push(`${s.identity}: ${name} — ${verdict.why}`);
+    }
+  }
+  assert.deepEqual(unbound, [], `every approved sink must resolve through a declared, proven contract:\n${unbound.join('\n')}`);
+});
+
+test('#4533 positive control: an exact-owner renderer with a proven returned fragment is approved', () => {
+  const owner = 'js/__fixture__/render-safe.js';
+  const source = [
+    'function renderSafe(tree) {',
+    "  return '<div>' + escapeHtml(tree.title) + '</div>';",
+    '}',
+    'target.innerHTML = renderSafe(tree);',
+    ''
+  ].join('\n');
+  const contracts = {
+    renderSafe: { source: owner, callSites: [owner], producers: [{ source: owner, name: 'renderSafe' }] },
+  };
+
+  assert.equal(scan.proveReturnFragment("return '<div>' + escapeHtml(tree.title) + '</div>';", source).ok, true,
+    'an escaped returned fragment must be provable');
+  assert.equal(classifyLastSink(source, owner, { contracts }), 'APPROVED_RENDERER_BOUNDARY',
+    'an exactly-sourced renderer whose returned fragment escapes the user value must be approved');
+  assert.equal(classifyLastSink(source, owner), 'REVIEW_NEEDED',
+    'without the declared contract the same source must never be approved');
+
+  const broken = source.replace('escapeHtml(tree.title)', 'tree.title');
+  assert.equal(classifyLastSink(broken, owner, { contracts }), 'REVIEW_NEEDED',
+    'the contract must fail the moment the returned fragment stops escaping');
+});
+
+test('NC6 unrelated escape inside a helper never approves a raw returned fragment', () => {
+  const callSite = 'js/__fixture__/render-unsafe.js';
+  const fixture = [
+    'function renderUnsafe(tree) {',
+    '  const ignored = escapeHtml(tree.memo);',
+    "  return '<div>' + tree.title + '</div>';",
+    '}',
+    'target.innerHTML = renderUnsafe(tree);',
+    ''
+  ].join('\n');
+
+  assert.match(fixture, /escapeHtml\(tree\.memo\)/, 'the unrelated escape must be present in the helper body');
+  const fragment = scan.proveReturnFragment("return '<div>' + tree.title + '</div>';", fixture);
+  assert.equal(fragment.ok, false, 'an unrelated escape must not prove a raw returned fragment');
+  assert.match(fragment.violations.join('\n'), /tree/, 'the raw returned user value must be reported');
+  assert.equal(classifyLastSink(fixture, callSite), 'REVIEW_NEEDED',
+    'an undeclared helper is never an approved renderer boundary');
+
+  // declaring the name in a contract does not help: the proof fails on the return
+  const contracts = {
+    renderUnsafe: { source: callSite, callSites: [callSite], producers: [{ source: callSite, name: 'renderUnsafe' }] },
+  };
+  const verdict = scan.rendererApproval('renderUnsafe', callSite, fixture, { contracts });
+  assert.equal(verdict.ok, false, 'a declared name alone must never approve a helper');
+  assert.match(verdict.why, /return is not proven/, 'the failure must be attributed to the returned fragment');
+  assert.equal(classifyLastSink(fixture, callSite, { contracts }), 'REVIEW_NEEDED',
+    'escaping `tree.memo` must never approve a returned `tree.title`');
+});
+
+test('NC7 a safe same-name helper in another file never approves an unsafe local helper', () => {
+  const declaredSite = 'js/search/search-preview-renderer.js';
+  const localUnsafe = [
+    'function renderEmotionTags(tags) {',
+    "  return '<span>' + tags.join(',') + '</span>';",
+    '}',
+    'el.innerHTML = renderEmotionTags(tree.emotionTags);',
+    ''
+  ].join('\n');
+
+  // the declared owner (and the builders file it delegates to) do escape tags
+  assert.equal(scan.rendererApproval('renderEmotionTags', declaredSite, read(declaredSite)).ok, true,
+    'the real declared renderer must stay proven');
+
+  // the same helper name defined unsafely in a foreign file is never blessed by it
+  assert.equal(classifyLastSink(localUnsafe, 'js/legacy/other-search.js'), 'REVIEW_NEEDED',
+    'an unsafe same-name helper outside the declared owner must fail');
+
+  // and an undeclared call site may not borrow the declared owner either
+  assert.equal(classifyLastSink(localUnsafe, 'js/legacy/other-search.js', {
+    contracts: {
+      renderEmotionTags: scan.APPROVED_RENDERER_CONTRACTS.renderEmotionTags,
+    },
+  }), 'REVIEW_NEEDED', 'a call site that is not declared must never be approved');
+
+  assert.equal(classifyLastSink(read(declaredSite) + '\n' + 'el.innerHTML = renderEmotionTags(tree.emotionTags);\n', declaredSite),
+    'APPROVED_RENDERER_BOUNDARY', 'the declared owner call site must stay approved');
 });
 
 test('#4533 classification never judges a sink by variable name alone', () => {
