@@ -2838,6 +2838,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/pr-guardrails-ci-4546.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes scripts/check-pr-guardrails.cjs source in-process against synthetic PR-body strings, a temporary synthetic GITHUB_EVENT_PATH JSON fixture, and an injected fake argv-array git runner; reads the canonical governance document, PR Fast Gate workflow, and CI test-group registry as source text; proves protected-Issue authority derivation, protected-closing blocking, markdown code exclusion, preserved path-guard severities, fail-closed event ingestion, and workflow wiring without shell interpolation; no Production DB, network, secret, browser, or deployment access (#4546).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/preview-embed-sanitization-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

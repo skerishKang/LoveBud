@@ -86,6 +86,14 @@ The `tests/ci-test-group-registry.json` classifies these under `REMOTE_OR_PROVID
 - OBSERVED_SOURCE_FACT: None of the above scripts execute in CI. The `ci.yml` workflow never calls `npm run test:e2e:*`, `npm run smoke:cloudflare`, `npm run test:screenshots`, or `npm run verify:remote`.
 - OBSERVED_SOURCE_FACT: This is distinct from the 12 `BROWSER_REAL_LOCAL` Playwright contracts that **do** execute in CI via `npm test`.
 
+#### Current disposition (#4546)
+
+The table and the two `OBSERVED_SOURCE_FACT` bullets above remain the historical audit baseline as observed when this audit was written. The following records the later change of state; it does not amend the baseline above.
+
+- CURRENT_DISPOSITION (#4546): `scripts/check-pr-guardrails.cjs` now runs in PR Fast Gate for `pull_request` events, before `npm ci`. It no longer belongs to `REMOTE_OR_PROVIDER_MANUAL` and was removed from that group's `explicit_paths` in `tests/ci-test-group-registry.json`.
+- CURRENT_DISPOSITION (#4546): The guard step is gated on `github.event_name == 'pull_request'`, so it does not execute on `workflow_dispatch`. The step reads the event JSON from the GitHub-provided `GITHUB_EVENT_PATH`; PR body text is never interpolated into the shell command.
+- SCOPE_REMAINS (#4546): The guard is a local, deterministic source-policy check. It still contacts no network, provider, database, browser, or Production target, so this audit's Production-observability findings are unchanged.
+
 ### 3.3 Production Verification Evidence
 
 - DOCUMENTED_OPERATING_RULE: `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md` defines post-merge manual Production confirmation as the normal final check. Preview/fixed-slot remain optional.
