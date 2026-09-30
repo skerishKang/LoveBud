@@ -41,7 +41,7 @@ The following state is read from current main source files. Do not interpret an 
 ### expected-schema-manifest.json
 
 - Status: ADOPTION_REQUIRED
-- Critical objects count: 3 (catalog-populated; catalog population is distinct from runner activation/adoption)
+- Critical objects count: 3 (manifest-derived snapshot of `db/migration-provenance/expected-schema-manifest.json#critical_objects.length` read at verification time; not a hand-maintained authority; catalog-populated; catalog population is distinct from runner activation/adoption)
 - Source: `db/migration-provenance/expected-schema-manifest.json`
 
 ### Production catalog collection

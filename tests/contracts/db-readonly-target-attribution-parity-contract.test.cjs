@@ -88,7 +88,7 @@ test('outcome vocabulary is the exact fixed sanitized set', async () => {
   });
 });
 
-test('committed expected-schema authority binds exactly one critical object', async () => {
+test('committed expected-schema authority binds the ledger critical object and keeps its count manifest-derived', async () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(ROOT, 'db/migration-provenance/expected-schema-manifest.json'), 'utf8')
   );

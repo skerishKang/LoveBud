@@ -67,14 +67,18 @@ describe('DB Migration Provenance Adoption Operator Checklist Contract (#3622)',
 
   describe('3. Current fail-closed state', () => {
     const doc = readDoc(CHECKLIST_PATH);
-    it('Documents canonical-migrations.json ADOPTION_REQUIRED and 0 migrations', () => {
+    const canonical = readJson(CANONICAL_MANIFEST);
+    const expected = readJson(EXPECTED_SCHEMA);
+    it('Documents canonical-migrations.json ADOPTION_REQUIRED with a manifest-derived migration count', () => {
       assert.match(doc, /ADOPTION_REQUIRED/);
-      assert.match(doc, /[Mm]igrations[^0]*0/);
+      assert.match(doc, /canonical-migrations\.json/);
+      assert.match(doc, new RegExp(`migrations count:?\\s*${canonical.migrations.length}`, 'i'));
     });
-    it('Documents expected-schema-manifest.json ADOPTION_REQUIRED and 0 critical objects', () => {
+    it('Documents expected-schema-manifest.json ADOPTION_REQUIRED with a manifest-derived critical-object count', () => {
       assert.match(doc, /ADOPTION_REQUIRED/);
-      assert.match(doc, /[Cc]ritical.?(objects|[^0]*).*0/);
       assert.match(doc, /expected-schema-manifest\.json/);
+      assert.match(doc, new RegExp(`critical.?objects count:?\\s*${expected.critical_objects.length}`, 'i'));
+      assert.match(doc, /manifest-derived snapshot/i);
     });
     it('Documents Production catalog collection NOT_RUN or COLLECTION_NOT_RUN', () => {
       assert.match(doc, /COLLECTION_NOT_RUN|NOT_RUN/);

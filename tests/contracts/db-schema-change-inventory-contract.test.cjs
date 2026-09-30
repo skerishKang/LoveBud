@@ -721,3 +721,326 @@ describe('#4532 canonical migration count freshness guard', () => {
     );
   });
 });
+// ─── #4541 expected-schema critical-object count freshness guard ─────────────
+//
+// #4541 observed drift: the expected-schema manifest catalogued three critical
+// objects while active architecture/governance prose still restated the number
+// ("2 critical objects", "two catalogued critical objects",
+// "`critical_objects` contains exactly one entry", "empty critical_objects").
+// Same failure class as the canonical-migration count drift fixed by
+// #4532/#4539, but a DISTINCT authority surface: expected-schema metadata, not
+// the canonical migration catalogue. The two guard domains stay separate --
+// `restatedCountFaults` above is the #4539 canonical-migration detector, and this
+// is the #4541 expected-schema critical-object detector.
+//
+// This is deliberately a BOUNDED allowlist, not a repo-wide regex ban:
+// date/SHA-bound historical audits and regression fixtures may legitimately
+// contain a literal expected-schema count, and those must not be misreported as
+// current claims.
+
+const EXPECTED_SCHEMA_MANIFEST_PATH = path.join(
+  REPO_ROOT,
+  'db',
+  'migration-provenance',
+  'expected-schema-manifest.json'
+);
+
+// Current normative surfaces: the number must be derived from the manifest, and
+// a hand-maintained literal current count is a violation here.
+const ACTIVE_EXPECTED_SCHEMA_COUNT_SURFACES = [
+  'docs/architecture/DB_MIGRATION_PROVENANCE_CLEAN_TARGET_ADOPTION_DECISION.md',
+  'docs/architecture/db-migration-source-validation-adapter-contract.md',
+  'docs/architecture/db-clean-canonical-bootstrap-rehearsal-contract.md',
+  'docs/architecture/db-readonly-target-attribution-parity-contract.md',
+  'docs/architecture/DB_MIGRATION_PROVENANCE_GATE.md',
+  'docs/architecture/db-canonical-runner-protocol-contract.md',
+  'docs/architecture/db-destructive-ddl-approval-contract.md',
+  'docs/architecture/db-migration-identity-order-checksum-contract.md',
+  'docs/architecture/db-migration-precondition-authority-contract.md',
+  'docs/architecture/canonical-memory-lineage-write-contract-4005.md',
+  'docs/architecture/db-schema-change-inventory.md',
+  'docs/architecture/db-schema-change-inventory.json',
+  'db/migrations/README.md',
+  'tests/test-layer-classification.json',
+];
+
+// MANIFEST_DERIVED_SNAPSHOT surface. The operator checklist is a live operator
+// packet whose repository contract
+// (db-migration-provenance-adoption-operator-checklist-contract.test.cjs)
+// REQUIRES it to display the verification-time snapshot number and mechanically
+// compares that number against `expected.critical_objects.length`. Removing the
+// snapshot would delete a contract-mandated operator affordance, so it is
+// classified explicitly instead of banned: the number is a manifest-derived
+// snapshot, and the checklist contract is the proof that it is not a
+// hand-maintained authority. It is excluded from the ban and asserted separately.
+const MANIFEST_DERIVED_SNAPSHOT_SURFACES = [
+  'docs/architecture/DB_MIGRATION_PROVENANCE_ADOPTION_OPERATOR_CHECKLIST.md',
+];
+
+// Historical / fixture surfaces: literal counts here are bound evidence or
+// synthetic fixtures, never a current normative claim.
+const HISTORICAL_OR_FIXTURE_EXPECTED_SCHEMA_SURFACES = [
+  'docs/architecture/canonical-neon-schema-data-convergence-audit-4005.md',
+  'tests/contracts/db-schema-change-inventory-contract.test.cjs',
+  'tests/contracts/expected-schema-candidate-contract.test.cjs',
+  'tests/contracts/db-migration-provenance-adoption-operator-checklist-contract.test.cjs',
+  'tests/contracts/db-readonly-target-attribution-parity-contract.test.cjs',
+  'tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs',
+];
+
+// Bounded detector for restated expected-schema critical-object counts. It must
+// catch the equivalent phrasings observed in the #4541 drift while staying
+// narrow enough that unrelated counts (canonical migration count, "three
+// scopes", "five enum types", a generic "3-5 critical journeys") are never swept
+// in. The leading alternatives require the literal token "critical object(s)";
+// the `count:` alternative requires the field label the operator packet uses.
+const NUMBER_WORD = '(?:one|two|three|four|five|six|seven|[0-9]+)';
+const RESTATED_CRITICAL_OBJECT_COUNT_RE = new RegExp(
+  String.raw`\b${NUMBER_WORD}\s+(?:catalogued\s+)?critical[\s_-]objects?\b` +
+    String.raw`|critical[\s_-]objects?\s+count:?\s*${NUMBER_WORD}\b` +
+    String.raw`|\bempty\s+critical[\s_-]objects?\b` +
+    String.raw`|\bcritical[\s_-]objects\b[^\n]{0,40}?\bcontains\s+exactly\s+${NUMBER_WORD}\s+entr`,
+  'gi'
+);
+
+function readExpectedSchemaManifest() {
+  return JSON.parse(fs.readFileSync(EXPECTED_SCHEMA_MANIFEST_PATH, 'utf8'));
+}
+
+function restatedCriticalObjectCountFaults(text) {
+  return [...new Set(String(text).match(RESTATED_CRITICAL_OBJECT_COUNT_RE) || [])];
+}
+
+function derivedExpectedSchemaCriticalObjectCount() {
+  return readExpectedSchemaManifest().critical_objects.length;
+}
+
+function activeExpectedSchemaCountFaults() {
+  const offenders = [];
+  for (const rel of ACTIVE_EXPECTED_SCHEMA_COUNT_SURFACES) {
+    const abs = path.join(REPO_ROOT, rel);
+    if (!fs.existsSync(abs)) {
+      offenders.push(`MISSING_ACTIVE_SURFACE:${rel}`);
+      continue;
+    }
+    for (const hit of restatedCriticalObjectCountFaults(fs.readFileSync(abs, 'utf8'))) {
+      offenders.push(`${rel}: "${hit}"`);
+    }
+  }
+  return offenders;
+}
+describe('#4541 expected-schema critical-object count freshness guard', () => {
+  it('expected-schema count is derived from the manifest itself', () => {
+    const manifest = readExpectedSchemaManifest();
+    assert.ok(
+      Array.isArray(manifest.critical_objects),
+      'manifest must expose a critical_objects array'
+    );
+    assert.ok(derivedExpectedSchemaCriticalObjectCount() > 0, 'derived count must be positive');
+    assert.equal(
+      new Set(manifest.critical_objects.map((o) => o.name)).size,
+      manifest.critical_objects.length,
+      'committed critical-object names must be unique'
+    );
+  });
+
+  it('no active normative surface restates a literal critical-object count', () => {
+    assert.deepEqual(
+      activeExpectedSchemaCountFaults(),
+      [],
+      'active normative surfaces must derive the count from expected-schema-manifest.json#critical_objects'
+    );
+  });
+
+  it('the bounded allowlist is real: every listed surface exists and the list is non-trivial', () => {
+    assert.ok(
+      ACTIVE_EXPECTED_SCHEMA_COUNT_SURFACES.length >= 8,
+      'allowlist must actually cover the active architecture/governance contracts'
+    );
+    const missing = ACTIVE_EXPECTED_SCHEMA_COUNT_SURFACES.filter(
+      (rel) => !fs.existsSync(path.join(REPO_ROOT, rel))
+    );
+    assert.deepEqual(missing, [], `allowlist entries must exist: ${missing.join(', ')}`);
+    for (const rel of MANIFEST_DERIVED_SNAPSHOT_SURFACES) {
+      assert.ok(fs.existsSync(path.join(REPO_ROOT, rel)), `snapshot surface must exist: ${rel}`);
+      assert.ok(
+        !ACTIVE_EXPECTED_SCHEMA_COUNT_SURFACES.includes(rel),
+        `${rel} is a manifest-derived snapshot, not a banned literal surface`
+      );
+    }
+  });
+  it('NC11: re-introducing a literal current critical-object count is detected', () => {
+    // Each entry pairs the injected phrasing with the exact substring the
+    // detector reports. The backtick-quoted `critical_objects` form reports
+    // without its opening tick, so the pair is stated explicitly rather than
+    // assumed symmetric.
+    for (const [phrase, reported] of [
+      ['two catalogued critical objects', 'two catalogued critical objects'],
+      ['2 catalogued critical objects', '2 catalogued critical objects'],
+      ['two critical objects', 'two critical objects'],
+      ['2 critical objects', '2 critical objects'],
+      ['Critical objects count: 2', 'Critical objects count: 2'],
+      ['critical objects count: 2', 'critical objects count: 2'],
+      ['`critical_objects` contains exactly one entry', 'critical_objects` contains exactly one entr'],
+      ['ADOPTION_REQUIRED with empty critical_objects', 'empty critical_objects'],
+    ]) {
+      assert.deepEqual(
+        restatedCriticalObjectCountFaults(
+          `The current expected-schema manifest is ADOPTION_REQUIRED with ${phrase}.`
+        ),
+        [reported],
+        `equivalent restatement must be flagged: ${phrase}`
+      );
+    }
+  });
+
+  it('NC12: unrelated counts are not swept into the expected-schema guard', () => {
+    // Guards against an over-broad "number + objects" regex. The canonical
+    // migration count is #4539's domain; other numbers are simply unrelated.
+    for (const phrase of [
+      'two catalogued migrations',
+      'migration count is derived from canonical-migrations.json',
+      'three scopes',
+      'five enum types',
+      'define bounded signals for 3-5 critical journeys',
+      'critical console errors must be empty',
+    ]) {
+      assert.deepEqual(
+        restatedCriticalObjectCountFaults(`The contract note says ${phrase} here.`),
+        [],
+        `must not be flagged: ${phrase}`
+      );
+    }
+  });
+
+  it('the two guard domains stay separate from the #4539 canonical-migration detector', () => {
+    // #4539 authority: two catalogued migrations. #4541 authority:
+    // two catalogued critical objects. Neither detector may claim the other.
+    assert.deepEqual(
+      restatedCountFaults('The manifest holds two catalogued critical objects.'),
+      [],
+      '#4539 canonical-migration detector must not claim the expected-schema domain'
+    );
+    assert.deepEqual(
+      restatedCriticalObjectCountFaults('The manifest holds two catalogued migrations.'),
+      [],
+      '#4541 expected-schema detector must not claim the canonical-migration domain'
+    );
+    assert.deepEqual(
+      restatedCountFaults('The manifest holds two catalogued migrations.'),
+      ['two catalogued migrations'],
+      '#4539 detector must still flag its own domain'
+    );
+    assert.deepEqual(
+      restatedCriticalObjectCountFaults('The manifest holds two catalogued critical objects.'),
+      ['two catalogued critical objects'],
+      '#4541 detector must flag its own domain'
+    );
+  });
+
+  it('manifest-derived phrasing is accepted on active surfaces', () => {
+    const derived =
+      'The expected-schema manifest remains ADOPTION_REQUIRED. Its critical-object set and ' +
+      'count are derived from db/migration-provenance/expected-schema-manifest.json#critical_objects ' +
+      'and are not restated here.';
+    assert.deepEqual(
+      restatedCriticalObjectCountFaults(derived),
+      [],
+      'manifest-derived wording must not be flagged'
+    );
+  });
+  it('historical evidence and negative-control fixtures are not misreported as current claims', () => {
+    // Positive control: the dated 2026-08-16 audit (bound to a reconciliation
+    // basis SHA) still records the expected-schema critical-object set as it was
+    // at that snapshot. That literal must survive verbatim as auditable
+    // evidence AND must never be reported as a current normative claim. The active
+    // scan below reads only the bounded allowlist, which excludes this surface.
+    const historicalPath = path.join(
+      REPO_ROOT,
+      'docs',
+      'architecture',
+      'canonical-neon-schema-data-convergence-audit-4005.md'
+    );
+    const historical = fs.readFileSync(historicalPath, 'utf8');
+    assert.match(
+      historical,
+      /both expected-schema critical objects correspond 1:1 to the two migrations/,
+      'the 2026-08-16 historical snapshot literal must be preserved verbatim'
+    );
+    assert.match(historical, /2026-08-16/, 'the historical audit must stay date-bound');
+    // A literal count injected into that historical surface WOULD be detected by
+    // the detector, which is exactly why the surface is excluded from the
+    // active-normative scan by bounded classification rather than by trust.
+    assert.deepEqual(
+      restatedCriticalObjectCountFaults('two catalogued critical objects'),
+      ['two catalogued critical objects'],
+      'the detector is pattern-based; exclusion is by bounded surface classification'
+    );
+    for (const rel of HISTORICAL_OR_FIXTURE_EXPECTED_SCHEMA_SURFACES) {
+      assert.ok(
+        !ACTIVE_EXPECTED_SCHEMA_COUNT_SURFACES.includes(rel),
+        `${rel} must stay outside the active-normative critical-object guard`
+      );
+      assert.ok(
+        !MANIFEST_DERIVED_SNAPSHOT_SURFACES.includes(rel),
+        `${rel} must stay outside the manifest-derived snapshot set`
+      );
+    }
+    const overlap = ACTIVE_EXPECTED_SCHEMA_COUNT_SURFACES.filter((rel) =>
+      HISTORICAL_OR_FIXTURE_EXPECTED_SCHEMA_SURFACES.includes(rel)
+    );
+    assert.deepEqual(overlap, [], 'active and historical sets must be disjoint');
+  });
+
+  it('MANIFEST_DERIVED_SNAPSHOT: the operator checklist number is a manifest-derived snapshot', () => {
+    // The operator checklist keeps its verification-time snapshot number, and
+    // its own contract test mechanically compares that number against the
+    // manifest. This is the proof that the literal is derived rather than
+    // maintained by hand, and that the classification is not a loophole.
+    const checklistPath = path.join(
+      REPO_ROOT,
+      'docs',
+      'architecture',
+      'DB_MIGRATION_PROVENANCE_ADOPTION_OPERATOR_CHECKLIST.md'
+    );
+    const checklist = fs.readFileSync(checklistPath, 'utf8');
+    const derived = derivedExpectedSchemaCriticalObjectCount();
+    const stated = checklist.match(
+      new RegExp(String.raw`critical[\s-]objects\s+count:?\s*${NUMBER_WORD}`, 'i')
+    );
+    assert.ok(stated, 'operator checklist must display the verification-time snapshot count');
+    assert.equal(
+      Number(stated[0].match(/\d+/)[0]),
+      derived,
+      'the checklist snapshot number must equal the manifest-derived length'
+    );
+    assert.match(
+      checklist,
+      /manifest-derived snapshot/i,
+      'the checklist must state that the number is manifest-derived, not a hand-maintained authority'
+    );
+    assert.match(
+      checklist,
+      /catalog population is distinct from runner activation\/adoption/i,
+      'catalog-populated must stay distinct from applied/adopted/ACTIVE'
+    );
+  });
+
+  it('catalogued is still not treated as applied, adopted, or ACTIVE', () => {
+    const manifest = readExpectedSchemaManifest();
+    assert.equal(
+      manifest.status,
+      'ADOPTION_REQUIRED',
+      'critical-object catalogue population must not activate the manifest'
+    );
+    assert.ok(
+      derivedExpectedSchemaCriticalObjectCount() > 0,
+      'critical-object catalogue must still be populated'
+    );
+    assert.doesNotMatch(
+      JSON.stringify(manifest),
+      /"status"\s*:\s*"ACTIVE"/,
+      'the committed manifest must never carry a synthetic ACTIVE status'
+    );
+  });
+});

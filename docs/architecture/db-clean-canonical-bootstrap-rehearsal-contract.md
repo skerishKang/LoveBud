@@ -108,7 +108,12 @@ No other path may be added without a revised Web CTO scope approval.
 
 `db/migration-provenance/expected-schema-manifest.json` must be:
 - `status: "ADOPTION_REQUIRED"`
-- `critical_objects` contains exactly one entry:
+- `critical_objects` selects the bootstrap ledger object by exact name and requires
+  exactly one matching entry, decoupled from the manifest's total
+  critical-object cardinality. The committed set is catalog-populated; its
+  critical-object set and count are derived from
+  `db/migration-provenance/expected-schema-manifest.json#critical_objects` and are
+  not restated here. The selected entry is:
   `{ name: "table:public.schema_migration_ledger", fingerprint: "sha256:…" }`
 - The `fingerprint` is the repository catalog normalizer's ledger-table metadata
   fingerprint (computed via `migration-catalog-fingerprint-core.cjs`), which is
