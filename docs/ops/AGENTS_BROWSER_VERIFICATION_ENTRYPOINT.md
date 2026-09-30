@@ -65,7 +65,7 @@ PR: #<number>
 Assigned URL: <Cloudflare PR Preview or fixed test slot>
 URL provenance: <who assigned it and why it is valid>
 Page(s): <page paths>
-Credential source state: <not needed | pre-existing local .local/test-accounts.json | restored from temporary handoff | restored from persistent encrypted bundle>
+Credential source state: <not needed | pre-existing local .local/test-accounts.json | populated from approved non-public store>
 Account type: <Internal QA User | Internal QA Admin | not needed>
 Account selection: <first active matching account type | specific local slot label | not needed>
 Final PASS allowed from local server: NO for Auth/API/data-loaded pages
@@ -119,8 +119,9 @@ Allowed credential source states:
 
 - `not needed`
 - `pre-existing local .local/test-accounts.json`
-- `restored from temporary handoff`
-- `restored from persistent encrypted bundle`
+- `populated from approved non-public store`
+
+Refs #4545: the in-repository encrypted credential bundle channel is **RETIRED**. Do not restore credentials from `docs/ops/qa-credential-bundle/` or from Git history, and do not report a credential source as a repository bundle.
 
 For `.local/test-accounts.json`, verify:
 
@@ -311,7 +312,7 @@ Target pages:
 - `<path>`
 
 Credential source state:
-- `<not needed | pre-existing local .local/test-accounts.json | restored from temporary handoff | restored from persistent encrypted bundle>`
+- `<not needed | pre-existing local .local/test-accounts.json | populated from approved non-public store>`
 
 Account type:
 - `<Internal QA User | Internal QA Admin | not needed>`
@@ -349,7 +350,7 @@ For a My Trees PR such as PR #350, the entrypoint should specify:
 
 ```text
 Page: /pages/my-trees.html
-Credential source state: pre-existing local .local/test-accounts.json or restored from handoff/bundle
+Credential source state: pre-existing local .local/test-accounts.json or populated from approved non-public store
 Account type: Internal QA User
 Account selection: first active matching account type
 Final PASS URL: assigned fixed test slot or Cloudflare PR Preview

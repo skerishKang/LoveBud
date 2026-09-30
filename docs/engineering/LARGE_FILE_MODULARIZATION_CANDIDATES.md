@@ -2,6 +2,8 @@
 
 Issue: #408
 
+Refs #4545
+
 This document records the initial LoveBud large-file modularization inventory for files that exceed or approach the 500-line reviewability threshold.
 
 This is an audit document only. It does not authorize refactors, file moves, ES module conversion, bundler adoption, route movement, CSS relocation, or runtime behavior changes.
@@ -39,6 +41,12 @@ wc -l js/editor.js modal_compute/app.py 'functions/api/[[path]].js' css/editor/o
 # Secret-safe tracked-file check; path names only.
 git ls-files '.local' 'docs/ops/qa-credential-bundle' '*.zip' '*.age'
 ```
+
+Expected result for reusable credential material: **NONE**. No `.zip`, `.age`, or
+credential-bearing file under `docs/ops/qa-credential-bundle/` may be tracked.
+`docs/ops/qa-credential-bundle/README.md` is a non-secret tombstone and is the
+only expected tracked path there (Issue #4545). This command is a
+secret-safe detection guard, not a credential source.
 
 Do not print `.env`, `.local`, credential, token, cookie, session, or private payload values.
 

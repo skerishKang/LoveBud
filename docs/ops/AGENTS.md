@@ -2,6 +2,7 @@
 
 Refs #299
 Refs #849
+Refs #4545
 
 ## Purpose
 
@@ -34,10 +35,17 @@ Agents may reference these local paths by name only:
 - `.env.*`
 - `.local/test-accounts.json`
 - `.local/test-accounts.example.json`
-- `docs/ops/qa-credential-bundle/`
 - `~/.config/gh/hosts.yml`
 
 Referencing a path does not authorize printing its contents.
+
+`docs/ops/qa-credential-bundle/` is a **RETIRED public Git credential channel**
+(Issue #4545). It is a non-secret tombstone and must not be treated as a current
+credential source or allowed secret location. Never restore credentials from it
+or from Git history. The canonical credential custody is the approved non-public
+password manager / custodian-controlled secret store; see
+[QA_CREDENTIALS.md](QA_CREDENTIALS.md) and
+[qa-credential-bundle/README.md](qa-credential-bundle/README.md).
 
 `.local/test-accounts.json` is a credential-bearing runtime file. Agents may reference the path, selected credential keys, and safe preflight status only. They must not print email, password, confirmPassword, token, session, cookie, UID, request payload, or private values.
 
@@ -138,6 +146,9 @@ Get-ChildItem Env:
 Also forbidden:
 
 - file content output for credential-bearing files;
+- committing any credential archive to the repository;
+- restoring reusable credentials from Git history, old commits, tags, or forks;
+- extracting a historical credential archive for verification or convenience;
 - full environment variable dumps;
 - token value recording or exposure;
 - screenshots containing tokens, cookies, session data, or private keys;

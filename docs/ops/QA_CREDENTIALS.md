@@ -1,17 +1,26 @@
-# QA Credentials — Persistent Encrypted Bundle Workflow
+# QA Credentials — Approved Non-Public Credential Store Workflow
 
-> **✅ PROCEDURE STATUS (as of 2026-05-12)**
+Refs #4545
+Refs #873
+
+> **PROCEDURE STATUS (as of 2026-09-30)**
 >
-> **Persistent encrypted bundle: COMMITTED ✅**
+> **Repository credential bundle channel: RETIRED ✅**
 >
-> The bundle file (`docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`) exists in the repository.
-> A new verifier **can restore credentials** from the bundle using the password obtained via secure channel from the CTO.
+> The public Git credential channel is closed. An encrypted credential bundle was
+> previously committed under `docs/ops/qa-credential-bundle/`; that archive is no
+> longer tracked, and it must not be restored from Git history or recommitted.
+> See [qa-credential-bundle/README.md](qa-credential-bundle/README.md).
 >
 > **All 13 QA/AI actor accounts are registered in the approved password manager (Bitwarden Free).**
+> That non-public store is the canonical credential custody.
 > See [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) for the public-safe inventory.
 >
-> **Current working method: Persistent encrypted bundle**
-> The temporary handoff via Issue #351 is superseded.
+> **Current working method: approved non-public password manager / custodian-controlled secret store.**
+> `.local/test-accounts.json` is a gitignored local runtime file, not a source of
+> truth. The temporary handoff via Issue #351 is superseded.
+>
+> **Rotation of the affected accounts is separately authorized work and has NOT been performed here.**
 
 ---
 
@@ -22,7 +31,7 @@ Models, connector sessions, PR comments, Issue comments, screenshots, docs, and 
 Allowed information is limited to:
 
 - approved local path names;
-- bundle path names;
+- credential **location labels** and the retired bundle directory path as documentation only;
 - whether a file exists;
 - whether a local credential path is gitignored;
 - whether required keys are present;
@@ -41,9 +50,11 @@ Allowed status words include only:
 Forbidden:
 
 - printing plaintext QA credentials;
-- printing bundle passwords;
+- printing credential values or passwords of any kind;
 - printing partial values, prefixes, suffixes, or last characters;
 - committing plaintext `.local/test-accounts.json`;
+- committing any credential archive (`.zip`, `.age`, or otherwise) to this repository;
+- restoring credentials from Git history, old commits, tags, or forks;
 - dumping environment variables;
 - pasting credential file contents into chat, PRs, Issues, logs, screenshots, or reports.
 
@@ -150,14 +161,19 @@ For new or repaired local credential files, prefer the object-map schema. Keep `
 
 ## Overview
 
-This document describes two distinct workflows for managing QA test credentials:
+This document describes the current credential location model for managing QA test credentials.
 
-| Workflow | Status | Source of truth |
-|---------|--------|----------------|
-| **Persistent encrypted bundle** | ✅ Bundle committed (v1) | docs/ops/qa-credential-bundle/ |
-| **Temporary handoff** | 🔴 Superseded | Issue #351 (no longer needed) |
+| Location | Status | Contains secrets | Source of truth |
+|---------|--------|------------------|-----------------|
+| **Git repository** | ✅ Active, public-safe metadata only | ❌ No | Public-safe inventory, docs, status |
+| **Approved non-public password manager / custodian secret store** | ✅ CURRENT credential custody | ✅ Yes | Yes — canonical |
+| **Local runtime file** `.local/test-accounts.json` | ✅ Available, gitignored | ✅ Yes | No — runtime convenience only |
+| **Temporary handoff** | 🔴 Superseded | — | Issue #351 (no longer needed) |
+| **Repository credential bundle channel** | 🔴 RETIRED (Issue #4545) | — | No longer exists; see tombstone |
 
-Do not use the temporary handoff branch (`ops/temp-qa-credential-handoff`). It may be deleted after cleanup. Use the persistent bundle at `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip` instead.
+Do not use the temporary handoff branch (`ops/temp-qa-credential-handoff`).
+Do not restore credentials from `docs/ops/qa-credential-bundle/` or from Git history.
+Obtain current credentials from the approved non-public password manager / custodian-controlled secret store only.
 
 ---
 
@@ -171,61 +187,87 @@ Do not use the temporary handoff branch (`ops/temp-qa-credential-handoff`). It m
 
 ### Security Model
 
-- **Repository**: Will contain only encrypted bundle (password-protected ZIP or `.age` file)
-- **Local Runtime**: Uses decrypted `.local/test-accounts.json` (gitignored)
+- **Repository**: Public-safe metadata only — account labels, credential keys, persona/role, environment, status, sensitivity class, custodian labels. No credential values and no credential archives.
+- **Approved Non-Public Store**: Password manager / custodian-controlled secret store holds the actual credentials.
+- **Local Runtime**: Uses `.local/test-accounts.json` (gitignored, runtime only, not a source of truth)
 - **No Plaintext**: Credentials never committed in plain text
-- **Bundle Password**: Never documented in repository
+- **No Archives**: No credential archive is tracked in this repository; `.gitignore` blocks the retired channel.
+- **Passwords**: Never documented in the repository
 - **Reports**: Use status only; never values
 
 ---
 
-## Persistent Encrypted Bundle Workflow (CURRENT)
+## Current Credential Location Model (CURRENT)
 
-> **✅ ACTIVE: Bundle committed (v1).**
-> This section describes the active persistent workflow.
+> **✅ ACTIVE: approved non-public credential store.**
+> The repository holds public-safe metadata only. This section describes the active workflow.
 
-### Bundle Location
+### Approved Current Source
 
+```text
+approved non-public password manager / custodian-controlled secret store
 ```
-docs/ops/qa-credential-bundle/test-accounts-encrypted.zip
-```
 
-The bundle contains a consolidated JSON file with all 13 QA and AI actor accounts. See [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) for the full public-safe inventory.
+This is the canonical credential custody. Public-safe inventory of what belongs
+there — labels, credential keys, persona/role, environment, status, sensitivity
+class, custodian labels — is in [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md).
 
 ### Repository Structure
 
 ```
 docs/ops/QA_CREDENTIALS.md                              # This documentation
 docs/ops/QA_ACCOUNT_REGISTRY.md                         # Public-safe account inventory
-docs/ops/qa-credential-bundle/README.md                 # Bundle status and path
-docs/ops/qa-credential-bundle/test-accounts-encrypted.zip  # ✅ Committed (v1)
-.local/test-accounts.json                               # Runtime credentials (gitignored)
+docs/ops/qa-credential-bundle/README.md                 # Tombstone: retired channel (no secrets)
+.local/test-accounts.json                               # Runtime credentials (gitignored, not source of truth)
 .local/test-accounts.example.json                       # Example format (committed)
 ```
 
-### For Computer 2 (Local Verifier) — Persistent Restore
+### Retired Repository Credential Channel
+
+An encrypted bundle was previously committed at `docs/ops/qa-credential-bundle/`.
+That channel is **RETIRED**. It is a tombstone only.
+
+```text
+STATUS=RETIRED_PUBLIC_GIT_CREDENTIAL_CHANNEL
+NO_CREDENTIAL_MATERIAL_TRACKED_HERE
+HISTORICAL_GIT_COPY=NONAUTHORITATIVE
+ROTATION_STATUS=ROTATION_REQUIRED
+```
+
+Do not:
+
+- restore reusable credentials from Git history, old commits, tags, or forks;
+- extract the historical archive for verification or convenience;
+- recommit any credential bundle, encrypted or plaintext.
+
+Historical copies may still exist in clones, forks, and history:
+
+```text
+HISTORICAL_BLOB_EXISTS_POSSIBLY=YES
+CREDENTIAL_ROTATION_REQUIRED=YES
+```
+
+### For Computer 2 (Local Verifier) — Local Runtime Setup
 
 **Decision tree before starting:**
 
 ```
-Step 1: Does docs/ops/qa-credential-bundle/test-accounts-encrypted.zip exist in repo?
-  ├─ YES → Follow persistent restore procedure below
-  └─ NO  → Bundle not yet committed. Use Temporary Handoff (Issue #351) instead.
+Step 1: Do you have access to the approved non-public password manager / secret store?
+  ├─ YES → Retrieve the selected credential entry and continue.
+  └─ NO  → BLOCKED. Do not fall back to Git history or any repository archive.
 
 Step 2: Does .local/test-accounts.json already exist on your machine?
-  ├─ YES → You have a pre-existing local credential file.
-  │        This is NOT a docs-based restore success.
+  ├─ YES → Pre-existing local runtime file. Not a docs-based restore.
   │        Report: credential source = pre-existing local file
-  └─ NO  → Proceed with bundle restore.
+  └─ NO  → Populate it from the approved non-public store.
 ```
 
-**Persistent restore procedure (only when bundle exists in repo):**
+**Local runtime setup procedure:**
 
-1. Pull latest branch containing the bundle
-2. Locate bundle: `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`
-3. Extract using the bundle password obtained via secure channel from bundle custodian
-4. Copy extracted `test-accounts.json` to `.local/test-accounts.json`
-5. Verify format matches `.local/test-accounts.example.json` without printing values
+1. Obtain the selected credential entry from the approved non-public password manager / custodian secret store via the approved operator channel
+2. Write it to `.local/test-accounts.json`
+3. Verify format matches `.local/test-accounts.example.json` without printing values
+4. Run the credential preflight
 
 #### Multi-Clone / Worktree Setup
 
@@ -234,37 +276,46 @@ For each new clone or worktree:
 ```bash
 # In each repository clone/worktree
 mkdir -p .local
-# Copy restored credentials from your master restore location
-cp /path/to/your/restored/test-accounts.json .local/
+# Populate from the approved non-public store; never from Git history.
+cp /path/to/your/locally-retrieved/test-accounts.json .local/
 ```
 
-Do not print the restored file contents.
+Do not print the file contents.
 
 ---
 
 ## Temporary Handoff Workflow (Issue #351) — SUPERSEDED
 
-> **🔴 NO LONGER ACTIVE — Use the persistent bundle instead.**
+> **🔴 NO LONGER ACTIVE.**
 
-The temporary handoff workflow via Issue #351 has been superseded by the persistent encrypted bundle at `docs/ops/qa-credential-bundle/test-accounts-encrypted.zip`.
+The temporary handoff workflow via Issue #351 is superseded. It and the retired
+repository bundle channel are both non-current.
 
-Do not use the `ops/temp-qa-credential-handoff` branch. It may be deleted during cleanup.
+Do not use the `ops/temp-qa-credential-handoff` branch.
 
 ---
 
-## For Computer 1 (Bundle Custodian)
+## For Computer 1 (Credential Custodian)
 
-### Bundle Update Procedure
+### Credential Custody Rules
 
-When credentials need rotation:
+1. The approved non-public password manager / custodian-controlled secret store holds the actual credentials.
+2. This repository holds public-safe metadata only.
+3. No credential archive is committed here — `.gitignore` blocks the retired channel.
+4. Updating [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) is allowed when account labels, counts, or public-safe metadata change.
 
-1. Update the local consolidated credentials file
-2. Create new encrypted bundle: `zip -P <new_password> docs/ops/qa-credential-bundle/test-accounts-encrypted.zip <source.json>`
-3. Update `docs/ops/qa-credential-bundle/README.md` with new SHA and date
-4. Update `docs/ops/QA_ACCOUNT_REGISTRY.md` if account labels or counts changed
-5. Commit the updated bundle and documentation
-6. Notify verifiers of new bundle availability
-7. Distribute new password securely
+### Credential Rotation
+
+Rotation and retirement of the QA/AI accounts are **custodian and provider work under separate authority**.
+
+```text
+ROTATION_STATUS=ROTATION_REQUIRED
+ROTATION_AUTHORITY=SEPARATE / NOT_EXERCISED_BY_THIS_DOCUMENT
+```
+
+- Do not rotate credentials as part of a documentation, source, or test change.
+- Do not rotate by creating and committing an updated bundle. That practice is retired.
+- Do not create a new credential archive to replace the retired one.
 
 ---
 
@@ -284,18 +335,18 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 
 ## Verification Checklist
 
-### Bundle Integrity
+### Credential Channel Boundary
 
-- [x] Bundle contains all 13 QA/AI actor accounts
-- [x] Bundle is password-protected
-- [x] Bundle file is committed to `docs/ops/qa-credential-bundle/`
+- [x] No credential archive is tracked in this repository
+- [x] `docs/ops/qa-credential-bundle/` is a non-secret tombstone
 - [x] No plaintext credentials in repository
-- [x] `docs/ops/qa-credential-bundle/README.md` reflects current bundle SHA
+- [x] `docs/ops/qa-credential-bundle/README.md` records the retired channel and its historical note
 - [x] `docs/ops/QA_ACCOUNT_REGISTRY.md` documents all accounts (public-safe inventory)
+- [x] `git ls-files 'docs/ops/qa-credential-bundle/*'` returns only `README.md`
 
 ### Local Setup
 
-- [ ] `.local/test-accounts.json` exists (restore from bundle if needed)
+- [ ] `.local/test-accounts.json` exists (populate from the approved non-public store)
 - [ ] `.local/test-accounts.json` is gitignored
 - [ ] File format matches the canonical schema without printing values
 - [ ] `npm run check:auth-credentials -- --key accounts.personaA001` returns `CREDENTIAL_PREFLIGHT_PASS`
@@ -304,9 +355,9 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 
 ### Multi-Repository Usage
 
-- [ ] Credentials copied to all required clones/worktrees
+- [ ] Credentials copied to all required clones/worktrees from the approved non-public store
 - [ ] Each repository can read credentials independently
-- [ ] No repeated bundle extraction needed
+- [x] No credential archive extraction is required
 
 ---
 
@@ -314,19 +365,21 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 
 ### Do's
 
-- Use strong passwords for bundle encryption
-- Distribute bundle passwords through secure channels
-- Rotate credentials regularly
-- Verify bundle integrity after extraction
+- Use strong, unique passwords for every QA/AI account
+- Keep credentials in the approved non-public password manager / custodian secret store
+- Retrieve credentials for local runtime only through approved operator channels
+- Rotate credentials under separately authorized custodian/provider work
 - Report only path/status information
 
 ### Don'ts
 
 - Never commit plaintext `.local/test-accounts.json`
-- Never document bundle passwords in repository
-- Never share bundle passwords in plaintext channels
-- Never store bundle passwords in scripts
-- Never treat `ops/temp-qa-credential-handoff` branch as a permanent source
+- Never commit any credential archive (`.zip`, `.age`, or otherwise) to this repository
+- Never restore reusable credentials from Git history, old commits, tags, or forks
+- Never extract a historical credential archive for verification or convenience
+- Never document credential passwords in the repository
+- Never treat `ops/temp-qa-credential-handoff` as a permanent source
+- Never treat any surviving historical repository copy as a current credential source
 - Never print credential file contents
 - Never dump all environment variables
 
@@ -337,15 +390,14 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 ### Common Issues
 
 1. **Missing `.local/test-accounts.json`**
-   - Check if persistent bundle exists in `docs/ops/qa-credential-bundle/`
-   - If not: use temporary handoff (Issue #351)
-   - If yes: extract bundle and restore
-   - Verify bundle password through secure channel
+   - Retrieve the selected credential entry from the approved non-public password manager / custodian secret store
+   - Do not fall back to the retired `docs/ops/qa-credential-bundle/` channel or to Git history
+   - If non-public store access is unavailable, report `BLOCKED`
    - Check file permissions
 
-2. **Procedure appears to work but bundle was not used**
-   - If `.local/test-accounts.json` already existed before restore attempt, that is a **pre-existing local credential**, not a docs-based restore
-   - Always confirm whether the file existed before starting the procedure
+2. **Procedure appears to work but the local file already existed**
+   - If `.local/test-accounts.json` already existed before setup, that is a **pre-existing local credential**, not a setup success
+   - Always confirm whether the file existed before starting
 
 3. **Invalid credential format or selected key**
    - Use `npm run check:auth-credentials -- --key accounts.user`
@@ -360,18 +412,18 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
    - If `confirmPassword` exists, require `password confirm match: YES`
    - If Firebase returns `INVALID_LOGIN_CREDENTIALS`, realign the local credential and Firebase Auth user before PR behavior verification
 
-5. **Bundle extraction fails**
-   - Verify bundle file integrity
-   - Check bundle password through secure channel
-   - Re-download bundle from repository if corrupted
+5. **Credential retrieval from the non-public store fails**
+   - Report `BLOCKED` with status only
+   - Escalate to the credential custodian through the approved operator channel
+   - Do not substitute a historical repository copy
 
 ### Recovery Procedures
 
 If credentials are lost or corrupted:
 
-1. Check if persistent bundle exists in `docs/ops/qa-credential-bundle/`
-2. If yes: extract from persistent bundle after contacting custodian for password
-3. If no: use temporary handoff via Issue #351
+1. Retrieve the affected entries from the approved non-public password manager / custodian secret store
+2. If unavailable, escalate to the credential custodian; report by safe label only
+3. Do not restore from the retired repository channel or from Git history
 4. Verify all QA slots work correctly without printing values
 
 ---
@@ -382,21 +434,21 @@ When reporting credential workflow results:
 
 ```
 procedure validation result: PROCEDURE WORKS | PARTIALLY WORKS | BLOCKED
-credential source:           persistent bundle | temporary handoff (Issue #351) | pre-existing local file
+credential source:           approved non-public store | pre-existing local file
 secret values exposed:       NO
-bundle committed to repo:    YES | NO
+credential archive tracked:  NO
 credential file:             EXISTS | MISSING
 credential file gitignored:  YES | NO
 verification environment:    Cloudflare PR Preview | fixed test slot | [other]
 ```
 
-**Example (current state — bundle committed):**
+**Example (current state):**
 ```
 procedure validation result: PROCEDURE WORKS
-credential source:           persistent bundle
+credential source:           approved non-public store
 secret values exposed:       NO
-bundle committed to repo:    YES
-credential file:             EXISTS (restored from bundle) | MISSING
+credential archive tracked:  NO
+credential file:             EXISTS (populated from approved non-public store) | MISSING
 credential file gitignored:  YES
 verification environment:    fixed test slot
 ```
@@ -408,7 +460,8 @@ verification environment:    fixed test slot
 - [AGENTS.md](AGENTS.md)
 - [AGENT_SECURITY.md](AGENT_SECURITY.md)
 - [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) — public-safe account inventory for password manager registration
-- [qa-credential-bundle/README.md](qa-credential-bundle/README.md) — persistent bundle commit status
+- [qa-credential-bundle/README.md](qa-credential-bundle/README.md) — retired credential channel tombstone (no secrets)
+- `tests/contracts/qa-credential-public-git-boundary-4545.test.cjs` — tracked-archive ban and no-current-restore-authority guard
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md)
 - [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md)
 - [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)
