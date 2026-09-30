@@ -9,9 +9,16 @@
  *   - LoveBudSecurity.sanitizeUrl(): http/https only
  *
  * Guardrail approach:
- *   Each JS file under js/ has a signed sink count. If a file's sink
- *   count changes (new sink added or removed), the test fails and
- *   the developer must update the allowlist, documenting the reason.
+ *   Each JS file under js/ has a signed sink count. The guard runs in both
+ *   directions:
+ *     forward  — a file with sinks that is not signed, or whose count changed,
+ *                fails and the developer must update the allowlist and
+ *                document the reason;
+ *     reverse  — every signed entry must still exist, must still own at least
+ *                one sink, and must still match its signed count. A file whose
+ *                last sink was removed therefore fails as a stale entry
+ *                (declared > 0, actual = 0) instead of silently disappearing
+ *                from the guard.
  *
  * This is a COUNTER guardrail — it detects changes in sink count
  * per file, which is more stable than line-level matching across
@@ -62,6 +69,45 @@ function collectJsFiles(dir) {
 
 function relPath(absolutePath) {
   return path.relative(ROOT, absolutePath).replace(/\\/g, '/');
+}
+
+// ─── REVERSE VALIDATION ─────────────────────────────────────────────────────
+//
+// #4533 correction. A count guard is only sound when it is checked in both
+// directions. Forward: every file that still has a sink is signed, and its
+// count matches. Reverse: every signed entry still exists, still has at least
+// one sink, and still matches its signed count.
+//
+// Without the reverse pass a file whose LAST sink was removed keeps its stale
+// positive entry forever (declared > 0, actual = 0) and the guard silently
+// shrinks instead of failing. A `count: 0` entry can never be a "documented
+// sink file" for the same reason: it is an entry that can never fail forward.
+
+function countSinksInFile(absolutePath) {
+  return fs.existsSync(absolutePath) ? findSinks(absolutePath).length : null;
+}
+
+function validateAllowlistEntries(allowlist, countFor) {
+  const problems = [];
+  for (const [rel, entry] of Object.entries(allowlist)) {
+    const actual = countFor(rel);
+    if (actual === null) {
+      problems.push(`STALE ALLOWLIST ENTRY: ${rel} is signed but does not exist on disk`);
+      continue;
+    }
+    if (actual === 0) {
+      problems.push(`STALE ALLOWLIST ENTRY: ${rel} is signed for ${entry.count} sink(s) but the file has none (final sink removed?) — delete the entry`);
+      continue;
+    }
+    if (entry.count !== actual) {
+      problems.push(`SIGNED COUNT MISMATCH: ${rel} signed ${entry.count}, found ${actual}`);
+    }
+  }
+  return problems;
+}
+
+function countAllowlistSinksInFile(rel) {
+  return countSinksInFile(path.join(ROOT, rel));
 }
 
 // ─── ALLOWLIST ──────────────────────────────────────────────────────────────
@@ -125,10 +171,6 @@ const FILE_ALLOWLIST = {
     reason: 'All user content escaped via escapeHtml/sanitizeUrl; clear-container for list; static no-media divs'
   },
 
-  'js/viewer/public-viewer-detail-view-mode-template.js': {
-    count: 0, classification: 'safe',
-    reason: '#3563 thin public wrapper; mounts via shared builder (no local outerHTML/innerHTML sink)'
-  },
   'js/shared/canonical-appreciation-detail-presentation.js': {
     count: 1, classification: 'safe',
     reason: 'mount.outerHTML = buildDetailViewModeHtml(...) — static canonical appreciation shell, no user content'
@@ -150,10 +192,6 @@ const FILE_ALLOWLIST = {
   'js/my-trees.js': {
     count: 1, classification: 'safe',
     reason: 'clear-container: innerHTML = empty string'
-  },
-  'js/my-trees/my-trees-actions.js': {
-    count: 5, classification: 'safe',
-    reason: 'material-icons + i18n safeText; restoreHeaderText/EmptyText are previously captured safe innerHTML; visibilityField uses array join of safe option HTML'
   },
   'js/my-trees/my-trees-batch-render.js': {
     count: 2, classification: 'safe',
@@ -296,11 +334,6 @@ const FILE_ALLOWLIST = {
   },
 
   // ── Settings ─────────────────────────────────────────────────────────
-  'js/settings.js': {
-    count: 2, classification: 'safe',
-    reason: 'material-icon + i18n safeText for browse title and logout button'
-  },
-
   // ── Shared Header ────────────────────────────────────────────────────
   'js/shared-header.js': {
     count: 1, classification: 'safe',
@@ -458,6 +491,50 @@ test('DOM XSS renderer guardrail: per-file sink count signed', () => {
   console.log(`   - Review needed: ${reviewCount} files`);
   console.log(`   - Mock/prototype: ${mockCount} files`);
   console.log(`   All ${Object.keys(FILE_ALLOWLIST).length} file counts match.`);
+});
+
+test('DOM XSS renderer guardrail: every signed entry still owns its sinks (reverse validation)', () => {
+  const problems = validateAllowlistEntries(FILE_ALLOWLIST, countAllowlistSinksInFile);
+
+  assert.deepEqual(
+    problems,
+    [],
+    `Every signed entry must exist, keep at least one sink, and keep its signed count.\n` +
+    `A stale entry means a sink was removed (or edited away) without updating the allowlist.\n${problems.join('\n')}`
+  );
+});
+
+test('DOM XSS renderer guardrail: final-sink removal is detected (negative control)', () => {
+  // Signed > 0 with nothing left in the file is the blind spot this guard exists
+  // to close: the forward pass skips files with no sinks, so only a reverse check
+  // on the signed entries can fail.
+  const synthetic = {
+    'js/final-sink-removed.js': { count: 1, classification: 'safe', reason: 'negative control' },
+    'js/entry-for-deleted-file.js': { count: 2, classification: 'safe', reason: 'negative control' },
+    'js/signed-zero.js': { count: 0, classification: 'safe', reason: 'negative control' },
+    'js/still-fine.js': { count: 3, classification: 'safe', reason: 'negative control' },
+  };
+  const counts = {
+    'js/final-sink-removed.js': 0,
+    'js/entry-for-deleted-file.js': null,
+    'js/signed-zero.js': 0,
+    'js/still-fine.js': 3,
+  };
+
+  const problems = validateAllowlistEntries(synthetic, (rel) => counts[rel]);
+
+  assert.equal(problems.length, 3, 'exactly the three stale entries must be reported');
+  const report = problems.join('\n');
+  assert.match(report, /js\/final-sink-removed\.js is signed for 1 sink\(s\) but the file has none/,
+    'a removed final sink must fail the reverse pass');
+  assert.match(report, /js\/entry-for-deleted-file\.js is signed but does not exist/,
+    'an entry for a deleted file must fail the reverse pass');
+  assert.match(report, /js\/signed-zero\.js is signed for 0 sink\(s\) but the file has none/,
+    'a count: 0 entry is never a valid documented sink file');
+  assert.ok(!report.includes('js/still-fine.js'), 'a matching entry must stay clean');
+
+  // and the same helper must accept the real allowlist untouched
+  assert.deepEqual(validateAllowlistEntries(FILE_ALLOWLIST, countAllowlistSinksInFile), []);
 });
 
 test('DOM XSS guardrail: known issues documented', () => {

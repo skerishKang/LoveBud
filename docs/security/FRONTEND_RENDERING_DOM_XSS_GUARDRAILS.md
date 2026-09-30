@@ -54,4 +54,73 @@ Before approving frontend render changes, check:
 
 The contract test for this policy scans representative high-risk frontend files. It is intentionally conservative: it does not ban all `innerHTML`, but it fails on obvious direct interpolation of user-controlled field names into HTML sinks without a safe helper.
 
+Statement windows are bounded, multiline and template-aware: the whole sink assignment is analysed, not just the line the sink token sits on, so a safety change deeper inside a multi-line template cannot slip past the guard.
+
 If a future renderer legitimately needs dynamic HTML, add a small safe helper or extend the test with a narrow allowlist and a comment explaining the safe boundary.
+
+## Sink inventory and the two-layer guard (#4533)
+
+Every `innerHTML`, `outerHTML` and `insertAdjacentHTML` occurrence under `js/**` is inventoried in `docs/security/frontend-dom-sink-inventory-4533.json`, re-derived from the exact checked-in tree on every run.
+
+### Layer 1 — per-file sink count
+
+`tests/contracts/dom-xss-renderer-guardrail-contract.test.cjs` signs a per-file sink count and is checked in both directions:
+
+- **forward** — a file that has a sink but is not signed, or whose count no longer matches, fails: a new sink, a file receiving its first sink, and a removed sink are all detected;
+- **reverse** — every signed entry is re-validated against the tree: the file must still exist, must still own at least one sink, and must still match its signed count. A file whose **final** sink was removed therefore fails as a stale entry (`declared > 0, actual = 0`) instead of silently dropping out of the guard, and a `count: 0` entry is never accepted as a documented sink file.
+
+It is necessary but not sufficient: a count-only guard cannot see a same-count edit, so the semantic layer below exists.
+
+### Layer 2 — sink-level semantics
+
+`tests/contracts/frontend-dom-xss-guardrails.test.cjs` re-derives every sink, compares the identity multiset with the inventory 1:1, and classifies each sink. Identity is `path :: sinkType :: #occurrence :: statementDigest` over the whitespace-normalised statement — line numbers are recorded for humans only, and a same-count semantic degradation changes the digest and fails.
+
+All active sinks must be classified. `ACTIVE_REVIEW_NEEDED_COUNT` must be `0`: a new active sink that lands in `review_needed` fails the test rather than being waved through as a one-line `"safe"` entry. The set of approved renderer sinks is itself signed, and every approved sink must resolve through a declared, return-proven contract from its exact source.
+
+Classification vocabulary:
+
+| classification | meaning |
+|---|---|
+| `CLEAR_CONTAINER` | right-hand side is an empty string literal |
+| `STATIC_TRUSTED_TEMPLATE` | no user-controlled value reaches the sink |
+| `EXPLICIT_ESCAPED_DYNAMIC` | every user value passes `escapeHtml` / `textContent` / `createTextNode` / `setAttribute` |
+| `SANITIZED_URL_DYNAMIC` | every user value passes `sanitizeUrl` / `safeUrl` / `normalizeUrl` |
+| `APPROVED_RENDERER_BOUNDARY` | delegated to a declared renderer contract — exact owner source and declared call sites — whose returned user-bearing fragments are proven escaped from that source |
+| `REVIEW_NEEDED` | user-controlled value with no provable safe boundary |
+| `DORMANT_OR_MOCK` | sink on a non-active surface; recorded, never counted as active Product acceptance |
+
+### Approved renderer boundaries
+
+An approved renderer boundary is explicit and narrow, and exactly one thing grants it: an entry in `APPROVED_RENDERER_CONTRACTS` (`tests/helpers/dom-sink-scan.cjs`) that declares the helper **name**, the **exact owning source** file that defines it, the **exact call sites** allowed to rely on it, and a bounded **producer** list (the helper plus the helpers it delegates to) whose *returned* fragments are mechanically re-proven.
+
+Every run re-reads those producers from their exact sources and proves each returned fragment. A fragment is proven only when every user-bearing value in it is a literal, an application-text call, a numeric/boolean coercion, a whole call to another declared producer, or a value sitting inside an escaping boundary (`escapeHtml`, `sanitizeUrl`, `safeUrl`, `normalizeUrl`, `encodeURIComponent`, `encodeURI`). Local variables are proven through their exact definitions, and the source under analysis is always the authority for its own file.
+
+Consequently:
+
+- an escape token that merely appears **somewhere** in a helper body or in its callee chain never approves that helper's output — the returned user-bearing fragment itself must be escaped (`escapeHtml(tree.memo)` must not approve a returned `tree.title`);
+- there is **no global same-name helper lookup** and no cross-file safety resolution: a helper defined in another file can never bless a call, and a local definition always wins for its own file;
+- registering a name is never enough on its own: the returned-fragment proof must pass, and a helper that stops escaping its returned fragment stops being approved;
+- the boundary is never granted by a variable name, by a same-count edit, or by a file-level `"safe"` label alone;
+- renderers that build DOM nodes and serialise them with `outerHTML` are a different safety model and are not approvable by this returned-fragment proof; they stay `review_needed` on their (dormant) surfaces until a DOM-native contract exists.
+
+Provenance is only ever used to prove safety. A value resolved from an i18n/application-text definition (`tText`, `t`, `getSearchCopy`, a literal) is not user-controlled; provenance alone can never turn an unproven sink into an accepted one.
+
+### Active, dormant and mock surfaces
+
+Surface is freshly derived, never inherited from an older document:
+
+- `ACTIVE_PRODUCT` — the file is loaded by a reachable Product page (root page, a `_redirects` canonical target, an inbound href, or a non-self-referential `pages/<name>` reference).
+- `DORMANT_UNLINKED` — loaded only by an unreachable page, or by no page at all (for example the legacy root Search duplicates and `js/viewer/public-tree-viewer.js`).
+- `MOCK_PROTOTYPE` — a prototype/PoC runtime that no active page reaches (for example `js/chat-first-workspace.js`, whose only loader `pages/chat-first-workspace.html` has no inbound navigation).
+
+Direct URL access is not navigation: a page a user could type in manually is still `DORMANT_UNLINKED` when nothing in the active product links or routes to it. Dormant and mock sinks stay in the inventory, and their semantic verdict stays visible, but they are never mixed into active Product safety acceptance.
+
+### What fails the test
+
+- a new, removed or edited sink (Layer 1 count, Layer 2 identity)
+- a removed final sink, or an entry for a file that no longer exists (Layer 1 reverse pass: stale allowlist entry)
+- a `count: 0` allowlist entry
+- same-count escape removal, and same-count replacement of an approved renderer
+- a helper approved by an escape token that sits in an unrelated branch, or by a same-name helper in another file
+- any active sink classified `REVIEW_NEEDED`
+- an inventory total or classification that no longer matches a fresh derivation
