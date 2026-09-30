@@ -119,7 +119,7 @@ Current active implementation surfaces include:
 - Firebase verified identity projected into the current compatibility owner boundary;
 - Neon PostgreSQL as the canonical writable Tree/Memory/social data authority.
 
-For Direct-Neon private writes, the canonical private-storage entitlement source is Neon `public.users.private_storage_enabled` with strict-true semantics. Retained Modal compatibility code still has legacy entitlement behavior; #4531 owns the source-level rollback-parity reconciliation. Do not assume a runtime-gate rollback is business-semantics-equivalent until that contract is satisfied.
+For Direct-Neon private writes, the canonical private-storage entitlement source is Neon `public.users.private_storage_enabled` with strict-true semantics. Retained Modal compatibility code still has legacy entitlement behavior; #4531 owns the source-level rollback-parity reconciliation, recorded in `docs/architecture/private-storage-entitlement-rollback-contract-4531.md`: `TECHNICAL_GATE_ROLLBACK_AVAILABLE=YES`, `BUSINESS_SEMANTICS_PRESERVING_ROLLBACK=NO`, `BUSINESS_SEMANTICS_EQUIVALENCE=NOT_PROVEN`, `ENTITLEMENT_PARITY_STATUS=NOT_PROVEN_DIVERGENT_BY_SOURCE`, `CENTRAL_REVIEW_REQUIRED_BEFORE_PRIVATE_ROLLBACK=YES`. Do not assume a runtime-gate rollback is business-semantics-equivalent until that contract is satisfied; the Direct-Neon readiness matrix carries the same guard on each private entitlement-dependent route (tree-private-create, tree-private-visibility-update, memory-private-create, memory-private-visibility-update).
 
 ### Current active behavior status
 

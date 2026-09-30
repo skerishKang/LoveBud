@@ -2862,6 +2862,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/private-storage-entitlement-rollback-parity-4531.test.cjs",
+      "layer": "SOURCE_STATIC",
+      "rationale": "Source/docs/test-only #4531 rollback-semantics guard: reads the rollback contract, the readiness matrix JSON and rendered Markdown, functions/_shared/private-storage-entitlement-neon.js, modal_compute/auth.py, and the preserved #3946 legacy truth test, and invokes the pure Neon entitlement helper only with an in-memory fake transaction to obtain the canonical symbol column; no real database, network, provider, Firebase/Firestore, Cloudflare, Modal, credential, Product request, runtime gate, or Production resource.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/private-tree-capability-direct-neon.test.cjs",
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the #4424 Phase-5 private Tree capability direct-Neon source candidate and catch-all route contract in-process with constructed Request/env inputs, an injected fake Firebase verifier and fake Neon query executor, proving exact gate selection, verified legacyOwnerId-only owner authority, bounded SELECT EXISTS behavior, owner/non-owner capability DTO parity, malformed/rejected auth false-capability semantics, fail-closed verifier/config/query availability, malformed Tree-id no-DB behavior, no-store/direct-neon headers, and route isolation. No real network, browser, Firebase provider, Neon database, Production secret, or Production resource is used (#4424).",
