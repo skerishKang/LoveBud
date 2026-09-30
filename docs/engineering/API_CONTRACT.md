@@ -171,7 +171,7 @@ Current policy state:
 - New Tree creation is public-first unless an explicit private request passes the separately governed private-storage policy.
 - Private Tree/Memory creation and public→private visibility transitions remain Plus-gated.
 - Direct-Neon private writes use Neon `public.users.private_storage_enabled` as the canonical entitlement authority.
-- Retained Modal compatibility entitlement behavior is tracked for rollback parity under #4531.
+- Retained Modal compatibility entitlement behavior is tracked for rollback parity under #4531 (`docs/architecture/private-storage-entitlement-rollback-contract-4531.md`): removing/unsetting a private-storage runtime gate is a technical routing rollback only, with `BUSINESS_SEMANTICS_PRESERVING_ROLLBACK=NO`, `BUSINESS_SEMANTICS_EQUIVALENCE=NOT_PROVEN`, `ENTITLEMENT_PARITY_STATUS=NOT_PROVEN_DIVERGENT_BY_SOURCE` and `CENTRAL_REVIEW_REQUIRED_BEFORE_PRIVATE_ROLLBACK=YES`.
 - Public read paths retain parent Tree visibility guards.
 - Public visibility remains separate from Browse/Search eligibility.
 
@@ -482,6 +482,7 @@ const normalized = window.LoveBudNormalize.normalizeMemory(apiResponse);
 - private 생성/전환 guard는 active backend에서 강제해야 합니다.
 - canonical entitlement field는 Neon `public.users.private_storage_enabled`입니다.
 - compatibility entitlement fields의 장기 지원 여부는 별도 contract-needed 항목입니다.
+- private storage gate를 unset/removal하는 것은 technical routing rollback일 뿐이며 business-semantics-preserving rollback이 아닙니다 (`docs/architecture/private-storage-entitlement-rollback-contract-4531.md`; `BUSINESS_SEMANTICS_EQUIVALENCE=NOT_PROVEN`).
 - 기존 private tree grandfathering을 고려해야 합니다.
 - browse display filter는 public visibility와 별도로 유지합니다.
 - `netlify/functions/*`에 신규 visibility/private-storage 정책을 구현하지 않습니다.
