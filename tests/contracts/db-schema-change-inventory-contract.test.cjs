@@ -423,7 +423,7 @@ describe('DB schema-change inventory guard (#3458)', () => {
   });
 });
 
-// ??? #4532 canonical migration count freshness guard ????????????????????????
+// ─── #4532 canonical migration count freshness guard ────────────────────────
 //
 // #4532 observed drift: the canonical manifest catalogued five migrations while
 // architecture prose still claimed "two"/"three catalogued migrations". The fix
@@ -474,7 +474,7 @@ function derivedCanonicalCount() {
   return readCanonicalManifest().migrations.length;
 }
 
-// ??? #4539 active-normative count guard (bounded) ????????????????????????????
+// ─── #4539 active-normative count guard (bounded) ────────────────────────────
 //
 // #4532 fixed the primary inventory surfaces; #4539 removes the remaining
 // hand-maintained catalogue counts from the other active architecture/governance
@@ -552,8 +552,8 @@ describe('#4539 active-normative migration count guard', () => {
 
   it('NC9b: an equivalent canonical-modifier literal count cannot bypass the active normative guard', () => {
     // #4539 correction: the original detector only tolerated the `additive`
-    // modifier, so "two catalogued canonical migrations" ??the exact phrasing this
-    // PR removed from canonical-memory-lineage-write-contract-4005.md ??could be
+    // modifier, so "two catalogued canonical migrations" — the exact phrasing this
+    // PR removed from canonical-memory-lineage-write-contract-4005.md — could be
     // re-introduced on an active normative surface and still pass.
     for (const phrase of [
       'two catalogued canonical migrations',
@@ -721,7 +721,7 @@ describe('#4532 canonical migration count freshness guard', () => {
     );
   });
 });
-// ??? #4541 expected-schema critical-object count freshness guard ?????????????
+// ─── #4541 expected-schema critical-object count freshness guard ─────────────
 //
 // #4541 observed drift: the expected-schema manifest catalogued three critical
 // objects while active architecture/governance prose still restated the number
@@ -729,7 +729,7 @@ describe('#4532 canonical migration count freshness guard', () => {
 // "`critical_objects` contains exactly one entry", "empty critical_objects").
 // Same failure class as the canonical-migration count drift fixed by
 // #4532/#4539, but a DISTINCT authority surface: expected-schema metadata, not
-// the canonical migration catalogue. The two guard domains stay separate ??
+// the canonical migration catalogue. The two guard domains stay separate --
 // `restatedCountFaults` above is the #4539 canonical-migration detector, and this
 // is the #4541 expected-schema critical-object detector.
 //
