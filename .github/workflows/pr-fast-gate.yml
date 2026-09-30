@@ -16,12 +16,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Full history so the guard can resolve git merge-base (#4546).
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
+
+      - name: PR guardrails
+        # PR body is attacker-controlled. The script reads GITHUB_EVENT_PATH JSON
+        # itself; user-controlled text is never interpolated into this shell command.
+        if: github.event_name == 'pull_request'
+        run: npm run check:pr-guardrails -- --github-event "$GITHUB_EVENT_PATH"
 
       - name: Install
         run: npm ci

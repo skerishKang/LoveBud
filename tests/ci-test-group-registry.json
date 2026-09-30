@@ -238,7 +238,6 @@
       "explicit_paths": [
         "scripts/batch-test-runner.cjs",
         "scripts/capture-screenshots.cjs",
-        "scripts/check-pr-guardrails.cjs",
         "scripts/cloudflare-supplied-url-smoke.cjs",
         "scripts/e2e-auth-guard-smoke.cjs",
         "scripts/e2e-editor-delete-smoke.cjs",

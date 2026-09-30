@@ -98,15 +98,25 @@
 
 금지:
 - 실제 현재 증상과 연결 없이 “파일이 크니 심각” 판정
-- generic 프론트엔드 교과서식 리뷰를 최우선 이슈로 분류
-
-### 7. 이름만 보고 위험 단정
+- generic 프론트엔드 교과서식 리뷰를 최우선 이슈로 분류### 7. 이름만 보고 위험 단정
 
 - 파일명만 보고 runtime 구조를 단정하지 않습니다.
 - 반드시 현재 파일 내용과 실제 호출 구조를 확인합니다.
 
 금지:
+
 - 예: `postgres-client.js`라는 이름만 보고 브라우저가 DB에 직접 붙는다고 단정
+
+### 8. PR guardrail CI (#4546)
+
+- `scripts/check-pr-guardrails.cjs`는 `.github/workflows/pr-fast-gate.yml`에서 `pull_request` 이벤트에만 실행됩니다.
+- protected Issue close 금지 규칙의 canonical authority는 이 문서가 아니라 `docs/ops/MVP_AGENT_GOVERNANCE.md`입니다. 그 문서의 `Never close #<number>` 규칙에서 파생됩니다.
+- PR body는 attacker-controlled 입력입니다. workflow가 `${{ github.event.pull_request.body }}`를 shell에 삽입하지 않고, script가 `GITHUB_EVENT_PATH` JSON을 직접 읽습니다.
+
+금지:
+
+- PR body/title을 `run:` 명령 문자열에 `${{ ... }}`로 삽입하는 형태로 PR guardrail을 다시 배선하는 것
+- canonical governance 문서가 아닌 임의의 ad-hoc 목록으로 protected Issue 집합을 하드코딩하는 것
 
 ---
 
