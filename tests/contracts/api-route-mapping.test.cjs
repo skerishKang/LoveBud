@@ -72,6 +72,23 @@ const MAPPING_JS = path.join(ROOT, 'functions/_shared/catchall-modal-route-mappi
 // budget, safe URL log projection, AbortController timeout wrapper) into their
 // own module. The timeout response policy stays with the gateway orchestration.
 const FETCH_JS = path.join(ROOT, 'functions/_shared/catchall-modal-fetch.js');
+// #4535 Slice 4 moved the catch-all's pure RESPONSE TAXONOMY — the seven
+// terminal answers (401/404/405/413/503/504) with their statuses, bodies and
+// headers — into their own module. The gateway keeps every DECISION about which
+// answer applies; this module only shapes them. Response-shape assertions read
+// RESPONSE_POLICY_JS; gateway assertions keep reading CATCHALL_JS.
+const RESPONSE_POLICY_JS = path.join(ROOT, 'functions/_shared/catchall-response-policy.js');
+
+// The exact seven builders that left the catch-all in #4535 Slice 4.
+const CATCHALL_RESPONSE_BUILDERS = [
+  'buildBodyReadFailedResponse',
+  'buildPayloadTooLargeResponse',
+  'buildNotFoundResponse',
+  'buildMethodNotAllowedResponse',
+  'buildModalUnavailableResponse',
+  'buildMissingAuthorizationResponse',
+  'buildModalTimeoutResponse'
+];
 const TREE_DETAIL_JS = path.join(ROOT, 'functions/api/trees/[id].js');
 const MEMORY_DETAIL_JS = path.join(ROOT, 'functions/api/memories/[id].js');
 const MEMORY_PROXY_JS = path.join(ROOT, 'functions/_shared/memory-route-proxy.js');
@@ -399,7 +416,10 @@ test('cloudflare catch-all clamps growing-trees limit between 3 and 12', () => {
 
 test('cloudflare api catch-all returns 405 for unsupported methods on handled routes', () => {
   const content = readFileContent(CATCHALL_JS);
+  const policy = readFileContent(RESPONSE_POLICY_JS);
 
+  // The gateway still decides that a method is unsupported and still selects
+  // the allowed set; only the SHAPE of the answer moved in #4535 Slice 4.
   assert.ok(
     hasString(content, '405'),
     'catch-all should return 405 for unsupported methods'
@@ -413,8 +433,16 @@ test('cloudflare api catch-all returns 405 for unsupported methods on handled ro
     'catch-all should allow GET method'
   );
   assert.ok(
-    hasString(content, 'method-not-allowed'),
-    'catch-all should set route-status to method-not-allowed'
+    hasString(content, 'return buildMethodNotAllowedResponse(allow, requestId)'),
+    'catch-all should still emit the 405 through the shared response policy'
+  );
+  assert.ok(
+    hasString(policy, "'x-lovebud-route-status': 'method-not-allowed'"),
+    'the 405 route-status taxonomy should be owned by catchall-response-policy.js'
+  );
+  assert.ok(
+    !hasString(content, 'method-not-allowed'),
+    'catch-all should not redeclare the 405 route-status taxonomy'
   );
 });
 
@@ -435,14 +463,19 @@ test('cloudflare catch-all 405 allow header distinguishes collection vs detail p
 
 test('cloudflare catch-all 405 response sets content-type application/json', () => {
   const content = readFileContent(CATCHALL_JS);
+  const policy = readFileContent(RESPONSE_POLICY_JS);
 
   assert.ok(
-    hasString(content, 'application/json'),
+    hasString(policy, 'application/json'),
     '405 response should set content-type: application/json'
   );
   assert.ok(
-    hasString(content, 'Method not allowed'),
+    hasString(policy, 'Method not allowed'),
     '405 response body should contain Method not allowed'
+  );
+  assert.ok(
+    hasString(content, 'buildMethodNotAllowedResponse'),
+    'catch-all should route every 405 through the shared response policy'
   );
 });
 
@@ -450,39 +483,53 @@ test('cloudflare catch-all 405 response sets content-type application/json', () 
 
 test('cloudflare api catch-all adds x-lovebud-upstream: cloudflare for unhandled routes', () => {
   const content = readFileContent(CATCHALL_JS);
+  const policy = readFileContent(RESPONSE_POLICY_JS);
 
   assert.ok(
     hasString(content, 'x-lovebud-upstream'),
     'catch-all should set x-lovebud-upstream header'
   );
+  // #4535 Slice 4: the 'cloudflare' upstream tag on terminal edge answers is
+  // owned by the response policy; the gateway keeps the propagation helper.
   assert.ok(
-    hasString(content, 'cloudflare'),
-    'catch-all should set upstream to cloudflare for unhandled routes'
+    hasString(policy, "'x-lovebud-upstream': 'cloudflare'"),
+    'the cloudflare upstream tag for unhandled routes should be owned by catchall-response-policy.js'
+  );
+  assert.ok(
+    hasString(content, 'return buildNotFoundResponse(requestId)'),
+    'catch-all should emit the unhandled 404 through the shared response policy'
   );
 });
 
 test('cloudflare api catch-all adds x-lovebud-route-status: unhandled for 404', () => {
   const content = readFileContent(CATCHALL_JS);
+  const policy = readFileContent(RESPONSE_POLICY_JS);
 
+  // #4535 Slice 4: the route-status taxonomy is owned by the response policy.
   assert.ok(
-    hasString(content, 'x-lovebud-route-status'),
-    'catch-all should set x-lovebud-route-status header'
+    hasString(policy, 'x-lovebud-route-status'),
+    'the route-status header should be owned by catchall-response-policy.js'
   );
   assert.ok(
-    hasString(content, 'unhandled'),
-    'catch-all should set route-status to unhandled for 404'
+    hasString(policy, "'x-lovebud-route-status': 'unhandled'"),
+    'the 404 route-status should be unhandled and owned by catchall-response-policy.js'
+  );
+  assert.ok(
+    hasString(content, 'buildNotFoundResponse'),
+    'catch-all should route every unhandled 404 through the shared response policy'
   );
 });
 
 test('cloudflare catch-all 404 response sets content-type application/json', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const policy = readFileContent(RESPONSE_POLICY_JS);
 
+  // #4535 Slice 4: the 404 body and headers are owned by the response policy.
   assert.ok(
-    hasString(content, 'Route not found'),
+    hasString(policy, 'Route not found'),
     '404 response body should contain Route not found'
   );
   assert.ok(
-    hasString(content, 'application/json'),
+    hasString(policy, 'application/json'),
     '404 response should set content-type: application/json'
   );
 });
@@ -491,27 +538,37 @@ test('cloudflare catch-all 404 response sets content-type application/json', () 
 
 test('cloudflare catch-all returns 503 when Modal is unavailable', () => {
   const content = readFileContent(CATCHALL_JS);
+  const policy = readFileContent(RESPONSE_POLICY_JS);
 
+  // The gateway still owns the degraded decision and its 503 call sites.
   assert.ok(
     hasString(content, '503'),
     'catch-all should return 503 when Modal is unavailable'
   );
   assert.ok(
-    hasString(content, 'Modal backend unavailable'),
+    hasString(content, 'return buildModalUnavailableResponse(requestId)'),
+    'catch-all should emit the degraded 503 through the shared response policy'
+  );
+  // #4535 Slice 4: the body moved with the rest of the taxonomy.
+  assert.ok(
+    hasString(policy, 'Modal backend unavailable'),
     '503 response body should state Modal backend unavailable'
   );
 });
 
 test('cloudflare catch-all 503 sets x-lovebud-degraded: modal-unavailable header', () => {
   const content = readFileContent(CATCHALL_JS);
+  const policy = readFileContent(RESPONSE_POLICY_JS);
 
+  // #4535 Slice 4: the degraded header is owned by the response policy, but
+  // the gateway must remain the thing that decides to degrade.
   assert.ok(
-    hasString(content, 'x-lovebud-degraded'),
-    'catch-all 503 should set x-lovebud-degraded header'
+    hasString(policy, "'x-lovebud-degraded': 'modal-unavailable'"),
+    'the 503 degraded header should be owned by catchall-response-policy.js'
   );
   assert.ok(
-    hasString(content, 'modal-unavailable'),
-    'catch-all 503 should set x-lovebud-degraded to modal-unavailable'
+    hasString(content, 'buildModalUnavailableResponse'),
+    'catch-all should emit the degraded 503 through the shared response policy'
   );
 });
 
@@ -599,28 +656,39 @@ test('no-runtime-modification: functions/api/[[path]].js SHA is stable', () => {
     'functions/api/[[path]].js must still export onRequest as entry point (runtime contract)'
   );
 
-  // The file must still reference buildModalUrl and buildNotFoundResponse
+  // buildModalUrl is still re-exported from the gateway, unchanged. The terminal
+  // response builders no longer are: #4535 Slice 4 gave the taxonomy a single
+  // owner, so the gateway must IMPORT them from there and must not define a
+  // second, divergent copy of any of them.
   assert.ok(
     hasString(content, 'buildModalUrl'),
     'functions/api/[[path]].js runtime structure (buildModalUrl) must be unchanged'
   );
   assert.ok(
-    hasString(content, 'buildNotFoundResponse'),
-    'functions/api/[[path]].js runtime structure (buildNotFoundResponse) must be unchanged'
+    hasString(content, 'export { buildModalUrl };'),
+    'functions/api/[[path]].js must keep re-exporting buildModalUrl for existing importers'
   );
+
+  const responsePolicy = readFileContent(RESPONSE_POLICY_JS);
+  for (const builder of CATCHALL_RESPONSE_BUILDERS) {
+    assert.ok(
+      hasString(responsePolicy, `function ${builder}`),
+      `catchall-response-policy.js must own ${builder}`
+    );
+    assert.ok(
+      hasString(content, builder),
+      `functions/api/[[path]].js must still reference ${builder}`
+    );
+    assert.ok(
+      !hasString(content, `function ${builder}`),
+      `functions/api/[[path]].js must not redefine ${builder}`
+    );
+  }
   assert.ok(
-    hasString(content, 'buildMethodNotAllowedResponse'),
-    'functions/api/[[path]].js runtime structure (buildMethodNotAllowedResponse) must be unchanged'
+    hasString(content, "from '../_shared/catchall-response-policy.js'"),
+    'functions/api/[[path]].js must import the shared response policy'
   );
-   assert.ok(
-     hasString(content, 'buildModalUnavailableResponse'),
-     'functions/api/[[path]].js runtime structure (buildModalUnavailableResponse) must be unchanged'
-   );
-   assert.ok(
-     hasString(content, 'buildMethodNotAllowedResponse'),
-     'functions/api/[[path]].js runtime structure (buildMethodNotAllowedResponse) must be unchanged'
-   );
- });
+});
 
 // ─── FORK ROUTE CONTRACT (PR #342) ───────────────────────────────────────────
 
@@ -2082,14 +2150,21 @@ test('#4535 slice 2: read/write orchestration and the 504 timeout policy remain 
   assert.ok(!hasString(fetchModule, 'tryModalRead'), 'fetch module must not own tryModalRead');
   assert.ok(!hasString(fetchModule, 'tryModalWrite'), 'fetch module must not own tryModalWrite');
 
-  // M: buildModalTimeoutResponse stays catch-all — transport != response policy.
-  assert.ok(
-    hasString(gateway, 'function buildModalTimeoutResponse'),
-    'buildModalTimeoutResponse should remain in the catch-all'
-  );
+  // M: the timeout RESPONSE gained its own owner in #4535 Slice 4, but NOT in
+  // the fetch module — transport != response policy. The AbortError -> 504
+  // conversion stays with the catch-all orchestration, which is asserted just
+  // below and is untouched by Slice 4.
   assert.ok(
     !hasString(fetchModule, 'buildModalTimeoutResponse'),
     'fetch module must not own the timeout response'
+  );
+  assert.ok(
+    !hasString(gateway, 'function buildModalTimeoutResponse'),
+    'the catch-all must no longer define the timeout response itself'
+  );
+  assert.ok(
+    hasString(gateway, "from '../_shared/catchall-response-policy.js'"),
+    'the catch-all must consume the moved timeout response from the response policy'
   );
 
   // The AbortError -> 504 conversion stays with the orchestration helpers.
@@ -2105,8 +2180,11 @@ test('#4535 slice 2: read/write orchestration and the 504 timeout policy remain 
     );
   }
 
-  // The response taxonomy itself is unchanged.
-  const timeoutResponse = extractFunctionBlock(gateway, 'buildModalTimeoutResponse');
+  // The response taxonomy itself is unchanged, only relocated (#4535 Slice 4).
+  const timeoutResponse = extractFunctionBlock(
+    readFileContent(RESPONSE_POLICY_JS),
+    'buildModalTimeoutResponse'
+  );
   assert.ok(hasString(timeoutResponse, "'x-lovebud-route-status': 'modal-timeout'"), 'modal-timeout route status');
   assert.ok(hasString(timeoutResponse, 'Modal upstream timeout'), 'modal-timeout error body');
   assert.ok(hasRegex(timeoutResponse, /status:\s*504/), 'modal timeout must stay 504');
@@ -2136,4 +2214,149 @@ test('#4535 slice 2: an aborted Modal read still returns the 504 modal-timeout r
   } finally {
     restore();
   }
+});
+// ─── #4535 SLICE 4 EXTRACTION BOUNDARY ───────────────────────────────────
+// The catch-all gateway keeps orchestration: auth checks, bounded body reads
+// and their ordering, Modal read/write helpers with the AbortError -> 504
+// conversion, the 404 fallback, the 403 no-fallback rule, the hub-layout
+// PUT -> POST translation, cache/no-store, Direct-Neon gates and onRequest.
+// Exactly SEVEN pure response builders moved to catchall-response-policy.js:
+// how a terminal answer looks is a different concern from which answer applies.
+
+// A: the new module exists and owns exactly the seven response builders.
+test('#4535 slice 4: catchall-response-policy.js owns exactly the seven terminal response builders', () => {
+  assert.ok(fs.existsSync(RESPONSE_POLICY_JS), 'functions/_shared/catchall-response-policy.js should exist');
+  const policy = readFileContent(RESPONSE_POLICY_JS);
+
+  const exported = stripComments(policy).match(/export\s+function\s+(\w+)/g) || [];
+  assert.equal(
+    exported.length,
+    CATCHALL_RESPONSE_BUILDERS.length,
+    'the response policy module must export exactly the seven moved builders and nothing else'
+  );
+  for (const builder of CATCHALL_RESPONSE_BUILDERS) {
+    assert.ok(
+      hasString(policy, `export function ${builder}`),
+      `the response policy module must export ${builder}`
+    );
+  }
+
+  // It is pure response SHAPE: no transport, no routing, no body reads.
+  const policyCode = stripComments(policy);
+  assert.ok(!/\bfetch\s*\(/.test(policyCode), 'response policy must not fetch');
+  assert.ok(
+    !/request\s*\.\s*(json|text|arrayBuffer|formData)\s*\(/.test(policyCode),
+    'response policy must not read a body'
+  );
+  assert.ok(!/\benv\s*\[[^\]]+\]\s*=/.test(policyCode), 'response policy must not mutate env');
+  assert.ok(!/crypto\.randomUUID/.test(policyCode), 'response policy must not generate request ids');
+  assert.ok(
+    !/onRequest|tryModalRead|tryModalWrite|readBoundedRequestBody|isModalOwned|buildModalUrl/.test(policyCode),
+    'response policy must not own routing or orchestration'
+  );
+  assert.ok(
+    !/function\s+(withUpstreamHeader|hasAuthorizationHeader|stripTrailingSlash|withPublicTreeCacheStatus)\s*\(/.test(policyCode),
+    'response policy must not own the gateway header/auth helpers'
+  );
+
+  // The request-id header name is the canonical one, not a second literal.
+  assert.ok(
+    hasRegex(policy, /import\s*\{\s*REQUEST_ID_HEADER\s*\}\s*from\s*['"]\.\/request-id\.js['"]/),
+    'the response policy must consume the canonical request-id header name'
+  );
+  assert.ok(!hasString(policyCode, 'x-lovebud-request-id'), 'the response policy must not redeclare the id header name');
+
+  // Status/body/header taxonomy is carried over verbatim, one builder per answer.
+  const taxonomy = [
+    ['buildBodyReadFailedResponse', '503', 'body-read-failed', 'Request body read failed', 'cloudflare'],
+    ['buildPayloadTooLargeResponse', '413', 'payload-too-large', 'Request body too large', 'cloudflare'],
+    ['buildNotFoundResponse', '404', 'unhandled', 'Route not found', 'cloudflare'],
+    ['buildMethodNotAllowedResponse', '405', 'method-not-allowed', 'Method not allowed', 'cloudflare'],
+    ['buildModalUnavailableResponse', '503', 'modal-unavailable', 'Modal backend unavailable', 'modal'],
+    ['buildMissingAuthorizationResponse', '401', 'missing-authorization', 'Authorization required', 'cloudflare'],
+    ['buildModalTimeoutResponse', '504', 'modal-timeout', 'Modal upstream timeout', 'modal']
+  ];
+  for (const [builder, status, routeStatus, errorBody, upstream] of taxonomy) {
+    const block = extractFunctionBlock(policy, builder);
+    assert.ok(hasRegex(block, new RegExp(`status:\\s*${status}`)), `${builder} must stay ${status}`);
+    assert.ok(hasString(block, routeStatus), `${builder} must keep the ${routeStatus} route status`);
+    assert.ok(hasString(block, errorBody), `${builder} must keep its error body`);
+    assert.ok(
+      hasString(block, `'x-lovebud-upstream': '${upstream}'`),
+      `${builder} must keep tagging upstream as ${upstream}`
+    );
+    assert.ok(hasString(block, 'application/json'), `${builder} must stay JSON`);
+    assert.ok(hasString(block, 'REQUEST_ID_HEADER'), `${builder} must stay request-id aware`);
+  }
+  // Only 405 carries an allow header, and 405 always carries the request id.
+  assert.ok(
+    hasString(extractFunctionBlock(policy, 'buildMethodNotAllowedResponse'), "'allow': allow"),
+    'the 405 builder must keep the allow header'
+  );
+});
+
+// B: the gateway consumes the taxonomy and defines no second copy of it.
+test('#4535 slice 4: the catch-all imports the response policy and keeps every decision', () => {
+  const gateway = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasRegex(
+      gateway,
+      /import\s*\{[^}]*buildBodyReadFailedResponse[^}]*buildPayloadTooLargeResponse[^}]*\}\s*from\s*['"][^'"]*_shared\/catchall-response-policy\.js['"]/,
+    ),
+    'the catch-all must import the seven builders from the shared response policy'
+  );
+  for (const builder of CATCHALL_RESPONSE_BUILDERS) {
+    assert.ok(hasString(gateway, builder), `the catch-all must still call ${builder}`);
+    assert.ok(!hasString(gateway, `function ${builder}`), `the catch-all must not redefine ${builder}`);
+  }
+
+  // Every DECISION stays in the gateway.
+  for (const decision of [
+    'export async function onRequest',
+    'async function tryModalRead',
+    'async function tryModalWrite',
+    'async function withUpstreamHeader',
+    'function hasAuthorizationHeader',
+    'function stripTrailingSlash',
+    'function withPublicTreeCacheStatus',
+    'function isPrivateTreeCapabilityRequest'
+  ]) {
+    assert.ok(hasString(gateway, decision), `the catch-all must keep ${decision}`);
+  }
+
+  // The 404 fallback, the 403 no-fallback rule and the hub-layout PUT -> POST
+  // translation are gateway decisions and must survive the extraction.
+  assert.ok(
+    hasString(gateway, 'return buildNotFoundResponse(requestId);'),
+    'the unhandled-route 404 fallback must stay in the catch-all'
+  );
+  assert.ok(
+    hasRegex(
+      gateway,
+      /status\s*===\s*403[\s\S]{0,400}buildNotFoundResponse/,
+    ) === false,
+    'a 403 must never fall back to the unhandled 404'
+  );
+  assert.ok(
+    hasString(gateway, "'POST'"),
+    'the hub-layout PUT -> POST translation must stay in the catch-all'
+  );
+
+  // Bounded body read ordering and the AbortError -> 504 conversion are gateway
+  // policy: the taxonomy module must not absorb them.
+  for (const orchestration of ['tryModalRead', 'tryModalWrite']) {
+    const block = extractFunctionBlock(gateway, orchestration);
+    assert.ok(hasString(block, "error.name === 'AbortError'"), `${orchestration} must still classify AbortError`);
+    assert.ok(hasString(block, 'buildModalTimeoutResponse'), `${orchestration} must still map AbortError to the 504`);
+  }
+  const writeBlock = extractFunctionBlock(gateway, 'tryModalWrite');
+  assert.ok(
+    writeBlock.indexOf('hasAuthorizationHeader') < writeBlock.indexOf('readBoundedRequestBody'),
+    'the auth check must still precede the bounded body read in tryModalWrite'
+  );
+  assert.ok(
+    writeBlock.indexOf('readBoundedRequestBody') < writeBlock.indexOf('buildPayloadTooLargeResponse'),
+    'the bounded body read must still precede the 413 answer in tryModalWrite'
+  );
 });

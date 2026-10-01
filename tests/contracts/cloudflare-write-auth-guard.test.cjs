@@ -13,6 +13,9 @@ const gateway = () => readRepoFile('functions/api/[[path]].js');
 const memoryProxy = () => readRepoFile('functions/_shared/memory-route-proxy.js');
 // Route mapping moved out of the gateway in #4535 Slice 1; the gateway imports it.
 const routeMapping = () => readRepoFile('functions/_shared/catchall-modal-route-mapping.js');
+// #4535 Slice 4 moved the pure 401 response builder into its own module; the
+// gateway keeps every auth DECISION and consumes the moved builder.
+const responsePolicy = () => readRepoFile('functions/_shared/catchall-response-policy.js');
 
 // ─── HELPER PRESENCE ────────────────────────────────────────────────────────
 
@@ -23,12 +26,19 @@ test('Cloudflare gateway defines hasAuthorizationHeader helper', () => {
   assert.match(source, /request\.headers\.get\('Authorization'\)/);
 });
 
-test('Cloudflare gateway defines buildMissingAuthorizationResponse', () => {
+test('Cloudflare response policy defines buildMissingAuthorizationResponse', () => {
+  const policy = responsePolicy();
   const source = gateway();
-  assert.match(source, /function buildMissingAuthorizationResponse/);
-  assert.match(source, /missing-authorization/);
-  assert.match(source, /Authorization required/);
-  assert.match(source, /status: 401/);
+  assert.match(policy, /function buildMissingAuthorizationResponse/);
+  assert.match(policy, /missing-authorization/);
+  assert.match(policy, /Authorization required/);
+  assert.match(policy, /status: 401/);
+
+  // The gateway keeps the auth decision and must consume the moved builder
+  // rather than defining a divergent second copy.
+  assert.match(source, /return buildMissingAuthorizationResponse\(requestId\)/);
+  assert.doesNotMatch(source, /function buildMissingAuthorizationResponse/);
+  assert.match(source, /from ['"][^'"]*_shared\/catchall-response-policy\.js['"]/);
 });
 
 // ─── AUTH CHECK IN tryModalWrite ────────────────────────────────────────────

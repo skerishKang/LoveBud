@@ -55,34 +55,24 @@ import {
   REQUEST_ID_HEADER,
   getOrCreateRequestId
 } from '../_shared/request-id.js';
+// Response taxonomy (#4535 Slice 4): the terminal answers this gateway produces
+// (404/405/401/413/503/504) now live in one module. The gateway keeps every
+// DECISION about which answer applies — auth checks, bounded body reads and
+// their ordering, Modal read/write orchestration, the AbortError -> 504
+// conversion, the 404 fallback, cache/no-store and the Direct-Neon gates.
+import {
+  buildBodyReadFailedResponse,
+  buildMethodNotAllowedResponse,
+  buildMissingAuthorizationResponse,
+  buildModalTimeoutResponse,
+  buildModalUnavailableResponse,
+  buildNotFoundResponse,
+  buildPayloadTooLargeResponse
+} from '../_shared/catchall-response-policy.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
 }
-
-function buildBodyReadFailedResponse(requestId = null) {
-  const headers = {
-    'content-type': 'application/json; charset=utf-8',
-    'x-lovebud-upstream': 'cloudflare',
-    'x-lovebud-route-status': 'body-read-failed'
-  };
-  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
-  return new Response(JSON.stringify({ error: 'Request body read failed' }), {
-    status: 503,
-    headers
-  });
-}
-
-function buildPayloadTooLargeResponse(requestId = null) {
-  const headers = {
-    'content-type': 'application/json; charset=utf-8',
-    'x-lovebud-upstream': 'cloudflare',
-    'x-lovebud-route-status': 'payload-too-large'
-  };
-  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
-  return new Response(JSON.stringify({ error: 'Request body too large' }), { status: 413, headers });
-}
-
 
 function isPrivateTreeCapabilityRequest(request) {
   if (request.method.toUpperCase() !== 'GET') return false;
@@ -138,59 +128,8 @@ async function withUpstreamHeader(response, upstream, requestId = null) {
   }
 }
 
-function buildNotFoundResponse(requestId = null) {
-  const headers = {
-    'content-type': 'application/json; charset=utf-8',
-    'x-lovebud-upstream': 'cloudflare',
-    'x-lovebud-route-status': 'unhandled'
-  };
-  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
-  return new Response(JSON.stringify({ error: 'Route not found' }), { status: 404, headers });
-}
-
-function buildMethodNotAllowedResponse(allow = 'GET', requestId = null) {
-  const headers = {
-    'content-type': 'application/json; charset=utf-8',
-    'x-lovebud-upstream': 'cloudflare',
-    'x-lovebud-route-status': 'method-not-allowed',
-    'allow': allow,
-    [REQUEST_ID_HEADER]: requestId
-  };
-  return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers });
-}
-
-function buildModalUnavailableResponse(requestId = null) {
-  const headers = {
-    'content-type': 'application/json; charset=utf-8',
-    'x-lovebud-upstream': 'modal',
-    'x-lovebud-degraded': 'modal-unavailable'
-  };
-  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
-  return new Response(JSON.stringify({ error: 'Modal backend unavailable' }), { status: 503, headers });
-}
-
 function hasAuthorizationHeader(request) {
   return !!(request.headers.get('authorization') || request.headers.get('Authorization'));
-}
-
-function buildMissingAuthorizationResponse(requestId = null) {
-  const headers = {
-    'content-type': 'application/json; charset=utf-8',
-    'x-lovebud-upstream': 'cloudflare',
-    'x-lovebud-route-status': 'missing-authorization'
-  };
-  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
-  return new Response(JSON.stringify({ error: 'Authorization required' }), { status: 401, headers });
-}
-
-function buildModalTimeoutResponse(requestId = null) {
-  const headers = {
-    'content-type': 'application/json; charset=utf-8',
-    'x-lovebud-upstream': 'modal',
-    'x-lovebud-route-status': 'modal-timeout'
-  };
-  if (requestId) headers[REQUEST_ID_HEADER] = requestId;
-  return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), { status: 504, headers });
 }
 
 async function tryModalRead(request, env, requestId = null) {

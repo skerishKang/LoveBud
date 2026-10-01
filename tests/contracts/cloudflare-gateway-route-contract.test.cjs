@@ -17,6 +17,10 @@ const routeMapping = () => readRepoFile('functions/_shared/catchall-modal-route-
 // policy inline; it consumes the single canonical module, exactly as the
 // dedicated routes already do.
 const requestIdPolicy = () => readRepoFile('functions/_shared/request-id.js');
+// #4535 Slice 4: the catch-all no longer shapes its own terminal responses; the
+// pure 401/404/405/413/503/504 taxonomy now has a single owner that the gateway
+// imports. Header propagation (withUpstreamHeader) stays in the gateway.
+const responsePolicy = () => readRepoFile('functions/_shared/catchall-response-policy.js');
 
 test('Cloudflare gateway preserves community read route mappings to Modal', () => {
   const source = routeMapping();
@@ -84,7 +88,19 @@ test('Cloudflare gateway preserves request id and upstream response headers', ()
   assert.match(policy, /generateRequestId/);
 
   assert.match(source, /x-lovebud-upstream/);
-  assert.match(source, /x-lovebud-route-status/);
-  assert.match(source, /method-not-allowed/);
-  assert.match(source, /unhandled/);
+
+  // #4535 Slice 4: the route-status taxonomy those assertions guard moved with
+  // the response shape. The gateway must consume it, not redeclare it.
+  assert.match(
+    source,
+    /import\s*\{[^}]*buildBodyReadFailedResponse[^}]*buildPayloadTooLargeResponse[^}]*\}\s*from\s*['"][^'"]*_shared\/catchall-response-policy\.js['"]/,
+    'gateway must consume the shared response policy'
+  );
+  assert.doesNotMatch(source, /function\s+buildNotFoundResponse\s*\(/, 'gateway must not redefine the 404 response');
+  assert.doesNotMatch(source, /function\s+buildMethodNotAllowedResponse\s*\(/, 'gateway must not redefine the 405 response');
+
+  const response = responsePolicy();
+  assert.match(response, /x-lovebud-route-status/);
+  assert.match(response, /method-not-allowed/);
+  assert.match(response, /unhandled/);
 });

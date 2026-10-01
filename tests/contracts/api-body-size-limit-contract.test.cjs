@@ -5,6 +5,11 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
+// #4535 Slice 4 moved the pure RESPONSE builders out of the catch-all. The
+// gateway keeps every decision about WHEN a bounded-read limit fires; this
+// module owns the SHAPE of the answer. Definition assertions read the module,
+// call-site and ordering assertions keep reading the gateway.
+const RESPONSE_POLICY_JS = path.join(ROOT, 'functions/_shared/catchall-response-policy.js');
 const MODAL_HELPERS_PY = path.join(ROOT, 'modal_compute/api_response_helpers.py');
 const TREE_COMMENT_JS = path.join(ROOT, 'functions/api/trees/[tree_id]/comments.js');
 
@@ -25,10 +30,17 @@ function sliceBetween(content, startPattern, endPattern) {
 
 test('Cloudflare catch-all non-Memory write converges on the shared bounded-request-body authority', () => {
   const source = readFile(CATCHALL_JS);
+  const responsePolicy = readFile(RESPONSE_POLICY_JS);
 
   assert.match(source, /import\s*\{\s*readBoundedRequestBody\s*\}\s*from\s*['"]\.\.\/\_shared\/bounded-request-body\.js['"]/);
   assert.match(source, /await\s+readBoundedRequestBody\(request\)/);
-  assert.match(source, /function\s+buildPayloadTooLargeResponse\s*\(/);
+  // #4535 Slice 4: the 413/503 answers are owned by the shared response policy,
+  // so the gateway imports them instead of defining a second, divergent copy.
+  assert.match(responsePolicy, /function\s+buildPayloadTooLargeResponse\s*\(/);
+  assert.match(responsePolicy, /function\s+buildBodyReadFailedResponse\s*\(/);
+  assert.match(source, /from\s*['"][^'"]*_shared\/catchall-response-policy\.js['"]/);
+  assert.doesNotMatch(source, /function\s+buildPayloadTooLargeResponse\s*\(/);
+  assert.doesNotMatch(source, /function\s+buildBodyReadFailedResponse\s*\(/);
 
   // Local parser/helpers must be gone; the shared module is the sole authority.
   assert.doesNotMatch(source, /const\s+MAX_WRITE_BODY_BYTES\s*=/);
@@ -65,11 +77,11 @@ test('Cloudflare catch-all non-DELETE write forwards bounded body and rejects ov
 });
 
 test('Cloudflare oversized body response is safe JSON and does not echo request body', () => {
-  const source = readFile(CATCHALL_JS);
+  const responsePolicy = readFile(RESPONSE_POLICY_JS);
   const responseBlock = sliceBetween(
-    source,
+    responsePolicy,
     /function\s+buildPayloadTooLargeResponse\s*\(/,
-    /function\s+isPrivateTreeCapabilityRequest\s*\(/
+    /function\s+buildNotFoundResponse\s*\(/
   );
 
   assert.match(responseBlock, /status:\s*413/);
