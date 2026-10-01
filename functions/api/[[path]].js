@@ -14,6 +14,14 @@ import {
   isModalOwnedGetRoute,
   isModalOwnedWriteRoute
 } from '../_shared/catchall-modal-route-mapping.js';
+// Modal fetch primitives (#4535 Slice 2): default timeout budget, safe URL log
+// projection and the AbortController timeout wrapper. Transport only — the
+// timeout response taxonomy (buildModalTimeoutResponse) and the AbortError ->
+// 504 conversion stay with the read/write orchestration in this file.
+import {
+  fetchWithTimeout,
+  getSafeUrlLog
+} from '../_shared/catchall-modal-fetch.js';
 import { readBoundedRequestBody } from '../_shared/bounded-request-body.js';
 import {
   buildInvalidPathEncodingResponse,
@@ -45,7 +53,6 @@ function stripTrailingSlash(value) {
 const REQUEST_ID_HEADER = 'x-lovebud-request-id';
 const MAX_REQUEST_ID_LENGTH = 80;
 const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
-const MODAL_FETCH_TIMEOUT_MS = 25000;
 
 function generateRequestId() {
   return 'req-' + crypto.randomUUID();
@@ -196,27 +203,6 @@ function buildModalTimeoutResponse(requestId = null) {
   };
   if (requestId) headers[REQUEST_ID_HEADER] = requestId;
   return new Response(JSON.stringify({ error: 'Modal upstream timeout' }), { status: 504, headers });
-}
-
-function getSafeUrlLog(url) {
-  if (!url) return 'null';
-  try {
-    const u = new URL(url.toString());
-    return `${u.origin}${u.pathname}`;
-  } catch (e) {
-    return 'invalid-url';
-  }
-}
-
-async function fetchWithTimeout(url, options = {}) {
-  const { timeout = MODAL_FETCH_TIMEOUT_MS, ...fetchOptions } = options;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  try {
-    return await fetch(url, { ...fetchOptions, signal: controller.signal });
-  } finally {
-    clearTimeout(timeoutId);
-  }
 }
 
 async function tryModalRead(request, env, requestId = null) {
