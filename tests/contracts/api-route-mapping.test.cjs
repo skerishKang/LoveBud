@@ -58,6 +58,10 @@ function extractIfBranchBlock(content, ifNeedle, label) {
 const TREES_JS = path.join(ROOT, 'functions/api/trees.js');
 const MEMORIES_JS = path.join(ROOT, 'functions/api/memories.js');
 const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
+// The pure Modal route mapping and ownership classification moved out of the
+// catch-all gateway in #4535 Slice 1. Mapping assertions read that module
+// directly; gateway assertions keep reading CATCHALL_JS.
+const MAPPING_JS = path.join(ROOT, 'functions/_shared/catchall-modal-route-mapping.js');
 const TREE_DETAIL_JS = path.join(ROOT, 'functions/api/trees/[id].js');
 const MEMORY_DETAIL_JS = path.join(ROOT, 'functions/api/memories/[id].js');
 const MEMORY_PROXY_JS = path.join(ROOT, 'functions/_shared/memory-route-proxy.js');
@@ -78,7 +82,7 @@ test('cloudflare dynamic private detail route files exist', () => {
 // ─── PUBLIC GET ROUTE MAPPING ──────────────────────────────────────────────
 
 test('cloudflare api catch-all routes community/trees?view=summary to modal/browse/latest', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, '/api/community/trees'),
@@ -95,7 +99,7 @@ test('cloudflare api catch-all routes community/trees?view=summary to modal/brow
 });
 
 test('cloudflare api catch-all routes community/growing-trees to modal/browse/growing', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, '/api/community/growing-trees'),
@@ -108,7 +112,7 @@ test('cloudflare api catch-all routes community/growing-trees to modal/browse/gr
 });
 
 test('cloudflare api catch-all routes community/memories to modal/community/memories', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, '/api/community/memories'),
@@ -121,7 +125,7 @@ test('cloudflare api catch-all routes community/memories to modal/community/memo
 });
 
 test('cloudflare api catch-all routes public tree GET without auth to modal/trees/:id', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   // Public path (no auth, no write) → /modal/trees/:id
   assert.ok(
@@ -192,7 +196,7 @@ test('cloudflare api memories.js routes to modal/private/memories', () => {
 // ─── PRIVATE WRITE ROUTE MAPPING ──────────────────────────────────────────
 
 test('cloudflare api catch-all owns /api/trees GET and POST write routes', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   // Collection path /api/trees must be present in buildModalUrl
   assert.ok(
@@ -211,7 +215,7 @@ test('cloudflare api catch-all owns /api/trees GET and POST write routes', () =>
 });
 
 test('cloudflare api catch-all owns /api/memories GET and POST write routes', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
   const helper = readFileContent(MEMORY_PROXY_JS);
 
   assert.ok(
@@ -294,7 +298,7 @@ test('cloudflare api memory detail route forwards writes to modal private memori
 });
 
 test('cloudflare api catch-all routes trees/:treeId with auth split', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, '(isWrite || authHeader)'),
@@ -307,7 +311,7 @@ test('cloudflare api catch-all routes trees/:treeId with auth split', () => {
 });
 
 test('cloudflare api catch-all routes memories/:memoryId to modal/memories/:memoryId', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
   const helper = readFileContent(MEMORY_PROXY_JS);
 
   assert.ok(
@@ -331,7 +335,7 @@ test('cloudflare api catch-all routes memories/:memoryId to modal/memories/:memo
 // ─── LIMIT CLAMPING CONTRACT ────────────────────────────────────────────────
 
 test('cloudflare catch-all clamps community/trees limit between 1 and 60', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   const buildModalUrlBlock = extractFunctionBlock(content, 'buildModalUrl');
   const communityTreesBlock = extractIfBranchBlock(
@@ -359,7 +363,7 @@ test('cloudflare catch-all clamps community/trees limit between 1 and 60', () =>
 });
 
 test('cloudflare catch-all clamps growing-trees limit between 3 and 12', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   const growingLimitBlock = extractFunctionBlock(content, 'normalizeGrowingTreesLimit');
 
@@ -524,7 +528,7 @@ test('cloudflare catch-all 503 response sets content-type application/json', () 
 // ─── MODAL_BASE_URL ABSENT CONTRACT ───────────────────────────────────────
 
 test('cloudflare catch-all buildModalUrl returns null when MODAL_BASE_URL is absent', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, 'MODAL_BASE_URL'),
@@ -611,7 +615,7 @@ test('no-runtime-modification: functions/api/[[path]].js SHA is stable', () => {
 // ─── FORK ROUTE CONTRACT (PR #342) ───────────────────────────────────────────
 
 test('cloudflare api catch-all routes POST /api/trees/:id/fork to /modal/private/trees/:id/fork', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, "/api/trees/:id/fork → /modal/private/trees/:id/fork"),
@@ -641,7 +645,7 @@ test('cloudflare api catch-all returns 405 for unsupported methods on /api/trees
 });
 
 test('isModalOwnedWriteRoute recognises POST /api/trees/:id/fork as modal-owned write', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, "method === 'POST' && path.match(/^\\/api\\/trees\\/[^/]+\\/fork$/)"),
@@ -770,7 +774,7 @@ test('4. method non-GET on capability returns 405 Method Not Allowed with Allow:
 // PUT → POST. GET is also reachable (read). No direct browser→Modal.
 
 test('cloudflare api catch-all routes /api/trees/:id/hub-layout to modal private hub-layout', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   // Mapping regex for the hub-layout sub-resource path.
   assert.ok(
@@ -784,7 +788,7 @@ test('cloudflare api catch-all routes /api/trees/:id/hub-layout to modal private
 });
 
 test('isModalOwnedWriteRoute recognises PUT /api/trees/:id/hub-layout as modal-owned write', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, "method === 'PUT' && path.match(/^\\/api\\/trees\\/[^/]+\\/hub-layout$/)"),
@@ -990,7 +994,7 @@ test('hub-layout 5. unsupported POST method returns 405 with Allow: GET, PUT', a
 // gateway exposure + Modal parity only — no direct-Neon writer, no DB code.
 
 test('cloudflare api catch-all routes /api/trees/:id/appreciation-order to modal private appreciation-order', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, "/^\\/api\\/trees\\/([^/]+)\\/appreciation-order$/"),
@@ -1003,7 +1007,7 @@ test('cloudflare api catch-all routes /api/trees/:id/appreciation-order to modal
 });
 
 test('appreciation-order GET uses path-segment normalization boundary for tree id', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, 'const treeId = normalizeEncodedPathSegment(appreciationOrderMatch[1]);'),
@@ -1012,7 +1016,7 @@ test('appreciation-order GET uses path-segment normalization boundary for tree i
 });
 
 test('isModalOwnedWriteRoute recognises POST /api/trees/:id/appreciation-order as modal-owned write', () => {
-  const content = readFileContent(CATCHALL_JS);
+  const content = readFileContent(MAPPING_JS);
 
   assert.ok(
     hasString(content, "method === 'POST' && path.match(/^\\/api\\/trees\\/[^/]+\\/appreciation-order$/)"),
@@ -1021,16 +1025,20 @@ test('isModalOwnedWriteRoute recognises POST /api/trees/:id/appreciation-order a
 });
 
 test('appreciation-order GET is a modal-owned owner read route (no direct-Neon gate)', () => {
+  const mapping = readFileContent(MAPPING_JS);
   const content = readFileContent(CATCHALL_JS);
 
   // GET must be routed through the Modal read path via buildModalUrl, and this
   // child must NOT introduce an appreciation-order direct-Neon runtime gate.
   assert.ok(
-    hasString(content, "`/modal/private/trees/${treeId}/appreciation-order`"),
+    hasString(mapping, "`/modal/private/trees/${treeId}/appreciation-order`"),
     'catch-all should map appreciation-order GET to Modal private route'
   );
   assert.ok(
-    !hasRegex(content, /appreciation.*DirectNeon|appreciation.*direct.?neon.*selected|LB_.*APPRECIATION/i),
+    !hasRegex(
+      `${content}\n${mapping}`,
+      /appreciation.*DirectNeon|appreciation.*direct.?neon.*selected|LB_.*APPRECIATION/i
+    ),
     'catch-all must not add an appreciation-order direct-Neon gate in this child'
   );
 });
@@ -1687,4 +1695,120 @@ test('#4228 contract metadata pins PUT-only, Firebase owner, no retries and no P
   assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.perRequestModalFallbackAfterDirectStart, false);
   assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.automaticWholeTransactionRetry, false);
   assert.equal(mod.TREE_UPDATE_DIRECT_NEON_CONTRACT.retryOnUnknownCommitOutcome, false);
+});
+
+// ─── #4535 SLICE 1 EXTRACTION BOUNDARY ───────────────────────────────────
+// The catch-all gateway owns orchestration (auth, bounded body reads, fetch
+// timeout, request-id, upstream/cache headers, fallback, no-store); the shared
+// mapping module owns the pure route decision. These tests lock that boundary so
+// the mapping cannot drift back into the gateway unnoticed.
+
+test('#4535 slice 1: the shared mapping module owns the pure route decision', () => {
+  assert.ok(fs.existsSync(MAPPING_JS), 'functions/_shared/catchall-modal-route-mapping.js should exist');
+  const mapping = readFileContent(MAPPING_JS);
+
+  for (const exported of ['buildModalUrl', 'isModalOwnedGetRoute', 'isModalOwnedWriteRoute']) {
+    assert.ok(
+      hasString(mapping, `export function ${exported}(`),
+      `mapping module should export ${exported}`
+    );
+  }
+
+  // The mapping is pure: no upstream fetch, no body read, no env mutation.
+  assert.ok(!/\bfetch\s*\(/.test(mapping), 'mapping module must not fetch');
+  assert.ok(!/request\s*\.\s*(json|text|arrayBuffer|formData)\s*\(/.test(mapping), 'mapping module must not read a body');
+  assert.ok(!/\benv\s*\[[^\]]+\]\s*=/.test(mapping), 'mapping module must not mutate env');
+  assert.ok(!/crypto\.randomUUID/.test(mapping), 'mapping module must not generate request ids');
+
+  // Gateway orchestration must NOT have moved with the mapping.
+  for (const orchestration of [
+    'async function tryModalRead',
+    'async function tryModalWrite',
+    'async function fetchWithTimeout',
+    'async function withUpstreamHeader',
+    'function buildBodyReadFailedResponse',
+    'function buildPayloadTooLargeResponse',
+    'function buildMissingAuthorizationResponse',
+    'function buildModalTimeoutResponse',
+    'function hasAuthorizationHeader',
+    'function getOrCreateRequestId',
+    'function withPublicTreeCacheStatus'
+  ]) {
+    assert.ok(!hasString(mapping, orchestration), `mapping module must not own ${orchestration}`);
+  }
+});
+
+test('#4535 slice 1: the catch-all gateway imports the mapping and re-exports buildModalUrl', () => {
+  const gateway = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(gateway, "from '../_shared/catchall-modal-route-mapping.js'"),
+    'catch-all should import the shared route mapping module'
+  );
+  for (const imported of ['buildModalUrl', 'isModalOwnedGetRoute', 'isModalOwnedWriteRoute']) {
+    assert.ok(hasString(gateway, imported), `catch-all should import ${imported}`);
+  }
+
+  // The mapping implementation itself must not be duplicated in the gateway.
+  assert.ok(
+    !hasString(gateway, 'function buildModalUrl('),
+    'catch-all must not redefine buildModalUrl after the extraction'
+  );
+  assert.ok(
+    !hasString(gateway, 'function isModalOwnedGetRoute('),
+    'catch-all must not redefine isModalOwnedGetRoute after the extraction'
+  );
+  assert.ok(
+    !hasString(gateway, 'function isModalOwnedWriteRoute('),
+    'catch-all must not redefine isModalOwnedWriteRoute after the extraction'
+  );
+  assert.ok(
+    !hasString(gateway, 'normalizeGrowingTreesLimit'),
+    'catch-all must not keep the mapping-only limit clamp after the extraction'
+  );
+
+  // Existing same-origin importers keep working through the re-export.
+  assert.ok(
+    hasRegex(gateway, /export\s*\{\s*buildModalUrl\s*\}/),
+    'catch-all should re-export buildModalUrl for existing importers'
+  );
+  assert.ok(
+    hasString(readFileContent(path.join(ROOT, 'functions/api/community/trees.js')), "from '../[[path]].js'"),
+    'community/trees.js should keep importing buildModalUrl from the catch-all'
+  );
+});
+
+test('#4535 slice 1: the mapping module and the gateway agree on the moved route targets', async () => {
+  const mapping = await import('../../functions/_shared/catchall-modal-route-mapping.js');
+  const gateway = await import('../../functions/api/[[path]].js');
+
+  // The re-export must be the same function object, not a second implementation.
+  assert.equal(gateway.buildModalUrl, mapping.buildModalUrl, 'buildModalUrl must have one implementation');
+
+  const env = { MODAL_BASE_URL: MODAL_BASE_URL };
+  const cases = [
+    ['/api/community/trees?view=summary&limit=999', 'GET', '/modal/browse/latest'],
+    ['/api/community/growing-trees?limit=1', 'GET', '/modal/browse/growing'],
+    ['/api/community/memories?limit=1', 'GET', '/modal/community/memories'],
+    ['/api/trees', 'GET', '/modal/private/trees'],
+    ['/api/trees/tree-1', 'GET', '/modal/trees/tree-1'],
+    ['/api/trees/tree-1', 'PUT', '/modal/private/trees/tree-1'],
+    ['/api/trees/tree-1/fork', 'POST', '/modal/private/trees/tree-1/fork'],
+    ['/api/private/trees/tree-1/capability', 'GET', '/modal/private/trees/tree-1/capability'],
+    ['/api/trees/tree-1/hub-layout', 'PUT', '/modal/private/trees/tree-1/hub-layout'],
+    ['/api/trees/tree-1/appreciation-order', 'POST', '/modal/private/trees/tree-1/appreciation-order']
+  ];
+
+  for (const [pathname, method, expectedPath] of cases) {
+    const request = new Request(`${TEST_HOST}${pathname}`, { method });
+    const target = mapping.buildModalUrl(request, env);
+    assert.ok(target, `${method} ${pathname} should map to Modal`);
+    assert.equal(target.pathname, expectedPath, `${method} ${pathname} target`);
+  }
+
+  assert.equal(
+    mapping.buildModalUrl(new Request(`${TEST_HOST}/api/trees`), {}),
+    null,
+    'buildModalUrl must stay null without MODAL_BASE_URL'
+  );
 });

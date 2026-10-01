@@ -4,7 +4,12 @@ const path = require('node:path');
 const test = require('node:test');
 
 const ROOT = path.join(__dirname, '..', '..');
-const routeHelper = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
+// The canonical Browse sort/limit mapping lives in the shared catch-all mapping
+// module since #4535 Slice 1; the gateway imports it from there.
+const routeHelper = fs.readFileSync(
+  path.join(ROOT, 'functions', '_shared', 'catchall-modal-route-mapping.js'),
+  'utf8'
+);
 const modalApp = fs.readFileSync(path.join(ROOT, 'modal_compute', 'app.py'), 'utf8');
 const publicReads = fs.readFileSync(path.join(ROOT, 'modal_compute', 'public_reads.py'), 'utf8');
 const validation = fs.readFileSync(path.join(ROOT, 'modal_compute', 'validation.py'), 'utf8');

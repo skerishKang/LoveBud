@@ -5,7 +5,11 @@ const test = require('node:test');
 
 const ROOT = path.join(__dirname, '..', '..');
 const viewer = fs.readFileSync(path.join(ROOT, 'js', 'viewer', 'public-tree-viewer.js'), 'utf8');
-const catchAllRoute = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
+// The Browse sort mapping moved out of the catch-all gateway in #4535 Slice 1.
+const catchAllRoute = fs.readFileSync(
+  path.join(ROOT, 'functions', '_shared', 'catchall-modal-route-mapping.js'),
+  'utf8'
+);
 const browseSnapshot = fs.readFileSync(path.join(ROOT, 'modal_compute', 'browse_latest.py'), 'utf8');
 
 function getFunctionBlock(source, functionName) {

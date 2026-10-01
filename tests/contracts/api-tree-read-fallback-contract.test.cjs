@@ -503,10 +503,19 @@ test('#4448 Browse source guard: catch-all cannot silently revive retired persis
   const fs = require('node:fs');
   const path = require('node:path');
   const code = fs.readFileSync(path.resolve(__dirname, '../../functions/api/[[path]].js'), 'utf8');
+  const mapping = fs.readFileSync(
+    path.resolve(__dirname, '../../functions/_shared/catchall-modal-route-mapping.js'),
+    'utf8'
+  );
 
   assert.ok(!code.includes('caches.default'), 'catch-all must not access persistent Cache API for Browse');
   assert.ok(!code.includes('buildBrowseCacheRequest'), 'retired Browse cache-key helper must stay removed');
   assert.ok(!code.includes('isBrowseSummaryRequest'), 'retired catch-all Browse dispatcher must stay removed');
   assert.ok(!code.includes('max-age=420'), 'retired Browse response-body TTL must stay removed from catch-all');
-  assert.ok(code.includes("path === '/api/community/trees'"), 'shared buildModalUrl Browse mapping must remain for exact route reuse');
+  // The guard spans both halves of the route since #4535 Slice 1 split them.
+  assert.ok(!mapping.includes('caches.default'), 'catch-all mapping must not access persistent Cache API for Browse');
+  assert.ok(!mapping.includes('buildBrowseCacheRequest'), 'retired Browse cache-key helper must stay removed from mapping');
+  assert.ok(!mapping.includes('isBrowseSummaryRequest'), 'retired Browse dispatcher must stay removed from mapping');
+  assert.ok(!mapping.includes('max-age=420'), 'retired Browse response-body TTL must stay removed from mapping');
+  assert.ok(mapping.includes("path === '/api/community/trees'"), 'shared buildModalUrl Browse mapping must remain for exact route reuse');
 });

@@ -88,6 +88,11 @@ PUT/DELETE routes for `/api/trees/:id` and `/api/memories/:id` are intentionally
 **Which paths are owned by Cloudflare router?**
 - Only paths that `buildModalUrl()` can construct a target for are "owned"
 - All other paths return 404
+- Since #4535 Slice 1, `buildModalUrl()` and the Modal ownership classifiers
+  (`isModalOwnedGetRoute` / `isModalOwnedWriteRoute`) live in
+  `functions/_shared/catchall-modal-route-mapping.js`; the catch-all gateway
+  `functions/api/[[path]].js` imports them and keeps orchestration (auth, body
+  limits, fetch timeout, request-id, fallback, cache headers)
 
 **Which paths are proxied to Modal?**
 - See mapping table in 3.1

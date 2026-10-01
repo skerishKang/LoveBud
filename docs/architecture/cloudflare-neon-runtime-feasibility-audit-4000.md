@@ -210,7 +210,7 @@ No Production cutover should be part of the prototype PR.
 
 ### 5.1 Browse exact route intentionally avoids persistent response caching
 
-Post-#4052, `GET /api/community/trees?view=summary` is owned by the route-specific `functions/api/community/trees.js` handler. It returns `Cache-Control: no-store` and does not use `caches.default`. The catch-all retains `buildModalUrl()` only as the shared Browse sort/limit-to-Modal mapping helper; #4448 removes the unreachable legacy Cache API branch so a future route-file change cannot silently revive revocable response-body caching.
+Post-#4052, `GET /api/community/trees?view=summary` is owned by the route-specific `functions/api/community/trees.js` handler. It returns `Cache-Control: no-store` and does not use `caches.default`. The catch-all retains `buildModalUrl()` only as the shared Browse sort/limit-to-Modal mapping helper (it imports it from `functions/_shared/catchall-modal-route-mapping.js`, where the pure mapping moved in #4535 Slice 1); #4448 removes the unreachable legacy Cache API branch so a future route-file change cannot silently revive revocable response-body caching.
 
 Any future edge/database cache for Browse requires separate stale-safety review. Direct-Neon migration must not implicitly reintroduce a persisted response-body cache whose correctness depends on TTL expiry.
 

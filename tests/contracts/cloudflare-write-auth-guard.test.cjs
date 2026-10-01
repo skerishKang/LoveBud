@@ -11,6 +11,8 @@ function readRepoFile(relativePath) {
 
 const gateway = () => readRepoFile('functions/api/[[path]].js');
 const memoryProxy = () => readRepoFile('functions/_shared/memory-route-proxy.js');
+// Route mapping moved out of the gateway in #4535 Slice 1; the gateway imports it.
+const routeMapping = () => readRepoFile('functions/_shared/catchall-modal-route-mapping.js');
 
 // ─── HELPER PRESENCE ────────────────────────────────────────────────────────
 
@@ -53,9 +55,10 @@ test('Cloudflare gateway early-returns missing-authorization when auth missing i
 
 test('Cloudflare gateway guards POST /api/trees with auth check', () => {
   const source = gateway();
+  const mapping = routeMapping();
   assert.match(source, /isModalOwnedWriteRoute/);
-  assert.match(source, /\/modal\/private\/trees/);
-  assert.match(source, /POST.*\/api\/trees/);
+  assert.match(mapping, /\/modal\/private\/trees/);
+  assert.match(mapping, /POST.*\/api\/trees/);
 });
 
 test('Cloudflare gateway guards POST /api/memories with auth check', () => {
@@ -76,19 +79,18 @@ test('Cloudflare gateway guards PUT/DELETE detail writes with auth check', () =>
   assert.match(source, /isMemoryWriteRequest\(request\)/);
   assert.match(memorySource, /\['PUT', 'DELETE'\]\.includes\(method\) && isMemoryDetailRequest\(request\)/);
   assert.match(memorySource, /\/modal\/private\/memories/);
-  assert.match(source, /\/modal\/private\/trees/);
+  assert.match(routeMapping(), /\/modal\/private\/trees/);
 });
 
 test('Cloudflare gateway guards POST /api/trees/:id/fork with auth check', () => {
-  const source = gateway();
-  assert.match(source, /\/modal\/private\/trees.*fork/);
-  assert.match(source, /method === 'POST'/);
+  assert.match(routeMapping(), /\/modal\/private\/trees.*fork/);
+  assert.match(routeMapping(), /method === 'POST'/);
 });
 
 // ─── READ ROUTES STILL UNCHANGED ────────────────────────────────────────────
 
 test('Cloudflare gateway still preserves GET community read routes', () => {
-  const source = gateway();
+  const source = routeMapping();
   assert.match(source, /\/api\/community\/trees/);
   assert.match(source, /\/modal\/browse\/latest/);
   assert.match(source, /\/api\/community\/growing-trees/);

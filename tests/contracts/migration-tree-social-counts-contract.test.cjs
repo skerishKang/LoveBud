@@ -6,7 +6,8 @@ const test = require('node:test');
 const ROOT = path.join(__dirname, '..', '..');
 const migrationPath = path.join(ROOT, 'scripts', 'migration-add-tree-social-counts.sql');
 const memoryReactionMigrationPath = path.join(ROOT, 'scripts', 'migration-add-reactions-comments.sql');
-const routerPath = path.join(ROOT, 'functions', 'api', '[[path]].js');
+// The Browse sort mapping moved out of the catch-all gateway in #4535 Slice 1.
+const routerPath = path.join(ROOT, 'functions', '_shared', 'catchall-modal-route-mapping.js');
 const sql = fs.readFileSync(migrationPath, 'utf8');
 const memoryReactionSql = fs.readFileSync(memoryReactionMigrationPath, 'utf8');
 const router = fs.readFileSync(routerPath, 'utf8');

@@ -108,15 +108,17 @@ test('Audit document lists related docs and contract coverage', () => {
 
 test('Runtime locking: exact Browse route uses canonical latest/popular/likes/views mapping without persistent Cache API', () => {
   const router = read(path.join('functions', 'api', '[[path]].js'));
+  const routeMapping = read(path.join('functions', '_shared', 'catchall-modal-route-mapping.js'));
   const exactBrowseRoute = read(path.join('functions', 'api', 'community', 'trees.js'));
 
   assert.doesNotMatch(router, /caches\.default/);
   assert.doesNotMatch(router, /function buildBrowseCacheRequest/);
-  assert.match(router, /function buildModalUrl/);
-  assert.match(router, /requestedSort === 'popular'/);
-  assert.match(router, /requestedSort === 'likes'/);
-  assert.match(router, /requestedSort === 'views'/);
-  assert.match(router, /: 'latest'/);
+  assert.doesNotMatch(routeMapping, /caches\.default/);
+  assert.match(routeMapping, /function buildModalUrl/);
+  assert.match(routeMapping, /requestedSort === 'popular'/);
+  assert.match(routeMapping, /requestedSort === 'likes'/);
+  assert.match(routeMapping, /requestedSort === 'views'/);
+  assert.match(routeMapping, /: 'latest'/);
   assert.match(exactBrowseRoute, /buildModalUrl\(request, env \|\| \{\}\)/);
   assert.match(exactBrowseRoute, /headers\.set\('Cache-Control', 'no-store'\)/);
 });

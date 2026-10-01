@@ -9,7 +9,11 @@ const treeLikes = fs.readFileSync(path.join(ROOT, 'modal_compute', 'tree_likes.p
 const treeViews = fs.readFileSync(path.join(ROOT, 'modal_compute', 'tree_views.py'), 'utf8');
 const reactions = fs.readFileSync(path.join(ROOT, 'modal_compute', 'reactions.py'), 'utf8');
 const cloudflareLikes = fs.readFileSync(path.join(ROOT, 'functions', 'api', 'trees', '[tree_id]', 'likes.js'), 'utf8');
-const catchAllRoute = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
+// The Browse sort mapping moved out of the catch-all gateway in #4535 Slice 1.
+const catchAllRoute = fs.readFileSync(
+  path.join(ROOT, 'functions', '_shared', 'catchall-modal-route-mapping.js'),
+  'utf8'
+);
 const browseSnapshot = fs.readFileSync(path.join(ROOT, 'modal_compute', 'browse_latest.py'), 'utf8');
 const migrationLike = fs.readFileSync(path.join(ROOT, 'scripts', 'migration-add-tree-social-counts.sql'), 'utf8');
 const migrationView = fs.readFileSync(path.join(ROOT, 'scripts', 'migration-add-tree-view-tracking.sql'), 'utf8');

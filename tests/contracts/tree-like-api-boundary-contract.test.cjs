@@ -7,7 +7,11 @@ const ROOT = path.join(__dirname, '..', '..');
 const modalApp = fs.readFileSync(path.join(ROOT, 'modal_compute', 'app.py'), 'utf8');
 const treeLikes = fs.readFileSync(path.join(ROOT, 'modal_compute', 'tree_likes.py'), 'utf8');
 const cloudflareRoute = fs.readFileSync(path.join(ROOT, 'functions', 'api', 'trees', '[tree_id]', 'likes.js'), 'utf8');
-const catchAllRoute = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
+// The Browse sort mapping moved out of the catch-all gateway in #4535 Slice 1.
+const catchAllRoute = fs.readFileSync(
+  path.join(ROOT, 'functions', '_shared', 'catchall-modal-route-mapping.js'),
+  'utf8'
+);
 const browseSnapshot = fs.readFileSync(path.join(ROOT, 'modal_compute', 'browse_latest.py'), 'utf8');
 
 function compact(value) {

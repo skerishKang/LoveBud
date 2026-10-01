@@ -4,7 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const CLOUDFLARE_PROXY = path.join(ROOT, 'functions', 'api', '[[path]].js');
+// The growing-trees route mapping moved out of the catch-all gateway in
+// #4535 Slice 1; the gateway imports it from the shared mapping module.
+const CLOUDFLARE_PROXY = path.join(ROOT, 'functions', '_shared', 'catchall-modal-route-mapping.js');
 const MODAL_APP = path.join(ROOT, 'modal_compute', 'app.py');
 const MODAL_PUBLIC_READS = path.join(ROOT, 'modal_compute', 'public_reads.py');
 
