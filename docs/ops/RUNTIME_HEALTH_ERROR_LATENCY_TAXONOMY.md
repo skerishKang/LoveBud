@@ -3,7 +3,7 @@
 > **Status:** proposed vocabulary — no instrumentation authorized
 > **Parent:** #3673 — Keep OPEN
 > **Completed audit:** #3714 / PR #3719 — `docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md`
-> **Related:** #3699 (Keep OPEN), #3670 (Keep OPEN), #3672 (Keep OPEN), #3425 (Keep OPEN), #1882 (Keep OPEN)
+> **Related:** #3699 (CLOSED — historical deployment-reliability authority; reconciled by #4555), #3670 (Keep OPEN), #3672 (Keep OPEN), #3425 (Keep OPEN), #1882 (Keep OPEN)
 > **Base SHA:** `292b7ac5029da41ce29f1e659f7817959f497281`
 > **Previous head:** `6f78342d1a333749f075572edd7b81f6760e34d7`
 
@@ -126,7 +126,7 @@ Each domain describes a bounded surface for health observation. No domain is cur
 - **Purpose:** Detect whether the Production alias serves the expected source commit.
 - **Allowed evidence:** Expected SHA (`main`), observed serving SHA (bounded enum), release match state (bounded enum), detection method.
 - **Prohibited payload:** Cloudflare deployment ID, build log, provider API response, dashboard screenshot content.
-- **Current instrumentation state:** `UNRESOLVED` — no mechanism exists to compare source SHA against Production serving SHA. No cron job, webhook, or periodic check exists (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §8.1, §8.2 gap 5). #3699 documents a stale Production incident. Detection is manual and unresolved.
+- **Current instrumentation state:** `UNRESOLVED` — no mechanism exists to compare source SHA against Production serving SHA. No cron job, webhook, or periodic check exists (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §8.1, §8.2 gap 5). The closed #3699 recorded a stale Production incident. Detection is manual and unresolved.
 - **Future owner:** Release-SHA child (#3673 Step 2) for annotation; stale-detection automation is `NOT_AUTHORIZED`.
 
 ---
@@ -567,7 +567,25 @@ operator-facing health summary generation
 
 ## 11. Relation to #3699
 
-#3699 documents a Production deployment incident where `main` merged successfully while Production continued serving an older build.
+`#3699` is **CLOSED** historical deployment-reliability authority. It recorded a
+Production deployment incident where `main` merged successfully while Production
+continued serving an older build; that incident evidence remains auditable history.
+
+Three deployment concepts remain distinct and must not be conflated:
+
+| Concept | Path |
+|---|---|
+| Normal Production | `main` merge → Cloudflare Pages Git-connected / provider-native automatic deployment |
+| Repository CI | verification only — **no Production deploy job** |
+| Fixed-slot verification | optional local Wrangler OAuth direct deploy, when explicitly selected — separate from normal Production deployment |
+
+The absence of a Production deploy job in repository CI does **not** mean Production is
+deployed manually: normal Production deployment is triggered by the provider-native
+Cloudflare Pages Git integration. The former fixed-slot GitHub Action is deprecated and
+removed from active workflows.
+
+`#3699` closure does not prove that any current provider deployment is healthy: current
+provider/runtime deployment health is always **fresh observation required**.
 
 ```text
 domain:
@@ -590,9 +608,11 @@ NOT_AUTHORIZED / not implemented
 
 `OBSERVED_CURRENT_FACT`: No mechanism exists to automatically detect a stale Production alias. There is no cron job, webhook listener, or periodic comparison of source SHA vs Production serving SHA (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §8.1).
 
-`DOCUMENTED_OPERATING_RULE`: The #3699 operating rule states: check Production once after merge; if stale, record observation and stop; no manual deployment or Cloudflare mutation without owner explicit request.
+`DOCUMENTED_OPERATING_RULE` (established by the closed #3699, still current): check Production once after merge; if stale, record observation and stop; no manual deployment or Cloudflare mutation without owner explicit request.
 
-#3699 remains OPEN. This taxonomy does not resolve, close, or supersede #3699.
+#3699 is CLOSED. This taxonomy neither reopened nor superseded it, and it does not by
+itself establish current deployment health — that always requires fresh provider/runtime
+observation.
 
 ---
 
@@ -606,7 +626,7 @@ NOT_AUTHORIZED / not implemented
 - **Prerequisite:** This taxonomy document merged.
 - **Exact evidence:** Repository document + contract test pair. No Cloudflare, Wrangler, Preview, Production, API, DB, or secret action.
 - **Likely files:** `docs/ops/RELEASE_SHA_AND_SMOKE_CONTRACT.md`, `tests/contracts/release-sha-smoke-contract.test.cjs` (new files only).
-- **Stop condition:** Document reviewed and merged. Contract test passes on `main`. #3699 referenced but not closed.
+- **Stop condition:** Document reviewed and merged. Contract test passes on `main`. #3699 referenced as CLOSED historical authority.
 - **Not-authorized boundary:** No Cloudflare API call. No Wrangler deploy. No Production mutation. No automatic stale-detection cron.
 
 ### Child 2 — Critical journey success-state contract
@@ -659,7 +679,8 @@ This plan does not propose scope overlapping with:
 *Refs #3725*
 *Refs #3673 — Keep OPEN*
 *Refs #3714 — completed*
-*Refs #3699 — Keep OPEN*
+*Refs #3699 — CLOSED (historical deployment-reliability authority)*
+*Refs #4555 — deployment authority lifecycle reconciliation*
 *Refs #3670 — Keep OPEN*
 *Refs #3672 — Keep OPEN*
 *Refs #3425 — Keep OPEN*

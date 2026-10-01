@@ -4,9 +4,28 @@
 > **Authority labels:** `IMPLEMENTED_CURRENT_CONTRACT`, `OBSERVED_CURRENT_FACT`, `DOCUMENTED_OPERATING_RULE`, `PROPOSED_FUTURE_CONTRACT`, `UNRESOLVED`, `NOT_AUTHORIZED`
 > **Parent:** #3673 — Keep OPEN
 > **Completed groundwork:** #3714 / PR #3719 (audit), #3725 / PR #3726 (taxonomy), #3740 / PR #3744 (SHA exposure decision), #3761 / PR #3762 (release manifest implementation), #3764 (Production verification)
-> **Related:** #3699 (Keep OPEN), #3425 (Keep OPEN), #1882 (Keep OPEN)
+> **Related:** #3699 (CLOSED — historical deployment-reliability authority; reconciled by #4555), #3425 (Keep OPEN), #1882 (Keep OPEN)
 
 This document defines the bounded contract for correlating a LoveBud source release SHA with smoke evidence across route, static-asset, same-origin API, and browser-runtime surfaces. It does not authorize telemetry collection, Cloudflare Dashboard access, provider API calls, database operations, or automatic deployment mutation.
+
+### Deployment authority (reconciled by #4555)
+
+`#3699` is **CLOSED** historical deployment-reliability authority. Its incident and
+reassessment evidence remains auditable here; the Issue itself is not a current open
+obligation. Three deployment concepts stay distinct:
+
+| Concept | Path |
+|---|---|
+| Normal Production | `main` merge → Cloudflare Pages Git-connected / provider-native automatic deployment |
+| Repository CI | verification only — **no Production deploy job** |
+| Fixed-slot verification | optional local Wrangler OAuth direct deploy, when explicitly selected — separate from normal Production deployment |
+
+The absence of a Production deploy job in repository CI does **not** mean Production
+is deployed manually. Normal Production deployment is triggered by the provider-native
+Cloudflare Pages Git integration, not by a CI job.
+
+`#3699` closure does not prove that any current provider deployment is healthy: current
+provider/runtime deployment health is always **fresh observation required**.
 
 ---
 
@@ -354,12 +373,12 @@ automatic stale-release detection:
 not implemented
 
 #3699:
-OPEN
+CLOSED (historical deployment-reliability authority)
 
 current behavior:
 manual Production observation only; manifest SHA comparison possible
 
-release_match_state for #3699:
+release_match_state (carried forward from the #3699 evidence):
 expected_release_sha (source main)
 observed_release_sha (from manifest /.well-known/release.json)
 release_match_state: MATCH | MISMATCH | UNKNOWN (manual comparison)
@@ -369,7 +388,7 @@ release_match_state: MATCH | MISMATCH | UNKNOWN (manual comparison)
 
 `OBSERVED_CURRENT_FACT`: No automatic stale-release detection exists. No cron job, webhook, or periodic comparison of source SHA vs Production serving SHA (`docs/operations/RELEASE_SMOKE_RUNTIME_OBSERVABILITY_AUDIT.md` §8.1). The manifest provides the comparison value but does not automate detection.
 
-`DOCUMENTED_OPERATING_RULE`: The #3699 operating rule — check Production once after merge (including `/.well-known/release.json` parity); if stale or mismatched, record observation and stop; no manual deployment or Cloudflare mutation without owner explicit request.
+`DOCUMENTED_OPERATING_RULE` (historical, from the closed #3699): check Production once after merge (including `/.well-known/release.json` parity); if stale or mismatched, record observation and stop; no manual deployment or Cloudflare mutation without owner explicit request. This operating rule remains current; only the #3699 Issue lifecycle changed.
 
 `UNRESOLVED`: No serving-SHA exposure mechanism other than the canonical manifest is defined.
 
@@ -536,6 +555,7 @@ No child above overlaps with:
 *Refs #3740 — completed*
 *Refs #3734 — completed*
 *Refs #3673 — Keep OPEN*
-*Refs #3699 — Keep OPEN*
+*Refs #3699 — CLOSED (historical deployment-reliability authority)*
+*Refs #4555 — deployment authority lifecycle reconciliation*
 *Refs #3425 — Keep OPEN*
 *Refs #1882 — Keep OPEN*

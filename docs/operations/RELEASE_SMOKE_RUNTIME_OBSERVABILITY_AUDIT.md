@@ -5,7 +5,7 @@
 - **Base SHA:** `235ec59b2a5a40e0cf0115ebe45b2c6e50abbcdc`
 - **Evidence boundary:** Source reading only. No browser, Preview, Production, Cloudflare Dashboard, Wrangler, API call, DB connection, secret/environment inspection, or provider action.
 - **Authority files read:** `.github/workflows/ci.yml`, `package.json`, `_redirects`, `_headers`, `scripts/pre-deploy.cjs`, `scripts/cloudflare-supplied-url-smoke.cjs`, `tests/ci-test-group-registry.json`, `tests/test-layer-classification.json`, `tests/smoke/routes.test.cjs`, `docs/ops/` governance documents, `docs/ops/OBSERVABILITY_RUNTIME_LOGGING_AUDIT.md`.
-- **Related Issues:** #3714, #3673 (parent), #3699 (deployment incident), #3670 (CI reliability), #3425 (production parity).
+- **Related Issues:** #3714, #3673 (parent), #3699 (CLOSED — historical deployment incident authority; reconciled by #4555), #3670 (CI reliability), #3425 (production parity).
 
 ---
 
@@ -188,14 +188,34 @@ The table and the two `OBSERVED_SOURCE_FACT` bullets above remain the historical
 
 ## 8. Known Gaps and Failure Modes
 
-### 8.1 #3699 — Automatic main-to-Production Deployment Failure
+### 8.1 #3699 — Automatic main-to-Production Deployment Failure (CLOSED, historical)
 
-- DOCUMENTED_OPERATING_RULE: `#3699` documents that `main` can merge successfully while Production continues serving an older build. The operating rule states:
+> **Lifecycle (reconciled by #4555):** `#3699` is **CLOSED** historical
+> deployment-reliability authority. The incident evidence below remains auditable
+> history; the Issue is not a current open obligation.
+>
+> Three deployment concepts remain distinct and must not be conflated:
+>
+> | Concept | Path |
+> |---|---|
+> | Normal Production | `main` merge → Cloudflare Pages Git-connected / provider-native automatic deployment |
+> | Repository CI | verification only — **no Production deploy job** |
+> | Fixed-slot verification | optional local Wrangler OAuth direct deploy, when explicitly selected — separate from normal Production deployment |
+>
+> Gap 1 below ("No CI deploy job") means the deployment is invisible **to CI**. It
+> does **not** mean Production is deployed manually: normal Production deployment is
+> triggered by the provider-native Cloudflare Pages Git integration. The former fixed-slot
+> GitHub Action is deprecated and removed from active workflows.
+>
+> `#3699` closure does not prove that any current provider deployment is healthy:
+> current provider/runtime deployment health is always **fresh observation required**.
+
+- DOCUMENTED_OPERATING_RULE: The closed `#3699` recorded that `main` can merge successfully while Production continues serving an older build. The operating rule it established remains current:
   1. Check Production once after merge.
   2. If current main is served, verify affected behavior.
   3. If Production is stale, record observation and stop.
   4. No manual deployment or Cloudflare mutation without owner explicit request.
-- OBSERVED_SOURCE_FACT: The #3699 diagnosis scope is documented as read-only — determine whether (1) a deployment attempt occurred, (2) what non-secret failure category stopped activation, (3) what Git-to-Pages connection condition is missing, (4) whether production alias is pointing to an older deployment.
+- OBSERVED_SOURCE_FACT: The `#3699` diagnosis scope was documented as read-only — determine whether (1) a deployment attempt occurred, (2) what non-secret failure category stopped activation, (3) what Git-to-Pages connection condition is missing, (4) whether production alias is pointing to an older deployment.
 - OBSERVED_SOURCE_FACT: No mechanism exists to automatically detect a stale Production alias. There is no cron job, webhook listener, or periodic comparison of source SHA vs Production serving SHA.
 
 ### 8.2 Identified Gaps
@@ -287,7 +307,7 @@ This is the smallest self-contained implementation that begins closing the obser
 - Contract test passes on `main`.
 - No Cloudflare, Wrangler, Preview, Production, API, DB, or secret action occurs.
 - No existing file is modified (only new files created).
-- #3699 is referenced but not closed.
+- #3699 is referenced as CLOSED historical deployment-reliability authority.
 
 - PROPOSED_NEXT_CHILD: `docs/ops/RELEASE_SHA_AND_SMOKE_CONTRACT.md` with exact stop conditions as above. Separate Issue required.
 
@@ -315,7 +335,8 @@ This is the smallest self-contained implementation that begins closing the obser
 
 *Refs #3714*
 *Refs #3673 — Keep OPEN*
-*Refs #3699 — Keep OPEN*
+*Refs #3699 — CLOSED (historical deployment-reliability authority)*
+*Refs #4555 — deployment authority lifecycle reconciliation*
 *Refs #3670 — Keep OPEN*
 *Refs #3425 — Keep OPEN*
 *Refs #1882 — Keep OPEN*

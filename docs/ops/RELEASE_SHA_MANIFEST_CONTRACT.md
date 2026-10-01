@@ -4,6 +4,7 @@
 > **Authority:** #3740 / PR #3744 — canonical public serving-SHA exposure boundary
 > **Parent:** #3673 — Keep OPEN
 > **Related:** #3761 — implementation child; #3734 — completed bounded smoke contract; #3725 — completed runtime health taxonomy
+> **Deployment authority (#4555):** normal Production deployment is triggered by the provider-native Cloudflare Pages Git integration on `main` merge. Repository CI is verification only and has **no** Production deploy job — that does not make Production manual. Optional fixed-slot verification uses local Wrangler OAuth deploy and is separate from normal Production deployment. `#3699` is CLOSED historical deployment-reliability authority; current provider deployment health always requires fresh observation.
 
 
 ## Canonical endpoint
@@ -160,7 +161,7 @@ After merge to `main` and Cloudflare Pages auto-deploy:
 - Contract test passes on `main`.
 - Manifest is served at `/.well-known/release.json` with `Cache-Control: no-store` and `content-type: application/json`.
 - No private payload exposure proven by contract test.
-- `#3699` referenced but not closed.
+- `#3699` referenced as CLOSED historical deployment-reliability authority (reconciled by #4555).
 
 ---
 
@@ -168,6 +169,7 @@ After merge to `main` and Cloudflare Pages auto-deploy:
 *Refs #3740 — completed*
 *Refs #3734 — completed*
 *Refs #3673 — Keep OPEN*
-*Refs #3699 — Keep OPEN*
+*Refs #3699 — CLOSED (historical deployment-reliability authority)*
+*Refs #4555 — deployment authority lifecycle reconciliation*
 *Refs #3425 — Keep OPEN*
 *Refs #1882 — Keep OPEN*

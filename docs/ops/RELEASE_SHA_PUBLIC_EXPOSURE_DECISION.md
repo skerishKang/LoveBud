@@ -4,12 +4,31 @@
 > **Authority labels:** `OBSERVED_CURRENT_FACT`, `PROPOSED_FUTURE_CONTRACT`, `UNRESOLVED`, `NOT_AUTHORIZED`
 > **Parent:** #3673 — Keep OPEN
 > **Completed groundwork:** #3734 / PR #3738 — `docs/ops/RELEASE_SHA_BOUNDED_SMOKE_CONTRACT.md`; #3725 / PR #3726 — `docs/ops/RUNTIME_HEALTH_ERROR_LATENCY_TAXONOMY.md`
-> **Related:** #3734 — completed; #3699 — Keep OPEN; #3425 — Keep OPEN; #1882 — Keep OPEN
+> **Related:** #3734 — completed; #3699 — CLOSED (historical deployment-reliability authority; reconciled by #4555); #3425 — Keep OPEN; #1882 — Keep OPEN
 > **Base SHA:** `ff5dc6a76b9909301a27245b91ef8a194f88b277`
 
 This document decides whether and how LoveBud may intentionally expose the currently serving source SHA through a bounded public mechanism that supports release correlation without revealing provider deployment IDs, environment data, build metadata, secrets, or mutable operator state.
 
 No implementation, code change, test, workflow, or package change is authorized or performed by this document.
+
+### Deployment authority (reconciled by #4555)
+
+`#3699` is **CLOSED** historical deployment-reliability authority; its incident and
+reassessment evidence remains auditable here. Three deployment concepts stay distinct:
+
+| Concept | Path |
+|---|---|
+| Normal Production | `main` merge → Cloudflare Pages Git-connected / provider-native automatic deployment |
+| Repository CI | verification only — **no Production deploy job** |
+| Fixed-slot verification | optional local Wrangler OAuth direct deploy, when explicitly selected — separate from normal Production deployment |
+
+"No CI workflow step triggers deployment" means the deployment is invisible **to CI**.
+It does **not** mean Production is deployed manually: normal Production deployment is
+triggered by the provider-native Cloudflare Pages Git integration. The former fixed-slot
+GitHub Action is deprecated and removed from active workflows.
+
+`#3699` closure does not prove that any current provider deployment is healthy: current
+provider/runtime deployment health is always **fresh observation required**.
 
 ---
 
@@ -331,7 +350,7 @@ The exact minimal public shape uses only:
   - Contract test passes on `main`.
   - Manifest is served at `/.well-known/release.json` with correct cache policy and `content-type: application/json`.
   - No private payload exposure proven by contract test.
-  - #3699 referenced but not closed.
+  - #3699 referenced as CLOSED historical deployment-reliability authority.
 - **Not-authorized boundary:**
   - No Cloudflare API call.
   - No Wrangler deploy.
@@ -391,6 +410,7 @@ Cloudflare deployment ID must never be used as a canonical source SHA.
 *Refs #3740*
 *Refs #3734 — completed*
 *Refs #3673 — Keep OPEN*
-*Refs #3699 — Keep OPEN*
+*Refs #3699 — CLOSED (historical deployment-reliability authority)*
+*Refs #4555 — deployment authority lifecycle reconciliation*
 *Refs #3425 — Keep OPEN*
 *Refs #1882 — Keep OPEN*
