@@ -1,5 +1,17 @@
 # Shell Helpers Namespace Deps Alias Removal Audit
 
+HISTORICAL SNAPSHOT — NOT CURRENT OPERATIONAL AUTHORITY
+
+This document preserves a point-in-time audit at its recorded baseline SHA.
+All “Current State”, “Current”, “Recommendation”, “Next”, open-PR counts,
+issue states, line counts, and test totals below are historical snapshot
+language unless explicitly stated otherwise.
+
+For live authority, use current repository main plus current GitHub Issue/PR
+state. Portfolio/backlog sequencing is tracked by #4390.
+#4535 is CLOSED/completed historical maintainability work and is not an
+active authority for new work.
+
 ## Baseline
 
 - main HEAD: `7875e5ce`
