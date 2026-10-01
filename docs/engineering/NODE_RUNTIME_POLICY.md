@@ -112,12 +112,19 @@ fails closed when:
    `INDIRECT_USES_UNRESOLVED` — an unresolved alias could point at
    `actions/setup-node`. Anchors on whole step mappings are outside this rule
    and are scanned at their definition site;
-3. an active workflow uses a Node version that no scope declares;
-4. a scope is unreferenced, or a registration references an unknown scope or a
+4. a flow mapping carries a `uses` key, for example
+   `- { uses: actions/setup-node@v7, with: { node-version: 24 } }`. Flow style is
+   not part of the supported grammar: it keeps `uses:` off the start of the line,
+   so the step would be skipped whole and could pin the Node runtime outside the
+   scanner. It fails closed as `FLOW_STYLE_USES_UNSUPPORTED`. The rule bans the
+   form, not the action, so an aliased or non-`setup-node` flow-style `uses`
+   fails closed on the same code. Write such steps as block mappings;
+5. an active workflow uses a Node version that no scope declares;
+6. a scope is unreferenced, or a registration references an unknown scope or a
    mismatched version;
-5. a scope reason source is missing or lost its required token;
-6. the human document stops naming a scope id or version;
-7. `.nvmrc`, `.node-version`, or `package.json#engines` appears.
+7. a scope reason source is missing or lost its required token;
+8. the human document stops naming a scope id or version;
+9. `.nvmrc`, `.node-version`, or `package.json#engines` appears.
 
 CI consumes the policy through `npm run verify`, which both CI entry workflows run
 (`.github/workflows/pr-fast-gate.yml` and the `verify-static` job in

@@ -19,6 +19,10 @@
  *   - a uses line uses YAML anchors/aliases in a shape the guard cannot
  *     resolve to a single action reference (an unresolved alias could point at
  *     actions/setup-node), which fails closed as INDIRECT_USES_UNRESOLVED;
+ *   - a flow mapping carries a uses key (`- { uses: ..., with: { ... } }`),
+ *     which keeps uses off the start of the line and therefore outside the
+ *     line-oriented grammar above; flow style is not part of the supported
+ *     workflow grammar and fails closed as FLOW_STYLE_USES_UNSUPPORTED;
  *   - a scope reason source is missing or lost its required token;
  *   - the human-readable policy document is missing or stops naming the scopes;
  *   - .nvmrc, .node-version, or package.json#engines appears as an undeclared
@@ -55,6 +59,12 @@ const INLINE_COMMENT_REGEX = /[ \t]#/;
 const ANCHOR_DEFINITION_REGEX = /^&([A-Za-z0-9_-]+)(?:[ \t]+([\s\S]*))?$/;
 const ALIAS_USE_REGEX = /^\*([A-Za-z0-9_-]+)$/;
 const INDIRECT_TOKEN_REGEX = /[&*][A-Za-z0-9_-]/;
+// A flow mapping that carries a `uses` key. `- { uses: actions/setup-node@v7,
+// with: { node-version: 24 } }` puts uses after `{`, so USES_LINE_REGEX never
+// sees the step at all. Matching only a `uses` key (a flow mapping that merely
+// contains braces, such as `with: { node-version: 24 }`, a `${{ }}` expression,
+// or a shell `${VAR}`) keeps the ban on the step form and not on braces.
+const FLOW_MAPPING_USES_REGEX = /[{,][ \t]*uses[ \t]*:/;
 const STEP_KEY_REGEX = /^[ \t]*([A-Za-z_][A-Za-z0-9_-]*):/;
 const NEW_LIST_ITEM_REGEX = /^[ \t]*-\s/;
 const NODE_VERSION_FILE_REGEX = /^[ \t]*node-version-file:[ \t]*(.*)$/;
@@ -254,13 +264,29 @@ function resolveUsesValue(parsed, anchorActions) {
 }
 
 /**
+ * Detect a flow mapping that carries a `uses` key on this line.
+ *
+ * Flow style is outside the supported grammar: `uses:` does not start the line,
+ * so the scanner would skip the whole step and a Node pin could hide there.
+ * The rule bans the form, not the action, so an aliased or non-setup-node
+ * flow-style uses fails closed on the same code.
+ */
+function hasFlowStyleUses(line) {
+  const source = String(line == null ? '' : line);
+  const braceIndex = source.indexOf('{');
+  if (braceIndex === -1) return false;
+  return FLOW_MAPPING_USES_REGEX.test(source.slice(braceIndex));
+}
+
+/**
  * Pure scanner: every `actions/setup-node` occurrence in one workflow source.
  * Accepts plain, single-quoted and double-quoted `uses:` values with optional
  * trailing comments, plus anchor definitions and aliases that resolve to a
- * single action value. Returns { occurrences, problems } and never throws on
- * malformed YAML; a shape it cannot prove is reported as a problem (including
- * UNPARSED_SETUP_NODE_USE and INDIRECT_USES_UNRESOLVED) instead of being
- * ignored.
+ * single action value. Flow-style mappings that carry a `uses` key are rejected
+ * outright as FLOW_STYLE_USES_UNSUPPORTED. Returns { occurrences, problems } and
+ * never throws on malformed YAML; a shape it cannot prove is reported as a
+ * problem (including UNPARSED_SETUP_NODE_USE, INDIRECT_USES_UNRESOLVED and
+ * FLOW_STYLE_USES_UNSUPPORTED) instead of being ignored.
  */
 function collectSetupNodeOccurrences(source, workflowPath) {
   const lines = String(source == null ? '' : source).split(/\r?\n/);
@@ -270,11 +296,25 @@ function collectSetupNodeOccurrences(source, workflowPath) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
+    const lineNumber = index + 1;
+
+    // Checked before USES_LINE_REGEX: a flow-style step would otherwise be
+    // skipped whole, because its `uses:` is not at the start of the line.
+    if (hasFlowStyleUses(line)) {
+      problems.push({
+        code: 'FLOW_STYLE_USES_UNSUPPORTED',
+        workflow: workflowPath,
+        line: lineNumber,
+        detail:
+          'flow-style mapping carrying a uses key is outside the supported grammar; write the step as a block mapping with uses: on its own line',
+      });
+      continue;
+    }
+
     const usesMatch = USES_LINE_REGEX.exec(line);
     if (!usesMatch) continue;
 
     const usesIndent = line.match(SPACES_REGEX)[0].length;
-    const lineNumber = index + 1;
     const resolution = resolveUsesValue(parseUsesValue(usesMatch[1]), anchorActions);
 
     // Only a value that provably is not actions/setup-node is skipped here.

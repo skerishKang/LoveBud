@@ -1090,3 +1090,148 @@ test('52. anchors and aliases for non-setup-node actions stay non-blocking', () 
   assert.deepEqual(scanned.problems, [], JSON.stringify(scanned.problems));
   assert.deepEqual(scanned.occurrences.map((entry) => entry.node_version), ['20']);
 });
+
+test('53. a flow-style setup-node step fails closed instead of being skipped', () => {
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const marker = 'AKIAIOSFODNN7EXAMPLE';
+  const shapes = [
+    ['flow mapping with a plain value', `      - { uses: actions/setup-node@v${marker}, with: { node-version: 20 } }`],
+    ['flow mapping with a quoted value', `      - { uses: "actions/setup-node@v${marker}", with: { node-version: 20 } }`],
+    ['anchored flow mapping', `      - &node_step { uses: actions/setup-node@v${marker}, with: { node-version: 20 } }`],
+    ['flow mapping with leading keys', `      - { name: node, uses: actions/setup-node@v${marker}, with: { node-version: 20 } }`],
+  ];
+  for (const [label, step] of shapes) {
+    const source = ['jobs:', '  flow:', '    steps:', step, ''].join('\n');
+    const result = evaluate({ [rel]: () => source });
+    assert.equal(result.ok, false, `${label} must fail closed`);
+    assert.ok(
+      result.codes.includes('FLOW_STYLE_USES_UNSUPPORTED'),
+      `${label}: ${result.codes.join(',')}`
+    );
+    // The hard fail must not depend on the registered-count drift alone.
+    assert.ok(result.codes.includes('REGISTERED_OCCURRENCE_MISSING'), `${label}: ${result.codes.join(',')}`);
+    assert.equal(
+      result.occurrences.filter((entry) => entry.workflow === rel).length,
+      0,
+      `${label}: a skipped flow-style step must not be counted as an occurrence`
+    );
+    assert.ok(
+      !JSON.stringify(result.problems).includes(marker),
+      `${label}: the guard must not echo the raw flow-style line`
+    );
+  }
+
+  // Scanner-level proof that the step is reported, with its line, and that the
+  // surrounding block-style census is unaffected.
+  const scanned = guard.collectSetupNodeOccurrences(
+    [
+      'jobs:',
+      '  flow:',
+      '    steps:',
+      '      - uses: actions/setup-node@v7',
+      '        with:',
+      '          node-version: 20',
+      `      - { uses: actions/setup-node@v${marker}, with: { node-version: 24 } }`,
+      '',
+    ].join('\n'),
+    'synthetic-flow.yml'
+  );
+  assert.deepEqual(scanned.problems.map((problem) => problem.code), ['FLOW_STYLE_USES_UNSUPPORTED']);
+  assert.equal(scanned.problems[0].line, 7);
+  assert.deepEqual(
+    scanned.occurrences.map((entry) => entry.node_version),
+    ['20'],
+    'the block-style occurrence must still be counted'
+  );
+});
+
+test('54. a flow-style aliased uses fails closed', () => {
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const shapes = [
+    ['flow mapping with an alias', ['      - { uses: *node_action, with: { node-version: 24 } }']],
+    ['flow mapping with leading keys', ['      - { name: node, uses: *node_action }']],
+    ['flow mapping with a nested flow value', ['      - { with: { cache: npm }, uses: *node_action }']],
+  ];
+  for (const [label, steps] of shapes) {
+    const source = [
+      'jobs:',
+      '  flow:',
+      '    steps:',
+      '      - uses: &node_action actions/setup-node@v7',
+      '        with:',
+      '          node-version: 20',
+      ...steps,
+      '',
+    ].join('\n');
+    const result = evaluate({ [rel]: () => source });
+    assert.equal(result.ok, false, `${label} must fail closed`);
+    assert.ok(
+      result.codes.includes('FLOW_STYLE_USES_UNSUPPORTED'),
+      `${label}: ${result.codes.join(',')}`
+    );
+  }
+});
+
+test('55. flow style is banned as a form, without banning braces', () => {
+  // Same code for a non-setup-node action: the rule bans the form so an
+  // aliased or renamed flow-style step cannot hide a setup-node reference.
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const nonSetupNode = evaluate({
+    [rel]: () => ['jobs:', '  flow:', '    steps:', '      - { uses: actions/checkout@v7 }', ''].join('\n'),
+  });
+  assert.ok(
+    nonSetupNode.codes.includes('FLOW_STYLE_USES_UNSUPPORTED'),
+    nonSetupNode.codes.join(',')
+  );
+
+  // Braces alone stay non-blocking: a flow mapping without a uses key, a
+  // GitHub expression, and a shell variable are all valid workflow syntax.
+  const bracesAreFine = guard.collectSetupNodeOccurrences(
+    [
+      'jobs:',
+      '  shell:',
+      '    steps:',
+      '      - uses: actions/setup-node@v7',
+      '        with:',
+      '          node-version: ${{ vars.NODE_VERSION }}',
+      '      - run: echo "${{ github.ref }} ${backup_dir} { literal }"',
+      '      - uses: actions/checkout@v7',
+      '        with:',
+      '          fetch-depth: 0',
+      '          sparse-checkout: { paths: ["js/**"] }',
+      '',
+    ].join('\n'),
+    'synthetic-braces.yml'
+  );
+  assert.deepEqual(
+    bracesAreFine.problems.map((problem) => problem.code),
+    ['SETUP_NODE_VERSION_DYNAMIC_UNSUPPORTED'],
+    `only the dynamic node-version is a problem: ${JSON.stringify(bracesAreFine.problems)}`
+  );
+  assert.equal(bracesAreFine.occurrences.length, 0);
+});
+
+test('56. the block-style repository census is unchanged by the flow-style rule', () => {
+  const result = evaluate(null);
+  assert.deepEqual(result.codes, [], `the repository must stay clean: ${result.codes.join(',')}`);
+  assert.equal(result.workflowCount, 5);
+  assert.equal(result.occurrenceCount, 20);
+
+  // One flow-style step anywhere leaves every other workflow's census intact.
+  const rel = '.github/workflows/reliability-preview.yml';
+  const mutated = guard.collectSetupNodeOccurrences(
+    'jobs:\n  flow:\n    steps:\n      - { uses: actions/setup-node@v7, with: { node-version: 22.13.0 } }\n',
+    rel
+  );
+  assert.deepEqual(mutated.problems.map((problem) => problem.code), ['FLOW_STYLE_USES_UNSUPPORTED']);
+  assert.equal(mutated.occurrences.length, 0);
+
+  // The policy document and drift rules must name the new fail-closed code.
+  const driftRules = policy.drift_rules.join('\n');
+  assert.ok(driftRules.includes('FLOW_STYLE_USES_UNSUPPORTED'), 'drift_rules must document the rule');
+  const doc = fs.readFileSync(path.join(REPO_ROOT, HUMAN_DOC_REL), 'utf8');
+  assert.ok(
+    doc.includes('FLOW_STYLE_USES_UNSUPPORTED'),
+    'the human document must document the flow-style fail-closed rule'
+  );
+});
