@@ -45,31 +45,19 @@ import {
   handlePrivateTreeCapabilityDirectNeon,
   isPrivateTreeCapabilityDirectNeonSelected
 } from '../_shared/private-tree-capability-direct-neon.js';
+// Request-id policy (#4535 Slice 3): the canonical bounded policy already
+// lives in ../_shared/request-id.js and is consumed by every other route. The
+// catch-all previously carried a byte-identical local copy; it now imports the
+// one authority instead of defining a second implementation. The gateway keeps
+// every place the id is PROPAGATED (upstream request headers, response headers
+// and Access-Control-Expose-Headers) unchanged.
+import {
+  REQUEST_ID_HEADER,
+  getOrCreateRequestId
+} from '../_shared/request-id.js';
 
 function stripTrailingSlash(value) {
   return String(value || '').replace(/\/$/, '');
-}
-
-const REQUEST_ID_HEADER = 'x-lovebud-request-id';
-const MAX_REQUEST_ID_LENGTH = 80;
-const SAFE_REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
-
-function generateRequestId() {
-  return 'req-' + crypto.randomUUID();
-}
-
-function normalizeRequestId(value) {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  if (!trimmed || trimmed.length > MAX_REQUEST_ID_LENGTH) return null;
-  if (!SAFE_REQUEST_ID_PATTERN.test(trimmed)) return null;
-  return trimmed;
-}
-
-function getOrCreateRequestId(request) {
-  const existingRequestId = normalizeRequestId(request.headers.get(REQUEST_ID_HEADER));
-  if (existingRequestId) return existingRequestId;
-  return generateRequestId();
 }
 
 function buildBodyReadFailedResponse(requestId = null) {
