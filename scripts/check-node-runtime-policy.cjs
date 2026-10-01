@@ -12,6 +12,10 @@
  *   - a registered occurrence no longer exists in the workflows;
  *   - a setup-node step has no literal node-version (missing, node-version-file,
  *     or a ${{ }} expression);
+ *   - a uses line names actions/setup-node in a shape outside the supported
+ *     grammar (unparseable quoting or extra tokens) - never a silent skip;
+ *     the supported shapes are plain, single-quoted and double-quoted values,
+ *     each with an optional trailing `# comment`;
  *   - a scope reason source is missing or lost its required token;
  *   - the human-readable policy document is missing or stops naming the scopes;
  *   - .nvmrc, .node-version, or package.json#engines appears as an undeclared
@@ -34,7 +38,14 @@ const PACKAGE_JSON_RELATIVE_PATH = 'package.json';
 
 const DECISION_ENUM = ['EXPLICIT_MULTI_VERSION_MATRIX', 'SINGLE_VERSION'];
 const WORKFLOW_FILE_REGEX = /\.ya?ml$/i;
-const SETUP_NODE_USE_REGEX = /^[ \t]*(?:-\s*)?uses:[ \t]*actions\/setup-node(?:@[A-Za-z0-9._-]+)?[ \t]*$/;
+// A `uses:` mapping key. Its value is read by parseUsesValue below, which
+// accepts the supported actions/setup-node shapes (plain, single-quoted,
+// double-quoted, optional inline comment) and classifies any other
+// setup-node-like shape as unparsed instead of skipping the line.
+const USES_LINE_REGEX = /^[ \t]*(?:-\s*)?uses:[ \t]*(.*)$/;
+const SETUP_NODE_MENTION_REGEX = /^["']?actions\/setup-node(?![\w-])/;
+const SETUP_NODE_TARGET_REGEX = /^actions\/setup-node(?:@[A-Za-z0-9._/-]+)?$/;
+const INLINE_COMMENT_REGEX = /[ \t]#/;
 const STEP_KEY_REGEX = /^[ \t]*([A-Za-z_][A-Za-z0-9_-]*):/;
 const NEW_LIST_ITEM_REGEX = /^[ \t]*-\s/;
 const NODE_VERSION_FILE_REGEX = /^[ \t]*node-version-file:[ \t]*(.*)$/;
@@ -90,9 +101,55 @@ function listWorkflowFiles(repoRoot) {
 }
 
 /**
+ * Parse the value of a `uses:` line into { kind, value }.
+ *
+ * Supported shapes: plain `actions/setup-node@v7`, double-quoted and
+ * single-quoted values, each with an optional trailing `# comment`. A `#` only
+ * starts an inline comment when preceded by whitespace, matching YAML.
+ * Recognized but unsupported shapes are classified (malformed / unterminated /
+ * empty) so the caller can fail closed instead of skipping the line.
+ */
+function parseUsesValue(rawValue) {
+  const trimmed = String(rawValue == null ? '' : rawValue).trim();
+  if (trimmed === '') return { kind: 'empty', value: '' };
+
+  const quote = trimmed[0];
+  if (quote === '"' || quote === "'") {
+    const closeIndex = trimmed.indexOf(quote, 1);
+    if (closeIndex === -1) return { kind: 'unterminated', value: trimmed.slice(1) };
+    const value = trimmed.slice(1, closeIndex);
+    const tail = trimmed.slice(closeIndex + 1).trim();
+    if (tail !== '' && !tail.startsWith('#')) return { kind: 'malformed', value };
+    return { kind: 'quoted', value };
+  }
+
+  const commentIndex = trimmed.search(INLINE_COMMENT_REGEX);
+  const value = (commentIndex === -1 ? trimmed : trimmed.slice(0, commentIndex)).trim();
+  if (value === '') return { kind: 'empty', value: '' };
+  return { kind: 'plain', value };
+}
+
+/**
+ * Classify a parsed uses value against actions/setup-node.
+ *   'absent'    - the line does not name actions/setup-node;
+ *   'supported' - exactly the action, with an optional @ref;
+ *   'unparsed'  - the action is visible but outside the supported grammar.
+ * 'unparsed' must fail closed: a shape the guard cannot prove is never skipped.
+ */
+function classifySetupNodeUse(parsed) {
+  const value = parsed && typeof parsed.value === 'string' ? parsed.value : '';
+  if (!SETUP_NODE_MENTION_REGEX.test(value)) return 'absent';
+  if (parsed.kind !== 'plain' && parsed.kind !== 'quoted') return 'unparsed';
+  if (!SETUP_NODE_TARGET_REGEX.test(value)) return 'unparsed';
+  return 'supported';
+}
+
+/**
  * Pure scanner: every `actions/setup-node` occurrence in one workflow source.
- * Returns { occurrences, problems } and never throws on malformed YAML; a
- * shape it cannot prove is reported as a problem instead of being ignored.
+ * Accepts plain, single-quoted and double-quoted `uses:` values with optional
+ * trailing comments. Returns { occurrences, problems } and never throws on
+ * malformed YAML; a shape it cannot prove is reported as a problem (including
+ * UNPARSED_SETUP_NODE_USE) instead of being ignored.
  */
 function collectSetupNodeOccurrences(source, workflowPath) {
   const lines = String(source == null ? '' : source).split(/\r?\n/);
@@ -101,10 +158,27 @@ function collectSetupNodeOccurrences(source, workflowPath) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    if (!SETUP_NODE_USE_REGEX.test(line)) continue;
+    const usesMatch = USES_LINE_REGEX.exec(line);
+    if (!usesMatch) continue;
+
+    const classification = classifySetupNodeUse(parseUsesValue(usesMatch[1]));
+    // Only a line that does not name actions/setup-node at all is skipped here.
+    if (classification === 'absent') continue;
 
     const usesIndent = line.match(SPACES_REGEX)[0].length;
     const lineNumber = index + 1;
+
+    if (classification === 'unparsed') {
+      problems.push({
+        code: 'UNPARSED_SETUP_NODE_USE',
+        workflow: workflowPath,
+        line: lineNumber,
+        detail:
+          'uses names actions/setup-node in a form the guard cannot parse; write actions/setup-node@vN, optionally quoted, without extra tokens',
+      });
+      continue;
+    }
+
     let nodeVersion = null;
     let versionFile = null;
     let versionHint = false;

@@ -3,7 +3,8 @@
   "title": "LoveBud Node runtime policy",
   "refs": ["#4534"],
   "decision": "EXPLICIT_MULTI_VERSION_MATRIX",
-  "decision_note": "LoveBud supports exactly two Node runtimes with scoped reasons. Node 20 is the default Product/CI runtime and the merge gate. Node 22.13.0 is scoped to the Reliability Preview rehearsal only.",
+  "decision_note": "LoveBud supports exactly two Node runtimes with scoped reasons. Node 20 is the default repository-side GitHub Actions / Product CI / tooling runtime and the merge gate. Node 22.13.0 is scoped to the Reliability Preview rehearsal only.",
+  "runtime_boundary_note": "This policy pins repository-side GitHub Actions / CI / tooling runtimes and the local rehearsal runtime it declares. It does not pin the Cloudflare deployed or build runtime: that runtime is selected by Cloudflare, and wrangler.toml nodejs_compat is a Cloudflare compatibility behavior, not a Node process-version pin.",
   "human_doc": "docs/engineering/NODE_RUNTIME_POLICY.md",
   "default_scope_id": "DEFAULT_PRODUCT_CI",
   "default_node_version": "20",
@@ -11,7 +12,7 @@
     {
       "id": "DEFAULT_PRODUCT_CI",
       "node_version": "20",
-      "surface": "Product source, Cloudflare Pages Functions/tooling, ordinary contract/unit/smoke/route tests, DB-engine PostgreSQL jobs, and branch authority governance contracts.",
+      "surface": "Repository-side GitHub Actions runners building and testing Product source and tooling, ordinary contract/unit/smoke/route tests, DB-engine PostgreSQL jobs, and branch authority governance contracts. This pins the repository-side CI/tooling runtime only; it does not pin the Cloudflare deployed/build runtime.",
       "reason": "Node 20 is the current GitHub Actions Product runtime and the merge gate. Existing CI evidence is generated on Node 20 and local Node 22 evidence cannot replace it.",
       "reason_sources": [
         {
@@ -90,6 +91,7 @@
     "Every active actions/setup-node occurrence in .github/workflows/*.yml must be registered in workflow_occurrences with the same workflow, node_version, and count.",
     "An unregistered occurrence, a removed registration, a changed node_version, or a changed count fails closed.",
     "An actions/setup-node step without a literal node-version, or with node-version-file or a ${{ }} expression, fails closed.",
+    "Supported uses forms are a plain, single-quoted, or double-quoted actions/setup-node value with an optional trailing comment. A uses line that still names actions/setup-node outside that grammar (unterminated quote, extra tokens) fails closed as UNPARSED_SETUP_NODE_USE instead of being skipped.",
     "A node_version that is not declared by a scope fails closed.",
     "A scope that no workflow occurrence references, or a registration that references an unknown scope or a mismatched version, fails closed.",
     "Every scope reason_sources entry must exist and contain its required_token.",

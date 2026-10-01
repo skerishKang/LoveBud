@@ -15,7 +15,8 @@
  *   D. end-to-end temp repository reads (policy, doc, reason sources, .nvmrc,
  *      package.json#engines, malformed policy);
  *   E. CI consumption and guard source hygiene;
- *   F. registry / classification reconciliation.
+ *   F. registry / classification reconciliation;
+ *   G. uses-form coverage: quoted and comment-suffixed setup-node lines.
  *
  * Source-only: reads repository files and mutates only synthetic temp copies.
  * No network, provider, database, browser, git, or Production action. Refs #4534.
@@ -91,6 +92,79 @@ function lf(source) {
   return source.replace(/\r\n/g, '\n');
 }
 
+// ── independent (non-guard) workflow lexer ─────────────────────────────────
+// Tests 4 and 44 cross-check the guard with a deliberately different
+// implementation: substring key detection plus a quote-aware scalar reader
+// instead of the guard's anchored regexes, so both sides cannot share one
+// parsing blind spot (for example quoted or comment-suffixed uses values).
+
+function readScalar(raw) {
+  let out = '';
+  let quote = null;
+  for (let index = 0; index < raw.length; index += 1) {
+    const ch = raw[index];
+    if (quote) {
+      if (ch === quote) quote = null;
+      else out += ch;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    // A '#' only opens a comment when preceded by whitespace, matching YAML.
+    if (ch === '#' && (index === 0 || /\s/.test(raw[index - 1]))) break;
+    out += ch;
+  }
+  return out.trim();
+}
+
+function indentationOf(line) {
+  return /^[ \t]*/.exec(line)[0].length;
+}
+
+function readUsesToken(line) {
+  const marker = 'uses:';
+  const index = line.indexOf(marker);
+  if (index === -1) return null;
+  const prefix = line.slice(0, index).trim();
+  if (prefix !== '' && prefix !== '-') return null;
+  return readScalar(line.slice(index + marker.length)).split(/\s+/)[0] || '';
+}
+
+function readSetupNodeVersionFrom(lines, startIndex) {
+  const usesIndent = indentationOf(lines[startIndex]);
+  for (let cursor = startIndex + 1; cursor < Math.min(lines.length, startIndex + 12); cursor += 1) {
+    const candidate = readScalar(lines[cursor]);
+    if (candidate === '') continue;
+    const indent = indentationOf(lines[cursor]);
+    if (indent < usesIndent) break; // dedented to a sibling key: the step ended
+    if (candidate.startsWith('- ') && indent <= usesIndent) break; // next step
+    if (candidate.startsWith('node-version:')) {
+      return readScalar(candidate.slice('node-version:'.length));
+    }
+  }
+  return null;
+}
+
+function independentCensus(sources) {
+  const perWorkflow = new Map();
+  const versions = [];
+  for (const [rel, source] of sources) {
+    const lines = source.split(/\r?\n/);
+    for (let index = 0; index < lines.length; index += 1) {
+      const ref = readUsesToken(lines[index]);
+      if (!ref) continue;
+      // `actions/setup-node-fork` and similar names are different actions.
+      if (!/^actions\/setup-node(?:@|$)/.test(ref)) continue;
+      perWorkflow.set(rel, (perWorkflow.get(rel) || 0) + 1);
+      versions.push({ workflow: rel, line: index + 1, node_version: readSetupNodeVersionFrom(lines, index) });
+    }
+  }
+  const total = [...perWorkflow.values()].reduce((sum, count) => sum + count, 0);
+  return { perWorkflow, total, versions };
+}
+
 function copyInto(tmpDir, relativePath) {
   const target = path.join(tmpDir, relativePath);
   fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -145,40 +219,49 @@ test('3. every active setup-node occurrence is registered (workflow x version x 
 });
 
 test('4. independent census matches the guard census (parser blind-spot check)', () => {
-  let total = 0;
-  const perWorkflow = new Map();
-  for (const [rel, source] of WORKFLOW_SOURCES) {
-    const lines = source.split(/\r?\n/);
-    for (let index = 0; index < lines.length; index += 1) {
-      if (!/^[ \t]*(?:-\s*)?uses:[ \t]*actions\/setup-node@/.test(lines[index])) continue;
-      let version = null;
-      for (let cursor = index + 1; cursor < Math.min(lines.length, index + 8); cursor += 1) {
-        const match = /^[ \t]*node-version:[ \t]*(\S+)[ \t]*$/.exec(lines[cursor]);
-        if (match) {
-          version = match[1].replace(/^['"]|['"]$/g, '');
-          break;
-        }
-        if (/^[ \t]*(?:-\s*)?(?:uses|run|name|if|env):/.test(lines[cursor])) break;
-      }
-      assert.ok(version, `independent census could not read a node-version at ${rel}:${index + 1}`);
-      total += 1;
-      perWorkflow.set(rel, (perWorkflow.get(rel) || 0) + 1);
-    }
+  const independent = independentCensus(WORKFLOW_SOURCES);
+  assert.equal(
+    independent.versions.length,
+    independent.total,
+    'every independently counted use must carry a version read'
+  );
+  for (const entry of independent.versions) {
+    assert.ok(
+      entry.node_version,
+      `independent census could not read a node-version at ${entry.workflow}:${entry.line}`
+    );
   }
 
   const guardCounts = new Map();
+  const guardVersions = [];
   let guardTotal = 0;
   for (const [rel, source] of WORKFLOW_SOURCES) {
     const scanned = guard.collectSetupNodeOccurrences(source, rel);
     assert.deepEqual(scanned.problems, [], `guard reported problems for ${rel}`);
     guardTotal += scanned.occurrences.length;
     if (scanned.occurrences.length > 0) guardCounts.set(rel, scanned.occurrences.length);
+    for (const occurrence of scanned.occurrences) {
+      guardVersions.push({ workflow: occurrence.workflow, node_version: occurrence.node_version });
+    }
   }
 
-  assert.equal(guardTotal, total, 'guard and independent census must agree on the total');
-  assert.equal(total, 20, `expected 20 active actions/setup-node steps, found ${total}`);
+  assert.equal(guardTotal, independent.total, 'guard and independent census must agree on the total');
+  assert.equal(independent.total, 20, `expected 20 active actions/setup-node steps, found ${independent.total}`);
   assert.equal(guardCounts.size, 5, `expected 5 workflows with setup-node, found ${guardCounts.size}`);
-  assert.deepEqual([...guardCounts.entries()].sort(), [...perWorkflow.entries()].sort());
+  assert.deepEqual(
+    [...independent.perWorkflow.entries()].sort(),
+    [...guardCounts.entries()].sort(),
+    'per-workflow counts must agree between the independent lexer and the guard'
+  );
+  const byWorkflowThenVersion = (a, b) =>
+    a.workflow === b.workflow ? a.node_version.localeCompare(b.node_version) : a.workflow.localeCompare(b.workflow);
+  assert.deepEqual(
+    independent.versions
+      .map((entry) => ({ workflow: entry.workflow, node_version: entry.node_version }))
+      .sort(byWorkflowThenVersion),
+    guardVersions.sort(byWorkflowThenVersion),
+    'the independent lexer must read the same workflow/version pairs as the guard'
+  );
   assert.deepEqual(
     [...guardCounts.keys()].sort(),
     [...REGISTERED_WORKFLOWS].sort(),
@@ -276,9 +359,19 @@ test('11. the default runtime reason cites the Node 20 merge gate', () => {
   const content = fs.readFileSync(path.join(REPO_ROOT, source.path), 'utf8');
   assert.match(content, /Node 20 GitHub Actions CI remains the merge gate/);
   assert.match(scope.reason_sources[0].required_token, /merge gate/);
-  assert.match(scope.surface, /Cloudflare Pages/);
+  assert.match(scope.surface, /GitHub Actions/);
   assert.match(scope.surface, /DB-engine/);
   assert.match(scope.surface, /contract/);
+  // The surface text must not imply the Cloudflare deployed/build runtime is
+  // pinned to Node 20; the repository-side scope is stated separately.
+  assert.match(scope.surface, /repository-side/i);
+  assert.doesNotMatch(
+    scope.surface,
+    /Cloudflare (?:Pages )?(?:deployed|build) runtime is (?:pinned|Node)/i
+  );
+  assert.match(policy.runtime_boundary_note, /Cloudflare/);
+  assert.match(policy.runtime_boundary_note, /nodejs_compat/);
+  assert.match(policy.runtime_boundary_note, /not a Node process-version pin/);
 });
 
 test('12. the human document exists and names every scope, version, and the decision', () => {
@@ -750,4 +843,135 @@ test('43. this contract is reachable from the default-CI globs', () => {
     'tests/contracts/*.test.cjs',
   ]);
   assert.ok(THIS_CONTRACT_REL.startsWith('tests/contracts/'));
+});
+
+// ── G. uses-form coverage: quoted and comment-suffixed setup-node lines ───
+
+test('44. supported uses forms (quoted and comment-suffixed) are counted, not skipped', () => {
+  const single = "'";
+  const source = [
+    'jobs:',
+    '  forms:',
+    '    steps:',
+    '      - uses: actions/setup-node@v7',
+    '        with:',
+    '          node-version: 20',
+    '      - uses: "actions/setup-node@v7"',
+    '        with:',
+    '          node-version: 20',
+    `      - uses: ${single}actions/setup-node@v7${single}`,
+    '        with:',
+    '          node-version: 20',
+    '      - uses: actions/setup-node@v7 # pinned by the runtime policy',
+    '        with:',
+    '          node-version: 20',
+    '      - uses: "actions/setup-node@v7" # pinned by the runtime policy',
+    '        with:',
+    '          node-version: 20',
+    '',
+  ].join('\n');
+  const scanned = guard.collectSetupNodeOccurrences(source, 'synthetic-forms.yml');
+  assert.deepEqual(scanned.problems, [], `supported forms must not fail: ${JSON.stringify(scanned.problems)}`);
+  assert.equal(scanned.occurrences.length, 5, 'every supported uses form must be counted as an occurrence');
+  for (const occurrence of scanned.occurrences) {
+    assert.equal(occurrence.node_version, '20');
+  }
+  const independent = independentCensus(new Map([['synthetic-forms.yml', source]]));
+  assert.equal(independent.total, 5, 'the independent lexer must agree on the supported forms');
+  assert.deepEqual(independent.versions.map((entry) => entry.node_version), ['20', '20', '20', '20', '20']);
+});
+
+test('45. a double-quoted setup-node uses with Node 24 drifts and fails closed', () => {
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const result = evaluate({
+    [rel]: (source) =>
+      lf(source)
+        .replace('uses: actions/setup-node@v7', 'uses: "actions/setup-node@v7"')
+        .replace('node-version: 20', 'node-version: 24'),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.codes.includes('UNREGISTERED_WORKFLOW_OCCURRENCE'), result.codes.join(','));
+  assert.ok(result.codes.includes('REGISTERED_OCCURRENCE_MISSING'), result.codes.join(','));
+  assert.ok(result.codes.includes('NODE_VERSION_NOT_DECLARED'), result.codes.join(','));
+  const occurrence = result.occurrences.find((entry) => entry.workflow === rel);
+  assert.equal(
+    occurrence && occurrence.node_version,
+    '24',
+    'a double-quoted uses line must be read as an occurrence, not skipped'
+  );
+});
+
+test('46. a single-quoted setup-node uses with Node 24 drifts and fails closed', () => {
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const single = "'";
+  const result = evaluate({
+    [rel]: (source) =>
+      lf(source)
+        .replace('uses: actions/setup-node@v7', `uses: ${single}actions/setup-node@v7${single}`)
+        .replace('node-version: 20', 'node-version: 24'),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.codes.includes('UNREGISTERED_WORKFLOW_OCCURRENCE'), result.codes.join(','));
+  assert.ok(result.codes.includes('REGISTERED_OCCURRENCE_MISSING'), result.codes.join(','));
+  assert.ok(result.codes.includes('NODE_VERSION_NOT_DECLARED'), result.codes.join(','));
+  const occurrence = result.occurrences.find((entry) => entry.workflow === rel);
+  assert.equal(
+    occurrence && occurrence.node_version,
+    '24',
+    'a single-quoted uses line must be read as an occurrence, not skipped'
+  );
+});
+
+test('47. a comment-suffixed setup-node uses with Node 24 drifts and fails closed', () => {
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const result = evaluate({
+    [rel]: (source) =>
+      lf(source)
+        .replace(
+          'uses: actions/setup-node@v7',
+          'uses: actions/setup-node@v7 # pinned by the runtime policy'
+        )
+        .replace('node-version: 20', 'node-version: 24'),
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.codes.includes('UNREGISTERED_WORKFLOW_OCCURRENCE'), result.codes.join(','));
+  assert.ok(result.codes.includes('REGISTERED_OCCURRENCE_MISSING'), result.codes.join(','));
+  assert.ok(result.codes.includes('NODE_VERSION_NOT_DECLARED'), result.codes.join(','));
+  const occurrence = result.occurrences.find((entry) => entry.workflow === rel);
+  assert.equal(
+    occurrence && occurrence.node_version,
+    '24',
+    'a comment-suffixed uses line must be read as an occurrence, not skipped'
+  );
+});
+
+test('48. a setup-node uses line outside the supported grammar fails closed as unparsed', () => {
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const single = "'";
+  const shapes = [
+    ['unterminated double quote', 'uses: "actions/setup-node@v7'],
+    ['unterminated single quote', `uses: ${single}actions/setup-node@v7`],
+    ['extra tokens after the quoted value', 'uses: "actions/setup-node@v7" extra'],
+  ];
+  for (const [label, replacement] of shapes) {
+    const result = evaluate({
+      [rel]: (source) => lf(source).replace('uses: actions/setup-node@v7', replacement),
+    });
+    assert.equal(result.ok, false, `${label} must fail closed`);
+    assert.ok(result.codes.includes('UNPARSED_SETUP_NODE_USE'), `${label}: ${result.codes.join(',')}`);
+    // The hard fail must not depend on the registered-count drift alone.
+    assert.ok(result.codes.includes('REGISTERED_OCCURRENCE_MISSING'), `${label}: ${result.codes.join(',')}`);
+  }
+
+  const marker = 'AKIAIOSFODNN7EXAMPLE';
+  const scanned = guard.collectSetupNodeOccurrences(
+    `steps:\n  - uses: "actions/setup-node@${marker}\n    with:\n      node-version: 20\n`,
+    'synthetic-unparsed.yml'
+  );
+  assert.equal(scanned.occurrences.length, 0, 'an unparsed uses line must not be counted');
+  assert.deepEqual(scanned.problems.map((problem) => problem.code), ['UNPARSED_SETUP_NODE_USE']);
+  assert.ok(
+    !JSON.stringify(scanned.problems).includes(marker),
+    'the guard must not echo the raw unparsed uses value'
+  );
 });

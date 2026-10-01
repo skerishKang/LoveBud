@@ -22,15 +22,22 @@ policy with its workflow, version, and count.
 |---|---|
 | Scope id | `DEFAULT_PRODUCT_CI` |
 | Node version | `20` |
-| Owner | GitHub Actions default Product CI and the merge gate |
+| Owner | Repository-side GitHub Actions default Product CI and the merge gate |
 
-Covered surfaces:
+Covered surfaces (repository-side CI/tooling only):
 
-- Product source, Cloudflare Pages Functions and tooling;
+- GitHub Actions runners that build and test Product source and tooling,
+  including the Cloudflare Pages Functions source tree;
 - ordinary contract / unit / smoke / route tests (`npm test` glob);
 - DB-engine PostgreSQL jobs (`npm run test:db-engine:*`);
 - branch authority governance contracts;
 - PR Fast Gate (`npm run lint`, `npm run build`, `npm run verify`).
+
+Runtime boundary: this scope pins the repository-side GitHub Actions / CI /
+tooling runtime only. It does **not** pin the Cloudflare deployed or build
+runtime — that runtime is selected by Cloudflare, and `wrangler.toml`
+`nodejs_compat` is a Cloudflare compatibility behavior, not a Node
+process-version pin.
 
 Reason (source-bound): Node 20 GitHub Actions CI remains the merge gate, and
 local Node 22 evidence cannot replace Node 20 CI
@@ -58,7 +65,10 @@ secret-binding, or Production authority. It is a local rehearsal runtime only.
 
 ## 4. Current workflow occurrence inventory
 
-Active workflows today: **5**, with **20** `actions/setup-node` steps.
+Active workflow files: **7**. Workflows that use `actions/setup-node`: **5**,
+with **20** total `actions/setup-node` steps. The remaining two
+(`hub-layout-concurrency-3923.yml`, `memory-clientkey-idempotency-4058.yml`) are
+Python jobs with no Node runtime step.
 
 | Workflow | Node version | Steps | Scope |
 |---|---|---|---|
@@ -90,6 +100,10 @@ fails closed when:
    registered workflow/version/count pair no longer matches reality;
 2. a `setup-node` step has no literal `node-version`, uses `node-version-file`,
    or uses a `${{ }}` expression;
+   a supported `uses:` form is a plain, single-quoted, or double-quoted
+   `actions/setup-node` value with an optional trailing comment; any other
+   `uses:` line that still names `actions/setup-node` fails closed as
+   `UNPARSED_SETUP_NODE_USE` instead of being skipped;
 3. an active workflow uses a Node version that no scope declares;
 4. a scope is unreferenced, or a registration references an unknown scope or a
    mismatched version;
@@ -127,6 +141,9 @@ npm run verify
 - Node 20 is not raised to Node 22 for the default Product/CI path.
 - The Reliability Preview exception is not generalized to other workflows.
 - No provider, Production, database, or Cloudflare mutation is authorized here.
+- This policy does not claim or pin the Cloudflare deployed/build runtime;
+  `wrangler.toml` `nodejs_compat` is a compatibility behavior flag, not a Node
+  process-version pin.
 
 ## 금지
 
