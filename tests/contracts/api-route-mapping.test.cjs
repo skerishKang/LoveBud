@@ -17,6 +17,12 @@ function hasRegex(content, pattern) {
   return pattern.test(content);
 }
 
+// Negative ownership guards must look at executable code, not prose: a module
+// is allowed to *document* that it does not own a helper.
+function stripComments(content) {
+  return content.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[^\S\n]*\/\/.*$/gm, '');
+}
+
 function extractBraceBlock(content, openBraceIndex, label) {
   assert.ok(
     Number.isInteger(openBraceIndex) && openBraceIndex >= 0 && openBraceIndex < content.length,
@@ -62,6 +68,10 @@ const CATCHALL_JS = path.join(ROOT, 'functions/api/[[path]].js');
 // catch-all gateway in #4535 Slice 1. Mapping assertions read that module
 // directly; gateway assertions keep reading CATCHALL_JS.
 const MAPPING_JS = path.join(ROOT, 'functions/_shared/catchall-modal-route-mapping.js');
+// #4535 Slice 2 moved the catch-all's Modal fetch primitives (default timeout
+// budget, safe URL log projection, AbortController timeout wrapper) into their
+// own module. The timeout response policy stays with the gateway orchestration.
+const FETCH_JS = path.join(ROOT, 'functions/_shared/catchall-modal-fetch.js');
 const TREE_DETAIL_JS = path.join(ROOT, 'functions/api/trees/[id].js');
 const MEMORY_DETAIL_JS = path.join(ROOT, 'functions/api/memories/[id].js');
 const MEMORY_PROXY_JS = path.join(ROOT, 'functions/_shared/memory-route-proxy.js');
@@ -1721,10 +1731,12 @@ test('#4535 slice 1: the shared mapping module owns the pure route decision', ()
   assert.ok(!/crypto\.randomUUID/.test(mapping), 'mapping module must not generate request ids');
 
   // Gateway orchestration must NOT have moved with the mapping.
+  // Slice 2 relocated the fetch primitive itself into
+  // catchall-modal-fetch.js; the mapping still must not own it, and that
+  // ownership is asserted against the fetch module further down.
   for (const orchestration of [
     'async function tryModalRead',
     'async function tryModalWrite',
-    'async function fetchWithTimeout',
     'async function withUpstreamHeader',
     'function buildBodyReadFailedResponse',
     'function buildPayloadTooLargeResponse',
@@ -1811,4 +1823,317 @@ test('#4535 slice 1: the mapping module and the gateway agree on the moved route
     null,
     'buildModalUrl must stay null without MODAL_BASE_URL'
   );
+});
+// ─── #4535 SLICE 2 EXTRACTION BOUNDARY ───────────────────────────────────
+// The catch-all gateway keeps orchestration (auth, bounded body reads,
+// request-id, upstream/cache headers, fallback, no-store) and the timeout
+// RESPONSE taxonomy (buildModalTimeoutResponse). Only the three Modal fetch
+// PRIMITIVES moved to catchall-modal-fetch.js: the default timeout budget, the
+// safe URL log projection and the AbortController fetch timeout. Transport
+// mechanics are not response policy: the helper still rejects with AbortError
+// and tryModalRead/tryModalWrite still convert it to the modal-timeout 504.
+//
+// A: the new module exists and owns exactly the three fetch primitives.
+test('#4535 slice 2: catchall-modal-fetch.js owns only the Modal fetch primitives', () => {
+  assert.ok(fs.existsSync(FETCH_JS), 'functions/_shared/catchall-modal-fetch.js should exist');
+  const fetchModule = readFileContent(FETCH_JS);
+
+  assert.ok(
+    hasString(fetchModule, 'export const MODAL_FETCH_TIMEOUT_MS = 25000;'),
+    'fetch module should export the 25000ms default timeout constant'
+  );
+  assert.ok(
+    hasString(fetchModule, 'export function getSafeUrlLog(url)'),
+    'fetch module should export getSafeUrlLog'
+  );
+  assert.ok(
+    hasString(fetchModule, 'export async function fetchWithTimeout(url, options = {})'),
+    'fetch module should export fetchWithTimeout with the original signature'
+  );
+
+  // Transport primitives only: no Response taxonomy, auth, body read,
+  // routing or fallback may leak into this module.
+  const fetchCode = stripComments(fetchModule);
+  assert.ok(!/\bnew Response\s*\(/.test(fetchCode), 'fetch module must not build Responses');
+  assert.ok(!/authorization/i.test(fetchCode), 'fetch module must not do auth');
+  assert.ok(
+    !/request\s*\.\s*(json|text|arrayBuffer|formData)\s*\(/.test(fetchCode),
+    'fetch module must not read a body'
+  );
+  assert.ok(
+    !/buildModalUrl|isModalOwned|buildModalTimeoutResponse|tryModal/.test(fetchCode),
+    'fetch module must not own routing, timeout response policy or orchestration'
+  );
+  assert.ok(!/retry/i.test(fetchCode), 'fetch module must not retry');
+});
+
+// Slice 1 boundary, re-pointed: the mapping still must not own the fetch
+// primitive that Slice 2 relocated to its own module.
+test('#4535 slice 2: the mapping module still does not own the fetch primitive', () => {
+  const mapping = stripComments(readFileContent(MAPPING_JS));
+  assert.ok(
+    !hasString(mapping, 'function fetchWithTimeout'),
+    'mapping module must not own fetchWithTimeout'
+  );
+});
+
+// B: the gateway imports the fetch primitives and no longer redefines them.
+test('#4535 slice 2: the catch-all gateway imports the Modal fetch primitives', async () => {
+  const gateway = readFileContent(CATCHALL_JS);
+
+  assert.ok(
+    hasString(gateway, "from '../_shared/catchall-modal-fetch.js'"),
+    'catch-all should import the shared Modal fetch module'
+  );
+  for (const imported of ['fetchWithTimeout', 'getSafeUrlLog']) {
+    assert.ok(
+      hasRegex(gateway, new RegExp(`\\b${imported}\\b`)),
+      `catch-all should reference ${imported}`
+    );
+  }
+
+  // The implementations must not remain duplicated in the gateway.
+  assert.ok(
+    !hasString(gateway, 'function getSafeUrlLog('),
+    'catch-all must not redefine getSafeUrlLog after the extraction'
+  );
+  assert.ok(
+    !hasString(gateway, 'function fetchWithTimeout('),
+    'catch-all must not redefine fetchWithTimeout after the extraction'
+  );
+  assert.ok(
+    !hasRegex(gateway, /\bconst MODAL_FETCH_TIMEOUT_MS\b/),
+    'catch-all must not redefine MODAL_FETCH_TIMEOUT_MS after the extraction'
+  );
+
+  const gatewayMod = await import('../../functions/api/[[path]].js');
+  assert.equal(typeof gatewayMod.onRequest, 'function', 'gateway should still export onRequest');
+});
+
+// C: the default timeout budget is still exactly 25000ms.
+test('#4535 slice 2: fetchWithTimeout default timeout remains 25000ms', async () => {
+  const fetchModule = await import('../../functions/_shared/catchall-modal-fetch.js');
+  assert.equal(fetchModule.MODAL_FETCH_TIMEOUT_MS, 25000);
+});
+
+// D + E: a fresh AbortController per call, and the timer aborts the signal.
+test('#4535 slice 2: fetchWithTimeout aborts via a per-call AbortController', async () => {
+  const fetchModule = await import('../../functions/_shared/catchall-modal-fetch.js');
+  const signals = [];
+
+  const { calls, restore } = mockFetch(async (call) => {
+    signals.push(call.options.signal);
+    if (signals.length === 1) return new Response('{}', { status: 200 });
+    // The second call hangs until its own controller aborts.
+    return new Promise((_resolve, reject) => {
+      call.options.signal.addEventListener('abort', () => {
+        const error = new Error('aborted');
+        error.name = 'AbortError';
+        reject(error);
+      });
+    });
+  });
+
+  try {
+    await fetchModule.fetchWithTimeout('https://modal.test/first');
+    assert.equal(calls.length, 1, 'first call should reach fetch');
+    assert.ok(signals[0] instanceof AbortSignal, 'fetch should receive an AbortSignal');
+    assert.equal(signals[0].aborted, false, 'a resolved call leaves its signal un-aborted');
+
+    await assert.rejects(
+      fetchModule.fetchWithTimeout('https://modal.test/second', { timeout: 5 }),
+      (error) => error.name === 'AbortError',
+      'an aborted upstream fetch must reject with AbortError'
+    );
+
+    assert.equal(signals.length, 2, 'second call should reach fetch');
+    assert.notEqual(signals[0], signals[1], 'each call must get its own AbortController');
+    assert.equal(signals[1].aborted, true, 'the timer must abort the signal');
+  } finally {
+    restore();
+  }
+});
+
+// F: the timeout timer is cleared once fetch settles, on both paths.
+test('#4535 slice 2: fetchWithTimeout clears its timer in finally', async () => {
+  const fetchModule = await import('../../functions/_shared/catchall-modal-fetch.js');
+  const activeTimers = () => process.getActiveResourcesInfo().filter((r) => r === 'Timeout').length;
+
+  assert.ok(
+    hasRegex(readFileContent(FETCH_JS), /finally\s*\{[\s\S]*clearTimeout\(timeoutId\)/),
+    'the fetch module should clearTimeout(timeoutId) in a finally block'
+  );
+
+  const settled = mockFetch(async () => new Response('{}', { status: 200 }));
+  try {
+    const before = activeTimers();
+    await fetchModule.fetchWithTimeout('https://modal.test/ok');
+    assert.equal(activeTimers(), before, 'a settled fetch must not leave a pending timer');
+  } finally {
+    settled.restore();
+  }
+
+  const aborted = mockFetch(async (call) => new Promise((_resolve, reject) => {
+    call.options.signal.addEventListener('abort', () => {
+      const error = new Error('aborted');
+      error.name = 'AbortError';
+      reject(error);
+    });
+  }));
+  try {
+    const before = activeTimers();
+    await assert.rejects(
+      fetchModule.fetchWithTimeout('https://modal.test/boom', { timeout: 5 }),
+      (error) => error.name === 'AbortError'
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(activeTimers(), before, 'an aborted fetch must still clear its timer');
+  } finally {
+    aborted.restore();
+  }
+});
+
+// G + H: an explicit timeout overrides the default, and every other fetch
+// option is forwarded while `timeout` itself is consumed by the helper.
+test('#4535 slice 2: fetchWithTimeout honours an explicit timeout and forwards options', async () => {
+  const fetchModule = await import('../../functions/_shared/catchall-modal-fetch.js');
+
+  const { calls, restore } = mockFetch(async () => new Response('{}', { status: 200 }));
+  try {
+    await fetchModule.fetchWithTimeout('https://modal.test/write', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"hello":"world"}',
+      timeout: 1234
+    });
+  } finally {
+    restore();
+  }
+
+  assert.equal(calls.length, 1, 'the forwarded call should reach fetch once');
+  const { options } = calls[0];
+  assert.equal(options.method, 'POST', 'method must be forwarded');
+  assert.equal(options.headers['content-type'], 'application/json', 'headers must be forwarded');
+  assert.equal(options.body, '{"hello":"world"}', 'body must be forwarded');
+  assert.ok(options.signal instanceof AbortSignal, 'signal must be injected');
+  assert.ok(!('timeout' in options), 'timeout must be consumed by the helper, not forwarded to fetch');
+
+  // An explicit timeout must win over the 25000ms default.
+  const aborting = mockFetch(async (call) => new Promise((_resolve, reject) => {
+    call.options.signal.addEventListener('abort', () => {
+      const error = new Error('aborted');
+      error.name = 'AbortError';
+      reject(error);
+    });
+  }));
+  try {
+    const startedAt = process.hrtime.bigint();
+    await assert.rejects(
+      fetchModule.fetchWithTimeout('https://modal.test/override', { timeout: 10 }),
+      (error) => error.name === 'AbortError'
+    );
+    const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
+    assert.ok(elapsedMs < 5000, `an explicit 10ms timeout must fire early, took ${elapsedMs}ms`);
+  } finally {
+    aborting.restore();
+  }
+});
+
+// I + J + K: safe URL log parity — no query, fragment or credentials, and
+// invalid / falsy inputs keep their exact legacy projections.
+test('#4535 slice 2: getSafeUrlLog strips query, hash and credentials', async () => {
+  const fetchModule = await import('../../functions/_shared/catchall-modal-fetch.js');
+  const { getSafeUrlLog } = fetchModule;
+
+  assert.equal(
+    getSafeUrlLog('https://modal.test/modal/trees/tree-1?limit=5&token=secret#frag'),
+    'https://modal.test/modal/trees/tree-1',
+    'query and fragment must be stripped'
+  );
+  assert.equal(
+    getSafeUrlLog(new URL('https://user:pass@modal.test/modal/private/trees/tree-1?x=1')),
+    'https://modal.test/modal/private/trees/tree-1',
+    'credentials must not be logged'
+  );
+  assert.equal(
+    getSafeUrlLog('https://modal.test:8443/modal/browse/latest?sort=likes'),
+    'https://modal.test:8443/modal/browse/latest',
+    'port is part of the origin and must survive'
+  );
+
+  // J: invalid URL.
+  assert.equal(getSafeUrlLog('not a url'), 'invalid-url', 'an invalid URL logs invalid-url');
+  assert.equal(getSafeUrlLog('http://'), 'invalid-url', 'a malformed URL logs invalid-url');
+
+  // K: falsy URL.
+  assert.equal(getSafeUrlLog(null), 'null', 'null URL logs null');
+  assert.equal(getSafeUrlLog(undefined), 'null', 'undefined URL logs null');
+  assert.equal(getSafeUrlLog(''), 'null', 'empty URL logs null');
+});
+
+// L + M: read/write orchestration and the timeout RESPONSE policy stay put.
+test('#4535 slice 2: read/write orchestration and the 504 timeout policy remain in the catch-all', () => {
+  const gateway = readFileContent(CATCHALL_JS);
+  const fetchModule = stripComments(readFileContent(FETCH_JS));
+
+  // L: tryModalRead / tryModalWrite remain gateway orchestration.
+  assert.ok(hasString(gateway, 'async function tryModalRead'), 'tryModalRead should remain in the catch-all');
+  assert.ok(hasString(gateway, 'async function tryModalWrite'), 'tryModalWrite should remain in the catch-all');
+  assert.ok(!hasString(fetchModule, 'tryModalRead'), 'fetch module must not own tryModalRead');
+  assert.ok(!hasString(fetchModule, 'tryModalWrite'), 'fetch module must not own tryModalWrite');
+
+  // M: buildModalTimeoutResponse stays catch-all — transport != response policy.
+  assert.ok(
+    hasString(gateway, 'function buildModalTimeoutResponse'),
+    'buildModalTimeoutResponse should remain in the catch-all'
+  );
+  assert.ok(
+    !hasString(fetchModule, 'buildModalTimeoutResponse'),
+    'fetch module must not own the timeout response'
+  );
+
+  // The AbortError -> 504 conversion stays with the orchestration helpers.
+  for (const orchestration of ['tryModalRead', 'tryModalWrite']) {
+    const block = extractFunctionBlock(gateway, orchestration);
+    assert.ok(
+      hasString(block, "error.name === 'AbortError'"),
+      `${orchestration} should still classify AbortError`
+    );
+    assert.ok(
+      hasString(block, 'buildModalTimeoutResponse'),
+      `${orchestration} should still map AbortError to the modal timeout response`
+    );
+  }
+
+  // The response taxonomy itself is unchanged.
+  const timeoutResponse = extractFunctionBlock(gateway, 'buildModalTimeoutResponse');
+  assert.ok(hasString(timeoutResponse, "'x-lovebud-route-status': 'modal-timeout'"), 'modal-timeout route status');
+  assert.ok(hasString(timeoutResponse, 'Modal upstream timeout'), 'modal-timeout error body');
+  assert.ok(hasRegex(timeoutResponse, /status:\s*504/), 'modal timeout must stay 504');
+});
+
+// The AbortError -> 504 conversion is live behavior, not only a source
+// assertion. The upstream mock rejects with AbortError immediately (the timer
+// path itself is proven above against the fetch module) so the gateway's
+// conversion runs end-to-end without waiting the real 25s budget.
+test('#4535 slice 2: an aborted Modal read still returns the 504 modal-timeout response', async () => {
+  const { restore } = mockFetch(async () => {
+    const error = new Error('synthetic abort');
+    error.name = 'AbortError';
+    throw error;
+  });
+
+  try {
+    const request = new Request(`${TEST_HOST}/api/trees/timeout-tree`, {
+      headers: { authorization: 'Bearer owner-token' }
+    });
+    const response = await callOnRequest(request);
+
+    assert.equal(response.status, 504, 'an aborted upstream read must surface as 504');
+    assert.equal(response.headers.get('x-lovebud-route-status'), 'modal-timeout');
+    assert.equal(response.headers.get('x-lovebud-upstream'), 'modal');
+    assert.deepEqual(await response.json(), { error: 'Modal upstream timeout' });
+  } finally {
+    restore();
+  }
 });
