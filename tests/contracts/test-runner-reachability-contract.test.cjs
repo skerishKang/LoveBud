@@ -332,8 +332,8 @@ function describe(file) {
 test('1. enumerates every tests/**/*.test.cjs recursively, without duplicates', () => {
   assert.equal(
     REAL.testFiles.length,
-    903,
-    `expected 903 tests/**/*.test.cjs files (902 before the #4546 PR guardrails CI contract, itself 901 after the #4545 QA credential public-Git boundary contract addition), found ${REAL.testFiles.length}`
+    904,
+    `expected 904 tests/**/*.test.cjs files (903 before the #4534 Node runtime policy contract, itself 902 before the #4546 PR guardrails CI contract, itself 901 after the #4545 QA credential public-Git boundary contract addition), found ${REAL.testFiles.length}`
   );
   assert.equal(
     new Set(REAL.testFiles).size,
@@ -363,8 +363,8 @@ test('2. the default-CI globs reach exactly the package-owned default layer', ()
   );
   assert.equal(
     REAL.defaultCi.length,
-    885,
-    `expected 885 default-CI reachable files (884 before the #4546 PR guardrails CI contract addition), found ${REAL.defaultCi.length}`
+    886,
+    `expected 886 default-CI reachable files (885 before the #4534 Node runtime policy contract, itself 884 before the #4546 PR guardrails CI contract addition), found ${REAL.defaultCi.length}`
   );
   assert.equal(
     REAL.outsideDefault.length,

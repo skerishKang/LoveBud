@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0.0",
+  "title": "LoveBud Node runtime policy",
+  "refs": ["#4534"],
+  "decision": "EXPLICIT_MULTI_VERSION_MATRIX",
+  "decision_note": "LoveBud supports exactly two Node runtimes with scoped reasons. Node 20 is the default Product/CI runtime and the merge gate. Node 22.13.0 is scoped to the Reliability Preview rehearsal only.",
+  "human_doc": "docs/engineering/NODE_RUNTIME_POLICY.md",
+  "default_scope_id": "DEFAULT_PRODUCT_CI",
+  "default_node_version": "20",
+  "scopes": [
+    {
+      "id": "DEFAULT_PRODUCT_CI",
+      "node_version": "20",
+      "surface": "Product source, Cloudflare Pages Functions/tooling, ordinary contract/unit/smoke/route tests, DB-engine PostgreSQL jobs, and branch authority governance contracts.",
+      "reason": "Node 20 is the current GitHub Actions Product runtime and the merge gate. Existing CI evidence is generated on Node 20 and local Node 22 evidence cannot replace it.",
+      "reason_sources": [
+        {
+          "path": "docs/architecture/DB_MIGRATION_PROVENANCE_NEXT_CHILD_DECISION.md",
+          "required_token": "Node 20 GitHub Actions CI remains the merge gate."
+        }
+      ]
+    },
+    {
+      "id": "RELIABILITY_PREVIEW_REHEARSAL",
+      "node_version": "22.13.0",
+      "surface": "Hermetic Reliability Preview rehearsal suite in tests/reliability-preview and the workers/reliability-preview local runtime adapter.",
+      "reason": "The rehearsal suite requires the node:sqlite DatabaseSync API for its in-memory store; that API is not available on the Node 20 runtime.",
+      "reason_sources": [
+        {
+          "path": "tests/reliability-preview/4082-nonprod-rehearsal.test.cjs",
+          "required_token": "require('node:sqlite')"
+        }
+      ]
+    }
+  ],
+  "workflow_occurrences": [
+    {
+      "workflow": ".github/workflows/branch-authority-gate.yml",
+      "node_version": "20",
+      "count": 1,
+      "scope_id": "DEFAULT_PRODUCT_CI"
+    },
+    {
+      "workflow": ".github/workflows/ci.yml",
+      "node_version": "20",
+      "count": 16,
+      "scope_id": "DEFAULT_PRODUCT_CI"
+    },
+    {
+      "workflow": ".github/workflows/moment-social-visibility-concurrency-3954.yml",
+      "node_version": "20",
+      "count": 1,
+      "scope_id": "DEFAULT_PRODUCT_CI"
+    },
+    {
+      "workflow": ".github/workflows/pr-fast-gate.yml",
+      "node_version": "20",
+      "count": 1,
+      "scope_id": "DEFAULT_PRODUCT_CI"
+    },
+    {
+      "workflow": ".github/workflows/reliability-preview.yml",
+      "node_version": "22.13.0",
+      "count": 1,
+      "scope_id": "RELIABILITY_PREVIEW_REHEARSAL"
+    }
+  ],
+  "declared_version_sources": [
+    "config/node-runtime-policy.json (this file)",
+    ".github/workflows/*.yml actions/setup-node node-version values"
+  ],
+  "undeclared_version_sources": [
+    {
+      "path": ".nvmrc",
+      "must_be_absent": true,
+      "note": "A version file would create a second, silent runtime authority. Add it only with an explicit policy update and guard change in the same PR."
+    },
+    {
+      "path": ".node-version",
+      "must_be_absent": true,
+      "note": "Same as .nvmrc: absent by decision, not by accident."
+    },
+    {
+      "path": "package.json#engines",
+      "must_be_absent": true,
+      "note": "package.json engines is deliberately not a runtime authority for this repository."
+    }
+  ],
+  "drift_rules": [
+    "Every active actions/setup-node occurrence in .github/workflows/*.yml must be registered in workflow_occurrences with the same workflow, node_version, and count.",
+    "An unregistered occurrence, a removed registration, a changed node_version, or a changed count fails closed.",
+    "An actions/setup-node step without a literal node-version, or with node-version-file or a ${{ }} expression, fails closed.",
+    "A node_version that is not declared by a scope fails closed.",
+    "A scope that no workflow occurrence references, or a registration that references an unknown scope or a mismatched version, fails closed.",
+    "Every scope reason_sources entry must exist and contain its required_token.",
+    "The human document must exist and name every scope id and node_version.",
+    ".nvmrc, .node-version, and package.json#engines must stay absent."
+  ],
+  "change_procedure": [
+    "Update config/node-runtime-policy.json, docs/engineering/NODE_RUNTIME_POLICY.md, and the affected workflow node-version lines in one reviewable PR.",
+    "Run npm run check:node-runtime and node --test tests/contracts/node-runtime-policy-4534.test.cjs.",
+    "Run npm run verify (the guard is enforced there for CI)."
+  ]
+}
