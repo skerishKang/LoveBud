@@ -8,7 +8,8 @@
 - **Latest-main revalidation baseline:** `a9eb02f9045bbd05fd5cc555d5e2a7e439ebeb0c`
 - **Parent product issue:** #3654 — **Keep OPEN**
 - **Related completed:** #3655 / PR #3656 (Browse Story foundation), #3666 (transition correction), #3703 / PR #3708 (Browse refinement)
-- **Production acceptance blocker (historical tracker):** #3699 — **CLOSED** historical deployment-reliability authority (reconciled by #4555). The substantive blocker it tracked — Browse Story mode has not received Production visual acceptance — remains unmet and is tracked independently.
+- **Automatic deployment-parity authority (historical):** #3699 — **CLOSED** historical automatic-deployment-parity authority (reconciled by #4555). While open, its deployment-parity failure blocked the ability to establish Browse Story Production visual acceptance.
+- **Production visual acceptance requirement (current):** owned by the Browse Story authority (#3655) in the #3717 dependency framing — independent of #3699, and still unmet unless fresh accepted evidence proves otherwise.
 - **Branch / Worktree (historical execution metadata):** `docs/my-trees-story-parity-readiness-3717` / `/mnt/g/Ddrive/BatangD/task/workdiary/LoveBud-3717-mytrees-story-readiness`
 
 ---
@@ -21,7 +22,7 @@ My Trees uses the **same shared switcher** but passes no `modes` option, keeping
 
 The audit concludes that **Story mode is NOT currently ready for My Trees implementation** — not because of technical impossibility, but because:
 
-1. **Browse Story mode has not received Production visual acceptance** — so no parallel surface implementation may begin. This substantive blocker was historically tracked under `#3699`, which is now **CLOSED** historical deployment-reliability authority; its closure does not by itself clear the acceptance blocker.
+1. **Browse Story mode has not received Production visual acceptance** — so no parallel surface implementation may begin. The visual-acceptance requirement belongs to the Browse Story authority (#3655 / #3717 dependency framing), not to `#3699`. `#3699` is now **CLOSED** historical automatic-deployment-parity authority: while open, its deployment-parity failure blocked the ability to establish that acceptance. Closing `#3699` removes that Issue-lifecycle gate; it does not itself satisfy Browse Story visual acceptance.
 2. **Preview hub coexistence is unresolved** — My Trees' primary interaction surface is the appreciation preview hub (`#myTreesHubPanel`), which auto-selects the first tree. Story mode's card-grouping semantics (hide non-visible cards, show prev/next) conflict with the hub's selection-driven flow.
 3. **Owner-specific boundaries are significant** — My Trees has auth, owner actions (rename/delete/visibility), create-tree CTA, and auto-select-first-tree behavior that Browse Story does not account for.
 
@@ -232,7 +233,7 @@ The following are My Trees preservation authorities that Browse Story does not o
 
 ### 3.4 BLOCKED_BY_PRODUCTION_ACCEPTANCE
 
-- **#3699** — **CLOSED** historical deployment-reliability authority (reconciled by #4555). It is retained here only as the historical tracker of the Production acceptance blocker; it is not a current open obligation and no current authority is reopened by it.
+- **#3699** — **CLOSED** historical automatic-deployment-parity authority (reconciled by #4555). While open, its deployment-parity failure blocked the ability to establish Browse Story Production visual acceptance. It was a prerequisite to obtaining that acceptance, not the owner of the acceptance requirement, and no current authority is reopened by its closure.
 - **Browse Story mode** — The foundation (#3655) requires Production visual acceptance after merge before #3655 is closed. My Trees Story mode depends on this acceptance.
 
 ### 3.5 BLOCKED_BY_PRODUCT_DECISION
@@ -316,7 +317,7 @@ On **My Trees**, the coexistence is **unresolved**:
 
 Implementation of My Trees Story mode is **prohibited** until ALL of the following are met:
 
-1. **`#3699` lifecycle condition retired** — `#3699` is CLOSED historical authority and no longer gates this work. The substantive acceptance blocker it tracked is condition 2.
+1. **`#3699` deployment-parity gate retired** — `#3699` is CLOSED historical automatic-deployment-parity authority and no longer gates this work. Its deployment-parity failure previously blocked establishing condition 2; closing it does not itself satisfy condition 2.
 2. **Browse Story mode Production-accepted** — Visual acceptance at `https://lovebud.pages.dev/` via the Merge-First Production Verification workflow.
 3. **Product decision on My Trees Story mode** — #3654 must decide whether My Trees should have Story mode.
 4. **Preview hub coexistence design approved** — The interaction between Story grouping and the preview hub must be designed and approved.
@@ -372,7 +373,7 @@ If and only if all stop conditions are met, the first implementation child shoul
 
 The audit is **complete**. No implementation may begin until:
 
-1. **`#3699`** is CLOSED historical deployment-reliability authority and is not a current blocker; the substantive blocker it tracked is condition 2.
+1. **`#3699`** is CLOSED historical automatic-deployment-parity authority and is not a current blocker; the visual-acceptance requirement it previously impeded is condition 2, which is owned by the Browse Story authority (#3655 / #3717 dependency framing).
 2. **Browse Story mode** receives Production visual acceptance at `https://lovebud.pages.dev/`.
 3. **Product decision** on My Trees Story mode is made (#3654).
 4. **Preview hub coexistence** design is approved.
@@ -417,7 +418,7 @@ git status --short
 | **reusable with adapter** | Story grouping, nav UI, transitions, keyboard, CSS, preview hub coordination |
 | **owner-specific boundaries** | Auth, owner actions, auto-select, create CTA, finder/filter/sort, mobile behavior, degraded state |
 | **coexistence constraints** | Security helpers, preview hub CSS, loading/empty/error state patterns, selection state authority, card events authority — all My Trees preservation authorities, not Browse Story reuse items |
-| **production blockers** | Browse Story not Production-accepted (#3699 is CLOSED historical authority) |
+| **production blockers** | Browse Story not Production-accepted (owned by #3655 / #3717 framing; #3699 is CLOSED historical automatic-deployment-parity authority) |
 | **product-decision blockers** | #3654 (OPEN), preview hub coexistence, Story preference boundary, storage/default-mode decision |
 | **recommended architecture** | Thin adapter (`my-trees-story-view.js`) calling `LoveBudBrowseStoryView.init` with `.trees-grid` target — **plan, not implementation approval** |
 | **first implementation child proposal** | `[UX][My Trees] Add Story view adapter for My Trees` — CANDIDATE_SCOPE_NOT_AUTHORIZED, 6 files |
@@ -427,7 +428,7 @@ git status --short
 **Refs #3717**
 **Refs #3654 — Keep OPEN**
 **Refs #3703 — completed**
-**Refs #3699 — CLOSED (historical deployment-reliability authority)**
+**Refs #3699 — CLOSED (historical automatic-deployment-parity authority)**
 **Refs #4555 — deployment authority lifecycle reconciliation**
 **Refs #3688 — Keep OPEN**
 **Refs #3672 — Keep OPEN**
