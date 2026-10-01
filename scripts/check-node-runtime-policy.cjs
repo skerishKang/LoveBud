@@ -16,6 +16,9 @@
  *     grammar (unparseable quoting or extra tokens) - never a silent skip;
  *     the supported shapes are plain, single-quoted and double-quoted values,
  *     each with an optional trailing `# comment`;
+ *   - a uses line uses YAML anchors/aliases in a shape the guard cannot
+ *     resolve to a single action reference (an unresolved alias could point at
+ *     actions/setup-node), which fails closed as INDIRECT_USES_UNRESOLVED;
  *   - a scope reason source is missing or lost its required token;
  *   - the human-readable policy document is missing or stops naming the scopes;
  *   - .nvmrc, .node-version, or package.json#engines appears as an undeclared
@@ -46,6 +49,12 @@ const USES_LINE_REGEX = /^[ \t]*(?:-\s*)?uses:[ \t]*(.*)$/;
 const SETUP_NODE_MENTION_REGEX = /^["']?actions\/setup-node(?![\w-])/;
 const SETUP_NODE_TARGET_REGEX = /^actions\/setup-node(?:@[A-Za-z0-9._/-]+)?$/;
 const INLINE_COMMENT_REGEX = /[ \t]#/;
+// YAML anchor/alias forms on a uses line. A definition with a readable action
+// value and an alias that resolves to one are parsed; any other indirect shape
+// fails closed, because an unresolved alias could point at actions/setup-node.
+const ANCHOR_DEFINITION_REGEX = /^&([A-Za-z0-9_-]+)(?:[ \t]+([\s\S]*))?$/;
+const ALIAS_USE_REGEX = /^\*([A-Za-z0-9_-]+)$/;
+const INDIRECT_TOKEN_REGEX = /[&*][A-Za-z0-9_-]/;
 const STEP_KEY_REGEX = /^[ \t]*([A-Za-z_][A-Za-z0-9_-]*):/;
 const NEW_LIST_ITEM_REGEX = /^[ \t]*-\s/;
 const NODE_VERSION_FILE_REGEX = /^[ \t]*node-version-file:[ \t]*(.*)$/;
@@ -145,36 +154,137 @@ function classifySetupNodeUse(parsed) {
 }
 
 /**
+ * Reduce one parsed `uses:` value to a scanner outcome.
+ *
+ * Outcomes: { kind: 'occurrence' } for a supported actions/setup-node use (the
+ * caller then reads its node-version), { kind: 'absent' } for a value that
+ * provably is not actions/setup-node, or { kind: 'problem', code, detail }.
+ *
+ * Anchor definitions on a uses line (`&name actions/setup-node@vN`) are parsed
+ * and remembered in `anchorActions`; aliases (`*name`) resolve against that
+ * table and are counted as occurrences with their own node-version. Any other
+ * anchor/alias shape fails closed instead of being skipped.
+ */
+function resolveUsesValue(parsed, anchorActions) {
+  const value = parsed && typeof parsed.value === 'string' ? parsed.value : '';
+  const reducible = Boolean(parsed) && (parsed.kind === 'plain' || parsed.kind === 'quoted');
+
+  const anchorMatch = reducible ? ANCHOR_DEFINITION_REGEX.exec(value) : null;
+  if (anchorMatch) {
+    const name = anchorMatch[1];
+    const remainder = anchorMatch[2];
+    if (remainder == null || remainder.trim() === '') {
+      anchorActions.set(name, 'unreadable');
+      return {
+        kind: 'problem',
+        code: 'INDIRECT_USES_UNRESOLVED',
+        detail: 'uses defines a YAML anchor with no readable action value',
+      };
+    }
+    const inner = parseUsesValue(remainder);
+    if (inner.kind !== 'plain' && inner.kind !== 'quoted') {
+      anchorActions.set(name, 'unreadable');
+      if (SETUP_NODE_MENTION_REGEX.test(inner.value)) {
+        return {
+          kind: 'problem',
+          code: 'UNPARSED_SETUP_NODE_USE',
+          detail: 'uses defines an anchor for actions/setup-node in a form the guard cannot parse',
+        };
+      }
+      return {
+        kind: 'problem',
+        code: 'INDIRECT_USES_UNRESOLVED',
+        detail: 'uses defines a YAML anchor whose action value cannot be read',
+      };
+    }
+    if (SETUP_NODE_TARGET_REGEX.test(inner.value)) {
+      anchorActions.set(name, 'setup-node');
+      return { kind: 'occurrence' };
+    }
+    if (SETUP_NODE_MENTION_REGEX.test(inner.value)) {
+      anchorActions.set(name, 'unreadable');
+      return {
+        kind: 'problem',
+        code: 'UNPARSED_SETUP_NODE_USE',
+        detail: 'uses defines an anchor for actions/setup-node in a form the guard cannot parse',
+      };
+    }
+    if (INDIRECT_TOKEN_REGEX.test(inner.value)) {
+      anchorActions.set(name, 'unreadable');
+      return {
+        kind: 'problem',
+        code: 'INDIRECT_USES_UNRESOLVED',
+        detail: 'uses defines a nested anchor/alias the guard cannot resolve',
+      };
+    }
+    anchorActions.set(name, 'other');
+    return { kind: 'absent' };
+  }
+
+  const aliasMatch = reducible ? ALIAS_USE_REGEX.exec(value) : null;
+  if (aliasMatch) {
+    const resolved = anchorActions.get(aliasMatch[1]);
+    if (resolved === 'setup-node') return { kind: 'occurrence' };
+    if (resolved === 'other') return { kind: 'absent' };
+    return {
+      kind: 'problem',
+      code: 'INDIRECT_USES_UNRESOLVED',
+      detail: 'uses aliases a YAML anchor the guard cannot resolve to a single action',
+    };
+  }
+
+  const classification = classifySetupNodeUse(parsed);
+  if (classification === 'supported') return { kind: 'occurrence' };
+  if (classification === 'unparsed') {
+    return {
+      kind: 'problem',
+      code: 'UNPARSED_SETUP_NODE_USE',
+      detail:
+        'uses names actions/setup-node in a form the guard cannot parse; write actions/setup-node@vN, optionally quoted, without extra tokens',
+    };
+  }
+  if (INDIRECT_TOKEN_REGEX.test(value)) {
+    return {
+      kind: 'problem',
+      code: 'INDIRECT_USES_UNRESOLVED',
+      detail: 'uses uses an anchor/alias shape the guard cannot resolve; write the action inline',
+    };
+  }
+  return { kind: 'absent' };
+}
+
+/**
  * Pure scanner: every `actions/setup-node` occurrence in one workflow source.
  * Accepts plain, single-quoted and double-quoted `uses:` values with optional
- * trailing comments. Returns { occurrences, problems } and never throws on
+ * trailing comments, plus anchor definitions and aliases that resolve to a
+ * single action value. Returns { occurrences, problems } and never throws on
  * malformed YAML; a shape it cannot prove is reported as a problem (including
- * UNPARSED_SETUP_NODE_USE) instead of being ignored.
+ * UNPARSED_SETUP_NODE_USE and INDIRECT_USES_UNRESOLVED) instead of being
+ * ignored.
  */
 function collectSetupNodeOccurrences(source, workflowPath) {
   const lines = String(source == null ? '' : source).split(/\r?\n/);
   const occurrences = [];
   const problems = [];
+  const anchorActions = new Map();
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     const usesMatch = USES_LINE_REGEX.exec(line);
     if (!usesMatch) continue;
 
-    const classification = classifySetupNodeUse(parseUsesValue(usesMatch[1]));
-    // Only a line that does not name actions/setup-node at all is skipped here.
-    if (classification === 'absent') continue;
-
     const usesIndent = line.match(SPACES_REGEX)[0].length;
     const lineNumber = index + 1;
+    const resolution = resolveUsesValue(parseUsesValue(usesMatch[1]), anchorActions);
 
-    if (classification === 'unparsed') {
+    // Only a value that provably is not actions/setup-node is skipped here.
+    if (resolution.kind === 'absent') continue;
+    if (resolution.kind === 'problem') {
       problems.push({
-        code: 'UNPARSED_SETUP_NODE_USE',
+        code: resolution.code,
         workflow: workflowPath,
         line: lineNumber,
-        detail:
-          'uses names actions/setup-node in a form the guard cannot parse; write actions/setup-node@vN, optionally quoted, without extra tokens',
+        detail: resolution.detail,
       });
       continue;
     }

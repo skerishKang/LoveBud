@@ -16,7 +16,8 @@
  *      package.json#engines, malformed policy);
  *   E. CI consumption and guard source hygiene;
  *   F. registry / classification reconciliation;
- *   G. uses-form coverage: quoted and comment-suffixed setup-node lines.
+ *   G. uses-form coverage: quoted/comment-suffixed and anchored/aliased
+ *      setup-node lines.
  *
  * Source-only: reads repository files and mutates only synthetic temp copies.
  * No network, provider, database, browser, git, or Production action. Refs #4534.
@@ -952,6 +953,7 @@ test('48. a setup-node uses line outside the supported grammar fails closed as u
     ['unterminated double quote', 'uses: "actions/setup-node@v7'],
     ['unterminated single quote', `uses: ${single}actions/setup-node@v7`],
     ['extra tokens after the quoted value', 'uses: "actions/setup-node@v7" extra'],
+    ['anchored setup-node with extra tokens', 'uses: &node_action actions/setup-node@v7 extra'],
   ];
   for (const [label, replacement] of shapes) {
     const result = evaluate({
@@ -974,4 +976,117 @@ test('48. a setup-node uses line outside the supported grammar fails closed as u
     !JSON.stringify(scanned.problems).includes(marker),
     'the guard must not echo the raw unparsed uses value'
   );
+});
+
+test('49. anchored setup-node uses definitions are parsed, not skipped', () => {
+  const source = [
+    'jobs:',
+    '  anchored:',
+    '    steps:',
+    '      - uses: &node_action actions/setup-node@v7',
+    '        with:',
+    '          node-version: 20',
+    '      - uses: &node_action_quoted "actions/setup-node@v7"',
+    '        with:',
+    '          node-version: 20',
+    '      - uses: &checkout_action actions/checkout@v7',
+    '',
+  ].join('\n');
+  const scanned = guard.collectSetupNodeOccurrences(source, 'synthetic-anchors.yml');
+  assert.deepEqual(
+    scanned.problems,
+    [],
+    `anchored definitions must not fail: ${JSON.stringify(scanned.problems)}`
+  );
+  assert.deepEqual(
+    scanned.occurrences.map((entry) => entry.node_version),
+    ['20', '20'],
+    'both anchored setup-node definitions must be counted'
+  );
+
+  // Count-preserving positive control at the policy level: an anchored
+  // definition replaces the plain uses line with no drift.
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const result = evaluate({
+    [rel]: () =>
+      [
+        'jobs:',
+        '  anchored:',
+        '    steps:',
+        '      - uses: &node_action actions/setup-node@v7',
+        '        with:',
+        '          node-version: 20',
+        '',
+      ].join('\n'),
+  });
+  assert.deepEqual(result.codes, [], `anchored definition must keep the census: ${result.codes.join(',')}`);
+});
+
+test('50. an aliased setup-node use with Node 24 is counted and fails closed', () => {
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const source = [
+    'jobs:',
+    '  aliased:',
+    '    steps:',
+    '      - uses: &node_action actions/setup-node@v7',
+    '        with:',
+    '          node-version: 20',
+    '      - uses: *node_action',
+    '        with:',
+    '          node-version: 24',
+    '',
+  ].join('\n');
+  const result = evaluate({ [rel]: () => source });
+  assert.equal(result.ok, false, 'the aliased Node 24 step must not be invisible to the guard');
+  assert.ok(result.codes.includes('UNREGISTERED_WORKFLOW_OCCURRENCE'), result.codes.join(','));
+  assert.ok(result.codes.includes('NODE_VERSION_NOT_DECLARED'), result.codes.join(','));
+  assert.deepEqual(
+    result.occurrences.filter((entry) => entry.workflow === rel).map((entry) => entry.node_version),
+    ['20', '24'],
+    'the alias must be counted as its own occurrence with its own node-version'
+  );
+});
+
+test('51. indirect uses forms the guard cannot resolve fail closed', () => {
+  const rel = '.github/workflows/pr-fast-gate.yml';
+  const shapes = [
+    ['undefined alias', ['      - uses: *never_defined', '        with:', '          node-version: 20']],
+    [
+      'alias with extra tokens',
+      ['      - uses: *node_action extra', '        with:', '          node-version: 20'],
+    ],
+    ['anchor without an action value', ['      - uses: &node_action', '        with:', '          node-version: 20']],
+    [
+      'anchor defined outside a uses line',
+      [
+        '      - name: &node_action actions/setup-node@v7',
+        '      - uses: *node_action',
+        '        with:',
+        '          node-version: 24',
+      ],
+    ],
+  ];
+  for (const [label, lines] of shapes) {
+    const source = ['jobs:', '  indirect:', '    steps:', ...lines, ''].join('\n');
+    const result = evaluate({ [rel]: () => source });
+    assert.equal(result.ok, false, `${label} must fail closed`);
+    assert.ok(result.codes.includes('INDIRECT_USES_UNRESOLVED'), `${label}: ${result.codes.join(',')}`);
+  }
+});
+
+test('52. anchors and aliases for non-setup-node actions stay non-blocking', () => {
+  const source = [
+    'jobs:',
+    '  other:',
+    '    steps:',
+    '      - uses: &checkout_action actions/checkout@v7',
+    '      - uses: *checkout_action',
+    '      - uses: actions/setup-node@v7',
+    '        with:',
+    '          node-version: 20',
+    '',
+  ].join('\n');
+  const scanned = guard.collectSetupNodeOccurrences(source, 'synthetic-other-anchor.yml');
+  assert.deepEqual(scanned.problems, [], JSON.stringify(scanned.problems));
+  assert.deepEqual(scanned.occurrences.map((entry) => entry.node_version), ['20']);
 });

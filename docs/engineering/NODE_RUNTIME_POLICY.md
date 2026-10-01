@@ -104,6 +104,14 @@ fails closed when:
    `actions/setup-node` value with an optional trailing comment; any other
    `uses:` line that still names `actions/setup-node` fails closed as
    `UNPARSED_SETUP_NODE_USE` instead of being skipped;
+3. a `uses:` line uses YAML anchors/aliases in a shape the guard cannot
+   resolve. `uses: &name actions/setup-node@vN` is parsed and counted, and
+   `uses: *name` resolves to it with its own `node-version`; an alias whose
+   anchor is not a readable `setup-node` definition in the same file, an anchor
+   with no readable action value, or any other indirect shape fails closed as
+   `INDIRECT_USES_UNRESOLVED` — an unresolved alias could point at
+   `actions/setup-node`. Anchors on whole step mappings are outside this rule
+   and are scanned at their definition site;
 3. an active workflow uses a Node version that no scope declares;
 4. a scope is unreferenced, or a registration references an unknown scope or a
    mismatched version;
