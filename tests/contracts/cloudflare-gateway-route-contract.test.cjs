@@ -11,9 +11,11 @@ function readRepoFile(relativePath) {
 
 const gateway = () => readRepoFile('functions/api/[[path]].js');
 const memoryProxy = () => readRepoFile('functions/_shared/memory-route-proxy.js');
+// Route mapping moved out of the gateway in #4535 Slice 1; the gateway imports it.
+const routeMapping = () => readRepoFile('functions/_shared/catchall-modal-route-mapping.js');
 
 test('Cloudflare gateway preserves community read route mappings to Modal', () => {
-  const source = gateway();
+  const source = routeMapping();
 
   assert.match(source, /path === '\/api\/community\/trees'/);
   assert.match(source, /view'\) === 'summary'/);
@@ -25,7 +27,7 @@ test('Cloudflare gateway preserves community read route mappings to Modal', () =
 });
 
 test('Cloudflare gateway preserves private collection route mappings to Modal', () => {
-  const source = gateway();
+  const source = routeMapping();
   const memorySource = memoryProxy();
 
   assert.match(source, /path === '\/api\/trees'/);
@@ -36,7 +38,7 @@ test('Cloudflare gateway preserves private collection route mappings to Modal', 
 });
 
 test('Cloudflare gateway preserves detail route public-private split', () => {
-  const source = gateway();
+  const source = routeMapping();
   const memorySource = memoryProxy();
 
   assert.match(source, /buildMemoryModalUrl\(request, env\)/);
@@ -49,7 +51,7 @@ test('Cloudflare gateway preserves detail route public-private split', () => {
 });
 
 test('Cloudflare gateway preserves fork route and method ownership', () => {
-  const source = gateway();
+  const source = routeMapping();
 
   assert.match(source, /treeForkMatch/);
   assert.match(source, /method === 'POST'/);

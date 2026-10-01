@@ -5,7 +5,9 @@ const test = require('node:test');
 
 const ROOT = path.join(__dirname, '..', '..');
 const policyPath = path.join(ROOT, 'docs', 'product', 'lovebud-browse-tree-view-count-policy.md');
-const routerPath = path.join(ROOT, 'functions', 'api', '[[path]].js');
+// The canonical Browse sort mapping lives in the shared catch-all mapping module
+// since #4535 Slice 1; the gateway imports it from there.
+const routerPath = path.join(ROOT, 'functions', '_shared', 'catchall-modal-route-mapping.js');
 const validationPath = path.join(ROOT, 'modal_compute', 'validation.py');
 
 function read(filePath) {

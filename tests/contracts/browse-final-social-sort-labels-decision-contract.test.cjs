@@ -139,7 +139,15 @@ test('Runtime locking: search-ui.js now has 조회순/좋아요순 (Unit D imple
 });
 
 test('Runtime locking: catch-all route still accepts popular and maps unsupported to latest', () => {
-  const filePath = path.join(__dirname, '..', '..', 'functions', 'api', '[[path]].js');
+  // The Browse sort mapping moved out of the catch-all gateway in #4535 Slice 1.
+  const filePath = path.join(
+    __dirname,
+    '..',
+    '..',
+    'functions',
+    '_shared',
+    'catchall-modal-route-mapping.js'
+  );
   const content = fs.readFileSync(filePath, 'utf8');
   // popular must still be in the ternary
   assert.match(content, /popular/);

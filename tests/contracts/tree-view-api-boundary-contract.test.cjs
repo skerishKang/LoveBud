@@ -9,7 +9,11 @@ const modalApp = fs.readFileSync(path.join(ROOT, 'modal_compute', 'app.py'), 'ut
 const treeViews = fs.readFileSync(path.join(ROOT, 'modal_compute', 'tree_views.py'), 'utf8');
 const cloudflareRoutePath = path.join(ROOT, 'functions', 'api', 'trees', '[tree_id]', 'views.js');
 const cloudflareRoute = fs.readFileSync(cloudflareRoutePath, 'utf8');
-const catchAllRoute = fs.readFileSync(path.join(ROOT, 'functions', 'api', '[[path]].js'), 'utf8');
+// The Browse sort mapping moved out of the catch-all gateway in #4535 Slice 1.
+const catchAllRoute = fs.readFileSync(
+  path.join(ROOT, 'functions', '_shared', 'catchall-modal-route-mapping.js'),
+  'utf8'
+);
 const browseSnapshot = fs.readFileSync(path.join(ROOT, 'modal_compute', 'browse_latest.py'), 'utf8');
 
 const TREE_VIEW_URL = 'https://lovebud.pages.dev/api/trees/tree-A/views';
