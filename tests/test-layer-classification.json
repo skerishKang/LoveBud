@@ -2760,6 +2760,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/node-runtime-policy-4534.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the Node runtime policy guard (scripts/check-node-runtime-policy.cjs) in a local process over repository-owned workflow/policy sources and synthetic temp fixtures; no network, database, browser, provider, git, or Production resource is used (#4534).",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/normalizer-tree-comments-reconcile.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Executes a pure-JS mirror and reads the migration/rollback SQL source, but does not execute the shipped PL/pgSQL helpers or PostgreSQL engine; evidence for the database behavior remains SOURCE_STATIC.",

@@ -96,6 +96,7 @@
 | [AUTH_EDITOR_RUNTIME_INVENTORY_834.md](./AUTH_EDITOR_RUNTIME_INVENTORY_834.md) | #834 auth/editor runtime inventory, dependency mapping, naming audit, decomposition candidates |
 | [V01_UI_TRUST_PASS_RELEASE_GATE_681.md](./V01_UI_TRUST_PASS_RELEASE_GATE_681.md) | #681 v0.1 UI Trust Pass release-gate status taxonomy and active PR verification contract |
 | [REVIEW_GUARDRAILS.md](./REVIEW_GUARDRAILS.md) | 반복 false positive 방지 및 리뷰 규칙 |
+| [NODE_RUNTIME_POLICY.md](./NODE_RUNTIME_POLICY.md) | #4534 Node 런타임 정책 (Node 20 기본 / Node 22.13.0 Reliability Preview 예외), drift 가드, 변경 절차 |
 | [RECENT_REFACTORING.md](./RECENT_REFACTORING.md) | 최근 코드 구조 정리 이력 |
 | [UTIL_USAGE_POLICY.md](./UTIL_USAGE_POLICY.md) | 공통 유틸 사용 정책 |
 | [COMMON_CODE_CANDIDATES.md](./COMMON_CODE_CANDIDATES.md) | 공통 코드 사전 후보 |

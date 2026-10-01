@@ -291,6 +291,33 @@ function verifyNodeModules() {
   }
 }
 
+// ── 6b. Node runtime policy drift (#4534) ───────────────────────────────────
+
+function verifyNodeRuntimePolicy() {
+  console.log('\n=== Node runtime policy 검사 (#4534) ===');
+
+  let guard;
+  try {
+    guard = require('./check-node-runtime-policy.cjs');
+  } catch (e) {
+    check('node runtime policy guard 로드', false, '가드 모듈 없음');
+    return;
+  }
+
+  let result;
+  try {
+    result = guard.checkNodeRuntimePolicy({ repoRoot: ROOT });
+  } catch (e) {
+    check('node runtime policy drift', false, '가드 실행 오류');
+    return;
+  }
+
+  const detail = result.ok
+    ? `workflows ${result.workflowCount} / setup-node ${result.occurrenceCount} / drift 0`
+    : `drift: ${result.codes.join(',')}`;
+  check('node runtime policy drift', result.ok === true, detail);
+}
+
 // ── 7. env/DB/Firebase (--full 또는 --remote 시) ────────────────────────────
 
 async function verifyFull() {
@@ -328,6 +355,7 @@ async function main() {
   verifyHTMLFiles();
   verifyRequiredFiles();
   verifyNodeModules();
+  verifyNodeRuntimePolicy();
   await verifyFull();
 
   console.log('\n' + '='.repeat(40));

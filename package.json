@@ -45,6 +45,7 @@
     "build:expected-schema-candidate": "node scripts/build-expected-schema-candidate.cjs",
     "build:adoption-baseline-collection-plan": "node scripts/build-adoption-baseline-collection-plan.cjs",
     "check:pr-guardrails": "node scripts/check-pr-guardrails.cjs",
+    "check:node-runtime": "node scripts/check-node-runtime-policy.cjs",
     "loop:triage": "node scripts/loop/run-loop.mjs --mode=dry-run",
     "ci": "npm run lint && npm run build && npm run test && npm run verify",
     "test:db-engine:migration-catalog-adapter": "node --test --test-concurrency=1 tests/db-engine/migration-catalog-postgres-adapter-engine.test.cjs",
