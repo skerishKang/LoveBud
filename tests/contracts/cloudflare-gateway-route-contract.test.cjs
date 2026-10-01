@@ -13,6 +13,10 @@ const gateway = () => readRepoFile('functions/api/[[path]].js');
 const memoryProxy = () => readRepoFile('functions/_shared/memory-route-proxy.js');
 // Route mapping moved out of the gateway in #4535 Slice 1; the gateway imports it.
 const routeMapping = () => readRepoFile('functions/_shared/catchall-modal-route-mapping.js');
+// #4535 Slice 3: the catch-all no longer defines the bounded request-id
+// policy inline; it consumes the single canonical module, exactly as the
+// dedicated routes already do.
+const requestIdPolicy = () => readRepoFile('functions/_shared/request-id.js');
 
 test('Cloudflare gateway preserves community read route mappings to Modal', () => {
   const source = routeMapping();
@@ -62,10 +66,23 @@ test('Cloudflare gateway preserves fork route and method ownership', () => {
 
 test('Cloudflare gateway preserves request id and upstream response headers', () => {
   const source = gateway();
+  const policy = requestIdPolicy();
 
-  assert.match(source, /generateRequestId/);
-  assert.match(source, /getOrCreateRequestId/);
-  assert.match(source, /x-lovebud-request-id/);
+  // The gateway still derives one request id per request and still propagates
+  // it, but the policy definition now has a single canonical authority.
+  assert.match(source, /getOrCreateRequestId\(request\)/, 'gateway must derive the request id at its boundary');
+  assert.match(
+    source,
+    /import\s*\{[^}]*REQUEST_ID_HEADER[^}]*getOrCreateRequestId[^}]*\}\s*from\s*['"][^'"]*_shared\/request-id\.js['"]/,
+    'gateway must consume the canonical request-id policy'
+  );
+  assert.doesNotMatch(source, /function\s+generateRequestId\s*\(/, 'gateway must not redefine the id generator');
+  assert.doesNotMatch(source, /const\s+REQUEST_ID_HEADER\s*=/, 'gateway must not redeclare the id header');
+
+  // The canonical module owns the header name and the generator.
+  assert.match(policy, /x-lovebud-request-id/);
+  assert.match(policy, /generateRequestId/);
+
   assert.match(source, /x-lovebud-upstream/);
   assert.match(source, /x-lovebud-route-status/);
   assert.match(source, /method-not-allowed/);
