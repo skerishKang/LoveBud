@@ -161,8 +161,14 @@ test('legacy guardrail: netlify.toml is empty or annotated as legacy', () => {
 
 test('active route ownership: functions/api/[[path]].js references Modal as upstream', () => {
   const content = readFile('functions/api/[[path]].js');
-  assert.match(content, /x-lovebud-upstream.*modal/,
-    '[[path]].js must reference modal upstream header');
+  // #4535 Slice 4: the 'modal' upstream tag on terminal Modal responses moved
+  // with the response taxonomy into catchall-response-policy.js. Header
+  // propagation and every routing decision stay in the gateway.
+  const responsePolicy = readFile('functions/_shared/catchall-response-policy.js');
+  assert.match(content, /x-lovebud-upstream/,
+    '[[path]].js must propagate the upstream header');
+  assert.match(responsePolicy, /x-lovebud-upstream.*modal/,
+    'catchall-response-policy.js must reference modal upstream header');
   assert.match(content, /MODAL_BASE_URL/,
     '[[path]].js must reference MODAL_BASE_URL env var');
   assert.match(content, /\/modal\//,
