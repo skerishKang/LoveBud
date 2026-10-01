@@ -1,10 +1,10 @@
 # Automatic Production Parity Reassessment
 
+**Parent:** #3699 — **CLOSED** (historical deployment-reliability authority)
 **Issue:** #3766  
 **Status:** Current ops assessment  
 **Last updated:** 2026-07-30  
 **Source base:** 4842a4d1f60c011132fb936323dd7b80423bf5ac  
-**Parent:** #3699 — Keep OPEN  
 
 ---
 
@@ -17,6 +17,29 @@ This document reassesses the automatic `main` → Cloudflare Pages Production de
 - Serving-SHA observation is now implemented via the static build manifest (`/.well-known/release.json`).
 - Post-merge Production verification follows `docs/ops/MERGE_FIRST_PRODUCTION_VERIFICATION_WORKFLOW.md`.
 - This document does not authorize provider mutation, workflow changes, or Issue closure.
+
+### Deployment authority lifecycle (reconciled by #4555)
+
+`#3699` is **CLOSED**. It is historical deployment-reliability authority: the
+incident and the reassessment evidence recorded in this document remain auditable
+as history, but `#3699` is no longer a current open obligation.
+
+Three deployment concepts exist and must not be conflated:
+
+| Concept | Path |
+|---|---|
+| Normal Production | `main` merge → Cloudflare Pages Git-connected / provider-native automatic deployment |
+| Repository CI | verification only — **no Production deploy job** |
+| Fixed-slot verification | optional local Wrangler OAuth direct deploy, when explicitly selected — separate from normal Production deployment |
+
+Repository CI has no Production deploy job. That does **not** mean Production is
+deployed manually: the normal Production trigger path is the provider-native
+Cloudflare Pages Git integration, not a CI job.
+
+Closing `#3699` does not prove that any current provider deployment is healthy.
+Current provider/runtime deployment health is always **fresh observation required**,
+and post-merge Production observation remains separate from deployment triggering.
+The release manifest is serving-SHA evidence only — it never deploys or repairs.
 
 ### Evidence limits
 
@@ -97,13 +120,18 @@ One merged main SHA was confirmed to be serving at Production. This is the first
 
 ---
 
-## 4. Unresolved automatic-deploy reliability question
+## 4. Unresolved automatic-deploy reliability property
 
 **C. automatic deployment reliability — UNRESOLVED**
 
-The core question from #3699 remains: does every `main` merge reliably result in the merged SHA being served at `https://lovebud.pages.dev/`?
+The reliability question raised by `#3699` is still an open *technical property* of
+the pipeline, even though the `#3699` Issue itself is **CLOSED**: does every `main`
+merge reliably result in the merged SHA being served at `https://lovebud.pages.dev/`?
 
-One positive observation cannot answer this question. The following failure modes are still possible:
+`#3699` closure did not answer this question; it ended the tracked Issue. The
+question is retained here as historical reliability context and remains subject to
+fresh observation. One positive observation cannot answer it. The following failure
+modes are still possible:
 
 | Failure mode | Manifest detection | Observable? | Occurred? |
 |---|---|---|---|
@@ -186,9 +214,15 @@ This model is proposed for a future child issue. The current document does not a
 
 ---
 
-## 7. Evidence threshold for #3699 closure or narrowing
+## 7. Evidence threshold proposed for #3699 closure or narrowing (historical)
 
-### Current status
+> **Historical proposal.** This section records the narrowing proposal that was made
+> while `#3699` was open. `#3699` has since been **CLOSED** without that narrowing
+> being adopted as a live obligation. The reliability property in §4 is still
+> unproven; the thresholds below remain a historical evidence bar, not a current
+> tracking instruction.
+
+### Current status (as assessed when #3699 was open)
 
 - A (serving-SHA observability): **SOLVED** — manifest implemented and verified.
 - B (one-deployment parity): **OBSERVED** — #3764 confirmed one match.
@@ -203,7 +237,7 @@ The original #3699 spanned both "detect what is serving" and "ensure automatic d
 
 ### Proposed narrowed scope
 
-If the Web CTO accepts narrowing, #3699 would be re-scoped to:
+Under that historical narrowing proposal, #3699 would have been re-scoped to:
 
 > **Automatic main-to-Production deployment reliability.**
 >
@@ -211,12 +245,15 @@ If the Web CTO accepts narrowing, #3699 would be re-scoped to:
 >
 > N is not set by this document — the Web CTO determines the evidence bar based on operational risk tolerance.
 
-### Rejected alternatives
+### Rejected alternatives (historical)
 
 | Alternative | Reason rejected |
 |---|---|
 | `KEEP_3699_OPEN` | Too broad — the solved detection scope would remain intertwingled with the unresolved reliability question, making it harder to track remaining risk |
 | `READY_TO_CLOSE_3699` | One successful deployment does not prove automatic deployment reliability. Multiple failures remain possible and unobserved |
+
+Both labels above are historical options recorded at the time. `#3699` is now
+**CLOSED**; neither label describes a current tracking state.
 
 ---
 
@@ -237,7 +274,7 @@ When inspecting Production parity via the manifest, use these canonical classifi
 - Classifications are read-only observations. They do not trigger any automated action.
 - A `PRODUCTION_SHA_STALE` or `PRODUCTION_MANIFEST_MISSING` observation should be recorded as a durable Issue comment and used for future reliability analysis.
 - Repeated `PRODUCTION_SHA_STALE` observations would strengthen the case for a repair/mutation authority child issue.
-- Repeated `PRODUCTION_SHA_MATCH` observations (N consecutive) would satisfy the closure threshold for the narrowed #3699.
+- Repeated `PRODUCTION_SHA_MATCH` observations (N consecutive) would have satisfied the proposed closure threshold for a narrowed #3699. That threshold was never adopted; `#3699` is **CLOSED** and current reliability requires fresh observation instead.
 
 ---
 
@@ -247,9 +284,8 @@ When inspecting Production parity via the manifest, use these canonical classifi
 |---|---|
 | This document is written and reviewed | Stop |
 | Draft PR is created and CI is green | Stop |
-| Web CTO decides to narrow or keep #3699 | Stop (no further action from this issue) |
 | Owner authorizes deployment repair scope | New child issue required |
-| Stale SHA is observed at Production | Record in #3699 or a new child; stop (no provider mutation) |
+| Stale SHA is observed at Production | Record as a fresh observation in a new child issue; stop (no provider mutation) |
 
 ---
 
@@ -270,9 +306,11 @@ The following are explicitly **NOT AUTHORIZED** by this document:
 
 ---
 
-## 11. Recommended next child
+## 11. Recommended next child (historical proposal)
 
-If the Web CTO accepts narrowing #3699, the next implementation child should be created:
+The following child was proposed under the narrowing option described in §7. `#3699`
+is **CLOSED**, so this is a historical proposal; any future bounded-observation child
+must be raised as a new Issue with fresh authority, not reopened under `#3699`.
 
 ### Child: Bounded observation of Production manifest parity
 
@@ -285,7 +323,7 @@ If the Web CTO accepts narrowing #3699, the next implementation child should be 
 | Propagation window | 3 minutes from merge timestamp (adjustable based on evidence) |
 | Stop condition | N consecutive `PRODUCTION_SHA_MATCH` observations (N determined by Web CTO) |
 | Prohibited | Provider mutation, workflow changes, automated polling, webhook creation |
-| Outcome | N consecutive matches → #3699 eligible for closure under narrowed scope |
+| Outcome | N consecutive matches → evidence sufficient to reopen the reliability question under a new Issue (`#3699` is CLOSED) |
 
 ---
 
@@ -297,9 +335,10 @@ If the Web CTO accepts narrowing #3699, the next implementation child should be 
 | B — one-deployment parity | OBSERVED (#3764, SHA `4842a4d1`) |
 | C — automatic deployment reliability | **UNRESOLVED** |
 | D — deployment repair authority | NOT_AUTHORIZED |
-| #3699 recommendation | **NARROW_3699_SCOPE** (detection solved; reliability remains) |
+| #3699 recommendation | **NARROW_3699_SCOPE** (historical; #3699 is now CLOSED) |
 
-Refs #3699 — Keep OPEN
+Refs #3699 — CLOSED (historical deployment-reliability authority)
+Refs #4555 — deployment authority lifecycle reconciliation
 Refs #3764 — completed
 Refs #3761 — completed
 Refs #3673 — Keep OPEN
