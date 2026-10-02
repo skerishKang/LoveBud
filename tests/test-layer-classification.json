@@ -3792,6 +3792,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/scout-runtime-firebase-auth-composition-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes functions/api/scout/runtime-auth-composition.js and the Scout endpoint in-process against synthetic RSA/RS256 Firebase ID-token and JWK fixtures and an injected fetch double; proves the #4536 Slice A gate is strict-true-only and default OFF, gate off means no verifier construction/JWK fetch/mock-disabled behavior preserved, malformed Bearer and invalid Firebase tokens safe-fail without provider reach, a valid synthetic token yields only a sanitized 16-hex userKeyHash, VERIFIED plus no persistent limiter fails closed at RATE_LIMIT_UNAVAILABLE/503 with provider transport calls zero, sensitive-field leak count is zero across response/observer/composition, and frontend/Engine/Production defaults plus checked-in config are unchanged; no real Firebase/Auth/provider/network/secret/DB access.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/scout-runtime-firebase-auth-enforcement-readiness-audit-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

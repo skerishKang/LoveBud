@@ -94,6 +94,9 @@ import {
   createScoutLiveDependencyAdapter,
 } from "./live-auth-rate-limit-dependency-adapter.js";
 import {
+  composeScoutRuntimeFirebaseAuth,
+} from "./runtime-auth-composition.js";
+import {
   createScoutEngineTransport,
 } from "./scout-engine-transport.js";
 
@@ -359,9 +362,21 @@ export async function onRequestPost(context) {
     // endpoint cannot accidentally allow real traffic in skeleton mode.
     // No real Firebase Admin SDK / no real persistent rate-limit storage /
     // no provider SDK / no fetch is invoked by the skeleton.
+    // ── Gated runtime Firebase auth composition (#4536 Slice A) ──
+    // SOURCE ONLY / DISABLED BY DEFAULT. The gate is read inside the
+    // composition helper; absent/false preserves the existing
+    // mock-disabled behavior exactly (no verifier construction, no JWK
+    // fetch, no raw token handoff). Persistent rate limiting is still
+    // unavailable, so even a VERIFIED Firebase token fails closed at the
+    // rate-limit boundary (503 RATE_LIMIT_UNAVAILABLE) before any
+    // provider or Engine call.
+    const runtimeAuthComposition = composeScoutRuntimeFirebaseAuth({ env, context });
+    const runtimeAuthBoundary = runtimeAuthComposition.authBoundary;
+
     const liveAdapter =
       context?.liveAdapter ||
       context?.liveDependencies ||
+      runtimeAuthComposition.dependencyAdapter ||
       createScoutLiveDependencyAdapter({ mockDisabled: true });
 
     // ── DI seam: injected mock verifier/limiter/observer (test-only) ──
@@ -390,7 +405,9 @@ export async function onRequestPost(context) {
 
     // ── Live-mode auth boundary (canonical, DI-injected, safe-fail) ──
     const authStart = Date.now();
-    const authResult = await verifyScoutLiveAuthBoundary(request, liveDependencies);
+    const authResult = runtimeAuthBoundary
+      ? await runtimeAuthBoundary.authenticate(request, liveDependencies)
+      : await verifyScoutLiveAuthBoundary(request, liveDependencies);
     // Observability seam: optional observer; sanitized event only; safe-swallowed.
     // The observer is called BEFORE any early return so all auth decisions are recorded.
     safeInvokeScoutLiveObserver(
