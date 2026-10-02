@@ -8,7 +8,8 @@
  *
  * This adapter is the Scout-side seam over the DO strict-quota backend in
  * `live-rate-limit-durable-object-quota-backend.js`. It is DI-ONLY: it is
- * constructed with an explicitly injected Durable Object namespace/stub, and
+ * constructed with an explicitly injected Durable Object admission surface
+ * (`stub`, `backend`, or `namespace`, resolved in that precedence order), and
  * it defaults to disabled/unavailable without one.
  *
  * Slice B separation (this is the required stop property):
@@ -172,12 +173,33 @@ function normalizeBackendResult(raw) {
   });
 }
 
-// ─── Stub resolution (injected namespace only) ──────────────────────────────
+// ─── Admission-surface resolution (injected dependencies only) ──────────────
 
-function resolveStub(namespace, injectedStub, storageKey) {
-  const stub = isPlainObject(injectedStub) ? injectedStub : null;
-  if (stub) return stub;
-  if (!isPlainObject(namespace)) return null;
+/**
+ * Resolve the Durable Object admission surface from injected dependencies.
+ *
+ * Precedence is explicit and deterministic:
+ *   1. `stub`    — an injected DO stub double,
+ *   2. `backend` — an injected DO quota backend exposing the bounded
+ *                  `admit(request)` seam (backend-only injection is fully
+ *                  supported and needs no namespace or stub),
+ *   3. `namespace` — resolved through `idFromName` / `get`.
+ *
+ * Nothing else is consulted: no env lookup, no runtime binding, no global.
+ *
+ * @param {Object} deps - { namespace, stub, backend }
+ * @param {string} storageKey - canonical sanitized runtime key
+ * @returns {Object|null} admission surface, or null when unresolvable
+ */
+function resolveStub(deps, storageKey) {
+  const injectedStub = isPlainObject(deps.stub) ? deps.stub : null;
+  if (injectedStub) return injectedStub;
+
+  const injectedBackend = isPlainObject(deps.backend) ? deps.backend : null;
+  if (injectedBackend) return injectedBackend;
+
+  const namespace = isPlainObject(deps.namespace) ? deps.namespace : null;
+  if (!namespace) return null;
   if (typeof namespace.idFromName !== 'function' || typeof namespace.get !== 'function') {
     return null;
   }
@@ -210,7 +232,9 @@ async function invokeStubAdmission(stub, admissionRequest) {
  *   exposing `idFromName` / `get`
  * @param {Object} [options.stub] injected Durable Object stub double
  *   exposing `admit` (or `handle`)
- * @param {Object} [options.backend] pre-built DO quota backend double
+ * @param {Object} [options.backend] pre-built DO quota backend exposing the
+ *   bounded `admit(request)` seam. Backend-only injection is fully supported
+ *   and needs no namespace or stub.
  * @param {Object} [options.storageKeyBuilder] optional injected key builder
  * @param {boolean} [options.runtimeKey=true] use the canonical runtime key
  * @param {number} [options.limit] configured strict quota limit (required)
@@ -306,10 +330,11 @@ export function createScoutLiveRateLimitDurableObjectStorageAdapter(options = {}
       return buildAdapterResult(SCOUT_LIVE_RATE_LIMIT_DO_QUOTA_CODES.DO_QUOTA_CONFIG_INVALID);
     }
 
-    // 4. Resolve the Durable Object stub from the injected namespace only.
+    // 4. Resolve the Durable Object admission surface from injected
+    //    dependencies only (stub -> backend -> namespace).
     let stub = null;
     try {
-      stub = resolveStub(opts.namespace, opts.stub, keyResult.storageKey);
+      stub = resolveStub({ namespace: opts.namespace, stub: opts.stub, backend: opts.backend }, keyResult.storageKey);
     } catch {
       return buildAdapterResult(SCOUT_LIVE_RATE_LIMIT_DO_QUOTA_CODES.DO_QUOTA_BACKEND_UNAVAILABLE);
     }

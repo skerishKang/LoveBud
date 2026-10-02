@@ -8,7 +8,7 @@
  * Proves:
  *  1. the DO adapter and the DO quota backend are default disabled /
  *     unavailable without an injected namespace or Durable-Object-shaped
- *     state;
+ *     state, and `backend`-only DI (stub -> backend -> namespace) works;
  *  2. an injected fake namespace resolves only an existing sanitized runtime
  *     key produced by the canonical key builder;
  *  3. no raw UID / token / email / claims / IP / session / prompt / source
@@ -24,8 +24,11 @@
  *  9. allowed/limited outputs carry only the safe bounded result shape;
  * 10. the CURRENT dependency mapper still maps the DO result codes to
  *     RATE_LIMIT_STORAGE_UNAVAILABLE (Slice C mapping is absent);
- * 11. provider transport call count stays 0 through the current endpoint
- *     path with the DO adapter injected;
+ * 11. the current endpoint fails closed at the transitional
+ *     429 / RATE_LIMITED taxonomy with provider and Engine transport call
+ *     count 0 (the mapper still reports RATE_LIMIT_STORAGE_UNAVAILABLE; the
+ *     503-vs-429 taxonomy gap is a pre-existing boundary issue owned by
+ *     Slice C);
  * 12. frontend `local_stub`, Engine gate/default, the Production provider
  *     stage block, the Slice A gate default, and the current suggest.js
  *     composition remain unchanged;
@@ -273,6 +276,65 @@ test('DO adapter has no release/refund seam (strict atomic quota must not be und
   assert.strictEqual(adapter.releaseQuota, undefined);
   assert.strictEqual(typeof adapter.checkQuota, 'function');
   assert.strictEqual(typeof adapter.consumeQuota, 'function');
+});
+
+test('backend-only injection works with no namespace and no stub (documented stub -> backend -> namespace precedence)', async () => {
+  const backendMod = await loadDoBackend();
+  const adapterMod = await loadDoAdapter();
+  const storage = createSyntheticStorage();
+  const quota = backendMod.createScoutRateLimitDurableObjectQuotaBackend({ storage });
+
+  const adapter = adapterMod.createScoutLiveRateLimitDurableObjectStorageAdapter({
+    disabled: false,
+    backend: quota,
+    limit: 2,
+    windowMs: 60000,
+    now: () => 1000,
+  });
+
+  assert.strictEqual(adapter.mode, adapterMod.SCOUT_LIVE_RATE_LIMIT_DO_ADAPTER_MODES.SOURCE);
+
+  const first = await adapter.checkQuota(buildQuotaPayload());
+  assert.strictEqual(first.allowed, true, 'backend-only injection must be able to admit');
+  assert.strictEqual(first.code, 'DO_QUOTA_ADMITTED');
+  assert.strictEqual(first.remaining, 1, 'backend-only injection must consume quota');
+
+  const second = await adapter.checkQuota(buildQuotaPayload());
+  assert.strictEqual(second.allowed, true);
+  assert.strictEqual(second.remaining, 0, 'backend-only injection must persist across admissions');
+
+  const denied = await adapter.checkQuota(buildQuotaPayload());
+  assert.strictEqual(denied.allowed, false);
+  assert.strictEqual(denied.code, 'DO_QUOTA_LIMITED');
+
+  assert.strictEqual(storage.store.size, 1, 'the backend-only path must persist quota state');
+  assert.ok([...storage.store.keys()][0].startsWith('scout:rl:v1:'), 'persisted under the sanitized runtime key');
+
+  // Precedence: an injected stub wins over an injected backend.
+  let namespaceResolutions = 0;
+  const stubFirst = adapterMod.createScoutLiveRateLimitDurableObjectStorageAdapter({
+    disabled: false,
+    stub: { admit: async () => ({ allowed: true, code: 'DO_QUOTA_ADMITTED', limit: 9, remaining: 8 }) },
+    backend: quota,
+    namespace: {
+      idFromName() { namespaceResolutions += 1; return { name: 'never-used' }; },
+      get() { return { admit: async () => ({ allowed: true, code: 'DO_QUOTA_ADMITTED' }) }; },
+    },
+    limit: 2,
+    windowMs: 60000,
+  });
+  const stubResult = await stubFirst.checkQuota(buildQuotaPayload());
+  assert.strictEqual(stubResult.limit, 9, 'stub injection must take precedence');
+  assert.strictEqual(namespaceResolutions, 0, 'namespace must not be consulted when a stub is injected');
+
+  // A backend without the bounded admit seam cannot admit.
+  const seamlessBackend = adapterMod.createScoutLiveRateLimitDurableObjectStorageAdapter({
+    disabled: false,
+    backend: { note: 'synthetic object without an admit seam' },
+    limit: 2,
+    windowMs: 60000,
+  });
+  assert.strictEqual((await seamlessBackend.checkQuota(buildQuotaPayload())).code, 'DO_QUOTA_BACKEND_UNAVAILABLE');
 });
 
 // ─── 2. Sanitized runtime key reuse ────────────────────────────────────────
@@ -640,12 +702,26 @@ test('current dependency mapper still maps the new DO codes to RATE_LIMIT_STORAG
 });
 
 // ─── 11. Endpoint fail-closed, provider 0 ──────────────────────────────────
+//
+// Transitional Slice B truth (authority comment 5946264288): the dependency
+// mapper reports RATE_LIMIT_STORAGE_UNAVAILABLE, but the CURRENT rate-limit
+// boundary does not inspect that code and collapses every `allowed !== true`
+// result to `rate_limited` / RATE_LIMITED / HTTP 429. That is a pre-existing
+// boundary taxonomy gap; Slice C must make the runtime taxonomy precise
+// (backend unavailable/config invalid -> 503 RATE_LIMIT_UNAVAILABLE,
+// quota exhausted -> 429 RATE_LIMITED, admitted -> allowed). These assertions
+// are therefore transitional and are expected to change in Slice C.
 
-test('current endpoint path with the DO adapter injected fails closed with provider transport call count 0', async () => {
+test('current endpoint path fails closed at 429 RATE_LIMITED with provider and Engine transport call count 0', async () => {
   const depMod = await loadDepAdapter();
   const suggestMod = await loadSuggest();
   const { adapter } = await buildInjectedAdapter({ adapterOptions: { limit: 5, now: () => 9000 } });
   const dependency = depMod.createScoutLiveDependencyAdapter({ mockDisabled: false, storageAdapter: adapter });
+
+  // The DO adapter really can admit; the mapper is what refuses the result.
+  const mapperProbe = await dependency.checkRateLimit(buildQuotaPayload());
+  assert.strictEqual(mapperProbe.allowed, false);
+  assert.strictEqual(mapperProbe.code, 'RATE_LIMIT_STORAGE_UNAVAILABLE');
 
   const providerCalls = [];
   const engineCalls = [];
@@ -683,8 +759,9 @@ test('current endpoint path with the DO adapter injected fails closed with provi
     body = null;
   }
 
-  assert.ok(res.status >= 400, `endpoint must fail closed, got ${res.status}`);
+  assert.strictEqual(res.status, 429, 'current transitional endpoint taxonomy is 429, not 503');
   assert.ok(body && body.ok === false, 'endpoint response must not be ok');
+  assert.strictEqual(body.error.code, 'RATE_LIMITED');
   assert.strictEqual(providerCalls.length, 0, 'provider transport call count must be 0');
   assert.strictEqual(engineCalls.length, 0, 'Engine call count from this path must be 0');
   assert.strictEqual(countMarkers(JSON.stringify(observerEvents)), 0, 'observer metadata must not carry raw token material');

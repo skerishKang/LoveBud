@@ -76,26 +76,85 @@ log field, or response field.
 The backend is admission-only: there is no `releaseQuota` seam, because a
 client-side refund would break strict atomicity.
 
-## Required Slice B stop property
+## Required Slice B stop property (exact transitional truth)
 
 ```text
-DO BACKEND                       = can admit/persist in an isolated injected test
-DEPENDENCY MAPPER (unchanged)    = does not accept the DO success/limited codes
-ENDPOINT RATE LIMIT              = RATE_LIMIT_STORAGE_UNAVAILABLE / FAIL CLOSED
-PROVIDER REACHED                 = NO
-ENGINE REACHED FROM THIS PATH    = NO
+DO adapter/backend result        = DO_QUOTA_* codes
+DEPENDENCY MAPPER (unchanged)    = does not accept the DO codes
+                                  -> RATE_LIMIT_STORAGE_UNAVAILABLE
+CURRENT RATE-LIMIT BOUNDARY      = collapses any `allowed !== true` to
+                                  rate_limited / RATE_LIMITED
+CURRENT ENDPOINT RESPONSE        = HTTP 429 / RATE_LIMITED (fail-closed)
+PROVIDER CALLS                   = 0
+ENGINE CALLS FROM THIS PATH      = 0
 ```
 
 The live dependency mapper is intentionally **not** modified: it maps unknown
 storage result codes to `RATE_LIMIT_STORAGE_UNAVAILABLE`, so the new codes keep
 failing closed.
 
+Important correction: the current endpoint response is **429 / RATE_LIMITED**,
+not 503 / RATE_LIMIT_UNAVAILABLE. The rate-limit boundary does not inspect the
+limiter result code, so a storage-unavailable result and a genuinely exhausted
+quota are indistinguishable at the endpoint today. This is a **pre-existing
+boundary taxonomy gap**, not something Slice B may fix.
+
+Slice C must make the runtime taxonomy precise:
+
+```text
+backend unavailable / config invalid -> 503 RATE_LIMIT_UNAVAILABLE
+quota exhausted                      -> 429 RATE_LIMITED
+admitted                             -> allowed
+```
+
+The contract assertions in `scout-durable-object-strict-quota-source-contract.test.cjs`
+encode today's 429 / RATE_LIMITED behavior and are explicitly transitional.
+
+## DI resolution precedence
+
+The adapter resolves its Durable Object admission surface in a fixed order:
+
+1. `stub` — an injected Durable Object stub double;
+2. `backend` — an injected DO quota backend exposing the bounded
+   `admit(request)` seam (backend-only injection is fully supported and needs
+   no namespace or stub);
+3. `namespace` — resolved through `idFromName` / `get`.
+
+No env lookup, no runtime binding, no global is consulted.
+
 ## What is deferred to Slice C
 
 - dependency result mapping for the DO codes;
+- the precise runtime taxonomy (503 vs 429) described above;
 - runtime composition in `suggest.js`;
 - non-Production DO binding/config integration and migrations;
 - staging proof.
+
+### Slice C activation prerequisite 1 — Cloudflare runtime wrapper
+
+`ScoutRateLimitDurableObjectQuota` is **backend logic source only**. It is not
+directly bindable Cloudflare RPC runtime code as it stands. Cloudflare Durable
+Object RPC requires public RPC methods on a registered runtime Durable Object
+class, so Slice C must add (and verify) the actual runtime wrapper class
+registration that delegates to this backend before any binding or migration is
+even considered.
+
+### Slice C activation gate 2 — object lifecycle / TTL decision
+
+The canonical runtime key builder's default composite key **includes**
+`windowKey`. When that key is used as `idFromName(storageKey)`, a new quota
+window can resolve a new Durable Object identity.
+
+Durable Object storage is persistent, so old window objects and their state
+survive. A lifecycle decision is therefore locked as a **pre-activation gate**:
+
+- either a bounded TTL / alarm design with `deleteAll()` cleanup, or
+- an approved stable Durable Object identity design that still preserves
+  quota-key separation.
+
+Slice B does not implement cleanup because runtime activation is forbidden here.
+**No non-Production Durable Object binding until this decision is resolved and
+tested.**
 
 No `wrangler.toml` change, no DO binding, no migration, no
 `SCOUT_RUNTIME_RATE_LIMIT_BACKEND` / `SCOUT_RUNTIME_RATE_LIMIT_DO_BINDING`
