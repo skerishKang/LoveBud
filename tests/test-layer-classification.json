@@ -3300,6 +3300,12 @@
       "capabilities": []
     },
     {
+      "path": "tests/contracts/scout-durable-object-strict-quota-source-contract.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes functions/api/scout/live-rate-limit-durable-object-quota-backend.js, functions/api/scout/live-rate-limit-durable-object-adapter.js, the existing live dependency adapter, and the Scout endpoint in-process against synthetic in-memory Durable Object storage/namespace doubles; proves the #4536 Slice B DO strict-quota source is default disabled without injected dependencies, resolves only the canonical sanitized runtime key, admits exactly N under a strict limit with N+1 denied and no concurrency oversubscription, rolls the counter over on a new window, safe-fails on corrupt/untrusted state and on storage/binding failure, carries bounded idempotency, exposes only the bounded safe result shape with a zero sensitive-field leak count, still maps to RATE_LIMIT_STORAGE_UNAVAILABLE through the unchanged dependency mapper with provider and Engine transport call counts zero, and leaves frontend/Engine/Production defaults plus checked-in wrangler.toml configuration unchanged; no Cloudflare resource, DO namespace, migration, KV, D1, secret, deployment, or network access.",
+      "capabilities": []
+    },
+    {
       "path": "tests/contracts/scout-dependency-storage-safe-fail-regression-matrix-contract.test.cjs",
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",

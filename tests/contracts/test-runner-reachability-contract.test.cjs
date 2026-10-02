@@ -332,8 +332,8 @@ function describe(file) {
 test('1. enumerates every tests/**/*.test.cjs recursively, without duplicates', () => {
   assert.equal(
     REAL.testFiles.length,
-    905,
-    `expected 905 tests/**/*.test.cjs files (904 before the #4536 Slice A Scout runtime Firebase auth composition contract, itself 903 before the #4534 Node runtime policy contract, itself 902 before the #4546 PR guardrails CI contract, itself 901 after the #4545 QA credential public-Git boundary contract addition), found ${REAL.testFiles.length}`
+    906,
+    `expected 906 tests/**/*.test.cjs files (905 before the #4536 Slice B Scout Durable Object strict quota source contract, itself 904 before the #4536 Slice A Scout runtime Firebase auth composition contract, itself 903 before the #4534 Node runtime policy contract, itself 902 before the #4546 PR guardrails CI contract, itself 901 after the #4545 QA credential public-Git boundary contract addition), found ${REAL.testFiles.length}`
   );
   assert.equal(
     new Set(REAL.testFiles).size,
@@ -363,8 +363,8 @@ test('2. the default-CI globs reach exactly the package-owned default layer', ()
   );
   assert.equal(
     REAL.defaultCi.length,
-    887,
-    `expected 887 default-CI reachable files (886 before the #4536 Slice A Scout runtime Firebase auth composition contract, itself 885 before the #4534 Node runtime policy contract, itself 884 before the #4546 PR guardrails CI contract addition), found ${REAL.defaultCi.length}`
+    888,
+    `expected 888 default-CI reachable files (887 before the #4536 Slice B Scout Durable Object strict quota source contract, itself 886 before the #4536 Slice A Scout runtime Firebase auth composition contract, itself 885 before the #4534 Node runtime policy contract, itself 884 before the #4546 PR guardrails CI contract addition), found ${REAL.defaultCi.length}`
   );
   assert.equal(
     REAL.outsideDefault.length,
