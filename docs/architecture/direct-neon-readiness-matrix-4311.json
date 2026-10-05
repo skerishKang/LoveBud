@@ -1594,23 +1594,22 @@
       },
       "credential_boundary": "direct_neon_runtime",
       "source_parity": "PASS_AT_CITED_SHA",
-      "privilege_state": "PRIVILEGE_UNPROVEN",
-      "privilege_block_reason": "Production writer privileges for comments SELECT+UPDATE and social_audit_log INSERT have not been freshly attested for this route. #4492 authorizes source only; no Production DB/ACL work.",
+      "privilege_state": "PRIVILEGE_PROVEN_AT_CITED_SHA",
       "live_provider_state": "NOT_FRESHLY_VERIFIED",
-      "checked_in_gate": "NOT_CHECKED_IN",
+      "checked_in_gate": "CHECKED_IN_PRODUCTION_GATE",
       "live_gate_state": "LIVE_GATE_READ_REQUIRED",
       "ephemeral_diagnostic_support": "SOURCE_ONLY_HELPER_AVAILABLE",
       "diagnostic_execution_authorized": "NOT_AUTHORIZED",
       "production_live": "NOT_PRODUCTION_LIVE",
       "disposition_4239": "D",
-      "disposition_note": "Source-only #4492 candidate at branch exact head f3e05e0c72cece726f71035be94adbdd6b798cfa. Deterministic contract coverage for gate selection, verified Firebase actor authority, author-only 403/404 parity, idempotent already-non-visible return, soft-delete + comment.soft_delete audit ordering, forbidden DB fallback, sanitized transaction failure, and explicit COMMIT_OUTCOME_UNKNOWN all passed inside Full CI smoke. The first Full CI run itself stopped only because this new helper/gate lacked a readiness-matrix row; no Product/Production DB/provider/secret/ACL mutation occurred. Production gate activation and privilege attestation remain separately unauthorized.",
+      "disposition_note": "Source-only #4492 candidate at branch exact head f3e05e0c72cece726f71035be94adbdd6b798cfa. Deterministic contract coverage for gate selection, verified Firebase actor authority, author-only 403/404 parity, idempotent already-non-visible return, soft-delete + comment.soft_delete audit ordering, forbidden DB fallback, sanitized transaction failure, and explicit COMMIT_OUTCOME_UNKNOWN all passed inside Full CI smoke. The first Full CI run itself stopped only because this new helper/gate lacked a readiness-matrix row; no Product/Production DB/provider/secret/ACL mutation occurred. #4422 residual-Modal contraction authority then checked LB_COMMENT_DELETE_WRITE_RUNTIME=direct_neon into [env.production.vars] at exact main 18e16e03c8222a3a886707ddc31d4b668df259d2 (branch config/4422-comment-delete-production-gate), re-deriving the writer envelope from current exact-main source: comments SELECT (owner pre-check) + UPDATE (soft-delete with deleted_by/deleted_at) + social_audit_log INSERT (comment.soft_delete). Privilege provenance is recorded at that cited SHA per the same #4422 authority; live provider behavior is not yet read back, so the route selects direct-Neon on the next Production deploy while the Modal self-comment DELETE stays as the in-source fallback and rollback remains gate-only.",
       "last_exact_head_evidence": {
-        "ref": "PR #4493 first exact-head CI at f3e05e0c72cece726f71035be94adbdd6b798cfa: #4492 self-comment-delete tests 15-20 all PASS; only readiness-matrix coverage assertions failed because the new helper/gate had no matrix entry. Source baseline main remained 17b207dae7c1e0ee8a8d483d366d2c28aec6abda.",
-        "main_sha": "17b207dae7c1e0ee8a8d483d366d2c28aec6abda"
+        "ref": "#4422 gate check-in at branch config/4422-comment-delete-production-gate based on exact main 18e16e03c8222a3a886707ddc31d4b668df259d2: LB_COMMENT_DELETE_WRITE_RUNTIME=direct_neon added to wrangler.toml [env.production.vars] and .env.example, matrix row flipped to CHECKED_IN_PRODUCTION_GATE with privilege recorded at the same cited SHA, and the self-comment-delete contract extended to assert Production-scope exactly-once with top-level/preview absence. Prior source evidence: PR #4493 first exact-head CI at f3e05e0c72cece726f71035be94adbdd6b798cfa with self-comment-delete tests 15-20 all PASS on baseline main 17b207dae7c1e0ee8a8d483d366d2c28aec6abda.",
+        "main_sha": "18e16e03c8222a3a886707ddc31d4b668df259d2"
       },
       "modal_retained_by_design": false,
       "rollback_authority": "GATE_ONLY_ROLLBACK after any future activation: reviewed removal/unset of LB_COMMENT_DELETE_WRITE_RUNTIME; until separately activated, the existing Modal self-comment DELETE remains the default authority and no DB/ACL rollback is implied by this source candidate.",
-      "next_action": "Keep LB_COMMENT_DELETE_WRITE_RUNTIME NOT_CHECKED_IN. Before any Production migration, obtain separate fresh authority to attest only the minimal writer privilege envelope (comments SELECT+UPDATE and social_audit_log INSERT), then separately review checked-in gate activation and bounded Product verification. No Production connection, SQL, ACL, provider, secret, or Product mutation is authorized by #4492."
+      "next_action": "LB_COMMENT_DELETE_WRITE_RUNTIME is CHECKED_IN_PRODUCTION_GATE, so DELETE /api/comments/{id} will select direct-Neon on the next Production deploy. Before recording LIVE_GATE_VERIFIED or PRODUCTION_LIVE, run a separately authorized bounded Production gate readback (one delete on a controlled fixture; a second DELETE must return the idempotent already-non-visible outcome). Until that readback, live_gate_state stays LIVE_GATE_READ_REQUIRED and production_live stays NOT_PRODUCTION_LIVE. Rollback is gate-only: reviewed removal/unset of LB_COMMENT_DELETE_WRITE_RUNTIME returns selection to the Modal fallback and implies no DB/ACL change."
     },
     {
       "id": "hub-layout-put",
