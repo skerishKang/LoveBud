@@ -482,3 +482,29 @@ test('20. #4492 transaction failure and unknown COMMIT outcome are sanitized and
   assert.match(unknownBody, /COMMIT_OUTCOME_UNKNOWN/);
   assert.doesNotMatch(unknownBody, /private commit sentinel 4492|postgresql:|comment-delete-token-4492/);
 });
+
+// ─── #4422 PRODUCTION GATE CHECK-IN ───────────────────────────────────────
+
+test('#4422 LB_COMMENT_DELETE_WRITE_RUNTIME is checked into Production scope exactly once and absent from top-level/preview', () => {
+  const wrangler = readFileContent(path.join(ROOT, 'wrangler.toml'));
+  const productionBlock = (wrangler.split(/^\[env\.production\.vars\]\s*$/m)[1] || '').split(/^\[/m)[0];
+  const defaultBlock = (wrangler.split(/^\[vars\]\s*$/m)[1] || '').split(/^\[/m)[0];
+  const previewBlock = (wrangler.split(/^\[env\.preview\.vars\]\s*$/m)[1] || '').split(/^\[/m)[0];
+
+  const declaration = /^LB_COMMENT_DELETE_WRITE_RUNTIME\s*=\s*"direct_neon"\s*$/gm;
+  assert.equal(
+    (productionBlock.match(declaration) || []).length,
+    1,
+    'LB_COMMENT_DELETE_WRITE_RUNTIME must be checked into [env.production.vars] exactly once as direct_neon'
+  );
+  assert.equal(
+    defaultBlock.includes('LB_COMMENT_DELETE_WRITE_RUNTIME'),
+    false,
+    'LB_COMMENT_DELETE_WRITE_RUNTIME must not be declared in the top-level [vars] scope'
+  );
+  assert.equal(
+    previewBlock.includes('LB_COMMENT_DELETE_WRITE_RUNTIME'),
+    false,
+    'LB_COMMENT_DELETE_WRITE_RUNTIME must not be declared in [env.preview.vars]'
+  );
+});
