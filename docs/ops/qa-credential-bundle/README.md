@@ -12,8 +12,8 @@ STATUS=RETIRED_PUBLIC_GIT_CREDENTIAL_CHANNEL
 NO_CREDENTIAL_MATERIAL_TRACKED_HERE
 
 APPROVED_CURRENT_SOURCE=
-approved non-public password manager / custodian-controlled secret store
-(public-safe inventory: ../QA_ACCOUNT_REGISTRY.md)
+approved private shared credential store / custodian-controlled shared secret store
+(current implementation: Google Drive-backed operator share; public-safe inventory: ../QA_ACCOUNT_REGISTRY.md)
 
 HISTORICAL_NOTE=
 an encrypted bundle of reusable QA/AI account credentials was previously
@@ -64,9 +64,9 @@ Tier 1 — Local runtime file
          .local/test-accounts.json  (gitignored, runtime convenience only,
          NOT a source of truth)
 
-Tier 2 — Approved non-public credential custody
-         approved password manager / custodian-controlled secret store.
-         This is the canonical location.
+Tier 2 — Approved private shared credential custody
+         Google Drive-backed operator share or equivalent approved custodian-controlled shared store.
+         This is the canonical recovery location; password managers are optional secondary custody.
 ```
 
 Never commit plaintext `.local/test-accounts.json`. Never commit any credential

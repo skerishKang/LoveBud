@@ -333,19 +333,21 @@ support custodian handoff
 Allowed target locations:
 
 ```text
-approved password manager (Bitwarden Free / Proton Pass Free)
+approved private shared credential store (currently Google Drive-backed operator share)
 CTO-managed secret storage controlled by the custodian
+optional secondary password manager (Bitwarden / Proton Pass or equivalent)
 ```
 
 Rules:
 
-- the approved non-public store is the canonical location; Tier 1 is runtime convenience only;
+- the approved private shared store is the canonical recovery location; Tier 1 is runtime convenience only and may be recreated after local-machine loss;
+- a password manager is optional secondary custody, not a required dependency;
 - no credential archive may be tracked in this repository, encrypted or plaintext;
 - `docs/ops/qa-credential-bundle/` is a RETIRED public Git credential channel and is **not** an allowed credential location. An archive previously committed there is non-authoritative. See `docs/ops/qa-credential-bundle/README.md`;
 - credentials must not be restored from Git history, old commits, tags, or forks;
 - credential values must not be documented in the repository;
 - retrieval procedures must report only existence/status;
-- production-grade or AI Guide credentials should prefer the approved password manager or CTO-managed secret storage over ad-hoc local files.
+- production-grade or AI Guide credentials should use the approved private shared store or product-managed/CTO-managed secret storage rather than ad-hoc local-only files.
 
 An encrypted in-repository backup was retired under Issue #4545. Historical copies may
 still exist in Git history, clones, and forks:
@@ -366,9 +368,9 @@ Not every account has the same risk. Assign a class before creating or storing c
 |------|----------|---------------------|--------------|-----------------|
 | `LOW_QA_DISPOSABLE` | signup disposable, one-off onboarding check | approved non-public store + local runtime (gitignored) | short-term only | may retire after run |
 | `STANDARD_QA_REUSABLE` | persona A/B/C/D/E, fixed-slot user | approved non-public store + local runtime (gitignored) | reusable | rotate on schedule or when leaked/lost |
-| `PRIVILEGED_QA` | admin/moderation/test admin | approved password manager or CTO-managed secret | tightly controlled | rotate more frequently |
-| `AI_GUIDE_PRODUCT` | user-facing AI guide account | product-managed secret storage / password manager | long-lived | rotation + audit required |
-| `AI_SAMPLE_CREATOR` | labeled sample content creator | password manager or product-managed | reusable with disclosure | rotate on schedule |
+| `PRIVILEGED_QA` | admin/moderation/test admin | approved private shared store or CTO-managed secret | tightly controlled | rotate more frequently |
+| `AI_GUIDE_PRODUCT` | user-facing AI guide account | product-managed secret storage / approved private shared store | long-lived | rotation + audit required |
+| `AI_SAMPLE_CREATOR` | labeled sample content creator | approved private shared store or product-managed | reusable with disclosure | rotate on schedule |
 
 ## Custody model
 
@@ -379,7 +381,7 @@ Allowed custodian labels:
 ```text
 CTO_MANAGED
 LOCAL_VERIFIER_MANAGED
-APPROVED_PASSWORD_MANAGER_CUSTODIAN
+APPROVED_SHARED_STORE_CUSTODIAN
 PRODUCT_AI_CUSTODIAN
 UNKNOWN_CUSTODIAN
 ```
@@ -419,7 +421,7 @@ Sensitivity class: STANDARD_QA_REUSABLE
 Persona or AI role: PERSONA_A_FIRST_TIME_CREATOR
 Environment: fixed_slot
 Credential key: accounts.personaA001
-Credential location label: APPROVED_PASSWORD_MANAGER + LOCAL_SECRET_STORE
+Credential location label: APPROVED_PRIVATE_SHARED_STORE + LOCAL_SECRET_STORE
 Custodian: CTO_MANAGED
 Status: ACTIVE
 Rotation required: NO
@@ -485,7 +487,7 @@ Allowed labels:
 
 ```text
 LOCAL_SECRET_STORE
-APPROVED_PASSWORD_MANAGER
+APPROVED_PRIVATE_SHARED_STORE
 CTO_MANAGED_SECRET
 PRODUCT_MANAGED_SECRET
 UNKNOWN_CREDENTIALS

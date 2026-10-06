@@ -3,9 +3,10 @@
 Refs #4545
 Refs #873
 
-> **Purpose:** Public-safe inventory of all reusable QA and AI actor accounts registered in the approved password manager.
-> **Status:** ✅ All accounts registered (v1)
-> **Password Manager:** Bitwarden Free (recommended) / Proton Pass Free
+> **Purpose:** Public-safe inventory of reusable QA and AI actor accounts whose recovery credentials are kept in approved private shared custody.
+> **Status:** ✅ Registry active (v1)
+> **Canonical Credential Store:** Approved private shared credential store — currently the Google Drive-backed operator share
+> **Optional Secondary Custody:** Bitwarden / Proton Pass or equivalent, not required
 > **Custodian:** CTO_MANAGED
 > **Refs:** Issue #873, SYNTHETIC_ACTOR_ACCOUNT_STRATEGY.md
 >
@@ -70,11 +71,11 @@ Accounts for explicit AI model activity, AI Guide features, and AI sample conten
 
 ---
 
-## Password Manager Registration
+## Shared Credential Record Metadata
 
-### Entry Format (Bitwarden / Proton Pass)
+### Operator record format
 
-Each account is registered in the approved password manager (Bitwarden Free recommended) using the following format:
+Each reusable account is represented in the approved private shared credential store using the following public-safe metadata. A password manager may mirror the same record as optional secondary custody, but it is not the required canonical system:
 
 **Item name:** `LoveBud / QA / <ACCOUNT_LABEL>`
 
@@ -96,7 +97,7 @@ persona: <PERSONA_ID or AI_ROLE>
 environment: fixed_slot
 custodian: CTO_MANAGED
 sensitivity: STANDARD_QA_REUSABLE or LOW_QA_DISPOSABLE
-credential_location: APPROVED_PASSWORD_MANAGER (canonical custody)
+credential_location: APPROVED_PRIVATE_SHARED_STORE (canonical recovery custody)
 local_runtime_file: .local/test-accounts.json (gitignored, runtime only)
 ```
 
@@ -110,7 +111,7 @@ local_runtime_file: .local/test-accounts.json (gitignored, runtime only)
 |------|----------|---------|-------------------|
 | **Tier 0** — Public-safe registry | This document, GitHub Issues, PRs | Account inventory, status tracking | ❌ No |
 | **Tier 1** — Local runtime | `.local/test-accounts.json` (gitignored) | Browser login, automation. Runtime convenience only — **not a source of truth**. | ✅ Yes |
-| **Tier 2** — Approved non-public custody | Bitwarden Free / Proton Pass Free (or equivalent custodian-controlled secret store) | Canonical credential custody across machines and agents | ✅ Yes (encrypted) |
+| **Tier 2** — Approved private shared custody | Google Drive-backed operator share (or equivalent approved custodian-controlled shared store) | Canonical credential recovery across machines; local copies are replaceable | ✅ Yes |
 | **Tier 3** — Repository credential archive | ❌ **RETIRED** (Issue #4545) | Previously an encrypted backup in-repo. No credential archive may be tracked here. | — |
 
 Notes:
@@ -146,7 +147,7 @@ CREDENTIAL_ROTATION_REQUIRED=YES
 5. **Never** paste credential values in GitHub Issues, PRs, comments, docs, screenshots, or logs
 6. **Never** print credential values in reports
 7. **Never** document credential passwords in the repository
-8. **Always** distribute credentials through the approved non-public store and secure operator channels
+8. **Always** distribute credentials through the approved private shared store and secure operator channels
 9. **Always** run `npm run check:auth-credentials -- --key <credential_key>` before browser auth verification
 10. **Always** report only safe status labels in public
 
@@ -192,7 +193,7 @@ Account label: <LABEL>
 Persona or AI role: <ROLE>
 Environment: <ENV>
 Credential key: <KEY>
-Credential location label: APPROVED_PASSWORD_MANAGER + LOCAL_SECRET_STORE
+Credential location label: APPROVED_PRIVATE_SHARED_STORE + LOCAL_SECRET_STORE
 Custodian: CTO_MANAGED
 Account status: ACTIVE
 Rotation required: NO

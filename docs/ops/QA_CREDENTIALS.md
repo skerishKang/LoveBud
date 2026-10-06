@@ -12,13 +12,14 @@ Refs #873
 > longer tracked, and it must not be restored from Git history or recommitted.
 > See [qa-credential-bundle/README.md](qa-credential-bundle/README.md).
 >
-> **All 13 QA/AI actor accounts are registered in the approved password manager (Bitwarden Free).**
-> That non-public store is the canonical credential custody.
+> **Reusable QA/AI credentials are maintained in the approved private shared credential store.**
+> The current recovery/custody implementation is the **Google Drive-backed operator share** already used across machines.
+> That non-public shared store is the canonical recovery source; Bitwarden/Proton Pass may be used as optional secondary custody but are not required dependencies.
 > See [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) for the public-safe inventory.
 >
-> **Current working method: approved non-public password manager / custodian-controlled secret store.**
-> `.local/test-accounts.json` is a gitignored local runtime file, not a source of
-> truth. The temporary handoff via Issue #351 is superseded.
+> **Current working method: approved private shared credential store / custodian-controlled secret store.**
+> `.local/test-accounts.json` and other gitignored local QA credential files are runtime copies, not sources of truth.
+> They may be recreated from the approved shared store if a local machine is lost. The temporary handoff via Issue #351 is superseded.
 >
 > **Rotation of the affected accounts is separately authorized work and has NOT been performed here.**
 
@@ -166,14 +167,14 @@ This document describes the current credential location model for managing QA te
 | Location | Status | Contains secrets | Source of truth |
 |---------|--------|------------------|-----------------|
 | **Git repository** | ✅ Active, public-safe metadata only | ❌ No | Public-safe inventory, docs, status |
-| **Approved non-public password manager / custodian secret store** | ✅ CURRENT credential custody | ✅ Yes | Yes — canonical |
+| **Approved private shared credential store / custodian shared secret store** | ✅ CURRENT recovery custody | ✅ Yes | Yes — canonical |
 | **Local runtime file** `.local/test-accounts.json` | ✅ Available, gitignored | ✅ Yes | No — runtime convenience only |
 | **Temporary handoff** | 🔴 Superseded | — | Issue #351 (no longer needed) |
 | **Repository credential bundle channel** | 🔴 RETIRED (Issue #4545) | — | No longer exists; see tombstone |
 
 Do not use the temporary handoff branch (`ops/temp-qa-credential-handoff`).
 Do not restore credentials from `docs/ops/qa-credential-bundle/` or from Git history.
-Obtain current credentials from the approved non-public password manager / custodian-controlled secret store only.
+Obtain current credentials from the approved private shared credential store / custodian-controlled secret store only.
 
 ---
 
@@ -188,7 +189,7 @@ Obtain current credentials from the approved non-public password manager / custo
 ### Security Model
 
 - **Repository**: Public-safe metadata only — account labels, credential keys, persona/role, environment, status, sensitivity class, custodian labels. No credential values and no credential archives.
-- **Approved Non-Public Store**: Password manager / custodian-controlled secret store holds the actual credentials.
+- **Approved Private Shared Store**: The Google Drive-backed operator share (or equivalent approved custodian-controlled shared store) holds the recoverable credentials across machines.
 - **Local Runtime**: Uses `.local/test-accounts.json` (gitignored, runtime only, not a source of truth)
 - **No Plaintext**: Credentials never committed in plain text
 - **No Archives**: No credential archive is tracked in this repository; `.gitignore` blocks the retired channel.
@@ -205,10 +206,10 @@ Obtain current credentials from the approved non-public password manager / custo
 ### Approved Current Source
 
 ```text
-approved non-public password manager / custodian-controlled secret store
+approved private shared credential store / custodian-controlled secret store
 ```
 
-This is the canonical credential custody. Public-safe inventory of what belongs
+This is the canonical recovery/custody source. Public-safe inventory of what belongs
 there — labels, credential keys, persona/role, environment, status, sensitivity
 class, custodian labels — is in [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md).
 
@@ -252,7 +253,7 @@ CREDENTIAL_ROTATION_REQUIRED=YES
 **Decision tree before starting:**
 
 ```
-Step 1: Do you have access to the approved non-public password manager / secret store?
+Step 1: Do you have access to the approved private shared credential store / secret store?
   ├─ YES → Retrieve the selected credential entry and continue.
   └─ NO  → BLOCKED. Do not fall back to Git history or any repository archive.
 
@@ -264,7 +265,7 @@ Step 2: Does .local/test-accounts.json already exist on your machine?
 
 **Local runtime setup procedure:**
 
-1. Obtain the selected credential entry from the approved non-public password manager / custodian secret store via the approved operator channel
+1. Obtain the selected credential entry from the approved private shared credential store / custodian secret store via the approved operator channel
 2. Write it to `.local/test-accounts.json`
 3. Verify format matches `.local/test-accounts.example.json` without printing values
 4. Run the credential preflight
@@ -299,7 +300,7 @@ Do not use the `ops/temp-qa-credential-handoff` branch.
 
 ### Credential Custody Rules
 
-1. The approved non-public password manager / custodian-controlled secret store holds the actual credentials.
+1. The approved private shared credential store / custodian-controlled secret store holds the actual credentials.
 2. This repository holds public-safe metadata only.
 3. No credential archive is committed here — `.gitignore` blocks the retired channel.
 4. Updating [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) is allowed when account labels, counts, or public-safe metadata change.
@@ -351,7 +352,7 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 - [ ] File format matches the canonical schema without printing values
 - [ ] `npm run check:auth-credentials -- --key accounts.personaA001` returns `CREDENTIAL_PREFLIGHT_PASS`
 - [ ] All 13 QA slots are populated, reported only as `PRESENT`/`MISSING`
-- [x] All accounts registered in approved password manager (Bitwarden Free)
+- [x] All accounts registered in approved private shared credential store
 
 ### Multi-Repository Usage
 
@@ -366,7 +367,7 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 ### Do's
 
 - Use strong, unique passwords for every QA/AI account
-- Keep credentials in the approved non-public password manager / custodian secret store
+- Keep credentials in the approved private shared credential store / custodian secret store
 - Retrieve credentials for local runtime only through approved operator channels
 - Rotate credentials under separately authorized custodian/provider work
 - Report only path/status information
@@ -390,7 +391,7 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 ### Common Issues
 
 1. **Missing `.local/test-accounts.json`**
-   - Retrieve the selected credential entry from the approved non-public password manager / custodian secret store
+   - Retrieve the selected credential entry from the approved private shared credential store / custodian secret store
    - Do not fall back to the retired `docs/ops/qa-credential-bundle/` channel or to Git history
    - If non-public store access is unavailable, report `BLOCKED`
    - Check file permissions
@@ -421,7 +422,7 @@ Final verification for PR #350 must be performed against a **fixed test slot** o
 
 If credentials are lost or corrupted:
 
-1. Retrieve the affected entries from the approved non-public password manager / custodian secret store
+1. Retrieve the affected entries from the approved private shared credential store / custodian secret store
 2. If unavailable, escalate to the credential custodian; report by safe label only
 3. Do not restore from the retired repository channel or from Git history
 4. Verify all QA slots work correctly without printing values
@@ -459,11 +460,11 @@ verification environment:    fixed test slot
 
 - [AGENTS.md](AGENTS.md)
 - [AGENT_SECURITY.md](AGENT_SECURITY.md)
-- [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) — public-safe account inventory for password manager registration
+- [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md) — public-safe account inventory for the approved private shared credential store
 - [qa-credential-bundle/README.md](qa-credential-bundle/README.md) — retired credential channel tombstone (no secrets)
 - `tests/contracts/qa-credential-public-git-boundary-4545.test.cjs` — tracked-archive ban and no-current-restore-authority guard
 - [LOCAL_BROWSER_VERIFICATION_STARTUP.md](LOCAL_BROWSER_VERIFICATION_STARTUP.md)
 - [GITHUB_AUTH_TOKEN_USAGE.md](GITHUB_AUTH_TOKEN_USAGE.md)
 - [TEST_PREVIEW_SLOTS.md](TEST_PREVIEW_SLOTS.md)
 - [BROWSER_VERIFICATION_URL_POLICY.md](BROWSER_VERIFICATION_URL_POLICY.md)
-- Issue [#873](https://github.com/skerishKang/LoveBud/issues/873) — QA account registration in approved password manager
+- Issue [#873](https://github.com/skerishKang/LoveBud/issues/873) — QA account registration in approved private shared credential store
