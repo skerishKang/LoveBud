@@ -21,14 +21,10 @@
 // After explicit direct selection there is no per-request fallback to Modal.
 
 import {
-  FirebaseReadPrincipalError,
-  buildFirebaseReadPrincipalErrorResponse,
-  resolveFirebaseReadPrincipal
-} from '../../workers/love-platform-api/firebase-read-principal.js';
-import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 import {
   isInvalidPathEncodingError,
   normalizeEncodedPathSegment
@@ -139,17 +135,14 @@ function requestWithId(request, requestId) {
 async function resolvePrincipal(request, env, requestId, options) {
   const authRequest = requestWithId(request, requestId);
   try {
-    const verifyToken = options.verifyTokenOverride || createFirebaseIdTokenVerifier({
-      projectId: readFirebaseProjectId(env)
-    });
-    const principal = await resolveFirebaseReadPrincipal(authRequest, verifyToken);
+    const principal = await resolveAuthenticatedPrincipal(authRequest, env, { verifyTokenOverride: options.verifyTokenOverride });
     return { ok: true, principal };
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
+    if (error instanceof AuthenticatedPrincipalError) {
       return {
         ok: false,
         response: decorateDirectResponse(
-          buildFirebaseReadPrincipalErrorResponse(error, authRequest),
+          buildAuthenticatedPrincipalErrorResponse(error, authRequest),
           requestId,
           'auth-rejected'
         )

@@ -1,5 +1,9 @@
 import { createRequestContext } from './core.js';
 import { REQUEST_ID_HEADER } from '../../functions/_shared/request-id.js';
+import {
+  createFirebaseIdTokenVerifier,
+  readFirebaseProjectId
+} from '../../functions/_shared/firebase-id-token-verifier.js';
 
 export const FIREBASE_READ_PRINCIPAL_ERROR = Object.freeze({
   AUTHORIZATION_REQUIRED: 'AUTHORIZATION_REQUIRED',
@@ -109,6 +113,17 @@ export function createFirebaseReadPrincipalResolver(verifyToken) {
   return async function firebaseReadPrincipalResolver(request) {
     return resolveFirebaseReadPrincipal(request, verifyToken);
   };
+}
+
+// Firebase adapter-side verifier assembly: the provider-neutral composition
+// boundary (authenticated-principal.js) owns provider selection, while Firebase
+// verifier construction and project-id resolution stay on this adapter side so
+// no Production Direct-Neon helper assembles Firebase verification itself.
+export function createFirebasePrincipalVerifier(env, verifierOptions = null) {
+  return createFirebaseIdTokenVerifier({
+    projectId: readFirebaseProjectId(env),
+    ...(verifierOptions && typeof verifierOptions === 'object' ? verifierOptions : {})
+  });
 }
 
 export function buildFirebaseReadPrincipalErrorResponse(error, request) {

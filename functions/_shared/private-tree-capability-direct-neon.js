@@ -16,14 +16,10 @@
 // the explicit 200 {viewerCanEdit:false} contract.
 
 import {
-  FIREBASE_READ_PRINCIPAL_ERROR,
-  FirebaseReadPrincipalError,
-  resolveFirebaseReadPrincipal
-} from '../../workers/love-platform-api/firebase-read-principal.js';
-import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
+  AuthenticatedPrincipalError,
+  AUTHENTICATED_PRINCIPAL_ERROR,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 import {
   isNeonDatabaseUrl,
   normalizeOwnerTreeDetailId
@@ -90,10 +86,10 @@ function falseCapability(requestId, routeStatus = 'tree-capability-complete') {
 }
 
 function isAuthDenial(error) {
-  if (!(error instanceof FirebaseReadPrincipalError)) return false;
-  return error.code === FIREBASE_READ_PRINCIPAL_ERROR.AUTHORIZATION_REQUIRED ||
-    error.code === FIREBASE_READ_PRINCIPAL_ERROR.AUTHORIZATION_MALFORMED ||
-    error.code === FIREBASE_READ_PRINCIPAL_ERROR.VERIFICATION_FAILED;
+  if (!(error instanceof AuthenticatedPrincipalError)) return false;
+  return error.code === AUTHENTICATED_PRINCIPAL_ERROR.AUTHORIZATION_REQUIRED ||
+    error.code === AUTHENTICATED_PRINCIPAL_ERROR.AUTHORIZATION_MALFORMED ||
+    error.code === AUTHENTICATED_PRINCIPAL_ERROR.VERIFICATION_FAILED;
 }
 
 export async function createPrivateTreeCapabilityExecutor({ connectionString, executor } = {}) {
@@ -120,11 +116,7 @@ export async function handlePrivateTreeCapabilityDirectNeon(
 
   let principal;
   try {
-    const verifyToken = verifyTokenOverride || createFirebaseIdTokenVerifier({
-      projectId: readFirebaseProjectId(env),
-      ...(verifierOptions && typeof verifierOptions === 'object' ? verifierOptions : {})
-    });
-    principal = await resolveFirebaseReadPrincipal(request, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(request, env, { verifyTokenOverride, verifierOptions });
   } catch (error) {
     if (isAuthDenial(error)) {
       return falseCapability(requestId, 'tree-capability-complete');

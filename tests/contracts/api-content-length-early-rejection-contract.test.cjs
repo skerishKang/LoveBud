@@ -180,7 +180,7 @@ test('#4217 source shape uses a specific Hub Layout route, preserves catch-all f
   assert.match(route, /isHubLayoutDirectNeonSelected\(env\s*\|\|\s*\{\}\)/);
 
   assert.match(direct, /readBoundedRequestBody/);
-  assert.match(direct, /resolveFirebaseReadPrincipal/);
+  assert.match(direct, /resolveAuthenticatedPrincipal/);
   assert.match(direct, /principal\.legacyOwnerId/);
   assert.match(direct, /createNeonWsTransactionAdapter/);
   assert.match(direct, /LOVE_PLATFORM_WRITE_DATABASE_URL/);
@@ -1289,7 +1289,7 @@ test('#4237 source shape keeps direct interception POST-only and pins the dedica
   assert.match(directSource, /LB_APPRECIATION_ORDER_WRITE_RUNTIME/);
   assert.match(directSource, /LOVE_PLATFORM_WRITE_DATABASE_URL/);
   assert.match(directSource, /readBoundedRequestBody/);
-  assert.match(directSource, /resolveFirebaseReadPrincipal/);
+  assert.match(directSource, /resolveAuthenticatedPrincipal/);
   assert.match(directSource, /principal\.legacyOwnerId/);
   assert.match(directSource, /createNeonWsTransactionAdapter/);
   assert.match(directSource, /FOR SHARE OF t/);

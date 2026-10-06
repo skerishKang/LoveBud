@@ -9,14 +9,10 @@ import {
   sanitizeNeonWsTransactionError
 } from './db/neon-ws-transaction-adapter.js';
 import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
-import {
-  resolveFirebaseReadPrincipal,
-  buildFirebaseReadPrincipalErrorResponse,
-  FirebaseReadPrincipalError
-} from '../../workers/love-platform-api/firebase-read-principal.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 
 export const MEMORY_REACTION_DIRECT_NEON_RUNTIME_ENV = Object.freeze({
   GATE_FLAG: 'LB_MEMORY_REACTION_WRITE_RUNTIME',
@@ -347,20 +343,12 @@ function sanitizedAdapterResponse(error, routeStatus) {
 export async function handleMemoryReactionDirectNeon(request, env = {}, options = {}) {
   if (!isMemoryReactionDirectNeonRequest(request) || !isMemoryReactionDirectNeonSelected(env)) return null;
 
-  let verifyToken = options.verifyTokenOverride;
-  if (typeof verifyToken !== 'function') {
-    try {
-      verifyToken = createFirebaseIdTokenVerifier({ projectId: readFirebaseProjectId(env) });
-    } catch {
-      return jsonResponse({ error: 'Authentication verifier unavailable' }, 503, 'verifier-unavailable');
-    }
-  }
 
   let principal;
   try {
-    principal = await resolveFirebaseReadPrincipal(request, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(request, env, { verifyTokenOverride: options.verifyTokenOverride });
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) return buildFirebaseReadPrincipalErrorResponse(error, request);
+    if (error instanceof AuthenticatedPrincipalError) return buildAuthenticatedPrincipalErrorResponse(error, request);
     return jsonResponse({ error: 'Authentication verifier unavailable' }, 503, 'verifier-unavailable');
   }
   const ownerId = principal.legacyOwnerId;

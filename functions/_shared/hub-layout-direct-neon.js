@@ -16,14 +16,10 @@ import {
   sanitizeNeonWsTransactionError
 } from './db/neon-ws-transaction-adapter.js';
 import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
-import {
-  resolveFirebaseReadPrincipal,
-  buildFirebaseReadPrincipalErrorResponse,
-  FirebaseReadPrincipalError
-} from '../../workers/love-platform-api/firebase-read-principal.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 import { readBoundedRequestBody } from './bounded-request-body.js';
 import {
   buildInvalidPathEncodingResponse,
@@ -560,19 +556,13 @@ export async function handleHubLayoutDirectNeon(
 
   // Auth still precedes body materialization and every database/transaction
   // boundary.
-  let verifyToken = verifyTokenOverride;
   let principal;
   try {
-    if (typeof verifyToken !== 'function') {
-      verifyToken = createFirebaseIdTokenVerifier({
-        projectId: readFirebaseProjectId(env)
-      });
-    }
-    principal = await resolveFirebaseReadPrincipal(request, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(request, env, { verifyTokenOverride });
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
+    if (error instanceof AuthenticatedPrincipalError) {
       return withDirectHeaders(
-        buildFirebaseReadPrincipalErrorResponse(error, request),
+        buildAuthenticatedPrincipalErrorResponse(error, request),
         requestId,
         'auth-failed'
       );

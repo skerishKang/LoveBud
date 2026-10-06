@@ -16,14 +16,10 @@ import {
   sanitizeNeonWsTransactionError
 } from './db/neon-ws-transaction-adapter.js';
 import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
-import {
-  FirebaseReadPrincipalError,
-  buildFirebaseReadPrincipalErrorResponse,
-  resolveFirebaseReadPrincipal
-} from '../../workers/love-platform-api/firebase-read-principal.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 import {
   buildInvalidPathEncodingResponse,
   isInvalidPathEncodingError,
@@ -369,14 +365,11 @@ export async function handleAppreciationOrderDirectNeon(
 
   let principal;
   try {
-    const verifyToken = verifyTokenOverride || createFirebaseIdTokenVerifier({
-      projectId: readFirebaseProjectId(env)
-    });
-    principal = await resolveFirebaseReadPrincipal(request, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(request, env, { verifyTokenOverride });
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
+    if (error instanceof AuthenticatedPrincipalError) {
       return withDirectHeaders(
-        buildFirebaseReadPrincipalErrorResponse(error, request),
+        buildAuthenticatedPrincipalErrorResponse(error, request),
         requestId,
         'auth-failed'
       );

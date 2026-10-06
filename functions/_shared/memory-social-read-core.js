@@ -4,14 +4,10 @@
 // without coupling unrelated Product surfaces.
 
 import {
-  FirebaseReadPrincipalError,
-  buildFirebaseReadPrincipalErrorResponse,
-  resolveFirebaseReadPrincipal
-} from '../../workers/love-platform-api/firebase-read-principal.js';
-import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 import { normalizeDirectNeonTimestamp } from './public-memory-detail-direct-neon.js';
 import { REQUEST_ID_HEADER } from './request-id.js';
 
@@ -109,20 +105,14 @@ function makeRequestWithId(request, requestId) {
 async function resolvePrincipal(request, env, requestId, options = {}) {
   const requestWithId = makeRequestWithId(request, requestId);
   try {
-    const verifyToken = options.verifyTokenOverride || createFirebaseIdTokenVerifier({
-      projectId: readFirebaseProjectId(env),
-      ...(options.verifierOptions && typeof options.verifierOptions === 'object'
-        ? options.verifierOptions
-        : {})
-    });
-    const principal = await resolveFirebaseReadPrincipal(requestWithId, verifyToken);
+    const principal = await resolveAuthenticatedPrincipal(requestWithId, env, { verifyTokenOverride: options.verifyTokenOverride, verifierOptions: options.verifierOptions });
     return { ok: true, principal, requestWithId };
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
+    if (error instanceof AuthenticatedPrincipalError) {
       return {
         ok: false,
         response: decorateDirectResponse(
-          buildFirebaseReadPrincipalErrorResponse(error, requestWithId),
+          buildAuthenticatedPrincipalErrorResponse(error, requestWithId),
           requestId,
           'auth-rejected'
         )
