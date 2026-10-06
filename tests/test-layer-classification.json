@@ -5400,6 +5400,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the non-wired production-source R1 stable-account compatibility resolver (#4567/#4006, workers/love-platform-api/authenticated-account-resolution.js) in-process with an injected fake identity lookup: verified { provider, providerSubject } -> stable app_account -> legacy owner projection -> frozen ALLOW/DENY/HOLD, pinning the exact #4006 vocabulary (IDENTITY_UNKNOWN, IDENTITY_REVOKED, ACCOUNT_DISABLED, ACCOUNT_MERGED_WITHOUT_POLICY, AMBIGUOUS_OWNER_PROJECTION, HOLD_NEW_NEON_ONLY_PRODUCT_WRITES), dual-provider same-account parity, fail-closed malformed/exception lookup handling with bounded errors, email never an authority or lookup key, one logical lookup per resolution, input/fixture immutability, and a static non-wiring scan proving the boundary, Neon verifier, helpers, routes, and modal_compute hold zero resolver imports.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-authenticated-account-neon-lookup.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the non-wired stable-account Neon lookup transport (#4569/#4006, workers/love-platform-api/authenticated-account-neon-lookup.js) with fake executors only: LOVE_PLATFORM_DATABASE_URL as the sole config authority with writer/generic fallbacks rejected, static SELECT-only $1/$2-parameterized base-table SQL (never the active-only resolution view) checked as a constant for mutating verbs/interpolation/email authority, exact one executor call per lookup with exact text/values, frozen normalized rows with #4567 trimmed-identifier rejection, bounded CONFIG_INVALID/QUERY_UNAVAILABLE/QUERY_INVALID_RESULT/QUERY_AMBIGUOUS_RESULT taxonomy with zero subject/DSN/cause leakage, multi-row ambiguity fail-closed, and full in-test composition with the R1 resolver across all eight required decisions. No live DB/network, no mapping mutation, and a static non-wiring scan proving zero lookup imports in the boundary, Neon verifier, resolver, helpers, routes, and modal_compute.",
+      "capabilities": []
     }
   ],
   "supplemental": [
