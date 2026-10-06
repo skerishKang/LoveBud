@@ -167,7 +167,7 @@ This document describes the current credential location model for managing QA te
 | Location | Status | Contains secrets | Source of truth |
 |---------|--------|------------------|-----------------|
 | **Git repository** | ✅ Active, public-safe metadata only | ❌ No | Public-safe inventory, docs, status |
-| **Approved non-public password manager / custodian secret store** | ✅ CURRENT credential custody | ✅ Yes | Yes — canonical |
+| **Approved private shared credential store / custodian shared secret store** | ✅ CURRENT recovery custody | ✅ Yes | Yes — canonical |
 | **Local runtime file** `.local/test-accounts.json` | ✅ Available, gitignored | ✅ Yes | No — runtime convenience only |
 | **Temporary handoff** | 🔴 Superseded | — | Issue #351 (no longer needed) |
 | **Repository credential bundle channel** | 🔴 RETIRED (Issue #4545) | — | No longer exists; see tombstone |
@@ -189,7 +189,7 @@ Obtain current credentials from the approved private shared credential store / c
 ### Security Model
 
 - **Repository**: Public-safe metadata only — account labels, credential keys, persona/role, environment, status, sensitivity class, custodian labels. No credential values and no credential archives.
-- **Approved Non-Public Store**: Password manager / custodian-controlled secret store holds the actual credentials.
+- **Approved Private Shared Store**: The Google Drive-backed operator share (or equivalent approved custodian-controlled shared store) holds the recoverable credentials across machines.
 - **Local Runtime**: Uses `.local/test-accounts.json` (gitignored, runtime only, not a source of truth)
 - **No Plaintext**: Credentials never committed in plain text
 - **No Archives**: No credential archive is tracked in this repository; `.gitignore` blocks the retired channel.
