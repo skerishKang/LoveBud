@@ -5394,6 +5394,12 @@
       "layer": "EXECUTED_FAKE",
       "rationale": "Executes the isolated Neon Auth (Managed Better Auth) JWT verifier candidate (#4565/#4006 Phase B, source-only) in-process with synthetic Web Crypto Ed25519 keypairs, a synthetic JWKS payload, injected fake fetch/clock, and fake crypto failure harnesses: proves EdDSA/Ed25519-only signature verification with exact trusted issuer/audience/claims validation (exp/iat/nbf/sub, small fixed clock skew), bounded in-memory JWKS cache with max-age handling and exactly one unknown-kid forced refresh, sanitized TOKEN_INVALID/VERIFIER_UNAVAILABLE/CONFIG_INVALID taxonomy with zero credential/JWK/URL leakage, plus a static non-wiring regression scan proving authenticated-principal.js, the 22 Direct-Neon helpers, and functions/api never reference the Neon verifier while the boundary contract stays FIREBASE_ONLY.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-authenticated-account-resolution.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the non-wired production-source R1 stable-account compatibility resolver (#4567/#4006, workers/love-platform-api/authenticated-account-resolution.js) in-process with an injected fake identity lookup: verified { provider, providerSubject } -> stable app_account -> legacy owner projection -> frozen ALLOW/DENY/HOLD, pinning the exact #4006 vocabulary (IDENTITY_UNKNOWN, IDENTITY_REVOKED, ACCOUNT_DISABLED, ACCOUNT_MERGED_WITHOUT_POLICY, AMBIGUOUS_OWNER_PROJECTION, HOLD_NEW_NEON_ONLY_PRODUCT_WRITES), dual-provider same-account parity, fail-closed malformed/exception lookup handling with bounded errors, email never an authority or lookup key, one logical lookup per resolution, input/fixture immutability, and a static non-wiring scan proving the boundary, Neon verifier, helpers, routes, and modal_compute hold zero resolver imports.",
+      "capabilities": []
     }
   ],
   "supplemental": [
