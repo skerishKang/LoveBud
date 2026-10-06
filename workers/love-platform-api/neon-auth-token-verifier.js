@@ -9,6 +9,7 @@
 
 const DEFAULT_JWKS_CACHE_TTL_SECONDS = 300;
 const MAX_CACHE_TTL_SECONDS = 24 * 60 * 60;
+const MAX_JWKS_KEYS = 32;
 const CLOCK_SKEW_SECONDS = 5;
 const ALLOWED_ALG = 'EdDSA';
 const ALLOWED_KTY = 'OKP';
@@ -28,6 +29,9 @@ export const NEON_AUTH_TOKEN_VERIFIER_CONTRACT = Object.freeze({
   curve: ALLOWED_CRV,
   clockSkewSeconds: CLOCK_SKEW_SECONDS,
   defaultJwksCacheTtlSeconds: DEFAULT_JWKS_CACHE_TTL_SECONDS,
+  maxJwksCacheTtlSeconds: MAX_CACHE_TTL_SECONDS,
+  maxAgeZeroDisablesCacheReuse: true,
+  maxJwksKeys: MAX_JWKS_KEYS,
   unknownKidForcedRefreshMax: 1,
   wiredIntoProductBoundary: false,
   acceptsEmailAuthority: false
@@ -91,7 +95,11 @@ function responseMaxAgeSeconds(response) {
       for (const part of cacheControl.split(',')) {
         const match = /^\s*max-age=(\d+)\s*$/i.exec(part);
         if (match) {
-          return Math.min(Math.max(Number(match[1]) || DEFAULT_JWKS_CACHE_TTL_SECONDS, 1), MAX_CACHE_TTL_SECONDS);
+          const seconds = Number(match[1]);
+          if (!Number.isFinite(seconds)) break;
+          // An explicit max-age=0 disables cache reuse for subsequent
+          // verifications and must never be promoted to the default TTL.
+          return Math.min(Math.max(seconds, 0), MAX_CACHE_TTL_SECONDS);
         }
       }
     }
@@ -140,6 +148,11 @@ export function createNeonAuthTokenVerifier(config = null) {
       fail('VERIFIER_UNAVAILABLE');
     }
     if (!payload || typeof payload !== 'object' || !Array.isArray(payload.keys)) {
+      fail('VERIFIER_UNAVAILABLE');
+    }
+    if (payload.keys.length > MAX_JWKS_KEYS) {
+      // Bounded cardinality: an oversized remote key set is unusable and fails
+      // closed before any Map is built, so the cache stays bounded too.
       fail('VERIFIER_UNAVAILABLE');
     }
     const keys = new Map();

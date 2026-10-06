@@ -367,7 +367,13 @@ test('18. JWKS cache is bounded: reuse within TTL, finite refresh after expiry',
   await verifier.verify(token);
   assert.equal(state.calls, 2, 'expired cache refreshes exactly once');
   const maxAge = await makeHarness({ jwksPayload: keys.jwksA, cacheControl: 'max-age=99999999' });
-  await maxAge.build().verify(await makeValidToken(keys));
+  const capVerifier = maxAge.build();
+  const capToken = await makeValidToken(keys, { exp: BASE_SEC + 200000 });
+  await capVerifier.verify(capToken);
+  assert.equal(maxAge.state.calls, 1);
+  maxAge.clock.advanceSeconds(24 * 60 * 60 + 1);
+  await capVerifier.verify(capToken);
+  assert.equal(maxAge.state.calls, 2, 'oversized max-age is capped at 24h');
   assert.ok(maxAge.state.urls.every((url) => url === TRUSTED_JWKS_URL));
 });
 
@@ -430,4 +436,58 @@ test('21. boundary contract still pins FIREBASE_ONLY after the Neon verifier lan
   assert.equal(verifierModule.NEON_AUTH_TOKEN_VERIFIER_CONTRACT.wiredIntoProductBoundary, false);
   assert.equal(verifierModule.NEON_AUTH_TOKEN_VERIFIER_CONTRACT.acceptsEmailAuthority, false);
   assert.equal(verifierModule.NEON_AUTH_TOKEN_VERIFIER_CONTRACT.unknownKidForcedRefreshMax, 1);
+});
+
+test('22. explicit max-age=0 disables cache reuse and is never promoted to the default TTL', async () => {
+  const keys = await getKeys();
+  const { build, state } = await makeHarness({ jwksPayload: keys.jwksA, cacheControl: 'max-age=0' });
+  const verifier = build();
+  const token = await makeValidToken(keys);
+  await verifier.verify(token);
+  assert.equal(state.calls, 1, 'first verify fetches the JWKS');
+  await verifier.verify(token);
+  assert.equal(state.calls, 2, 'max-age=0 must not reuse a stale cache entry');
+  const contract = (await loadVerifierModule()).NEON_AUTH_TOKEN_VERIFIER_CONTRACT;
+  assert.equal(contract.maxAgeZeroDisablesCacheReuse, true);
+  assert.equal(contract.defaultJwksCacheTtlSeconds, 300, 'default TTL exists but must never replace an explicit zero');
+  assert.equal(contract.maxJwksCacheTtlSeconds, 24 * 60 * 60);
+});
+
+test('23. JWKS key cardinality is bounded by MAX_JWKS_KEYS and fails closed above it', async () => {
+  const keys = await getKeys();
+  const { createNeonAuthTokenVerifier } = await loadVerifierModule();
+  const contract = (await loadVerifierModule()).NEON_AUTH_TOKEN_VERIFIER_CONTRACT;
+  const maxKeys = contract.maxJwksKeys;
+  assert.ok(Number.isInteger(maxKeys) && maxKeys > 0 && maxKeys <= 64, 'MAX_JWKS_KEYS must be a small fixed bound');
+
+  const dummyKeys = (count) => Array.from({ length: count }, (_, index) => ({
+    kty: 'OKP', crv: 'Ed25519', kid: `dummy-key-${index}`, x: 'aGk'
+  }));
+  const atLimitHarness = await makeHarness({ jwksPayload: { keys: [...dummyKeys(maxKeys - 1), ...keys.jwksA.keys] } });
+  const atLimitIdentity = await atLimitHarness.build().verify(await makeValidToken(keys));
+  assert.equal(atLimitIdentity.provider, 'neon', 'exactly MAX_JWKS_KEYS keys must still be usable');
+
+  let payload = { keys: [...dummyKeys(maxKeys), ...keys.jwksA.keys] };
+  const fetchState = { calls: 0 };
+  const fetchImpl = async () => {
+    fetchState.calls += 1;
+    return { ok: true, status: 200, headers: { get: () => null }, json: async () => payload };
+  };
+  const verifier = createNeonAuthTokenVerifier({
+    issuer: TRUSTED_ISSUER,
+    audience: TRUSTED_AUDIENCE,
+    jwksUrl: TRUSTED_JWKS_URL,
+    fetchImpl,
+    cryptoImpl: crypto,
+    now: () => BASE_MS
+  });
+  await assert.rejects(
+    verifier.verify(await makeValidToken(keys)),
+    (error) => error.code === 'VERIFIER_UNAVAILABLE' && error.message === 'VERIFIER_UNAVAILABLE'
+  );
+  assert.equal(fetchState.calls, 1);
+  payload = keys.jwksA;
+  const recovered = await verifier.verify(await makeValidToken(keys));
+  assert.equal(recovered.provider, 'neon');
+  assert.equal(fetchState.calls, 2, 'no unlimited key Map may be cached from the oversized set');
 });
