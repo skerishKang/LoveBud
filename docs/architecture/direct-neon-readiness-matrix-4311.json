@@ -754,7 +754,7 @@
         "ref": "#4239 reconciliation",
         "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
       },
-      "modal_retained_by_design": false,
+      "modal_retained_by_design": true,
       "rollback_authority": "N/A (no Direct-Neon path)",
       "next_action": "Revisit only if GET-side Direct-Neon demand is explicitly approved"
     },
@@ -1365,7 +1365,7 @@
         "ref": "Source implementation #4494 / PR #4495 merged and post-merge CI/Reliability were accepted at main be5f25bbf1f6ba9e5e53ff617b1e821dda2ebfbf. Later #4000 closeout source reconciliation confirms no current first-party authenticated Tree Likes GET caller; the route remains Modal-backed as legacy compatibility and no Production Direct-Neon activation is planned.",
         "main_sha": "be5f25bbf1f6ba9e5e53ff617b1e821dda2ebfbf"
       },
-      "modal_retained_by_design": true,
+      "modal_retained_by_design": false,
       "rollback_authority": "No activation is planned in #4000 closeout. Existing Modal GET remains the compatibility authority. Any future Direct-Neon activation requires a fresh route-specific authority and would define its own rollback.",
       "next_action": "Keep LB_TREE_LIKE_READ_RUNTIME NOT_CHECKED_IN and retain the Modal GET as legacy compatibility. No #4486 retry or B1 ACL work is required for #4000 closure. Reopen a fresh route-specific migration only if a current first-party Product GET consumer or another concrete Product requirement appears."
     },
