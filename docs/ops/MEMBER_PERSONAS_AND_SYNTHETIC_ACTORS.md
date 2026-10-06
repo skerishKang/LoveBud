@@ -228,25 +228,22 @@ Expected starting size: 10-11 long-lived accounts.
 
 ## Credential source of truth
 
-Use an approved password manager or encrypted QA credential handoff as the credential source of truth. GitHub stores only labels and credential keys, never values.
+Use the approved private shared credential store as the recovery source of truth. The current implementation is the Google Drive-backed operator share already used across machines. GitHub stores only labels and credential keys, never values.
 
-Current acceptable free password-manager candidates for a one-person CTO-managed first pass:
+Bitwarden, Proton Pass, or another password manager may be used as optional secondary custody, but LoveBud verification must not depend on installing or logging into one when the approved shared store is available.
 
-- Bitwarden Free: official Bitwarden docs describe the free individual plan as including unlimited storage for logins/notes/cards/identities and access on any device.
-- Proton Pass Free: official Proton pricing/support pages describe unlimited logins and unlimited devices for the free plan.
-
-Either option may be selected by CTO preference. The selected tool should be documented by label only:
+Document only the public-safe location label:
 
 ```text
-credential_location_label: APPROVED_PASSWORD_MANAGER
+credential_location_label: APPROVED_PRIVATE_SHARED_STORE
 custodian: CTO_MANAGED
 ```
 
 Do not store actual values in this repository.
 
-## Password manager entry format
+## Shared credential record metadata
 
-Suggested entry title:
+Suggested record title:
 
 ```text
 LoveBud / QA / QA_PERSONA_A_001
@@ -275,7 +272,7 @@ Sensitivity class: STANDARD_QA_REUSABLE
 Persona or AI role: PERSONA_A_FIRST_TIME_CREATOR
 Environment: fixed_slot
 Credential key: accounts.personaA001
-Credential location label: APPROVED_PASSWORD_MANAGER
+Credential location label: APPROVED_PRIVATE_SHARED_STORE
 Custodian: CTO_MANAGED
 Status: ACTIVE / RETIRED / UNKNOWN_CREDENTIALS / ORPHANED_TEST_ACCOUNT
 Cleanup status: DONE / NOT_REQUIRED / NOT_AVAILABLE
