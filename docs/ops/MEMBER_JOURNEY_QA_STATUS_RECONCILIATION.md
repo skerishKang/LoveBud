@@ -60,7 +60,7 @@ The core QA suite and related operating policies already exist in repository doc
 | --- | --- | --- | --- |
 | #846 | Member personas | DOC_PRESENT | Select personas in runtime-sensitive verification prompts. |
 | #849 | Three-track synthetic actor strategy | DOC_PRESENT / OPS_EXECUTION_PENDING | Keep QA/test, user-behavior, and AI activity separated in reports and credentials. |
-| #851 | Initial free password manager account set | DOC_PRESENT / OPS_EXECUTION_PENDING | CTO-managed password manager registration still needs safe status inventory. |
+| #851 | Initial reusable QA credential custody design | DOC_PRESENT / SUPERSEDED_STORAGE_IMPLEMENTATION | Password-manager-first implementation is superseded; approved private shared credential store is current recovery custody. |
 | #861 | Multi-machine QA credential file handoff | DOC_PRESENT / OPS_EXECUTION_PENDING | Local credential files and USB handoff remain execution-only, not repository material. |
 | #863 | Verification report to fix/retest lifecycle | DOC_PRESENT | Use issue comments for per-run reports, not repository docs. |
 
@@ -69,7 +69,7 @@ The core QA suite and related operating policies already exist in repository doc
 | Issue | Scope | Reconciled status | Remaining action |
 | --- | --- | --- | --- |
 | #871 | Browser screenshot evidence inventory | OPS_EXECUTION_PENDING | Collect safe metadata and classify screenshots as SAFE_TO_UPLOAD / LOCAL_ONLY / DELETE_RECOMMENDED / MISSING. |
-| #873 | Register QA/AI accounts in password manager | OPS_EXECUTION_PENDING | Record only safe inventory rows in GitHub; actual credentials remain outside GitHub. |
+| #873 | Register QA/AI accounts in approved private custody | OPS_POLICY_ACTIVE | Record only safe inventory rows in GitHub; actual credentials remain in the approved private shared store outside GitHub. |
 | #877 | Require screenshot evidence and credential inventory for future batches | DOC_PRESENT / EXECUTION_RULE_ACTIVE | Future browser prompts should include evidence and credential preservation requirements. |
 
 ## What should not be duplicated
@@ -127,7 +127,7 @@ For #873, record only GitHub-safe metadata:
 - Secret values exposed: NO
 ```
 
-Actual credential values must remain in the approved password manager or approved local credential file and must not be committed, pasted, screenshotted, or logged.
+Actual credential values must remain in the approved private shared credential store or an approved local runtime copy and must not be committed, pasted, screenshotted, or logged. Local runtime copies are replaceable from the shared recovery source.
 
 ### Workstream D — Defect-to-PR lifecycle
 
