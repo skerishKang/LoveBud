@@ -332,8 +332,8 @@ function describe(file) {
 test('1. enumerates every tests/**/*.test.cjs recursively, without duplicates', () => {
   assert.equal(
     REAL.testFiles.length,
-    907,
-    `expected 907 tests/**/*.test.cjs files (906 before the #4563 provider-neutral server principal boundary contract, itself 905 before the #4536 Slice B Scout Durable Object strict quota source contract, itself 904 before the #4536 Slice A Scout runtime Firebase auth composition contract, itself 903 before the #4534 Node runtime policy contract, itself 902 before the #4546 PR guardrails CI contract, itself 901 after the #4545 QA credential public-Git boundary contract addition), found ${REAL.testFiles.length}`
+    908,
+    `expected 908 tests/**/*.test.cjs files (907 before the #4565 isolated Neon Auth token verifier contract, itself 906 before the #4563 provider-neutral server principal boundary contract, itself 905 before the #4536 Slice B Scout Durable Object strict quota source contract, itself 904 before the #4536 Slice A Scout runtime Firebase auth composition contract, itself 903 before the #4534 Node runtime policy contract, itself 902 before the #4546 PR guardrails CI contract, itself 901 after the #4545 QA credential public-Git boundary contract addition), found ${REAL.testFiles.length}`
   );
   assert.equal(
     new Set(REAL.testFiles).size,
@@ -363,8 +363,8 @@ test('2. the default-CI globs reach exactly the package-owned default layer', ()
   );
   assert.equal(
     REAL.defaultCi.length,
-    889,
-    `expected 889 default-CI reachable files (888 before the #4563 provider-neutral server principal boundary contract, itself 887 before the #4536 Slice B Scout Durable Object strict quota source contract, itself 886 before the #4536 Slice A Scout runtime Firebase auth composition contract, itself 885 before the #4534 Node runtime policy contract, itself 884 before the #4546 PR guardrails CI contract addition), found ${REAL.defaultCi.length}`
+    890,
+    `expected 890 default-CI reachable files (889 before the #4565 isolated Neon Auth token verifier contract, itself 888 before the #4563 provider-neutral server principal boundary contract, itself 887 before the #4536 Slice B Scout Durable Object strict quota source contract, itself 886 before the #4536 Slice A Scout runtime Firebase auth composition contract, itself 885 before the #4534 Node runtime policy contract, itself 884 before the #4546 PR guardrails CI contract addition), found ${REAL.defaultCi.length}`
   );
   assert.equal(
     REAL.outsideDefault.length,
