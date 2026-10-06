@@ -13,8 +13,8 @@
  *   docs/engineering/LARGE_FILE_MODULARIZATION_CANDIDATES.md.
  * - Guard B: active credential documentation must not contain current restore
  *   authority (bundle fetch, extraction, password acquisition, recommit,
- *   rotation-by-committing-bundle) and must name the approved non-public store
- *   as the current authority plus a separately-authorized rotation statement.
+ *   rotation-by-committing-bundle) and must name the approved private shared
+ *   store as the current recovery authority plus a separately-authorized rotation statement.
  *
  * Safety properties of this file:
  * - It never opens, lists contents of, extracts, or inspects any credential
@@ -119,9 +119,9 @@ const RESTORE_AUTHORITY_RULES = [
 // Positive statements the authority docs must make.
 const REQUIRED_AUTHORITY_PATTERNS = [
   {
-    id: 'APPROVED_NON_PUBLIC_STORE_NAMED',
-    re: /password manager/i,
-    message: 'must name the approved non-public password manager / secret store as current credential custody',
+    id: 'APPROVED_PRIVATE_SHARED_STORE_NAMED',
+    re: /approved (?:private|non-public) shared credential store|Google Drive-backed operator share/i,
+    message: 'must name the approved private shared credential store as current recovery custody',
   },
   {
     id: 'ROTATION_REQUIRES_SEPARATE_AUTHORITY',
