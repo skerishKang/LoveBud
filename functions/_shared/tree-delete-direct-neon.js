@@ -13,14 +13,10 @@ import {
   sanitizeNeonWsTransactionError
 } from './db/neon-ws-transaction-adapter.js';
 import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
-import {
-  resolveFirebaseReadPrincipal,
-  buildFirebaseReadPrincipalErrorResponse,
-  FirebaseReadPrincipalError
-} from '../../workers/love-platform-api/firebase-read-principal.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 import { normalizeOwnerTreeDetailId } from './owner-tree-detail-direct-neon.js';
 import { REQUEST_ID_HEADER } from './request-id.js';
 
@@ -195,19 +191,13 @@ export async function handleTreeDeleteDirectNeon(
   // Verified Firebase principal must be established before DB configuration or
   // client acquisition. Caller-supplied IDs and metadata never become authority.
   const authRequest = requestWithId(request, requestId);
-  let verifyToken = verifyTokenOverride;
-  if (typeof verifyToken !== 'function') {
-    verifyToken = createFirebaseIdTokenVerifier({
-      projectId: readFirebaseProjectId(env)
-    });
-  }
 
   let principal;
   try {
-    principal = await resolveFirebaseReadPrincipal(authRequest, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(authRequest, env, { verifyTokenOverride });
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
-      return buildFirebaseReadPrincipalErrorResponse(error, authRequest);
+    if (error instanceof AuthenticatedPrincipalError) {
+      return buildAuthenticatedPrincipalErrorResponse(error, authRequest);
     }
     return jsonResponse(
       { error: 'Authentication verifier unavailable' },

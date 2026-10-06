@@ -50,15 +50,11 @@ import {
   sanitizeNeonWsTransactionError
 } from './db/neon-ws-transaction-adapter.js';
 import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
-import {
-  resolveFirebaseReadPrincipal,
-  buildFirebaseReadPrincipalErrorResponse,
-  FirebaseReadPrincipalError,
-  FIREBASE_READ_PRINCIPAL_ERROR
-} from '../../workers/love-platform-api/firebase-read-principal.js';
+  AuthenticatedPrincipalError,
+  AUTHENTICATED_PRINCIPAL_ERROR,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 
 export const TREE_FORK_DIRECT_NEON_RUNTIME_ENV = Object.freeze({
   GATE_FLAG: 'LB_TREE_FORK_WRITE_RUNTIME',
@@ -633,19 +629,13 @@ export async function handleTreeForkDirectNeon(
   // Auth FIRST: verify the Firebase principal before any DB capability is
   // acquired or any transaction starts. transaction/client calls = 0 and
   // DB writes = 0 when auth is missing/malformed/invalid/expired.
-  let verifyToken = verifyTokenOverride;
-  if (typeof verifyToken !== 'function') {
-    verifyToken = createFirebaseIdTokenVerifier({
-      projectId: readFirebaseProjectId(env)
-    });
-  }
 
   let principal;
   try {
-    principal = await resolveFirebaseReadPrincipal(request, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(request, env, { verifyTokenOverride });
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
-      return buildFirebaseReadPrincipalErrorResponse(error, request);
+    if (error instanceof AuthenticatedPrincipalError) {
+      return buildAuthenticatedPrincipalErrorResponse(error, request);
     }
     // Bounded sanitized verifier-infrastructure failure.
     return jsonResponse(

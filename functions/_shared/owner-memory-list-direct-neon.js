@@ -6,14 +6,10 @@
 // on the existing Modal path.
 
 import {
-  FirebaseReadPrincipalError,
-  buildFirebaseReadPrincipalErrorResponse,
-  resolveFirebaseReadPrincipal
-} from '../../workers/love-platform-api/firebase-read-principal.js';
-import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 import { REQUEST_ID_HEADER } from './request-id.js';
 
 export const OWNER_MEMORIES_READ_RUNTIME = Object.freeze({
@@ -386,15 +382,11 @@ export async function handleOwnerMemoriesDirectNeon(
   const requestWithId = makeRequestWithId(request, requestId);
   let principal;
   try {
-    const verifyToken = verifyTokenOverride || createFirebaseIdTokenVerifier({
-      projectId: readFirebaseProjectId(env),
-      ...(verifierOptions && typeof verifierOptions === 'object' ? verifierOptions : {})
-    });
-    principal = await resolveFirebaseReadPrincipal(requestWithId, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(requestWithId, env, { verifyTokenOverride, verifierOptions });
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
+    if (error instanceof AuthenticatedPrincipalError) {
       return decorateDirectResponse(
-        buildFirebaseReadPrincipalErrorResponse(error, requestWithId),
+        buildAuthenticatedPrincipalErrorResponse(error, requestWithId),
         requestId
       );
     }

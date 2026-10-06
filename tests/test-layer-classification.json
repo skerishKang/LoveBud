@@ -5382,6 +5382,12 @@
       "layer": "SOURCE_STATIC",
       "rationale": "Reads source/docs/configuration and asserts on strings, regex, file existence, structure, order, or syntax markers; does not execute the asserted target runtime behavior.",
       "capabilities": []
+    },
+    {
+      "path": "tests/contracts/love-platform-api-authenticated-principal.test.cjs",
+      "layer": "EXECUTED_FAKE",
+      "rationale": "Executes the provider-neutral server principal composition boundary (#4563/#4006 Phase A) in-process with constructed Request inputs and injected fake Firebase verifier identities, proving the canonical frozen principal shape (provider=firebase, providerSubject=verified uid, accountId=null, legacyOwnerId projection), absence of raw token/email/claims/provider payload, client identity header rejection, provider-selection and Neon-token non-acceptance under the unchanged FIREBASE wire taxonomy (401/503), preserved verifyTokenOverride/verifierOptions injection seam, plus a static mechanical guard scanning the 22-helper Direct-Neon inventory for zero direct firebase-read-principal/firebase-id-token-verifier dependencies.",
+      "capabilities": []
     }
   ],
   "supplemental": [

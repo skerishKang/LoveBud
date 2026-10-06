@@ -54,14 +54,10 @@ import {
   sanitizeNeonWsTransactionError
 } from './db/neon-ws-transaction-adapter.js';
 import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
-import {
-  resolveFirebaseReadPrincipal,
-  buildFirebaseReadPrincipalErrorResponse,
-  FirebaseReadPrincipalError
-} from '../../workers/love-platform-api/firebase-read-principal.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 
 export const TREE_LIKE_DIRECT_NEON_RUNTIME_ENV = Object.freeze({
   GATE_FLAG: 'LB_TREE_LIKE_WRITE_RUNTIME',
@@ -517,19 +513,13 @@ export async function handleTreeLikeDirectNeon(
   // Auth FIRST: verify the Firebase principal before any DB capability is
   // acquired or any transaction starts. transaction/client calls = 0 and
   // DB writes = 0 when auth is missing/malformed/invalid/expired.
-  let verifyToken = verifyTokenOverride;
-  if (typeof verifyToken !== 'function') {
-    verifyToken = createFirebaseIdTokenVerifier({
-      projectId: readFirebaseProjectId(env)
-    });
-  }
 
   let principal;
   try {
-    principal = await resolveFirebaseReadPrincipal(request, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(request, env, { verifyTokenOverride });
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
-      return buildFirebaseReadPrincipalErrorResponse(error, request);
+    if (error instanceof AuthenticatedPrincipalError) {
+      return buildAuthenticatedPrincipalErrorResponse(error, request);
     }
     return jsonResponse(
       { error: 'Authentication verifier unavailable' },

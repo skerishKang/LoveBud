@@ -9,14 +9,10 @@ import {
   sanitizeNeonWsTransactionError
 } from './db/neon-ws-transaction-adapter.js';
 import {
-  createFirebaseIdTokenVerifier,
-  readFirebaseProjectId
-} from './firebase-id-token-verifier.js';
-import {
-  resolveFirebaseReadPrincipal,
-  buildFirebaseReadPrincipalErrorResponse,
-  FirebaseReadPrincipalError
-} from '../../workers/love-platform-api/firebase-read-principal.js';
+  AuthenticatedPrincipalError,
+  buildAuthenticatedPrincipalErrorResponse,
+  resolveAuthenticatedPrincipal
+} from '../../workers/love-platform-api/authenticated-principal.js';
 
 export const MEMORY_COMMENT_DIRECT_NEON_RUNTIME_ENV = Object.freeze({
   GATE_FLAG: 'LB_MEMORY_COMMENT_WRITE_RUNTIME',
@@ -484,21 +480,13 @@ export async function handleMemoryCommentDirectNeon(request, env = {}, options =
   if (!isMemoryCommentDirectNeonRequest(request) || !isMemoryCommentDirectNeonSelected(env)) return null;
 
   // Full Firebase verification occurs before DB capability acquisition.
-  let verifyToken = options.verifyTokenOverride;
-  if (typeof verifyToken !== 'function') {
-    try {
-      verifyToken = createFirebaseIdTokenVerifier({ projectId: readFirebaseProjectId(env) });
-    } catch {
-      return jsonResponse({ error: 'Authentication verifier unavailable' }, 503, 'verifier-unavailable');
-    }
-  }
 
   let principal;
   try {
-    principal = await resolveFirebaseReadPrincipal(request, verifyToken);
+    principal = await resolveAuthenticatedPrincipal(request, env, { verifyTokenOverride: options.verifyTokenOverride });
   } catch (error) {
-    if (error instanceof FirebaseReadPrincipalError) {
-      return buildFirebaseReadPrincipalErrorResponse(error, request);
+    if (error instanceof AuthenticatedPrincipalError) {
+      return buildAuthenticatedPrincipalErrorResponse(error, request);
     }
     return jsonResponse({ error: 'Authentication verifier unavailable' }, 503, 'verifier-unavailable');
   }
