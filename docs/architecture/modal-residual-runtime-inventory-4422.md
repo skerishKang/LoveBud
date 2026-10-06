@@ -3,7 +3,7 @@
 **Parent:** #4000  
 **Phase:** 5A source/config inventory  
 **Reconciled against source/config baseline:** `17b207dae7c1e0ee8a8d483d366d2c28aec6abda`  
-**Status:** #4423/#4424/#4425 Production-live completion reflected; residual Phase-5 uncertainty remains limited to the no-gate Tree Likes GET and generic Comment DELETE surfaces.
+**Status:** Phase-5 closeout reconciled. #4423/#4424/#4425 are complete; generic Comment DELETE source/config integration is complete; Tree Likes GET is retained on Modal as an explicit legacy-compatibility exception because no current first-party GET caller exists. #4486 is not a #4000 closure blocker.
 
 This document records which current same-origin LoveBud routes can still reach Modal after the Direct-Neon cutovers. It deliberately distinguishes **route-level gate status** from **request-class behavior**. A route marked `PRODUCTION_LIVE` in the Direct-Neon readiness matrix may still send a subset of requests to Modal when the source contract deliberately defers them before any Direct-Neon database work.
 
@@ -22,6 +22,7 @@ Product-route classifications (closed set):
 | `KEEP_MODAL_BY_DESIGN` | Current architecture explicitly retains this route on Modal. |
 | `LEGACY_OR_UNREACHABLE_MODAL_SOURCE` | The current source graph proves the route is no longer reachable; retirement may be considered separately. |
 | `INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` | Source route remains, but current first-party caller was not proven; runtime usage evidence is required before retirement. |
+| `RETAIN_MODAL_LEGACY_COMPATIBILITY` | Route remains available for compatibility, but current first-party Product source has no caller; it is not a required active general-CRUD dependency and is not forced through migration solely for architectural neatness. |
 
 `GET /modal/health` is an operational endpoint, **outside the Product CRUD/read-model classification set**; it is not assigned a Product-route classification.
 
@@ -65,130 +66,76 @@ Current first-party UI continues to expose private visibility transitions. Examp
 
 Historical note — **prior to #4425 completion** — these four classes fell through to Modal as the active private path, and the Plus/private-storage entitlement was Modal-owned. That transition state is superseded and must not be read as the current state.
 
-## 3. Source-present routes requiring runtime usage evidence
+## 3. Residual route closeout dispositions
 
-Both residual routes below are reachable from the edge to Modal with **no runtime gate** at the source/config baseline. Neither may be deleted or migrated from source alone.
+The original Phase-5 inventory left Tree Likes GET and generic Comment DELETE unresolved. Current-main reconciliation now separates their final dispositions: Tree Likes GET is retained as a legacy compatibility endpoint with no current first-party GET caller, while generic Comment DELETE has completed its Direct-Neon source/config integration.
 
 ### Tree Likes GET
 
 ```text
 GET /api/trees/:treeId/likes
-
-edge =
-functions/api/trees/[tree_id]/likes.js
-
-source behavior =
-onRequestGet -> proxyTreeLike -> Modal
-
-Modal endpoint =
-GET /modal/private/trees/{tree_id}/likes
 ```
 
-#4494 adds a **source-only gated Direct-Neon read candidate**:
+Current source facts:
 
-```text
-helper =
-functions/_shared/tree-like-read-direct-neon.js
+- #4494 / PR #4495 delivered a tested SELECT-only Direct-Neon candidate.
+- The candidate remains behind `LB_TREE_LIKE_READ_RUNTIME`; the gate is intentionally **not checked in**.
+- Current first-party source search proves the Viewer client calls this route with **POST only**; no production client adapter or JavaScript GET caller exists.
+- Existing product architecture docs independently record zero client-side GET calls / no production client adapter for the authenticated Tree Like summary.
+- Phase-5 runtime telemetry could not provide complete route-level attribution, so this is **not** a claim that every historical or external client sends zero requests.
+- #4486 exhausted the safe runtime-read-role identity paths and remains unable to authorize a minimal B1 ACL attestation.
 
-gate =
-LB_TREE_LIKE_READ_RUNTIME=direct_neon
-
-read authority =
-LOVE_PLATFORM_DATABASE_URL
-
-required privilege envelope =
-trees SELECT
-tree_likes SELECT
-tree_social_counts SELECT
-```
-
-The candidate preserves the observable authenticated GET contract with SELECT-only
-queries: verified Firebase requester identity, exact-public Tree boundary, active
-requester Like detection, and `likeCount` with missing aggregate treated as zero.
-It deliberately does not reproduce Modal's incidental aggregate-row INSERT/COMMIT,
-because that write is not observable in the GET response.
-
-At the reconciled Production baseline, #4494 **does not activate this gate**.
-Absent / `modal` / unknown values still route GET to Modal. POST Like remains
-independently governed by `LB_TREE_LIKE_WRITE_RUNTIME`.
-
-No current first-party GET caller was found in source search. No zero-traffic
-proof exists for this route.
+Closeout decision:
 
 ```text
 SOURCE_CANDIDATE = PRESENT
-PRODUCTION_GATE_ACTIVATION = NOT_AUTHORIZED
-B1_ACL_ATTESTATION = NOT_AUTHORIZED
-DEFAULT_PRODUCTION_AUTHORITY = MODAL
-no caller found != dead route
+FIRST_PARTY_PRODUCT_GET_CALLER = ABSENT
+LB_TREE_LIKE_READ_RUNTIME = NOT_CHECKED_IN
+DEFAULT_ROUTE = MODAL
+CLASSIFICATION = RETAIN_MODAL_LEGACY_COMPATIBILITY
+B1_DIRECT_NEON_ACTIVATION_PLANNED = NO
+#4486_BLOCKS_#4000 = NO
 ```
 
-Classification at current Production gate state:
-`INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` for retirement; Production migration
-remains a separate #4422/#4486 authority lifecycle.
+The route is retained rather than deleted because complete external/legacy-client zero-traffic proof is unavailable. It is also not forced through a Production read-role/ACL migration merely to satisfy infrastructure uniformity. If a future Product requirement introduces a first-party authenticated Tree Like GET consumer, that future change must reopen a fresh route-specific migration/privilege authority.
+
+This exception does **not** keep the general Product CRUD migration open: current first-party Product behavior does not depend on this GET route.
 
 ### Generic Comment DELETE
 
 ```text
 DELETE /api/comments/:commentId
-
-edge =
-functions/api/comments/[id].js
-
-Modal endpoint =
-DELETE /modal/private/comments/{comment_id}
 ```
 
-#4492 adds a **source-only gated Direct-Neon candidate**:
+Current closeout state:
+
+- #4492 added the gated Direct-Neon implementation.
+- Production configuration now checks in `LB_COMMENT_DELETE_WRITE_RUNTIME=direct_neon`.
+- The writer boundary is `LOVE_PLATFORM_WRITE_DATABASE_URL`.
+- The required writer privilege envelope was reconciled and source/config integration completed under #4422.
+- Current first-party source search still finds no Comment DELETE client caller.
+- Browser-native Product functional proof was deferred behind the shared authentication migration (#4006) after the transitional Firebase QA credential path failed; that deferral is **not** a reason to keep #4000 open.
 
 ```text
-helper =
-functions/_shared/comment-delete-direct-neon.js
-
-gate =
-LB_COMMENT_DELETE_WRITE_RUNTIME=direct_neon
-
-writer authority =
-LOVE_PLATFORM_WRITE_DATABASE_URL
+SOURCE_CONFIG_INTEGRATION = COMPLETE
+CHECKED_IN_GATE = direct_neon
+FIRST_PARTY_PRODUCT_DELETE_CALLER = ABSENT
+PRODUCT_FUNCTIONAL_PROOF = DEFERRED_AUTH_MIGRATION_DEPENDENCY
+#4000_CLOSURE_BLOCKER = NO
 ```
 
-The source candidate preserves the current Modal self-delete contract: verified
-Firebase actor authority, UUID validation, author-only deletion, idempotent return
-for already non-visible rows, `status='deleted'` / `deleted_at` /
-`deleted_by` mutation, `comment.soft_delete` audit, atomic commit, and explicit
-`COMMIT_OUTCOME_UNKNOWN` with no blind retry.
+The retained Modal DELETE implementation remains rollback/compatibility source. Any future auth-dependent Product proof belongs to the shared-auth migration lifecycle rather than the Modal-to-Neon architecture parent.
 
-At the reconciled Production baseline, #4492 **does not activate this gate**.
-Absent / `modal` / unknown values still route to the existing Modal endpoint.
-No current first-party DELETE caller was found in source search, but the route
-remains contract-pinned by:
+### Evidence posture
 
 ```text
-tests/contracts/self-comment-delete-contract.test.cjs
-```
+B1 complete external zero-traffic proof = unavailable
+B1 first-party GET caller = absent
+B1 disposition = retain Modal legacy compatibility
 
-Therefore the route is still **not retirement-ready**, and source-candidate
-availability is not evidence that Production general Modal traffic is zero.
-
-Current disposition:
-
-```text
-SOURCE_CANDIDATE = PRESENT
-PRODUCTION_GATE_ACTIVATION = NOT_AUTHORIZED
-PRODUCTION_DB_OR_ACL_MUTATION = NOT_AUTHORIZED
-DEFAULT_PRODUCTION_AUTHORITY = MODAL
-```
-
-Classification at current Production gate state:
-`INCONCLUSIVE_NEEDS_RUNTIME_EVIDENCE` for retirement; migration activation is a
-separate #4422 authority/lifecycle.
-
-### Evidence posture for both routes
-
-```text
-no zero-traffic proof exists for B1/B2;
-retirement or migration requires a separate caller-evidence /
-route-disposition preflight.
+B2 source/config integration = complete
+B2 first-party DELETE caller = absent
+B2 browser functional proof = deferred to #4006 auth migration
 
 Do not generate Product traffic merely to manufacture telemetry.
 ```
@@ -242,65 +189,48 @@ Retain until the final specialized-compute runtime contract and health monitorin
 
 The mere presence of those Python routes does **not** prove active Production Modal traffic. For many of them, current Production edge gates select Direct-Neon, leaving the Modal endpoint as fallback/rollback source only. No zero-traffic proof exists for the residual no-gate surfaces, so a separate caller-evidence / route-disposition preflight is required before any endpoint removal.
 
-## 6. Current contraction blockers
+## 6. Phase-5 closeout
 
-At source/config baseline `fc84f642efe386a69106ef02dc721f553b1fff16`:
+Current-main closeout disposition:
 
-- `MODAL_BASE_URL` removal is **not ready**;
-- `min_containers` reduction is **not ready**;
-- full general-CRUD removal from Modal is **not proven**;
-- Modal app source deletion is **not authorized**.
-
-Current state and blocking work:
-
-1. #4423 — **complete**; all four Memory social GET request classes are Direct-Neon Production live.
+1. #4423 — **complete**; four Memory social GET classes are Direct-Neon Production live.
 2. #4424 — **complete**; private Tree capability GET is Direct-Neon Production live.
-3. #4425 — **complete / closed**; the Plus/private-storage entitlement boundary is out of Modal, and the four entitlement-bound private write request classes are Direct-Neon Production live. The entitlement blocker is cleared.
-4. The residual Phase-5 general-route problem remains two Production-Modal surfaces:
-   - `GET /api/trees/:treeId/likes` — #4494 source candidate present, but Production read gate activation/B1 ACL is not authorized and the default route remains Modal-backed;
-   - `DELETE /api/comments/:commentId` — #4492 source candidate present, but Production gate activation/ACL is not authorized and the default route remains Modal-backed.
-   Retirement is not authorized for either.
-5. Appreciation-order GET remains `KEEP_MODAL_BY_DESIGN`.
-6. YouTube playlist preview remains `ACTIVE_MODAL_SPECIALIZED_COMPUTE`.
-7. Retain explicit specialized compute / design-retained routes until separately reconsidered.
+3. #4425 — **complete**; private-storage entitlement and private Tree/Memory write classes no longer require Modal as active general CRUD.
+4. #4531 — **complete**; private-storage entitlement rollback semantics were reconciled.
+5. B2 generic Comment DELETE — **source/config integration complete**; auth-dependent browser proof is deferred to #4006 and is not a #4000 blocker.
+6. B1 Tree Likes GET — **RETAIN_MODAL_LEGACY_COMPATIBILITY**; no current first-party GET caller, no planned Production Direct-Neon activation, and #4486 is removed from the #4000 critical path.
+7. Appreciation-order GET — **KEEP_MODAL_BY_DESIGN**.
+8. YouTube playlist preview — **ACTIVE_MODAL_SPECIALIZED_COMPUTE**.
+9. `/modal/health` — operations-only retained endpoint.
 
-Disposition at this baseline:
-
-```text
-ENTITLEMENT_BLOCKER_4425 = CLEARED
-
-GENERAL_MODAL_TRAFFIC_ZERO_BY_SOURCE = NO
-
-MODAL_GENERAL_CRUD_SOURCE_CONTRACTION_READY = NO
-
-MODAL_BASE_URL_REMOVAL_READY = NO
-
-MIN_CONTAINERS_REEVALUATION_READY = NO
-
-DEAD_ROUTE_REMOVAL_READY = NO
-```
-
-`GENERAL_MODAL_TRAFFIC_ZERO_BY_SOURCE = NO` is **not** a claim that measured runtime traffic is greater than zero. It means:
+Final architecture boundary for #4000:
 
 ```text
-current source still exposes two unconditional Modal general-route handlers,
-so zero general Modal reachability is not established.
+ACTIVE_FIRST_PARTY_GENERAL_CRUD_DEPENDENCY_ON_MODAL = NO
+RETAINED_MODAL_SPECIALIZED_COMPUTE = YES
+RETAINED_MODAL_DESIGN_SPECIFIC_READ = YES
+RETAINED_MODAL_LEGACY_COMPATIBILITY_ENDPOINT = YES
+
+MODAL_BASE_URL_REMOVAL = NOT_REQUIRED_FOR_#4000_CLOSE
+MODAL_SOURCE_DELETION = NOT_REQUIRED_FOR_#4000_CLOSE
+MIN_CONTAINERS_CHANGE = SEPARATE_OPERATIONS_DECISION
+
+PHASE5_CONTRACTION_COMPLETE = YES
+#4422_CLOSE_READY = YES
+#4000_CLOSE_READY = YES
 ```
 
-### Next action
+The parent goal is contraction of Modal from the **active first-party general CRUD critical path**, not deletion of every historical/fallback/compatibility endpoint. Retained compatibility and specialized-compute surfaces are explicit and must not be interpreted as unfinished general CRUD migration.
 
-```text
-NEXT_PHASE =
-separate B1/B2 caller-evidence and route-disposition preflight
-```
+### Future invalidation rule
 
-Not authorized by this document:
+Reopen or create a fresh route-specific child only if one of these becomes true:
 
-- migration implementation;
-- route deletion;
-- Modal endpoint deletion;
-- `MODAL_BASE_URL` removal;
-- `min_containers` mutation.
+- first-party Product code starts consuming authenticated Tree Likes GET;
+- a retained compatibility Modal endpoint becomes required by an active Product flow;
+- appreciation-order is reclassified as ordinary general CRUD;
+- YouTube preview no longer qualifies as specialized compute;
+- a future runtime change makes Modal a required general CRUD hop again.
 
 ## 7. Safety
 
