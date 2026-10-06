@@ -61,10 +61,16 @@ function isValidSubject(subject) {
 function isValidNormalizedRow(row) {
   if (!row || typeof row !== 'object' || Array.isArray(row)) return false;
   if (!IDENTITY_STATUSES.includes(row.identityStatus)) return false;
-  if (typeof row.accountId !== 'string' || row.accountId.length === 0) return false;
+  // Identifiers must already be non-empty trimmed strings; malformed values
+  // are rejected as-invalid, never trimmed or coerced into authority.
+  if (typeof row.accountId !== 'string' || row.accountId.length === 0
+    || row.accountId !== row.accountId.trim()) {
+    return false;
+  }
   if (!ACCOUNT_STATUSES.includes(row.accountStatus)) return false;
   const legacyOwnerId = row.legacyOwnerId === undefined ? null : row.legacyOwnerId;
-  if (legacyOwnerId !== null && (typeof legacyOwnerId !== 'string' || legacyOwnerId.length === 0)) {
+  if (legacyOwnerId !== null && (typeof legacyOwnerId !== 'string' || legacyOwnerId.length === 0
+    || legacyOwnerId !== legacyOwnerId.trim())) {
     return false;
   }
   return true;

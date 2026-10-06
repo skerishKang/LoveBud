@@ -161,10 +161,20 @@ test('12. malformed lookup results fail closed with the bounded LOOKUP_INVALID_R
     { ...ACTIVE_ROW, identityStatus: undefined },
     { ...ACTIVE_ROW, accountId: '' },
     { ...ACTIVE_ROW, accountId: 7 },
+    { ...ACTIVE_ROW, accountId: ' ' },
+    { ...ACTIVE_ROW, accountId: '   ' },
+    { ...ACTIVE_ROW, accountId: ' acct-1' },
+    { ...ACTIVE_ROW, accountId: 'acct-1 ' },
+    { ...ACTIVE_ROW, accountId: String.fromCharCode(9) + 'acct-1' },
     { ...ACTIVE_ROW, accountStatus: 'unknown' },
     { ...ACTIVE_ROW, accountStatus: undefined },
     { ...ACTIVE_ROW, legacyOwnerId: '' },
-    { ...ACTIVE_ROW, legacyOwnerId: 99 }
+    { ...ACTIVE_ROW, legacyOwnerId: 99 },
+    { ...ACTIVE_ROW, legacyOwnerId: ' ' },
+    { ...ACTIVE_ROW, legacyOwnerId: '   ' },
+    { ...ACTIVE_ROW, legacyOwnerId: ' owner-1' },
+    { ...ACTIVE_ROW, legacyOwnerId: 'owner-1 ' },
+    { ...ACTIVE_ROW, legacyOwnerId: 'owner-1' + String.fromCharCode(10) }
   ];
   for (const row of malformedRows) {
     const { resolver } = await makeResolver({ 'firebase|fb-active': row });
@@ -173,6 +183,35 @@ test('12. malformed lookup results fail closed with the bounded LOOKUP_INVALID_R
       (error) => error.code === 'LOOKUP_INVALID_RESULT' && error.message === 'LOOKUP_INVALID_RESULT'
     );
   }
+});
+
+test('12b. whitespace-only and untrimmed compatibility identifiers are rejected, never trimmed or coerced', async () => {
+  const cases = [
+    { ...ACTIVE_ROW, accountId: ' ' },
+    { ...ACTIVE_ROW, accountId: '   ' },
+    { ...ACTIVE_ROW, accountId: ' acct-4567-1' },
+    { ...ACTIVE_ROW, accountId: 'acct-4567-1 ' },
+    { ...ACTIVE_ROW, accountId: String.fromCharCode(9) + 'acct-4567-1' },
+    { ...ACTIVE_ROW, legacyOwnerId: ' ' },
+    { ...ACTIVE_ROW, legacyOwnerId: '   ' },
+    { ...ACTIVE_ROW, legacyOwnerId: ' owner-4567-1' },
+    { ...ACTIVE_ROW, legacyOwnerId: 'owner-4567-1 ' },
+    { ...ACTIVE_ROW, legacyOwnerId: 'owner-4567-1' + String.fromCharCode(10) }
+  ];
+  for (const row of cases) {
+    const { resolver } = await makeResolver({ 'firebase|fb-active': row });
+    await assert.rejects(
+      resolver.resolve({ provider: 'firebase', providerSubject: 'fb-active' }),
+      (error) => error.code === 'LOOKUP_INVALID_RESULT' && error.message === 'LOOKUP_INVALID_RESULT',
+      JSON.stringify(row)
+    );
+  }
+  // Valid non-empty trimmed identifiers keep resolving to ALLOW unchanged.
+  const { resolver: validResolver } = await makeResolver({
+    'firebase|fb-active': { ...ACTIVE_ROW, accountId: 'acct-4567-1', legacyOwnerId: 'owner-4567-1' }
+  });
+  const allowed = await validResolver.resolve({ provider: 'firebase', providerSubject: 'fb-active' });
+  assert.deepEqual(allowed, { decision: 'ALLOW', accountId: 'acct-4567-1', legacyOwnerId: 'owner-4567-1' });
 });
 
 test('13. lookup exceptions are sanitized into the bounded LOOKUP_UNAVAILABLE error with no retry', async () => {
