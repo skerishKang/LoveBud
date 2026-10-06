@@ -754,7 +754,7 @@
         "ref": "#4239 reconciliation",
         "main_sha": "f799bea2e1f3260275653bdfffc20dfaf63aa15e"
       },
-      "modal_retained_by_design": true,
+      "modal_retained_by_design": false,
       "rollback_authority": "N/A (no Direct-Neon path)",
       "next_action": "Revisit only if GET-side Direct-Neon demand is explicitly approved"
     },
