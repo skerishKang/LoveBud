@@ -209,7 +209,7 @@ Obtain current credentials from the approved private shared credential store / c
 approved private shared credential store / custodian-controlled secret store
 ```
 
-This is the canonical credential custody. Public-safe inventory of what belongs
+This is the canonical recovery/custody source. Public-safe inventory of what belongs
 there — labels, credential keys, persona/role, environment, status, sensitivity
 class, custodian labels — is in [QA_ACCOUNT_REGISTRY.md](QA_ACCOUNT_REGISTRY.md).
 
@@ -253,7 +253,7 @@ CREDENTIAL_ROTATION_REQUIRED=YES
 **Decision tree before starting:**
 
 ```
-Step 1: Do you have access to the approved non-public private shared credential store / secret store?
+Step 1: Do you have access to the approved private shared credential store / secret store?
   ├─ YES → Retrieve the selected credential entry and continue.
   └─ NO  → BLOCKED. Do not fall back to Git history or any repository archive.
 
