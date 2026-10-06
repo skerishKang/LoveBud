@@ -42,8 +42,10 @@ Referencing a path does not authorize printing its contents.
 `docs/ops/qa-credential-bundle/` is a **RETIRED public Git credential channel**
 (Issue #4545). It is a non-secret tombstone and must not be treated as a current
 credential source or allowed secret location. Never restore credentials from it
-or from Git history. The canonical credential custody is the approved non-public
-password manager / custodian-controlled secret store; see
+or from Git history. The canonical recovery source is the approved private shared
+credential store (currently the Google Drive-backed operator share) or an equivalent
+custodian-controlled shared secret store. Password managers are optional secondary
+custody, not a required dependency; see
 [QA_CREDENTIALS.md](QA_CREDENTIALS.md) and
 [qa-credential-bundle/README.md](qa-credential-bundle/README.md).
 
