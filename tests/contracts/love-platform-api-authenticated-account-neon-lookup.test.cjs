@@ -67,6 +67,96 @@ async function makeLookup(options) {
   return { lookup, state: fake.state };
 }
 
+const CODE_BACKSLASH = String.fromCharCode(92);
+const CODE_LF = String.fromCharCode(10);
+const CODE_CR = String.fromCharCode(13);
+const CODE_TAB = String.fromCharCode(9);
+
+function isWhitespaceChar(ch) {
+  return ch === ' ' || ch === CODE_LF || ch === CODE_CR || ch === CODE_TAB;
+}
+
+// Import-aware scanner: walks the source once, strips line/block comments while
+// preserving string literals, and records only quoted module specifiers that
+// appear in real import syntax (static `import ... from 'x'` / `export ... from
+// 'x'` / bare `import 'x'` / dynamic `import('x')`). Comment text or plain
+// documentation strings that merely mention a file name are never collected.
+function collectImportSpecifiers(source) {
+  const specifiers = [];
+  let clean = '';
+  let index = 0;
+  let quote = null;
+  let stringStart = -1;
+
+  const takeSpecifier = () => {
+    const specifier = clean.slice(stringStart + 1, clean.length - 1);
+    const before = clean.slice(0, stringStart);
+    let cursor = before.length - 1;
+    while (cursor >= 0 && isWhitespaceChar(before[cursor])) cursor -= 1;
+    let isImportSpecifier = false;
+    if (before[cursor] === '(') {
+      let keywordEnd = cursor - 1;
+      while (keywordEnd >= 0 && isWhitespaceChar(before[keywordEnd])) keywordEnd -= 1;
+      isImportSpecifier = before.slice(Math.max(0, keywordEnd - 5), keywordEnd + 1) === 'import';
+    } else {
+      let wordEnd = cursor;
+      while (wordEnd >= 0 && /[A-Za-z]/.test(before[wordEnd])) wordEnd -= 1;
+      const word = before.slice(wordEnd + 1, cursor + 1);
+      isImportSpecifier = word === 'from' || word === 'import';
+    }
+    if (isImportSpecifier && !specifier.includes('(') && !specifier.includes(CODE_LF)) {
+      specifiers.push(specifier);
+    }
+  };
+
+  while (index < source.length) {
+    const ch = source[index];
+    const next = source[index + 1];
+    if (quote) {
+      if (ch === CODE_BACKSLASH && index + 1 < source.length) {
+        clean += ch + source[index + 1];
+        index += 2;
+        continue;
+      }
+      clean += ch;
+      if (ch === quote) {
+        if (quote !== '`') takeSpecifier();
+        quote = null;
+        stringStart = -1;
+      }
+      index += 1;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      quote = ch;
+      stringStart = clean.length;
+      clean += ch;
+      index += 1;
+      continue;
+    }
+    if (ch === '/' && next === '/') {
+      while (index < source.length && source[index] !== CODE_LF) index += 1;
+      clean += CODE_LF;
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      index += 2;
+      while (index < source.length && !(source[index] === '*' && source[index + 1] === '/')) index += 1;
+      index += 2;
+      continue;
+    }
+    clean += ch;
+    index += 1;
+  }
+  return specifiers;
+}
+
+function importsModuleBySpecifier(source, name) {
+  const suffixes = ['/' + name + '.js'];
+  return collectImportSpecifiers(source).some((specifier) =>
+    specifier === name + '.js' || suffixes.some((suffix) => specifier.endsWith(suffix)));
+}
+
 test('1. LOVE_PLATFORM_DATABASE_URL is the only config authority', async () => {
   const { readAuthenticatedAccountNeonLookupConfig, AUTHENTICATED_ACCOUNT_NEON_LOOKUP_CONTRACT: contract } =
     await loadLookupModule();
@@ -222,6 +312,30 @@ test('14. a null legacy owner projection is preserved', async () => {
   const { lookup } = await makeLookup({ rows: [{ ...ACTIVE_ROW, legacy_owner_id: null }] });
   const result = await lookup({ provider: 'neon', providerSubject: 'ne-no-owner-4569' });
   assert.equal(result.legacyOwnerId, null);
+});
+
+test('14b. missing or undefined legacy_owner_id is malformed, never coerced to null', async () => {
+  const { lookup: nullLookup } = await makeLookup({ rows: [{ ...ACTIVE_ROW, legacy_owner_id: null }] });
+  const normalized = await nullLookup({ provider: 'neon', providerSubject: 'ne-no-owner-4569' });
+  assert.equal(normalized.legacyOwnerId, null, 'explicit SQL NULL stays the valid no-legacy-owner projection');
+
+  const { lookup: undefinedLookup } = await makeLookup({ rows: [{ ...ACTIVE_ROW, legacy_owner_id: undefined }] });
+  await assert.rejects(
+    undefinedLookup({ provider: 'firebase', providerSubject: 'fb-sub-4569' }),
+    (error) => error.code === 'QUERY_INVALID_RESULT' && error.message === 'QUERY_INVALID_RESULT'
+  );
+
+  const omittedRow = {
+    identity_status: ACTIVE_ROW.identity_status,
+    account_id: ACTIVE_ROW.account_id,
+    account_status: ACTIVE_ROW.account_status
+  };
+  assert.ok(!('legacy_owner_id' in omittedRow), 'fixture must omit the property entirely');
+  const { lookup: omittedLookup } = await makeLookup({ rows: [omittedRow] });
+  await assert.rejects(
+    omittedLookup({ provider: 'firebase', providerSubject: 'fb-sub-4569' }),
+    (error) => error.code === 'QUERY_INVALID_RESULT'
+  );
 });
 
 test('15. more than one row fails closed with QUERY_AMBIGUOUS_RESULT', async () => {
@@ -402,17 +516,15 @@ test('26. non-wiring guard: the lookup stays isolated from the Product auth path
   const neonVerifierSource = fs.readFileSync(NEON_VERIFIER_PATH, 'utf8');
   const resolverSource = fs.readFileSync(RESOLVER_PATH, 'utf8');
   const lookupSource = fs.readFileSync(LOOKUP_PATH, 'utf8');
-  const importsModule = (source, name) => source.includes("'" + name + ".js'")
-    || source.includes('"' + name + '.js"');
-  assert.ok(!importsModule(boundarySource, 'authenticated-account-neon-lookup'));
-  assert.ok(!importsModule(neonVerifierSource, 'authenticated-account-neon-lookup'));
-  assert.ok(!importsModule(resolverSource, 'authenticated-account-neon-lookup'),
+  assert.ok(!importsModuleBySpecifier(boundarySource, 'authenticated-account-neon-lookup'));
+  assert.ok(!importsModuleBySpecifier(neonVerifierSource, 'authenticated-account-neon-lookup'));
+  assert.ok(!importsModuleBySpecifier(resolverSource, 'authenticated-account-neon-lookup'),
     'the R1 resolver must not import the DB transport (composition happens in tests only)');
-  assert.ok(!importsModule(lookupSource, 'authenticated-principal'),
+  assert.ok(!importsModuleBySpecifier(lookupSource, 'authenticated-principal'),
     'the lookup must not import the principal boundary');
-  assert.ok(!importsModule(lookupSource, 'neon-auth-token-verifier'),
+  assert.ok(!importsModuleBySpecifier(lookupSource, 'neon-auth-token-verifier'),
     'the lookup must not import the Neon token verifier');
-  assert.ok(!importsModule(lookupSource, 'authenticated-account-resolution'),
+  assert.ok(!importsModuleBySpecifier(lookupSource, 'authenticated-account-resolution'),
     'the lookup must not import the R1 resolver');
   const offenders = [];
   const walk = (dir) => {
@@ -438,4 +550,30 @@ test('26. non-wiring guard: the lookup stays isolated from the Product auth path
   assert.equal(contract.executorCallMaxPerLookup, 1);
   assert.deepEqual(contract.supportedProviders, ['firebase', 'neon']);
   assert.deepEqual(contract.normalizedFields, ['identityStatus', 'accountId', 'accountStatus', 'legacyOwnerId']);
+});
+
+test('26b. non-wiring matcher detects real import syntax and ignores comments/documentation', () => {
+  const name = 'authenticated-account-neon-lookup';
+  const detected = [
+    "import x from './authenticated-account-neon-lookup.js';",
+    "import x from '../x/authenticated-account-neon-lookup.js';",
+    "const m = await import('./authenticated-account-neon-lookup.js');",
+    "export { y } from './authenticated-account-neon-lookup.js';",
+    "import './authenticated-account-neon-lookup.js';",
+    'import x from "./authenticated-account-neon-lookup.js";'
+  ];
+  for (const snippet of detected) {
+    assert.ok(importsModuleBySpecifier(snippet, name), `must detect: ${snippet}`);
+  }
+  const ignored = [
+    '// comment mentioning authenticated-account-neon-lookup.js',
+    '// import x from should not count inside a comment',
+    "const doc = 'authenticated-account-neon-lookup.js is the DB transport';",
+    'const note = "see authenticated-account-neon-lookup.js";',
+    "const other = './authenticated-account-neon-lookup-sibling.js';",
+    "import z from './some-other-module.js';"
+  ];
+  for (const snippet of ignored) {
+    assert.ok(!importsModuleBySpecifier(snippet, name), `must ignore: ${snippet}`);
+  }
 });

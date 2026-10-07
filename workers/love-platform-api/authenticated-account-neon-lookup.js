@@ -142,15 +142,18 @@ function normalizeLookupRow(row) {
   if (accountStatus !== 'active' && accountStatus !== 'disabled' && accountStatus !== 'merged') {
     fail('QUERY_INVALID_RESULT');
   }
-  const rawLegacyOwnerId = row.legacy_owner_id === undefined ? null : row.legacy_owner_id;
-  if (rawLegacyOwnerId !== null && !isNonEmptyTrimmedString(rawLegacyOwnerId)) {
+  // Explicit SQL NULL is the valid no-legacy-owner projection. An undefined
+  // value or an absent column shape is malformed and fails closed; it is never
+  // coerced or defaulted to null.
+  const legacyOwnerId = row.legacy_owner_id;
+  if (legacyOwnerId !== null && !isNonEmptyTrimmedString(legacyOwnerId)) {
     fail('QUERY_INVALID_RESULT');
   }
   return Object.freeze({
     identityStatus,
     accountId: row.account_id,
     accountStatus,
-    legacyOwnerId: rawLegacyOwnerId
+    legacyOwnerId
   });
 }
 
