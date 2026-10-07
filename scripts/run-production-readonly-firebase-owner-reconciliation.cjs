@@ -243,6 +243,9 @@ async function readDatabaseInventory(client, counters) {
     }
   };
 
+  // The attempted counter is recorded exactly at the real connect boundary,
+  // matching the repository's production-readonly diagnostic convention.
+  counters.dbConnectionAttemptedCount += 1;
   try {
     await client.connect();
     counters.dbConnectionEstablishedCount += 1;
@@ -393,11 +396,12 @@ async function runReconciliation({ argv = [], env = {}, dependencies = {} } = {}
     );
   }
 
-  counters.dbConnectionAttemptedCount += 1;
   let client;
   try {
     client = await createDbClient({ connectionString: env[DB_ENV_AUTHORITY] });
   } catch {
+    // Client construction never reached a connect call, so the attempted
+    // counter stays 0; it increases only immediately before client.connect().
     return stop(DISPOSITION.DB_INVENTORY_UNAVAILABLE, counters);
   }
   const databaseInventory = await readDatabaseInventory(client, counters);

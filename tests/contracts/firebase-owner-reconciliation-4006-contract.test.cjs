@@ -506,9 +506,54 @@ test('19. DB connection failures are sanitized with zero retries', async () => {
   assert.equal(result.disposition, 'DB_INVENTORY_UNAVAILABLE');
   assert.equal(result.counters.dbConnectionAttemptedCount, 1);
   assert.equal(result.counters.dbConnectionEstablishedCount, 0);
+  const connectCalls = db.state.statements.filter((entry) => entry.type === 'connect').length;
+  assert.equal(connectCalls, 1, 'exactly one real connect attempt, no retry');
   const serialized = JSON.stringify(result);
   assert.ok(!serialized.includes('raw connect failure'));
   assert.ok(!serialized.includes('neon.tech'), 'no DSN may leak');
+});
+
+test('19b. DB client construction failure reports zero connect attempts', async () => {
+  const firebase = makeFakeFirebase({ pages: [{ users: [fbUser('construct-1')], pageToken: undefined }] });
+  let constructorCalls = 0;
+  const result = await runner.runReconciliation({
+    argv: [runner.EXECUTE_FLAG],
+    env: validEnv(),
+    dependencies: {
+      getCurrentHead: async () => HEAD,
+      createFirebaseAuth: async () => firebase.auth,
+      createDbClient: async () => {
+        constructorCalls += 1;
+        throw new Error('synthetic construction failure for ' + DB_URL);
+      }
+    }
+  });
+  assert.equal(result.disposition, 'DB_INVENTORY_UNAVAILABLE');
+  assert.equal(result.counters.dbConnectionAttemptedCount, 0,
+    'client construction failure never reached a connect call');
+  assert.equal(result.counters.dbConnectionEstablishedCount, 0);
+  assert.equal(constructorCalls, 1, 'construction attempted once, no retry');
+  const serialized = JSON.stringify(result);
+  assert.ok(!serialized.includes('synthetic construction failure'), 'no raw cause may leak');
+  assert.ok(!serialized.includes('neon.tech'), 'no DSN may leak');
+});
+
+test('19c. a successful connection reports attempted=1 and established=1', async () => {
+  const caseA = [...new Set([...FIXTURE_USERS, ...FIXTURE_OWNERS])];
+  const firebase = makeFakeFirebase({
+    pages: [{ users: caseA.map((uid) => fbUser(uid)), pageToken: undefined }]
+  });
+  const db = makeFakeDb();
+  const result = await runner.runReconciliation({
+    argv: [runner.EXECUTE_FLAG],
+    env: validEnv(),
+    dependencies: makeDeps({ firebase, db })
+  });
+  assert.equal(result.disposition, 'DETERMINISTIC_FIREBASE_OWNER_MAP_PROVEN');
+  assert.equal(result.counters.dbConnectionAttemptedCount, 1);
+  assert.equal(result.counters.dbConnectionEstablishedCount, 1);
+  const connectCalls = db.state.statements.filter((entry) => entry.type === 'connect').length;
+  assert.equal(connectCalls, 1);
 });
 
 test('20. DB query failures are sanitized with rollback and zero retries', async () => {
