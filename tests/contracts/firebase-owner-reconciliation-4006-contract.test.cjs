@@ -297,7 +297,7 @@ test('10. the Firebase user bound fails closed', async () => {
   assert.equal(result.disposition, 'FIREBASE_INVENTORY_UNAVAILABLE');
 });
 
-test('11. a repeated page token fails closed', async () => {
+test('11. a repeated page token is an ambiguous inventory stop with no retry', async () => {
   const firebase = makeFakeFirebase({
     pages: [
       { users: [fbUser('loop-1')], pageToken: 'repeat-token' },
@@ -309,8 +309,11 @@ test('11. a repeated page token fails closed', async () => {
     env: validEnv(),
     dependencies: makeDeps({ firebase, db: makeFakeDb() })
   });
-  assert.equal(result.disposition, 'FIREBASE_INVENTORY_UNAVAILABLE');
+  assert.equal(result.disposition, 'INVENTORY_AMBIGUOUS_STOP');
   assert.equal(firebase.state.listUsersCalls.length, 2, 'loop detected without unbounded calls');
+  assert.equal(runner.FIREBASE_RETRY_MAX, 0);
+  assert.equal(runner.FIREBASE_MAX_PAGE_COUNT, 10);
+  assert.equal(runner.FIREBASE_MAX_USER_COUNT, 5000);
 });
 
 test('12. malformed Firebase pages and records fail closed; duplicates are ambiguous', async () => {
@@ -341,6 +344,57 @@ test('12. malformed Firebase pages and records fail closed; duplicates are ambig
     dependencies: makeDeps({ firebase: duplicate, db: makeFakeDb() })
   });
   assert.equal(duplicateResult.disposition, 'INVENTORY_AMBIGUOUS_STOP');
+});
+
+test('12b. strict Firebase UserRecord validation fails closed on every malformed shape', async () => {
+  const invalidRecords = [
+    { uid: 'strict-1', providerData: [] },
+    { uid: 'strict-1', disabled: 'false', providerData: [] },
+    { uid: 'strict-1', disabled: 0, providerData: [] },
+    { uid: 'strict-1', disabled: false },
+    { uid: 'strict-1', disabled: false, providerData: null },
+    { uid: 'strict-1', disabled: false, providerData: {} },
+    { uid: 'strict-1', disabled: false, providerData: 'password' },
+    { uid: 'strict-1', disabled: false, providerData: [null] },
+    { uid: 'strict-1', disabled: false, providerData: ['password'] },
+    { uid: 'strict-1', disabled: false, providerData: [{}] },
+    { uid: 'strict-1', disabled: false, providerData: [{ providerId: '' }] },
+    { uid: 'strict-1', disabled: false, providerData: [{ providerId: ' ' }] },
+    { uid: 'strict-1', disabled: false, providerData: [{ providerId: ' google.com' }] },
+    { uid: 'strict-1', disabled: false, providerData: [{ providerId: 'google.com ' }] }
+  ];
+  for (const record of invalidRecords) {
+    const firebase = makeFakeFirebase({ pages: [{ users: [record], pageToken: undefined }] });
+    const result = await runner.runReconciliation({
+      argv: [runner.EXECUTE_FLAG],
+      env: validEnv(),
+      dependencies: makeDeps({ firebase, db: makeFakeDb() })
+    });
+    assert.equal(result.disposition, 'FIREBASE_INVENTORY_UNAVAILABLE', JSON.stringify(record));
+  }
+  const emptyProviders = makeFakeFirebase({
+    pages: [{ users: [{ uid: 'strict-ok', disabled: false, providerData: [] }], pageToken: undefined }]
+  });
+  const okResult = await runner.runReconciliation({
+    argv: [runner.EXECUTE_FLAG],
+    env: validEnv(),
+    dependencies: makeDeps({ firebase: emptyProviders, db: makeFakeDb() })
+  });
+  assert.equal(okResult.aggregates.firebaseAggregates.firebaseZeroProviderDataUserCount, 1,
+    'an empty providerData array stays valid and counts as a zero-provider user');
+});
+
+test('12c. malformed non-empty page tokens fail closed without a second provider call', async () => {
+  for (const token of [' ', ' token', 'token ']) {
+    const firebase = makeFakeFirebase({ pages: [{ users: [fbUser('tok-1')], pageToken: token }] });
+    const result = await runner.runReconciliation({
+      argv: [runner.EXECUTE_FLAG],
+      env: validEnv(),
+      dependencies: makeDeps({ firebase, db: makeFakeDb() })
+    });
+    assert.equal(result.disposition, 'FIREBASE_INVENTORY_UNAVAILABLE', JSON.stringify(token));
+    assert.equal(firebase.state.listUsersCalls.length, 1, 'a malformed token must not reach the provider again');
+  }
 });
 
 test('13. Firebase exceptions are sanitized with zero retries', async () => {
@@ -705,4 +759,63 @@ test('31. mandatory non-wiring sweep: the harness stays outside the Product runt
   const boundary = await import('../../workers/love-platform-api/authenticated-principal.js');
   assert.equal(boundary.AUTHENTICATED_PRINCIPAL_CONTRACT.currentAcceptedProvider, 'firebase');
   assert.equal(boundary.AUTHENTICATED_PRINCIPAL_CONTRACT.neonTokenAcceptance, false);
+});
+
+test('32. exit codes are bounded: completed measurements exit 0, gates and failures are nonzero', async () => {
+  assert.equal(runner.exitCodeForDisposition('DETERMINISTIC_FIREBASE_OWNER_MAP_PROVEN'), 0);
+  assert.equal(runner.exitCodeForDisposition('OWNER_DB_FIREBASE_MISMATCH_HOLD'), 0);
+  for (const disposition of [
+    'PREEXECUTION_STOP',
+    'FIREBASE_INVENTORY_UNAVAILABLE',
+    'DB_INVENTORY_UNAVAILABLE',
+    'INVENTORY_AMBIGUOUS_STOP',
+    'SOMETHING_UNKNOWN'
+  ]) {
+    assert.notEqual(runner.exitCodeForDisposition(disposition), 0, disposition);
+  }
+  assert.deepEqual(runner.ZERO_EXIT_DISPOSITIONS, [
+    'DETERMINISTIC_FIREBASE_OWNER_MAP_PROVEN',
+    'OWNER_DB_FIREBASE_MISMATCH_HOLD'
+  ]);
+
+  // Injected main() paths: no live process or provider is executed.
+  const gateCode = await runner.main([], {});
+  assert.notEqual(gateCode, 0, 'a default invocation must exit nonzero');
+
+  const caseA = [...new Set([...FIXTURE_USERS, ...FIXTURE_OWNERS])];
+  const deterministicFirebase = makeFakeFirebase({
+    pages: [{ users: caseA.map((uid) => fbUser(uid)), pageToken: undefined }]
+  });
+  const okCode = await runner.main(
+    [runner.EXECUTE_FLAG],
+    validEnv(),
+    makeDeps({ firebase: deterministicFirebase, db: makeFakeDb() })
+  );
+  assert.equal(okCode, 0, 'a completed deterministic measurement exits 0');
+
+  const holdFirebase = makeFakeFirebase({
+    pages: [{ users: FIXTURE_USERS.map((uid) => fbUser(uid)), pageToken: undefined }]
+  });
+  const holdCode = await runner.main(
+    [runner.EXECUTE_FLAG],
+    validEnv(),
+    makeDeps({ firebase: holdFirebase, db: makeFakeDb() })
+  );
+  assert.equal(holdCode, 0, 'HOLD is a completed bounded measurement and is not mutation authorization');
+
+  const failingFirebase = makeFakeFirebase({ fail: true });
+  const unavailableCode = await runner.main(
+    [runner.EXECUTE_FLAG],
+    validEnv(),
+    makeDeps({ firebase: failingFirebase, db: makeFakeDb() })
+  );
+  assert.notEqual(unavailableCode, 0, 'an unavailable inventory must exit nonzero');
+
+  const dbFailing = makeFakeDb({ failConnect: true });
+  const dbCode = await runner.main(
+    [runner.EXECUTE_FLAG],
+    validEnv(),
+    makeDeps({ firebase: deterministicFirebase, db: dbFailing })
+  );
+  assert.notEqual(dbCode, 0, 'an unavailable DB inventory must exit nonzero');
 });

@@ -49,6 +49,17 @@ const DISPOSITION = Object.freeze({
   PREEXECUTION_STOP: 'PREEXECUTION_STOP'
 });
 
+// Only dispositions backed by a fully completed bounded measurement exit 0;
+// gates, unavailable inventories, ambiguity, and unknown values are nonzero.
+const ZERO_EXIT_DISPOSITIONS = Object.freeze([
+  DISPOSITION.DETERMINISTIC_FIREBASE_OWNER_MAP_PROVEN,
+  DISPOSITION.OWNER_DB_FIREBASE_MISMATCH_HOLD
+]);
+
+function exitCodeForDisposition(disposition) {
+  return ZERO_EXIT_DISPOSITIONS.includes(disposition) ? 0 : 2;
+}
+
 const SESSION_STATEMENTS = Object.freeze({
   BEGIN_READ_ONLY: 'BEGIN READ ONLY',
   SHOW_TRANSACTION_READ_ONLY: 'SHOW transaction_read_only',
@@ -152,7 +163,17 @@ async function collectFirebaseInventory(auth, counters) {
       return { ok: false, counters };
     }
     for (const record of page.users) {
+      // Strict UserRecord contract: uid is a non-empty trimmed string, disabled
+      // is a boolean, and providerData is an array of objects carrying a
+      // non-empty trimmed providerId. Any malformed shape fails the whole
+      // inventory closed; nothing is trimmed, coerced, or defaulted.
       if (!record || typeof record !== 'object' || !isNonEmptyTrimmedString(record.uid)) {
+        return { ok: false, counters };
+      }
+      if (typeof record.disabled !== 'boolean') {
+        return { ok: false, counters };
+      }
+      if (!Array.isArray(record.providerData)) {
         return { ok: false, counters };
       }
       if (seenUids.has(record.uid)) {
@@ -163,25 +184,30 @@ async function collectFirebaseInventory(auth, counters) {
       if (seenUids.size > FIREBASE_MAX_USER_COUNT) {
         return { ok: false, counters };
       }
-      if (record.disabled === true) disabledCount += 1;
+      if (record.disabled) disabledCount += 1;
       else enabledCount += 1;
-      const providers = Array.isArray(record.providerData) ? record.providerData : [];
       let providerCount = 0;
-      for (const provider of providers) {
-        if (provider && typeof provider === 'object' && isNonEmptyTrimmedString(provider.providerId)) {
-          providerCounts.set(provider.providerId, (providerCounts.get(provider.providerId) || 0) + 1);
-          providerCount += 1;
+      for (const provider of record.providerData) {
+        if (!provider || typeof provider !== 'object' || Array.isArray(provider)
+          || !isNonEmptyTrimmedString(provider.providerId)) {
+          return { ok: false, counters };
         }
+        providerCounts.set(provider.providerId, (providerCounts.get(provider.providerId) || 0) + 1);
+        providerCount += 1;
       }
       if (providerCount === 0) zeroProviderCount += 1;
     }
     const nextToken = page.pageToken;
     if (nextToken === undefined || nextToken === null || nextToken === '') break;
-    if (typeof nextToken !== 'string') {
+    // A non-empty page token must already be a trimmed string; malformed
+    // tokens fail closed instead of being forwarded to the provider again.
+    if (!isNonEmptyTrimmedString(nextToken)) {
       return { ok: false, counters };
     }
     if (seenPageTokens.has(nextToken)) {
-      return { ok: false, counters };
+      // Repeated pagination evidence is an ambiguous inventory, not a
+      // provider-availability failure. No retry.
+      return { ok: false, counters, ambiguous: true };
     }
     seenPageTokens.add(nextToken);
     pageToken = nextToken;
@@ -425,15 +451,15 @@ async function defaultCreateDbClient({ connectionString }) {
   return new Client({ connectionString, application_name: 'lovebud-4572-readonly-reconciliation' });
 }
 
-async function main(argv = process.argv.slice(2), env = process.env) {
-  const result = await runReconciliation({ argv, env });
+async function main(argv = process.argv.slice(2), env = process.env, dependencies = {}) {
+  const result = await runReconciliation({ argv, env, dependencies });
   console.log('disposition=' + result.disposition);
   if (result.aggregates) {
     console.log('aggregates=' + JSON.stringify(result.aggregates));
     console.log('providers=' + JSON.stringify(result.providerAggregates));
   }
   console.log('counters=' + JSON.stringify(result.counters));
-  return result.disposition === DISPOSITION.PREEXECUTION_STOP ? 2 : 0;
+  return exitCodeForDisposition(result.disposition);
 }
 
 if (require.main === module) {
@@ -441,7 +467,7 @@ if (require.main === module) {
     process.exitCode = code;
   }).catch(() => {
     console.log('disposition=' + DISPOSITION.INVENTORY_AMBIGUOUS_STOP);
-    process.exitCode = 2;
+    process.exitCode = exitCodeForDisposition(DISPOSITION.INVENTORY_AMBIGUOUS_STOP);
   });
 }
 
@@ -459,6 +485,8 @@ module.exports = {
   FIREBASE_RETRY_MAX,
   EXPECTED_ZERO_MAPPING_PRECONDITION,
   DISPOSITION,
+  ZERO_EXIT_DISPOSITIONS,
+  exitCodeForDisposition,
   SESSION_STATEMENTS,
   DB_READ_CATALOG,
   isNeonReadDatabaseUrl,
